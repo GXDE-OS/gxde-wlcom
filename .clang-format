@@ -1,0 +1,17 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: Inline
+Cpp11BracedListStyle: false
+ColumnLimit: 100
+
+SpaceBeforeParens: ControlStatementsExceptForEachMacros
+
+ForEachMacros:
+  - 'wl_list_for_each'
+  - 'wl_list_for_each_safe'
+  - 'wl_list_for_each_reverse'
+  - 'wl_list_for_each_reverse_safe'
+  - 'wl_array_for_each'
+  - 'wl_resource_for_each'
+  - 'json_object_object_foreach'
