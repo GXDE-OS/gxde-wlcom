@@ -1,0 +1,33 @@
+#ifndef _SERVER_H_
+#define _SERVER_H_
+
+#include <wayland-server-core.h>
+
+struct server {
+    struct wl_display *display;
+    struct wl_event_loop *event_loop;
+
+    /* signal handler */
+    struct wl_event_source *sigint;
+    struct wl_event_source *sigterm;
+
+    const struct server_impl *impl;
+
+    struct {
+        bool enable_xwayland;
+    } options;
+};
+
+struct server_impl {
+    bool (*init)(struct server *server);
+    bool (*start)(struct server *server);
+    bool (*finish)(struct server *server);
+};
+
+bool server_init(struct server *server);
+
+bool server_start(struct server *server);
+
+void server_finish(struct server *server);
+
+#endif /* _SERVER_H_ */

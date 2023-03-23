@@ -1,0 +1,1 @@
+option('plugin_directory', description: 'Location used to look for plugin (default: ${prefix}/lib/kylin-wlcom/plugins/)', type: 'string', value: '')
