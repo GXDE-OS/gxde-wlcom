@@ -273,8 +273,10 @@ static bool load_plugin(struct plugin *plugin, bool force)
     return true;
 }
 
-static void handle_display_destroy(struct wl_listener *listener, void *data)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
+    wl_list_remove(&plugin_manager->server_destroy.link);
+
     struct plugin *plugin, *plugin_tmp;
     wl_list_for_each_safe(plugin, plugin_tmp, &plugin_manager->plugins, link) {
         plugin_manager_unload_plugin(plugin);
@@ -293,8 +295,8 @@ struct plugin_manager *plugin_manager_create(struct server *server)
     }
 
     wl_list_init(&plugin_manager->plugins);
-    plugin_manager->display_destroy.notify = handle_display_destroy;
-    wl_display_add_destroy_listener(server->display, &plugin_manager->display_destroy);
+    plugin_manager->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(server, &plugin_manager->server_destroy);
 
     plugin_manager_config_init(plugin_manager);
 

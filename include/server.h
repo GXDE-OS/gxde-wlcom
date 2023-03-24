@@ -16,6 +16,8 @@ struct server {
     struct {
         bool enable_xwayland;
     } options;
+
+    struct wl_signal destroy_list;
 };
 
 struct server_impl {
@@ -29,5 +31,10 @@ bool server_init(struct server *server);
 bool server_start(struct server *server);
 
 void server_finish(struct server *server);
+
+/**
+ * first-in last-out signal for server finish
+ */
+void server_add_destroy_listener(struct server *server, struct wl_listener *listener);
 
 #endif /* _SERVER_H_ */

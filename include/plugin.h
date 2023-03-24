@@ -43,7 +43,7 @@ struct plugin_manager {
 
     /* all plugins configurations */
     struct config *config;
-    struct wl_listener display_destroy;
+    struct wl_listener server_destroy;
 };
 
 /**

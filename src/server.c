@@ -16,6 +16,12 @@ static int handle_sigterm(int signal, void *data)
     return 0;
 }
 
+void server_add_destroy_listener(struct server *server, struct wl_listener *listener)
+{
+    struct wl_signal *signal = &server->destroy_list;
+    wl_list_insert(&signal->listener_list, &listener->link);
+}
+
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
@@ -25,6 +31,8 @@ bool server_init(struct server *server)
         wl_event_loop_add_signal(server->event_loop, SIGINT, handle_sigterm, server->display);
     server->sigterm =
         wl_event_loop_add_signal(server->event_loop, SIGTERM, handle_sigterm, server->display);
+
+    wl_signal_init(&server->destroy_list);
 
     config_manager_create(server);
     plugin_manager_create(server);
@@ -58,6 +66,7 @@ void server_finish(struct server *server)
     wl_event_source_remove(server->sigterm);
     wl_display_destroy_clients(server->display);
 
+    wl_signal_emit(&server->destroy_list, server);
     wl_display_destroy(server->display);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
