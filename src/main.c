@@ -16,7 +16,7 @@ static const struct option long_options[] = {
 };
 
 static const char usage[] =
-    "Usage: wlcom [options] [command]\n"
+    "Usage: kylin-wlcom [options] [command]\n"
     "\n"
     "  -h, --help       Show help message and quit.\n"
     "  -d, --debug      Enables full logging, including debug information.\n"
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
             // enable_debug_flag(optarg);
             break;
         case 'v': // version
-            printf("wlcom version " KYWC_VERSION "\n");
+            printf("kylin-wlcom version " KYWC_VERSION "\n");
             exit(EXIT_SUCCESS);
             break;
         case 'V': // verbose
@@ -95,8 +95,6 @@ int main(int argc, char *argv[])
     server_start(&server);
 
     server_finish(&server);
-
     logger_finish();
-
     return 0;
 }

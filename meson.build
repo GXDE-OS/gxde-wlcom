@@ -44,7 +44,6 @@ add_project_arguments('-DKYWC_VERSION=@0@'.format(version), language: 'c')
 wayland_server = dependency('wayland-server', version: '>=1.19.0')
 wayland_protos = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')
-xcb = dependency('xcb')
 drm_full = dependency('libdrm')
 drm = drm_full.partial_dependency(compile_args: true, includes: true)
 input = dependency('libinput', version: '>=1.14')
@@ -63,9 +62,9 @@ add_project_arguments('-DPLUGIN_DIR="@0@"'.format(plugindir), language: 'c')
 
 wlcom_inc = include_directories('include')
 
-subdir('examples')
 #subdir('protocols')
 subdir('src')
+subdir('examples')
 
 wlcom_deps = [
   wayland_server,
@@ -94,5 +93,6 @@ executable(
     export_dynamic: true,
     link_args: symbols_flag,
     link_depends: symbols_file,
+    link_with: adapter_static,
     #link_with: widget_static,
 )

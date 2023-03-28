@@ -12,4 +12,6 @@ wlcom_sources = files(
   'util/spawn.c',
 )
 
+subdir('adapter')
+
 #subdir('widget')

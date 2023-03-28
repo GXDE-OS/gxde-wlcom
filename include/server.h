@@ -11,19 +11,21 @@ struct server {
     struct wl_event_source *sigint;
     struct wl_event_source *sigterm;
 
-    const struct server_impl *impl;
-
     struct {
         bool enable_xwayland;
     } options;
 
     struct wl_signal destroy_list;
+
+    /* adapter server */
+    const struct server_impl *impl;
+    void *data;
 };
 
 struct server_impl {
     bool (*init)(struct server *server);
     bool (*start)(struct server *server);
-    bool (*finish)(struct server *server);
+    void (*finish)(struct server *server);
 };
 
 bool server_init(struct server *server);

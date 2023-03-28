@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#include "config.h"
 #include "plugin.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Plugin";

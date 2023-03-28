@@ -5,8 +5,6 @@
 
 #include <kywc/plugin.h>
 
-#include "config.h"
-
 struct server;
 
 struct plugin_config_entry {

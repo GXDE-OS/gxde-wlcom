@@ -5,6 +5,7 @@
 
 #include <kywc/log.h>
 
+#include "adapter.h"
 #include "config.h"
 #include "plugin.h"
 #include "server.h"
@@ -37,6 +38,8 @@ bool server_init(struct server *server)
     config_manager_create(server);
     plugin_manager_create(server);
 
+    adapter_init(server);
+
     return true;
 }
 
@@ -56,6 +59,8 @@ bool server_start(struct server *server)
         kywc_log(KYWC_DEBUG, "WAYLAND_DISPLAY=%s", socket);
     }
 
+    adapter_start(server);
+
     wl_display_run(server->display);
     return true;
 }
@@ -65,6 +70,8 @@ void server_finish(struct server *server)
     wl_event_source_remove(server->sigint);
     wl_event_source_remove(server->sigterm);
     wl_display_destroy_clients(server->display);
+
+    adapter_finish(server);
 
     wl_signal_emit(&server->destroy_list, server);
     wl_display_destroy(server->display);
