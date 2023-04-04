@@ -15,6 +15,10 @@ wlcom_sources = files(
     'util/spawn.c',
 )
 
+wlcom_sources += files(
+    'output/kde_output.c',
+)
+
 subdir('adapter')
 
 #subdir('widget')

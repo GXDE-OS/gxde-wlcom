@@ -62,7 +62,7 @@ add_project_arguments('-DPLUGIN_DIR="@0@"'.format(plugindir), language: 'c')
 
 wlcom_inc = include_directories('include')
 
-#subdir('protocols')
+subdir('protocols')
 subdir('src')
 
 if get_option('examples')
