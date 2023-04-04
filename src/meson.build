@@ -5,6 +5,8 @@ wlcom_sources = files(
     'config/common.c',
     'config/config.c',
 
+    'output/config.c',
+    'output/output.c',
 
     'plugin/config.c',
     'plugin/plugin.c',

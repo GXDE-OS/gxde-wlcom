@@ -7,6 +7,7 @@
 
 #include "adapter.h"
 #include "config.h"
+#include "output.h"
 #include "plugin.h"
 #include "server.h"
 
@@ -37,6 +38,7 @@ bool server_init(struct server *server)
 
     config_manager_create(server);
     plugin_manager_create(server);
+    output_manager_create(server);
 
     adapter_init(server);
 

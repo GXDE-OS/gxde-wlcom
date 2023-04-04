@@ -12,6 +12,8 @@
 #include <wlr/xwayland.h>
 #endif
 
+#include <kywc/log.h>
+
 #include "wlroots.h"
 
 struct wlroots_server {
@@ -29,8 +31,13 @@ struct wlroots_server {
 #endif
     struct wlr_scene *scene;
     struct wlr_output_layout *layout;
+
+    struct wl_listener new_output;
+    struct wl_listener new_input;
 };
 
 struct wlroots_server *wlroots_server_from_server(struct server *server);
+
+bool wlroots_output_init(struct wlroots_server *wlroots);
 
 #endif /* _ADAPTER_WLROOTS_P_H_ */

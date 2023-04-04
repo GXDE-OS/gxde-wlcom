@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <kywc/log.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_screencopy_v1.h>
@@ -70,6 +69,7 @@ static bool wlroots_server_init(struct server *server)
 
     wlroots->scene = wlr_scene_create();
     wlroots->layout = wlr_output_layout_create();
+    wlr_scene_attach_output_layout(wlroots->scene, wlroots->layout);
 
     struct wlr_presentation *presentation =
         wlr_presentation_create(server->display, wlroots->backend);
@@ -93,6 +93,8 @@ static bool wlroots_server_init(struct server *server)
         kywc_log(KYWC_INFO, "xwayland is running on display %s", wlroots->xwayland->display_name);
     }
 #endif
+
+    wlroots_output_init(wlroots);
 
     return true;
 }
