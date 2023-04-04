@@ -1,1 +1,2 @@
 option('plugin_directory', description: 'Location used to look for plugin (default: ${prefix}/lib/kylin-wlcom/plugins/)', type: 'string', value: '')
+option('examples', type: 'boolean', value: true, description: 'Build example applications')

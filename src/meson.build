@@ -1,15 +1,16 @@
 wlcom_sources = files(
-  'main.c',
-  'server.c',
+    'main.c',
+    'server.c',
 
-  'config/common.c',
-  'config/config.c',
+    'config/common.c',
+    'config/config.c',
 
-  'plugin/config.c',
-  'plugin/plugin.c',
 
-  'util/logger.c',
-  'util/spawn.c',
+    'plugin/config.c',
+    'plugin/plugin.c',
+
+    'util/logger.c',
+    'util/spawn.c',
 )
 
 subdir('adapter')
