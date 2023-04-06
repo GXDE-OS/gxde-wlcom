@@ -184,12 +184,28 @@ void output_destroy(struct output *output)
 
     wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
 
+    wl_list_remove(&output->link);
+    /* fixup primary output if not fixed by destroy listeners */
+    if (kywc_output == output_manager->primary_output) {
+        struct output *output;
+        wl_list_for_each(output, &output_manager->outputs, link) {
+            if (output->base.state.enabled) {
+                kywc_output_set_primary(&output->base);
+                break;
+            }
+        }
+
+        /* no enabled output found */
+        if (kywc_output == output_manager->primary_output) {
+            kywc_output_set_primary(NULL);
+        }
+    }
+
     struct kywc_output_mode *mode, *tmp_mode;
     wl_list_for_each_safe(mode, tmp_mode, &kywc_output->prop.modes, link) {
         wl_list_remove(&mode->link);
         free(mode);
     }
 
-    wl_list_remove(&output->link);
     free(output);
 }
