@@ -6,7 +6,8 @@
 
 #include "output_p.h"
 
-#define OUTPUTDEVICE_VERSION 2
+#define OUTPUT_DEVICE_VERSION 2
+#define OUTPUT_DEVICE_MODE_VERSION 1
 #define OUTPUT_MANAGER_VERSION 2
 #define KDE_PRIMARY_OUTPUT_VERSION 1
 
@@ -418,14 +419,12 @@ static void kde_output_device_handle_mode_resource_destroy(struct wl_resource *r
 static void kde_output_device_send_modes(struct kde_output_device_client *kod_client)
 {
     struct wl_client *client = wl_resource_get_client(kod_client->resource);
-    // TODO: version 1 or 2 ?
-    uint32_t version = wl_resource_get_version(kod_client->resource);
     struct kywc_output *kywc_output = kod_client->output_device->kywc_output;
 
     struct kywc_output_mode *mode;
     wl_list_for_each(mode, &kywc_output->prop.modes, link) {
-        struct wl_resource *mode_resource =
-            wl_resource_create(client, &kde_output_device_mode_v2_interface, version, 0);
+        struct wl_resource *mode_resource = wl_resource_create(
+            client, &kde_output_device_mode_v2_interface, OUTPUT_DEVICE_MODE_VERSION, 0);
         if (!mode_resource) {
             continue;
         }
@@ -632,8 +631,8 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
     }
 
     output_device->global =
-        wl_global_create(management->display, &kde_output_device_v2_interface, OUTPUTDEVICE_VERSION,
-                         output_device, kde_output_device_bind);
+        wl_global_create(management->display, &kde_output_device_v2_interface,
+                         OUTPUT_DEVICE_VERSION, output_device, kde_output_device_bind);
     if (!output_device->global) {
         free(output_device);
         return;
