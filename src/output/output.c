@@ -112,6 +112,11 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
 
     kywc_output_set_state(kywc_output, &state);
 
+    // TODO: primary config
+    if (kywc_output->state.enabled) {
+        kywc_output_set_primary(kywc_output);
+    }
+
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 
     return output;
