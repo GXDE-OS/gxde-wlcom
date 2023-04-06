@@ -39,7 +39,9 @@ struct kde_output_device {
     struct wl_listener on;
     struct wl_listener off;
     struct wl_listener scale;
-    struct wl_listener geometry;
+    struct wl_listener mode;
+    struct wl_listener position;
+    struct wl_listener transform;
 
     struct wl_listener destroy;
 };
@@ -455,7 +457,7 @@ static void kde_output_device_bind(struct wl_client *client, void *data, uint32_
 
     kde_output_device_v2_send_scale(resource, wl_fixed_from_double(kywc_output->state.scale));
 
-    /*
+    /* TODO: finish these
         kde_output_device_v2_send_edid();
         kde_output_device_v2_send_uuid();
         kde_output_device_v2_send_serial_number();
@@ -485,6 +487,40 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     free(output_device);
 }
 
+static void kde_output_device_handle_on(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, on);
+
+    struct kde_output_device_client *client;
+    wl_list_for_each(client, &output_device->clients, link) {
+        kde_output_device_v2_send_enabled(client->resource, true);
+        kde_output_device_send_current_mode(client);
+        kde_output_device_v2_send_done(client->resource);
+    }
+}
+
+static void kde_output_device_handle_off(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, off);
+
+    struct kde_output_device_client *client;
+    wl_list_for_each(client, &output_device->clients, link) {
+        kde_output_device_v2_send_enabled(client->resource, false);
+        kde_output_device_v2_send_done(client->resource);
+    }
+}
+
+static void kde_output_device_handle_mode(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, mode);
+
+    struct kde_output_device_client *client;
+    wl_list_for_each(client, &output_device->clients, link) {
+        kde_output_device_send_current_mode(client);
+        kde_output_device_v2_send_done(client->resource);
+    }
+}
+
 static void kde_output_device_handle_scale(struct wl_listener *listener, void *data)
 {
     struct kde_output_device *output_device = wl_container_of(listener, output_device, scale);
@@ -496,6 +532,40 @@ static void kde_output_device_handle_scale(struct wl_listener *listener, void *d
         kde_output_device_v2_send_done(client->resource);
     }
 }
+
+static void kde_output_device_handle_position(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, position);
+    struct kywc_output *kywc_output = output_device->kywc_output;
+
+    struct kde_output_device_client *client;
+    wl_list_for_each(client, &output_device->clients, link) {
+        kde_output_device_v2_send_geometry(client->resource, kywc_output->state.lx,
+                                           kywc_output->state.ly, kywc_output->prop.phys_width,
+                                           kywc_output->prop.phys_height, 0, kywc_output->prop.make,
+                                           kywc_output->prop.model, kywc_output->state.transform);
+        kde_output_device_v2_send_done(client->resource);
+    }
+}
+
+static void kde_output_device_handle_transform(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, transform);
+    struct kywc_output *kywc_output = output_device->kywc_output;
+
+    struct kde_output_device_client *client;
+    wl_list_for_each(client, &output_device->clients, link) {
+        kde_output_device_v2_send_geometry(client->resource, kywc_output->state.lx,
+                                           kywc_output->state.ly, kywc_output->prop.phys_width,
+                                           kywc_output->prop.phys_height, 0, kywc_output->prop.make,
+                                           kywc_output->prop.model, kywc_output->state.transform);
+        kde_output_device_v2_send_done(client->resource);
+    }
+}
+
+#define OUTPUT_DEVICE_ADD_SIGNAL(signal)                                                           \
+    output_device->signal.notify = kde_output_device_handle_##signal;                              \
+    wl_signal_add(&kywc_output->events.signal, &output_device->signal);
 
 static void kde_output_management_handle_new_output(struct wl_listener *listener, void *data)
 {
@@ -518,11 +588,16 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
     struct kywc_output *kywc_output = data;
     output_device->kywc_output = kywc_output;
 
-    output_device->scale.notify = kde_output_device_handle_scale;
-    wl_signal_add(&kywc_output->events.scale, &output_device->scale);
-    output_device->destroy.notify = kde_output_device_handle_destroy;
-    wl_signal_add(&kywc_output->events.destroy, &output_device->destroy);
+    OUTPUT_DEVICE_ADD_SIGNAL(on);
+    OUTPUT_DEVICE_ADD_SIGNAL(off);
+    OUTPUT_DEVICE_ADD_SIGNAL(mode);
+    OUTPUT_DEVICE_ADD_SIGNAL(scale);
+    OUTPUT_DEVICE_ADD_SIGNAL(position);
+    OUTPUT_DEVICE_ADD_SIGNAL(transform);
+    OUTPUT_DEVICE_ADD_SIGNAL(destroy);
 }
+
+#undef OUTPUT_DEVICE_ADD_SIGNAL
 
 static void kde_primary_output_unbind(struct wl_resource *resource)
 {

@@ -56,7 +56,9 @@ struct kywc_output {
         struct wl_signal on;
         struct wl_signal off;
         struct wl_signal scale;
-        struct wl_signal geometry;
+        struct wl_signal transform;
+        struct wl_signal mode;
+        struct wl_signal position;
 
         struct wl_signal frame;
         // TODO: usable area changed signal ?

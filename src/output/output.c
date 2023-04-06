@@ -81,8 +81,11 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
 
     wl_signal_init(&kywc_output->events.on);
     wl_signal_init(&kywc_output->events.off);
-    wl_signal_init(&kywc_output->events.geometry);
     wl_signal_init(&kywc_output->events.scale);
+    wl_signal_init(&kywc_output->events.transform);
+    wl_signal_init(&kywc_output->events.mode);
+    wl_signal_init(&kywc_output->events.position);
+
     wl_signal_init(&kywc_output->events.frame);
     wl_signal_init(&kywc_output->events.destroy);
 
@@ -92,6 +95,7 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     /* get props */
     wl_list_init(&kywc_output->prop.modes);
     output->impl->get_prop(output, &kywc_output->prop);
+    /* fill null pointer with unknown, but adapter should avoid null */
     if (!kywc_output->prop.model) {
         kywc_output->prop.model = unknown;
     }
@@ -135,13 +139,21 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         }
     }
 
-    if (current->width != old.width || current->height != old.height || current->lx != old.lx ||
-        current->ly != old.ly) {
-        wl_signal_emit_mutable(&kywc_output->events.geometry, kywc_output);
+    if (current->width != old.width || current->height != old.height ||
+        current->refresh != old.refresh) {
+        wl_signal_emit_mutable(&kywc_output->events.mode, kywc_output);
+    }
+
+    if (current->transform != old.transform) {
+        wl_signal_emit_mutable(&kywc_output->events.transform, kywc_output);
     }
 
     if (current->scale != old.scale) {
         wl_signal_emit_mutable(&kywc_output->events.scale, kywc_output);
+    }
+
+    if (current->lx != old.lx || current->ly != old.ly) {
+        wl_signal_emit_mutable(&kywc_output->events.position, kywc_output);
     }
 
     output_write_config(output);
