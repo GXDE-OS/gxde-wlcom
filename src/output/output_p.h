@@ -4,11 +4,12 @@
 #include <kywc/log.h>
 
 #include "output.h"
+#include "server.h"
 
 #if 1 // HAVE_KDE_OUTPUT
-bool kde_output_management_create(struct wl_display *display);
+bool kde_output_management_create(struct server *server);
 #else
-static __attribute__((unused)) inline bool kde_output_management_create(struct wl_display *display)
+static __attribute__((unused)) inline bool kde_output_management_create(struct server *server)
 {
     return false;
 }

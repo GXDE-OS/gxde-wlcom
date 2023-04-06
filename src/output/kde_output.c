@@ -28,6 +28,7 @@ struct kde_output_management {
 
     struct wl_listener new_output;
     struct wl_listener display_destroy;
+    struct wl_listener server_destroy;
 };
 
 struct kde_output_device {
@@ -397,6 +398,14 @@ static void kde_output_management_bind(struct wl_client *client, void *data, uin
     wl_list_insert(&management->resources, wl_resource_get_link(resource));
 }
 
+static void kde_output_management_handle_server_destory(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&management->server_destroy.link);
+
+    free(management);
+    management = NULL;
+}
+
 static void kde_output_management_handle_display_destory(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&management->display_destroy.link);
@@ -407,9 +416,6 @@ static void kde_output_management_handle_display_destory(struct wl_listener *lis
         wl_list_remove(&management->primary_output.primary_output.link);
         wl_global_destroy(management->primary_output.global);
     }
-
-    free(management);
-    management = NULL;
 }
 
 static void kde_output_device_handle_mode_resource_destroy(struct wl_resource *resource)
@@ -701,27 +707,29 @@ static void kde_output_management_handle_primary_output(struct wl_listener *list
     }
 }
 
-bool kde_output_management_create(struct wl_display *display)
+bool kde_output_management_create(struct server *server)
 {
     management = calloc(1, sizeof(struct kde_output_management));
     if (!management) {
         return false;
     }
 
-    management->display = display;
+    management->display = server->display;
     wl_list_init(&management->resources);
     wl_list_init(&management->output_devices);
 
     management->global =
-        wl_global_create(display, &kde_output_management_v2_interface, OUTPUT_MANAGER_VERSION,
-                         management, kde_output_management_bind);
+        wl_global_create(server->display, &kde_output_management_v2_interface,
+                         OUTPUT_MANAGER_VERSION, management, kde_output_management_bind);
     if (!management->global) {
         free(management);
         return false;
     }
 
     management->display_destroy.notify = kde_output_management_handle_display_destory;
-    wl_display_add_destroy_listener(display, &management->display_destroy);
+    wl_display_add_destroy_listener(server->display, &management->display_destroy);
+    management->server_destroy.notify = kde_output_management_handle_server_destory;
+    server_add_destroy_listener(server, &management->server_destroy);
 
     /* listener new_output signal */
     management->new_output.notify = kde_output_management_handle_new_output;
@@ -729,8 +737,8 @@ bool kde_output_management_create(struct wl_display *display)
 
     /* kde_primary_output_v1 support */
     management->primary_output.global =
-        wl_global_create(display, &kde_primary_output_v1_interface, KDE_PRIMARY_OUTPUT_VERSION,
-                         management, kde_primary_output_bind);
+        wl_global_create(server->display, &kde_primary_output_v1_interface,
+                         KDE_PRIMARY_OUTPUT_VERSION, management, kde_primary_output_bind);
     if (!management->primary_output.global) {
         /* no primary output support */
         return true;
