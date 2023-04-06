@@ -138,6 +138,7 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     if (current->enabled != old.enabled) {
         if (!current->enabled) {
             wl_signal_emit_mutable(&kywc_output->events.off, kywc_output);
+            output_write_config(output);
             return true;
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, kywc_output);
