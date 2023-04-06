@@ -691,6 +691,10 @@ static void kde_output_management_handle_primary_output(struct wl_listener *list
     struct kywc_output *kywc_output = data;
     management->primary_output.current_primary = kywc_output;
 
+    if (!kywc_output) {
+        return;
+    }
+
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->primary_output.resources) {
         kde_primary_output_v1_send_primary_output(resource, kywc_output->name);

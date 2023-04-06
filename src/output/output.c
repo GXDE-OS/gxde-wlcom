@@ -46,13 +46,13 @@ struct output_manager *output_manager_create(struct server *server)
 
 void kywc_output_set_primary(struct kywc_output *kywc_output)
 {
-    struct output *output = output_from_kywc_output(kywc_output);
-    if (output_manager->primary_output == output) {
+    if (output_manager->primary_output == kywc_output) {
         return;
     }
 
-    kywc_log(KYWC_DEBUG, "primary output is changed to %s", kywc_output->name);
-    output_manager->primary_output = output;
+    kywc_log(KYWC_DEBUG, "primary output is changed to %s",
+             kywc_output ? kywc_output->name : "none");
+    output_manager->primary_output = kywc_output;
     wl_signal_emit_mutable(&output_manager->events.primary_output, kywc_output);
 }
 

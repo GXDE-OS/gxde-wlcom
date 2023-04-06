@@ -31,7 +31,7 @@ struct output_impl {
 struct output_manager {
     struct wl_list outputs;
 
-    struct output *primary_output;
+    struct kywc_output *primary_output;
 
     struct {
         struct wl_signal new_output;
