@@ -75,8 +75,8 @@ void server_finish(struct server *server)
 
     adapter_finish(server);
 
-    wl_signal_emit(&server->destroy_list, server);
     wl_display_destroy(server->display);
+    wl_signal_emit(&server->destroy_list, server);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }

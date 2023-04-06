@@ -400,10 +400,11 @@ static void kde_output_management_bind(struct wl_client *client, void *data, uin
 static void kde_output_management_handle_display_destory(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&management->display_destroy.link);
-    // XXX: can't remove other links as we used display_destroy
+    wl_list_remove(&management->new_output.link);
 
     wl_global_destroy(management->global);
     if (management->primary_output.global) {
+        wl_list_remove(&management->primary_output.primary_output.link);
         wl_global_destroy(management->primary_output.global);
     }
 
@@ -534,6 +535,12 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
 {
     struct kde_output_device *output_device = wl_container_of(listener, output_device, destroy);
 
+    wl_list_remove(&output_device->on.link);
+    wl_list_remove(&output_device->off.link);
+    wl_list_remove(&output_device->mode.link);
+    wl_list_remove(&output_device->scale.link);
+    wl_list_remove(&output_device->transform.link);
+    wl_list_remove(&output_device->position.link);
     wl_list_remove(&output_device->destroy.link);
     wl_list_remove(&output_device->link);
 
@@ -709,6 +716,9 @@ bool kde_output_management_create(struct wl_display *display)
         return false;
     }
 
+    management->display_destroy.notify = kde_output_management_handle_display_destory;
+    wl_display_add_destroy_listener(display, &management->display_destroy);
+
     /* listener new_output signal */
     management->new_output.notify = kde_output_management_handle_new_output;
     kywc_output_add_new_listener(&management->new_output);
@@ -726,10 +736,6 @@ bool kde_output_management_create(struct wl_display *display)
     /* listener primary_output signal */
     management->primary_output.primary_output.notify = kde_output_management_handle_primary_output;
     kywc_output_add_primary_listener(&management->primary_output.primary_output);
-
-    // TODO: check with server_destroy
-    management->display_destroy.notify = kde_output_management_handle_display_destory;
-    wl_display_add_destroy_listener(display, &management->display_destroy);
 
     return true;
 }

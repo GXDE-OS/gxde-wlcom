@@ -30,6 +30,7 @@ struct config_manager {
     struct wl_event_source *event;
     sd_bus *bus;
 
+    struct wl_listener display_destroy;
     struct wl_listener server_destroy;
 };
 

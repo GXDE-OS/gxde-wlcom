@@ -109,6 +109,15 @@ void config_manager_sync(void)
                             JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY);
 }
 
+static void handle_display_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&config_manager->display_destroy.link);
+
+    if (config_manager->event) {
+        wl_event_source_remove(config_manager->event);
+    }
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&config_manager->server_destroy.link);
@@ -120,9 +129,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         free(config);
     }
 
-    if (config_manager->event) {
-        wl_event_source_remove(config_manager->event);
-    }
     sd_bus_flush_close_unref(config_manager->bus);
 
     config_manager_sync();
@@ -160,6 +166,8 @@ struct config_manager *config_manager_create(struct server *server)
     wl_list_init(&config_manager->configs);
     config_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &config_manager->server_destroy);
+    config_manager->display_destroy.notify = handle_display_destroy;
+    wl_display_add_destroy_listener(server->display, &config_manager->display_destroy);
 
     config_manager_common_init(config_manager);
 
