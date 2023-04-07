@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "dpms-protocol.h"
 #include "kde-output-device-v2-protocol.h"
 #include "kde-output-management-v2-protocol.h"
 #include "kde-primary-output-v1-protocol.h"
@@ -11,6 +12,7 @@
 #define OUTPUT_DEVICE_MODE_VERSION 1
 #define OUTPUT_MANAGER_VERSION 2
 #define KDE_PRIMARY_OUTPUT_VERSION 1
+#define ORG_KDE_KWIN_DPMS_MANAGER_VERSION 1
 
 struct kde_output_management {
     struct wl_display *display;
@@ -27,6 +29,12 @@ struct kde_output_management {
         struct kywc_output *current_primary;
     } primary_output;
 
+    /* for dpms manager */
+    struct {
+        struct wl_global *global;
+        struct wl_list resources;
+    } dpms_manager;
+
     struct wl_listener new_output;
     struct wl_listener display_destroy;
     struct wl_listener server_destroy;
@@ -36,6 +44,7 @@ struct kde_output_device {
     struct wl_global *global;
     struct wl_list link;
     struct wl_list clients;
+    struct wl_list resources; // for dpms
 
     struct kywc_output *kywc_output;
 
@@ -45,6 +54,7 @@ struct kde_output_device {
     struct wl_listener mode;
     struct wl_listener position;
     struct wl_listener transform;
+    struct wl_listener power;
 
     struct wl_listener destroy;
 };
@@ -417,6 +427,10 @@ static void kde_output_management_handle_display_destory(struct wl_listener *lis
         wl_list_remove(&management->primary_output.primary_output.link);
         wl_global_destroy(management->primary_output.global);
     }
+
+    if (management->dpms_manager.global) {
+        wl_global_destroy(management->dpms_manager.global);
+    }
 }
 
 static void kde_output_device_handle_mode_resource_destroy(struct wl_resource *resource)
@@ -633,6 +647,20 @@ static void kde_output_device_handle_transform(struct wl_listener *listener, voi
     }
 }
 
+static void kde_output_device_handle_power(struct wl_listener *listener, void *data)
+{
+    struct kde_output_device *output_device = wl_container_of(listener, output_device, power);
+    struct kywc_output *kywc_output = output_device->kywc_output;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &output_device->resources) {
+        org_kde_kwin_dpms_send_mode(resource, kywc_output->state.power
+                                                  ? ORG_KDE_KWIN_DPMS_MODE_ON
+                                                  : ORG_KDE_KWIN_DPMS_MODE_OFF);
+        org_kde_kwin_dpms_send_done(resource);
+    }
+}
+
 #define OUTPUT_DEVICE_ADD_SIGNAL(signal)                                                           \
     output_device->signal.notify = kde_output_device_handle_##signal;                              \
     wl_signal_add(&kywc_output->events.signal, &output_device->signal);
@@ -653,6 +681,7 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
     }
 
     wl_list_init(&output_device->clients);
+    wl_list_init(&output_device->resources);
     wl_list_insert(&management->output_devices, &output_device->link);
 
     struct kywc_output *kywc_output = data;
@@ -664,6 +693,7 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
     OUTPUT_DEVICE_ADD_SIGNAL(scale);
     OUTPUT_DEVICE_ADD_SIGNAL(position);
     OUTPUT_DEVICE_ADD_SIGNAL(transform);
+    OUTPUT_DEVICE_ADD_SIGNAL(power);
     OUTPUT_DEVICE_ADD_SIGNAL(destroy);
 }
 
@@ -708,6 +738,103 @@ static void kde_output_management_handle_primary_output(struct wl_listener *list
     }
 }
 
+static void kde_dpms_set(struct wl_client *client, struct wl_resource *resource, uint32_t mode)
+{
+    struct kde_output_device *output_device = wl_resource_get_user_data(resource);
+
+    /* dpms protocol uses wl_output, so output must be enabled */
+    struct kywc_output_state state = output_device->kywc_output->state;
+    state.power = mode == ORG_KDE_KWIN_DPMS_MODE_OFF ? false : true;
+
+    kywc_output_set_state(output_device->kywc_output, &state);
+}
+
+static void kde_dpms_release(struct wl_client *client, struct wl_resource *resource)
+{
+    wl_resource_destroy(resource);
+}
+
+static const struct org_kde_kwin_dpms_interface kde_dpms_impl = {
+    .set = kde_dpms_set,
+    .release = kde_dpms_release,
+};
+
+static void kde_dpms_handle_resource_destroy(struct wl_resource *resource)
+{
+    wl_list_remove(wl_resource_get_link(resource));
+}
+
+static struct kde_output_device *output_device_from_resource(struct wl_resource *resource)
+{
+    struct kywc_output *kywc_output = kywc_output_from_resource(resource);
+    if (!kywc_output) {
+        return NULL;
+    }
+
+    struct kde_output_device *output_device;
+    wl_list_for_each(output_device, &management->output_devices, link) {
+        if (output_device->kywc_output == kywc_output) {
+            return output_device;
+        }
+    }
+
+    return NULL;
+}
+
+static void kde_dpms_manager_get(struct wl_client *client, struct wl_resource *manager_resource,
+                                 uint32_t id, struct wl_resource *output_resource)
+{
+    /* get output from output resource */
+    struct kde_output_device *output_device = output_device_from_resource(output_resource);
+    if (!output_device) {
+        wl_client_post_implementation_error(client, "invalid output");
+        return;
+    }
+
+    uint32_t version = wl_resource_get_version(manager_resource);
+    struct wl_resource *resource =
+        wl_resource_create(client, &org_kde_kwin_dpms_interface, version, id);
+    if (!resource) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+
+    wl_resource_set_implementation(resource, &kde_dpms_impl, output_device,
+                                   kde_dpms_handle_resource_destroy);
+    wl_list_insert(&output_device->resources, wl_resource_get_link(resource));
+
+    /* send current dpms state */
+    org_kde_kwin_dpms_send_supported(resource, true);
+    org_kde_kwin_dpms_send_mode(resource, output_device->kywc_output->state.power
+                                              ? ORG_KDE_KWIN_DPMS_MODE_ON
+                                              : ORG_KDE_KWIN_DPMS_MODE_OFF);
+    org_kde_kwin_dpms_send_done(resource);
+}
+
+static const struct org_kde_kwin_dpms_manager_interface kde_dpms_manager_impl = {
+    .get = kde_dpms_manager_get,
+};
+
+static void kde_dpms_manager_handle_resource_destroy(struct wl_resource *resource)
+{
+    wl_list_remove(wl_resource_get_link(resource));
+}
+
+static void kde_dpms_manager_bind(struct wl_client *client, void *data, uint32_t version,
+                                  uint32_t id)
+{
+    struct wl_resource *resource =
+        wl_resource_create(client, &org_kde_kwin_dpms_manager_interface, version, id);
+    if (!resource) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+
+    wl_resource_set_implementation(resource, &kde_dpms_manager_impl, management,
+                                   kde_dpms_manager_handle_resource_destroy);
+    wl_list_insert(&management->dpms_manager.resources, wl_resource_get_link(resource));
+}
+
 bool kde_output_management_create(struct server *server)
 {
     management = calloc(1, sizeof(struct kde_output_management));
@@ -749,6 +876,15 @@ bool kde_output_management_create(struct server *server)
     /* listener primary_output signal */
     management->primary_output.primary_output.notify = kde_output_management_handle_primary_output;
     kywc_output_add_primary_listener(&management->primary_output.primary_output);
+
+    /* org_kde_kwin_dpms_manager suppport */
+    management->dpms_manager.global =
+        wl_global_create(server->display, &org_kde_kwin_dpms_manager_interface,
+                         ORG_KDE_KWIN_DPMS_MANAGER_VERSION, management, kde_dpms_manager_bind);
+    if (!management->dpms_manager.global) {
+        return true;
+    }
+    wl_list_init(&management->dpms_manager.resources);
 
     return true;
 }

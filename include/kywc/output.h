@@ -19,7 +19,7 @@ enum kywc_output_capability {
 };
 
 struct kywc_output_state {
-    bool enabled;
+    bool enabled, power;
     int32_t width, height, refresh; // refresh in mHz
     enum wl_output_transform transform;
     enum kywc_output_vrr_policy vrr_policy;
@@ -59,6 +59,7 @@ struct kywc_output {
         struct wl_signal transform;
         struct wl_signal mode;
         struct wl_signal position;
+        struct wl_signal power;
 
         struct wl_signal frame;
         // TODO: usable area changed signal ?

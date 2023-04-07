@@ -50,6 +50,8 @@ void output_manager_set_primay_output(struct output *output);
 
 struct output *output_create(const char *name, const struct output_impl *impl, void *data);
 
+struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
+
 void output_destroy(struct output *output);
 
 void output_frame(struct output *output);

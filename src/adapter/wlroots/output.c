@@ -75,7 +75,9 @@ static void wlroots_output_get_state(struct output *output, struct kywc_output_s
     struct wlr_output *wlr_output = output->data;
     struct wlroots_server *wlroots = wlr_output->data;
 
+    // FIXME: enabled and power state
     state->enabled = wlr_output->enabled;
+    state->power = wlr_output->enabled;
     state->width = wlr_output->width;
     state->height = wlr_output->height;
     state->refresh = wlr_output->refresh;
@@ -109,9 +111,10 @@ static bool wlroots_output_set_state(struct output *output, struct kywc_output_s
         output_find_best_mode(wlr_output, state->width, state->height, state->refresh, &best);
     }
 
-    wlr_output_enable(wlr_output, state->enabled);
+    bool enabled = state->enabled && state->power;
+    wlr_output_enable(wlr_output, enabled);
 
-    if (state->enabled) {
+    if (enabled) {
         if (best) {
             wlr_output_set_mode(wlr_output, best);
         } else {
@@ -129,7 +132,7 @@ static bool wlroots_output_set_state(struct output *output, struct kywc_output_s
 
     /* after output commit, we get actual status */
     struct wlr_output_layout_output *loutput = wlr_output_layout_get(wlroots->layout, wlr_output);
-    bool need_layout = wlr_output->enabled;
+    bool need_layout = state->enabled;
     bool have_layout = !!loutput;
     bool going_on = need_layout && !have_layout;
     bool going_off = !need_layout && have_layout;

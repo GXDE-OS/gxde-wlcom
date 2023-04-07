@@ -85,6 +85,7 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     wl_signal_init(&kywc_output->events.transform);
     wl_signal_init(&kywc_output->events.mode);
     wl_signal_init(&kywc_output->events.position);
+    wl_signal_init(&kywc_output->events.power);
 
     wl_signal_init(&kywc_output->events.frame);
     wl_signal_init(&kywc_output->events.destroy);
@@ -101,7 +102,7 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     }
 
     /* read config and apply it */
-    struct kywc_output_state state = { 0 };
+    struct kywc_output_state state = { .power = true };
 
     output->impl->get_state(output, &state);
     bool found = output_read_config(output, &state);
@@ -122,6 +123,20 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     return output;
 }
 
+struct kywc_output *kywc_output_from_resource(struct wl_resource *resource)
+{
+    void *data = wl_resource_get_user_data(resource);
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->data == data) {
+            return &output->base;
+        }
+    }
+
+    return NULL;
+}
+
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
 {
     struct kywc_output_state *current = &kywc_output->state;
@@ -134,6 +149,9 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     struct kywc_output_state old = kywc_output->state;
     output->impl->get_state(output, current);
 
+    // XXX: fix current.enabled for dpms power
+    current->enabled = state->enabled;
+
     /* check state changes */
     if (current->enabled != old.enabled) {
         if (!current->enabled) {
@@ -143,6 +161,10 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, kywc_output);
         }
+    }
+
+    if (current->power != old.power) {
+        wl_signal_emit_mutable(&kywc_output->events.power, kywc_output);
     }
 
     if (current->width != old.width || current->height != old.height ||
@@ -207,7 +229,7 @@ void output_destroy(struct output *output)
         wl_list_for_each(output_tmp, &output_manager->outputs, link) {
             /* enable this output to keep one enabled */
             struct kywc_output_state state = output_tmp->base.state;
-            state.enabled = true;
+            state.enabled = state.power = true;
             state.lx = state.ly = 0;
             kywc_output_set_state(&output_tmp->base, &state);
 
