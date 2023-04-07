@@ -185,20 +185,44 @@ void output_destroy(struct output *output)
     wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
 
     wl_list_remove(&output->link);
-    /* fixup primary output if not fixed by destroy listeners */
-    if (kywc_output == output_manager->primary_output) {
-        struct output *output;
-        wl_list_for_each(output, &output_manager->outputs, link) {
-            if (output->base.state.enabled) {
-                kywc_output_set_primary(&output->base);
-                break;
-            }
+
+    bool have_enabled_output = false;
+    struct output *output_tmp;
+    wl_list_for_each(output_tmp, &output_manager->outputs, link) {
+        if (!output_tmp->base.state.enabled) {
+            continue;
         }
 
-        /* no enabled output found */
+        have_enabled_output = true;
+        /* fixup primary output if not fixed by destroy listeners */
         if (kywc_output == output_manager->primary_output) {
-            kywc_output_set_primary(NULL);
+            kywc_output_set_primary(&output_tmp->base);
         }
+        break;
+    }
+
+    /* all outputs are disabled or no output in manager */
+    if (!have_enabled_output) {
+        struct output *output_tmp;
+        wl_list_for_each(output_tmp, &output_manager->outputs, link) {
+            /* enable this output to keep one enabled */
+            struct kywc_output_state state = output_tmp->base.state;
+            state.enabled = true;
+            state.lx = state.ly = 0;
+            kywc_output_set_state(&output_tmp->base, &state);
+
+            // XXX: send primary before enable or not ?
+            /* fixup primary with this output */
+            if (kywc_output == output_manager->primary_output) {
+                kywc_output_set_primary(&output_tmp->base);
+            }
+            break;
+        }
+    }
+
+    /* no output to fixup primary */
+    if (kywc_output == output_manager->primary_output) {
+        kywc_output_set_primary(NULL);
     }
 
     struct kywc_output_mode *mode, *tmp_mode;
