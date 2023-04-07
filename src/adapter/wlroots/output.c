@@ -53,7 +53,7 @@ static void wlroots_output_get_prop(struct output *output, struct kywc_output_pr
     prop->phys_height = wlr_output->phys_height;
     prop->make = wlr_output->make;
     prop->model = wlr_output->model;
-    prop->model = wlr_output->serial;
+    prop->serial = wlr_output->serial;
 
     struct wlr_output_mode *mode;
     wl_list_for_each(mode, &wlr_output->modes, link) {
