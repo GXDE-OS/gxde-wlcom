@@ -11,6 +11,7 @@ wlcom_sources = files(
     'plugin/config.c',
     'plugin/plugin.c',
 
+    'util/global.c',
     'util/logger.c',
     'util/spawn.c',
 )

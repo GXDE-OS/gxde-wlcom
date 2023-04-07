@@ -5,6 +5,7 @@
 #include "kde-primary-output-v1-protocol.h"
 
 #include "output_p.h"
+#include "util/global.h"
 
 #define OUTPUT_DEVICE_VERSION 2
 #define OUTPUT_DEVICE_MODE_VERSION 1
@@ -551,7 +552,7 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     wl_list_remove(&output_device->link);
 
     /* global destroy when output destroy */
-    wl_global_destroy(output_device->global);
+    kywc_global_destroy_safe(output_device->global);
 
     free(output_device);
 }
