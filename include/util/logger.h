@@ -1,5 +1,5 @@
-#ifndef _LOGGER_H_
-#define _LOGGER_H_
+#ifndef _UTIL_LOGGER_H_
+#define _UTIL_LOGGER_H_
 
 #include <stdbool.h>
 

@@ -1,5 +1,5 @@
-#ifndef _SPAWN_H_
-#define _SPAWN_H_
+#ifndef _UTIL_SPAWN_H_
+#define _UTIL_SPAWN_H_
 
 #include <stdbool.h>
 

@@ -6,7 +6,7 @@
 
 #include <kywc/log.h>
 
-#include "spawn.h"
+#include "util/spawn.h"
 
 bool spawn_invoke(const char *command)
 {

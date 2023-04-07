@@ -5,7 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "logger.h"
+#include "util/logger.h"
 
 static FILE *log_fp = NULL;
 static enum kywc_log_level log_level = KYWC_WARN;

@@ -1,5 +1,5 @@
 #include "config.h"
-#include "logger.h"
+#include "util/logger.h"
 
 static const char *service_path = "/com/kylin/Wlcom";
 static const char *service_interface = "com.kylin.Wlcom";

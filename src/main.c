@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "logger.h"
 #include "server.h"
+#include "util/logger.h"
 
 static const struct option long_options[] = {
     { "help", no_argument, NULL, 'h' },
