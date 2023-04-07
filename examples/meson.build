@@ -3,8 +3,8 @@ wayland_client = dependency('wayland-client')
 clients = {
     'output-doctor': {
     'src': 'output_doctor.c',
-    'proto': ['kde-output-management-v2',
-        'kde-output-device-v2', 'kde-primary-output-v1'],
+    'proto': ['kde-output-management-v2', 'kde-output-device-v2',
+        'kde-primary-output-v1', 'org-kde-kwin-dpms-manager'],
     },
 }
 

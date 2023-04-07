@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dpms-client-protocol.h"
 #include "kde-output-device-v2-client-protocol.h"
 #include "kde-output-management-v2-client-protocol.h"
 #include "kde-primary-output-v1-client-protocol.h"
@@ -16,7 +17,9 @@
 struct output_manager {
     struct kde_output_management_v2 *management;
     struct kde_primary_output_v1 *primary;
+    struct org_kde_kwin_dpms_manager *dpms;
     struct wl_list devices;
+    struct wl_list outputs;
     char *primary_output_name;
     struct output_device *pending_primary;
     bool running;
@@ -47,6 +50,8 @@ struct output_device {
     enum kde_output_device_v2_subpixel subpixel;
     uint32_t capabilities;
 
+    bool have_pending_dpms;
+    enum org_kde_kwin_dpms_mode pending_dpms_mode;
     struct output_device_state current, pending;
 
     uint32_t global_name;
@@ -59,6 +64,19 @@ struct output_device_mode {
 
     int32_t width, height, refresh;
     bool preferred;
+};
+
+struct output {
+    struct wl_output *wl_output;
+    struct org_kde_kwin_dpms *dpms;
+    struct wl_list link;
+
+    char *name, *model;
+    bool support_dpms;
+    enum org_kde_kwin_dpms_mode dpms_mode;
+
+    uint32_t global_name;
+    uint32_t version;
 };
 
 static const char *output_subpixel_map[] = {
@@ -196,6 +214,24 @@ static const struct kde_output_configuration_v2_listener output_config_listener 
     .failed = output_config_failed,
 };
 
+static struct output *output_from_output_device(struct output_device *output_device)
+{
+    struct output_manager *output_manager = output_device->manager;
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->version >= WL_OUTPUT_NAME_SINCE_VERSION) {
+            if (!strcmp(output->name, output_device->name)) {
+                return output;
+            }
+        } else if (!strcmp(output->model, output_device->model)) {
+            return output;
+        }
+    }
+
+    return NULL;
+}
+
 static void apply_state(struct output_manager *output_manager)
 {
     struct kde_output_configuration_v2 *config =
@@ -211,6 +247,14 @@ static void apply_state(struct output_manager *output_manager)
         if (current->enabled && !pending->enabled) {
             kde_output_configuration_v2_enable(config, output_device->device, false);
             continue;
+        }
+
+        if (output_device->have_pending_dpms) {
+            struct output *output = output_from_output_device(output_device);
+            if (output && output->support_dpms &&
+                output->dpms_mode != output_device->pending_dpms_mode) {
+                org_kde_kwin_dpms_set(output->dpms, output_device->pending_dpms_mode);
+            }
         }
 
         if (!current->enabled && pending->enabled) {
@@ -469,6 +513,76 @@ static const struct kde_primary_output_v1_listener primary_output_listener = {
     .primary_output = primary_output_primary,
 };
 
+static void output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
+                            int32_t physical_width, int32_t physical_height, int32_t subpixel,
+                            const char *make, const char *model, int32_t transform)
+{
+    struct output *output = data;
+    free(output->model);
+    output->model = strdup(model);
+}
+
+static void output_mode(void *data, struct wl_output *wl_output, uint32_t flags, int32_t width,
+                        int32_t height, int32_t refresh)
+{
+    // This space intentionally left blank
+}
+
+static void output_done(void *data, struct wl_output *wl_output)
+{
+    // This space intentionally left blank
+}
+
+static void output_scale(void *data, struct wl_output *wl_output, int32_t factor)
+{
+    // This space intentionally left blank
+}
+
+static void output_name(void *data, struct wl_output *wl_output, const char *name)
+{
+    struct output *output = data;
+    free(output->name);
+    output->name = strdup(name);
+}
+
+static void output_description(void *data, struct wl_output *wl_output, const char *description)
+{
+    // This space intentionally left blank
+}
+
+static const struct wl_output_listener output_listener = {
+    .geometry = output_geometry,
+    .mode = output_mode,
+    .done = output_done,
+    .scale = output_scale,
+    .name = output_name,
+    .description = output_description,
+};
+
+static void output_dpms_supported(void *data, struct org_kde_kwin_dpms *org_kde_kwin_dpms,
+                                  uint32_t supported)
+{
+    struct output *output = data;
+    output->support_dpms = supported;
+}
+
+static void output_dpms_mode(void *data, struct org_kde_kwin_dpms *org_kde_kwin_dpms, uint32_t mode)
+{
+    struct output *output = data;
+    output->dpms_mode = mode;
+}
+
+static void output_dpms_done(void *data, struct org_kde_kwin_dpms *org_kde_kwin_dpms)
+{
+    // This space intentionally left blank
+}
+
+static const struct org_kde_kwin_dpms_listener output_dpms_listener = {
+    .supported = output_dpms_supported,
+    .mode = output_dpms_mode,
+    .done = output_dpms_done,
+};
+
 static void registry_handle_global(void *data, struct wl_registry *registry, uint32_t name,
                                    const char *interface, uint32_t version)
 {
@@ -501,6 +615,32 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
             wl_registry_bind(registry, name, &kde_primary_output_v1_interface, 1);
         kde_primary_output_v1_add_listener(output_manager->primary, &primary_output_listener,
                                            output_manager);
+    } else if (!strcmp(interface, org_kde_kwin_dpms_manager_interface.name)) {
+        output_manager->dpms =
+            wl_registry_bind(registry, name, &org_kde_kwin_dpms_manager_interface, 1);
+
+        struct output *output;
+        wl_list_for_each(output, &output_manager->outputs, link) {
+            output->dpms = org_kde_kwin_dpms_manager_get(output_manager->dpms, output->wl_output);
+            org_kde_kwin_dpms_add_listener(output->dpms, &output_dpms_listener, output);
+        }
+    } else if (!strcmp(interface, wl_output_interface.name)) {
+        struct output *output = calloc(1, sizeof(struct output));
+        if (!output) {
+            return;
+        }
+
+        output->global_name = name;
+        wl_list_insert(&output_manager->outputs, &output->link);
+
+        output->version = version <= 4 ? version : 4;
+        output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, output->version);
+        wl_output_add_listener(output->wl_output, &output_listener, output);
+
+        if (output_manager->dpms) {
+            output->dpms = org_kde_kwin_dpms_manager_get(output_manager->dpms, output->wl_output);
+            org_kde_kwin_dpms_add_listener(output->dpms, &output_dpms_listener, output);
+        }
     }
 }
 
@@ -527,6 +667,25 @@ static void output_device_destroy(struct output_device *output_device)
     free(output_device);
 }
 
+static void output_destroy(struct output *output)
+{
+    wl_list_remove(&output->link);
+
+    if (output->dpms) {
+        org_kde_kwin_dpms_release(output->dpms);
+    }
+
+    if (output->version >= WL_OUTPUT_RELEASE_SINCE_VERSION) {
+        wl_output_release(output->wl_output);
+    } else {
+        wl_output_destroy(output->wl_output);
+    }
+
+    free(output->name);
+    free(output->model);
+    free(output);
+}
+
 static void registry_handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 {
     // output device destroy when plug out
@@ -536,6 +695,14 @@ static void registry_handle_global_remove(void *data, struct wl_registry *regist
     wl_list_for_each_safe(output_device, output_device_tmp, &output_manager->devices, link) {
         if (output_device->global_name == name) {
             output_device_destroy(output_device);
+            return;
+        }
+    }
+
+    struct output *output, *output_tmp;
+    wl_list_for_each_safe(output, output_tmp, &output_manager->outputs, link) {
+        if (output->global_name == name) {
+            output_destroy(output);
         }
     }
 }
@@ -560,6 +727,7 @@ static const struct option long_options[] = {
     { "overscan", required_argument, 0, 0 },
     { "vrr-policy", required_argument, 0, 0 },
     { "rgb-range", required_argument, 0, 0 },
+    { "dpms", required_argument, 0, 0 },
     { 0 },
 };
 
@@ -757,6 +925,16 @@ static bool parse_output_arg(struct output_device *device, const char *name, con
         }
     } else if (strcmp(name, "primary") == 0) {
         device->manager->pending_primary = device;
+    } else if (strcmp(name, "dpms") == 0) {
+        if (strcmp(value, "on") == 0) {
+            device->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_ON;
+        } else if (strcmp(value, "off") == 0) {
+            device->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_OFF;
+        } else {
+            fprintf(stderr, "invalid dpms state: %s\n", value);
+            return false;
+        }
+        device->have_pending_dpms = true;
     } else {
         fprintf(stderr, "invalid option: %s\n", name);
         return false;
@@ -772,6 +950,7 @@ static const char usage[] =
     "--output <name>\n"
     "  --on\n"
     "  --off\n"
+    "  --dpms on|off\n"
     "  --mode <width>x<height>[@<refresh>Hz]\n"
     "  --primary\n"
     "  --preferred\n"
@@ -786,6 +965,7 @@ int main(int argc, char *argv[])
 {
     struct output_manager manager = { .running = true };
     wl_list_init(&manager.devices);
+    wl_list_init(&manager.outputs);
 
     struct wl_display *display = wl_display_connect(NULL);
     if (display == NULL) {
@@ -862,6 +1042,13 @@ int main(int argc, char *argv[])
     struct output_device *output_device, *output_device_tmp;
     wl_list_for_each_safe(output_device, output_device_tmp, &manager.devices, link) {
         output_device_destroy(output_device);
+    }
+    struct output *output, *output_tmp;
+    wl_list_for_each_safe(output, output_tmp, &manager.outputs, link) {
+        output_destroy(output);
+    }
+    if (manager.dpms) {
+        org_kde_kwin_dpms_manager_destroy(manager.dpms);
     }
     kde_primary_output_v1_destroy(manager.primary);
     kde_output_management_v2_destroy(manager.management);

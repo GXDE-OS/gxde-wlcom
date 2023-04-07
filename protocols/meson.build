@@ -5,6 +5,7 @@ protocols = {
     'kde-output-device-v2': 'kde-output-device-v2.xml',
     'kde-output-management-v2' : 'kde-output-management-v2.xml',
     'kde-primary-output-v1': 'kde-primary-output-v1.xml',
+    'org-kde-kwin-dpms-manager': 'dpms.xml',
 }
 
 protos_src = []
