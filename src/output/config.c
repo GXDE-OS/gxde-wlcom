@@ -10,13 +10,13 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
 
     sd_bus_message *reply = NULL;
     CK(sd_bus_message_new_method_return(m, &reply));
-    CK(sd_bus_message_open_container(reply, 'a', "s"));
+    CK(sd_bus_message_open_container(reply, 'a', "(ss)"));
 
     struct output *output;
     wl_list_for_each(output, &om->outputs, link) {
         json_object *config = json_object_object_get(om->config->json, output->base.name);
         const char *cfg = json_object_to_json_string(config);
-        sd_bus_message_append_basic(reply, 's', cfg);
+        sd_bus_message_append(reply, "(ss)", output->base.name, cfg);
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -27,7 +27,7 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllOutputs", "", "as", list_outputs, 0),
+    SD_BUS_METHOD("ListAllOutputs", "", "a(ss)", list_outputs, 0),
     SD_BUS_VTABLE_END,
 };
 
