@@ -102,12 +102,11 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     }
 
     /* read config and apply it */
-    struct kywc_output_state state = { .power = true };
-
-    output->impl->get_state(output, &state);
+    output->impl->get_state(output, &kywc_output->state);
+    struct kywc_output_state state = kywc_output->state;
     bool found = output_read_config(output, &state);
     if (!found) {
-        state.enabled = true;
+        state.enabled = state.power = true;
         // TODO: others
     }
 
@@ -139,13 +138,12 @@ struct kywc_output *kywc_output_from_resource(struct wl_resource *resource)
 
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
 {
-    struct kywc_output_state *current = &kywc_output->state;
-
     struct output *output = output_from_kywc_output(kywc_output);
     if (!output->impl->set_state(output, state)) {
         return false;
     }
 
+    struct kywc_output_state *current = &kywc_output->state;
     struct kywc_output_state old = kywc_output->state;
     output->impl->get_state(output, current);
 
