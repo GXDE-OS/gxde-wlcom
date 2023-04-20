@@ -171,6 +171,7 @@ void input_destroy(struct input *input)
         }
     }
 
+    free((void *)input->name);
     free(input);
 }
 

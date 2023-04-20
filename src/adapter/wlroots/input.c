@@ -7,6 +7,8 @@
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
 #include <wlr/types/wlr_virtual_pointer_v1.h>
 
+#include <kywc/identifier.h>
+
 #include "input.h"
 #include "output.h"
 #include "wlroots_p.h"
@@ -124,7 +126,10 @@ static void handle_new_input(struct wl_listener *listener, void *data)
     struct wlroots_server *wlroots = wl_container_of(listener, wlroots, new_input);
     struct wlr_input_device *wlr_input = data;
 
-    struct input *input = input_create(wlr_input->name, &wlroots_input_impl, wlr_input);
+    const char *name = kywc_identifier_generate("%d:%d:%s", wlr_input->vendor, wlr_input->product,
+                                                wlr_input->name);
+
+    struct input *input = input_create(name, &wlroots_input_impl, wlr_input);
     if (!input) {
         return;
     }
@@ -143,7 +148,9 @@ static void handle_new_virtual_pointer(struct wl_listener *listener, void *data)
 
     wlr_input->data = VIRTUAL_INPUT_DEVICE;
 
-    struct input *input = input_create(wlr_input->name, &wlroots_input_impl, wlr_input);
+    const char *name = kywc_identifier_generate("V_%s", wlr_input->name);
+
+    struct input *input = input_create(name, &wlroots_input_impl, wlr_input);
     if (!input) {
         return;
     }
@@ -172,7 +179,9 @@ static void handle_new_virtual_keyboard(struct wl_listener *listener, void *data
 
     wlr_input->data = VIRTUAL_INPUT_DEVICE;
 
-    struct input *input = input_create(wlr_input->name, &wlroots_input_impl, wlr_input);
+    const char *name = kywc_identifier_generate("V_%s", wlr_input->name);
+
+    struct input *input = input_create(name, &wlroots_input_impl, wlr_input);
     if (!input) {
         return;
     }
