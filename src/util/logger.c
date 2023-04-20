@@ -127,6 +127,11 @@ void logger_init(enum kywc_log_level level, bool log_to_file)
     }
 }
 
+enum kywc_log_level kywc_log_get_level(void)
+{
+    return log_level;
+}
+
 void logger_set_level(enum kywc_log_level level)
 {
     if (level == log_level) {
