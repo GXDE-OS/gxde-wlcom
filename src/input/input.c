@@ -1,0 +1,152 @@
+#include <stdlib.h>
+
+#include <kywc/log.h>
+
+#include "input.h"
+#include "server.h"
+
+static struct input_manager *input_manager = NULL;
+
+void input_add_new_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&input_manager->events.new_input, listener);
+}
+
+static void handle_server_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&input_manager->server_destroy.link);
+
+    struct seat *seat, *seat_tmp;
+    wl_list_for_each_safe(seat, seat_tmp, &input_manager->seats, link) {
+        seat_destroy(seat);
+    }
+
+    bindings_destroy(input_manager->bindings);
+
+    free(input_manager);
+    input_manager = NULL;
+}
+
+struct input_manager *input_manager_create(struct server *server)
+{
+    input_manager = calloc(1, sizeof(struct input_manager));
+    if (!input_manager) {
+        return NULL;
+    }
+
+    input_manager->server = server;
+    wl_list_init(&input_manager->seats);
+    wl_list_init(&input_manager->inputs);
+    wl_signal_init(&input_manager->events.new_input);
+
+    seat_create(input_manager, "seat0");
+
+    input_manager->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(server, &input_manager->server_destroy);
+
+    input_manager_config_init(input_manager);
+    input_manager->bindings = bindings_create(input_manager);
+
+    return input_manager;
+}
+
+static struct seat *input_manager_get_seat(const char *name)
+{
+    struct seat *seat = NULL;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        if (!strcmp(seat->name, name)) {
+            return seat;
+        }
+    }
+
+    /* create a new seat */
+    return seat_create(input_manager, name);
+}
+
+static void input_set_seat(struct input *input, const char *seat)
+{
+    /* alreay have attached to seat */
+    if (input->seat) {
+        if (!strcmp(seat, input->seat->name)) {
+            return;
+        } else {
+            /* remove from prev seat */
+            struct seat *prev = input->seat;
+            seat_remove_input(input);
+            if (wl_list_empty(&prev->inputs)) {
+                seat_destroy(prev);
+            }
+        }
+    }
+
+    input->seat = input_manager_get_seat(seat);
+    seat_add_input(input->seat, input);
+}
+
+struct input *input_create(const char *name, const struct input_impl *impl, void *data)
+{
+    struct input *input = calloc(1, sizeof(struct input));
+    if (!input) {
+        return NULL;
+    }
+
+    input->impl = impl;
+    input->data = data;
+    input->name = name;
+
+    input->manager = input_manager;
+    wl_signal_init(&input->events.destroy);
+    wl_list_insert(&input_manager->inputs, &input->link);
+
+    input->impl->get_prop(input, &input->prop);
+
+    input->impl->get_state(input, &input->state);
+    struct input_state state = input->state;
+    bool found = input_read_config(input, &state);
+    if (!found) {
+        // keep default
+    }
+
+    input_set_state(input, &state);
+
+    wl_signal_emit_mutable(&input_manager->events.new_input, input);
+
+    kywc_log(KYWC_DEBUG, "input device %s create", input->name);
+    input_prop_and_state_debug(input);
+
+    return input;
+}
+
+bool input_set_state(struct input *input, struct input_state *state)
+{
+    bool sucess = input->impl->set_state(input, state);
+    /* update state anyway */
+    input->impl->get_state(input, &input->state);
+
+    /* choose a suitable seat, add the input device to the seat */
+    input_set_seat(input, state->seat ? state->seat : "seat0");
+
+    if (!input->prop.is_virtual) {
+        input_write_config(input);
+    }
+    return sucess;
+}
+
+void input_destroy(struct input *input)
+{
+    wl_signal_emit_mutable(&input->events.destroy, input);
+
+    wl_list_remove(&input->link);
+
+    kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
+
+    struct seat *seat = input->seat;
+    if (seat) {
+        seat_remove_input(input);
+        if (wl_list_empty(&seat->inputs)) {
+            seat_destroy(seat);
+        }
+    }
+
+    free(input);
+}

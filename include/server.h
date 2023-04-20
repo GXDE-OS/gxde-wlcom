@@ -22,10 +22,14 @@ struct server {
     void *data;
 };
 
+struct seat;
+
 struct server_impl {
     bool (*init)(struct server *server);
     bool (*start)(struct server *server);
     void (*finish)(struct server *server);
+
+    bool (*init_seat)(struct server *server, struct seat *seat);
 };
 
 bool server_init(struct server *server);

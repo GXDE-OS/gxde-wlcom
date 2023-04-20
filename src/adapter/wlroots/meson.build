@@ -27,7 +27,9 @@ endif
 # glue codes
 adapter_resources = files(
     'server.c',
+    'input.c',
     'output.c',
+    'seat.c',
 )
 
 adapter_static = static_library(

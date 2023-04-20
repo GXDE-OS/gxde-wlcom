@@ -94,6 +94,7 @@ static bool wlroots_server_init(struct server *server)
     }
 #endif
 
+    wlroots_input_init(wlroots);
     wlroots_output_init(wlroots);
 
     return true;
@@ -132,6 +133,8 @@ static const struct server_impl wlroots_server_impl = {
     .init = wlroots_server_init,
     .start = wlroots_server_start,
     .finish = wlroots_server_finish,
+
+    .init_seat = wlroots_server_init_seat,
 };
 
 struct wlroots_server *wlroots_server_from_server(struct server *server)

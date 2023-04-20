@@ -34,10 +34,16 @@ struct wlroots_server {
 
     struct wl_listener new_output;
     struct wl_listener new_input;
+    struct wl_listener new_virtual_pointer;
+    struct wl_listener new_virtual_keyboard;
 };
 
 struct wlroots_server *wlroots_server_from_server(struct server *server);
 
+bool wlroots_input_init(struct wlroots_server *wlroots);
+
 bool wlroots_output_init(struct wlroots_server *wlroots);
+
+bool wlroots_server_init_seat(struct server *server, struct seat *seat);
 
 #endif /* _ADAPTER_WLROOTS_P_H_ */
