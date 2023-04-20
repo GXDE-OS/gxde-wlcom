@@ -70,6 +70,9 @@ struct input_prop {
     enum kywc_input_device_type type;
     unsigned int vendor, product;
 
+    bool support_mapped_to_output;
+    bool is_virtual;
+
     /* https://wayland.freedesktop.org/libinput/doc/latest/configuration.html */
     /* bitmask */
     uint32_t send_events_modes;
@@ -98,8 +101,6 @@ struct input_prop {
     bool has_dwtp;
     /* whether a device can have a custom rotation applied */
     bool has_rotation;
-
-    bool is_virtual;
 };
 
 struct input {
@@ -112,6 +113,10 @@ struct input {
     /* seat that input device attached */
     struct seat *seat;
     struct wl_list seat_link;
+
+    /* output that mapped to */
+    struct output *mapped_output;
+    struct wl_listener mapped_output_destroy;
 
     /* input device prop and state per device */
     struct input_prop prop;
@@ -279,6 +284,8 @@ void input_write_config(struct input *input);
 void input_prop_and_state_debug(struct input *input);
 
 struct input *input_by_name(const char *name);
+
+void input_set_seat(struct input *input, const char *seat);
 
 /**
  * seat

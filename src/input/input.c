@@ -3,6 +3,7 @@
 #include <kywc/log.h>
 
 #include "input.h"
+#include "output.h"
 #include "server.h"
 
 static struct input_manager *input_manager = NULL;
@@ -63,7 +64,7 @@ static struct seat *input_manager_get_seat(const char *name)
     return seat_create(input_manager, name);
 }
 
-static void input_set_seat(struct input *input, const char *seat)
+void input_set_seat(struct input *input, const char *seat)
 {
     /* alreay have attached to seat */
     if (input->seat) {
@@ -83,6 +84,15 @@ static void input_set_seat(struct input *input, const char *seat)
     seat_add_input(input->seat, input);
 }
 
+static void handle_mapped_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct input *input = wl_container_of(listener, input, mapped_output_destroy);
+
+    struct input_state state = input->state;
+    state.mapped_to_output = NULL;
+    input_set_state(input, &state);
+}
+
 struct input *input_create(const char *name, const struct input_impl *impl, void *data)
 {
     struct input *input = calloc(1, sizeof(struct input));
@@ -97,6 +107,8 @@ struct input *input_create(const char *name, const struct input_impl *impl, void
     input->manager = input_manager;
     wl_signal_init(&input->events.destroy);
     wl_list_insert(&input_manager->inputs, &input->link);
+
+    input->mapped_output_destroy.notify = handle_mapped_output_destroy;
 
     input->impl->get_prop(input, &input->prop);
 
@@ -119,12 +131,19 @@ struct input *input_create(const char *name, const struct input_impl *impl, void
 
 bool input_set_state(struct input *input, struct input_state *state)
 {
+    struct output *old_mapped_output = input->mapped_output;
+
     bool sucess = input->impl->set_state(input, state);
     /* update state anyway */
     input->impl->get_state(input, &input->state);
 
-    /* choose a suitable seat, add the input device to the seat */
-    input_set_seat(input, state->seat ? state->seat : "seat0");
+    if (old_mapped_output && old_mapped_output != input->mapped_output) {
+        wl_list_remove(&input->mapped_output_destroy.link);
+        if (input->mapped_output) {
+            wl_signal_add(&input->mapped_output->base.events.destroy,
+                          &input->mapped_output_destroy);
+        }
+    }
 
     if (!input->prop.is_virtual) {
         input_write_config(input);
@@ -137,6 +156,10 @@ void input_destroy(struct input *input)
     wl_signal_emit_mutable(&input->events.destroy, input);
 
     wl_list_remove(&input->link);
+
+    if (input->mapped_output) {
+        wl_list_remove(&input->mapped_output_destroy.link);
+    }
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 

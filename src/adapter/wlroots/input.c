@@ -11,10 +11,7 @@
 #include "output.h"
 #include "wlroots_p.h"
 
-struct virtual_input_config {
-    struct wlr_seat *wlr_seat;
-    struct wlr_output *wlr_output;
-};
+#define VIRTUAL_INPUT_DEVICE ((void *)0xdead)
 
 static enum kywc_input_device_type type_from_type(enum wlr_input_device_type type)
 {
@@ -28,7 +25,10 @@ static void wlroots_input_get_prop(struct input *input, struct input_prop *prop)
     input->prop.type = type_from_type(wlr_input->type);
     input->prop.vendor = wlr_input->vendor;
     input->prop.product = wlr_input->product;
-    input->prop.is_virtual = !!wlr_input->data;
+    input->prop.is_virtual = wlr_input->data == VIRTUAL_INPUT_DEVICE;
+    input->prop.support_mapped_to_output = wlr_input->type == WLR_INPUT_DEVICE_POINTER ||
+                                           wlr_input->type == WLR_INPUT_DEVICE_TOUCH ||
+                                           wlr_input->type == WLR_INPUT_DEVICE_TABLET_TOOL;
 
     if (!wlr_input_device_is_libinput(wlr_input)) {
         return;
@@ -46,19 +46,13 @@ static void wlroots_input_get_state(struct input *input, struct input_state *sta
 {
     struct wlr_input_device *wlr_input = input->data;
 
-    if (input->prop.is_virtual) {
-        struct virtual_input_config *config = wlr_input->data;
-        if (config->wlr_seat) {
-            state->seat = config->wlr_seat->name;
-        }
-        if (config->wlr_output) {
-            state->mapped_to_output = config->wlr_output->name;
-        }
-    }
+    state->seat = input->seat ? input->seat->name : NULL;
+    state->mapped_to_output = input->mapped_output ? input->mapped_output->base.name : NULL;
 
     if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
-        state->repeat_rate = 25;
-        state->repeat_delay = 600;
+        struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
+        state->repeat_rate = wlr_keyboard->repeat_info.rate;
+        state->repeat_delay = wlr_keyboard->repeat_info.delay;
     }
 
     if (wlr_input_device_is_libinput(wlr_input)) {
@@ -69,15 +63,6 @@ static void wlroots_input_get_state(struct input *input, struct input_state *sta
 static bool wlroots_input_set_state(struct input *input, struct input_state *state)
 {
     struct wlr_input_device *wlr_input = input->data;
-
-    if (state->mapped_to_output) {
-        struct output *output = output_by_name(state->mapped_to_output);
-        if (output) {
-            struct wlr_cursor *wlr_cursor = input->seat->cursor->data;
-            struct wlr_output *wlr_output = output->data;
-            wlr_cursor_map_input_to_output(wlr_cursor, wlr_input, wlr_output);
-        }
-    }
 
     // TODO: add keyboard config support, add xkb helper
     if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
@@ -91,6 +76,25 @@ static bool wlroots_input_set_state(struct input *input, struct input_state *sta
         xkb_keymap_unref(keymap);
         xkb_context_unref(context);
         wlr_keyboard_set_repeat_info(wlr_keyboard, state->repeat_rate, state->repeat_delay);
+    }
+
+    /* choose a suitable seat, add the input device to the seat */
+    input_set_seat(input, state->seat ? state->seat : "seat0");
+
+    if (input->prop.support_mapped_to_output) {
+        struct output *mapped_output = NULL;
+        if (state->mapped_to_output) {
+            mapped_output = output_by_name(state->mapped_to_output);
+            /* keep orig mapped output if invalid */
+            if (!mapped_output) {
+                mapped_output = input->mapped_output;
+            }
+        }
+
+        struct wlr_cursor *wlr_cursor = input->seat->cursor->data;
+        struct wlr_output *wlr_output = mapped_output ? mapped_output->data : NULL;
+        wlr_cursor_map_input_to_output(wlr_cursor, wlr_input, wlr_output);
+        input->mapped_output = mapped_output;
     }
 
     if (wlr_input_device_is_libinput(wlr_input)) {
@@ -111,9 +115,6 @@ static void handle_input_destroy(struct wl_listener *listener, void *data)
     struct input *input = wl_container_of(listener, input, destroy);
 
     wl_list_remove(&input->destroy.link);
-
-    struct wlr_input_device *wlr_input = input->data;
-    free(wlr_input->data);
 
     input_destroy(input);
 }
@@ -140,14 +141,23 @@ static void handle_new_virtual_pointer(struct wl_listener *listener, void *data)
     struct wlr_virtual_pointer_v1 *pointer = event->new_pointer;
     struct wlr_input_device *wlr_input = &pointer->pointer.base;
 
-    struct virtual_input_config *config = calloc(1, sizeof(struct virtual_input_config));
-    config->wlr_seat = event->suggested_seat;
-    config->wlr_output = event->suggested_output;
-    wlr_input->data = config;
+    wlr_input->data = VIRTUAL_INPUT_DEVICE;
 
     struct input *input = input_create(wlr_input->name, &wlroots_input_impl, wlr_input);
     if (!input) {
         return;
+    }
+
+    /* apply suggested seat and output */
+    if (event->suggested_seat || event->suggested_output) {
+        struct input_state state = input->state;
+        if (event->suggested_seat) {
+            state.seat = event->suggested_seat->name;
+        }
+        if (event->suggested_output) {
+            state.mapped_to_output = event->suggested_output->name;
+        }
+        input_set_state(input, &state);
     }
 
     input->destroy.notify = handle_input_destroy;
@@ -160,13 +170,18 @@ static void handle_new_virtual_keyboard(struct wl_listener *listener, void *data
     struct wlr_virtual_keyboard_v1 *keyboard = data;
     struct wlr_input_device *wlr_input = &keyboard->keyboard.base;
 
-    struct virtual_input_config *config = calloc(1, sizeof(struct virtual_input_config));
-    config->wlr_seat = keyboard->seat;
-    wlr_input->data = config;
+    wlr_input->data = VIRTUAL_INPUT_DEVICE;
 
     struct input *input = input_create(wlr_input->name, &wlroots_input_impl, wlr_input);
     if (!input) {
         return;
+    }
+
+    /* apply keyboard seat */
+    if (strcmp(input->seat->name, keyboard->seat->name)) {
+        struct input_state state = input->state;
+        state.seat = keyboard->seat->name;
+        input_set_state(input, &state);
     }
 
     input->destroy.notify = handle_input_destroy;
