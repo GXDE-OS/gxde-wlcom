@@ -117,9 +117,6 @@ static void wlroots_server_finish(struct server *server)
     kywc_log(KYWC_INFO, "adapter: finish wlroots server");
     struct wlroots_server *wlroots = wlroots_server_from_server(server);
 
-#if HAVE_XWAYLAND
-    wlr_xwayland_destroy(wlroots->xwayland);
-#endif
     if (wlroots->scene) {
         wlr_scene_node_destroy(&wlroots->scene->tree.node);
     }

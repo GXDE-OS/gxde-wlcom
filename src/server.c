@@ -37,10 +37,12 @@ bool server_init(struct server *server)
     wl_signal_init(&server->destroy_list);
 
     config_manager_create(server);
-    plugin_manager_create(server);
-    output_manager_create(server);
 
     adapter_init(server);
+
+    output_manager_create(server);
+
+    plugin_manager_create(server);
 
     return true;
 }
@@ -73,9 +75,9 @@ void server_finish(struct server *server)
     wl_event_source_remove(server->sigterm);
     wl_display_destroy_clients(server->display);
 
+    wl_display_destroy(server->display);
     adapter_finish(server);
 
-    wl_display_destroy(server->display);
     wl_signal_emit(&server->destroy_list, server);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
