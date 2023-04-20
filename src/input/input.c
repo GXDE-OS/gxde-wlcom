@@ -150,3 +150,15 @@ void input_destroy(struct input *input)
 
     free(input);
 }
+
+struct input *input_by_name(const char *name)
+{
+    struct input *input;
+    wl_list_for_each(input, &input_manager->inputs, link) {
+        if (!strcmp(input->name, name)) {
+            return input;
+        }
+    }
+
+    return NULL;
+}
