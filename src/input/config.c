@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "input.h"
+#include "output.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Input";
 static const char *service_interface = "com.kylin.Wlcom.Input";
@@ -95,14 +96,16 @@ static int list_inputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
 
     sd_bus_message *reply = NULL;
     CK(sd_bus_message_new_method_return(m, &reply));
-    CK(sd_bus_message_open_container(reply, 'a', "s"));
+    CK(sd_bus_message_open_container(reply, 'a', "(ss)"));
 
     struct input *input;
     wl_list_for_each(input, &manager->inputs, link) {
         if (input->prop.is_virtual) {
             continue;
         }
-        sd_bus_message_append_basic(reply, 's', input->name);
+        json_object *config = json_object_object_get(manager->config->json, input->name);
+        const char *cfg = json_object_to_json_string(config);
+        sd_bus_message_append(reply, "(ss)", input->name, cfg);
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -111,9 +114,222 @@ static int list_inputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
     return 0;
 }
 
+static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL, *output_name = NULL;
+    CK(sd_bus_message_read(m, "ss", &input_name, &output_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    bool none_output = !strcmp(output_name, "none");
+    if (!none_output) {
+        struct output *output = output_by_name(output_name);
+        if (!output || !output->base.state.enabled) {
+            const sd_bus_error error =
+                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild output or disabled.");
+            return sd_bus_reply_method_error(m, &error);
+        }
+    }
+
+    const char *current = input->state.mapped_to_output;
+    if (input->prop.support_mapped_to_output && (!current || strcmp(current, output_name))) {
+        struct input_state state = input->state;
+        state.mapped_to_output = none_output ? NULL : output_name;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int change_seat(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL, *seat_name = NULL;
+    CK(sd_bus_message_read(m, "ss", &input_name, &seat_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (strncmp(seat_name, "seat", 4)) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (strcmp(input->state.seat, seat_name)) {
+        struct input_state state = input->state;
+        state.seat = seat_name;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int set_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t mode = 0;
+    CK(sd_bus_message_read(m, "su", &input_name, &mode));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.send_events_modes < mode) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild mode.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->state.send_events_mode != mode) {
+        struct input_state state = input->state;
+        state.send_events_mode = mode;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int enable_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    int32_t enabled = 0;
+    CK(sd_bus_message_read(m, "sb", &input_name, &enabled));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.tap_finger_count && input->state.tap_to_click != enabled) {
+        struct input_state state = input->state;
+        state.tap_to_click = enabled;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    double speed = 0.0f;
+    CK(sd_bus_message_read(m, "sd", &input_name, &speed));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (speed < -1.0f || speed > 1.0f) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild speed.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.has_pointer_accel && input->state.pointer_accel_speed != speed) {
+        struct input_state state = input->state;
+        state.pointer_accel_speed = speed;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int enable_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    int32_t enabled = 0;
+    CK(sd_bus_message_read(m, "sb", &input_name, &enabled));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.has_natural_scroll && input->state.natural_scroll != enabled) {
+        struct input_state state = input->state;
+        state.natural_scroll = enabled;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int enable_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    int32_t enabled = 0;
+    CK(sd_bus_message_read(m, "sb", &input_name, &enabled));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.has_left_handed && input->state.left_handed != enabled) {
+        struct input_state state = input->state;
+        state.left_handed = enabled;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    int32_t rate, delay;
+    CK(sd_bus_message_read(m, "sii", &input_name, &rate, &delay));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD &&
+        (input->state.repeat_rate != rate || input->state.repeat_delay != delay)) {
+        struct input_state state = input->state;
+        state.repeat_rate = rate;
+        state.repeat_delay = delay;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllInputs", "", "as", list_inputs, 0),
+    SD_BUS_METHOD("ListAllInputs", "", "a(ss)", list_inputs, 0),
+    SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
+    SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
+    SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
+    SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
+    SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
+    SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
+    SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
+    SD_BUS_METHOD("EnableRepeatInfo", "sii", "", set_repeat_info, 0),
     SD_BUS_VTABLE_END,
 };
 
