@@ -253,3 +253,15 @@ void output_destroy(struct output *output)
 
     free(output);
 }
+
+struct output *output_by_name(const char *name)
+{
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (!strcmp(name, output->base.name)) {
+            return output;
+        }
+    }
+
+    return NULL;
+}

@@ -60,4 +60,6 @@ bool output_read_config(struct output *output, struct kywc_output_state *state);
 
 void output_write_config(struct output *output);
 
+struct output *output_by_name(const char *name);
+
 #endif /* _OUTPUT_H_ */
