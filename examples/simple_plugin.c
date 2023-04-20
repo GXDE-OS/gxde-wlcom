@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <kywc/binding.h>
 #include <kywc/plugin.h>
 
 static struct kywc_plugin_info simple_plugin_info = {
@@ -19,6 +20,54 @@ static struct kywc_plugin_option simple_plugin_options[] = {
     { NULL, { 0 }, option_type_null, -1 },
 };
 
+static struct shortcut {
+    char *keybind;
+    char *desc;
+    struct key_binding *binding;
+} shortcuts[] = {
+    { "Alt+t", "Alt+t trigger", NULL },
+    { "Ctrl+t", "Ctrl+t trigger", NULL },
+    { "Win+t", "Win+t trigger", NULL },
+    { "Alt+Shift+t", "Alt+Shift+t trigger", NULL },
+    { "Ctrl+Shift+t", "Ctrl+Shift+t trigger", NULL },
+    { "Win+Shift+t", "Win+Shift+t rigger", NULL },
+};
+
+static void shortcut_action(struct key_binding *binding, void *data)
+{
+    struct shortcut *shortcut = data;
+
+    printf("simple plugin call action: %s\n", shortcut->desc);
+}
+
+static void simple_plugin_register_shortcuts(void)
+{
+    for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
+        struct shortcut *shortcut = &shortcuts[i];
+        struct key_binding *binding = kywc_key_binding_create(shortcut->keybind, shortcut->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_key_binding_register(binding, shortcut_action, shortcut)) {
+            kywc_key_binding_destroy(binding);
+            continue;
+        }
+
+        shortcut->binding = binding;
+    }
+}
+
+static void simple_plugin_unregister_shortcuts(void)
+{
+    for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
+        struct shortcut *shortcut = &shortcuts[i];
+        if (shortcut->binding) {
+            kywc_key_binding_destroy(shortcut->binding);
+        }
+    }
+}
+
 static bool simple_plugin_setup(void *plugin, void **teardown_data)
 {
     printf("simple plugin setup called\n");
@@ -36,6 +85,8 @@ static bool simple_plugin_setup(void *plugin, void **teardown_data)
     }
     value.str = kywc_plugin_get_option_string(plugin, 3);
     printf("plugin option4 value is %s\n", value.str);
+
+    simple_plugin_register_shortcuts();
 
     return true;
 }
@@ -57,6 +108,8 @@ static void simple_plugin_option(struct kywc_plugin_option *option)
 static void simple_plugin_teardown(void *teardown_data)
 {
     printf("simple plugin teardown called\n");
+
+    simple_plugin_unregister_shortcuts();
 }
 
 struct kywc_plugin_data simple_plugin_data = {
