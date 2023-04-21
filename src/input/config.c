@@ -481,6 +481,8 @@ void input_write_config(struct input *input)
     }
     if (state->seat && strcmp(state->seat, "seat0")) {
         json_object_object_add(config, "seat", json_object_new_string(state->seat));
+    } else {
+        json_object_object_del(config, "seat");
     }
 
     json_object_object_add(config, "send_events_mode",
