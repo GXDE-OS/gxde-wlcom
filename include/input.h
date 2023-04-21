@@ -62,6 +62,11 @@ struct input_state {
     float calibration_matrix[6];
 
     /* for keyboard */
+    const char *xkb_layout;
+    const char *xkb_model;
+    const char *xkb_options;
+    const char *xkb_rules;
+    const char *xkb_variant;
     int repeat_delay;
     int repeat_rate;
 };

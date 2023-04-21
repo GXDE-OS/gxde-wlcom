@@ -62,22 +62,50 @@ static void wlroots_input_get_state(struct input *input, struct input_state *sta
     }
 }
 
+static struct xkb_keymap *keyboard_compile_keymap(struct input_state *state)
+{
+    struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_SECURE_GETENV);
+    struct xkb_rule_names rules = {
+        .layout = state->xkb_layout,
+        .model = state->xkb_model,
+        .options = state->xkb_options,
+        .rules = state->xkb_rules,
+        .variant = state->xkb_variant,
+    };
+    struct xkb_keymap *keymap =
+        xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    xkb_context_unref(context);
+    return keymap;
+}
+
 static bool wlroots_input_set_state(struct input *input, struct input_state *state)
 {
     struct wlr_input_device *wlr_input = input->data;
 
-    // TODO: add keyboard config support, add xkb helper
+    /* config keyboard with input state */
     if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
         struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
-        /* config keyboard with input config */
-        struct xkb_rule_names rules = { 0 };
-        struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-        struct xkb_keymap *keymap =
-            xkb_map_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
-        wlr_keyboard_set_keymap(wlr_keyboard, keymap);
+        struct xkb_keymap *keymap = keyboard_compile_keymap(state);
+
+        bool keymap_changed =
+            wlr_keyboard->keymap ? !wlr_keyboard_keymaps_match(wlr_keyboard->keymap, keymap) : true;
+        bool repeat_info_changed = wlr_keyboard->repeat_info.rate != state->repeat_rate ||
+                                   wlr_keyboard->repeat_info.delay != state->repeat_delay;
+
+        /* we need remove this input and add later */
+        if (!input->prop.is_virtual && wlr_keyboard->group &&
+            (keymap_changed || repeat_info_changed)) {
+            kywc_log(KYWC_DEBUG, "input %s is removed and be added later", input->name);
+            seat_remove_input(input);
+        }
+
+        if (keymap_changed) {
+            wlr_keyboard_set_keymap(wlr_keyboard, keymap);
+        }
+        if (repeat_info_changed) {
+            wlr_keyboard_set_repeat_info(wlr_keyboard, state->repeat_rate, state->repeat_delay);
+        }
         xkb_keymap_unref(keymap);
-        xkb_context_unref(context);
-        wlr_keyboard_set_repeat_info(wlr_keyboard, state->repeat_rate, state->repeat_delay);
     }
 
     /* choose a suitable seat, add the input device to the seat */
