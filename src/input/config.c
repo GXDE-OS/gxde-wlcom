@@ -329,7 +329,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
     SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
-    SD_BUS_METHOD("EnableRepeatInfo", "sii", "", set_repeat_info, 0),
+    SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
     SD_BUS_VTABLE_END,
 };
 
