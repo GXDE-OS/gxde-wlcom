@@ -101,14 +101,12 @@ void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale
         return;
     }
 
-    if (cursor->name == name && cursor->scale >= scale) {
+    if (cursor->name == name && cursor->scale == scale) {
         return;
     }
 
     seat->impl->set_cursor_image(seat, name, scale);
 
-    if (cursor->scale < scale) {
-        cursor->scale = scale;
-    }
+    cursor->scale = scale;
     cursor->name = name;
 }

@@ -41,8 +41,8 @@ bool server_init(struct server *server)
 
     adapter_init(server);
 
-    input_manager_create(server);
     output_manager_create(server);
+    input_manager_create(server);
 
     plugin_manager_create(server);
 

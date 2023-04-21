@@ -1,10 +1,19 @@
 #include <stdlib.h>
 
 #include <kywc/log.h>
+#include <kywc/output.h>
 
 #include "input.h"
 #include "output.h"
 #include "server.h"
+
+struct cursor_output {
+    struct wl_list link;
+    struct kywc_output *ouput;
+
+    struct wl_listener scale;
+    struct wl_listener destroy;
+};
 
 static struct input_manager *input_manager = NULL;
 
@@ -15,7 +24,16 @@ void input_add_new_listener(struct wl_listener *listener)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
+    wl_list_remove(&input_manager->new_output.link);
     wl_list_remove(&input_manager->server_destroy.link);
+
+    struct cursor_output *cursor_output, *cursor_output_tmp;
+    wl_list_for_each_safe(cursor_output, cursor_output_tmp, &input_manager->outputs, link) {
+        wl_list_remove(&cursor_output->link);
+        wl_list_remove(&cursor_output->scale.link);
+        wl_list_remove(&cursor_output->destroy.link);
+        free(cursor_output);
+    }
 
     struct seat *seat, *seat_tmp;
     wl_list_for_each_safe(seat, seat_tmp, &input_manager->seats, link) {
@@ -26,6 +44,74 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
     free(input_manager);
     input_manager = NULL;
+}
+
+static void handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, destroy);
+
+    wl_list_remove(&cursor_output->link);
+    wl_list_remove(&cursor_output->scale.link);
+    wl_list_remove(&cursor_output->destroy.link);
+
+    free(cursor_output);
+}
+
+static void input_set_cursor_image(enum cursor_name name, float scale)
+{
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        seat_set_cursor_image(seat, CURSOR_DEFAULT, scale);
+    }
+}
+
+static void handle_output_scale(struct wl_listener *listener, void *data)
+{
+    struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, scale);
+    struct kywc_output *kywc_output = cursor_output->ouput;
+
+    input_set_cursor_image(CURSOR_DEFAULT, kywc_output->state.scale);
+}
+
+static void handle_new_output(struct wl_listener *listener, void *data)
+{
+    struct cursor_output *cursor_output = calloc(1, sizeof(struct cursor_output));
+    if (!cursor_output) {
+        return;
+    }
+
+    struct kywc_output *kywc_output = data;
+    cursor_output->ouput = kywc_output;
+    wl_list_insert(&input_manager->outputs, &cursor_output->link);
+
+    cursor_output->scale.notify = handle_output_scale;
+    wl_signal_add(&kywc_output->events.scale, &cursor_output->scale);
+    cursor_output->destroy.notify = handle_output_destroy;
+    wl_signal_add(&kywc_output->events.destroy, &cursor_output->destroy);
+
+    input_set_cursor_image(CURSOR_DEFAULT, kywc_output->state.scale);
+}
+
+static struct seat *input_manager_get_seat(const char *name)
+{
+    struct seat *seat = NULL;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        if (!strcmp(seat->name, name)) {
+            return seat;
+        }
+    }
+
+    /* create a new seat */
+    seat = seat_create(input_manager, name);
+    if (seat) {
+        struct cursor_output *cursor_output;
+        wl_list_for_each(cursor_output, &input_manager->outputs, link) {
+            struct kywc_output *kywc_output = cursor_output->ouput;
+            seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale);
+        }
+    }
+
+    return seat;
 }
 
 struct input_manager *input_manager_create(struct server *server)
@@ -40,28 +126,18 @@ struct input_manager *input_manager_create(struct server *server)
     wl_list_init(&input_manager->inputs);
     wl_signal_init(&input_manager->events.new_input);
 
-    seat_create(input_manager, "seat0");
+    wl_list_init(&input_manager->outputs);
+    input_manager->new_output.notify = handle_new_output;
+    kywc_output_add_new_listener(&input_manager->new_output);
 
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
 
+    input_manager_get_seat("seat0");
     input_manager_config_init(input_manager);
     input_manager->bindings = bindings_create(input_manager);
 
     return input_manager;
-}
-
-static struct seat *input_manager_get_seat(const char *name)
-{
-    struct seat *seat = NULL;
-    wl_list_for_each(seat, &input_manager->seats, link) {
-        if (!strcmp(seat->name, name)) {
-            return seat;
-        }
-    }
-
-    /* create a new seat */
-    return seat_create(input_manager, name);
 }
 
 void input_set_seat(struct input *input, const char *seat)
