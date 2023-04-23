@@ -40,6 +40,8 @@ struct output_manager {
 
     struct config *config;
     struct wl_listener server_destroy;
+
+    bool has_layout_manager;
 };
 
 struct output_manager *output_manager_create(struct server *server);
