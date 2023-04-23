@@ -7,6 +7,7 @@ wlcom_sources = files(
 
     'output/config.c',
     'output/output.c',
+    'output/layout.c',
 
     'input/binding.c',
     'input/config.c',

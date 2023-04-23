@@ -15,4 +15,13 @@ static __attribute__((unused)) inline bool kde_output_management_create(struct s
 }
 #endif
 
+#if 1 // HAVE_LAYOUT
+bool layout_manager_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool layout_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _OUTPUT_P_H_ */

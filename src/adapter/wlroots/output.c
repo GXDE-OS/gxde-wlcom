@@ -49,11 +49,13 @@ static void wlroots_output_get_prop(struct output *output, struct kywc_output_pr
     struct wlr_output *wlr_output = output->data;
 
     prop->capability = 0;
+    prop->port = wlr_drm_connector_get_id(wlr_output);
     prop->phys_width = wlr_output->phys_width;
     prop->phys_height = wlr_output->phys_height;
     prop->make = wlr_output->make;
     prop->model = wlr_output->model;
     prop->serial = wlr_output->serial;
+    prop->desc = wlr_output->description;
 
     struct wlr_output_mode *mode;
     wl_list_for_each(mode, &wlr_output->modes, link) {
