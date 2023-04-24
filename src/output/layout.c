@@ -269,6 +269,11 @@ static void layout_manager_generate_layout(char *layout_uuid, bool is_active_lay
     if (is_active_layout) {
         layout_manager->enabled_outputs = actual_cnt;
     }
+
+    if (!actual_cnt) {
+        return;
+    }
+
     if (actual_cnt == 1) {
         memcpy(md5, o_md5s[0].md5, MD5_DIGEST_LENGTH);
         layout_manager_md5_to_uuid(md5, layout_uuid);
