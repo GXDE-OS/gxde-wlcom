@@ -67,6 +67,43 @@ void kywc_output_add_primary_listener(struct wl_listener *listener)
     wl_signal_add(&output_manager->events.primary_output, listener);
 }
 
+#define HIDPI_DPI (96)
+// 1 inch = 25.4 mm
+#define MM_PER_INCH 25.4
+
+float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)
+{
+    float scale = 1.0;
+    if (kywc_output->prop.phys_width == 0 || kywc_output->prop.phys_height == 0) {
+        return scale;
+    }
+
+    float dpi_x = (float)width / (kywc_output->prop.phys_width / MM_PER_INCH);
+    float dpi_y = (float)height / (kywc_output->prop.phys_height / MM_PER_INCH);
+    kywc_log(KYWC_DEBUG, "Output %s resolution: %dx%d, dpi_x: %f, dpi_y: %f", kywc_output->name,
+             width, height, dpi_x, dpi_y);
+
+    float dpi_max = dpi_x > dpi_y ? dpi_x : dpi_y;
+    float dpi_ratio = dpi_max / HIDPI_DPI;
+    if (dpi_ratio > 1.0) {
+        int multi = dpi_ratio / 0.25;
+        scale = multi * 0.25;
+    }
+    return scale;
+}
+
+struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_output)
+{
+    struct kywc_output_mode *mode;
+    wl_list_for_each(mode, &kywc_output->prop.modes, link) {
+        if (mode->preferred) {
+            return mode;
+        }
+    }
+    // No preferred mode, choose the first one
+    return wl_container_of(kywc_output->prop.modes.prev, mode, link);
+}
+
 struct output *output_create(const char *name, const struct output_impl *impl, void *data)
 {
     struct output *output = calloc(1, sizeof(struct output));
@@ -104,17 +141,23 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
 
     /* read config and apply it */
     output->impl->get_state(output, &kywc_output->state);
+
     if (!output_manager->has_layout_manager) {
         struct kywc_output_state state = kywc_output->state;
         bool found = output_read_config(output, &state);
         if (!found) {
             state.enabled = state.power = true;
-            // TODO: others
+
+            struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
+            state.width = mode->width;
+            state.height = mode->height;
+            state.refresh = mode->refresh;
+
+            state.scale = kywc_output_preferred_scale(kywc_output, state.width, state.height);
         }
 
         kywc_output_set_state(kywc_output, &state);
 
-        // TODO: primary config
         if (kywc_output->state.enabled) {
             kywc_output_set_primary(kywc_output);
         }

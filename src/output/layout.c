@@ -304,6 +304,7 @@ static void output_layout_config_output(struct output_layout *output_layout)
 
     struct kywc_output *kywc_output = output_layout->output;
     struct kywc_output_state state = kywc_output->state;
+
     bool primary = false;
     bool found = output_layout_read_config(output_layout, &state, &primary);
     if (!found) {
@@ -312,12 +313,16 @@ static void output_layout_config_output(struct output_layout *output_layout)
             state.lx = 0;
             state.ly = 0;
         }
-        // TODO: others
+        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
+        state.width = mode->width;
+        state.height = mode->height;
+        state.refresh = mode->refresh;
+
+        state.scale = kywc_output_preferred_scale(kywc_output, state.width, state.height);
     }
 
     kywc_output_set_state(kywc_output, &state);
 
-    // TODO: primary config
     if ((layout_manager->enabled_outputs == 1 && !primary)) {
         primary = true;
     }
