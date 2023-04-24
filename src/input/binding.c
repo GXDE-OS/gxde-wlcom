@@ -90,6 +90,7 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
         binding->desc = strdup(desc);
     }
     binding->keybind = strdup(keybind);
+    wl_list_init(&binding->link);
 
     return binding;
 }
