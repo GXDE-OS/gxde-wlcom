@@ -16,6 +16,8 @@ struct output {
     // modes and others
 
     struct wl_listener frame;
+    struct wl_listener damage;
+    struct wl_listener needs_frame;
     struct wl_listener destroy;
     const struct output_impl *impl;
     void *data;

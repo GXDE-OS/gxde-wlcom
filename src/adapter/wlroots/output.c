@@ -160,16 +160,24 @@ static bool wlroots_output_set_state(struct output *output, struct kywc_output_s
 static void wlroots_output_frame(struct output *output)
 {
     struct wlr_output *wlr_output = output->data;
-    struct wlroots_server *wlroots = wlr_output->data;
-    struct wlr_scene_output *scene_output;
 
-    scene_output = wlr_scene_get_scene_output(wlroots->scene, wlr_output);
+    if (!wlr_output_attach_render(wlr_output, NULL)) {
+        return;
+    }
 
-    /* output->enabled is already checked in wlr_output_send_frame */
-    wlr_scene_output_commit(scene_output);
-    struct timespec now = { 0 };
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    wlr_scene_output_send_frame_done(scene_output, &now);
+    if (!wlr_output->needs_frame) {
+        kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
+        wlr_output_rollback(wlr_output);
+        return;
+    }
+
+    struct wlr_renderer *renderer = wlr_output->renderer;
+    wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
+    wlr_renderer_clear(renderer, (float[]){ 0.25f, 0.25f, 0.25f, 1 });
+    wlr_output_render_software_cursors(wlr_output, NULL);
+    wlr_renderer_end(renderer);
+
+    wlr_output_commit(wlr_output);
 }
 
 static const struct output_impl wlroots_output_impl = {
@@ -182,7 +190,12 @@ static const struct output_impl wlroots_output_impl = {
 static void handle_output_destroy(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, destroy);
+
     wl_list_remove(&output->destroy.link);
+    wl_list_remove(&output->damage.link);
+    wl_list_remove(&output->frame.link);
+    wl_list_remove(&output->needs_frame.link);
+
     output_destroy(output);
 }
 
@@ -190,6 +203,22 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
     output_frame(output);
+}
+
+static void handle_output_damage(struct wl_listener *listener, void *data)
+{
+    struct output *output = wl_container_of(listener, output, damage);
+    struct wlr_output *wlr_output = output->data;
+
+    wlr_output_schedule_frame(wlr_output);
+}
+
+static void handle_output_needs_frame(struct wl_listener *listener, void *data)
+{
+    struct output *output = wl_container_of(listener, output, needs_frame);
+    struct wlr_output *wlr_output = output->data;
+
+    wlr_output_schedule_frame(wlr_output);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
@@ -211,8 +240,12 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 
     output->frame.notify = handle_output_frame;
     output->destroy.notify = handle_output_destroy;
+    output->damage.notify = handle_output_damage;
+    output->needs_frame.notify = handle_output_needs_frame;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+    wl_signal_add(&wlr_output->events.damage, &output->damage);
+    wl_signal_add(&wlr_output->events.needs_frame, &output->needs_frame);
 }
 
 bool wlroots_output_init(struct wlroots_server *wlroots)

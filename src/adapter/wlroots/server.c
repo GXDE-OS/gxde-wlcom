@@ -67,16 +67,9 @@ static bool wlroots_server_init(struct server *server)
     wlr_subcompositor_create(server->display);
     wlr_renderer_init_wl_display(wlroots->renderer, server->display);
 
-    wlroots->scene = wlr_scene_create();
     wlroots->layout = wlr_output_layout_create();
-    wlr_scene_attach_output_layout(wlroots->scene, wlroots->layout);
 
-    struct wlr_presentation *presentation =
-        wlr_presentation_create(server->display, wlroots->backend);
-    if (presentation) {
-        wlr_scene_set_presentation(wlroots->scene, presentation);
-    }
-
+    wlr_presentation_create(server->display, wlroots->backend);
     wlr_screencopy_manager_v1_create(server->display);
     wlr_export_dmabuf_manager_v1_create(server->display);
 
@@ -118,9 +111,6 @@ static void wlroots_server_finish(struct server *server)
     kywc_log(KYWC_INFO, "adapter: finish wlroots server");
     struct wlroots_server *wlroots = wlroots_server_from_server(server);
 
-    if (wlroots->scene) {
-        wlr_scene_node_destroy(&wlroots->scene->tree.node);
-    }
     wlr_output_layout_destroy(wlroots->layout);
     wlr_allocator_destroy(wlroots->allocator);
     wlr_renderer_destroy(wlroots->renderer);
