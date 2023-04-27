@@ -1,6 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
-#include <time.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 
 #include "output.h"
@@ -49,7 +48,6 @@ static void wlroots_output_get_prop(struct output *output, struct kywc_output_pr
     struct wlr_output *wlr_output = output->data;
 
     prop->capability = 0;
-    prop->port = wlr_drm_connector_get_id(wlr_output);
     prop->phys_width = wlr_output->phys_width;
     prop->phys_height = wlr_output->phys_height;
     prop->make = wlr_output->make;

@@ -39,7 +39,6 @@ struct kywc_output_mode {
 };
 
 struct kywc_output_prop {
-    uint32_t port;
     uint32_t capability;
     int32_t phys_width, phys_height;    // mm
     char *make, *model, *serial, *desc; // may be NULL

@@ -49,7 +49,7 @@ struct output_layout {
 };
 
 struct output_md5 {
-    uint32_t port;
+    const char *name;
     uint8_t md5[MD5_DIGEST_LENGTH];
 };
 
@@ -227,9 +227,9 @@ static void output_layout_write_config(struct output_layout *output_layout)
 
 static int compare_output_md5(const void *p1, const void *p2)
 {
-    uint32_t v1 = ((struct output_md5 *)p1)->port;
-    uint32_t v2 = ((struct output_md5 *)p2)->port;
-    return v1 - v2;
+    const char *v1 = ((struct output_md5 *)p1)->name;
+    const char *v2 = ((struct output_md5 *)p2)->name;
+    return strcmp(v1, v2);
 }
 
 static void output_layout_md5_generate(struct output_layout *output_layout)
@@ -261,7 +261,7 @@ static void layout_manager_generate_layout(char *layout_uuid, bool is_active_lay
             continue;
         }
         o_md5s = realloc(o_md5s, (actual_cnt + 1) * sizeof(struct output_md5));
-        o_md5s[actual_cnt].port = kywc_output->prop.port;
+        o_md5s[actual_cnt].name = kywc_output->name;
         uint8_t *ptr_md5 = o_md5s[actual_cnt].md5;
         memcpy(ptr_md5, ol->md5, MD5_DIGEST_LENGTH);
         actual_cnt++;
@@ -286,7 +286,7 @@ static void layout_manager_generate_layout(char *layout_uuid, bool is_active_lay
     uint8_t *md5s = calloc(actual_cnt, MD5_DIGEST_LENGTH);
     for (uint32_t i = 0; i < actual_cnt; ++i) {
         memcpy(md5s + i * MD5_DIGEST_LENGTH, o_md5s[i].md5, MD5_DIGEST_LENGTH);
-        print_md5(KYWC_DEBUG, o_md5s[i].md5, "output[%d] md5: %s", o_md5s[i].port, str);
+        print_md5(KYWC_DEBUG, o_md5s[i].md5, "output[%s] md5: %s", o_md5s[i].name, str);
     }
     md5_generate(md5s, actual_cnt * MD5_DIGEST_LENGTH, md5);
     layout_manager_md5_to_uuid(md5, layout_uuid);
