@@ -57,20 +57,15 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     free(cursor_output);
 }
 
-static void input_set_cursor_image(enum cursor_name name, float scale)
-{
-    struct seat *seat;
-    wl_list_for_each(seat, &input_manager->seats, link) {
-        seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
-    }
-}
-
 static void handle_output_scale(struct wl_listener *listener, void *data)
 {
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, scale);
     struct kywc_output *kywc_output = cursor_output->ouput;
 
-    input_set_cursor_image(CURSOR_DEFAULT, kywc_output->state.scale);
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale, true);
+    }
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
@@ -89,7 +84,11 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     cursor_output->destroy.notify = handle_output_destroy;
     wl_signal_add(&kywc_output->events.destroy, &cursor_output->destroy);
 
-    input_set_cursor_image(CURSOR_DEFAULT, kywc_output->state.scale);
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale, true);
+        seat_move_cursor(seat, 0, 0, true);
+    }
 }
 
 static struct seat *input_manager_get_seat(const char *name)
@@ -108,6 +107,7 @@ static struct seat *input_manager_get_seat(const char *name)
         wl_list_for_each(cursor_output, &input_manager->outputs, link) {
             struct kywc_output *kywc_output = cursor_output->ouput;
             seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale, false);
+            seat_move_cursor(seat, 0, 0, true);
         }
     }
 
