@@ -308,6 +308,8 @@ void seat_remove_input(struct input *input);
 
 void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale, bool force);
 
+void seat_move_cursor(struct seat *seat, double x, double y, bool delta);
+
 /**
  * libinput helper functions
  */

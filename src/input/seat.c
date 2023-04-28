@@ -110,3 +110,8 @@ void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale
     cursor->scale = scale;
     cursor->name = name;
 }
+
+void seat_move_cursor(struct seat *seat, double x, double y, bool delta)
+{
+    seat->impl->move_cursor(seat, x, y, delta);
+}
