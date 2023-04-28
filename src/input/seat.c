@@ -94,14 +94,14 @@ void seat_remove_input(struct input *input)
     seat_update_capabilities(seat);
 }
 
-void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale)
+void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale, bool force)
 {
     struct cursor *cursor = seat->cursor;
     if (!cursor) {
         return;
     }
 
-    if (cursor->name == name && cursor->scale == scale) {
+    if (!force && cursor->name == name && cursor->scale == scale) {
         return;
     }
 

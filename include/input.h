@@ -306,7 +306,7 @@ void seat_add_input(struct seat *seat, struct input *input);
 
 void seat_remove_input(struct input *input);
 
-void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale);
+void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale, bool force);
 
 /**
  * libinput helper functions

@@ -61,7 +61,7 @@ static void input_set_cursor_image(enum cursor_name name, float scale)
 {
     struct seat *seat;
     wl_list_for_each(seat, &input_manager->seats, link) {
-        seat_set_cursor_image(seat, CURSOR_DEFAULT, scale);
+        seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
     }
 }
 
@@ -107,7 +107,7 @@ static struct seat *input_manager_get_seat(const char *name)
         struct cursor_output *cursor_output;
         wl_list_for_each(cursor_output, &input_manager->outputs, link) {
             struct kywc_output *kywc_output = cursor_output->ouput;
-            seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale);
+            seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale, false);
         }
     }
 
