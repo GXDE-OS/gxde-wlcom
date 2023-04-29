@@ -247,10 +247,23 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
         return;
     }
 
+    /* call kywc_output_set_state in all outputs, enable first and disable outputs later */
+    wl_list_for_each(config, &configs->configs, link) {
+        if (!config->pending.enabled) {
+            continue;
+        }
+        if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
+            kde_output_configuration_v2_send_failed(resource);
+            return;
+        }
+    }
+
     kywc_output_set_primary(configs->pending_primary);
 
-    /* call kywc_output_set_state in all outputs */
     wl_list_for_each(config, &configs->configs, link) {
+        if (config->pending.enabled) {
+            continue;
+        }
         if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
             kde_output_configuration_v2_send_failed(resource);
             return;
