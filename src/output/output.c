@@ -9,7 +9,7 @@
 static struct output_manager *output_manager = NULL;
 static char *unknown = "unknown";
 
-static struct output *output_from_kywc_output(struct kywc_output *kywc_output)
+struct output *output_from_kywc_output(struct kywc_output *kywc_output)
 {
     struct output *output = wl_container_of(kywc_output, output, base);
     return output;
@@ -300,12 +300,12 @@ void output_destroy(struct output *output)
     free(output);
 }
 
-struct output *output_by_name(const char *name)
+struct kywc_output *kywc_output_by_name(const char *name)
 {
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
         if (!strcmp(name, output->base.name)) {
-            return output;
+            return &output->base;
         }
     }
 

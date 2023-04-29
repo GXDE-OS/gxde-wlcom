@@ -120,7 +120,7 @@ struct input {
     struct wl_list seat_link;
 
     /* output that mapped to */
-    struct output *mapped_output;
+    struct kywc_output *mapped_output;
     struct wl_listener mapped_output_destroy;
 
     /* input device prop and state per device */

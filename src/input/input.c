@@ -210,7 +210,7 @@ struct input *input_create(const char *name, const struct input_impl *impl, void
 
 bool input_set_state(struct input *input, struct input_state *state)
 {
-    struct output *old_mapped_output = input->mapped_output;
+    struct kywc_output *old_mapped_output = input->mapped_output;
 
     bool sucess = input->impl->set_state(input, state);
     /* update state anyway */
@@ -221,8 +221,7 @@ bool input_set_state(struct input *input, struct input_state *state)
             wl_list_remove(&input->mapped_output_destroy.link);
         }
         if (input->mapped_output) {
-            wl_signal_add(&input->mapped_output->base.events.destroy,
-                          &input->mapped_output_destroy);
+            wl_signal_add(&input->mapped_output->events.destroy, &input->mapped_output_destroy);
 
             move_cursor_to_output_center(input->seat, &input->mapped_output->base);
         }

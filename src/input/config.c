@@ -128,8 +128,8 @@ static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 
     bool none_output = !strcmp(output_name, "none");
     if (!none_output) {
-        struct output *output = output_by_name(output_name);
-        if (!output || !output->base.state.enabled) {
+        struct kywc_output *kywc_output = kywc_output_by_name(output_name);
+        if (!kywc_output || !kywc_output->state.enabled) {
             const sd_bus_error error =
                 SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild output or disabled.");
             return sd_bus_reply_method_error(m, &error);

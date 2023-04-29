@@ -49,7 +49,7 @@ static void wlroots_input_get_state(struct input *input, struct input_state *sta
     struct wlr_input_device *wlr_input = input->data;
 
     state->seat = input->seat ? input->seat->name : NULL;
-    state->mapped_to_output = input->mapped_output ? input->mapped_output->base.name : NULL;
+    state->mapped_to_output = input->mapped_output ? input->mapped_output->name : NULL;
 
     if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
         struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
@@ -112,17 +112,18 @@ static bool wlroots_input_set_state(struct input *input, struct input_state *sta
     input_set_seat(input, state->seat ? state->seat : "seat0");
 
     if (input->prop.support_mapped_to_output) {
-        struct output *mapped_output = NULL;
+        struct kywc_output *mapped_output = NULL;
         if (state->mapped_to_output) {
-            mapped_output = output_by_name(state->mapped_to_output);
+            mapped_output = kywc_output_by_name(state->mapped_to_output);
             /* keep orig mapped output if invalid */
-            if (!mapped_output) {
+            if (!mapped_output || !mapped_output->state.enabled) {
                 mapped_output = input->mapped_output;
             }
         }
 
         struct wlr_cursor *wlr_cursor = input->seat->cursor->data;
-        struct wlr_output *wlr_output = mapped_output ? mapped_output->data : NULL;
+        struct wlr_output *wlr_output =
+            mapped_output ? output_from_kywc_output(mapped_output)->data : NULL;
         wlr_cursor_map_input_to_output(wlr_cursor, wlr_input, wlr_output);
         input->mapped_output = mapped_output;
     }

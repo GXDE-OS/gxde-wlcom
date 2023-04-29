@@ -83,4 +83,6 @@ void kywc_output_effective_resolution(struct kywc_output *kywc_output, int *widt
 
 bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y);
 
+struct kywc_output *kywc_output_by_name(const char *name);
+
 #endif /* _KYWC_OUTPUT_H_ */
