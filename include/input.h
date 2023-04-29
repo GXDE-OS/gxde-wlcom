@@ -273,9 +273,6 @@ struct input_manager {
 
     struct bindings *bindings;
 
-    struct wl_list outputs;
-    struct wl_listener new_output;
-
     struct config *config;
     struct wl_listener server_destroy;
 };
