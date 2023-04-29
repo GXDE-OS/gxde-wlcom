@@ -33,6 +33,7 @@ struct output_manager *output_manager_create(struct server *server)
     wl_list_init(&output_manager->outputs);
     wl_signal_init(&output_manager->events.new_output);
     wl_signal_init(&output_manager->events.primary_output);
+    wl_signal_init(&output_manager->events.configured);
 
     output_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &output_manager->server_destroy);
@@ -67,9 +68,15 @@ void kywc_output_add_primary_listener(struct wl_listener *listener)
     wl_signal_add(&output_manager->events.primary_output, listener);
 }
 
-#define HIDPI_DPI (96)
-// 1 inch = 25.4 mm
-#define MM_PER_INCH 25.4
+void output_manager_add_configured_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&output_manager->events.configured, listener);
+}
+
+void output_manager_emit_configured(void)
+{
+    wl_signal_emit_mutable(&output_manager->events.configured, output_manager);
+}
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)
 {
@@ -78,13 +85,13 @@ float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, in
         return scale;
     }
 
-    float dpi_x = (float)width / (kywc_output->prop.phys_width / MM_PER_INCH);
-    float dpi_y = (float)height / (kywc_output->prop.phys_height / MM_PER_INCH);
+    float dpi_x = (float)width / (kywc_output->prop.phys_width / 25.4);
+    float dpi_y = (float)height / (kywc_output->prop.phys_height / 25.4);
     kywc_log(KYWC_DEBUG, "Output %s resolution: %dx%d, dpi_x: %f, dpi_y: %f", kywc_output->name,
              width, height, dpi_x, dpi_y);
 
     float dpi_max = dpi_x > dpi_y ? dpi_x : dpi_y;
-    float dpi_ratio = dpi_max / HIDPI_DPI;
+    float dpi_ratio = dpi_max / 96;
     if (dpi_ratio > 1.0) {
         int multi = dpi_ratio / 0.25;
         scale = multi * 0.25;

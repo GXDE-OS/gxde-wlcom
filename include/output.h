@@ -38,6 +38,7 @@ struct output_manager {
     struct {
         struct wl_signal new_output;
         struct wl_signal primary_output;
+        struct wl_signal configured;
     } events;
 
     struct config *config;
@@ -50,7 +51,9 @@ struct output_manager *output_manager_create(struct server *server);
 
 bool output_manager_config_init(struct output_manager *output_manager);
 
-void output_manager_set_primay_output(struct output *output);
+void output_manager_add_configured_listener(struct wl_listener *listener);
+
+void output_manager_emit_configured(void);
 
 struct output *output_create(const char *name, const struct output_impl *impl, void *data);
 

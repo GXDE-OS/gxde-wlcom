@@ -254,6 +254,7 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
         }
         if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
             kde_output_configuration_v2_send_failed(resource);
+            output_manager_emit_configured();
             return;
         }
     }
@@ -266,11 +267,13 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
         }
         if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
             kde_output_configuration_v2_send_failed(resource);
+            output_manager_emit_configured();
             return;
         }
     }
 
     kde_output_configuration_v2_send_applied(resource);
+    output_manager_emit_configured();
 }
 
 static void output_configure_handle_destroy(struct wl_client *client, struct wl_resource *resource)
