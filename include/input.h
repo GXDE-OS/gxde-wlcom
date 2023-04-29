@@ -122,6 +122,7 @@ struct input {
     /* output that mapped to */
     char *desired_mapped_output;
     struct kywc_output *mapped_output;
+    struct wl_listener mapped_output_off;
     struct wl_listener mapped_output_destroy;
 
     /* input device prop and state per device */

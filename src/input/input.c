@@ -165,17 +165,29 @@ void input_set_seat(struct input *input, const char *seat)
     seat_add_input(input->seat, input);
 }
 
-static void handle_mapped_output_destroy(struct wl_listener *listener, void *data)
+static void input_clear_mapped_output(struct input *input)
 {
-    struct input *input = wl_container_of(listener, input, mapped_output_destroy);
-
-    /* current mapped output is being destroyed, restore it later */
+    /* current mapped output is being off or destroyed, restore it later */
     free(input->desired_mapped_output);
     input->desired_mapped_output = strdup(input->mapped_output->name);
 
     struct input_state state = input->state;
     state.mapped_to_output = NULL;
     input_set_state(input, &state);
+}
+
+static void handle_mapped_output_off(struct wl_listener *listener, void *data)
+{
+    struct input *input = wl_container_of(listener, input, mapped_output_off);
+
+    input_clear_mapped_output(input);
+}
+
+static void handle_mapped_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct input *input = wl_container_of(listener, input, mapped_output_destroy);
+
+    input_clear_mapped_output(input);
 }
 
 struct input *input_create(const char *name, const struct input_impl *impl, void *data)
@@ -193,6 +205,7 @@ struct input *input_create(const char *name, const struct input_impl *impl, void
     wl_signal_init(&input->events.destroy);
     wl_list_insert(&input_manager->inputs, &input->link);
 
+    input->mapped_output_off.notify = handle_mapped_output_off;
     input->mapped_output_destroy.notify = handle_mapped_output_destroy;
 
     input->impl->get_prop(input, &input->prop);
@@ -224,9 +237,11 @@ bool input_set_state(struct input *input, struct input_state *state)
 
     if (old_mapped_output != input->mapped_output) {
         if (old_mapped_output) {
+            wl_list_remove(&input->mapped_output_off.link);
             wl_list_remove(&input->mapped_output_destroy.link);
         }
         if (input->mapped_output) {
+            wl_signal_add(&input->mapped_output->events.off, &input->mapped_output_off);
             wl_signal_add(&input->mapped_output->events.destroy, &input->mapped_output_destroy);
 
             move_cursor_to_output_center(input->seat, &input->mapped_output->base);
@@ -248,6 +263,7 @@ void input_destroy(struct input *input)
     wl_list_remove(&input->link);
 
     if (input->mapped_output) {
+        wl_list_remove(&input->mapped_output_off.link);
         wl_list_remove(&input->mapped_output_destroy.link);
     }
     free(input->desired_mapped_output);
