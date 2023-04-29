@@ -1,4 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <string.h>
 
 #include <kywc/log.h>
 #include <kywc/output.h>
@@ -167,6 +169,10 @@ static void handle_mapped_output_destroy(struct wl_listener *listener, void *dat
 {
     struct input *input = wl_container_of(listener, input, mapped_output_destroy);
 
+    /* current mapped output is being destroyed, restore it later */
+    free(input->desired_mapped_output);
+    input->desired_mapped_output = strdup(input->mapped_output->name);
+
     struct input_state state = input->state;
     state.mapped_to_output = NULL;
     input_set_state(input, &state);
@@ -224,6 +230,8 @@ bool input_set_state(struct input *input, struct input_state *state)
             wl_signal_add(&input->mapped_output->events.destroy, &input->mapped_output_destroy);
 
             move_cursor_to_output_center(input->seat, &input->mapped_output->base);
+            free(input->desired_mapped_output);
+            input->desired_mapped_output = NULL;
         }
     }
 
@@ -242,6 +250,7 @@ void input_destroy(struct input *input)
     if (input->mapped_output) {
         wl_list_remove(&input->mapped_output_destroy.link);
     }
+    free(input->desired_mapped_output);
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 

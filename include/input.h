@@ -120,6 +120,7 @@ struct input {
     struct wl_list seat_link;
 
     /* output that mapped to */
+    char *desired_mapped_output;
     struct kywc_output *mapped_output;
     struct wl_listener mapped_output_destroy;
 

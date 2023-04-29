@@ -1,4 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <string.h>
 
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
@@ -117,6 +119,8 @@ static bool wlroots_input_set_state(struct input *input, struct input_state *sta
             mapped_output = kywc_output_by_name(state->mapped_to_output);
             /* keep orig mapped output if invalid */
             if (!mapped_output || !mapped_output->state.enabled) {
+                free(input->desired_mapped_output);
+                input->desired_mapped_output = strdup(state->mapped_to_output);
                 mapped_output = input->mapped_output;
             }
         }
