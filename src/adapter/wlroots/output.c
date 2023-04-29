@@ -43,6 +43,20 @@ static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_
     }
 }
 
+static void output_add_mode(struct kywc_output_prop *prop, struct wlr_output_mode *mode)
+{
+    struct kywc_output_mode *new = calloc(1, sizeof(struct kywc_output_mode));
+    if (!new) {
+        return;
+    }
+
+    new->width = mode->width;
+    new->height = mode->height;
+    new->refresh = mode->refresh;
+    new->preferred = mode->preferred;
+    wl_list_insert(&prop->modes, &new->link);
+}
+
 static void wlroots_output_get_prop(struct output *output, struct kywc_output_prop *prop)
 {
     struct wlr_output *wlr_output = output->data;
@@ -55,18 +69,20 @@ static void wlroots_output_get_prop(struct output *output, struct kywc_output_pr
     prop->serial = wlr_output->serial;
     prop->desc = wlr_output->description;
 
-    struct wlr_output_mode *mode;
-    wl_list_for_each(mode, &wlr_output->modes, link) {
-        struct kywc_output_mode *new = calloc(1, sizeof(struct kywc_output_mode));
-        if (!new) {
-            continue;
+    /* fix zero mode in some backend, like wayland */
+    if (wl_list_empty(&wlr_output->modes)) {
+        struct wlr_output_mode mode = {
+            .width = wlr_output->width,
+            .height = wlr_output->height,
+            .refresh = wlr_output->refresh,
+            .preferred = true,
+        };
+        output_add_mode(prop, &mode);
+    } else {
+        struct wlr_output_mode *mode;
+        wl_list_for_each(mode, &wlr_output->modes, link) {
+            output_add_mode(prop, mode);
         }
-
-        new->width = mode->width;
-        new->height = mode->height;
-        new->refresh = mode->refresh;
-        new->preferred = mode->preferred;
-        wl_list_insert(&prop->modes, &new->link);
     }
 }
 
