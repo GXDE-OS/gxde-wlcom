@@ -15,18 +15,6 @@ void input_add_new_listener(struct wl_listener *listener)
     wl_signal_add(&input_manager->events.new_input, listener);
 }
 
-static void move_cursor_to_output_center(struct seat *seat, struct kywc_output *kywc_output)
-{
-    int x, y, width, height;
-
-    kywc_output_effective_resolution(kywc_output, &width, &height);
-    x = kywc_output->state.lx + width / 2;
-    y = kywc_output->state.ly + height / 2;
-
-    kywc_log(KYWC_DEBUG, "move %s's cursor to %s (%d, %d)", seat->name, kywc_output->name, x, y);
-    seat_move_cursor(seat, x, y, false);
-}
-
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&input_manager->server_destroy.link);
@@ -70,6 +58,8 @@ struct input_manager *input_manager_create(struct server *server)
 
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
+
+    output_monitor_create(input_manager);
 
     input_manager_get_seat("seat0");
     input_manager_config_init(input_manager);
@@ -177,9 +167,10 @@ bool input_set_state(struct input *input, struct input_state *state)
             wl_signal_add(&input->mapped_output->events.off, &input->mapped_output_off);
             wl_signal_add(&input->mapped_output->events.destroy, &input->mapped_output_destroy);
 
-            move_cursor_to_output_center(input->seat, &input->mapped_output->base);
             free(input->desired_mapped_output);
             input->desired_mapped_output = NULL;
+
+            output_move_cursor_to_center(input->seat, input->mapped_output);
         }
     }
 

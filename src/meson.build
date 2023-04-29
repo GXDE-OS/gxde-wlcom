@@ -15,6 +15,7 @@ wlcom_sources = files(
     'input/keyboard.c',
     'input/libinput.c',
     'input/input.c',
+    'input/output.c',
     'input/seat.c',
 
     'plugin/config.c',
