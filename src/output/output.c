@@ -138,6 +138,9 @@ struct output *output_create(const char *name, const struct output_impl *impl, v
     if (!kywc_output->prop.model) {
         kywc_output->prop.model = unknown;
     }
+    if (!kywc_output->prop.desc) {
+        kywc_output->prop.desc = kywc_output->name;
+    }
 
     /* read config and apply it */
     output->impl->get_state(output, &kywc_output->state);
