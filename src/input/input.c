@@ -213,8 +213,10 @@ bool input_set_state(struct input *input, struct input_state *state)
     /* update state anyway */
     input->impl->get_state(input, &input->state);
 
-    if (old_mapped_output && old_mapped_output != input->mapped_output) {
-        wl_list_remove(&input->mapped_output_destroy.link);
+    if (old_mapped_output != input->mapped_output) {
+        if (old_mapped_output) {
+            wl_list_remove(&input->mapped_output_destroy.link);
+        }
         if (input->mapped_output) {
             wl_signal_add(&input->mapped_output->base.events.destroy,
                           &input->mapped_output_destroy);

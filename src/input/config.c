@@ -478,7 +478,10 @@ void input_write_config(struct input *input)
     if (state->mapped_to_output) {
         json_object_object_add(config, "mapped_to_output",
                                json_object_new_string(state->mapped_to_output));
+    } else {
+        json_object_object_del(config, "mapped_to_output");
     }
+
     if (state->seat && strcmp(state->seat, "seat0")) {
         json_object_object_add(config, "seat", json_object_new_string(state->seat));
     } else {
