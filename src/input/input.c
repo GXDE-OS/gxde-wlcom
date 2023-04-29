@@ -113,17 +113,7 @@ static struct seat *input_manager_get_seat(const char *name)
     }
 
     /* create a new seat */
-    seat = seat_create(input_manager, name);
-    if (seat) {
-        struct cursor_output *cursor_output;
-        wl_list_for_each(cursor_output, &input_manager->outputs, link) {
-            struct kywc_output *kywc_output = cursor_output->ouput;
-            seat_set_cursor_image(seat, CURSOR_DEFAULT, kywc_output->state.scale, false);
-            seat_move_cursor(seat, 0, 0, true);
-        }
-    }
-
-    return seat;
+    return seat_create(input_manager, name);
 }
 
 struct input_manager *input_manager_create(struct server *server)
@@ -141,6 +131,7 @@ struct input_manager *input_manager_create(struct server *server)
     wl_list_init(&input_manager->outputs);
     input_manager->new_output.notify = handle_new_output;
     kywc_output_add_new_listener(&input_manager->new_output);
+    wl_signal_init(&input_manager->events.new_seat);
 
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);

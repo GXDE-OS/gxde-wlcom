@@ -17,6 +17,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->name = strdup(name);
     wl_list_init(&seat->inputs);
     wl_list_init(&seat->keyboards);
+    wl_signal_init(&seat->events.destroy);
 
     wl_list_insert(&input_manager->seats, &seat->link);
 
@@ -25,11 +26,15 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
         server->impl->init_seat(server, seat);
     }
 
+    wl_signal_emit_mutable(&input_manager->events.new_seat, seat);
+
     return seat;
 }
 
 void seat_destroy(struct seat *seat)
 {
+    wl_signal_emit_mutable(&seat->events.destroy, seat);
+
     wl_list_remove(&seat->link);
 
     struct input *input;

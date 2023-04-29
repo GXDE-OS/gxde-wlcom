@@ -238,6 +238,10 @@ struct seat {
     struct cursor *cursor;
     struct wl_list keyboards;
 
+    struct {
+        struct wl_signal destroy;
+    } events;
+
     struct wl_listener destroy;
     const struct seat_impl *impl;
     void *data;
@@ -262,6 +266,7 @@ struct input_manager {
 
     struct {
         struct wl_signal new_input;
+        struct wl_signal new_seat;
     } events;
 
     struct bindings *bindings;
