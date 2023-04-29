@@ -311,3 +311,29 @@ struct output *output_by_name(const char *name)
 
     return NULL;
 }
+
+void kywc_output_effective_resolution(struct kywc_output *kywc_output, int *width, int *height)
+{
+    struct kywc_output_state *state = &kywc_output->state;
+
+    if (state->transform % 2 == 0) {
+        *width = state->width;
+        *height = state->height;
+    } else {
+        *width = state->height;
+        *height = state->width;
+    }
+
+    *width /= state->scale;
+    *height /= state->scale;
+}
+
+bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y)
+{
+    int lx, ly, width, height;
+    lx = kywc_output->state.lx;
+    ly = kywc_output->state.ly;
+    kywc_output_effective_resolution(kywc_output, &width, &height);
+
+    return x >= lx && x < lx + width && y >= ly && y < ly + height;
+}

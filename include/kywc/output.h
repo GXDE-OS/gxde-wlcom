@@ -79,4 +79,8 @@ struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_out
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height);
 
+void kywc_output_effective_resolution(struct kywc_output *kywc_output, int *width, int *height);
+
+bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y);
+
 #endif /* _KYWC_OUTPUT_H_ */
