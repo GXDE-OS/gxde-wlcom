@@ -220,29 +220,41 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
     }
 
     /* if all outputs will be disabled in config, find others not in config */
-    bool have_enabled_output = false;
+    bool have_enabled_output = false, have_zero_coord = false;
     struct kde_output_device *output_device;
     wl_list_for_each(output_device, &management->output_devices, link) {
         config = output_device_config_in_configs(configs, output_device);
         if (config) {
             have_enabled_output |= config->pending.enabled;
+            have_zero_coord |=
+                config->pending.enabled && config->pending.lx == 0 && config->pending.ly == 0;
         } else {
             have_enabled_output |= output_device->kywc_output->state.enabled;
-        }
-        if (!have_enabled_output) {
-            continue;
+            have_zero_coord |= output_device->kywc_output->state.enabled &&
+                               output_device->kywc_output->state.lx == 0 &&
+                               output_device->kywc_output->state.ly == 0;
         }
 
         /* fixup primary output */
-        if (need_fix_primary_output) {
+        if (have_enabled_output && need_fix_primary_output) {
             kywc_log(KYWC_WARN, "Fixup primary output to %s", output_device->kywc_output->name);
+            need_fix_primary_output = false;
             configs->pending_primary = output_device->kywc_output;
         }
-        break;
+
+        if (have_enabled_output && have_zero_coord) {
+            break;
+        }
     }
 
     if (!have_enabled_output) {
         kywc_log(KYWC_WARN, "All outputs will be disabled, reject this configuration");
+        kde_output_configuration_v2_send_failed(resource);
+        return;
+    }
+
+    if (!have_zero_coord) {
+        kywc_log(KYWC_WARN, "There will be no zero coord, reject this configuration");
         kde_output_configuration_v2_send_failed(resource);
         return;
     }
