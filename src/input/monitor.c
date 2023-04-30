@@ -40,6 +40,7 @@ void cursor_move_to_output_center(struct seat *seat, struct kywc_output *kywc_ou
     y = kywc_output->state.ly + height / 2;
 
     seat_move_cursor(seat, x, y, false);
+    // kywc_log(KYWC_INFO, "move %s cursor to %s (%d, %d)", seat->name, kywc_output->name, x, y);
 }
 
 static void input_restore_mapped_output(struct input_monitor *input_monitor,
@@ -58,14 +59,29 @@ static void input_restore_mapped_output(struct input_monitor *input_monitor,
     }
 }
 
+static struct kywc_output *seat_pick_mapped_output(struct seat *seat)
+{
+    struct input *input;
+    wl_list_for_each(input, &seat->inputs, seat_link) {
+        if (input->mapped_output) {
+            return input->mapped_output;
+        }
+    }
+
+    return NULL;
+}
+
 static void output_rebase_cursor(struct input_monitor *input_monitor, float scale)
 {
+
     struct seat *seat;
     wl_list_for_each(seat, &input_monitor->input_manager->seats, link) {
         seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
-        /* move seat cursor to primary whether inputs mapped output */
-        if (input_monitor->primary) {
-            cursor_move_to_output_center(seat, input_monitor->primary);
+        /* prefer to move cursor to mapped output */
+        struct kywc_output *output = seat_pick_mapped_output(seat);
+        output = output ? output : input_monitor->primary;
+        if (output) {
+            cursor_move_to_output_center(seat, output);
         }
     }
 }
@@ -96,6 +112,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
     struct kywc_output *kywc_output = cursor_output->ouput;
 
     output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale);
+    input_restore_mapped_output(cursor_output->monitor, kywc_output);
 }
 
 static void handle_output_power(struct wl_listener *listener, void *data)
