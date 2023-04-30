@@ -271,6 +271,33 @@ static void layout_manager_config_outputs(struct layout_manager *layout_manager)
             kywc_output_preferred_scale(ol->output, ol->state.width, ol->state.height);
     }
 
+    /* fix zero coord and primary output */
+    struct output_layout *primary_ol = NULL;
+    int enabled_outputs = 0;
+    wl_list_for_each(ol, &layout_manager->outputs, link) {
+        if (!ol->state.enabled) {
+            continue;
+        }
+        if (ol->primary) {
+            primary_ol = ol;
+        }
+        if (!primary_ol) {
+            primary_ol = ol;
+        }
+        enabled_outputs++;
+    }
+
+    if (enabled_outputs == 0) {
+        primary_ol = wl_container_of(layout_manager->outputs.prev, primary_ol, link);
+        primary_ol->state.enabled = ol->state.power = true;
+        enabled_outputs = 1;
+        kywc_log(KYWC_WARN, "There is no enabled output, auto enable %s", primary_ol->output->name);
+    }
+    if (enabled_outputs == 1) {
+        primary_ol->primary = true;
+        primary_ol->state.lx = primary_ol->state.ly = 0;
+    }
+
     if (kywc_log_get_level() >= KYWC_INFO) {
         wl_list_for_each(ol, &layout_manager->outputs, link) {
             kywc_log(KYWC_INFO,
@@ -281,27 +308,14 @@ static void layout_manager_config_outputs(struct layout_manager *layout_manager)
         }
     }
 
-    /* fix primary output if needed */
-    struct kywc_output *pending_primary = NULL;
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        if (ol->primary && ol->state.enabled) {
-            pending_primary = ol->output;
-            break;
-        }
-    }
-
     wl_list_for_each(ol, &layout_manager->outputs, link) {
         if (!ol->state.enabled) {
             continue;
         }
         kywc_output_set_state(ol->output, &ol->state);
-
-        if (!pending_primary) {
-            pending_primary = ol->output;
-        }
     }
 
-    kywc_output_set_primary(pending_primary);
+    kywc_output_set_primary(primary_ol->output);
 
     wl_list_for_each(ol, &layout_manager->outputs, link) {
         if (ol->state.enabled) {
