@@ -210,6 +210,10 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->needs_frame.link);
 
+    struct wlr_output *wlr_output = output->data;
+    struct wlroots_server *wlroots = wlr_output->data;
+    wlr_output_layout_remove(wlroots->layout, wlr_output);
+
     output_destroy(output);
 }
 
