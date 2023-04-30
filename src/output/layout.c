@@ -115,9 +115,12 @@ static bool output_layout_read_config(struct output_layout *output_layout,
     struct kywc_output_state *state = &output_layout->state;
 
     if (json_object_object_get_ex(config, "enabled", &data)) {
-        state->enabled = json_object_get_boolean(data);
-        state->power = state->enabled;
+        state->enabled = state->power = json_object_get_boolean(data);
     }
+    if (!state->enabled) {
+        return true;
+    }
+
     if (json_object_object_get_ex(config, "primary", &data)) {
         output_layout->primary = json_object_get_boolean(data);
     }
@@ -166,6 +169,10 @@ static void output_layout_write_config(struct output_layout *output_layout,
     bool primary = lm->primary == output_layout->output;
 
     json_object_object_add(config, "enabled", json_object_new_boolean(state->enabled));
+    if (!state->enabled) {
+        return;
+    }
+
     json_object_object_add(config, "primary", json_object_new_boolean(primary));
     json_object_object_add(config, "width", json_object_new_int(state->width));
     json_object_object_add(config, "height", json_object_new_int(state->height));
