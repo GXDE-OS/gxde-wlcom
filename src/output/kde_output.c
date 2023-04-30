@@ -114,7 +114,7 @@ static void output_configure_handle_enable(struct wl_client *client, struct wl_r
         struct kde_output_config *config =
             configs_get_output_device(configs, kod_client->output_device);
         if (config) {
-            config->pending.enabled = enable;
+            config->pending.enabled = config->pending.power = enable;
         }
     }
 }
