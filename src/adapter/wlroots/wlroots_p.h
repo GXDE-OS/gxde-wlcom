@@ -35,6 +35,9 @@ struct wlroots_server {
     struct wl_listener new_input;
     struct wl_listener new_virtual_pointer;
     struct wl_listener new_virtual_keyboard;
+
+    struct wl_listener new_xdg_surface;
+    struct wl_listener new_xwayland_surface;
 };
 
 struct wlroots_server *wlroots_server_from_server(struct server *server);
@@ -42,6 +45,8 @@ struct wlroots_server *wlroots_server_from_server(struct server *server);
 bool wlroots_input_init(struct wlroots_server *wlroots);
 
 bool wlroots_output_init(struct wlroots_server *wlroots);
+
+bool wlroots_shell_init(struct wlroots_server *wlroots);
 
 bool wlroots_server_init_seat(struct server *server, struct seat *seat);
 

@@ -89,6 +89,7 @@ static bool wlroots_server_init(struct server *server)
 
     wlroots_input_init(wlroots);
     wlroots_output_init(wlroots);
+    wlroots_shell_init(wlroots);
 
     return true;
 }

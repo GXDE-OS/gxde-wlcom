@@ -11,6 +11,7 @@
 #include "output.h"
 #include "plugin.h"
 #include "server.h"
+#include "view.h"
 
 static int handle_sigterm(int signal, void *data)
 {
@@ -43,6 +44,7 @@ bool server_init(struct server *server)
 
     output_manager_create(server);
     input_manager_create(server);
+    view_manager_create(server);
 
     plugin_manager_create(server);
 

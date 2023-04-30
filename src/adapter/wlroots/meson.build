@@ -30,11 +30,12 @@ adapter_resources = files(
     'input.c',
     'output.c',
     'seat.c',
+    'shell.c',
 )
 
 adapter_static = static_library(
     'adapter_static',
-    adapter_resources,
+    [adapter_resources, protocols_client_header['xdg-shell']],
     c_args: extra_flags,
     include_directories: wlcom_inc,
     dependencies : wlroots,

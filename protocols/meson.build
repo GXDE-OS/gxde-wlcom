@@ -2,6 +2,7 @@ wl_protocol_dir = wayland_protos.get_variable('pkgdatadir')
 wayland_scanner = find_program('wayland-scanner')
 
 protocols = {
+    'xdg-shell': wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
     'kde-output-device-v2': 'kde-output-device-v2.xml',
     'kde-output-management-v2' : 'kde-output-management-v2.xml',
     'kde-primary-output-v1': 'kde-primary-output-v1.xml',

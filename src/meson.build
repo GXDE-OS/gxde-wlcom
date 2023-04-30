@@ -26,6 +26,8 @@ wlcom_sources = files(
     'util/logger.c',
     'util/spawn.c',
     'util/md5.c',
+
+    'view/view.c',
 )
 
 wlcom_sources += files(
