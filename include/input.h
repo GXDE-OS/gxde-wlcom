@@ -358,10 +358,10 @@ void bindings_destroy(struct bindings *bindings);
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
 
 /**
- * output monitor for input cursor and config
+ * monitor for input cursor and others
  */
-struct output_monitor *output_monitor_create(struct input_manager *input_manager);
+struct input_monitor *input_monitor_create(struct input_manager *input_manager);
 
-void output_move_cursor_to_center(struct seat *seat, struct kywc_output *kywc_output);
+void cursor_move_to_output_center(struct seat *seat, struct kywc_output *kywc_output);
 
 #endif /* _INPUT_H_ */

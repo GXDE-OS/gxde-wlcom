@@ -59,7 +59,7 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
 
-    output_monitor_create(input_manager);
+    input_monitor_create(input_manager);
 
     input_manager_get_seat("seat0");
     input_manager_config_init(input_manager);
@@ -170,7 +170,7 @@ bool input_set_state(struct input *input, struct input_state *state)
             free(input->desired_mapped_output);
             input->desired_mapped_output = NULL;
 
-            output_move_cursor_to_center(input->seat, input->mapped_output);
+            cursor_move_to_output_center(input->seat, input->mapped_output);
         }
     }
 
