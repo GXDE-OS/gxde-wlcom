@@ -22,7 +22,7 @@ struct output_manager {
     struct wl_list outputs;
     char *primary_output_name;
     struct output_device *pending_primary;
-    bool running;
+    int32_t pending_configs;
 };
 
 struct output_device_state {
@@ -50,8 +50,6 @@ struct output_device {
     enum kde_output_device_v2_subpixel subpixel;
     uint32_t capabilities;
 
-    bool have_pending_dpms;
-    enum org_kde_kwin_dpms_mode pending_dpms_mode;
     struct output_device_state current, pending;
 
     uint32_t global_name;
@@ -67,6 +65,7 @@ struct output_device_mode {
 };
 
 struct output {
+    struct output_manager *manager;
     struct wl_output *wl_output;
     struct org_kde_kwin_dpms *dpms;
     struct wl_list link;
@@ -74,6 +73,9 @@ struct output {
     char *name, *model;
     bool support_dpms;
     enum org_kde_kwin_dpms_mode dpms_mode;
+
+    bool have_pending_dpms;
+    enum org_kde_kwin_dpms_mode pending_dpms_mode;
 
     uint32_t global_name;
     uint32_t version;
@@ -186,7 +188,7 @@ static void print_state(struct output_manager *output_manager)
         print_output_state(output_device);
     }
 
-    output_manager->running = false;
+    output_manager->pending_configs--;
 }
 
 static void output_config_applied(void *data,
@@ -194,7 +196,7 @@ static void output_config_applied(void *data,
 {
     struct output_manager *output_manager = data;
     kde_output_configuration_v2_destroy(kde_output_configuration_v2);
-    output_manager->running = false;
+    output_manager->pending_configs--;
 
     fprintf(stderr, "succeed to apply configuration\n");
 }
@@ -204,7 +206,7 @@ static void output_config_failed(void *data,
 {
     struct output_manager *output_manager = data;
     kde_output_configuration_v2_destroy(kde_output_configuration_v2);
-    output_manager->running = false;
+    output_manager->pending_configs--;
 
     fprintf(stderr, "failed to apply configuration\n");
 }
@@ -214,30 +216,13 @@ static const struct kde_output_configuration_v2_listener output_config_listener 
     .failed = output_config_failed,
 };
 
-static struct output *output_from_output_device(struct output_device *output_device)
-{
-    struct output_manager *output_manager = output_device->manager;
-
-    struct output *output;
-    wl_list_for_each(output, &output_manager->outputs, link) {
-        if (output->version >= WL_OUTPUT_NAME_SINCE_VERSION) {
-            if (!strcmp(output->name, output_device->name)) {
-                return output;
-            }
-        } else if (!strcmp(output->model, output_device->model)) {
-            return output;
-        }
-    }
-
-    return NULL;
-}
-
 static void apply_state(struct output_manager *output_manager)
 {
     struct kde_output_configuration_v2 *config =
         kde_output_management_v2_create_configuration(output_manager->management);
     kde_output_configuration_v2_add_listener(config, &output_config_listener, output_manager);
 
+    bool config_need_applied = false;
     struct output_device_state *current, *pending;
     struct output_device *output_device;
     wl_list_for_each(output_device, &output_manager->devices, link) {
@@ -245,47 +230,48 @@ static void apply_state(struct output_manager *output_manager)
         pending = &output_device->pending;
 
         if (current->enabled && !pending->enabled) {
+            config_need_applied = true;
             kde_output_configuration_v2_enable(config, output_device->device, false);
             continue;
         }
 
-        if (output_device->have_pending_dpms) {
-            struct output *output = output_from_output_device(output_device);
-            if (output && output->support_dpms &&
-                output->dpms_mode != output_device->pending_dpms_mode) {
-                org_kde_kwin_dpms_set(output->dpms, output_device->pending_dpms_mode);
-            }
-        }
-
         if (!current->enabled && pending->enabled) {
+            config_need_applied = true;
             kde_output_configuration_v2_enable(config, output_device->device, true);
         }
         if (current->mode != pending->mode) {
+            config_need_applied = true;
             kde_output_configuration_v2_mode(config, output_device->device, pending->mode->mode);
         }
         if (current->transform != pending->transform) {
+            config_need_applied = true;
             kde_output_configuration_v2_transform(config, output_device->device,
                                                   pending->transform);
         }
         if (current->x != pending->x || current->y != pending->y) {
+            config_need_applied = true;
             kde_output_configuration_v2_position(config, output_device->device, pending->x,
                                                  pending->y);
         }
         if (current->scale != pending->scale) {
+            config_need_applied = true;
             kde_output_configuration_v2_scale(config, output_device->device,
                                               wl_fixed_from_double(pending->scale));
         }
         if ((output_device->capabilities & KDE_OUTPUT_DEVICE_V2_CAPABILITY_OVERSCAN) &&
             current->overscan != pending->overscan) {
+            config_need_applied = true;
             kde_output_configuration_v2_overscan(config, output_device->device, pending->overscan);
         }
         if ((output_device->capabilities & KDE_OUTPUT_DEVICE_V2_CAPABILITY_VRR) &&
             current->vrr_policy != pending->vrr_policy) {
+            config_need_applied = true;
             kde_output_configuration_v2_set_vrr_policy(config, output_device->device,
                                                        pending->vrr_policy);
         }
         if ((output_device->capabilities & KDE_OUTPUT_DEVICE_V2_CAPABILITY_RGB_RANGE) &&
             current->rgb_range != pending->rgb_range) {
+            config_need_applied = true;
             kde_output_configuration_v2_set_rgb_range(config, output_device->device,
                                                       pending->rgb_range);
         }
@@ -296,11 +282,31 @@ static void apply_state(struct output_manager *output_manager)
         output_manager->pending_primary &&
         (!output_manager->primary_output_name || // primary output may be null
          strcmp(output_manager->primary_output_name, output_manager->pending_primary->name))) {
+        config_need_applied = true;
         kde_output_configuration_v2_set_primary_output(config,
                                                        output_manager->pending_primary->device);
     }
 
-    kde_output_configuration_v2_apply(config);
+    if (config_need_applied) {
+        kde_output_configuration_v2_apply(config);
+    }
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (!output->have_pending_dpms) {
+            continue;
+        }
+
+        if (output->dpms_mode != output->pending_dpms_mode) {
+            output_manager->pending_configs++;
+            org_kde_kwin_dpms_set(output->dpms, output->pending_dpms_mode);
+        }
+    }
+
+    if (!config_need_applied) {
+        output_manager->pending_configs--;
+        kde_output_configuration_v2_destroy(config);
+    }
 }
 
 static void output_device_mode_size(void *data,
@@ -574,7 +580,11 @@ static void output_dpms_mode(void *data, struct org_kde_kwin_dpms *org_kde_kwin_
 
 static void output_dpms_done(void *data, struct org_kde_kwin_dpms *org_kde_kwin_dpms)
 {
-    // This space intentionally left blank
+    struct output *output = data;
+
+    if (output->have_pending_dpms) {
+        output->manager->pending_configs--;
+    }
 }
 
 static const struct org_kde_kwin_dpms_listener output_dpms_listener = {
@@ -630,6 +640,7 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
             return;
         }
 
+        output->manager = output_manager;
         output->global_name = name;
         wl_list_insert(&output_manager->outputs, &output->link);
 
@@ -803,7 +814,8 @@ static void fixup_disabled_device(struct output_device *device)
     }
 }
 
-static bool parse_output_arg(struct output_device *device, const char *name, const char *value)
+static bool parse_output_arg(struct output_device *device, struct output *output, const char *name,
+                             const char *value)
 {
     if (strcmp(name, "on") == 0) {
         if (!device->current.enabled) {
@@ -926,15 +938,24 @@ static bool parse_output_arg(struct output_device *device, const char *name, con
     } else if (strcmp(name, "primary") == 0) {
         device->manager->pending_primary = device;
     } else if (strcmp(name, "dpms") == 0) {
+        if (!output) {
+            fprintf(stderr, "output %s is not found for dpms, skip\n", device->name);
+            return true;
+        }
+        if (!output->support_dpms) {
+            fprintf(stderr, "output %s is not support dpms, skip\n", device->name);
+            return true;
+        }
+
         if (strcmp(value, "on") == 0) {
-            device->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_ON;
+            output->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_ON;
         } else if (strcmp(value, "off") == 0) {
-            device->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_OFF;
+            output->pending_dpms_mode = ORG_KDE_KWIN_DPMS_MODE_OFF;
         } else {
             fprintf(stderr, "invalid dpms state: %s\n", value);
             return false;
         }
-        device->have_pending_dpms = true;
+        output->have_pending_dpms = true;
     } else {
         fprintf(stderr, "invalid option: %s\n", name);
         return false;
@@ -963,7 +984,7 @@ static const char usage[] =
 
 int main(int argc, char *argv[])
 {
-    struct output_manager manager = { .running = true };
+    struct output_manager manager = { .pending_configs = 1 };
     wl_list_init(&manager.devices);
     wl_list_init(&manager.outputs);
 
@@ -985,8 +1006,9 @@ int main(int argc, char *argv[])
 
     // XXX: make sure we have get all outputs
 
-    bool changed = false, monitor = false;
+    bool changed = false;
     struct output_device *current_device = NULL;
+    struct output *current_output = NULL;
     while (1) {
         int option_index = -1;
         int c = getopt_long(argc, argv, "h", long_options, &option_index);
@@ -1013,15 +1035,26 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "unknown output %s\n", value);
                 return EXIT_FAILURE;
             }
+
+            found = false;
+            wl_list_for_each(current_output, &manager.outputs, link) {
+                if (strcmp(current_output->name, value) == 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                current_output = NULL;
+            }
         } else if (strcmp(name, "monitor") == 0) {
-            monitor = true;
+            manager.pending_configs++;
         } else { // output sub-option
             if (current_device == NULL) {
                 fprintf(stderr, "no --output specified before --%s\n", name);
                 return EXIT_FAILURE;
             }
 
-            if (!parse_output_arg(current_device, name, value)) {
+            if (!parse_output_arg(current_device, current_output, name, value)) {
                 return EXIT_FAILURE;
             }
 
@@ -1035,7 +1068,7 @@ int main(int argc, char *argv[])
         print_state(&manager);
     }
 
-    while ((monitor || manager.running) && wl_display_dispatch(display) != -1) {
+    while (manager.pending_configs && wl_display_dispatch(display) != -1) {
         // This space intentionally left blank
     }
 
