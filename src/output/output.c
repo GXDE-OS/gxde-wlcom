@@ -259,6 +259,7 @@ void output_destroy(struct output *output)
 {
     struct kywc_output *kywc_output = &output->base;
 
+    kywc_output->destroying = true;
     wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
 
     wl_list_remove(&output->link);

@@ -63,7 +63,7 @@ static struct kywc_output *seat_pick_mapped_output(struct seat *seat)
 {
     struct input *input;
     wl_list_for_each(input, &seat->inputs, seat_link) {
-        if (input->mapped_output) {
+        if (input->mapped_output && !input->mapped_output->destroying) {
             return input->mapped_output;
         }
     }
