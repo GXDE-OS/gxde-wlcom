@@ -71,12 +71,18 @@ static struct kywc_output *seat_pick_mapped_output(struct seat *seat)
     return NULL;
 }
 
-static void output_rebase_cursor(struct input_monitor *input_monitor, float scale)
+static void output_rebase_cursor(struct input_monitor *input_monitor, float scale, bool move)
 {
-
     struct seat *seat;
     wl_list_for_each(seat, &input_monitor->input_manager->seats, link) {
-        seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
+        if (scale != 0.0) {
+            seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
+        }
+
+        if (!move) {
+            continue;
+        }
+
         /* prefer to move cursor to mapped output */
         struct kywc_output *output = seat_pick_mapped_output(seat);
         output = output ? output : input_monitor->primary;
@@ -101,7 +107,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
         cursor_output->monitor->primary = NULL;
     }
 
-    output_rebase_cursor(cursor_output->monitor, 1.0);
+    output_rebase_cursor(cursor_output->monitor, 0.0, true);
 
     free(cursor_output);
 }
@@ -111,7 +117,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, on);
     struct kywc_output *kywc_output = cursor_output->ouput;
 
-    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale);
+    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale, true);
     input_restore_mapped_output(cursor_output->monitor, kywc_output);
 }
 
@@ -120,7 +126,9 @@ static void handle_output_power(struct wl_listener *listener, void *data)
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, power);
     struct kywc_output *kywc_output = cursor_output->ouput;
 
-    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale);
+    if (kywc_output->state.power) {
+        output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale, false);
+    }
 }
 
 static void handle_output_scale(struct wl_listener *listener, void *data)
@@ -128,7 +136,7 @@ static void handle_output_scale(struct wl_listener *listener, void *data)
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, scale);
     struct kywc_output *kywc_output = cursor_output->ouput;
 
-    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale);
+    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale, true);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
@@ -158,7 +166,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
         return;
     }
 
-    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale);
+    output_rebase_cursor(cursor_output->monitor, kywc_output->state.scale, true);
     input_restore_mapped_output(cursor_output->monitor, kywc_output);
 }
 
@@ -173,7 +181,7 @@ static void handle_primary_output(struct wl_listener *listener, void *data)
 static void handle_configured(struct wl_listener *listener, void *data)
 {
     struct input_monitor *input_monitor = wl_container_of(listener, input_monitor, configured);
-    output_rebase_cursor(input_monitor, 1.0);
+    output_rebase_cursor(input_monitor, 0.0, true);
 }
 
 static void handle_new_seat(struct wl_listener *listener, void *data)
