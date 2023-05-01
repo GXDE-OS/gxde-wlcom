@@ -895,24 +895,25 @@ bool kde_output_management_create(struct server *server)
     management->primary_output.global =
         wl_global_create(server->display, &kde_primary_output_v1_interface,
                          KDE_PRIMARY_OUTPUT_VERSION, management, kde_primary_output_bind);
-    if (!management->primary_output.global) {
-        /* no primary output support */
-        return true;
+    if (management->primary_output.global) {
+        wl_list_init(&management->primary_output.resources);
+        /* listener primary_output signal */
+        management->primary_output.primary_output.notify =
+            kde_output_management_handle_primary_output;
+        kywc_output_add_primary_listener(&management->primary_output.primary_output);
+    } else {
+        kywc_log(KYWC_WARN, "%s global create failed", kde_primary_output_v1_interface.name);
     }
-
-    wl_list_init(&management->primary_output.resources);
-    /* listener primary_output signal */
-    management->primary_output.primary_output.notify = kde_output_management_handle_primary_output;
-    kywc_output_add_primary_listener(&management->primary_output.primary_output);
 
     /* org_kde_kwin_dpms_manager suppport */
     management->dpms_manager.global =
         wl_global_create(server->display, &org_kde_kwin_dpms_manager_interface,
                          ORG_KDE_KWIN_DPMS_MANAGER_VERSION, management, kde_dpms_manager_bind);
-    if (!management->dpms_manager.global) {
-        return true;
+    if (management->dpms_manager.global) {
+        wl_list_init(&management->dpms_manager.resources);
+    } else {
+        kywc_log(KYWC_WARN, "%s global create failed", org_kde_kwin_dpms_manager_interface.name);
     }
-    wl_list_init(&management->dpms_manager.resources);
 
     return true;
 }
