@@ -256,6 +256,8 @@ struct seat_impl {
     void (*add_input)(struct seat *seat, struct input *input);
     void (*remove_input)(struct seat *seat, struct input *input);
 
+    bool (*has_resource)(struct seat *seat, struct wl_resource *resource);
+
     void (*set_caps)(struct seat *seat, uint32_t caps);
     void (*destroy)(struct seat *seat);
 };
@@ -313,6 +315,8 @@ void seat_remove_input(struct input *input);
 void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale, bool force);
 
 void seat_move_cursor(struct seat *seat, double x, double y, bool delta);
+
+struct seat *seat_from_resource(struct wl_resource *resource);
 
 /**
  * libinput helper functions

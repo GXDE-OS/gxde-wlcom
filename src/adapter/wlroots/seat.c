@@ -334,12 +334,24 @@ static void wlroots_seat_set_caps(struct seat *seat, uint32_t caps)
     wlr_seat_set_capabilities(wlr_seat, caps);
 }
 
+static bool wlroots_seat_has_resource(struct seat *seat, struct wl_resource *resource)
+{
+    struct wlr_seat_client *seat_client = wlr_seat_client_from_resource(resource);
+    if (!seat_client) {
+        return false;
+    }
+
+    return seat_client->seat == seat->data;
+}
+
 static const struct seat_impl wlroots_seat_impl = {
     .move_cursor = wlroots_seat_move_cursor,
     .set_cursor_image = wlroots_seat_set_cursor_image,
 
     .add_input = wlroots_seat_add_input,
     .remove_input = wlroots_seat_remove_input,
+
+    .has_resource = wlroots_seat_has_resource,
 
     .set_caps = wlroots_seat_set_caps,
     .destroy = wlroots_seat_destroy,

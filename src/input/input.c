@@ -59,11 +59,11 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
 
+    input_manager_config_init(input_manager);
     input_monitor_create(input_manager);
+    input_manager->bindings = bindings_create(input_manager);
 
     input_manager_get_seat("seat0");
-    input_manager_config_init(input_manager);
-    input_manager->bindings = bindings_create(input_manager);
 
     return input_manager;
 }
@@ -212,6 +212,18 @@ struct input *input_by_name(const char *name)
     wl_list_for_each(input, &input_manager->inputs, link) {
         if (!strcmp(input->name, name)) {
             return input;
+        }
+    }
+
+    return NULL;
+}
+
+struct seat *seat_from_resource(struct wl_resource *resource)
+{
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        if (seat->impl->has_resource(seat, resource)) {
+            return seat;
         }
     }
 
