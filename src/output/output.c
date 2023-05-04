@@ -255,15 +255,8 @@ void output_frame(struct output *output)
     output->impl->frame(output);
 }
 
-void output_destroy(struct output *output)
+static void fix_outputs(struct kywc_output *destroy_output)
 {
-    struct kywc_output *kywc_output = &output->base;
-
-    kywc_output->destroying = true;
-    wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
-
-    wl_list_remove(&output->link);
-
     bool have_enabled_output = false;
     struct output *output_tmp;
     wl_list_for_each(output_tmp, &output_manager->outputs, link) {
@@ -273,7 +266,7 @@ void output_destroy(struct output *output)
 
         have_enabled_output = true;
         /* fixup primary output if not fixed by destroy listeners */
-        if (kywc_output == output_manager->primary_output) {
+        if (destroy_output == output_manager->primary_output) {
             kywc_output_set_primary(&output_tmp->base);
         }
         break;
@@ -289,9 +282,8 @@ void output_destroy(struct output *output)
             state.lx = state.ly = 0;
             kywc_output_set_state(&output_tmp->base, &state);
 
-            // XXX: send primary before enable or not ?
             /* fixup primary with this output */
-            if (kywc_output == output_manager->primary_output) {
+            if (destroy_output == output_manager->primary_output) {
                 kywc_output_set_primary(&output_tmp->base);
             }
             break;
@@ -299,9 +291,22 @@ void output_destroy(struct output *output)
     }
 
     /* no output to fixup primary */
-    if (kywc_output == output_manager->primary_output) {
+    if (destroy_output == output_manager->primary_output) {
         kywc_output_set_primary(NULL);
     }
+}
+
+void output_destroy(struct output *output)
+{
+    struct kywc_output *kywc_output = &output->base;
+
+    kywc_output->destroying = true;
+    wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
+
+    wl_list_remove(&output->link);
+
+    /* fix primary and power on all output */
+    fix_outputs(kywc_output);
 
     struct kywc_output_mode *mode, *tmp_mode;
     wl_list_for_each_safe(mode, tmp_mode, &kywc_output->prop.modes, link) {
