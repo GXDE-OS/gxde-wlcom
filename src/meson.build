@@ -12,9 +12,10 @@ wlcom_sources = files(
     'input/binding.c',
     'input/config.c',
     'input/cursor.c',
+    'input/idle.c',
+    'input/input.c',
     'input/keyboard.c',
     'input/libinput.c',
-    'input/input.c',
     'input/monitor.c',
     'input/seat.c',
 

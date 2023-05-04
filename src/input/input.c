@@ -63,6 +63,7 @@ struct input_manager *input_manager_create(struct server *server)
     input_monitor_create(input_manager);
     input_manager->bindings = bindings_create(input_manager);
 
+    idle_manager_create(server);
     input_manager_get_seat("seat0");
 
     return input_manager;

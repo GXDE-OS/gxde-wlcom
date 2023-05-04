@@ -3,10 +3,12 @@ wayland_scanner = find_program('wayland-scanner')
 
 protocols = {
     'xdg-shell': wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
+    'ext-idle-notifier-v1': wl_protocol_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
     'kde-output-device-v2': 'kde-output-device-v2.xml',
     'kde-output-management-v2' : 'kde-output-management-v2.xml',
     'kde-primary-output-v1': 'kde-primary-output-v1.xml',
     'org-kde-kwin-dpms-manager': 'dpms.xml',
+    'org-kde-kwin-idle': 'idle.xml',
 }
 
 protos_src = []
