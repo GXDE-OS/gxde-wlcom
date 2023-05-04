@@ -222,7 +222,7 @@ static void xdg_view_handle_set_app_id(struct wl_listener *listener, void *data)
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, set_app_id);
     const char *app_id = xdg_view->wlr_xdg_surface->toplevel->app_id;
 
-    view_set_title(&xdg_view->view, app_id);
+    view_set_app_id(&xdg_view->view, app_id);
 }
 
 static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
