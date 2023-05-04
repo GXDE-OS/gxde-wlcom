@@ -97,9 +97,7 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
 
 void kywc_key_binding_destroy(struct key_binding *binding)
 {
-    if (!wl_list_empty(&binding->link)) {
-        wl_list_remove(&binding->link);
-    }
+    wl_list_remove(&binding->link);
 
     free(binding->keysyms);
     free(binding->keybind);
