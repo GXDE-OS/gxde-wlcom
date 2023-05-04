@@ -63,6 +63,8 @@ struct kde_output_config {
     struct kde_output_device *device;
     struct kywc_output_state pending;
     struct wl_list link;
+
+    struct wl_listener output_destroy;
 };
 
 struct kde_output_configs {
@@ -82,8 +84,18 @@ struct kde_output_device_client {
 
 static struct kde_output_management *management = NULL;
 
-static struct kde_output_config *configs_get_output_device(struct kde_output_configs *configs,
-                                                           struct kde_output_device *device)
+static void output_configure_handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct kde_output_config *config = wl_container_of(listener, config, output_destroy);
+
+    wl_list_remove(&config->output_destroy.link);
+    wl_list_remove(&config->link);
+
+    free(config);
+}
+
+static struct kde_output_config *get_output_device_config(struct kde_output_configs *configs,
+                                                          struct kde_output_device *device)
 {
     struct kde_output_config *config;
     wl_list_for_each(config, &configs->configs, link) {
@@ -101,39 +113,43 @@ static struct kde_output_config *configs_get_output_device(struct kde_output_con
     /* filter changes when apply */
     config->pending = device->kywc_output->state;
     wl_list_insert(&configs->configs, &config->link);
+
+    config->output_destroy.notify = output_configure_handle_output_destroy;
+    wl_signal_add(&device->kywc_output->events.destroy, &config->output_destroy);
+
     return config;
 }
 
 static void output_configure_handle_enable(struct wl_client *client, struct wl_resource *resource,
                                            struct wl_resource *outputdevice, int32_t enable)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            config->pending.enabled = config->pending.power = enable;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        config->pending.enabled = config->pending.power = enable;
     }
 }
 
 static void output_configure_handle_mode(struct wl_client *client, struct wl_resource *resource,
                                          struct wl_resource *outputdevice, struct wl_resource *mode)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            struct kywc_output_mode *output_mode = wl_resource_get_user_data(mode);
-            config->pending.width = output_mode->width;
-            config->pending.height = output_mode->height;
-            config->pending.refresh = output_mode->refresh;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        struct kywc_output_mode *output_mode = wl_resource_get_user_data(mode);
+        config->pending.width = output_mode->width;
+        config->pending.height = output_mode->height;
+        config->pending.refresh = output_mode->refresh;
     }
 }
 
@@ -141,47 +157,47 @@ static void output_configure_handle_transform(struct wl_client *client,
                                               struct wl_resource *resource,
                                               struct wl_resource *outputdevice, int32_t transform)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            config->pending.transform = transform;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        config->pending.transform = transform;
     }
 }
 
 static void output_configure_handle_position(struct wl_client *client, struct wl_resource *resource,
                                              struct wl_resource *outputdevice, int32_t x, int32_t y)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            config->pending.lx = x;
-            config->pending.ly = y;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        config->pending.lx = x;
+        config->pending.ly = y;
     }
 }
 
 static void output_configure_handle_scale(struct wl_client *client, struct wl_resource *resource,
                                           struct wl_resource *outputdevice, wl_fixed_t scale)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            float output_scale = wl_fixed_to_double(scale);
-            config->pending.scale = output_scale;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        float output_scale = wl_fixed_to_double(scale);
+        config->pending.scale = output_scale;
     }
 }
 
@@ -203,6 +219,12 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
 {
     struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kywc_output *primary_output = management->primary_output.current_primary;
+
+    if (wl_list_empty(&configs->configs) || !primary_output) {
+        kywc_log(KYWC_WARN, "configuration cannot be applied");
+        kde_output_configuration_v2_send_applied(resource);
+        return;
+    }
 
     /* primary output may be disabled, fixup it */
     bool need_fix_primary_output = !configs->pending_primary->state.enabled;
@@ -296,49 +318,49 @@ static void output_configure_handle_destroy(struct wl_client *client, struct wl_
 static void output_configure_handle_overscan(struct wl_client *client, struct wl_resource *resource,
                                              struct wl_resource *outputdevice, uint32_t overscan)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            kywc_log(KYWC_DEBUG, "configure output %s overscan to: %d",
-                     kod_client->output_device->kywc_output->name, overscan);
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        kywc_log(KYWC_DEBUG, "configure output %s overscan to: %d",
+                 kod_client->output_device->kywc_output->name, overscan);
     }
 }
 
 static void output_configure_set_vrr_policy(struct wl_client *client, struct wl_resource *resource,
                                             struct wl_resource *outputdevice, uint32_t policy)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            kywc_log(KYWC_DEBUG, "configure output %s vrr policy to: %d",
-                     kod_client->output_device->kywc_output->name, policy);
-            config->pending.vrr_policy = policy;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        kywc_log(KYWC_DEBUG, "configure output %s vrr policy to: %d",
+                 kod_client->output_device->kywc_output->name, policy);
+        config->pending.vrr_policy = policy;
     }
 }
 
 static void output_configure_set_rgb_range(struct wl_client *client, struct wl_resource *resource,
                                            struct wl_resource *outputdevice, uint32_t rgb_range)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        struct kde_output_config *config =
-            configs_get_output_device(configs, kod_client->output_device);
-        if (config) {
-            kywc_log(KYWC_DEBUG, "configure output %s rgb_range to: %d",
-                     kod_client->output_device->kywc_output->name, rgb_range);
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    struct kde_output_config *config = get_output_device_config(configs, kod_client->output_device);
+    if (config) {
+        kywc_log(KYWC_DEBUG, "configure output %s rgb_range to: %d",
+                 kod_client->output_device->kywc_output->name, rgb_range);
     }
 }
 
@@ -346,17 +368,18 @@ static void output_configure_set_primary_output(struct wl_client *client,
                                                 struct wl_resource *resource,
                                                 struct wl_resource *outputdevice)
 {
-    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(outputdevice);
+    if (!kod_client->output_device) {
+        return;
+    }
 
-    if (configs && kod_client && kod_client->output_device) {
-        kywc_log(KYWC_DEBUG, "configure primary output to: %s",
-                 kod_client->output_device->kywc_output->name);
+    kywc_log(KYWC_DEBUG, "configure primary output to: %s",
+             kod_client->output_device->kywc_output->name);
 
-        uint32_t version = wl_resource_get_version(resource);
-        if (version >= KDE_OUTPUT_CONFIGURATION_V2_SET_PRIMARY_OUTPUT_SINCE_VERSION) {
-            configs->pending_primary = kod_client->output_device->kywc_output;
-        }
+    struct kde_output_configs *configs = wl_resource_get_user_data(resource);
+    uint32_t version = wl_resource_get_version(resource);
+    if (version >= KDE_OUTPUT_CONFIGURATION_V2_SET_PRIMARY_OUTPUT_SINCE_VERSION) {
+        configs->pending_primary = kod_client->output_device->kywc_output;
     }
 }
 
@@ -380,6 +403,7 @@ static void kde_output_configs_handle_resource_destroy(struct wl_resource *resou
 
     struct kde_output_config *config, *config_tmp;
     wl_list_for_each_safe(config, config_tmp, &configs->configs, link) {
+        wl_list_remove(&config->output_destroy.link);
         wl_list_remove(&config->link);
         free(config);
     }
@@ -451,6 +475,7 @@ static void kde_output_management_handle_display_destory(struct wl_listener *lis
     wl_list_remove(&management->new_output.link);
 
     wl_global_destroy(management->global);
+
     if (management->primary_output.global) {
         wl_list_remove(&management->primary_output.primary_output.link);
         wl_global_destroy(management->primary_output.global);
@@ -498,8 +523,12 @@ static void kde_output_device_send_current_mode(struct kde_output_device_client 
 {
     struct kywc_output *kywc_output = kod_client->output_device->kywc_output;
 
+    /* only send if output is enabled */
+    if (!kywc_output->state.enabled) {
+        return;
+    }
+
     struct wl_resource *mode_resource;
-    // TODO: optimize this
     wl_list_for_each_reverse(mode_resource, &kod_client->mode_resources, link) {
         struct kywc_output_mode *mode = wl_resource_get_user_data(mode_resource);
         if (mode->width != kywc_output->state.width || mode->height != kywc_output->state.height ||
@@ -507,10 +536,7 @@ static void kde_output_device_send_current_mode(struct kde_output_device_client 
             continue;
         }
 
-        /* only send if output is enabled */
-        if (kywc_output->state.enabled) {
-            kde_output_device_v2_send_current_mode(kod_client->resource, mode_resource);
-        }
+        kde_output_device_v2_send_current_mode(kod_client->resource, mode_resource);
         break;
     }
 }
@@ -592,6 +618,20 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     wl_list_remove(&output_device->position.link);
     wl_list_remove(&output_device->destroy.link);
     wl_list_remove(&output_device->link);
+
+    struct kde_output_device_client *client, *client_tmp;
+    wl_list_for_each_safe(client, client_tmp, &output_device->clients, link) {
+        wl_list_remove(&client->link);
+        wl_list_init(&client->link);
+        client->output_device = NULL;
+    }
+
+    struct wl_resource *resource, *tmp;
+    wl_resource_for_each_safe(resource, tmp, &output_device->resources) {
+        wl_list_remove(wl_resource_get_link(resource));
+        wl_list_init(wl_resource_get_link(resource));
+        wl_resource_set_user_data(resource, NULL);
+    }
 
     /* global destroy when output destroy */
     kywc_global_destroy_safe(output_device->global);
@@ -769,6 +809,9 @@ static void kde_output_management_handle_primary_output(struct wl_listener *list
 static void kde_dpms_set(struct wl_client *client, struct wl_resource *resource, uint32_t mode)
 {
     struct kde_output_device *output_device = wl_resource_get_user_data(resource);
+    if (!output_device) {
+        return;
+    }
 
     /* dpms protocol uses wl_output, so output must be enabled */
     struct kywc_output_state state = output_device->kywc_output->state;
