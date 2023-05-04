@@ -175,13 +175,12 @@ static void wlroots_output_frame(struct output *output)
 {
     struct wlr_output *wlr_output = output->data;
 
-    if (!wlr_output_attach_render(wlr_output, NULL)) {
+    if (!wlr_output->needs_frame) {
+        kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
         return;
     }
 
-    if (!wlr_output->needs_frame) {
-        kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
-        wlr_output_rollback(wlr_output);
+    if (!wlr_output_attach_render(wlr_output, NULL)) {
         return;
     }
 
