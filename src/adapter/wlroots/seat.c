@@ -171,12 +171,11 @@ static void wlroots_seat_add_keyboard(struct seat *seat, struct input *input)
 {
     struct wlr_input_device *wlr_input = input->data;
     struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
-    struct wlr_keyboard *dst_keyboard;
+    struct wlr_keyboard *dst_keyboard = wlr_keyboard;
     struct keyboard *keyboard;
 
     /* virtual keyboard is not managed by group */
     if (input->prop.is_virtual) {
-        dst_keyboard = wlr_keyboard;
         goto create;
     }
 

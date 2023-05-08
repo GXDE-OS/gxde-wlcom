@@ -50,9 +50,9 @@ static void output_layout_get_layout(struct output_layout *output_layout, const 
     char md5_str[17];
     md5_to_string(output_layout->md5, 8, md5_str, sizeof(md5_str));
 
-    strncpy(layout, active_layout, 15);
+    memcpy(layout, active_layout, 15);
     layout[15] = ':';
-    strncpy(layout + 16, md5_str, 15);
+    memcpy(layout + 16, md5_str, 15);
     layout[31] = '\0';
 }
 
@@ -194,7 +194,7 @@ static void layout_manager_md5_to_uuid(uint8_t *md5, char *uuid)
 {
     char md5_str[17];
     md5_to_string(md5, 8, md5_str, sizeof(md5_str));
-    strncpy(uuid, md5_str, 15);
+    memcpy(uuid, md5_str, 15);
     uuid[15] = '\0';
 }
 

@@ -32,6 +32,10 @@ static void replace_unprintable(char *str)
 
 const char *kywc_identifier_generate(const char *format, ...)
 {
+    if (!format) {
+        return NULL;
+    }
+
     int len = 0;
     char *identifier = NULL;
     va_list args;
