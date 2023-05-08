@@ -31,6 +31,9 @@ bool server_init(struct server *server)
     server->display = wl_display_create();
     server->event_loop = wl_display_get_event_loop(server->display);
 
+    /* ignore SIGPIPE */
+    signal(SIGPIPE, SIG_IGN);
+
     server->sigint =
         wl_event_loop_add_signal(server->event_loop, SIGINT, handle_sigterm, server->display);
     server->sigterm =
