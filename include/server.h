@@ -13,6 +13,7 @@ struct server {
 
     struct {
         bool enable_xwayland;
+        bool log_to_file;
     } options;
 
     struct wl_signal destroy_list;

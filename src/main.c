@@ -38,9 +38,23 @@ static bool detect_suid(void)
     return true;
 }
 
+static void enable_debug_flag(struct server *server, const char *flag)
+{
+    if (strcmp(flag, "noxwayland") == 0) {
+        server->options.enable_xwayland = false;
+    } else if (strcmp(flag, "logtostdout") == 0) {
+        server->options.log_to_file = false;
+    } else {
+        printf("Unknown debug flag: %s", flag);
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    struct server server = { 0 };
+    struct server server = {
+        .options.enable_xwayland = true,
+        .options.log_to_file = true,
+    };
     bool enable_debug = false;
     bool enable_verbose = false;
 
@@ -60,7 +74,7 @@ int main(int argc, char *argv[])
             enable_debug = true;
             break;
         case 'D': // extended debug options
-            // enable_debug_flag(optarg);
+            enable_debug_flag(&server, optarg);
             break;
         case 'v': // version
             printf("kylin-wlcom version " KYWC_VERSION "\n");
@@ -86,7 +100,7 @@ int main(int argc, char *argv[])
     } else if (enable_verbose) {
         level = KYWC_INFO;
     }
-    logger_init(level, false);
+    logger_init(level, server.options.log_to_file);
 
     if (!server_init(&server)) {
         exit(EXIT_FAILURE);

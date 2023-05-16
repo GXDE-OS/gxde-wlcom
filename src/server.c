@@ -107,16 +107,19 @@ static bool wlroots_server_init(struct server *server)
     wlr_fractional_scale_manager_v1_create(server->display, 1);
 
 #if HAVE_XWAYLAND
-    server->xwayland = wlr_xwayland_create(server->display, server->compositor, true);
-    if (!server->xwayland) {
-        kywc_log(KYWC_ERROR, "cannot create xwayland server");
-        unsetenv("DISPLAY");
-    } else {
-        server->xwayland_ready.notify = handle_xwayland_ready;
-        wl_signal_add(&server->xwayland->events.ready, &server->xwayland_ready);
+    if (server->options.enable_xwayland) {
+        server->xwayland = wlr_xwayland_create(server->display, server->compositor, true);
+        if (!server->xwayland) {
+            kywc_log(KYWC_ERROR, "cannot create xwayland server");
+            unsetenv("DISPLAY");
+        } else {
+            server->xwayland_ready.notify = handle_xwayland_ready;
+            wl_signal_add(&server->xwayland->events.ready, &server->xwayland_ready);
 
-        setenv("DISPLAY", server->xwayland->display_name, true);
-        kywc_log(KYWC_INFO, "xwayland is running on display %s", server->xwayland->display_name);
+            setenv("DISPLAY", server->xwayland->display_name, true);
+            kywc_log(KYWC_INFO, "xwayland is running on display %s",
+                     server->xwayland->display_name);
+        }
     }
 #endif
 
