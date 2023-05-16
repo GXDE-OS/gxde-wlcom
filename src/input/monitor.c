@@ -31,7 +31,7 @@ struct input_monitor {
     struct wl_listener server_destroy;
 };
 
-void cursor_move_to_output_center(struct seat *seat, struct kywc_output *kywc_output)
+void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kywc_output)
 {
     int x, y, width, height;
 
@@ -39,8 +39,8 @@ void cursor_move_to_output_center(struct seat *seat, struct kywc_output *kywc_ou
     x = kywc_output->state.lx + width / 2;
     y = kywc_output->state.ly + height / 2;
 
-    seat_move_cursor(seat, x, y, false);
-    // kywc_log(KYWC_INFO, "move %s cursor to %s (%d, %d)", seat->name, kywc_output->name, x, y);
+    cursor_move(cursor, x, y, false);
+    // kywc_log(KYWC_INFO, "move %s cursor to %s conter", cursor->seat->name, kywc_output->name);
 }
 
 static void input_restore_mapped_output(struct input_monitor *input_monitor,
@@ -76,7 +76,7 @@ static void output_rebase_cursor(struct input_monitor *input_monitor, float scal
     struct seat *seat;
     wl_list_for_each(seat, &input_monitor->input_manager->seats, link) {
         if (scale != 0.0) {
-            seat_set_cursor_image(seat, CURSOR_DEFAULT, scale, true);
+            cursor_set_image(seat->cursor, CURSOR_DEFAULT, scale, true);
         }
 
         if (!move) {
@@ -87,7 +87,7 @@ static void output_rebase_cursor(struct input_monitor *input_monitor, float scal
         struct kywc_output *output = seat_pick_mapped_output(seat);
         output = output ? output : input_monitor->primary;
         if (output) {
-            cursor_move_to_output_center(seat, output);
+            cursor_move_to_output_center(seat->cursor, output);
         }
     }
 }
@@ -191,11 +191,11 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
 
     struct cursor_output *cursor_output;
     wl_list_for_each(cursor_output, &input_monitor->outputs, link) {
-        seat_set_cursor_image(seat, CURSOR_DEFAULT, cursor_output->ouput->state.scale, false);
+        cursor_set_image(seat->cursor, CURSOR_DEFAULT, cursor_output->ouput->state.scale, false);
         if (input_monitor->primary) {
-            cursor_move_to_output_center(seat, input_monitor->primary);
+            cursor_move_to_output_center(seat->cursor, input_monitor->primary);
         } else {
-            seat_move_cursor(seat, 0, 0, true);
+            cursor_move(seat->cursor, 0, 0, true);
         }
     }
 }

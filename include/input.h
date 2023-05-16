@@ -2,26 +2,7 @@
 #define _INPUT_H_
 
 #include <wayland-server-core.h>
-
-enum kywc_input_device_type {
-    KYWC_INPUT_DEVICE_KEYBOARD,
-    KYWC_INPUT_DEVICE_POINTER,
-    KYWC_INPUT_DEVICE_TOUCH,
-    KYWC_INPUT_DEVICE_TABLET_TOOL,
-    KYWC_INPUT_DEVICE_TABLET_PAD,
-    KYWC_INPUT_DEVICE_SWITCH,
-};
-
-enum kywc_keyboard_modifier {
-    KYWC_MODIFIER_SHIFT = 1 << 0,
-    KYWC_MODIFIER_CAPS = 1 << 1,
-    KYWC_MODIFIER_CTRL = 1 << 2,
-    KYWC_MODIFIER_ALT = 1 << 3,
-    KYWC_MODIFIER_MOD2 = 1 << 4,
-    KYWC_MODIFIER_MOD3 = 1 << 5,
-    KYWC_MODIFIER_LOGO = 1 << 6,
-    KYWC_MODIFIER_MOD5 = 1 << 7,
-};
+#include <wlr/types/wlr_input_device.h>
 
 struct server;
 
@@ -72,7 +53,7 @@ struct input_state {
 };
 
 struct input_prop {
-    enum kywc_input_device_type type;
+    enum wlr_input_device_type type;
     unsigned int vendor, product;
 
     bool support_mapped_to_output;
@@ -109,6 +90,7 @@ struct input_prop {
 };
 
 struct input {
+    struct wlr_input_device *wlr_input;
     struct wl_list link;
 
     const char *name;
@@ -133,16 +115,7 @@ struct input {
         struct wl_signal destroy;
     } events;
 
-    /* adapter */
     struct wl_listener destroy;
-    const struct input_impl *impl;
-    void *data;
-};
-
-struct input_impl {
-    void (*get_prop)(struct input *input, struct input_prop *prop);
-    void (*get_state)(struct input *input, struct input_state *state);
-    bool (*set_state)(struct input *output, struct input_state *state);
 };
 
 enum cursor_name {
@@ -160,6 +133,8 @@ enum cursor_name {
 };
 
 struct cursor {
+    struct wlr_cursor *wlr_cursor;
+    struct wlr_xcursor_manager *xcursor_manager;
     struct seat *seat;
 
     struct wl_listener motion;
@@ -199,8 +174,6 @@ struct cursor {
     /* current hover position in surface coord */
     double sx, sy;
     double lx, ly;
-
-    void *data;
 };
 
 #define MAX_PRESSED_KEY 10
@@ -215,6 +188,8 @@ struct keyboard_state {
 };
 
 struct keyboard {
+    struct wlr_keyboard *wlr_keyboard;
+
     struct wl_list link;
     struct seat *seat;
 
@@ -223,11 +198,10 @@ struct keyboard {
 
     bool is_virtual;
     struct keyboard_state state;
-
-    void *data;
 };
 
 struct seat {
+    struct wlr_seat *wlr_seat;
     char *name;
     struct wl_list link;
 
@@ -240,26 +214,13 @@ struct seat {
     struct cursor *cursor;
     struct wl_list keyboards;
 
+    struct wlr_output_layout *layout;
+
     struct {
         struct wl_signal destroy;
     } events;
 
     struct wl_listener destroy;
-    const struct seat_impl *impl;
-    void *data;
-};
-
-struct seat_impl {
-    void (*move_cursor)(struct seat *seat, double x, double y, bool delta);
-    void (*set_cursor_image)(struct seat *seat, enum cursor_name name, float scale);
-
-    void (*add_input)(struct seat *seat, struct input *input);
-    void (*remove_input)(struct seat *seat, struct input *input);
-
-    bool (*has_resource)(struct seat *seat, struct wl_resource *resource);
-
-    void (*set_caps)(struct seat *seat, uint32_t caps);
-    void (*destroy)(struct seat *seat);
 };
 
 struct input_manager {
@@ -273,9 +234,12 @@ struct input_manager {
         struct wl_signal new_seat;
     } events;
 
+    struct config *config;
     struct bindings *bindings;
 
-    struct config *config;
+    struct wl_listener new_input;
+    struct wl_listener new_virtual_pointer;
+    struct wl_listener new_virtual_keyboard;
     struct wl_listener server_destroy;
 };
 
@@ -284,10 +248,6 @@ struct input_manager *input_manager_create(struct server *server);
 bool input_manager_config_init(struct input_manager *input_manager);
 
 void input_add_new_listener(struct wl_listener *listener);
-
-struct input *input_create(const char *name, const struct input_impl *impl, void *data);
-
-void input_destroy(struct input *input);
 
 bool input_set_state(struct input *input, struct input_state *state);
 
@@ -312,10 +272,6 @@ void seat_add_input(struct seat *seat, struct input *input);
 
 void seat_remove_input(struct input *input);
 
-void seat_set_cursor_image(struct seat *seat, enum cursor_name name, float scale, bool force);
-
-void seat_move_cursor(struct seat *seat, double x, double y, bool delta);
-
 struct seat *seat_from_resource(struct wl_resource *resource);
 
 /**
@@ -330,26 +286,31 @@ bool libinput_set_state(struct input *input, struct input_state *state);
 /**
  * cursor
  */
+struct cursor *cursor_create(struct seat *seat);
 
-const char *cursor_image_by_name(enum cursor_name name);
+void curosr_add_input(struct seat *seat, struct input *input);
 
-void cursor_feed_motion(struct cursor *cursor, double lx, double ly, uint32_t time);
+void cursor_remove_input(struct input *input);
 
-void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time);
+void cursor_destroy(struct cursor *cursor);
+
+void cursor_set_image(struct cursor *cursor, enum cursor_name name, float scale, bool force);
+
+void cursor_move(struct cursor *cursor, double x, double y, bool delta);
 
 /**
  * keyboard
  */
 
+void keyboard_destroy(struct keyboard *keyboard);
+
+void keyboard_add_input(struct seat *seat, struct input *input);
+
+void keyboard_remove_input(struct input *input);
+
 uint32_t keyboard_get_modifier_mask_by_name(const char *name);
 
 const char *keyboard_get_modifier_name_by_mask(uint32_t modifier);
-
-void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
-                       uint32_t modifiers);
-
-void keyboard_feed_modifiers(struct keyboard *keyboard, uint32_t depressed, uint32_t latched,
-                             uint32_t locked, uint32_t group);
 
 /**
  * bindings
@@ -366,7 +327,7 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
  */
 struct input_monitor *input_monitor_create(struct input_manager *input_manager);
 
-void cursor_move_to_output_center(struct seat *seat, struct kywc_output *kywc_output);
+void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kywc_output);
 
 /**
  * idle manager

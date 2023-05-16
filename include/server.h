@@ -17,19 +17,18 @@ struct server {
 
     struct wl_signal destroy_list;
 
-    /* adapter server */
-    const struct server_impl *impl;
-    void *data;
-};
+    struct wlr_renderer *renderer;
+    struct wlr_allocator *allocator;
+    struct wlr_backend *backend;
+    struct wlr_session *session;
+    struct wlr_compositor *compositor;
 
-struct seat;
+    struct wlr_output_layout *layout;
 
-struct server_impl {
-    bool (*init)(struct server *server);
-    bool (*start)(struct server *server);
-    void (*finish)(struct server *server);
-
-    bool (*init_seat)(struct server *server, struct seat *seat);
+#if HAVE_XWAYLAND
+    struct wlr_xwayland *xwayland;
+    struct wl_listener xwayland_ready;
+#endif
 };
 
 bool server_init(struct server *server);

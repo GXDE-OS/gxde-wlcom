@@ -7,6 +7,7 @@ struct server;
 
 struct output {
     struct kywc_output base;
+    struct wlr_output *wlr_output;
 
     struct wl_list link;
     struct output_manager *manager;
@@ -19,20 +20,12 @@ struct output {
     struct wl_listener damage;
     struct wl_listener needs_frame;
     struct wl_listener destroy;
-    const struct output_impl *impl;
-    void *data;
-};
-
-struct output_impl {
-    void (*get_prop)(struct output *output, struct kywc_output_prop *prop);
-    void (*get_state)(struct output *output, struct kywc_output_state *state);
-    bool (*set_state)(struct output *output, struct kywc_output_state *state);
-    void (*frame)(struct output *output);
 };
 
 struct output_manager {
-    struct wl_list outputs;
+    struct server *server;
 
+    struct wl_list outputs;
     struct kywc_output *primary_output;
 
     struct {
@@ -42,6 +35,8 @@ struct output_manager {
     } events;
 
     struct config *config;
+
+    struct wl_listener new_output;
     struct wl_listener server_destroy;
 
     bool has_layout_manager;
@@ -55,13 +50,7 @@ void output_manager_add_configured_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);
 
-struct output *output_create(const char *name, const struct output_impl *impl, void *data);
-
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
-
-void output_destroy(struct output *output);
-
-void output_frame(struct output *output);
 
 bool output_read_config(struct output *output, struct kywc_output_state *state);
 

@@ -3,9 +3,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <wlr/backend.h>
+#include <wlr/render/allocator.h>
+#include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_export_dmabuf_v1.h>
+#include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_presentation_time.h>
+#include <wlr/types/wlr_screencopy_v1.h>
+#include <wlr/types/wlr_subcompositor.h>
+#include <wlr/types/wlr_viewporter.h>
+#include <wlr/util/log.h>
+#if HAVE_XWAYLAND
+#include <wlr/xwayland.h>
+#endif
+
 #include <kywc/log.h>
 
-#include "adapter.h"
 #include "config.h"
 #include "input.h"
 #include "output.h"
@@ -26,6 +41,88 @@ void server_add_destroy_listener(struct server *server, struct wl_listener *list
     wl_list_insert(&signal->listener_list, &listener->link);
 }
 
+static void kywc_log_callback(enum wlr_log_importance verbosity, const char *fmt, va_list args)
+{
+    /* switch wlr_log_importance to kywc_log_level */
+    enum kywc_log_level level = KYWC_WARN;
+    switch (verbosity) {
+    case WLR_SILENT:
+        level = KYWC_SILENT;
+        break;
+    case WLR_ERROR:
+        level = KYWC_ERROR;
+        break;
+    case WLR_INFO:
+        level = KYWC_INFO;
+        break;
+    case WLR_DEBUG:
+        level = KYWC_DEBUG;
+        break;
+    default:
+        break;
+    }
+    kywc_vlog(level, fmt, args);
+}
+
+#if HAVE_XWAYLAND
+static void handle_xwayland_ready(struct wl_listener *listener, void *data)
+{
+    struct server *server = wl_container_of(listener, server, xwayland_ready);
+}
+#endif
+
+static bool wlroots_server_init(struct server *server)
+{
+    /* verbosity is not used when we replaced log_callback */
+    wlr_log_init(WLR_DEBUG, kywc_log_callback);
+
+    server->backend = wlr_backend_autocreate(server->display, &server->session);
+    if (!server->backend) {
+        kywc_log(KYWC_ERROR, "unable to create backend");
+        return false;
+    }
+
+    server->renderer = wlr_renderer_autocreate(server->backend);
+    if (!server->renderer) {
+        kywc_log(KYWC_ERROR, "unable to create renderer");
+        return false;
+    }
+
+    server->allocator = wlr_allocator_autocreate(server->backend, server->renderer);
+    if (!server->allocator) {
+        kywc_log(KYWC_ERROR, "unable to create allocator");
+        return false;
+    }
+
+    server->compositor = wlr_compositor_create(server->display, 5, NULL);
+    wlr_subcompositor_create(server->display);
+    wlr_renderer_init_wl_display(server->renderer, server->display);
+
+    server->layout = wlr_output_layout_create();
+
+    wlr_presentation_create(server->display, server->backend);
+    wlr_screencopy_manager_v1_create(server->display);
+    wlr_export_dmabuf_manager_v1_create(server->display);
+    wlr_viewporter_create(server->display);
+    wlr_fractional_scale_manager_v1_create(server->display, 1);
+
+#if HAVE_XWAYLAND
+    server->xwayland = wlr_xwayland_create(server->display, server->compositor, true);
+    if (!server->xwayland) {
+        kywc_log(KYWC_ERROR, "cannot create xwayland server");
+        unsetenv("DISPLAY");
+    } else {
+        server->xwayland_ready.notify = handle_xwayland_ready;
+        wl_signal_add(&server->xwayland->events.ready, &server->xwayland_ready);
+
+        setenv("DISPLAY", server->xwayland->display_name, true);
+        kywc_log(KYWC_INFO, "xwayland is running on display %s", server->xwayland->display_name);
+    }
+#endif
+
+    return true;
+}
+
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
@@ -43,7 +140,9 @@ bool server_init(struct server *server)
 
     config_manager_create(server);
 
-    adapter_init(server);
+    if (!wlroots_server_init(server)) {
+        return false;
+    }
 
     output_manager_create(server);
     input_manager_create(server);
@@ -70,7 +169,10 @@ bool server_start(struct server *server)
         kywc_log(KYWC_DEBUG, "WAYLAND_DISPLAY=%s", socket);
     }
 
-    adapter_start(server);
+    if (!wlr_backend_start(server->backend)) {
+        kywc_log(KYWC_ERROR, "unable to start the wlroots backend");
+        return false;
+    }
 
     wl_display_run(server->display);
     return true;
@@ -83,7 +185,9 @@ void server_finish(struct server *server)
     wl_display_destroy_clients(server->display);
 
     wl_display_destroy(server->display);
-    adapter_finish(server);
+    wlr_output_layout_destroy(server->layout);
+    wlr_allocator_destroy(server->allocator);
+    wlr_renderer_destroy(server->renderer);
 
     wl_signal_emit(&server->destroy_list, server);
 

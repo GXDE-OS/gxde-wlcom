@@ -2,7 +2,7 @@ project(
     'kylin-wayland-compositor',
     'c',
     # license: 'GPL-2.0-only',
-    version: '0.1.0',
+    version: '0.2.0',
     default_options: [
         'b_ndebug=if-release',
         'c_std=c11',
@@ -41,6 +41,32 @@ if git.found()
 endif
 add_project_arguments('-DKYWC_VERSION=@0@'.format(version), language: 'c')
 
+wlroots_version = ['>=0.17.0']
+wlroots_proj = subproject(
+    'wlroots',
+    default_options: ['default_library=static', 'examples=false'],
+    required: false,
+    version: wlroots_version,
+)
+add_project_arguments('-DWLR_USE_UNSTABLE', language: 'c')
+
+if wlroots_proj.found()
+    wlroots = wlroots_proj.get_variable('wlroots')
+    wlroots_conf = wlroots_proj.get_variable('conf_data')
+    wlroots_has_xwayland = wlroots_conf.get('WLR_HAS_XWAYLAND') == 1
+else
+    wlroots = dependency('wlroots', version: wlroots_version)
+    wlroots = dependency('wlroots')
+    wlroots_has_xwayland = cc.get_define('WLR_HAS_XWAYLAND',
+        prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
+endif
+
+xcb = dependency('xcb')
+have_xwayland = xcb.found() and wlroots_has_xwayland
+if have_xwayland
+    add_project_arguments('-DHAVE_XWAYLAND=1', language: 'c')
+endif
+
 wayland_server = dependency('wayland-server', version: '>=1.19.0')
 wayland_protos = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')
@@ -70,19 +96,10 @@ if get_option('examples')
 endif
 
 wlcom_deps = [
-    wayland_server,
-    wayland_protos,
-    server_protos,
-    xkbcommon,
-    drm,
-    input,
-    pixman,
-    math,
-    jsonc,
-    systemd,
-    uuid,
-    dl,
-    adapter,
+    wayland_server, wayland_protos, server_protos,
+    wlroots, xkbcommon, drm, input,
+    pixman, math, jsonc,
+    systemd, uuid, dl,
     #widget,
 ]
 

@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
+
+#include <wlr/types/wlr_keyboard.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <kywc/binding.h>
@@ -80,7 +82,7 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
         xkb_keysym_t sym =
             xkb_keysym_to_lower(xkb_keysym_from_name(split_str[i], XKB_KEYSYM_CASE_INSENSITIVE));
         keysyms[binding->keysyms_len++] =
-            !(current_modifiers & (KYWC_MODIFIER_SHIFT | KYWC_MODIFIER_CAPS)) ? sym : sym - 32;
+            !(current_modifiers & (WLR_MODIFIER_SHIFT | WLR_MODIFIER_CAPS)) ? sym : sym - 32;
     }
     free_split_string(&split_str, lenth);
 

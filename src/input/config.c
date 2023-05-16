@@ -8,9 +8,9 @@ static const char *service_path = "/com/kylin/Wlcom/Input";
 static const char *service_interface = "com.kylin.Wlcom.Input";
 
 static const char *input_type_map[] = {
-    [KYWC_INPUT_DEVICE_KEYBOARD] = "keyboard",    [KYWC_INPUT_DEVICE_POINTER] = "pointer",
-    [KYWC_INPUT_DEVICE_TOUCH] = "touch",          [KYWC_INPUT_DEVICE_TABLET_TOOL] = "table-tool",
-    [KYWC_INPUT_DEVICE_TABLET_PAD] = "table-pad", [KYWC_INPUT_DEVICE_SWITCH] = "switch",
+    [WLR_INPUT_DEVICE_KEYBOARD] = "keyboard",    [WLR_INPUT_DEVICE_POINTER] = "pointer",
+    [WLR_INPUT_DEVICE_TOUCH] = "touch",          [WLR_INPUT_DEVICE_TABLET_TOOL] = "table-tool",
+    [WLR_INPUT_DEVICE_TABLET_PAD] = "table-pad", [WLR_INPUT_DEVICE_SWITCH] = "switch",
 };
 
 void input_prop_and_state_debug(struct input *input)
@@ -309,7 +309,7 @@ static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
         return sd_bus_reply_method_error(m, &error);
     }
 
-    if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD &&
+    if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD &&
         (input->state.repeat_rate != rate || input->state.repeat_delay != delay)) {
         struct input_state state = input->state;
         state.repeat_rate = rate;
@@ -450,7 +450,7 @@ bool input_read_config(struct input *input, struct input_state *state)
         }
     }
 
-    if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
+    if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         if (json_object_object_get_ex(config, "repeat_delay", &data)) {
             state->repeat_delay = json_object_get_int(data);
         }
@@ -561,7 +561,7 @@ void input_write_config(struct input *input)
 
     // TODO: rotation angle
 
-    if (input->prop.type == KYWC_INPUT_DEVICE_KEYBOARD) {
+    if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         json_object_object_add(config, "repeat_delay", json_object_new_int(state->repeat_delay));
         json_object_object_add(config, "repeat_rate", json_object_new_int(state->repeat_rate));
     }

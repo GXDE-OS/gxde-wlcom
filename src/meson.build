@@ -35,6 +35,4 @@ wlcom_sources += files(
     'output/kde_output.c',
 )
 
-subdir('adapter')
-
 #subdir('widget')
