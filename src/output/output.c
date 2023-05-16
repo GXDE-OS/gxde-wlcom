@@ -453,25 +453,26 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 {
     struct wlr_output *wlr_output = output->wlr_output;
     struct server *server = output_manager->server;
-    struct wlr_output_mode *best = NULL;
-
-    if (state->width <= 0 || state->height <= 0) {
-        kywc_log(KYWC_INFO, "set preferred mode as no config found");
-        best = wlr_output_preferred_mode(wlr_output);
-    } else {
-        output_find_best_mode(wlr_output, state->width, state->height, state->refresh, &best);
-    }
 
     bool enabled = state->enabled && state->power;
     wlr_output_enable(wlr_output, enabled);
 
     if (enabled) {
+        struct wlr_output_mode *best = NULL;
+        if (state->width <= 0 || state->height <= 0) {
+            kywc_log(KYWC_INFO, "set preferred mode as no config found");
+            best = wlr_output_preferred_mode(wlr_output);
+        } else {
+            output_find_best_mode(wlr_output, state->width, state->height, state->refresh, &best);
+        }
+
         if (best) {
             wlr_output_set_mode(wlr_output, best);
         } else {
             wlr_output_set_custom_mode(wlr_output, state->width, state->height, state->refresh);
         }
         output_ensure_mode(wlr_output, best);
+
         wlr_output_set_transform(wlr_output, state->transform);
         wlr_output_set_scale(wlr_output, state->scale);
     }
