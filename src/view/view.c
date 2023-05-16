@@ -22,11 +22,14 @@ struct view_manager *view_manager_create(struct server *server)
         return NULL;
     }
 
+    view_manager->server = server;
     wl_list_init(&view_manager->workspaces);
     wl_signal_init(&view_manager->events.new_view);
 
     view_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &view_manager->server_destroy);
+
+    xdg_shell_init(view_manager);
 
     return view_manager;
 }
@@ -82,6 +85,20 @@ void view_set_app_id(struct view *view, const char *app_id)
     wl_signal_emit(&kywc_view->events.app_id, kywc_view);
 }
 
+void view_set_decoration(struct view *view, bool need_ssd)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    if (kywc_view->need_ssd == need_ssd) {
+        return;
+    }
+
+    kywc_view->need_ssd = need_ssd;
+    kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, need_ssd);
+
+    wl_signal_emit(&kywc_view->events.decoration, kywc_view);
+}
+
 void view_set_parent(struct view *view, struct view *parent)
 {
     struct view *old_parent = view->parent;
@@ -116,6 +133,8 @@ void view_map(struct view *view)
 void view_unmap(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
+
+    kywc_view->title = kywc_view->app_id = NULL;
 
     wl_signal_emit_mutable(&kywc_view->events.unmap, kywc_view);
 }

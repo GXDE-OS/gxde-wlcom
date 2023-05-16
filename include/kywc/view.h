@@ -14,15 +14,6 @@
 
 struct kywc_output;
 
-enum kywc_deco_policy {
-    /* depend on client request */
-    KYWC_DECO_PREFER_AUTO,
-    /* prefer to use CSD */
-    KYWC_DECO_PREFER_CLIENT,
-    /* prefer to use SSD */
-    KYWC_DECO_PREFER_SERVER,
-};
-
 enum kywc_view_type {
     /* internal ui: menu, switcher ... */
     KYWC_VIEW_INTERNAL,
@@ -44,7 +35,6 @@ enum kywc_edges {
 
 struct kywc_view {
     enum kywc_view_type type;
-    enum kywc_deco_policy deco_policy;
 
     /* current geometry in global layout */
     struct {
@@ -64,6 +54,9 @@ struct kywc_view {
     /* minimize size client set or default */
     int32_t min_width, min_height;
     int32_t max_width, max_height;
+
+    bool need_ssd;
+    bool need_drop_shadow;
 
     /* have a buffer attached and can shown in screen */
     bool mapped;
@@ -112,6 +105,8 @@ struct kywc_view {
 
         /* emit when view's decoration mode has changed */
         struct wl_signal decoration;
+        /* emit when view's drop-shadow mode has changed */
+        struct wl_signal shadow;
     } events;
 };
 

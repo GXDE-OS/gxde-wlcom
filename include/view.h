@@ -41,6 +41,7 @@ struct workspace {
 };
 
 struct view_manager {
+    struct server *server;
     struct wl_list views;
 
     struct {
@@ -56,6 +57,12 @@ struct view_manager {
     /* only one activated view in all workspaces at once */
     struct view *activated_view;
 
+    struct wl_listener new_xdg_surface;
+    struct wl_listener new_xwayland_surface;
+    struct wl_listener new_layer_surface;
+    struct wl_listener xdg_toplevel_decoration;
+    struct wl_listener server_decoration;
+
     struct wl_listener server_destroy;
 };
 
@@ -69,6 +76,8 @@ void view_set_title(struct view *view, const char *title);
 
 void view_set_app_id(struct view *view, const char *app_id);
 
+void view_set_decoration(struct view *view, bool need_ssd);
+
 void view_set_parent(struct view *view, struct view *parent);
 
 void view_map(struct view *view);
@@ -76,5 +85,7 @@ void view_map(struct view *view);
 void view_unmap(struct view *view);
 
 void view_commit(struct view *view);
+
+bool xdg_shell_init(struct view_manager *view_manager);
 
 #endif /* __VIEW_H_ */

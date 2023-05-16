@@ -25,6 +25,7 @@ wlcom_sources = files(
     'util/md5.c',
 
     'view/view.c',
+    'view/xdg.c',
 )
 
 subdir('output')
