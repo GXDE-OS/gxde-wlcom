@@ -220,9 +220,9 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
     struct kde_output_configs *configs = wl_resource_get_user_data(resource);
     struct kywc_output *primary_output = management->primary_output.current_primary;
 
-    if (wl_list_empty(&configs->configs) || !primary_output) {
+    if (wl_list_empty(&management->output_devices) || !primary_output) {
         kywc_log(KYWC_WARN, "configuration cannot be applied");
-        kde_output_configuration_v2_send_applied(resource);
+        kde_output_configuration_v2_send_failed(resource);
         return;
     }
 

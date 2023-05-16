@@ -5,10 +5,6 @@ wlcom_sources = files(
     'config/common.c',
     'config/config.c',
 
-    'output/config.c',
-    'output/output.c',
-    'output/layout.c',
-
     'input/binding.c',
     'input/config.c',
     'input/cursor.c',
@@ -31,8 +27,5 @@ wlcom_sources = files(
     'view/view.c',
 )
 
-wlcom_sources += files(
-    'output/kde_output.c',
-)
-
+subdir('output')
 #subdir('widget')

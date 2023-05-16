@@ -9,6 +9,7 @@ protocols = {
     'kde-primary-output-v1': 'kde-primary-output-v1.xml',
     'org-kde-kwin-dpms-manager': 'dpms.xml',
     'org-kde-kwin-idle': 'idle.xml',
+    'zwlr_output_power_manager_v1': 'wlr-output-power-management-unstable-v1.xml',
 }
 
 protos_src = []

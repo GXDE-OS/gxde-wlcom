@@ -1,0 +1,276 @@
+#include <stdlib.h>
+
+#include <wlr/types/wlr_output_management_v1.h>
+#include <wlr/types/wlr_output_power_management_v1.h>
+
+#include "output_p.h"
+
+struct wlr_output_management {
+    struct wlr_output_manager_v1 *output_manager;
+    struct wl_listener output_apply;
+
+    struct wlr_output_power_manager_v1 *power_manager;
+    struct wl_listener power_set_mode;
+
+    struct wl_list heads;
+    struct kywc_output *current_primary;
+
+    struct wl_listener new_output;
+    struct wl_listener primary_output;
+    struct wl_listener configured;
+
+    struct wl_listener display_destroy;
+    struct wl_listener server_destroy;
+};
+
+struct output_head {
+    struct kywc_output *kywc_output;
+    struct wl_list link;
+    struct wl_listener destroy;
+};
+
+static struct wlr_output_management *management = NULL;
+
+static void handle_server_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&management->server_destroy.link);
+
+    free(management);
+    management = NULL;
+}
+
+static void handle_display_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&management->display_destroy.link);
+    wl_list_remove(&management->new_output.link);
+    wl_list_remove(&management->primary_output.link);
+    wl_list_remove(&management->configured.link);
+}
+
+static void manager_update_configuration(void)
+{
+    struct wlr_output_configuration_v1 *config = wlr_output_configuration_v1_create();
+
+    struct output_head *head;
+    wl_list_for_each(head, &management->heads, link) {
+        struct wlr_output *wlr_output = output_from_kywc_output(head->kywc_output)->wlr_output;
+        if (head->kywc_output->destroying) {
+            continue;
+        }
+        struct wlr_output_configuration_head_v1 *head_v1 =
+            wlr_output_configuration_head_v1_create(config, wlr_output);
+        head_v1->state.enabled = head->kywc_output->state.enabled;
+        head_v1->state.x = head->kywc_output->state.lx;
+        head_v1->state.y = head->kywc_output->state.ly;
+    }
+    wlr_output_manager_v1_set_configuration(management->output_manager, config);
+}
+
+static void handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct output_head *head = wl_container_of(listener, head, destroy);
+
+    wl_list_remove(&head->destroy.link);
+    wl_list_remove(&head->link);
+
+    free(head);
+}
+
+static void handle_new_output(struct wl_listener *listener, void *data)
+{
+    struct output_head *head = calloc(1, sizeof(struct output_head));
+    if (!head) {
+        return;
+    }
+
+    struct kywc_output *kywc_output = data;
+    head->kywc_output = kywc_output;
+    wl_list_insert(&management->heads, &head->link);
+
+    head->destroy.notify = handle_output_destroy;
+    wl_signal_add(&kywc_output->events.destroy, &head->destroy);
+
+    manager_update_configuration();
+}
+
+static void handle_primary_output(struct wl_listener *listener, void *data)
+{
+    struct kywc_output *kywc_output = data;
+    management->current_primary = kywc_output;
+}
+
+static void handle_configured(struct wl_listener *listener, void *data)
+{
+    manager_update_configuration();
+}
+
+static struct wlr_output_configuration_head_v1 *
+output_config(struct wlr_output *wlr_output, const struct wlr_output_configuration_v1 *config)
+{
+    struct wlr_output_configuration_head_v1 *head_v1;
+    wl_list_for_each(head_v1, &config->heads, link) {
+        if (head_v1->state.output == wlr_output) {
+            return head_v1;
+        }
+    }
+
+    return NULL;
+}
+
+static bool output_apply(struct wlr_output_configuration_head_v1 *head_v1)
+{
+    struct output *output = head_v1->state.output->data;
+    struct kywc_output_state pending = output->base.state;
+
+    pending.enabled = pending.power = head_v1->state.enabled;
+    if (head_v1->state.mode) {
+        pending.width = head_v1->state.mode->width;
+        pending.height = head_v1->state.mode->height;
+        pending.refresh = head_v1->state.mode->refresh;
+    } else {
+        pending.width = head_v1->state.custom_mode.width;
+        pending.height = head_v1->state.custom_mode.height;
+        pending.refresh = head_v1->state.custom_mode.refresh;
+    }
+    pending.scale = head_v1->state.scale;
+    pending.transform = head_v1->state.transform;
+    pending.lx = head_v1->state.x;
+    pending.ly = head_v1->state.y;
+    pending.vrr_policy = head_v1->state.adaptive_sync_enabled;
+
+    return kywc_output_set_state(&output->base, &pending);
+}
+
+static void handle_output_apply(struct wl_listener *listener, void *data)
+{
+    kywc_log(KYWC_DEBUG, "wlr output manager apply");
+    struct wlr_output_configuration_v1 *config = data;
+    struct kywc_output *primary_output = management->current_primary;
+
+    if (wl_list_empty(&management->heads) || !primary_output) {
+        kywc_log(KYWC_WARN, "configuration cannot be applied");
+        wlr_output_configuration_v1_send_failed(config);
+        wlr_output_configuration_v1_destroy(config);
+        return;
+    }
+
+    /* primary output may be disabled, fixup it */
+    bool need_fix_primary_output = false;
+    struct wlr_output_configuration_head_v1 *head_v1;
+    wl_list_for_each(head_v1, &config->heads, link) {
+        /* It's going to disable the primary output */
+        struct output *output = head_v1->state.output->data;
+        if (&output->base == primary_output && !head_v1->state.enabled) {
+            need_fix_primary_output = true;
+            break;
+        }
+    }
+
+    /* if all outputs will be disabled in config, find others not in config */
+    bool have_enabled_output = false, have_zero_coord = false;
+    struct output_head *head;
+    wl_list_for_each(head, &management->heads, link) {
+        struct wlr_output *wlr_output = output_from_kywc_output(head->kywc_output)->wlr_output;
+        head_v1 = output_config(wlr_output, config);
+        if (head_v1) {
+            have_enabled_output |= head_v1->state.enabled;
+            have_zero_coord |=
+                head_v1->state.enabled && head_v1->state.x == 0 && head_v1->state.y == 0;
+        } else {
+            have_enabled_output |= head->kywc_output->state.enabled;
+            have_zero_coord |= head->kywc_output->state.enabled &&
+                               head->kywc_output->state.lx == 0 && head->kywc_output->state.ly == 0;
+        }
+
+        /* fixup primary output */
+        if (have_enabled_output && need_fix_primary_output) {
+            kywc_log(KYWC_WARN, "Fixup primary output to %s", head->kywc_output->name);
+            need_fix_primary_output = false;
+            primary_output = head->kywc_output;
+        }
+
+        if (have_enabled_output && have_zero_coord) {
+            break;
+        }
+    }
+
+    if (!have_enabled_output || !have_zero_coord) {
+        kywc_log(KYWC_WARN, "All outputs will be disabled or no zero coord, reject");
+        wlr_output_configuration_v1_send_failed(config);
+        wlr_output_configuration_v1_destroy(config);
+        return;
+    }
+
+    wl_list_for_each(head_v1, &config->heads, link) {
+        if (!head_v1->state.enabled) {
+            continue;
+        }
+        if (!output_apply(head_v1)) {
+            wlr_output_configuration_v1_send_failed(config);
+            wlr_output_configuration_v1_destroy(config);
+            output_manager_emit_configured();
+            return;
+        }
+    }
+
+    kywc_output_set_primary(primary_output);
+
+    wl_list_for_each(head_v1, &config->heads, link) {
+        if (head_v1->state.enabled) {
+            continue;
+        }
+        if (!output_apply(head_v1)) {
+            wlr_output_configuration_v1_send_failed(config);
+            wlr_output_configuration_v1_destroy(config);
+            output_manager_emit_configured();
+            return;
+        }
+    }
+
+    wlr_output_configuration_v1_send_succeeded(config);
+    wlr_output_configuration_v1_destroy(config);
+    output_manager_emit_configured();
+}
+
+static void handle_power_set_mode(struct wl_listener *listener, void *data)
+{
+    struct wlr_output_power_v1_set_mode_event *event = data;
+    struct output *output = event->output->data;
+
+    struct kywc_output_state state = output->base.state;
+    state.power = event->mode == ZWLR_OUTPUT_POWER_V1_MODE_OFF ? false : true;
+
+    kywc_output_set_state(&output->base, &state);
+}
+
+bool wlr_output_management_create(struct server *server)
+{
+    management = calloc(1, sizeof(struct wlr_output_management));
+    if (!management) {
+        return false;
+    }
+
+    wl_list_init(&management->heads);
+
+    management->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(server, &management->server_destroy);
+    management->display_destroy.notify = handle_display_destroy;
+    wl_display_add_destroy_listener(server->display, &management->display_destroy);
+
+    management->new_output.notify = handle_new_output;
+    kywc_output_add_new_listener(&management->new_output);
+    management->primary_output.notify = handle_primary_output;
+    kywc_output_add_primary_listener(&management->primary_output);
+    management->configured.notify = handle_configured;
+    output_manager_add_configured_listener(&management->configured);
+
+    management->output_manager = wlr_output_manager_v1_create(server->display);
+    management->output_apply.notify = handle_output_apply;
+    wl_signal_add(&management->output_manager->events.apply, &management->output_apply);
+
+    management->power_manager = wlr_output_power_manager_v1_create(server->display);
+    management->power_set_mode.notify = handle_power_set_mode;
+    wl_signal_add(&management->power_manager->events.set_mode, &management->power_set_mode);
+
+    return true;
+}

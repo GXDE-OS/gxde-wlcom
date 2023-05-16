@@ -333,6 +333,7 @@ struct output_manager *output_manager_create(struct server *server)
     output_manager->has_layout_manager = layout_manager_create(server);
 
     kde_output_management_create(server);
+    wlr_output_management_create(server);
 
     return output_manager;
 }
