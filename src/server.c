@@ -22,7 +22,7 @@
 #include <kywc/log.h>
 
 #include "config.h"
-#include "input.h"
+#include "input/input.h"
 #include "output.h"
 #include "plugin.h"
 #include "server.h"

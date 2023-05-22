@@ -1,7 +1,7 @@
 #include <kywc/log.h>
 
 #include "config.h"
-#include "input.h"
+#include "input/input.h"
 #include "output.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Input";

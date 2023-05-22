@@ -5,16 +5,6 @@ wlcom_sources = files(
     'config/common.c',
     'config/config.c',
 
-    'input/binding.c',
-    'input/config.c',
-    'input/cursor.c',
-    'input/idle.c',
-    'input/input.c',
-    'input/keyboard.c',
-    'input/libinput.c',
-    'input/monitor.c',
-    'input/seat.c',
-
     'plugin/config.c',
     'plugin/plugin.c',
 
@@ -22,6 +12,7 @@ wlcom_sources = files(
     'view/xdg.c',
 )
 
+subdir('input')
 subdir('output')
 subdir('util')
 #subdir('widget')

@@ -5,7 +5,9 @@
 #include <kywc/log.h>
 #include <wlr/types/wlr_seat.h>
 
-#include "input.h"
+#include "input/cursor.h"
+#include "input/keyboard.h"
+#include "input/seat.h"
 #include "server.h"
 
 static void handle_seat_destroy(struct wl_listener *listener, void *data)

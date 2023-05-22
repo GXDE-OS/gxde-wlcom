@@ -6,7 +6,8 @@
 
 #include <kywc/log.h>
 
-#include "input.h"
+#include "input/cursor.h"
+#include "input/seat.h"
 
 /* cursor images used in compositor */
 static char *cursor_image[] = {

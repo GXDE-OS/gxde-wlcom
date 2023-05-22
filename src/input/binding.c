@@ -8,7 +8,7 @@
 #include <kywc/binding.h>
 #include <kywc/log.h>
 
-#include "input.h"
+#include "input/keyboard.h"
 
 struct key_binding {
     struct wl_list link;

@@ -2,7 +2,7 @@
 
 #include <kywc/log.h>
 
-#include "input.h"
+#include "input_p.h"
 
 void libinput_get_prop(struct input *input, struct input_prop *prop)
 {

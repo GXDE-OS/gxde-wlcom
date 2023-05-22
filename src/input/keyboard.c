@@ -7,7 +7,8 @@
 
 #include <kywc/log.h>
 
-#include "input.h"
+#include "input/keyboard.h"
+#include "input/seat.h"
 
 static struct modifier {
     char *name;

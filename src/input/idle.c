@@ -5,7 +5,8 @@
 #include "ext-idle-notify-v1-protocol.h"
 #include "idle-protocol.h"
 
-#include "input.h"
+#include "input/seat.h"
+#include "input_p.h"
 #include "server.h"
 
 #define IDLE_NOTIFIER_VERSION 1
