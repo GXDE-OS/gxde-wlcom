@@ -1,17 +1,9 @@
 #include <stdlib.h>
 
+#include <kywc/identifier.h>
+
 #include "config.h"
 #include "output_p.h"
-#include "util/md5.h"
-
-#define print_md5(verb, md5, fmt, ...)                                                             \
-    do {                                                                                           \
-        char md5_str[MD5_DIGEST_LENGTH * 2 + 1];                                                   \
-        char *str = md5_to_string(md5, MD5_DIGEST_LENGTH, md5_str, sizeof(md5_str));               \
-        if (str) {                                                                                 \
-            kywc_log(verb, fmt, ##__VA_ARGS__);                                                    \
-        }                                                                                          \
-    } while (0);
 
 struct layout_manager {
     struct wl_list outputs;
@@ -33,26 +25,23 @@ struct output_layout {
 
     struct wl_listener destroy;
 
-    uint8_t md5[MD5_DIGEST_LENGTH];
+    char uuid[16];
 
     struct kywc_output_state state;
     bool primary;
 };
 
-struct output_md5 {
+struct output_uuid {
     const char *name;
-    uint8_t *md5;
+    const char *uuid;
 };
 
 static void output_layout_get_layout(struct output_layout *output_layout, const char *active_layout,
                                      char *layout)
 {
-    char md5_str[17];
-    md5_to_string(output_layout->md5, 8, md5_str, sizeof(md5_str));
-
     memcpy(layout, active_layout, 15);
     layout[15] = ':';
-    memcpy(layout + 16, md5_str, 15);
+    memcpy(layout + 16, output_layout->uuid, 15);
     layout[31] = '\0';
 }
 
@@ -183,25 +172,17 @@ static void output_layout_write_config(struct output_layout *output_layout,
     json_object_object_add(config, "ly", json_object_new_int(state->ly));
 }
 
-static int compare_output_md5(const void *p1, const void *p2)
+static int compare_output_uuid(const void *p1, const void *p2)
 {
-    const char *v1 = ((struct output_md5 *)p1)->name;
-    const char *v2 = ((struct output_md5 *)p2)->name;
+    const char *v1 = ((struct output_uuid *)p1)->name;
+    const char *v2 = ((struct output_uuid *)p2)->name;
     return strcmp(v1, v2);
-}
-
-static void layout_manager_md5_to_uuid(uint8_t *md5, char *uuid)
-{
-    char md5_str[17];
-    md5_to_string(md5, 8, md5_str, sizeof(md5_str));
-    memcpy(uuid, md5_str, 15);
-    uuid[15] = '\0';
 }
 
 static void layout_manager_generate_layout(struct layout_manager *layout_manager, char *layout_uuid,
                                            bool is_active_layout)
 {
-    struct output_md5 *o_md5s = NULL;
+    struct output_uuid *o_uuids = NULL;
     int actual_cnt = 0;
 
     struct output_layout *ol;
@@ -211,9 +192,9 @@ static void layout_manager_generate_layout(struct layout_manager *layout_manager
             continue;
         }
 
-        o_md5s = realloc(o_md5s, (actual_cnt + 1) * sizeof(struct output_md5));
-        o_md5s[actual_cnt].name = kywc_output->name;
-        o_md5s[actual_cnt].md5 = ol->md5;
+        o_uuids = realloc(o_uuids, (actual_cnt + 1) * sizeof(struct output_uuid));
+        o_uuids[actual_cnt].name = kywc_output->name;
+        o_uuids[actual_cnt].uuid = ol->uuid;
         actual_cnt++;
     }
 
@@ -222,24 +203,21 @@ static void layout_manager_generate_layout(struct layout_manager *layout_manager
     }
 
     if (actual_cnt == 1) {
-        layout_manager_md5_to_uuid(o_md5s[0].md5, layout_uuid);
-        free(o_md5s);
+        memcpy(layout_uuid, o_uuids[0].uuid, 16);
+        free(o_uuids);
         return;
     }
 
-    qsort(o_md5s, actual_cnt, sizeof(struct output_md5), compare_output_md5);
+    qsort(o_uuids, actual_cnt, sizeof(struct output_uuid), compare_output_uuid);
 
-    uint8_t *md5s = calloc(actual_cnt, MD5_DIGEST_LENGTH);
+    uint8_t *uuids = malloc(actual_cnt * 15);
     for (int i = 0; i < actual_cnt; ++i) {
-        memcpy(md5s + i * MD5_DIGEST_LENGTH, o_md5s[i].md5, MD5_DIGEST_LENGTH);
+        memcpy(uuids + i * 15, o_uuids[i].uuid, 15);
     }
+    free(o_uuids);
 
-    uint8_t md5[MD5_DIGEST_LENGTH];
-    md5_generate(md5s, actual_cnt * MD5_DIGEST_LENGTH, md5);
-    layout_manager_md5_to_uuid(md5, layout_uuid);
-
-    free(o_md5s);
-    free(md5s);
+    kywc_identifier_md5_generate_ex(uuids, actual_cnt * 15, layout_uuid, 16);
+    free(uuids);
 }
 
 static void layout_manager_config_outputs(struct layout_manager *layout_manager)
@@ -343,12 +321,12 @@ static void output_layout_handle_destroy(struct wl_listener *listener, void *dat
     free(output_layout);
 }
 
-static void output_layout_md5_generate(struct output_layout *output_layout)
+static void output_layout_uuid_generate(struct output_layout *output_layout)
 {
-    struct kywc_output_prop *prop = &output_layout->output->prop;
+    const char *desc = output_layout->output->prop.desc;
 
-    md5_generate(prop->desc, strlen(prop->desc) + 1, output_layout->md5);
-    print_md5(KYWC_INFO, output_layout->md5, "new output %s: %s", output_layout->output->name, str);
+    kywc_identifier_md5_generate_ex((void *)desc, strlen(desc), output_layout->uuid, 16);
+    kywc_log(KYWC_INFO, "new output %s: %s", output_layout->output->name, output_layout->uuid);
 }
 
 static void layout_manager_handle_new_output(struct wl_listener *listener, void *data)
@@ -365,7 +343,7 @@ static void layout_manager_handle_new_output(struct wl_listener *listener, void 
     output_layout->layout_manager = layout_manager;
     wl_list_insert(&layout_manager->outputs, &output_layout->link);
 
-    output_layout_md5_generate(output_layout);
+    output_layout_uuid_generate(output_layout);
     layout_manager_config_outputs(layout_manager);
 
     output_layout->destroy.notify = output_layout_handle_destroy;

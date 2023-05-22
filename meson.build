@@ -76,8 +76,7 @@ input = dependency('libinput', version: '>=1.14')
 pixman = dependency('pixman-1')
 math = cc.find_library('m')
 jsonc = dependency('json-c', version: '>=0.13')
-systemd = dependency('libsystemd')
-uuid = dependency('uuid')
+sdbus = dependency('libsystemd')
 dl = cc.find_library('dl')
 
 plugindir = get_option('plugin_directory')
@@ -99,7 +98,7 @@ wlcom_deps = [
     wayland_server, wayland_protos, server_protos,
     wlroots, xkbcommon, drm, input,
     pixman, math, jsonc,
-    systemd, uuid, dl,
+    sdbus, util, dl,
     #widget,
 ]
 
