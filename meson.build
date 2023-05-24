@@ -63,9 +63,10 @@ endif
 
 xcb = dependency('xcb')
 have_xwayland = xcb.found() and wlroots_has_xwayland
-if have_xwayland
-    add_project_arguments('-DHAVE_XWAYLAND=1', language: 'c')
-endif
+add_project_arguments(
+    '-DHAVE_XWAYLAND=@0@'.format(have_xwayland.to_int()),
+    language: 'c',
+)
 
 wayland_server = dependency('wayland-server', version: '>=1.19.0')
 wayland_protos = dependency('wayland-protocols')

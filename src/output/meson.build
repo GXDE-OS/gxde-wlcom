@@ -9,7 +9,6 @@ if have_kde_output
     wlcom_sources += files(
         'kde_output.c',
     )
-    add_project_arguments('-DHAVE_KDE_OUTPUT=1', language: 'c')
 endif
 
 have_wlr_output = get_option('wlr_output')
@@ -17,5 +16,9 @@ if have_wlr_output
     wlcom_sources += files(
         'wlr_output.c',
     )
-    add_project_arguments('-DHAVE_WLR_OUTPUT=1', language: 'c')
 endif
+
+add_project_arguments([
+    '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
+    '-DHAVE_WLR_OUTPUT=@0@'.format(have_wlr_output.to_int()),
+], language: 'c')
