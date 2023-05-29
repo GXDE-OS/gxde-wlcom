@@ -118,39 +118,11 @@ struct input {
     struct wl_listener destroy;
 };
 
-struct input_manager {
-    struct server *server;
-
-    struct wl_list seats;
-    struct wl_list inputs;
-
-    struct {
-        struct wl_signal new_input;
-        struct wl_signal new_seat;
-    } events;
-
-    struct config *config;
-    struct bindings *bindings;
-
-    struct wl_listener new_input;
-    struct wl_listener new_virtual_pointer;
-    struct wl_listener new_virtual_keyboard;
-    struct wl_listener server_destroy;
-};
-
 struct input_manager *input_manager_create(struct server *server);
-
-bool input_manager_config_init(struct input_manager *input_manager);
 
 void input_add_new_listener(struct wl_listener *listener);
 
 bool input_set_state(struct input *input, struct input_state *state);
-
-bool input_read_config(struct input *input, struct input_state *state);
-
-void input_write_config(struct input *input);
-
-void input_prop_and_state_debug(struct input *input);
 
 struct input *input_by_name(const char *name);
 
