@@ -1,16 +1,13 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
-#include <kywc/log.h>
-
-#include "server.h"
-#include "view.h"
-
-// TODO: add subsurface and popup
+#include "scene/xdg_shell.h"
+#include "view_p.h"
 
 struct xdg_view {
     struct view view;
     struct wlr_xdg_surface *wlr_xdg_surface;
+    struct ky_scene_tree *surface_tree;
 
     struct wl_listener commit;
 
@@ -30,7 +27,7 @@ struct xdg_view {
     struct wl_listener set_title;
     struct wl_listener set_app_id;
 
-    struct wlr_box pending;
+    struct kywc_box pending;
     uint32_t configure_serial;
 };
 
@@ -46,7 +43,7 @@ static void xdg_view_close(struct view *view)
     wlr_xdg_toplevel_send_close(xdg_view->wlr_xdg_surface->toplevel);
 }
 
-static void xdg_view_configure(struct view *view)
+static void xdg_view_configure(struct view *view, struct kywc_box *pending)
 {
     struct xdg_view *xdg_view = xdg_view_from_view(view);
     struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
@@ -59,7 +56,17 @@ static void xdg_view_configure(struct view *view)
     wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, kywc_view->resizing);
     wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled_edges);
 
-    // TODO: wlr_xdg_toplevel_set_size
+    /* If not resizing, process the move immediately */
+    if (kywc_view->geometry.width == pending->width &&
+        kywc_view->geometry.height == pending->height) {
+        // xdg_view->pending_action = VIEW_NOP;
+        kywc_view_move(kywc_view, pending->x, pending->y);
+        return;
+    }
+
+    xdg_view->pending = *pending;
+    xdg_view->configure_serial =
+        wlr_xdg_toplevel_set_size(wlr_xdg_toplevel, pending->width, pending->height);
 }
 
 static void xdg_view_destroy(struct view *view)
@@ -69,6 +76,7 @@ static void xdg_view_destroy(struct view *view)
 }
 
 static const struct view_impl xdg_surface_impl = {
+    .type = KYWC_VIEW_XDG_SHELL,
     .configure = xdg_view_configure,
     .close = xdg_view_close,
     .destroy = xdg_view_destroy,
@@ -85,9 +93,6 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     kywc_view->min_height = wlr_xdg_toplevel->current.min_height;
     kywc_view->max_width = wlr_xdg_toplevel->current.max_width;
     kywc_view->max_height = wlr_xdg_toplevel->current.max_height;
-    kywc_log(KYWC_DEBUG, "kywc_view %p size range: (%d x %d) to (%d x %d)", kywc_view,
-             kywc_view->min_width, kywc_view->min_height, kywc_view->max_width,
-             kywc_view->max_height);
 
     /* update kywc_view current size */
     struct wlr_box geo = wlr_xdg_surface->current.geometry;
@@ -97,14 +102,16 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     }
     kywc_view->geometry.width = geo.width;
     kywc_view->geometry.height = geo.height;
-    kywc_log(KYWC_DEBUG, "kywc_view %p size: (%d x %d)", kywc_view, kywc_view->geometry.width,
-             kywc_view->geometry.height);
 
     /* padding if used CSD with drop-shadow */
     kywc_view->padding.left = geo.x;
     kywc_view->padding.right = wlr_surface->current.width - geo.x - geo.width;
     kywc_view->padding.top = geo.y;
     kywc_view->padding.bottom = wlr_surface->current.height - geo.y - geo.height;
+
+    kywc_log(KYWC_DEBUG, "kywc_view %p size: (%d x %d) range: (%d x %d) to (%d x %d)", kywc_view,
+             kywc_view->geometry.width, kywc_view->geometry.height, kywc_view->min_width,
+             kywc_view->min_height, kywc_view->max_width, kywc_view->max_height);
     kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
              kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
              kywc_view->padding.bottom);
@@ -114,6 +121,7 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, commit);
 
+    // TODO:how to signal activate, maximize, minimize, fullscreen ...
     xdg_view_update_geometry(xdg_view);
     view_commit(&xdg_view->view);
 }
@@ -122,14 +130,12 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, map);
     struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
-    struct wlr_xdg_toplevel *wlr_xdg_toplevel = wlr_xdg_surface->toplevel;
     struct wlr_surface *wlr_surface = wlr_xdg_surface->surface;
 
     xdg_view_update_geometry(xdg_view);
 
-    /* all data is ready when map */
-    view_set_title(&xdg_view->view, wlr_xdg_toplevel->title);
-    view_set_app_id(&xdg_view->view, wlr_xdg_toplevel->app_id);
+    /* create tree for surface and all sub-surfaces */
+    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
 
     xdg_view->commit.notify = xdg_view_handle_commit;
     wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
@@ -242,7 +248,14 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
         return;
     }
 
+    // TODO: add arg layer to move tree_create to view_init
     view_init(&xdg_view->view, &xdg_surface_impl, xdg_view);
+
+    // TODO: move tree_create to view_map ?
+    /* create view tree and disable it */
+    struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL);
+    xdg_view->view.tree = ky_scene_tree_create(layer->tree);
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(xdg_view->view.tree), false);
 
     xdg_view->wlr_xdg_surface = wlr_xdg_surface;
     wlr_xdg_surface->data = xdg_view;

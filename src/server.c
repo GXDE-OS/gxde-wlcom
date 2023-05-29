@@ -26,7 +26,7 @@
 #include "output.h"
 #include "plugin.h"
 #include "server.h"
-#include "view.h"
+#include "view/view.h"
 
 static int handle_sigterm(int signal, void *data)
 {

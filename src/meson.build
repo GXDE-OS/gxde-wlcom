@@ -5,8 +5,6 @@ wlcom_sources = files(
   'config/common.c',
   'config/config.c',
 
-    'view/view.c',
-    'view/xdg.c',
   'plugin/config.c',
   'plugin/plugin.c',
 )
@@ -14,5 +12,6 @@ wlcom_sources = files(
 subdir('input')
 subdir('output')
 subdir('scene')
+subdir('view')
 subdir('util')
 #subdir('widget')

@@ -6,14 +6,13 @@
 
 #include <wayland-server-core.h>
 
-// TODO: how to configure view states with output
-// 1. add output arg in func
-// 2. add output member in view, then set_output()
-//
+#include "boxes.h"
+
 // TODO: Is it necessary to use commit to apply states
 
 struct kywc_output;
 
+// TODO: hint mask for dock, desktop and others
 enum kywc_view_type {
     /* internal ui: menu, switcher ... */
     KYWC_VIEW_INTERNAL,
@@ -25,21 +24,11 @@ enum kywc_view_type {
     KYWC_VIEW_LAYER_SHELL,
 };
 
-enum kywc_edges {
-    KYWC_EDGE_NONE = 0,
-    KYWC_EDGE_TOP = 1 << 0,
-    KYWC_EDGE_BOTTOM = 1 << 1,
-    KYWC_EDGE_LEFT = 1 << 2,
-    KYWC_EDGE_RIGHT = 1 << 3,
-};
-
 struct kywc_view {
     enum kywc_view_type type;
 
     /* current geometry in global layout */
-    struct {
-        int x, y, width, height;
-    } geometry;
+    struct kywc_box geometry;
 
     /* margin if used ssd */
     struct {
@@ -103,6 +92,8 @@ struct kywc_view {
         /* emit when view's app_id(class) has changed */
         struct wl_signal app_id;
 
+        /* emit when view's position has changed */
+        struct wl_signal position;
         /* emit when view's decoration mode has changed */
         struct wl_signal decoration;
         /* emit when view's drop-shadow mode has changed */
@@ -120,7 +111,6 @@ void kywc_view_move(struct kywc_view *kywc_view, int x, int y);
 void kywc_view_resize(struct kywc_view *kywc_view, int x, int y, int w, int h);
 void kywc_view_activate(struct kywc_view *kywc_view);
 
-// TODO: need a output also
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_edges edges);
 
 void kywc_view_set_enabled(struct kywc_view *kywc_view, bool enabled);
@@ -129,15 +119,12 @@ void kywc_view_toggle_enabled(struct kywc_view *kywc_view);
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized);
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view);
 
-void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
-                             struct kywc_output *output);
+void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized);
 void kywc_view_toggle_maximized(struct kywc_view *kywc_view);
 
-/**
- * some fullscreen requests have a output specified
- */
-void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
-                              struct kywc_output *output);
+void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen);
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view);
+
+void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output);
 
 #endif /* _KYWC_VIEW_H_ */
