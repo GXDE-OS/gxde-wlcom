@@ -34,13 +34,12 @@ struct input_monitor {
 
 void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kywc_output)
 {
-    int x, y, width, height;
+    struct kywc_box geo;
+    kywc_output_effective_geometry(kywc_output, &geo);
+    geo.x += geo.width / 2;
+    geo.y += geo.height / 2;
 
-    kywc_output_effective_resolution(kywc_output, &width, &height);
-    x = kywc_output->state.lx + width / 2;
-    y = kywc_output->state.ly + height / 2;
-
-    cursor_move(cursor, x, y, false);
+    cursor_move(cursor, geo.x, geo.y, false);
     // kywc_log(KYWC_INFO, "move %s cursor to %s conter", cursor->seat->name, kywc_output->name);
 }
 

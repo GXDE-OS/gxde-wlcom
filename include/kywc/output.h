@@ -6,6 +6,8 @@
 
 #include <wayland-server-protocol.h>
 
+#include "boxes.h"
+
 enum kywc_output_vrr_policy {
     KYWC_OUTPUT_VRR_DISABLED,
     KYWC_OUTPUT_VRR_ENABLED,
@@ -80,7 +82,7 @@ struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_out
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height);
 
-void kywc_output_effective_resolution(struct kywc_output *kywc_output, int *width, int *height);
+void kywc_output_effective_geometry(struct kywc_output *kywc_output, struct kywc_box *box);
 
 bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y);
 

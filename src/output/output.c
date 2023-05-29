@@ -576,28 +576,28 @@ struct kywc_output *kywc_output_by_name(const char *name)
     return NULL;
 }
 
-void kywc_output_effective_resolution(struct kywc_output *kywc_output, int *width, int *height)
+void kywc_output_effective_geometry(struct kywc_output *kywc_output, struct kywc_box *box)
 {
     struct kywc_output_state *state = &kywc_output->state;
 
     if (state->transform % 2 == 0) {
-        *width = state->width;
-        *height = state->height;
+        box->width = state->width;
+        box->height = state->height;
     } else {
-        *width = state->height;
-        *height = state->width;
+        box->width = state->height;
+        box->height = state->width;
     }
 
-    *width /= state->scale;
-    *height /= state->scale;
+    box->x = state->lx;
+    box->y = state->ly;
+    box->width /= state->scale;
+    box->height /= state->scale;
 }
 
 bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y)
 {
-    int lx, ly, width, height;
-    lx = kywc_output->state.lx;
-    ly = kywc_output->state.ly;
-    kywc_output_effective_resolution(kywc_output, &width, &height);
+    struct kywc_box geo;
+    kywc_output_effective_geometry(kywc_output, &geo);
 
-    return x >= lx && x < lx + width && y >= ly && y < ly + height;
+    return kywc_box_contains_point(&geo, x, y);
 }
