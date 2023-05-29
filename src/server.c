@@ -94,13 +94,21 @@ static bool wlroots_server_init(struct server *server)
         return false;
     }
 
-    server->compositor = wlr_compositor_create(server->display, 5, NULL);
+    // TODO: set renderer to NULL, drop wlr_client_buffer
+    server->compositor = wlr_compositor_create(server->display, 5, server->renderer);
     wlr_subcompositor_create(server->display);
     wlr_renderer_init_wl_display(server->renderer, server->display);
 
     server->layout = wlr_output_layout_create();
+    server->scene = ky_scene_create();
+    ky_scene_attach_output_layout(server->scene, server->layout);
 
-    wlr_presentation_create(server->display, server->backend);
+    struct wlr_presentation *presentation =
+        wlr_presentation_create(server->display, server->backend);
+    if (presentation) {
+        ky_scene_set_presentation(server->scene, presentation);
+    }
+
     wlr_screencopy_manager_v1_create(server->display);
     wlr_export_dmabuf_manager_v1_create(server->display);
     wlr_viewporter_create(server->display);
@@ -188,11 +196,13 @@ void server_finish(struct server *server)
     wl_display_destroy_clients(server->display);
 
     wl_display_destroy(server->display);
+
+    ky_scene_destroy(server->scene);
     wlr_output_layout_destroy(server->layout);
     wlr_allocator_destroy(server->allocator);
     wlr_renderer_destroy(server->renderer);
 
-    wl_signal_emit(&server->destroy_list, server);
+    wl_signal_emit_mutable(&server->destroy_list, server);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }

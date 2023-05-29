@@ -3,6 +3,8 @@
 
 #include <wayland-server-core.h>
 
+#include "scene/scene.h"
+
 struct server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
@@ -24,6 +26,7 @@ struct server {
     struct wlr_session *session;
     struct wlr_compositor *compositor;
 
+    struct ky_scene *scene;
     struct wlr_output_layout *layout;
 
 #if HAVE_XWAYLAND

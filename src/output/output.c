@@ -173,13 +173,21 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
     struct kywc_output *kywc_output = &output->base;
+    struct wlr_output *wlr_output = output->wlr_output;
     kywc_log(KYWC_DEBUG, "output %s frame coming", kywc_output->name);
 
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, kywc_output);
 
-    struct wlr_output *wlr_output = output->wlr_output;
+#if HAVE_WLR_SCENE
+    struct ky_scene_output *scene_output =
+        ky_scene_get_scene_output(output_manager->server->scene, wlr_output);
+    ky_scene_output_commit(scene_output);
 
+    struct timespec now = { 0 };
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    ky_scene_output_send_frame_done(scene_output, &now);
+#else
     if (!wlr_output->needs_frame) {
         kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
         return;
@@ -196,6 +204,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     wlr_renderer_end(renderer);
 
     wlr_output_commit(wlr_output);
+#endif
 }
 
 static void handle_output_damage(struct wl_listener *listener, void *data)
@@ -310,8 +319,13 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->needs_frame.notify = handle_output_needs_frame;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+#if HAVE_WLR_SCENE
+    wl_list_init(&output->damage.link);
+    wl_list_init(&output->needs_frame.link);
+#else
     wl_signal_add(&wlr_output->events.damage, &output->damage);
     wl_signal_add(&wlr_output->events.needs_frame, &output->needs_frame);
+#endif
 }
 
 struct output_manager *output_manager_create(struct server *server)

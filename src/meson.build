@@ -13,5 +13,6 @@ wlcom_sources = files(
 
 subdir('input')
 subdir('output')
+subdir('scene')
 subdir('util')
 #subdir('widget')
