@@ -119,7 +119,7 @@ output_config(struct wlr_output *wlr_output, const struct wlr_output_configurati
 
 static bool output_apply(struct wlr_output_configuration_head_v1 *head_v1)
 {
-    struct output *output = head_v1->state.output->data;
+    struct output *output = output_from_wlr_output(head_v1->state.output);
     struct kywc_output_state pending = output->base.state;
 
     pending.enabled = pending.power = head_v1->state.enabled;
@@ -159,7 +159,7 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
     struct wlr_output_configuration_head_v1 *head_v1;
     wl_list_for_each(head_v1, &config->heads, link) {
         /* It's going to disable the primary output */
-        struct output *output = head_v1->state.output->data;
+        struct output *output = output_from_wlr_output(head_v1->state.output);
         if (&output->base == primary_output && !head_v1->state.enabled) {
             need_fix_primary_output = true;
             break;
@@ -235,7 +235,7 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
 static void handle_power_set_mode(struct wl_listener *listener, void *data)
 {
     struct wlr_output_power_v1_set_mode_event *event = data;
-    struct output *output = event->output->data;
+    struct output *output = output_from_wlr_output(event->output);
 
     struct kywc_output_state state = output->base.state;
     state.power = event->mode == ZWLR_OUTPUT_POWER_V1_MODE_OFF ? false : true;

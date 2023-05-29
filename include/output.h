@@ -30,8 +30,9 @@ void output_manager_emit_configured(void);
 
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
 
-
-
 struct output *output_from_kywc_output(struct kywc_output *kywc_output);
+
+struct output *output_from_wlr_output(struct wlr_output *wlr_output);
+
 
 #endif /* _OUTPUT_H_ */

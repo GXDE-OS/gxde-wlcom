@@ -19,6 +19,11 @@ struct output *output_from_kywc_output(struct kywc_output *kywc_output)
     return output;
 }
 
+struct output *output_from_wlr_output(struct wlr_output *wlr_output)
+{
+    return wlr_output->data;
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&output_manager->server_destroy.link);
@@ -406,7 +411,7 @@ struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_out
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource)
 {
     struct wlr_output *wlr_output = wl_resource_get_user_data(resource);
-    struct output *output = wlr_output->data;
+    struct output *output = output_from_wlr_output(wlr_output);
 
     return output ? &output->base : NULL;
 }
