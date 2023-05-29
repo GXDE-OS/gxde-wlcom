@@ -6,6 +6,32 @@
 #include "output.h"
 #include "server.h"
 
+struct output_manager {
+    struct server *server;
+
+    struct wl_list outputs;
+    struct kywc_output *primary_output;
+
+    struct {
+        struct wl_signal new_output;
+        struct wl_signal primary_output;
+        struct wl_signal configured;
+    } events;
+
+    struct config *config;
+
+    struct wl_listener new_output;
+    struct wl_listener server_destroy;
+
+    bool has_layout_manager;
+};
+
+bool output_manager_config_init(struct output_manager *output_manager);
+
+bool output_read_config(struct output *output, struct kywc_output_state *state);
+
+void output_write_config(struct output *output);
+
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);
 #else

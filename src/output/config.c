@@ -1,5 +1,5 @@
 #include "config.h"
-#include "output.h"
+#include "output_p.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Output";
 static const char *service_interface = "com.kylin.Wlcom.Output";
