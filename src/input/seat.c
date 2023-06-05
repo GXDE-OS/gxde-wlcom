@@ -156,3 +156,9 @@ struct seat *seat_from_resource(struct wl_resource *resource)
 
     return wlr_seat ? wlr_seat->data : NULL;
 }
+
+struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat)
+{
+    return wlr_seat->data;
+}
+

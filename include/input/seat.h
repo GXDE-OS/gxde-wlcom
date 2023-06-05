@@ -36,4 +36,6 @@ void seat_remove_input(struct input *input);
 
 struct seat *seat_from_resource(struct wl_resource *resource);
 
+struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
+
 #endif /* _SEAT_H_ */
