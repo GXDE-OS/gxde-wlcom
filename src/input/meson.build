@@ -2,6 +2,7 @@ wlcom_sources += files(
   'binding.c',
   'config.c',
   'cursor.c',
+  'event.c',
   'idle.c',
   'input.c',
   'keyboard.c',

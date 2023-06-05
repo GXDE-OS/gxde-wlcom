@@ -1,4 +1,7 @@
+#define _POSIX_C_SOURCE 200809L
+#include <linux/input-event-codes.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
@@ -7,7 +10,6 @@
 #include <kywc/log.h>
 
 #include "input/cursor.h"
-#include "input/seat.h"
 
 /* cursor images used in compositor */
 static char *cursor_image[] = {
@@ -24,22 +26,218 @@ static char *cursor_image[] = {
     "left_side",
 };
 
-static char *cursor_button[] = {
-    "left", "right", "middle", "side", "extra", "forward", "back", "task",
-};
+static bool cursor_set_hover(struct cursor *cursor, struct ky_scene_node *hover)
+{
+    if (hover == cursor->hover) {
+        return false;
+    }
+
+    if (cursor->hover) {
+        wl_list_remove(&cursor->hover_destroy.link);
+    }
+    if (hover) {
+        ky_scene_node_add_destroy_listener(hover, &cursor->hover_destroy);
+    }
+    cursor->hover = hover;
+    return true;
+}
+
+static bool cursor_set_focus(struct cursor *cursor, struct ky_scene_node *hover)
+{
+    if (hover == cursor->focus) {
+        return false;
+    }
+
+    if (cursor->focus) {
+        wl_list_remove(&cursor->focus_destroy.link);
+    }
+    if (hover) {
+        ky_scene_node_add_destroy_listener(hover, &cursor->focus_destroy);
+    }
+    cursor->focus = hover;
+    return true;
+}
+
+static bool cursor_update_node(struct cursor *cursor, bool click)
+{
+    struct seat *seat = cursor->seat;
+
+    /* find node below the cursor */
+    struct ky_scene_node *hover = ky_scene_node_at(
+        ky_scene_node_from_scene(seat->scene), cursor->lx, cursor->ly, &cursor->sx, &cursor->sy);
+
+    /* update cursor hover node */
+    if (!click) {
+        return cursor_set_hover(cursor, hover);
+    }
+    /* update cursor focus node */
+    return cursor_set_focus(cursor, hover);
+}
+
+static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
+{
+    struct seat *seat = cursor->seat;
+    struct ky_scene_node *old_hover = cursor->hover;
+    bool changed = cursor_update_node(cursor, false);
+
+    bool left_button_pressed =
+        LEFT_BUTTON_PRESSED(cursor->last_click_button, cursor->last_click_pressed);
+    /* if hold press moving but not draging */
+    if (left_button_pressed && cursor->focus && cursor->focus != cursor->hover) {
+        // && !seat->selection->draging) {
+        struct input_event_node *inode = input_event_node_from_node(cursor->focus);
+        if (inode && inode->impl->hover) {
+            cursor->hold_mode = inode->impl->hover(seat, cursor->focus, cursor->lx, cursor->ly,
+                                                   time, false, true, inode->data);
+        }
+        if (cursor->hold_mode) {
+            return;
+        }
+    }
+
+    /* mark grab_mode to false, hover to node again */
+    cursor->hold_mode = false;
+
+    /* cursor has moved to another node */
+    struct input_event_node *inode = input_event_node_from_node(cursor->hover);
+    if (changed && old_hover) {
+        struct input_event_node *old_inode = input_event_node_from_node(old_hover);
+        if (old_inode && old_inode->impl->leave) {
+            bool leave = input_event_node_root(old_inode) != input_event_node_root(inode);
+            old_inode->impl->leave(seat, old_hover, leave, old_inode->data);
+        }
+    }
+
+    /* hover current node */
+    if (inode && inode->impl->hover) {
+        inode->impl->hover(seat, cursor->hover, cursor->sx, cursor->sy, time, changed, false,
+                           inode->data);
+    }
+
+#if 0
+    /* update dnd icon if support */
+    if (seat->selection->draging && seat->selection->tree_icon) {
+        ky_scene_node_set_position(&seat->selection->tree_icon->node, cursor->wlr_cursor->x,
+                                    cursor->wlr_cursor->y);
+    }
+#endif
+
+    if (!cursor->hover) {
+        /* once no node found under the cursor, restore cursor to default */
+        cursor_set_image(cursor, CURSOR_DEFAULT);
+        /* clear pointer focus if hover changed to null */
+        if (changed) {
+            seat_notify_leave(seat, NULL);
+        }
+    }
+}
 
 static void cursor_feed_motion(struct cursor *cursor, double lx, double ly, uint32_t time)
 {
     cursor->lx = lx;
     cursor->ly = ly;
+    // kywc_log(KYWC_DEBUG, "cursor move to (%f, %f)", cursor->lx, cursor->ly);
 
-    kywc_log(KYWC_DEBUG, "cursor move to (%f, %f)", cursor->lx, cursor->ly);
+    _cursor_feed_motion(cursor, time);
+}
+
+static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    /* force leave current hover node, then re-hover it */
+    if (leave && cursor->hover) {
+        struct input_event_node *inode = input_event_node_from_node(cursor->hover);
+        if (inode && inode->impl->leave) {
+            inode->impl->leave(cursor->seat, cursor->hover, false, inode->data);
+        }
+        /* clear hover */
+        wl_list_remove(&cursor->hover_destroy.link);
+        cursor->hover = NULL;
+    }
+    _cursor_feed_motion(cursor, time);
 }
 
 static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
 {
-    kywc_log(KYWC_DEBUG, "cursor %s button %s", cursor_button[button - 0x110],
-             pressed ? "pressed" : "released");
+    struct seat *seat = cursor->seat;
+    bool last_is_pressed = cursor->last_click_pressed;
+    uint32_t last_button = cursor->last_click_button;
+    cursor->last_click_pressed = pressed;
+
+    /* current focus node */
+    struct ky_scene_node *old_focus = cursor->focus;
+    bool changed = cursor_update_node(cursor, true);
+
+    /* old focus node and view */
+    struct input_event_node *old_inode = input_event_node_from_node(old_focus);
+    struct input_event_node *inode = input_event_node_from_node(cursor->focus);
+
+    /* exit hold mode if any botton clicked */
+    if (cursor->hold_mode) {
+        /* send button release to last focus node */
+        if (old_inode && old_inode->impl->click) {
+            old_inode->impl->click(seat, old_focus, BTN_LEFT, false, time, false, old_inode->data);
+        }
+        /* leave focus node, otherwise wrong curser image */
+        if (old_inode && old_inode->impl->leave) {
+            bool leave = input_event_node_root(old_inode) != input_event_node_root(inode);
+            old_inode->impl->leave(seat, old_focus, leave, old_inode->data);
+        }
+        if (inode && inode->impl->hover) {
+            inode->impl->hover(seat, cursor->focus, cursor->sx, cursor->sy, time, true, false,
+                               inode->data);
+        } else {
+            cursor_set_image(cursor, CURSOR_DEFAULT);
+        }
+        cursor->hold_mode = false;
+        return;
+    }
+
+    /* update surface coord if surface size changed when click, like maximize */
+    // if (cursor->hover == cursor->focus && !seat->selection->draging) {
+    if (cursor->hover == cursor->focus) {
+        cursor_feed_fake_motion(cursor, false);
+    }
+
+    /* send a button released event to old focus node */
+    if (old_focus && changed && !pressed && last_is_pressed) {
+        kywc_log(KYWC_INFO, "release button %d in %p", last_button, old_focus);
+        if (old_inode && old_inode->impl->click) {
+            old_inode->impl->click(seat, old_focus, last_button, false, time, false,
+                                   old_inode->data);
+        }
+#if 0
+        /* fix cursor image sometimes */
+        if (!seat->selection->draging) {
+            cursor_feed_fake_motion(cursor, false);
+        }
+#endif
+        return;
+    }
+
+    // TODO: double click time in seat config
+    bool double_click = false;
+    if (pressed) {
+        if (!changed && button == cursor->last_click_button &&
+            time - cursor->last_click_time < 500) {
+            double_click = true;
+        }
+        /* reset after a double click */
+        cursor->last_click_time = double_click ? 0 : time;
+        cursor->last_click_button = button;
+    }
+
+    if (inode && inode->impl->click) {
+        inode->impl->click(seat, cursor->focus, button, pressed, time, double_click, inode->data);
+    }
+
+    if (!cursor->focus) {
+        /* clear keyboard focus */
+        seat_focus_surface(seat, NULL);
+    }
 }
 
 static void cursor_handle_motion(struct wl_listener *listener, void *data)
@@ -91,6 +289,35 @@ static void cursor_handle_frame(struct wl_listener *listener, void *data)
     wlr_seat_pointer_notify_frame(wlr_seat);
 }
 
+static void cursor_handle_request_set_cursor(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, request_set_cursor);
+    struct wlr_seat_pointer_request_set_cursor_event *event = data;
+    struct wlr_seat_client *focused_client = cursor->seat->wlr_seat->pointer_state.focused_client;
+
+    if (focused_client != event->seat_client) {
+        return;
+    }
+
+    /* use this to filter cursor image */
+    cursor->client_requested = true;
+    wlr_cursor_set_surface(cursor->wlr_cursor, event->surface, event->hotspot_x, event->hotspot_y);
+}
+
+static void cursor_handle_hover_destroy(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, hover_destroy);
+    wl_list_remove(&cursor->hover_destroy.link);
+    cursor->hover = NULL;
+}
+
+static void cursor_handle_focus_destroy(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, focus_destroy);
+    wl_list_remove(&cursor->focus_destroy.link);
+    cursor->focus = NULL;
+}
+
 #define CURSOR_ADD_SIGNAL(signal)                                                                  \
     cursor->signal.notify = cursor_handle_##signal;                                                \
     wl_signal_add(&wlr_cursor->events.signal, &cursor->signal);
@@ -129,6 +356,11 @@ struct cursor *cursor_create(struct seat *seat)
     CURSOR_ADD_SIGNAL(axis);
     CURSOR_ADD_SIGNAL(frame);
 
+    cursor->request_set_cursor.notify = cursor_handle_request_set_cursor;
+    wl_signal_add(&seat->wlr_seat->events.request_set_cursor, &cursor->request_set_cursor);
+    cursor->hover_destroy.notify = cursor_handle_hover_destroy;
+    cursor->focus_destroy.notify = cursor_handle_focus_destroy;
+
     return cursor;
 }
 
@@ -141,6 +373,14 @@ void cursor_destroy(struct cursor *cursor)
     wl_list_remove(&cursor->button.link);
     wl_list_remove(&cursor->axis.link);
     wl_list_remove(&cursor->frame.link);
+    wl_list_remove(&cursor->request_set_cursor.link);
+
+    if (cursor->hover) {
+        wl_list_remove(&cursor->hover_destroy.link);
+    }
+    if (cursor->focus) {
+        wl_list_remove(&cursor->focus_destroy.link);
+    }
 
     struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
     struct wlr_xcursor_manager *xcursor_manager = cursor->xcursor_manager;

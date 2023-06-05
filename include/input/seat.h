@@ -2,6 +2,7 @@
 #define _SEAT_H_
 
 #include "input.h"
+#include "scene/scene.h"
 
 struct seat {
     struct wlr_seat *wlr_seat;
@@ -17,6 +18,7 @@ struct seat {
     struct cursor *cursor;
     struct wl_list keyboards;
 
+    struct ky_scene *scene;
     struct wlr_output_layout *layout;
 
     struct {
@@ -37,5 +39,14 @@ void seat_remove_input(struct input *input);
 struct seat *seat_from_resource(struct wl_resource *resource);
 
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
+
+struct wlr_surface;
+void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
+                        double sy, bool first_enter);
+void seat_notify_button(struct seat *seat, uint32_t time, uint32_t button, bool pressed);
+void seat_notify_leave(struct seat *seat, struct wlr_surface *surface);
+
+/* keyboard focus */
+void seat_focus_surface(struct seat *seat, struct wlr_surface *surface);
 
 #endif /* _SEAT_H_ */

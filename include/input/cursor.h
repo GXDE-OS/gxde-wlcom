@@ -1,6 +1,7 @@
 #ifndef _CURSOR_H_
 #define _CURSOR_H_
 
+#include "event.h"
 #include "input.h"
 
 enum cursor_name {
@@ -55,10 +56,27 @@ struct cursor {
 
     enum cursor_name name;
     float scale;
-
-    /* current hover position in surface coord */
-    double sx, sy;
+    /* current cursor position in layout coord */
     double lx, ly;
+
+    /* cached button clicked info */
+    uint32_t last_click_time;
+    uint32_t last_click_button;
+    bool last_click_pressed;
+
+    /* node below the cursor */
+    struct ky_scene_node *hover;
+    /* do something if hover node destroy */
+    struct wl_listener hover_destroy;
+    /* node if button clicked */
+    struct ky_scene_node *focus;
+    /* do something if focus node destroy */
+    struct wl_listener focus_destroy;
+    /* current hover position in node coord */
+    double sx, sy;
+
+    /* special: hold a pressed button and leave surface */
+    bool hold_mode;
 };
 
 struct cursor *cursor_create(struct seat *seat);

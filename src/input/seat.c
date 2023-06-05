@@ -34,6 +34,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     }
 
     seat->wlr_seat->data = seat;
+    seat->scene = input_manager->server->scene;
     seat->layout = input_manager->server->layout;
 
     seat->destroy.notify = handle_seat_destroy;
@@ -162,3 +163,56 @@ struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat)
     return wlr_seat->data;
 }
 
+void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
+                        double sy, bool first_enter)
+{
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
+    struct wlr_surface *prev = wlr_seat->pointer_state.focused_surface;
+
+    if (first_enter || surface != prev) {
+        wlr_seat_pointer_notify_enter(wlr_seat, surface, sx, sy);
+        kywc_log(KYWC_DEBUG, "pointer enter surface %p", surface);
+    }
+
+    wlr_seat_pointer_notify_motion(wlr_seat, time, sx, sy);
+}
+
+void seat_notify_button(struct seat *seat, uint32_t time, uint32_t button, bool pressed)
+{
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
+
+    enum wlr_button_state state = pressed ? WLR_BUTTON_PRESSED : WLR_BUTTON_RELEASED;
+    wlr_seat_pointer_notify_button(wlr_seat, time, button, state);
+}
+
+void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
+{
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
+    struct wlr_surface *prev = wlr_seat->pointer_state.focused_surface;
+
+    if (!surface || surface == prev) {
+        wlr_seat_pointer_notify_clear_focus(wlr_seat);
+    }
+}
+
+void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
+{
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
+    struct wlr_surface *prev = wlr_seat->keyboard_state.focused_surface;
+
+    if (!surface) {
+        wlr_seat_keyboard_notify_clear_focus(wlr_seat);
+        return;
+    }
+
+    // if (prev == surface || seat->keyboard_grab) {
+    if (prev == surface) {
+        return;
+    }
+
+    struct wlr_keyboard *kb = wlr_seat_get_keyboard(wlr_seat);
+    if (kb) {
+        wlr_seat_keyboard_notify_enter(wlr_seat, surface, kb->keycodes, kb->num_keycodes,
+                                       &kb->modifiers);
+    }
+}
