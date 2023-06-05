@@ -3,6 +3,7 @@
 #include <kywc/log.h>
 
 #include "input/input.h"
+#include "output.h"
 #include "server.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -96,6 +97,9 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     view->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
 
+    // TODO: only create view for xdg-shell and xwayland-shell(not unmanaged)
+    struct output *output = input_current_output(input_manager_get_default_seat());
+    kywc_view_set_output(kywc_view, &output->base);
     view_set_workspace(view, workspace_manager_get_current());
 
     wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
