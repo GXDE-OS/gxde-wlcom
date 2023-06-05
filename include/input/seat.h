@@ -4,6 +4,24 @@
 #include "input.h"
 #include "scene/scene.h"
 
+struct seat_pointer_grab;
+
+struct seat_pointer_grab_interface {
+    void (*motion)(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly);
+    void (*button)(struct seat_pointer_grab *grab, uint32_t time, uint32_t button, bool pressed);
+    void (*axis)(struct seat_pointer_grab *grab, uint32_t time, bool vertical, double value);
+    void (*cancel)(struct seat_pointer_grab *grab);
+};
+
+struct seat_pointer_grab {
+    const struct seat_pointer_grab_interface *interface;
+    struct seat *seat;
+    void *data;
+};
+
+// TODO: interal grab for compositor: pointer_grab keyboard_grab touch_grab
+// struct seat_keyboard_grab *keyboard_grab;
+
 struct seat {
     struct wlr_seat *wlr_seat;
     char *name;
@@ -17,6 +35,8 @@ struct seat {
     // TODO: timer to hide cursor
     struct cursor *cursor;
     struct wl_list keyboards;
+
+    struct seat_pointer_grab *pointer_grab;
 
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
@@ -39,6 +59,8 @@ void seat_remove_input(struct input *input);
 struct seat *seat_from_resource(struct wl_resource *resource);
 
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
+
+bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
 
 struct wlr_surface;
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,

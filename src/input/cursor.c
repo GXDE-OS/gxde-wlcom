@@ -138,6 +138,12 @@ static void cursor_feed_motion(struct cursor *cursor, double lx, double ly, uint
     cursor->ly = ly;
     // kywc_log(KYWC_DEBUG, "cursor move to (%f, %f)", cursor->lx, cursor->ly);
 
+    struct seat *seat = cursor->seat;
+    if (seat->pointer_grab && seat->pointer_grab->interface->motion) {
+        seat->pointer_grab->interface->motion(seat->pointer_grab, time, lx, ly);
+        return;
+    }
+
     _cursor_feed_motion(cursor, time);
 }
 
@@ -163,6 +169,11 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
 static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
 {
     struct seat *seat = cursor->seat;
+    if (seat->pointer_grab && seat->pointer_grab->interface->button) {
+        seat->pointer_grab->interface->button(seat->pointer_grab, time, button, pressed);
+        return;
+    }
+
     bool last_is_pressed = cursor->last_click_pressed;
     uint32_t last_button = cursor->last_click_button;
     cursor->last_click_pressed = pressed;
@@ -273,6 +284,14 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, axis);
     struct wlr_pointer_axis_event *event = data;
+
+    struct seat *seat = cursor->seat;
+    if (seat->pointer_grab && seat->pointer_grab->interface->axis) {
+        seat->pointer_grab->interface->axis(seat->pointer_grab, event->time_msec,
+                                            event->orientation == WLR_AXIS_ORIENTATION_VERTICAL,
+                                            event->delta);
+        return;
+    }
 
     /* Notify the client with pointer focus of the axis event. */
     struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;

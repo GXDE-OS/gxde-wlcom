@@ -163,6 +163,31 @@ struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat)
     return wlr_seat->data;
 }
 
+bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab)
+{
+    if (seat->pointer_grab == pointer_grab) {
+        return true;
+    }
+
+    if (seat->pointer_grab && pointer_grab) {
+        kywc_log(KYWC_WARN, "%s is alreay has a pointer grab", seat->name);
+        return false;
+        // TODO: or replace current grab ?
+        // seat->pointer_grab->interface->cancel(seat->pointer_grab);
+    }
+
+    seat->pointer_grab = pointer_grab;
+
+    /* when we move quickly with left buttion pressed at view edges,
+     * hold_mode is entered by a cursor motion event then client requests move
+     */
+    seat->cursor->hold_mode = false;
+    /* clear last click state */
+    seat->cursor->last_click_pressed = false;
+
+    return true;
+}
+
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
                         double sy, bool first_enter)
 {
