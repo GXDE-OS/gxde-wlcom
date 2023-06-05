@@ -65,7 +65,6 @@ struct kywc_output {
         struct wl_signal power;
 
         struct wl_signal frame;
-        // TODO: usable area changed signal ?
         struct wl_signal destroy;
     } events;
 };

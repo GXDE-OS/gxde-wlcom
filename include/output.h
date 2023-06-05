@@ -12,9 +12,15 @@ struct output {
     struct wl_list link;
     struct output_manager *manager;
 
-    // geometry
-    // usable_area
-    // modes and others
+    struct kywc_box usable_area;
+
+    struct {
+        /* emit when output usable area changed */
+        struct wl_signal usable_area;
+        /* emit when output need update usable area */
+        struct wl_signal update_usable_area;
+        struct wl_signal update_late_usable_area;
+    } events;
 
     struct wl_listener frame;
     struct wl_listener damage;
@@ -34,5 +40,9 @@ struct output *output_from_kywc_output(struct kywc_output *kywc_output);
 
 struct output *output_from_wlr_output(struct wlr_output *wlr_output);
 
+void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
+                                            struct wl_listener *listener, bool late);
+
+void output_update_usable_area(struct kywc_output *kywc_output);
 
 #endif /* _OUTPUT_H_ */

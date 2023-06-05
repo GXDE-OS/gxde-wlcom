@@ -125,6 +125,10 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&kywc_output->events.frame);
     wl_signal_init(&kywc_output->events.destroy);
 
+    wl_signal_init(&output->events.usable_area);
+    wl_signal_init(&output->events.update_usable_area);
+    wl_signal_init(&output->events.update_late_usable_area);
+
     output->manager = output_manager;
     wl_list_insert(&output_manager->outputs, &output->link);
 
@@ -174,7 +178,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     struct output *output = wl_container_of(listener, output, frame);
     struct kywc_output *kywc_output = &output->base;
     struct wlr_output *wlr_output = output->wlr_output;
-    kywc_log(KYWC_DEBUG, "output %s frame coming", kywc_output->name);
+    // kywc_log(KYWC_DEBUG, "output %s frame coming", kywc_output->name);
 
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, kywc_output);
@@ -556,21 +560,31 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         wl_signal_emit_mutable(&kywc_output->events.power, kywc_output);
     }
 
+    bool need_update_usable_area = false;
+
     if (current->width != old.width || current->height != old.height ||
         current->refresh != old.refresh) {
         wl_signal_emit_mutable(&kywc_output->events.mode, kywc_output);
+        need_update_usable_area = true;
     }
 
     if (current->transform != old.transform) {
         wl_signal_emit_mutable(&kywc_output->events.transform, kywc_output);
+        need_update_usable_area = true;
     }
 
     if (current->scale != old.scale) {
         wl_signal_emit_mutable(&kywc_output->events.scale, kywc_output);
+        need_update_usable_area = true;
     }
 
     if (current->lx != old.lx || current->ly != old.ly) {
         wl_signal_emit_mutable(&kywc_output->events.position, kywc_output);
+        need_update_usable_area = true;
+    }
+
+    if (need_update_usable_area) {
+        output_update_usable_area(kywc_output);
     }
 
     output_write_config(output);
@@ -614,4 +628,37 @@ bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y)
     kywc_output_effective_geometry(kywc_output, &geo);
 
     return kywc_box_contains_point(&geo, x, y);
+}
+
+void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
+                                            struct wl_listener *listener, bool late)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+
+    if (late) {
+        wl_signal_add(&output->events.update_late_usable_area, listener);
+    } else {
+        wl_signal_add(&output->events.update_usable_area, listener);
+    }
+}
+
+void output_update_usable_area(struct kywc_output *kywc_output)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    struct kywc_box usable_area;
+    // XXX: or add geometry in output and update when set_state
+    kywc_output_effective_geometry(kywc_output, &usable_area);
+
+    wl_signal_emit_mutable(&output->events.update_usable_area, &usable_area);
+    wl_signal_emit_mutable(&output->events.update_late_usable_area, &usable_area);
+
+    if (kywc_box_equal(&output->usable_area, &usable_area)) {
+        return;
+    }
+
+    output->usable_area = usable_area;
+    kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
+             usable_area.x, usable_area.y, usable_area.width, usable_area.height);
+
+    wl_signal_emit_mutable(&output->events.usable_area, &output->usable_area);
 }
