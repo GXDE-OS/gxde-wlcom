@@ -29,6 +29,11 @@ struct view_manager {
     struct wl_listener server_destroy;
 };
 
+/* for interactive move and resize */
+struct seat;
+void interactive_begin_move(struct view *view, struct seat *seat);
+void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
+
 bool xdg_shell_init(struct view_manager *view_manager);
 
 void decoration_init(struct view_manager *view_manager);
