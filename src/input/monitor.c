@@ -76,7 +76,7 @@ static void output_rebase_cursor(struct input_monitor *input_monitor, float scal
     struct seat *seat;
     wl_list_for_each(seat, &input_monitor->input_manager->seats, link) {
         if (scale != 0.0) {
-            cursor_set_image(seat->cursor, CURSOR_DEFAULT, scale, true);
+            cursor_reload_image(seat->cursor, scale);
         }
 
         if (!move) {
@@ -191,7 +191,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
 
     struct cursor_output *cursor_output;
     wl_list_for_each(cursor_output, &input_monitor->outputs, link) {
-        cursor_set_image(seat->cursor, CURSOR_DEFAULT, cursor_output->ouput->state.scale, false);
+        cursor_reload_image(seat->cursor, cursor_output->ouput->state.scale);
         if (input_monitor->primary) {
             cursor_move_to_output_center(seat->cursor, input_monitor->primary);
         } else {

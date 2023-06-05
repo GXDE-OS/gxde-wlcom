@@ -164,27 +164,34 @@ void cursor_remove_input(struct input *input)
     wlr_cursor_detach_input_device(wlr_cursor, input->wlr_input);
 }
 
-void cursor_set_image(struct cursor *cursor, enum cursor_name name, float scale, bool force)
+static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool force)
 {
-    struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
-    struct wlr_xcursor_manager *xcursor_manager = cursor->xcursor_manager;
-
-    if (!force && cursor->name == name && cursor->scale == scale) {
+    /* early return if cursor not changed when client not requested */
+    if (!force && name == cursor->name && !cursor->client_requested) {
         return;
     }
 
     if (name == CURSOR_NONE) {
-        wlr_cursor_set_surface(wlr_cursor, NULL, 0, 0);
+        wlr_cursor_set_surface(cursor->wlr_cursor, NULL, 0, 0);
         return;
     }
 
-    wlr_xcursor_manager_load(xcursor_manager, scale);
-
-    const char *image = cursor_image[name];
-    wlr_xcursor_manager_set_cursor_image(xcursor_manager, image, wlr_cursor);
-
-    cursor->scale = scale;
+    cursor->client_requested = false;
     cursor->name = name;
+    wlr_xcursor_manager_set_cursor_image(cursor->xcursor_manager, cursor_image[name],
+                                         cursor->wlr_cursor);
+    kywc_log(KYWC_DEBUG, "set cursor to %s", cursor_image[name]);
+}
+
+void cursor_set_image(struct cursor *cursor, enum cursor_name name)
+{
+    _cursor_set_image(cursor, name, false);
+}
+
+void cursor_reload_image(struct cursor *cursor, float scale)
+{
+    wlr_xcursor_manager_load(cursor->xcursor_manager, scale);
+    _cursor_set_image(cursor, CURSOR_DEFAULT, true);
 }
 
 void cursor_move(struct cursor *cursor, double x, double y, bool delta)

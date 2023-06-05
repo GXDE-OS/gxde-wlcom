@@ -4,7 +4,7 @@
 #include "input.h"
 
 enum cursor_name {
-    CURSOR_NONE,
+    CURSOR_NONE = 0,
     CURSOR_DEFAULT,
     CURSOR_MOVE,
     CURSOR_RESIZE_TOP_LEFT,
@@ -69,7 +69,9 @@ void cursor_remove_input(struct input *input);
 
 void cursor_destroy(struct cursor *cursor);
 
-void cursor_set_image(struct cursor *cursor, enum cursor_name name, float scale, bool force);
+void cursor_set_image(struct cursor *cursor, enum cursor_name name);
+
+void cursor_reload_image(struct cursor *cursor, float scale);
 
 void cursor_move(struct cursor *cursor, double x, double y, bool delta);
 
