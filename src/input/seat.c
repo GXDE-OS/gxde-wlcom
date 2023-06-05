@@ -96,7 +96,7 @@ static void seat_update_capabilities(struct seat *seat)
 {
     struct input *input;
     seat->caps = 0;
-    wl_list_for_each(input, &seat->inputs, link) {
+    wl_list_for_each(input, &seat->inputs, seat_link) {
         switch (input->prop.type) {
         case WLR_INPUT_DEVICE_KEYBOARD:
             seat->caps |= WL_SEAT_CAPABILITY_KEYBOARD;
