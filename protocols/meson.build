@@ -16,6 +16,12 @@ if have_kde_output
   }
 endif
 
+if have_kde_virtual_desktop
+  protocols += {
+    'org-kde-plasma-virtual-desktop-management': 'plasma-virtual-desktop.xml',
+  }
+endif
+
 if have_wlr_output
   protocols += {
     'zwlr-output-power-manager-v1': 'wlr-output-power-management-unstable-v1.xml',

@@ -1,5 +1,6 @@
 option('plugin_directory', description: 'Location used to look for plugin (default: ${prefix}/lib/kylin-wlcom/plugins/)', type: 'string', value: '')
 option('examples', type: 'boolean', value: true, description: 'Build example applications')
 option('kde_output', type: 'boolean', value: true, description: 'Enable kde output protocols support')
+option('kde_virtual_desktop', type: 'boolean', value: true, description: 'Enable kde virtual desktop protocol support')
 option('wlr_output', type: 'boolean', value: true, description: 'Enable wlroots output protocols support')
 option('wlr_scene', type: 'boolean', value: true, description: 'Enable wlroots scene as default')

@@ -42,4 +42,14 @@ bool decoration_shoud_use_ssd(struct wlr_surface *surface);
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell);
 
+#if HAVE_KDE_VIRTUAL_DESKTOP
+bool kde_virtual_desktop_management_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool
+kde_virtual_desktop_management_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _VIEW_P_H_ */
