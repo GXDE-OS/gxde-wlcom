@@ -160,25 +160,36 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     return false;
 }
 
-static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
-                              uint32_t modifiers)
+static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
+                              enum wl_keyboard_key_state state, uint32_t time, uint32_t modifiers)
 {
-    kywc_log(KYWC_DEBUG, "keyboard keycode %d %s", key, pressed ? "pressed" : "released");
-
     modifiers_mask_debug(modifiers, "modifiers");
-    keyboard_handle_bindings(keyboard, key, pressed, modifiers);
+
+    bool handled =
+        keyboard_handle_bindings(keyboard, key, state == WL_KEYBOARD_KEY_STATE_PRESSED, modifiers);
+    if (handled) {
+        return;
+    }
+
+    struct wlr_seat *wlr_seat = keyboard->seat->wlr_seat;
+    wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
+    wlr_seat_keyboard_notify_key(wlr_seat, time, key, state);
 }
 
-static void keyboard_feed_modifiers(struct keyboard *keyboard, uint32_t depressed, uint32_t latched,
-                                    uint32_t locked, uint32_t group)
+static void keyboard_feed_modifiers(struct keyboard *keyboard,
+                                    struct wlr_keyboard_modifiers *modifiers)
 {
     if (kywc_log_get_level() == KYWC_DEBUG) {
         kywc_log(KYWC_DEBUG, "keyboard modifiers update");
-        modifiers_mask_debug(depressed, "depressed");
-        modifiers_mask_debug(latched, "latched");
-        modifiers_mask_debug(locked, "locked");
-        modifiers_mask_debug(group, "group");
+        modifiers_mask_debug(modifiers->depressed, "depressed");
+        modifiers_mask_debug(modifiers->latched, "latched");
+        modifiers_mask_debug(modifiers->locked, "locked");
+        modifiers_mask_debug(modifiers->group, "group");
     }
+
+    struct wlr_seat *wlr_seat = keyboard->seat->wlr_seat;
+    wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
+    wlr_seat_keyboard_notify_modifiers(wlr_seat, modifiers);
 }
 
 static void keyboard_handle_key(struct wl_listener *listener, void *data)
@@ -188,18 +199,15 @@ static void keyboard_handle_key(struct wl_listener *listener, void *data)
     struct wlr_keyboard_key_event *event = data;
 
     uint32_t modifiers = wlr_keyboard_get_modifiers(wlr_keyboard);
-    keyboard_feed_key(keyboard, event->keycode, event->state == WL_KEYBOARD_KEY_STATE_PRESSED,
-                      event->time_msec, modifiers);
+    keyboard_feed_key(keyboard, event->keycode, event->state, event->time_msec, modifiers);
 }
 
 static void keyboard_handle_modifiers(struct wl_listener *listener, void *data)
 {
     struct keyboard *keyboard = wl_container_of(listener, keyboard, modifiers);
     struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
-    struct wlr_keyboard_modifiers *modifiers = &wlr_keyboard->modifiers;
 
-    keyboard_feed_modifiers(keyboard, modifiers->depressed, modifiers->latched, modifiers->locked,
-                            modifiers->group);
+    keyboard_feed_modifiers(keyboard, &wlr_keyboard->modifiers);
 }
 
 void keyboard_add_input(struct seat *seat, struct input *input)
