@@ -457,3 +457,9 @@ struct seat *input_manager_get_default_seat(void)
     return seat;
 }
 
+struct output *input_current_output(struct seat *seat)
+{
+    struct wlr_output *wlr_output =
+        wlr_output_layout_output_at(seat->layout, seat->cursor->lx, seat->cursor->ly);
+    return wlr_output ? output_from_wlr_output(wlr_output) : NULL;
+}

@@ -122,6 +122,8 @@ struct input_manager *input_manager_create(struct server *server);
 
 struct seat *input_manager_get_default_seat(void);
 
+struct output *input_current_output(struct seat *seat);
+
 void input_add_new_listener(struct wl_listener *listener);
 
 bool input_set_state(struct input *input, struct input_state *state);
