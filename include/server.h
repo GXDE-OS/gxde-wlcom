@@ -28,11 +28,6 @@ struct server {
 
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
-
-#if HAVE_XWAYLAND
-    struct wlr_xwayland *xwayland;
-    struct wl_listener xwayland_ready;
-#endif
 };
 
 bool server_init(struct server *server);

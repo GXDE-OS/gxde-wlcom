@@ -15,9 +15,6 @@
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_viewporter.h>
 #include <wlr/util/log.h>
-#if HAVE_XWAYLAND
-#include <wlr/xwayland.h>
-#endif
 
 #include <kywc/log.h>
 
@@ -64,13 +61,6 @@ static void kywc_log_callback(enum wlr_log_importance verbosity, const char *fmt
     kywc_vlog(level, fmt, args);
 }
 
-#if HAVE_XWAYLAND
-static void handle_xwayland_ready(struct wl_listener *listener, void *data)
-{
-    struct server *server = wl_container_of(listener, server, xwayland_ready);
-}
-#endif
-
 static bool wlroots_server_init(struct server *server)
 {
     /* verbosity is not used when we replaced log_callback */
@@ -113,23 +103,6 @@ static bool wlroots_server_init(struct server *server)
     wlr_export_dmabuf_manager_v1_create(server->display);
     wlr_viewporter_create(server->display);
     wlr_fractional_scale_manager_v1_create(server->display, 1);
-
-#if HAVE_XWAYLAND
-    if (server->options.enable_xwayland) {
-        server->xwayland = wlr_xwayland_create(server->display, server->compositor, true);
-        if (!server->xwayland) {
-            kywc_log(KYWC_ERROR, "cannot create xwayland server");
-            unsetenv("DISPLAY");
-        } else {
-            server->xwayland_ready.notify = handle_xwayland_ready;
-            wl_signal_add(&server->xwayland->events.ready, &server->xwayland_ready);
-
-            setenv("DISPLAY", server->xwayland->display_name, true);
-            kywc_log(KYWC_INFO, "xwayland is running on display %s",
-                     server->xwayland->display_name);
-        }
-    }
-#endif
 
     return true;
 }
