@@ -230,3 +230,13 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
     return surface;
 }
+
+struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node)
+{
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
+    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_buffer(scene_buffer);
+    if (!scene_surface) {
+        return NULL;
+    }
+    return scene_surface->surface;
+}

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
-#include "scene/surface.h"
 #include "scene/xdg_shell.h"
 
 struct ky_scene_xdg_surface {

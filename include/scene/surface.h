@@ -28,4 +28,6 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
 struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer *scene_buffer);
 
+struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node);
+
 #endif /* _SCENE_SURFACE_H_ */
