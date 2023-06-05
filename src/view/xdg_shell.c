@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+#include "input/event.h"
+#include "output.h"
 #include "scene/xdg_shell.h"
 #include "view_p.h"
 
@@ -26,9 +28,68 @@ struct xdg_view {
     struct wl_listener set_parent;
     struct wl_listener set_title;
     struct wl_listener set_app_id;
+};
 
-    struct kywc_box pending;
-    uint32_t configure_serial;
+static bool xdg_view_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
+                           uint32_t time, bool first, bool hold, void *data)
+{
+    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    if (first) {
+        kywc_log(KYWC_DEBUG, "first hover surface %p (%f %f)", surface, x, y);
+    }
+
+    if (!hold) {
+        seat_notify_motion(seat, surface, time, x, y, first);
+        return false;
+    }
+
+    struct xdg_view *xdg_view = data;
+    struct kywc_box *geometry = &xdg_view->view.base.geometry;
+
+    double sx = x - geometry->x;
+    double sy = y - geometry->y;
+    sx = sx < 0 ? 0 : (sx > geometry->width ? geometry->width : sx);
+    sy = sy < 0 ? 0 : (sy > geometry->height ? geometry->height : sy);
+    sx += xdg_view->wlr_xdg_surface->current.geometry.x;
+    sy += xdg_view->wlr_xdg_surface->current.geometry.y;
+
+    seat_notify_motion(seat, surface, time, sx, sy, first);
+    return true;
+}
+
+static void xdg_view_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
+                           bool pressed, uint32_t time, bool dual, void *data)
+{
+    seat_notify_button(seat, time, button, pressed);
+
+    /* only do activated when button pressed */
+    if (!pressed) {
+        return;
+    }
+
+    /* only activate and focus top surface */
+    struct xdg_view *xdg_view = data;
+    kywc_view_activate(&xdg_view->view.base);
+    seat_focus_surface(seat, xdg_view->wlr_xdg_surface->surface);
+}
+
+static void xdg_view_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data)
+{
+    /* so surface will call set_cursor when enter again */
+    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    seat_notify_leave(seat, surface);
+}
+
+static struct ky_scene_node *xdg_view_get_root(void *data)
+{
+    struct xdg_view *xdg_view = data;
+    return ky_scene_node_from_tree(xdg_view->view.tree);
+}
+
+static const struct input_event_node_impl xdg_view_event_node_impl = {
+    .hover = xdg_view_hover,
+    .click = xdg_view_click,
+    .leave = xdg_view_leave,
 };
 
 static struct xdg_view *xdg_view_from_view(struct view *view)
@@ -43,30 +104,52 @@ static void xdg_view_close(struct view *view)
     wlr_xdg_toplevel_send_close(xdg_view->wlr_xdg_surface->toplevel);
 }
 
-static void xdg_view_configure(struct view *view, struct kywc_box *pending)
+static void xdg_view_configure(struct view *view)
 {
     struct xdg_view *xdg_view = xdg_view_from_view(view);
-    struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
-    struct wlr_xdg_toplevel *wlr_xdg_toplevel = wlr_xdg_surface->toplevel;
-    struct kywc_view *kywc_view = &view->base;
+    struct wlr_xdg_toplevel *wlr_xdg_toplevel = xdg_view->wlr_xdg_surface->toplevel;
+    uint32_t serial = 0;
 
-    wlr_xdg_toplevel_set_maximized(wlr_xdg_toplevel, kywc_view->maximized);
-    wlr_xdg_toplevel_set_fullscreen(wlr_xdg_toplevel, kywc_view->fullscreen);
-    wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, kywc_view->activated);
-    wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, kywc_view->resizing);
-    wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled_edges);
+    if (view->pending.action & VIEW_ACTION_ACTIVATE) {
+        serial = wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, view->pending.activated);
+    }
 
-    /* If not resizing, process the move immediately */
-    if (kywc_view->geometry.width == pending->width &&
-        kywc_view->geometry.height == pending->height) {
-        // xdg_view->pending_action = VIEW_NOP;
-        kywc_view_move(kywc_view, pending->x, pending->y);
+    if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
+        serial = wlr_xdg_toplevel_set_fullscreen(wlr_xdg_toplevel, view->pending.fullscreen);
+    }
+
+    if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
+        serial = wlr_xdg_toplevel_set_maximized(wlr_xdg_toplevel, view->pending.maximized);
+    }
+
+    if (view->pending.action & VIEW_ACTION_RESIZE) {
+        serial = wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, view->pending.resizing);
+    }
+
+    if (view->pending.action & VIEW_ACTION_TILE) {
+        serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, view->pending.tiled ? 0xf : 0);
+    }
+
+    /* no need to resize surface when activate only */
+    if (view->pending.action == VIEW_ACTION_ACTIVATE) {
+        view_configure(view, serial);
         return;
     }
 
-    xdg_view->pending = *pending;
-    xdg_view->configure_serial =
-        wlr_xdg_toplevel_set_size(wlr_xdg_toplevel, pending->width, pending->height);
+    struct kywc_box *current = &view->base.geometry;
+    struct kywc_box *pending = &view->pending.geometry;
+
+    /* If no need to resizing, process the move immediately */
+    if (view->pending.configure_serial == 0 && current->width == pending->width &&
+        current->height == pending->height) {
+        view_helper_move(view, pending->x, pending->y);
+        view_configured(view);
+        return;
+    }
+
+    serial = wlr_xdg_toplevel_set_size(wlr_xdg_toplevel, pending->width, pending->height);
+
+    view_configure(view, serial);
 }
 
 static void xdg_view_destroy(struct view *view)
@@ -82,7 +165,7 @@ static const struct view_impl xdg_surface_impl = {
     .destroy = xdg_view_destroy,
 };
 
-static void xdg_view_update_geometry(struct xdg_view *xdg_view)
+static bool xdg_view_update_geometry(struct xdg_view *xdg_view)
 {
     struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
     struct wlr_xdg_toplevel *wlr_xdg_toplevel = wlr_xdg_surface->toplevel;
@@ -109,97 +192,112 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     kywc_view->padding.top = geo.y;
     kywc_view->padding.bottom = wlr_surface->current.height - geo.y - geo.height;
 
+#if 0
     kywc_log(KYWC_DEBUG, "kywc_view %p size: (%d x %d) range: (%d x %d) to (%d x %d)", kywc_view,
              kywc_view->geometry.width, kywc_view->geometry.height, kywc_view->min_width,
              kywc_view->min_height, kywc_view->max_width, kywc_view->max_height);
     kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
              kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
              kywc_view->padding.bottom);
+#endif
+
+    // TODO: return true if size changed
+    return false;
 }
 
 static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, commit);
-
-    // TODO:how to signal activate, maximize, minimize, fullscreen ...
-    xdg_view_update_geometry(xdg_view);
-    view_commit(&xdg_view->view);
-}
-
-static void xdg_view_handle_map(struct wl_listener *listener, void *data)
-{
-    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, map);
-    struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
-    struct wlr_surface *wlr_surface = wlr_xdg_surface->surface;
+    struct view *view = &xdg_view->view;
 
     xdg_view_update_geometry(xdg_view);
 
-    /* create tree for surface and all sub-surfaces */
-    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
+    enum view_action pending_action = view->pending.action;
+    uint32_t pending_serial = view->pending.configure_serial;
+    if (pending_action == VIEW_ACTION_NOP && pending_serial == 0) {
+        return;
+    }
 
-    xdg_view->commit.notify = xdg_view_handle_commit;
-    wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
+    struct kywc_box *current = &view->base.geometry;
+    struct kywc_box *pending = &view->pending.geometry;
+    int x = pending->x, y = pending->y;
 
-    view_map(&xdg_view->view);
-}
+    uint32_t current_serial = xdg_view->wlr_xdg_surface->current.configure_serial;
+    /* pending configure has not been acked yet, fix wobbling when resize */
+    if (pending_serial >= current_serial && pending_action & VIEW_ACTION_RESIZE) {
+        if (current->x != pending->x) {
+            x += pending->width - current->width;
+        }
+        if (current->y != pending->y) {
+            y += pending->height - current->height;
+        }
+    }
 
-static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)
-{
-    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, unmap);
+    /* position is not changed when activate only */
+    if (!(pending_action == VIEW_ACTION_ACTIVATE)) {
+        view_helper_move(view, x, y);
+    }
 
-    wl_list_remove(&xdg_view->commit.link);
-    view_unmap(&xdg_view->view);
-}
-
-static void xdg_view_handle_destroy(struct wl_listener *listener, void *data)
-{
-    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, destroy);
-
-    wl_list_remove(&xdg_view->destroy.link);
-    wl_list_remove(&xdg_view->map.link);
-    wl_list_remove(&xdg_view->unmap.link);
-    wl_list_remove(&xdg_view->new_popup.link);
-    wl_list_remove(&xdg_view->request_move.link);
-    wl_list_remove(&xdg_view->request_minimize.link);
-    wl_list_remove(&xdg_view->request_maximize.link);
-    wl_list_remove(&xdg_view->request_fullscreen.link);
-    wl_list_remove(&xdg_view->request_resize.link);
-    wl_list_remove(&xdg_view->request_show_window_menu.link);
-    wl_list_remove(&xdg_view->set_parent.link);
-    wl_list_remove(&xdg_view->set_title.link);
-    wl_list_remove(&xdg_view->set_app_id.link);
-
-    view_destroy(&xdg_view->view);
+    /* last configure has been acked */
+    if (current_serial >= pending_serial) {
+        view_configured(&xdg_view->view);
+    }
 }
 
 static void xdg_view_handle_new_popup(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, new_popup);
+    struct wlr_xdg_popup *wlr_xdg_popup = data;
+
+    xdg_popup_create(wlr_xdg_popup, xdg_view->surface_tree);
 }
 
 static void xdg_view_handle_request_move(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_move);
+    struct wlr_xdg_toplevel_move_event *event = data;
+    struct seat *seat = seat_from_wlr_seat(event->seat->seat);
+
+    interactive_begin_move(&xdg_view->view, seat);
 }
 
 static void xdg_view_handle_request_resize(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_resize);
+    struct wlr_xdg_toplevel_resize_event *event = data;
+    struct seat *seat = seat_from_wlr_seat(event->seat->seat);
+
+    interactive_begin_resize(&xdg_view->view, event->edges, seat);
 }
 
 static void xdg_view_handle_request_minimize(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_minimize);
+    struct wlr_xdg_toplevel *toplevel = xdg_view->wlr_xdg_surface->toplevel;
+
+    kywc_view_set_minimized(&xdg_view->view.base, toplevel->requested.minimized);
 }
 
 static void xdg_view_handle_request_maximize(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_maximize);
+    struct wlr_xdg_toplevel *toplevel = xdg_view->wlr_xdg_surface->toplevel;
+
+    kywc_view_set_maximized(&xdg_view->view.base, toplevel->requested.maximized);
 }
 
 static void xdg_view_handle_request_fullscreen(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_fullscreen);
+    struct wlr_xdg_toplevel *toplevel = xdg_view->wlr_xdg_surface->toplevel;
+    struct wlr_xdg_toplevel_requested *requested = &toplevel->requested;
+    struct kywc_view *kywc_view = &xdg_view->view.base;
+
+    if (requested->fullscreen_output) {
+        struct output *output = output_from_wlr_output(requested->fullscreen_output);
+        kywc_view_set_output(kywc_view, &output->base);
+    }
+    kywc_view_set_fullscreen(kywc_view, requested->fullscreen);
 }
 
 static void xdg_view_handle_show_window_menu(struct wl_listener *listener, void *data)
@@ -207,14 +305,20 @@ static void xdg_view_handle_show_window_menu(struct wl_listener *listener, void 
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_show_window_menu);
 }
 
-static void xdg_view_handle_set_parent(struct wl_listener *listener, void *data)
+static void xdg_view_update_parent(struct xdg_view *xdg_view)
 {
-    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, set_parent);
     struct wlr_xdg_toplevel *parent = xdg_view->wlr_xdg_surface->toplevel->parent;
     struct xdg_view *parent_xdg_view = parent ? parent->base->data : NULL;
     struct view *parent_view = parent_xdg_view ? &parent_xdg_view->view : NULL;
 
     view_set_parent(&xdg_view->view, parent_view);
+}
+
+static void xdg_view_handle_set_parent(struct wl_listener *listener, void *data)
+{
+    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, set_parent);
+
+    xdg_view_update_parent(xdg_view);
 }
 
 static void xdg_view_handle_set_title(struct wl_listener *listener, void *data)
@@ -233,47 +337,25 @@ static void xdg_view_handle_set_app_id(struct wl_listener *listener, void *data)
     view_set_app_id(&xdg_view->view, app_id);
 }
 
-static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
+static void xdg_view_handle_map(struct wl_listener *listener, void *data)
 {
-    struct wlr_xdg_surface *wlr_xdg_surface = data;
-
-    /* popup is handled in surface new_popup listener */
-    if (wlr_xdg_surface->role != WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
-        return;
-    }
-
-    struct xdg_view *xdg_view = calloc(1, sizeof(struct xdg_view));
-    if (!xdg_view) {
-        wl_resource_post_no_memory(wlr_xdg_surface->surface->resource);
-        return;
-    }
-
-    // TODO: add arg layer to move tree_create to view_init
-    view_init(&xdg_view->view, &xdg_surface_impl, xdg_view);
-
-    // TODO: move tree_create to view_map ?
-    /* create view tree and disable it */
-    struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL);
-    xdg_view->view.tree = ky_scene_tree_create(layer->tree);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(xdg_view->view.tree), false);
-
-    xdg_view->wlr_xdg_surface = wlr_xdg_surface;
-    wlr_xdg_surface->data = xdg_view;
-    /* for decoration */
-    wlr_xdg_surface->surface->data = &xdg_view->view;
-
-    /* wlr_xdg_surface listeners */
-    xdg_view->map.notify = xdg_view_handle_map;
-    wl_signal_add(&wlr_xdg_surface->events.map, &xdg_view->map);
-    xdg_view->unmap.notify = xdg_view_handle_unmap;
-    wl_signal_add(&wlr_xdg_surface->events.unmap, &xdg_view->unmap);
-    xdg_view->destroy.notify = xdg_view_handle_destroy;
-    wl_signal_add(&wlr_xdg_surface->events.destroy, &xdg_view->destroy);
-    xdg_view->new_popup.notify = xdg_view_handle_new_popup;
-    wl_signal_add(&wlr_xdg_surface->events.new_popup, &xdg_view->new_popup);
-
-    /* wlr_xdg_toplevel listeners */
+    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, map);
+    struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
+    struct wlr_surface *wlr_surface = wlr_xdg_surface->surface;
     struct wlr_xdg_toplevel *toplevel = wlr_xdg_surface->toplevel;
+
+    xdg_view_update_geometry(xdg_view);
+
+    /* all states are ready when map */
+    view_set_app_id(&xdg_view->view, toplevel->app_id);
+    view_set_title(&xdg_view->view, toplevel->title);
+    xdg_view_update_parent(xdg_view);
+
+    xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
+    xdg_view_handle_request_maximize(&xdg_view->request_maximize, NULL);
+    xdg_view_handle_request_fullscreen(&xdg_view->request_fullscreen, NULL);
+
+    /* some requesets before map are cached in toplevel */
     xdg_view->request_move.notify = xdg_view_handle_request_move;
     wl_signal_add(&toplevel->events.request_move, &xdg_view->request_move);
     xdg_view->request_resize.notify = xdg_view_handle_request_resize;
@@ -292,6 +374,83 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     wl_signal_add(&toplevel->events.set_title, &xdg_view->set_title);
     xdg_view->set_app_id.notify = xdg_view_handle_set_app_id;
     wl_signal_add(&toplevel->events.set_app_id, &xdg_view->set_app_id);
+
+    xdg_view->new_popup.notify = xdg_view_handle_new_popup;
+    wl_signal_add(&wlr_xdg_surface->events.new_popup, &xdg_view->new_popup);
+    xdg_view->commit.notify = xdg_view_handle_commit;
+    wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
+
+    /* create tree for surface and all sub-surfaces */
+    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
+    /* event node will be destroy in unmap */
+    input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
+                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
+    view_map(&xdg_view->view);
+}
+
+static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)
+{
+    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, unmap);
+
+    wl_list_remove(&xdg_view->commit.link);
+    wl_list_remove(&xdg_view->new_popup.link);
+    wl_list_remove(&xdg_view->request_move.link);
+    wl_list_remove(&xdg_view->request_minimize.link);
+    wl_list_remove(&xdg_view->request_maximize.link);
+    wl_list_remove(&xdg_view->request_fullscreen.link);
+    wl_list_remove(&xdg_view->request_resize.link);
+    wl_list_remove(&xdg_view->request_show_window_menu.link);
+    wl_list_remove(&xdg_view->set_parent.link);
+    wl_list_remove(&xdg_view->set_title.link);
+    wl_list_remove(&xdg_view->set_app_id.link);
+
+    /* destroy surface tree as we create it in map */
+    ky_scene_node_destroy(ky_scene_node_from_tree(xdg_view->surface_tree));
+    view_unmap(&xdg_view->view);
+}
+
+static void xdg_view_handle_destroy(struct wl_listener *listener, void *data)
+{
+    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, destroy);
+
+    wl_list_remove(&xdg_view->destroy.link);
+    wl_list_remove(&xdg_view->map.link);
+    wl_list_remove(&xdg_view->unmap.link);
+
+    view_destroy(&xdg_view->view);
+}
+
+static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
+{
+    struct wlr_xdg_surface *wlr_xdg_surface = data;
+
+    /* popup is handled in surface new_popup listener */
+    if (wlr_xdg_surface->role != WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
+        return;
+    }
+
+    wlr_xdg_surface_ping(wlr_xdg_surface);
+
+    struct xdg_view *xdg_view = calloc(1, sizeof(struct xdg_view));
+    if (!xdg_view) {
+        wl_resource_post_no_memory(wlr_xdg_surface->surface->resource);
+        return;
+    }
+
+    view_init(&xdg_view->view, &xdg_surface_impl, xdg_view);
+
+    xdg_view->wlr_xdg_surface = wlr_xdg_surface;
+    wlr_xdg_surface->data = xdg_view;
+    /* for decoration */
+    wlr_xdg_surface->surface->data = &xdg_view->view;
+
+    /* others will add in map and remove in unmap */
+    xdg_view->map.notify = xdg_view_handle_map;
+    wl_signal_add(&wlr_xdg_surface->events.map, &xdg_view->map);
+    xdg_view->unmap.notify = xdg_view_handle_unmap;
+    wl_signal_add(&wlr_xdg_surface->events.unmap, &xdg_view->unmap);
+    xdg_view->destroy.notify = xdg_view_handle_destroy;
+    wl_signal_add(&wlr_xdg_surface->events.destroy, &xdg_view->destroy);
 }
 
 bool xdg_shell_init(struct view_manager *view_manager)
