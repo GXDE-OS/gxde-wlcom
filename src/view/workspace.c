@@ -280,6 +280,8 @@ void workspace_activate(struct workspace *workspace)
         return;
     }
 
+    // TODO: fullscreen views when switching workspace
+
     if (old) {
         workspace_set_activated(old, false);
     }

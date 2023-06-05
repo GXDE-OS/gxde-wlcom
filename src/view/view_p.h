@@ -17,13 +17,15 @@ struct view_manager {
     struct view_layer layers[LAYER_NUMBER];
 
     // TODO: views keyboard focused when multi-seat
-    /* only one activated view in all workspaces at once */
-    struct view *activated_view;
+    struct {
+        /* only one activated view in all workspaces at once */
+        struct view *view;
+        struct wl_listener minimize;
+        struct wl_listener destroy;
+    } activated;
+
 
     struct wl_listener new_xdg_surface;
-    struct wl_listener xdg_toplevel_decoration;
-    struct wl_listener server_decoration;
-
     struct wl_listener server_destroy;
 };
 

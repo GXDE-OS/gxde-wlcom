@@ -24,6 +24,24 @@ enum kywc_view_type {
     KYWC_VIEW_LAYER_SHELL,
 };
 
+enum kywc_edges {
+    KYWC_EDGE_NONE = 0,
+    KYWC_EDGE_TOP = 1 << 0,
+    KYWC_EDGE_BOTTOM = 1 << 1,
+    KYWC_EDGE_LEFT = 1 << 2,
+    KYWC_EDGE_RIGHT = 1 << 3,
+};
+
+enum kywc_tile {
+    KYWC_TILE_NONE = 0,
+    KYWC_TILE_UP,
+    KYWC_TILE_DOWN,
+    KYWC_TILE_LEFT,
+    KYWC_TILE_RIGHT,
+    KYWC_TILE_CENTER,
+    KYWC_TILE_ALL,
+};
+
 struct kywc_view {
     enum kywc_view_type type;
 
@@ -49,13 +67,11 @@ struct kywc_view {
 
     /* have a buffer attached and can shown in screen */
     bool mapped;
-    // bool enabled;
+    bool minimized, kept_above, kept_below;
 
-    /* configure states */
-    // bool keep_above, keep_below;
-    bool minimized, maximized, fullscreen;
-    bool activated, resizing;
-    enum kywc_edges tiled_edges;
+    /* current configured states */
+    bool maximized, fullscreen, resizing, activated;
+    enum kywc_tile tiled;
 
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
@@ -64,15 +80,11 @@ struct kywc_view {
     /* app_id: class when xwayland shell */
     const char *title, *app_id;
 
-    // TODO: hide some props and states, and emit with signals
-
     struct {
         /* emit before map for position, ssd ... */
         struct wl_signal premap;
         /* emit when view is mapped */
         struct wl_signal map;
-        /* emit when view is commited */
-        struct wl_signal commit;
         /* emit when view is going to be unmapped */
         struct wl_signal unmap;
         /* emit when view is going to be destroyed */
@@ -108,13 +120,11 @@ void kywc_view_add_new_listener(struct wl_listener *listener);
 
 void kywc_view_close(struct kywc_view *kywc_view);
 void kywc_view_move(struct kywc_view *kywc_view, int x, int y);
-void kywc_view_resize(struct kywc_view *kywc_view, int x, int y, int w, int h);
+void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry);
 void kywc_view_activate(struct kywc_view *kywc_view);
 
-void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_edges edges);
-
-void kywc_view_set_enabled(struct kywc_view *kywc_view, bool enabled);
-void kywc_view_toggle_enabled(struct kywc_view *kywc_view);
+void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile);
+void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output);
 
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized);
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view);
@@ -124,7 +134,5 @@ void kywc_view_toggle_maximized(struct kywc_view *kywc_view);
 
 void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen);
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view);
-
-void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output);
 
 #endif /* _KYWC_VIEW_H_ */

@@ -2,6 +2,7 @@
 
 #include <kywc/log.h>
 
+#include "input/input.h"
 #include "server.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -42,8 +43,12 @@ struct view_manager *view_manager_create(struct server *server)
     return view_manager;
 }
 
-struct view_layer *view_manager_get_layer(enum layer layer)
+struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 {
+    if (!in_workspace) {
+        return &view_manager->layers[layer];
+    }
+
     switch (layer) {
     case LAYER_BELOW:
         return &workspace_manager_get_current()->layers[0];
@@ -60,14 +65,9 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    view->impl = impl;
-    view->data = data;
-    wl_list_init(&view->subview.children);
-
     kywc_view->type = impl->type;
     wl_signal_init(&kywc_view->events.premap);
     wl_signal_init(&kywc_view->events.map);
-    wl_signal_init(&kywc_view->events.commit);
     wl_signal_init(&kywc_view->events.unmap);
     wl_signal_init(&kywc_view->events.destroy);
     wl_signal_init(&kywc_view->events.activate);
@@ -79,13 +79,186 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.decoration);
     wl_signal_init(&kywc_view->events.shadow);
 
+    view->impl = impl;
+    view->data = data;
+    wl_list_init(&view->subview.children);
     wl_signal_init(&view->events.workspace);
 
-    /* only emit new_view signal when client shells */
-    if (kywc_view->type == KYWC_VIEW_XDG_SHELL || kywc_view->type == KYWC_VIEW_XWAYLAND) {
-        view_set_workspace(view, workspace_manager_get_current());
-        wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
+    kywc_view->minimizable = true;
+    kywc_view->maximizable = true;
+    kywc_view->fullscreenable = true;
+    kywc_view->closeable = true;
+    kywc_view->movable = true;
+    kywc_view->resizable = true;
+
+    /* create view tree and disable it */
+    struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
+    view->tree = ky_scene_tree_create(layer->tree);
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
+
+    view_set_workspace(view, workspace_manager_get_current());
+
+    wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
+}
+
+static void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
+                                    struct kywc_output *kywc_output, enum kywc_tile tile)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    struct kywc_box *usable = &output->usable_area;
+    struct kywc_view *kywc_view = &view->base;
+
+    switch (tile) {
+    case KYWC_TILE_NONE:
+        *geometry = view->saved.geometry;
+        return;
+    case KYWC_TILE_UP:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width = usable->width - kywc_view->margin.off_width;
+        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_DOWN:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = usable->y + usable->height / 2 + kywc_view->margin.off_y;
+        geometry->width = usable->width - kywc_view->margin.off_width;
+        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_LEFT:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height = usable->height - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_RIGHT:
+        geometry->x = usable->x + usable->width / 2 + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height = usable->height - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_CENTER:
+        geometry->x = usable->x + usable->width / 4 + kywc_view->margin.off_x;
+        geometry->y = usable->y + usable->height / 4 + kywc_view->margin.off_y;
+        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_ALL:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width = usable->width - kywc_view->margin.off_width;
+        geometry->height = usable->height - kywc_view->margin.off_height;
+        return;
     }
+}
+
+void view_map(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    wl_signal_emit_mutable(&kywc_view->events.premap, kywc_view);
+
+    /* assume that request_minimize may emited before map */
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !kywc_view->minimized);
+
+    if (view->pending.action) {
+        /* add a fallback geometry */
+        if (view->pending.maximized || view->pending.fullscreen) {
+            view_get_tiled_geometry(view, &view->saved.geometry, view->output, KYWC_TILE_CENTER);
+        }
+        if (view->impl->configure) {
+            view->impl->configure(view);
+        }
+    }
+
+    kywc_view->mapped = true;
+
+    kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.map, kywc_view);
+}
+
+void view_unmap(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    kywc_view->title = kywc_view->app_id = NULL;
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
+    kywc_view->mapped = false;
+
+    if (view->pending.configure_timeout) {
+        wl_event_source_remove(view->pending.configure_timeout);
+        view->pending.configure_timeout = NULL;
+    }
+
+    kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.unmap, kywc_view);
+}
+
+#define CONFIGURE_TIMEOUT_MS 500
+
+static int view_handle_configure_timeout(void *data)
+{
+    struct view *view = data;
+
+    kywc_log(KYWC_INFO, "client (%s) did not respond to configure request in %d ms",
+             view->base.app_id, CONFIGURE_TIMEOUT_MS);
+
+    // TODO: fallback for pending actions
+
+    wl_event_source_remove(view->pending.configure_timeout);
+    view->pending.configure_timeout = NULL;
+    view->pending.configure_serial = 0;
+    view->pending.action = VIEW_ACTION_NOP;
+
+    return 0;
+}
+
+void view_configure(struct view *view, uint32_t serial)
+{
+    view->pending.configure_serial = serial;
+
+    if (!view->pending.configure_timeout) {
+        view->pending.configure_timeout = wl_event_loop_add_timer(
+            view_manager->server->event_loop, view_handle_configure_timeout, view);
+    }
+
+    wl_event_source_timer_update(view->pending.configure_timeout, CONFIGURE_TIMEOUT_MS);
+}
+
+void view_configured(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    if (view->pending.action & VIEW_ACTION_ACTIVATE) {
+        kywc_view->activated = view->pending.activated;
+        kywc_log(KYWC_DEBUG, "view %s is activated: %d", kywc_view->app_id, kywc_view->activated);
+        wl_signal_emit_mutable(&kywc_view->events.activate, kywc_view);
+    }
+
+    if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
+        kywc_view->fullscreen = view->pending.fullscreen;
+        wl_signal_emit_mutable(&kywc_view->events.fullscreen, kywc_view);
+    }
+
+    if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
+        kywc_view->maximized = view->pending.maximized;
+        wl_signal_emit_mutable(&kywc_view->events.maximize, kywc_view);
+    }
+
+    if (view->pending.action & VIEW_ACTION_RESIZE) {
+        kywc_view->resizing = false;
+    }
+
+    if (view->pending.action & VIEW_ACTION_TILE) {
+        kywc_view->tiled = view->pending.tiled;
+    }
+
+    if (view->pending.configure_timeout) {
+        wl_event_source_remove(view->pending.configure_timeout);
+        view->pending.configure_timeout = NULL;
+    }
+
+    view->pending.configure_serial = 0;
+    view->pending.action = VIEW_ACTION_NOP;
 }
 
 void view_destroy(struct view *view)
@@ -134,13 +307,13 @@ void view_set_decoration(struct view *view, bool need_ssd)
 
 void view_set_workspace(struct view *view, struct workspace *workspace)
 {
-
     if (view->workspace == workspace) {
         return;
     }
 
     view->workspace = workspace;
-    kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base, workspace->name);
+    kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
+             workspace ? workspace->name : "none");
 
     wl_signal_emit_mutable(&view->events.workspace, workspace);
 }
@@ -163,38 +336,6 @@ void view_set_parent(struct view *view, struct view *parent)
     kywc_log(KYWC_DEBUG, "view %p set parent to %p", view, parent);
 }
 
-void view_map(struct view *view)
-{
-    struct kywc_view *kywc_view = &view->base;
-
-    // TODO: set output and workspace
-
-    wl_signal_emit_mutable(&kywc_view->events.premap, kywc_view);
-
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), true);
-
-    kywc_view->mapped = true;
-
-    wl_signal_emit_mutable(&kywc_view->events.map, kywc_view);
-}
-
-void view_unmap(struct view *view)
-{
-    struct kywc_view *kywc_view = &view->base;
-
-    kywc_view->title = kywc_view->app_id = NULL;
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
-
-    wl_signal_emit_mutable(&kywc_view->events.unmap, kywc_view);
-}
-
-void view_commit(struct view *view)
-{
-    struct kywc_view *kywc_view = &view->base;
-
-    wl_signal_emit_mutable(&kywc_view->events.commit, kywc_view);
-}
-
 void kywc_view_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&view_manager->events.new_view, listener);
@@ -210,7 +351,9 @@ void kywc_view_close(struct kywc_view *kywc_view)
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
-    view->impl->close(view);
+    if (view->impl->close) {
+        view->impl->close(view);
+    }
 }
 
 void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output)
@@ -223,34 +366,247 @@ void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *outpu
     view->output = output;
 }
 
-void kywc_view_move(struct kywc_view *kywc_view, int x, int y) {}
+void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
+{
+    struct view *view = view_from_kywc_view(kywc_view);
 
-void kywc_view_resize(struct kywc_view *kywc_view, int x, int y, int w, int h) {}
+    /* last action not finished, skip move and apply in commit */
+    if (view->pending.action & ~VIEW_ACTION_ACTIVATE) {
+        view->pending.geometry.x = x;
+        view->pending.geometry.y = y;
+        kywc_log(KYWC_DEBUG, "skip move when pending action %d", view->pending.action);
+        return;
+    }
 
-void kywc_view_activate(struct kywc_view *kywc_view) {}
+    view_helper_move(view, x, y);
+}
 
-void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_edges edges) {}
+// TODO: current we don't check current state,
+// maybe we should check last pending action and serial to skip configure
 
-void kywc_view_set_enabled(struct kywc_view *kywc_view, bool enabled) {}
+void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
+{
+    struct view *view = view_from_kywc_view(kywc_view);
 
-void kywc_view_toggle_enabled(struct kywc_view *kywc_view) {}
+    view->pending.action |= VIEW_ACTION_RESIZE;
+    view->pending.resizing = true;
+    view->pending.geometry = *geometry;
 
-void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized) {}
+    if (kywc_view->mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
+}
 
-void kywc_view_toggle_minimized(struct kywc_view *kywc_view) {}
+static void view_set_activated(struct view *view, bool activated)
+{
+    struct kywc_view *kywc_view = &view->base;
 
-void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized) {}
+    view->pending.action |= VIEW_ACTION_ACTIVATE;
+    view->pending.activated = activated;
 
-void kywc_view_toggle_maximized(struct kywc_view *kywc_view) {}
+    if (kywc_view->mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
+}
+
+static void view_manager_auto_activate_view(void)
+{
+    // TODO: find topmost enabled(mapped and not minimized) view and activate it
+}
+
+static void handle_activated_view_minimized(struct wl_listener *listener, void *data)
+{
+    view_manager_auto_activate_view();
+}
+
+static void handle_activated_view_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&view_manager->activated.minimize.link);
+    wl_list_remove(&view_manager->activated.destroy.link);
+    view_manager->activated.view = NULL;
+
+    view_manager_auto_activate_view();
+}
+
+void kywc_view_activate(struct kywc_view *kywc_view)
+{
+    struct view *view = view_from_kywc_view(kywc_view);
+    struct view *last = view_manager->activated.view;
+    if (last == view) {
+        return;
+    }
+
+    if (last) {
+        wl_list_remove(&view_manager->activated.minimize.link);
+        wl_list_remove(&view_manager->activated.destroy.link);
+        view_set_activated(last, false);
+    }
+
+    view_set_activated(view, true);
+
+    /* listen activated view's minimize and destroy signals,
+     * so that we can auto activate another view.
+     */
+    view_manager->activated.view = view;
+    view_manager->activated.minimize.notify = handle_activated_view_minimized;
+    view_manager->activated.destroy.notify = handle_activated_view_destroy;
+    wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
+    wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.destroy);
+}
+
+void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile)
+{
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    /* when tile is KYWC_TILE_NONE */
+    struct kywc_box geo = { 0 };
+    view_get_tiled_geometry(view, &geo, view->output, tile);
+
+    kywc_view->tiled = tile;
+    view->pending.action |= VIEW_ACTION_TILE;
+    view->pending.geometry = geo;
+
+    if (view->impl->configure) {
+        view->impl->configure(view);
+    }
+}
+
+void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
+{
+    if (!kywc_view->minimizable || kywc_view->minimized == minimized) {
+        return;
+    }
+
+    kywc_view->minimized = minimized;
+
+    struct view *view = view_from_kywc_view(kywc_view);
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), minimized);
+
+    /* if view is the activated view, process it in activated.minimize listener */
+    wl_signal_emit(&kywc_view->events.minimize, kywc_view);
+}
+
+void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
+{
+    kywc_view_set_minimized(kywc_view, !kywc_view->minimized);
+}
+
+void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized)
+{
+    if (!kywc_view->maximizable) {
+        return;
+    }
+
+    struct view *view = view_from_kywc_view(kywc_view);
+    struct kywc_box geo = { 0 };
+
+    if (maximized) {
+        view_get_tiled_geometry(view, &geo, view->output, KYWC_TILE_ALL);
+        if (!kywc_view->tiled) {
+            view->saved.geometry = kywc_view->geometry;
+        }
+    } else {
+        /* don't restore tiled mode followed other compositors */
+        kywc_view->tiled = KYWC_TILE_NONE;
+        geo = view->saved.geometry;
+    }
+
+    view->pending.action |= VIEW_ACTION_MAXIMIZE;
+    view->pending.maximized = maximized;
+    view->pending.geometry = geo;
+
+    if (kywc_view->mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
+}
+
+void kywc_view_toggle_maximized(struct kywc_view *kywc_view)
+{
+    kywc_view_set_maximized(kywc_view, !kywc_view->maximized);
+}
+
+static void view_reparent_fullscreen(struct view *view, bool fullscreen)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    if (fullscreen) {
+        view->saved.layer = kywc_view->kept_above
+                                ? LAYER_ABOVE
+                                : (kywc_view->kept_below ? LAYER_BELOW : LAYER_NORMAL);
+        struct view_layer *layer = view_manager_get_layer(LAYER_ACTIVE, false);
+        ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+        /* clear view workspace */
+        view_set_workspace(view, NULL);
+        return;
+    }
+
+    /* restore fullscreen view to workspace */
+    struct view_layer *layer = view_manager_get_layer(view->saved.layer, true);
+    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+    view_set_workspace(view, workspace_manager_get_current());
+}
 
 void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
 {
     if (!kywc_view->fullscreenable) {
         return;
     }
+
+    struct view *view = view_from_kywc_view(kywc_view);
+    struct kywc_box geo = { 0 };
+
+    if (fullscreen) {
+        kywc_output_effective_geometry(view->output, &geo);
+        if (!kywc_view->maximized && !kywc_view->tiled) {
+            view->saved.geometry = kywc_view->geometry;
+        }
+    } else if (kywc_view->maximized) {
+        view_get_tiled_geometry(view, &geo, view->output, KYWC_TILE_ALL);
+    } else if (kywc_view->tiled) {
+        view_get_tiled_geometry(view, &geo, view->output, kywc_view->tiled);
+    } else {
+        geo = view->saved.geometry;
+    }
+
+    view_reparent_fullscreen(view, fullscreen);
+
+    view->pending.action |= VIEW_ACTION_FULLSCREEN;
+    view->pending.fullscreen = fullscreen;
+    view->pending.geometry = geo;
+
+    if (kywc_view->mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
 }
 
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view)
 {
     kywc_view_set_fullscreen(kywc_view, !kywc_view->fullscreen);
+}
+
+void view_helper_move(struct view *view, int x, int y)
+{
+    struct kywc_box *geo = &view->base.geometry;
+
+    if (geo->x == x && geo->y == y) {
+        return;
+    }
+
+    geo->x = x;
+    geo->y = y;
+    ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
+}
+
+bool view_is_moveable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    return kywc_view->movable && !kywc_view->fullscreen;
+}
+
+bool view_is_resizable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
 }

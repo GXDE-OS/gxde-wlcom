@@ -7,14 +7,6 @@
 
 #define KYWC_API static __attribute__((unused)) inline
 
-enum kywc_edges {
-    KYWC_EDGE_NONE = 0,
-    KYWC_EDGE_TOP = 1 << 0,
-    KYWC_EDGE_BOTTOM = 1 << 1,
-    KYWC_EDGE_LEFT = 1 << 2,
-    KYWC_EDGE_RIGHT = 1 << 3,
-};
-
 /* rect with top-left and size */
 struct kywc_box {
     int x, y, width, height;
