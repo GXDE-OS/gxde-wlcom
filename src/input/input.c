@@ -43,13 +43,17 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     input_manager = NULL;
 }
 
-static struct seat *input_manager_get_seat(const char *name)
+static struct seat *input_manager_get_seat(const char *name, bool create)
 {
     struct seat *seat = NULL;
     wl_list_for_each(seat, &input_manager->seats, link) {
         if (!strcmp(seat->name, name)) {
             return seat;
         }
+    }
+
+    if (!create) {
+        return NULL;
     }
 
     /* create a new seat */
@@ -301,7 +305,7 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->bindings = bindings_create(input_manager);
 
     idle_manager_create(server);
-    input_manager_get_seat("seat0");
+    input_manager_get_seat("seat0", true);
 
     return input_manager;
 }
@@ -322,7 +326,7 @@ void input_set_seat(struct input *input, const char *seat)
         }
     }
 
-    input->seat = input_manager_get_seat(seat);
+    input->seat = input_manager_get_seat(seat, true);
     seat_add_input(input->seat, input);
 }
 
@@ -442,3 +446,14 @@ struct input *input_by_name(const char *name)
 
     return NULL;
 }
+
+struct seat *input_manager_get_default_seat(void)
+{
+    // TODO: return last activated seat ?
+    struct seat *seat = input_manager_get_seat("seat0", false);
+    if (!seat) {
+        seat = wl_container_of(input_manager->seats.prev, seat, link);
+    }
+    return seat;
+}
+
