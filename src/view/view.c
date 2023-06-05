@@ -38,7 +38,8 @@ struct view_manager *view_manager_create(struct server *server)
     }
 
     workspace_manager_create(view_manager);
-    decoration_init(view_manager);
+    decoration_manager_create(view_manager);
+
     xdg_shell_init(view_manager);
 
     return view_manager;

@@ -36,7 +36,9 @@ void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *se
 
 bool xdg_shell_init(struct view_manager *view_manager);
 
-void decoration_init(struct view_manager *view_manager);
+bool decoration_manager_create(struct view_manager *view_manager);
+bool decoration_shoud_use_ssd(struct wlr_surface *surface);
+
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell);
 

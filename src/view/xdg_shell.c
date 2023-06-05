@@ -349,6 +349,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     /* all states are ready when map */
     view_set_app_id(&xdg_view->view, toplevel->app_id);
     view_set_title(&xdg_view->view, toplevel->title);
+    view_set_decoration(&xdg_view->view, decoration_shoud_use_ssd(wlr_surface));
     xdg_view_update_parent(xdg_view);
 
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
@@ -441,8 +442,6 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
 
     xdg_view->wlr_xdg_surface = wlr_xdg_surface;
     wlr_xdg_surface->data = xdg_view;
-    /* for decoration */
-    wlr_xdg_surface->surface->data = &xdg_view->view;
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;
