@@ -284,6 +284,10 @@ void view_destroy(struct view *view)
 
     wl_signal_emit_mutable(&kywc_view->events.destroy, kywc_view);
 
+    if (view->workspace) {
+        wl_list_remove(&view->link);
+    }
+
     ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
     view->impl->destroy(view);
 }
@@ -327,7 +331,15 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
         return;
     }
 
+    if (view->workspace) {
+        wl_list_remove(&view->link);
+    }
+    if (workspace) {
+        wl_list_insert(&workspace->views, &view->link);
+    }
+
     view->workspace = workspace;
+
     kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
              workspace ? workspace->name : "none");
 
@@ -463,6 +475,12 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 
     view_set_activated(view, true);
+
+    /* insert view in workspace topmost */
+    if (view->workspace) {
+        wl_list_remove(&view->link);
+        wl_list_insert(&view->workspace->views, &view->link);
+    }
 
     /* listen activated view's minimize and destroy signals,
      * so that we can auto activate another view.

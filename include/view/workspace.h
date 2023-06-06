@@ -9,6 +9,8 @@ struct workspace {
     /* layers in workspacec, below, nornal and above */
     struct view_layer layers[3];
 
+    struct wl_list views;
+
     uint32_t position;
     bool activated;
 

@@ -209,6 +209,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace->position = position;
     workspace->name = name ? strdup(name) : kywc_identifier_generate("Desktop %d", position + 1);
 
+    wl_list_init(&workspace->views);
     wl_signal_init(&workspace->events.activate);
     wl_signal_init(&workspace->events.destroy);
 

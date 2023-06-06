@@ -63,6 +63,7 @@ struct view {
     struct kywc_view base;
     struct wlr_surface *surface;
 
+    /* insert to workspace */
     struct wl_list link;
 
     /* parent and children */
