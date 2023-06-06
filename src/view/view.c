@@ -209,8 +209,21 @@ static int view_handle_configure_timeout(void *data)
 
     /* fallback for pending actions */
     if (!(view->pending.action == VIEW_ACTION_ACTIVATE)) {
-        view_helper_move(view, view->pending.geometry.x, view->pending.geometry.y);
+        struct kywc_box *current = &view->base.geometry;
+        struct kywc_box *pending = &view->pending.geometry;
+        int x = pending->x, y = pending->y;
+        /* fix wobbling when resize */
+        if (view->pending.action & VIEW_ACTION_RESIZE) {
+            if (current->x != pending->x) {
+                x += pending->width - current->width;
+            }
+            if (current->y != pending->y) {
+                y += pending->height - current->height;
+            }
+        }
+        view_helper_move(view, x, y);
     }
+
     view_configured(view);
 
     return 0;
