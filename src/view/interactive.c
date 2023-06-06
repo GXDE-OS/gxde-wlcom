@@ -2,8 +2,11 @@
 
 #include "input/cursor.h"
 #include "input/seat.h"
+#include "output.h"
 #include "view_p.h"
 
+#define VIEW_EDGE_GAP 50
+#define VIEW_BOTTOM_GAP 100
 #define VIEW_MIN_WIDTH 200
 #define VIEW_MIN_HEIGHT 100
 
@@ -42,21 +45,88 @@ static void interactive_grab_destroy(struct interactive_grab *grab)
     free(grab);
 }
 
+static void interactivate_done_move(struct interactive_grab *grab)
+{
+    /* current cursor coord */
+    double cur_x = grab->seat->cursor->lx;
+    double cur_y = grab->seat->cursor->ly;
+
+    /* current output usable area */
+    struct output *output = input_current_output(grab->seat);
+    struct kywc_box *usable = &output->usable_area;
+
+    /* left */
+    if (cur_x - usable->x < VIEW_EDGE_GAP) {
+        kywc_view_set_output(&grab->view->base, &output->base);
+        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_LEFT);
+        /* right */
+    } else if (usable->x + usable->width - cur_x < VIEW_EDGE_GAP) {
+        kywc_view_set_output(&grab->view->base, &output->base);
+        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_RIGHT);
+        /* top, using <= */
+    } else if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && cur_y <= usable->y) {
+        /* current cursor focused output, not the view most at output */
+        kywc_view_set_output(&grab->view->base, &output->base);
+        kywc_view_set_maximized(&grab->view->base, true);
+    }
+}
+
 static void interactive_done(struct interactive_grab *grab)
 {
-    cursor_set_image(grab->seat->cursor, CURSOR_DEFAULT);
-    seat_set_pointer_grab(grab->seat, NULL);
+    /* for snap to edge */
+    if (grab->view && grab->ongoing && grab->mode == INTERACTIVE_MODE_MOVE) {
+        interactivate_done_move(grab);
+    }
 
+    cursor_set_image(grab->seat->cursor, CURSOR_DEFAULT);
     interactive_grab_destroy(grab);
+}
+
+static void interactive_move_constraints(struct interactive_grab *grab, int *x, int *y)
+{
+    /* get current seat constraints output */
+    struct output *output = input_current_output(grab->seat);
+    struct kywc_box *usable = &output->usable_area;
+    struct kywc_view *kywc_view = &grab->view->base;
+    struct kywc_box *current = &kywc_view->geometry;
+
+    /* actual view coord */
+    int x1 = *x - kywc_view->margin.off_x;
+    int y1 = *y - kywc_view->margin.off_y;
+    int x2 = x1 + current->width + kywc_view->margin.off_width;
+    int y2 = y1 + current->height + kywc_view->margin.off_height;
+
+    int ux2 = usable->x + usable->width;
+    int uy2 = usable->y + usable->height;
+
+    /* window edge adsorption in left, right */
+    if (*x < current->x && x1 < usable->x && usable->x - x1 < VIEW_EDGE_GAP) {
+        *x = usable->x + kywc_view->margin.off_x;
+    } else if (*x > current->x && x2 > ux2 && x2 - ux2 < VIEW_EDGE_GAP) {
+        *x = ux2 - current->width - kywc_view->margin.off_width + kywc_view->margin.off_x;
+    }
+    /* top and bottom */
+    if (*y < current->y && y1 < usable->y && usable->y - y1 < VIEW_EDGE_GAP) {
+        *y = usable->y + kywc_view->margin.off_y;
+    } else if (*y > current->y && y2 > uy2 && y2 - uy2 < VIEW_EDGE_GAP) {
+        *y = uy2 - current->height - kywc_view->margin.off_height + kywc_view->margin.off_y;
+    }
+
+    /* constraints when moving to top and bottom */
+    if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
+        *y = usable->y + kywc_view->margin.off_y;
+    } else if (output_at_layout_edge(output, LAYOUT_EDGE_BOTTOM) && uy2 - y1 < VIEW_BOTTOM_GAP) {
+        *y = uy2 - VIEW_BOTTOM_GAP + kywc_view->margin.off_y;
+    }
 }
 
 static void interactive_process_move(struct interactive_grab *grab, double x, double y)
 {
     struct kywc_view *kywc_view = &grab->view->base;
     struct kywc_box *geometry = &kywc_view->geometry;
-    struct kywc_box *saved = &grab->view->saved.geometry;
 
     if (kywc_view->maximized || kywc_view->tiled) {
+        struct kywc_box *saved = &grab->view->saved.geometry;
         double frac = (x - geometry->x) / geometry->width;
         saved->x = x - frac * saved->width;
         if (saved->x < geometry->x) {
@@ -74,8 +144,46 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
 
     int nx = grab->geo.x + x - grab->cursor_x;
     int ny = grab->geo.y + y - grab->cursor_y;
-    // seat_move_constraints(seat, &nx, &ny);
+    interactive_move_constraints(grab, &nx, &ny);
     kywc_view_move(kywc_view, nx, ny);
+}
+
+static void interactive_resize_constraints(struct interactive_grab *grab, struct kywc_box *box)
+{
+    /* get current seat constraints output */
+    struct output *output = input_current_output(grab->seat);
+    struct kywc_box *usable = &output->usable_area;
+    struct kywc_view *kywc_view = &grab->view->base;
+    struct kywc_box *current = &kywc_view->geometry;
+
+    /* pending view coord */
+    int x1 = box->x - kywc_view->margin.off_x;
+    int y1 = box->y - kywc_view->margin.off_y;
+    int x2 = x1 + box->width + kywc_view->margin.off_width;
+    int y2 = y1 + box->height + kywc_view->margin.off_height;
+
+    int ux2 = usable->x + usable->width;
+    int uy2 = usable->y + usable->height;
+
+    /* constraints when resize to top and bottom */
+    if (grab->resize_edges & KYWC_EDGE_TOP && output_at_layout_edge(output, LAYOUT_EDGE_TOP) &&
+        y1 < usable->y) {
+        box->y = usable->y + kywc_view->margin.off_y;
+        box->height = current->height + current->y - box->y;
+    } else if (grab->resize_edges & KYWC_EDGE_BOTTOM &&
+               output_at_layout_edge(output, LAYOUT_EDGE_BOTTOM) && y2 > uy2) {
+        box->height = uy2 - y1 - kywc_view->margin.off_height;
+    }
+
+    /* constraints when resize to left and right */
+    if (grab->resize_edges & KYWC_EDGE_LEFT && output_at_layout_edge(output, LAYOUT_EDGE_LEFT) &&
+        x1 < usable->x) {
+        box->x = usable->x + kywc_view->margin.off_x;
+        box->width = current->width + current->x - box->x;
+    } else if (grab->resize_edges & KYWC_EDGE_RIGHT &&
+               output_at_layout_edge(output, LAYOUT_EDGE_RIGHT) && x2 > ux2) {
+        box->width = ux2 - x1 - kywc_view->margin.off_width;
+    }
 }
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -117,7 +225,7 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
         pending.x = grab->geo.x + grab->geo.width - pending.width;
     }
 
-    // seat_resize_constraints(seat, &pending, state->resize_edges);
+    interactive_resize_constraints(grab, &pending);
     kywc_view_resize(kywc_view, &pending);
 }
 
@@ -174,7 +282,8 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct interactive_grab *grab = wl_container_of(listener, grab, view_unmap);
-    interactive_grab_destroy(grab);
+    grab->view = NULL;
+    interactive_done(grab);
 }
 
 static void interactive_grab_add(struct view *view, enum interactive_mode mode, uint32_t edges,
