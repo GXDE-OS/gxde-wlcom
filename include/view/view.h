@@ -61,6 +61,8 @@ struct view_configure_state {
 
 struct view {
     struct kywc_view base;
+    struct wlr_surface *surface;
+
     struct wl_list link;
 
     /* parent and children */

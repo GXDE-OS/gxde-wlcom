@@ -439,6 +439,7 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
         return;
     }
 
+    xdg_view->view.surface = wlr_xdg_surface->surface;
     view_init(&xdg_view->view, &xdg_surface_impl, xdg_view);
 
     xdg_view->wlr_xdg_surface = wlr_xdg_surface;

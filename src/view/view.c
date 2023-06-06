@@ -165,6 +165,9 @@ void view_map(struct view *view)
     /* assume that request_minimize may emited before map */
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !kywc_view->minimized);
 
+    kywc_view_activate(kywc_view);
+    seat_focus_surface(input_manager_get_default_seat(), view->surface);
+
     if (view->pending.action) {
         /* add a fallback geometry */
         if (kywc_view->maximized || kywc_view->fullscreen) {
