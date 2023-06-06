@@ -289,5 +289,9 @@ void workspace_activate(struct workspace *workspace)
 
     workspace_manager->current = workspace;
     workspace_set_activated(workspace, true);
+
+    /* auto activate topmost enabled view */
+    view_topmost_activate(workspace);
+
     kywc_log(KYWC_INFO, "workspace %s(%d) is activated", workspace->name, workspace->position);
 }

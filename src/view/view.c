@@ -2,7 +2,7 @@
 
 #include <kywc/log.h>
 
-#include "input/input.h"
+#include "input/seat.h"
 #include "output.h"
 #include "server.h"
 #include "view/workspace.h"
@@ -409,9 +409,6 @@ void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
     view_helper_move(view, x, y);
 }
 
-// TODO: current we don't check current state,
-// maybe we should check last pending action and serial to skip configure
-
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
 {
     struct view *view = view_from_kywc_view(kywc_view);
@@ -441,14 +438,27 @@ static void view_set_activated(struct view *view, bool activated)
     }
 }
 
-static void view_manager_auto_activate_view(void)
+void view_topmost_activate(struct workspace *workspace)
 {
-    // TODO: find topmost enabled(mapped and not minimized) view and activate it
+    struct view *view;
+    /* find topmost enabled(mapped and not minimized) view and activate it */
+    wl_list_for_each(view, &workspace->views, link) {
+        if (!view->base.mapped || view->base.minimized) {
+            continue;
+        }
+        kywc_view_activate(&view->base);
+        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        return;
+    }
+
+    /* no view can be activated, clear keyboard focus */
+    seat_focus_surface(input_manager_get_default_seat(), NULL);
 }
 
 static void handle_activated_view_minimized(struct wl_listener *listener, void *data)
 {
-    view_manager_auto_activate_view();
+    /* listener will removed in kywc_view_activate */
+    view_topmost_activate(workspace_manager_get_current());
 }
 
 static void handle_activated_view_destroy(struct wl_listener *listener, void *data)
@@ -457,7 +467,7 @@ static void handle_activated_view_destroy(struct wl_listener *listener, void *da
     wl_list_remove(&view_manager->activated.destroy.link);
     view_manager->activated.view = NULL;
 
-    view_manager_auto_activate_view();
+    view_topmost_activate(workspace_manager_get_current());
 }
 
 void kywc_view_activate(struct kywc_view *kywc_view)
@@ -481,6 +491,8 @@ void kywc_view_activate(struct kywc_view *kywc_view)
         wl_list_remove(&view->link);
         wl_list_insert(&view->workspace->views, &view->link);
     }
+
+    ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
 
     /* listen activated view's minimize and destroy signals,
      * so that we can auto activate another view.
