@@ -108,26 +108,27 @@ static void xdg_view_configure(struct view *view)
 {
     struct xdg_view *xdg_view = xdg_view_from_view(view);
     struct wlr_xdg_toplevel *wlr_xdg_toplevel = xdg_view->wlr_xdg_surface->toplevel;
+    struct kywc_view *kywc_view = &xdg_view->view.base;
     uint32_t serial = 0;
 
     if (view->pending.action & VIEW_ACTION_ACTIVATE) {
-        serial = wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, view->pending.activated);
+        serial = wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, kywc_view->activated);
     }
 
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
-        serial = wlr_xdg_toplevel_set_fullscreen(wlr_xdg_toplevel, view->pending.fullscreen);
+        serial = wlr_xdg_toplevel_set_fullscreen(wlr_xdg_toplevel, kywc_view->fullscreen);
     }
 
     if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
-        serial = wlr_xdg_toplevel_set_maximized(wlr_xdg_toplevel, view->pending.maximized);
+        serial = wlr_xdg_toplevel_set_maximized(wlr_xdg_toplevel, kywc_view->maximized);
     }
 
     if (view->pending.action & VIEW_ACTION_RESIZE) {
-        serial = wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, view->pending.resizing);
+        serial = wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, kywc_view->resizing);
     }
 
     if (view->pending.action & VIEW_ACTION_TILE) {
-        serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, view->pending.tiled ? 0xf : 0);
+        serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled ? 0xf : 0);
     }
 
     /* no need to resize surface when activate only */
@@ -143,7 +144,7 @@ static void xdg_view_configure(struct view *view)
     if (view->pending.configure_serial == 0 && current->width == pending->width &&
         current->height == pending->height) {
         view_helper_move(view, pending->x, pending->y);
-        view_configured(view);
+        view_configure(view, serial);
         return;
     }
 

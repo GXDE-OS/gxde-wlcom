@@ -54,9 +54,6 @@ struct view_configure_state {
     enum view_action action;
     struct kywc_box geometry;
 
-    bool maximized, fullscreen, resizing, activated;
-    enum kywc_tile tiled;
-
     /* check serial to ensure configure is finished (0) */
     uint32_t configure_serial;
     struct wl_event_source *configure_timeout;

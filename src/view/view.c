@@ -167,7 +167,7 @@ void view_map(struct view *view)
 
     if (view->pending.action) {
         /* add a fallback geometry */
-        if (view->pending.maximized || view->pending.fullscreen) {
+        if (kywc_view->maximized || kywc_view->fullscreen) {
             view_get_tiled_geometry(view, &view->saved.geometry, view->output, KYWC_TILE_CENTER);
         }
         if (view->impl->configure) {
@@ -198,7 +198,7 @@ void view_unmap(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.unmap, kywc_view);
 }
 
-#define CONFIGURE_TIMEOUT_MS 500
+#define CONFIGURE_TIMEOUT_MS 100
 
 static int view_handle_configure_timeout(void *data)
 {
@@ -207,12 +207,11 @@ static int view_handle_configure_timeout(void *data)
     kywc_log(KYWC_INFO, "client (%s) did not respond to configure request in %d ms",
              view->base.app_id, CONFIGURE_TIMEOUT_MS);
 
-    // TODO: fallback for pending actions
-
-    wl_event_source_remove(view->pending.configure_timeout);
-    view->pending.configure_timeout = NULL;
-    view->pending.configure_serial = 0;
-    view->pending.action = VIEW_ACTION_NOP;
+    /* fallback for pending actions */
+    if (!(view->pending.action == VIEW_ACTION_ACTIVATE)) {
+        view_helper_move(view, view->pending.geometry.x, view->pending.geometry.y);
+    }
+    view_configured(view);
 
     return 0;
 }
@@ -234,18 +233,15 @@ void view_configured(struct view *view)
     struct kywc_view *kywc_view = &view->base;
 
     if (view->pending.action & VIEW_ACTION_ACTIVATE) {
-        kywc_view->activated = view->pending.activated;
         kywc_log(KYWC_DEBUG, "view %s is activated: %d", kywc_view->app_id, kywc_view->activated);
         wl_signal_emit_mutable(&kywc_view->events.activate, kywc_view);
     }
 
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
-        kywc_view->fullscreen = view->pending.fullscreen;
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, kywc_view);
     }
 
     if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
-        kywc_view->maximized = view->pending.maximized;
         wl_signal_emit_mutable(&kywc_view->events.maximize, kywc_view);
     }
 
@@ -254,7 +250,6 @@ void view_configured(struct view *view)
     }
 
     if (view->pending.action & VIEW_ACTION_TILE) {
-        kywc_view->tiled = view->pending.tiled;
     }
 
     if (view->pending.configure_timeout) {
@@ -393,8 +388,8 @@ void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
+    kywc_view->resizing = true;
     view->pending.action |= VIEW_ACTION_RESIZE;
-    view->pending.resizing = true;
     view->pending.geometry = *geometry;
 
     if (kywc_view->mapped && view->impl->configure) {
@@ -406,8 +401,12 @@ static void view_set_activated(struct view *view, bool activated)
 {
     struct kywc_view *kywc_view = &view->base;
 
+    if (kywc_view->activated == activated) {
+        return;
+    }
+
+    kywc_view->activated = activated;
     view->pending.action |= VIEW_ACTION_ACTIVATE;
-    view->pending.activated = activated;
 
     if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
@@ -461,17 +460,24 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
+    if (kywc_view->tiled == tile) {
+        return;
+    }
 
-    /* when tile is KYWC_TILE_NONE */
+    struct view *view = view_from_kywc_view(kywc_view);
     struct kywc_box geo = { 0 };
     view_get_tiled_geometry(view, &geo, view->output, tile);
+
+    /* may switch between tiled modes */
+    if (kywc_view->tiled == KYWC_TILE_NONE && tile != KYWC_TILE_NONE) {
+        view->saved.geometry = view->base.geometry;
+    }
 
     kywc_view->tiled = tile;
     view->pending.action |= VIEW_ACTION_TILE;
     view->pending.geometry = geo;
 
-    if (view->impl->configure) {
+    if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
     }
 }
@@ -488,7 +494,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), minimized);
 
     /* if view is the activated view, process it in activated.minimize listener */
-    wl_signal_emit(&kywc_view->events.minimize, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.minimize, kywc_view);
 }
 
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
@@ -498,7 +504,8 @@ void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
 
 void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized)
 {
-    if (!kywc_view->maximizable) {
+    /* tiled to unmaximized after tiled from maximized */
+    if (!kywc_view->maximizable || (!kywc_view->tiled && kywc_view->maximized == maximized)) {
         return;
     }
 
@@ -512,12 +519,15 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized)
         }
     } else {
         /* don't restore tiled mode followed other compositors */
-        kywc_view->tiled = KYWC_TILE_NONE;
+        if (kywc_view->tiled) {
+            view->pending.action |= VIEW_ACTION_TILE;
+            kywc_view->tiled = KYWC_TILE_NONE;
+        }
         geo = view->saved.geometry;
     }
 
+    kywc_view->maximized = maximized;
     view->pending.action |= VIEW_ACTION_MAXIMIZE;
-    view->pending.maximized = maximized;
     view->pending.geometry = geo;
 
     if (kywc_view->mapped && view->impl->configure) {
@@ -553,7 +563,7 @@ static void view_reparent_fullscreen(struct view *view, bool fullscreen)
 
 void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
 {
-    if (!kywc_view->fullscreenable) {
+    if (!kywc_view->fullscreenable || kywc_view->fullscreen == fullscreen) {
         return;
     }
 
@@ -574,9 +584,9 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
     }
 
     view_reparent_fullscreen(view, fullscreen);
+    kywc_view->fullscreen = fullscreen;
 
     view->pending.action |= VIEW_ACTION_FULLSCREEN;
-    view->pending.fullscreen = fullscreen;
     view->pending.geometry = geo;
 
     if (kywc_view->mapped && view->impl->configure) {
