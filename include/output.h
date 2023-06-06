@@ -12,6 +12,8 @@ struct output {
     struct wl_list link;
     struct output_manager *manager;
 
+    /* effective geometry in layout coord */
+    struct kywc_box geometry;
     struct kywc_box usable_area;
 
     struct {
@@ -44,5 +46,13 @@ void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
                                             struct wl_listener *listener, bool late);
 
 void output_update_usable_area(struct kywc_output *kywc_output);
+
+enum layout_edge {
+    LAYOUT_EDGE_TOP,
+    LAYOUT_EDGE_BOTTOM,
+    LAYOUT_EDGE_LEFT,
+    LAYOUT_EDGE_RIGHT,
+};
+bool output_at_layout_edge(struct output *output, enum layout_edge edge);
 
 #endif /* _OUTPUT_H_ */

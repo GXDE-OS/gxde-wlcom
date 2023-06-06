@@ -531,6 +531,24 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     return true;
 }
 
+static void output_update_geometry(struct output *output, struct kywc_box *box)
+{
+    struct kywc_output_state *state = &output->base.state;
+
+    if (state->transform % 2 == 0) {
+        box->width = state->width;
+        box->height = state->height;
+    } else {
+        box->width = state->height;
+        box->height = state->width;
+    }
+
+    box->x = state->lx;
+    box->y = state->ly;
+    box->width /= state->scale;
+    box->height /= state->scale;
+}
+
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
 {
     struct output *output = output_from_kywc_output(kywc_output);
@@ -544,6 +562,10 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
     // XXX: fix current.enabled for dpms power
     current->enabled = state->enabled;
+
+    if (current->enabled) {
+        output_update_geometry(output, &output->geometry);
+    }
 
     /* check state changes */
     if (current->enabled != old.enabled) {
@@ -606,28 +628,16 @@ struct kywc_output *kywc_output_by_name(const char *name)
 
 void kywc_output_effective_geometry(struct kywc_output *kywc_output, struct kywc_box *box)
 {
-    struct kywc_output_state *state = &kywc_output->state;
+    struct output *output = output_from_kywc_output(kywc_output);
 
-    if (state->transform % 2 == 0) {
-        box->width = state->width;
-        box->height = state->height;
-    } else {
-        box->width = state->height;
-        box->height = state->width;
-    }
-
-    box->x = state->lx;
-    box->y = state->ly;
-    box->width /= state->scale;
-    box->height /= state->scale;
+    *box = output->geometry;
 }
 
 bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y)
 {
-    struct kywc_box geo;
-    kywc_output_effective_geometry(kywc_output, &geo);
+    struct output *output = output_from_kywc_output(kywc_output);
 
-    return kywc_box_contains_point(&geo, x, y);
+    return kywc_box_contains_point(&output->geometry, x, y);
 }
 
 void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
@@ -645,9 +655,7 @@ void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
 void output_update_usable_area(struct kywc_output *kywc_output)
 {
     struct output *output = output_from_kywc_output(kywc_output);
-    struct kywc_box usable_area;
-    // XXX: or add geometry in output and update when set_state
-    kywc_output_effective_geometry(kywc_output, &usable_area);
+    struct kywc_box usable_area = output->geometry;
 
     wl_signal_emit_mutable(&output->events.update_usable_area, &usable_area);
     wl_signal_emit_mutable(&output->events.update_late_usable_area, &usable_area);
@@ -661,4 +669,32 @@ void output_update_usable_area(struct kywc_output *kywc_output)
              usable_area.x, usable_area.y, usable_area.width, usable_area.height);
 
     wl_signal_emit_mutable(&output->events.usable_area, &output->usable_area);
+}
+
+bool output_at_layout_edge(struct output *output, enum layout_edge edge)
+{
+    struct wlr_output_layout *layout = output->manager->server->layout;
+    struct kywc_box *geo = &output->geometry;
+    int lx = 0, ly = 0;
+
+    switch (edge) {
+    case LAYOUT_EDGE_TOP:
+        lx = geo->x + geo->width / 2;
+        ly = geo->y - 1;
+        break;
+    case LAYOUT_EDGE_BOTTOM:
+        lx = geo->x + geo->width / 2;
+        ly = geo->y + geo->height;
+        break;
+    case LAYOUT_EDGE_LEFT:
+        lx = geo->x - 1;
+        ly = geo->y + geo->height / 2;
+        break;
+    case LAYOUT_EDGE_RIGHT:
+        lx = geo->x + geo->width;
+        ly = geo->y + geo->height / 2;
+        break;
+    }
+
+    return !wlr_output_layout_contains_point(layout, NULL, lx, ly);
 }
