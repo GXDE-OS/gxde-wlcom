@@ -385,7 +385,7 @@ void kywc_view_add_new_listener(struct wl_listener *listener)
     wl_signal_add(&view_manager->events.new_view, listener);
 }
 
-static struct view *view_from_kywc_view(struct kywc_view *kywc_view)
+struct view *view_from_kywc_view(struct kywc_view *kywc_view)
 {
     struct view *view = wl_container_of(kywc_view, view, base);
     return view;
