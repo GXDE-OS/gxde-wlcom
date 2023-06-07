@@ -698,3 +698,15 @@ bool output_at_layout_edge(struct output *output, enum layout_edge edge)
 
     return !wlr_output_layout_contains_point(layout, NULL, lx, ly);
 }
+
+struct kywc_output *kywc_output_at_point(double lx, double ly)
+{
+    struct wlr_output_layout *layout = output_manager->server->layout;
+    struct wlr_output *wlr_output = NULL;
+    double closest_x, closest_y;
+
+    wlr_output_layout_closest_point(layout, wlr_output, lx, ly, &closest_x, &closest_y);
+    wlr_output = wlr_output_layout_output_at(layout, closest_x, closest_y);
+
+    return wlr_output ? &output_from_wlr_output(wlr_output)->base : NULL;
+}

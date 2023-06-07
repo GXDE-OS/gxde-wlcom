@@ -55,4 +55,6 @@ enum layout_edge {
 };
 bool output_at_layout_edge(struct output *output, enum layout_edge edge);
 
+struct kywc_output *kywc_output_at_point(double lx, double ly);
+
 #endif /* _OUTPUT_H_ */
