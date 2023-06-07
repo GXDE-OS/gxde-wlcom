@@ -78,6 +78,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.fullscreen);
     wl_signal_init(&kywc_view->events.title);
     wl_signal_init(&kywc_view->events.app_id);
+    wl_signal_init(&kywc_view->events.position);
     wl_signal_init(&kywc_view->events.decoration);
     wl_signal_init(&kywc_view->events.shadow);
 
@@ -163,7 +164,9 @@ void view_map(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     /* assume that request_minimize may emited before map */
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !kywc_view->minimized);
+    struct ky_scene_node *node = ky_scene_node_from_tree(view->tree);
+    ky_scene_node_set_enabled(node, !kywc_view->minimized);
+    ky_scene_node_set_position(node, kywc_view->geometry.x, kywc_view->geometry.y);
 
     kywc_view_activate(kywc_view);
     seat_focus_surface(input_manager_get_default_seat(), view->surface);
@@ -669,6 +672,17 @@ void view_helper_move(struct view *view, int x, int y)
     geo->x = x;
     geo->y = y;
     ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
+
+    /* udpate view most-at output */
+    int lx = geo->x + geo->width / 2;
+    int ly = geo->y + geo->height / 2;
+
+    struct output *output = output_from_kywc_output(view->output);
+    if (!kywc_box_contains_point(&output->geometry, lx, ly)) {
+        view->output = kywc_output_at_point(lx, ly);
+    }
+
+    wl_signal_emit_mutable(&view->base.events.position, NULL);
 }
 
 bool view_is_moveable(struct view *view)
