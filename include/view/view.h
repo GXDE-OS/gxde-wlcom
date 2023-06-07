@@ -140,6 +140,9 @@ void view_configured(struct view *view);
 
 void view_helper_move(struct view *view, int x, int y);
 
+void view_update_size(struct view *view, int width, int height, int min_width, int min_height,
+                      int max_width, int max_height);
+
 bool view_is_moveable(struct view *view);
 
 bool view_is_resizable(struct view *view);

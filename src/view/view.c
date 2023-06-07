@@ -79,6 +79,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.title);
     wl_signal_init(&kywc_view->events.app_id);
     wl_signal_init(&kywc_view->events.position);
+    wl_signal_init(&kywc_view->events.size);
     wl_signal_init(&kywc_view->events.decoration);
     wl_signal_init(&kywc_view->events.shadow);
 
@@ -697,4 +698,29 @@ bool view_is_resizable(struct view *view)
     struct kywc_view *kywc_view = &view->base;
 
     return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
+}
+
+void view_update_size(struct view *view, int width, int height, int min_width, int min_height,
+                      int max_width, int max_height)
+{
+    struct kywc_view *kywc_view = &view->base;
+
+    if (kywc_view->min_width != min_width || kywc_view->min_height != min_height) {
+        kywc_view->min_width = min_width;
+        kywc_view->min_height = min_height;
+        kywc_log(KYWC_DEBUG, "view %p minimal size to %d x %d", view, min_width, min_height);
+    }
+
+    if (kywc_view->max_width != max_width || kywc_view->max_height != max_height) {
+        kywc_view->max_width = max_width;
+        kywc_view->max_height = max_height;
+        kywc_log(KYWC_DEBUG, "view %p maximal size to %d x %d", view, max_width, max_height);
+    }
+
+    if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {
+        kywc_view->geometry.width = width;
+        kywc_view->geometry.height = height;
+        kywc_log(KYWC_DEBUG, "view %p size to %d x %d", view, width, height);
+        wl_signal_emit_mutable(&view->base.events.size, NULL);
+    }
 }

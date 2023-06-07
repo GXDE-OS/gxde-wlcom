@@ -106,6 +106,8 @@ struct kywc_view {
 
         /* emit when view's position has changed */
         struct wl_signal position;
+        /* emit when view's size has changed */
+        struct wl_signal size;
         /* emit when view's decoration mode has changed */
         struct wl_signal decoration;
         /* emit when view's drop-shadow mode has changed */

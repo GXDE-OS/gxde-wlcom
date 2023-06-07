@@ -166,44 +166,35 @@ static const struct view_impl xdg_surface_impl = {
     .destroy = xdg_view_destroy,
 };
 
-static bool xdg_view_update_geometry(struct xdg_view *xdg_view)
+static void xdg_view_update_geometry(struct xdg_view *xdg_view)
 {
     struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
-    struct wlr_xdg_toplevel *wlr_xdg_toplevel = wlr_xdg_surface->toplevel;
     struct wlr_surface *wlr_surface = wlr_xdg_surface->surface;
-    struct kywc_view *kywc_view = &xdg_view->view.base;
 
-    kywc_view->min_width = wlr_xdg_toplevel->current.min_width;
-    kywc_view->min_height = wlr_xdg_toplevel->current.min_height;
-    kywc_view->max_width = wlr_xdg_toplevel->current.max_width;
-    kywc_view->max_height = wlr_xdg_toplevel->current.max_height;
+    struct wlr_box *geo = &wlr_xdg_surface->current.geometry;
+    int width = geo->width, height = geo->height;
 
-    /* update kywc_view current size */
-    struct wlr_box geo = wlr_xdg_surface->current.geometry;
-    if (!geo.width && !geo.height) {
-        geo.width = wlr_surface->current.width;
-        geo.height = wlr_surface->current.height;
+    if (!width || !height) {
+        width = wlr_surface->current.width;
+        height = wlr_surface->current.height;
     }
-    kywc_view->geometry.width = geo.width;
-    kywc_view->geometry.height = geo.height;
 
-    /* padding if used CSD with drop-shadow */
-    kywc_view->padding.left = geo.x;
-    kywc_view->padding.right = wlr_surface->current.width - geo.x - geo.width;
-    kywc_view->padding.top = geo.y;
-    kywc_view->padding.bottom = wlr_surface->current.height - geo.y - geo.height;
+    struct wlr_xdg_toplevel_state *current = &wlr_xdg_surface->toplevel->current;
+    view_update_size(&xdg_view->view, width, height, current->min_width, current->min_height,
+                     current->max_width, current->max_height);
 
 #if 0
-    kywc_log(KYWC_DEBUG, "kywc_view %p size: (%d x %d) range: (%d x %d) to (%d x %d)", kywc_view,
-             kywc_view->geometry.width, kywc_view->geometry.height, kywc_view->min_width,
-             kywc_view->min_height, kywc_view->max_width, kywc_view->max_height);
+    struct kywc_view *kywc_view = &xdg_view->view.base;
+    /* padding if used CSD with drop-shadow */
+    kywc_view->padding.left = geo->x;
+    kywc_view->padding.right = wlr_surface->current.width - geo->x - width;
+    kywc_view->padding.top = geo->y;
+    kywc_view->padding.bottom = wlr_surface->current.height - geo->y - height;
+
     kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
              kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
              kywc_view->padding.bottom);
 #endif
-
-    // TODO: return true if size changed
-    return false;
 }
 
 static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
