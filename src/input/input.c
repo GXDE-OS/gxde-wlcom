@@ -87,7 +87,7 @@ static void handle_mapped_output_destroy(struct wl_listener *listener, void *dat
 
 static void input_destroy(struct input *input)
 {
-    wl_signal_emit_mutable(&input->events.destroy, input);
+    wl_signal_emit_mutable(&input->events.destroy, NULL);
 
     wl_list_remove(&input->link);
 

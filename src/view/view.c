@@ -160,7 +160,7 @@ void view_map(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    wl_signal_emit_mutable(&kywc_view->events.premap, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     /* assume that request_minimize may emited before map */
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !kywc_view->minimized);
@@ -181,7 +181,7 @@ void view_map(struct view *view)
     kywc_view->mapped = true;
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
-    wl_signal_emit_mutable(&kywc_view->events.map, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.map, NULL);
 }
 
 void view_unmap(struct view *view)
@@ -198,7 +198,7 @@ void view_unmap(struct view *view)
     }
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
-    wl_signal_emit_mutable(&kywc_view->events.unmap, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
@@ -250,15 +250,15 @@ void view_configured(struct view *view)
 
     if (view->pending.action & VIEW_ACTION_ACTIVATE) {
         kywc_log(KYWC_DEBUG, "view %s is activated: %d", kywc_view->app_id, kywc_view->activated);
-        wl_signal_emit_mutable(&kywc_view->events.activate, kywc_view);
+        wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
     }
 
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
-        wl_signal_emit_mutable(&kywc_view->events.fullscreen, kywc_view);
+        wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
     }
 
     if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
-        wl_signal_emit_mutable(&kywc_view->events.maximize, kywc_view);
+        wl_signal_emit_mutable(&kywc_view->events.maximize, NULL);
     }
 
     if (view->pending.action & VIEW_ACTION_RESIZE) {
@@ -282,7 +282,7 @@ void view_destroy(struct view *view)
     struct kywc_view *kywc_view = &view->base;
     kywc_log(KYWC_DEBUG, "kywc_view %p destroy", kywc_view);
 
-    wl_signal_emit_mutable(&kywc_view->events.destroy, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.destroy, NULL);
 
     if (view->workspace) {
         wl_list_remove(&view->link);
@@ -299,7 +299,7 @@ void view_set_title(struct view *view, const char *title)
     kywc_view->title = title;
     kywc_log(KYWC_DEBUG, "kywc_view %p title: %s", kywc_view, title);
 
-    wl_signal_emit_mutable(&kywc_view->events.title, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.title, NULL);
 }
 
 void view_set_app_id(struct view *view, const char *app_id)
@@ -309,7 +309,7 @@ void view_set_app_id(struct view *view, const char *app_id)
     kywc_view->app_id = app_id;
     kywc_log(KYWC_DEBUG, "kywc_view %p app_id: %s", kywc_view, app_id);
 
-    wl_signal_emit_mutable(&kywc_view->events.app_id, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.app_id, NULL);
 }
 
 void view_set_decoration(struct view *view, bool need_ssd)
@@ -322,7 +322,7 @@ void view_set_decoration(struct view *view, bool need_ssd)
     kywc_view->need_ssd = need_ssd;
     kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, need_ssd);
 
-    wl_signal_emit_mutable(&kywc_view->events.decoration, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
 }
 
 void view_set_workspace(struct view *view, struct workspace *workspace)
@@ -343,7 +343,7 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
     kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
              workspace ? workspace->name : "none");
 
-    wl_signal_emit_mutable(&view->events.workspace, workspace);
+    wl_signal_emit_mutable(&view->events.workspace, NULL);
 }
 
 void view_set_parent(struct view *view, struct view *parent)
@@ -540,7 +540,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), minimized);
 
     /* if view is the activated view, process it in activated.minimize listener */
-    wl_signal_emit_mutable(&kywc_view->events.minimize, kywc_view);
+    wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
 }
 
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view)

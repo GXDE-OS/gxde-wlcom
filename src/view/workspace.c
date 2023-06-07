@@ -239,7 +239,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
 void workspace_destroy(struct workspace *workspace)
 {
     kywc_log(KYWC_INFO, "workspace %s destroy", workspace->name);
-    wl_signal_emit_mutable(&workspace->events.destroy, workspace);
+    wl_signal_emit_mutable(&workspace->events.destroy, NULL);
 
     /* fixup workspace position */
     for (uint32_t i = workspace->position; i < workspace_manager->count - 1; i++) {
@@ -271,7 +271,7 @@ static void workspace_set_activated(struct workspace *workspace, bool activated)
     workspace_set_enabled(workspace, activated);
 
     workspace->activated = activated;
-    wl_signal_emit_mutable(&workspace->events.activate, workspace);
+    wl_signal_emit_mutable(&workspace->events.activate, NULL);
 }
 
 void workspace_activate(struct workspace *workspace)

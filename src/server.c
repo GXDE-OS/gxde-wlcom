@@ -175,7 +175,7 @@ void server_finish(struct server *server)
     wlr_allocator_destroy(server->allocator);
     wlr_renderer_destroy(server->renderer);
 
-    wl_signal_emit_mutable(&server->destroy_list, server);
+    wl_signal_emit_mutable(&server->destroy_list, NULL);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }

@@ -181,7 +181,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     // kywc_log(KYWC_DEBUG, "output %s frame coming", kywc_output->name);
 
     /* make sure something is done before commit */
-    wl_signal_emit_mutable(&kywc_output->events.frame, kywc_output);
+    wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
 #if HAVE_WLR_SCENE
     struct ky_scene_output *scene_output =
@@ -271,7 +271,7 @@ static void output_destroy(struct output *output)
     struct kywc_output *kywc_output = &output->base;
 
     kywc_output->destroying = true;
-    wl_signal_emit_mutable(&kywc_output->events.destroy, kywc_output);
+    wl_signal_emit_mutable(&kywc_output->events.destroy, NULL);
 
     wl_list_remove(&output->link);
 
@@ -390,7 +390,7 @@ void output_manager_add_configured_listener(struct wl_listener *listener)
 
 void output_manager_emit_configured(void)
 {
-    wl_signal_emit_mutable(&output_manager->events.configured, output_manager);
+    wl_signal_emit_mutable(&output_manager->events.configured, NULL);
 }
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)
@@ -570,38 +570,38 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     /* check state changes */
     if (current->enabled != old.enabled) {
         if (!current->enabled) {
-            wl_signal_emit_mutable(&kywc_output->events.off, kywc_output);
+            wl_signal_emit_mutable(&kywc_output->events.off, NULL);
             output_write_config(output);
             return true;
         } else {
-            wl_signal_emit_mutable(&kywc_output->events.on, kywc_output);
+            wl_signal_emit_mutable(&kywc_output->events.on, NULL);
         }
     }
 
     if (current->power != old.power) {
-        wl_signal_emit_mutable(&kywc_output->events.power, kywc_output);
+        wl_signal_emit_mutable(&kywc_output->events.power, NULL);
     }
 
     bool need_update_usable_area = false;
 
     if (current->width != old.width || current->height != old.height ||
         current->refresh != old.refresh) {
-        wl_signal_emit_mutable(&kywc_output->events.mode, kywc_output);
+        wl_signal_emit_mutable(&kywc_output->events.mode, NULL);
         need_update_usable_area = true;
     }
 
     if (current->transform != old.transform) {
-        wl_signal_emit_mutable(&kywc_output->events.transform, kywc_output);
+        wl_signal_emit_mutable(&kywc_output->events.transform, NULL);
         need_update_usable_area = true;
     }
 
     if (current->scale != old.scale) {
-        wl_signal_emit_mutable(&kywc_output->events.scale, kywc_output);
+        wl_signal_emit_mutable(&kywc_output->events.scale, NULL);
         need_update_usable_area = true;
     }
 
     if (current->lx != old.lx || current->ly != old.ly) {
-        wl_signal_emit_mutable(&kywc_output->events.position, kywc_output);
+        wl_signal_emit_mutable(&kywc_output->events.position, NULL);
         need_update_usable_area = true;
     }
 
@@ -668,7 +668,7 @@ void output_update_usable_area(struct kywc_output *kywc_output)
     kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
              usable_area.x, usable_area.y, usable_area.width, usable_area.height);
 
-    wl_signal_emit_mutable(&output->events.usable_area, &output->usable_area);
+    wl_signal_emit_mutable(&output->events.usable_area, NULL);
 }
 
 bool output_at_layout_edge(struct output *output, enum layout_edge edge)

@@ -78,7 +78,7 @@ static void _seat_destroy(struct seat *seat)
 void seat_destroy(struct seat *seat)
 {
     kywc_log(KYWC_DEBUG, "seat(%s) destroy", seat->name);
-    wl_signal_emit_mutable(&seat->events.destroy, seat);
+    wl_signal_emit_mutable(&seat->events.destroy, NULL);
 
     wl_list_remove(&seat->link);
 
