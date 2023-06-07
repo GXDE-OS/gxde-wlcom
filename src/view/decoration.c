@@ -206,7 +206,7 @@ bool decoration_manager_create(struct view_manager *view_manager)
     return true;
 }
 
-bool decoration_shoud_use_ssd(struct wlr_surface *surface)
+bool decoration_should_use_ssd(struct wlr_surface *surface)
 {
     struct decoration *deco;
     wl_list_for_each(deco, &manager->decos, link) {

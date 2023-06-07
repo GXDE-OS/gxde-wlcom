@@ -338,6 +338,13 @@ static void xdg_view_handle_set_app_id(struct wl_listener *listener, void *data)
     view_set_app_id(&xdg_view->view, app_id);
 }
 
+static bool xdg_view_has_shadow(struct xdg_view *xdg_view)
+{
+    /* often have invisible portions like drop-shadows */
+    struct wlr_xdg_surface_state *current = &xdg_view->wlr_xdg_surface->current;
+    return current->geometry.x || current->geometry.y;
+}
+
 static void xdg_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, map);
@@ -350,8 +357,10 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     /* all states are ready when map */
     view_set_app_id(&xdg_view->view, toplevel->app_id);
     view_set_title(&xdg_view->view, toplevel->title);
-    view_set_decoration(&xdg_view->view, decoration_shoud_use_ssd(wlr_surface));
     xdg_view_update_parent(xdg_view);
+
+    view_set_shadow(&xdg_view->view, !xdg_view_has_shadow(xdg_view));
+    view_set_decoration(&xdg_view->view, decoration_should_use_ssd(wlr_surface));
 
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
     xdg_view_handle_request_maximize(&xdg_view->request_maximize, NULL);

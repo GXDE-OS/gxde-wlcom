@@ -63,7 +63,7 @@ struct kywc_view {
     int32_t max_width, max_height;
 
     bool need_ssd;
-    bool need_drop_shadow;
+    bool need_shadow;
 
     /* have a buffer attached and can shown in screen */
     bool mapped;

@@ -124,6 +124,8 @@ void view_set_app_id(struct view *view, const char *app_id);
 
 void view_set_decoration(struct view *view, bool need_ssd);
 
+void view_set_shadow(struct view *view, bool need_shadow);
+
 void view_set_output(struct view *view, struct kywc_output *output);
 
 void view_set_workspace(struct view *view, struct workspace *workspace);

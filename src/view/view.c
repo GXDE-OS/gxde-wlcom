@@ -325,6 +325,19 @@ void view_set_decoration(struct view *view, bool need_ssd)
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
 }
 
+void view_set_shadow(struct view *view, bool need_shadow)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (kywc_view->need_shadow == need_shadow) {
+        return;
+    }
+
+    kywc_view->need_shadow = need_shadow;
+    kywc_log(KYWC_DEBUG, "kywc_view %p need shadow %d", kywc_view, need_shadow);
+
+    wl_signal_emit_mutable(&kywc_view->events.shadow, NULL);
+}
+
 void view_set_workspace(struct view *view, struct workspace *workspace)
 {
     if (view->workspace == workspace) {
