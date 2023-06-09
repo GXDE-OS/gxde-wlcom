@@ -158,8 +158,14 @@ bool server_start(struct server *server)
         return false;
     }
 
-    wl_display_run(server->display);
     return true;
+}
+
+void server_run(struct server *server)
+{
+    kywc_log(KYWC_INFO, "Running wayland compositor on wayland display '%s'",
+             getenv("WAYLAND_DISPLAY"));
+    wl_display_run(server->display);
 }
 
 void server_finish(struct server *server)

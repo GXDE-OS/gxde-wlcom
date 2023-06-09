@@ -6,22 +6,22 @@
 
 #include "server.h"
 #include "util/logger.h"
+#include "util/spawn.h"
 
 static const struct option long_options[] = {
-    { "help", no_argument, NULL, 'h' },
-    { "debug", no_argument, NULL, 'd' },
-    { "version", no_argument, NULL, 'v' },
-    { "verbose", no_argument, NULL, 'V' },
-    { 0, 0, 0, 0 },
+    { "help", no_argument, NULL, 'h' },    { "debug", no_argument, NULL, 'd' },
+    { "version", no_argument, NULL, 'v' }, { "session", required_argument, NULL, 's' },
+    { "verbose", no_argument, NULL, 'V' }, { 0, 0, 0, 0 },
 };
 
 static const char usage[] =
     "Usage: kylin-wlcom [options] [command]\n"
     "\n"
-    "  -h, --help       Show help message and quit.\n"
-    "  -d, --debug      Enables full logging, including debug information.\n"
-    "  -v, --version    Show the version number and quit.\n"
-    "  -V, --verbose    Enables more verbose logging.\n"
+    "  -h, --help               Show help message and quit.\n"
+    "  -d, --debug              Enables full logging, including debug information.\n"
+    "  -s, --session <process>  Run session on startup\n"
+    "  -v, --version            Show the version number and quit.\n"
+    "  -V, --verbose            Enables more verbose logging.\n"
     "\n";
 
 static bool detect_suid(void)
@@ -57,11 +57,12 @@ int main(int argc, char *argv[])
     };
     bool enable_debug = false;
     bool enable_verbose = false;
+    char *session_process = NULL;
 
     int c;
     while (1) {
         int option_index = 0;
-        c = getopt_long(argc, argv, "hdD:vV", long_options, &option_index);
+        c = getopt_long(argc, argv, "hdD:s:vV", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -75,6 +76,9 @@ int main(int argc, char *argv[])
             break;
         case 'D': // extended debug options
             enable_debug_flag(&server, optarg);
+            break;
+        case 's':
+            session_process = optarg;
             break;
         case 'v': // version
             printf("kylin-wlcom version " KYWC_VERSION "\n");
@@ -107,6 +111,12 @@ int main(int argc, char *argv[])
     }
 
     server_start(&server);
+
+    if (session_process) {
+        spawn_invoke(session_process);
+    }
+
+    server_run(&server);
 
     server_finish(&server);
     logger_finish();

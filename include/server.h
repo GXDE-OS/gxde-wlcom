@@ -34,6 +34,8 @@ bool server_init(struct server *server);
 
 bool server_start(struct server *server);
 
+void server_run(struct server *server);
+
 void server_finish(struct server *server);
 
 /**
