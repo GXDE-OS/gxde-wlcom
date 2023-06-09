@@ -236,22 +236,42 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     return workspace;
 }
 
-void workspace_destroy(struct workspace *workspace)
+static void fix_workspace(struct workspace *workspace)
 {
-    kywc_log(KYWC_INFO, "workspace %s destroy", workspace->name);
-    wl_signal_emit_mutable(&workspace->events.destroy, NULL);
-
     /* fixup workspace position */
     for (uint32_t i = workspace->position; i < workspace_manager->count - 1; i++) {
         workspace_manager->workspaces[i] = workspace_manager->workspaces[i + 1];
         workspace_manager->workspaces[i]->position = i;
+        // TODO: rename workspace ?
     }
     workspace_manager_update_count(workspace_manager->count - 1);
 
-    /* fixup activated workspace if not fixed by workspace destroy listener */
-    if (workspace_manager->current == workspace && workspace_manager->count) {
+    if (workspace_manager->count == 0) {
+        return;
+    }
+
+    /* fixup activated workspace */
+    if (workspace_manager->current == workspace) {
         workspace_activate(workspace_manager->workspaces[0]);
     }
+
+    /* move all views to current activated workspace */
+    struct workspace *current = workspace_manager_get_current();
+
+    struct view *view, *tmp;
+    wl_list_for_each_safe(view, tmp, &workspace->views, link) {
+        // TODO: fullscreen views
+        view_set_workspace(view, current);
+    }
+}
+
+void workspace_destroy(struct workspace *workspace)
+{
+    kywc_log(KYWC_INFO, "workspace %s destroy", workspace->name);
+
+    fix_workspace(workspace);
+
+    wl_signal_emit_mutable(&workspace->events.destroy, NULL);
 
     /* destroy trees, trees must be empty */
     for (int i = 0; i < 3; i++) {
