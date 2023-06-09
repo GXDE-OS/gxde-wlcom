@@ -53,11 +53,9 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 
     switch (layer) {
     case LAYER_BELOW:
-        return &workspace_manager_get_current()->layers[0];
     case LAYER_NORMAL:
-        return &workspace_manager_get_current()->layers[1];
     case LAYER_ABOVE:
-        return &workspace_manager_get_current()->layers[2];
+        return workspace_layer(workspace_manager_get_current(), layer);
     default:
         return &view_manager->layers[layer];
     }

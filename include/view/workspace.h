@@ -37,4 +37,6 @@ void workspace_destroy(struct workspace *workspace);
 
 void workspace_activate(struct workspace *workspace);
 
+struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer);
+
 #endif /* _WORKSPACE_H_ */

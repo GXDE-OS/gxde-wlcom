@@ -295,3 +295,17 @@ void workspace_activate(struct workspace *workspace)
 
     kywc_log(KYWC_INFO, "workspace %s(%d) is activated", workspace->name, workspace->position);
 }
+
+struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer)
+{
+    switch (layer) {
+    case LAYER_BELOW:
+        return &workspace->layers[0];
+    case LAYER_NORMAL:
+        return &workspace->layers[1];
+    case LAYER_ABOVE:
+        return &workspace->layers[2];
+    default:
+        return NULL;
+    }
+}
