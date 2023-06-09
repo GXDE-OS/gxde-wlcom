@@ -355,6 +355,12 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
 
     view->workspace = workspace;
 
+    /* reparent view tree to new workspace tree */
+    struct view_layer *layer = workspace_layer(
+        workspace,
+        view->base.kept_above ? LAYER_ABOVE : (view->base.kept_below ? LAYER_BELOW : LAYER_NORMAL));
+    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+
     kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
              workspace ? workspace->name : "none");
 
