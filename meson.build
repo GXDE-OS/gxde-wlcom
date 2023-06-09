@@ -88,10 +88,27 @@ add_project_arguments('-DPLUGIN_DIR="@0@"'.format(plugindir), language: 'c')
 
 wlcom_inc = include_directories('include')
 
+have_examples = get_option('examples')
+have_kde_output = get_option('kde_output')
+have_kde_virtual_desktop = get_option('kde_virtual_desktop')
+have_wlr_output = get_option('wlr_output')
+have_wlr_scene = get_option('wlr_scene')
+
+if not have_kde_output and not have_wlr_output
+  error('Must enable one output protocol support at least')
+endif
+
+add_project_arguments([
+  '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
+  '-DHAVE_KDE_VIRTUAL_DESKTOP=@0@'.format(have_kde_virtual_desktop.to_int()),
+  '-DHAVE_WLR_OUTPUT=@0@'.format(have_wlr_output.to_int()),
+  '-DHAVE_WLR_SCENE=@0@'.format(have_wlr_scene.to_int()),
+], language: 'c')
+
 subdir('src')
 subdir('protocols')
 
-if get_option('examples')
+if have_examples
   subdir('examples')
 endif
 

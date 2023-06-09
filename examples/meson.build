@@ -32,7 +32,7 @@ foreach name, info : clients
     name,
     [info.get('src'), extra_src],
     dependencies: [wayland_client, info.get('dep', [])],
-    build_by_default: get_option('examples'),
+    build_by_default: true,
   )
 endforeach
 
