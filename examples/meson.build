@@ -12,6 +12,15 @@ if have_kde_output
   }
 endif
 
+if have_kde_virtual_desktop
+  clients += {
+    'virtual-desktop': {
+    'src': 'virtual_desktop.c',
+    'proto': ['org-kde-plasma-virtual-desktop-management'],
+    },
+  }
+endif
+
 foreach name, info : clients
   extra_src = []
   foreach p : info.get('proto')
