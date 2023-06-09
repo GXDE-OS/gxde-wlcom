@@ -205,6 +205,11 @@ static void handle_request_remove_virtual_desktop(struct wl_client *client,
         return;
     }
 
+    if (wl_list_length(&management->virtual_desktops) == 1) {
+        kywc_log(KYWC_WARN, "reject to destroy the last virtual desktop");
+        return;
+    }
+
     workspace_destroy(virtual_desktop->workspace);
 }
 
