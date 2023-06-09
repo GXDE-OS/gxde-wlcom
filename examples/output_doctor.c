@@ -965,22 +965,22 @@ static bool parse_output_arg(struct output_device *device, struct output *output
 }
 
 static const char usage[] =
-    "usage: output-doctor [options…]\n"
-    "--help\n"
-    "--monitor\n"
-    "--output <name>\n"
-    "  --on\n"
-    "  --off\n"
-    "  --dpms on|off\n"
-    "  --mode <width>x<height>[@<refresh>Hz]\n"
-    "  --primary\n"
-    "  --preferred\n"
-    "  --pos <x>,<y>\n"
-    "  --transform normal|90|180|270|flipped|flipped-90|flipped-180|flipped-270\n"
-    "  --scale <factor>\n"
-    "  --overscan <percent>\n"
-    "  --vrr-policy never|always|automatic\n"
-    "  --rgb-range automatic|full|limited\n";
+    "usage: output-doctor [options…]\n\n"
+    " --help\n"
+    " --monitor\n"
+    " --output <name>\n"
+    "   --on\n"
+    "   --off\n"
+    "   --dpms on|off\n"
+    "   --mode <width>x<height>[@<refresh>Hz]\n"
+    "   --primary\n"
+    "   --preferred\n"
+    "   --pos <x>,<y>\n"
+    "   --transform normal|90|180|270|flipped|flipped-90|flipped-180|flipped-270\n"
+    "   --scale <factor>\n"
+    "   --overscan <percent>\n"
+    "   --vrr-policy never|always|automatic\n"
+    "   --rgb-range automatic|full|limited\n";
 
 int main(int argc, char *argv[])
 {
@@ -1015,10 +1015,10 @@ int main(int argc, char *argv[])
         if (c < 0) {
             break;
         } else if (c == '?') {
-            return EXIT_FAILURE;
+            goto done;
         } else if (c == 'h') {
             fprintf(stderr, "%s", usage);
-            return EXIT_SUCCESS;
+            goto done;
         }
 
         const char *name = long_options[option_index].name;
@@ -1033,7 +1033,7 @@ int main(int argc, char *argv[])
             }
             if (!found) {
                 fprintf(stderr, "unknown output %s\n", value);
-                return EXIT_FAILURE;
+                goto done;
             }
 
             found = false;
@@ -1051,11 +1051,11 @@ int main(int argc, char *argv[])
         } else { // output sub-option
             if (current_device == NULL) {
                 fprintf(stderr, "no --output specified before --%s\n", name);
-                return EXIT_FAILURE;
+                goto done;
             }
 
             if (!parse_output_arg(current_device, current_output, name, value)) {
-                return EXIT_FAILURE;
+                goto done;
             }
 
             changed = true;
@@ -1073,9 +1073,11 @@ int main(int argc, char *argv[])
     }
 
     struct output_device *output_device, *output_device_tmp;
+done:
     wl_list_for_each_safe(output_device, output_device_tmp, &manager.devices, link) {
         output_device_destroy(output_device);
     }
+
     struct output *output, *output_tmp;
     wl_list_for_each_safe(output, output_tmp, &manager.outputs, link) {
         output_destroy(output);
