@@ -549,6 +549,29 @@ static void output_update_geometry(struct output *output, struct kywc_box *box)
     box->height /= state->scale;
 }
 
+static void output_update_usable_area(struct output *output, struct kywc_box *usable)
+{
+    *usable = output->geometry;
+    wl_signal_emit_mutable(&output->events.update_usable_area, usable);
+    wl_signal_emit_mutable(&output->events.update_late_usable_area, usable);
+}
+
+void kywc_output_update_usable_area(struct kywc_output *kywc_output)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    struct kywc_box usable_area = output->usable_area;
+
+    output_update_usable_area(output, &output->usable_area);
+    if (kywc_box_equal(&output->usable_area, &usable_area)) {
+        return;
+    }
+
+    kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
+             output->usable_area.x, output->usable_area.y, output->usable_area.width,
+             output->usable_area.height);
+    wl_signal_emit_mutable(&output->events.usable_area, NULL);
+}
+
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
 {
     struct output *output = output_from_kywc_output(kywc_output);
@@ -563,8 +586,19 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     // XXX: fix current.enabled for dpms power
     current->enabled = state->enabled;
 
+    /* update geometry and usable area before all signals */
+    bool usable_area_changed = false;
+
     if (current->enabled) {
+        struct kywc_box geo = output->geometry;
         output_update_geometry(output, &output->geometry);
+
+        /* only update usable area when geometry changed */
+        if (!kywc_box_equal(&geo, &output->geometry)) {
+            geo = output->usable_area;
+            output_update_usable_area(output, &output->usable_area);
+            usable_area_changed = !kywc_box_equal(&geo, &output->usable_area);
+        }
     }
 
     /* check state changes */
@@ -578,35 +612,32 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         }
     }
 
+    if (usable_area_changed) {
+        kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
+                 output->usable_area.x, output->usable_area.y, output->usable_area.width,
+                 output->usable_area.height);
+        wl_signal_emit_mutable(&output->events.usable_area, NULL);
+    }
+
     if (current->power != old.power) {
         wl_signal_emit_mutable(&kywc_output->events.power, NULL);
     }
 
-    bool need_update_usable_area = false;
-
     if (current->width != old.width || current->height != old.height ||
         current->refresh != old.refresh) {
         wl_signal_emit_mutable(&kywc_output->events.mode, NULL);
-        need_update_usable_area = true;
     }
 
     if (current->transform != old.transform) {
         wl_signal_emit_mutable(&kywc_output->events.transform, NULL);
-        need_update_usable_area = true;
     }
 
     if (current->scale != old.scale) {
         wl_signal_emit_mutable(&kywc_output->events.scale, NULL);
-        need_update_usable_area = true;
     }
 
     if (current->lx != old.lx || current->ly != old.ly) {
         wl_signal_emit_mutable(&kywc_output->events.position, NULL);
-        need_update_usable_area = true;
-    }
-
-    if (need_update_usable_area) {
-        output_update_usable_area(kywc_output);
     }
 
     output_write_config(output);
@@ -650,25 +681,6 @@ void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
     } else {
         wl_signal_add(&output->events.update_usable_area, listener);
     }
-}
-
-void output_update_usable_area(struct kywc_output *kywc_output)
-{
-    struct output *output = output_from_kywc_output(kywc_output);
-    struct kywc_box usable_area = output->geometry;
-
-    wl_signal_emit_mutable(&output->events.update_usable_area, &usable_area);
-    wl_signal_emit_mutable(&output->events.update_late_usable_area, &usable_area);
-
-    if (kywc_box_equal(&output->usable_area, &usable_area)) {
-        return;
-    }
-
-    output->usable_area = usable_area;
-    kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
-             usable_area.x, usable_area.y, usable_area.width, usable_area.height);
-
-    wl_signal_emit_mutable(&output->events.usable_area, NULL);
 }
 
 bool output_at_layout_edge(struct output *output, enum layout_edge edge)

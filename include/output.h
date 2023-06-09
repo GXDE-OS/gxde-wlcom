@@ -45,7 +45,7 @@ struct output *output_from_wlr_output(struct wlr_output *wlr_output);
 void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
                                             struct wl_listener *listener, bool late);
 
-void output_update_usable_area(struct kywc_output *kywc_output);
+void kywc_output_update_usable_area(struct kywc_output *kywc_output);
 
 enum layout_edge {
     LAYOUT_EDGE_TOP,
