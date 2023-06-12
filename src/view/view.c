@@ -86,6 +86,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     view->impl = impl;
     view->data = data;
     wl_list_init(&view->subview.children);
+
+    wl_signal_init(&view->events.parent);
     wl_signal_init(&view->events.workspace);
 
     kywc_view->minimizable = true;
@@ -390,6 +392,8 @@ void view_set_parent(struct view *view, struct view *parent)
     view->subview.parent = parent;
 
     kywc_log(KYWC_DEBUG, "view %p set parent to %p", view, parent);
+
+    wl_signal_emit_mutable(&view->events.parent, NULL);
 }
 
 void kywc_view_add_new_listener(struct wl_listener *listener)

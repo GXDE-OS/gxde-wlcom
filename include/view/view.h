@@ -80,6 +80,8 @@ struct view {
 
     struct {
         // struct wl_signal output;
+        /* emit if view's parent changed */
+        struct wl_signal parent;
         /* emit if view's workspace changed */
         struct wl_signal workspace;
     } events;
