@@ -160,7 +160,6 @@ static void xdg_view_destroy(struct view *view)
 }
 
 static const struct view_impl xdg_surface_impl = {
-    .type = KYWC_VIEW_XDG_SHELL,
     .configure = xdg_view_configure,
     .close = xdg_view_close,
     .destroy = xdg_view_destroy,

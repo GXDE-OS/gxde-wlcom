@@ -65,7 +65,6 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    kywc_view->type = impl->type;
     wl_signal_init(&kywc_view->events.premap);
     wl_signal_init(&kywc_view->events.map);
     wl_signal_init(&kywc_view->events.unmap);

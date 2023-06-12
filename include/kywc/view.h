@@ -8,21 +8,7 @@
 
 #include "boxes.h"
 
-// TODO: Is it necessary to use commit to apply states
-
 struct kywc_output;
-
-// TODO: hint mask for dock, desktop and others
-enum kywc_view_type {
-    /* internal ui: menu, switcher ... */
-    KYWC_VIEW_INTERNAL,
-    /* xdg shell */
-    KYWC_VIEW_XDG_SHELL,
-    /* xwayland shell */
-    KYWC_VIEW_XWAYLAND,
-    /* layer shell */
-    KYWC_VIEW_LAYER_SHELL,
-};
 
 enum kywc_edges {
     KYWC_EDGE_NONE = 0,
@@ -43,7 +29,7 @@ enum kywc_tile {
 };
 
 struct kywc_view {
-    enum kywc_view_type type;
+    // TODO: hint mask for dock, desktop and others
 
     /* current geometry in global layout */
     struct kywc_box geometry;

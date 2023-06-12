@@ -89,8 +89,6 @@ struct view {
         struct kywc_box geometry;
         /* restore view to layer when ... */
         enum layer layer;
-        /* restore view to this output when plugged in or enabled */
-        char *output;
     } saved;
 
     struct view_configure_state pending;
@@ -100,7 +98,6 @@ struct view {
 };
 
 struct view_impl {
-    enum kywc_view_type type;
     void (*configure)(struct view *view);
     void (*close)(struct view *view);
     void (*destroy)(struct view *view);
