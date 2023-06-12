@@ -526,6 +526,9 @@ void kywc_view_activate(struct kywc_view *kywc_view)
         wl_list_insert(&view->workspace->views, &view->link);
     }
 
+    if (view->subview.parent) {
+        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->subview.parent->tree));
+    }
     ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
     /* raise children if any */
     struct view *child;
