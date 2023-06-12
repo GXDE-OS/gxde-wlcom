@@ -4,3 +4,4 @@ option('kde_output', type: 'boolean', value: true, description: 'Enable kde outp
 option('kde_virtual_desktop', type: 'boolean', value: true, description: 'Enable kde virtual desktop protocol support')
 option('wlr_output', type: 'boolean', value: true, description: 'Enable wlroots output protocols support')
 option('wlr_scene', type: 'boolean', value: true, description: 'Enable wlroots scene as default')
+option('wlr_layer_shell', type: 'boolean', value: true, description: 'Enable wlroots layer shell protocol support')

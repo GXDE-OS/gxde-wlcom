@@ -42,6 +42,8 @@ struct view_manager *view_manager_create(struct server *server)
 
     xdg_shell_init(view_manager);
 
+    wlr_layer_shell_manager_create(server);
+
     return view_manager;
 }
 

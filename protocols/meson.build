@@ -28,6 +28,12 @@ if have_wlr_output
   }
 endif
 
+if have_wlr_layer_shell
+  protocols += {
+    'zwlr-layer-shell-v1': 'wlr-layer-shell-unstable-v1.xml',
+  }
+endif
+
 protos_src = []
 
 protocols_code = {}

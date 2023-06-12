@@ -54,4 +54,13 @@ kde_virtual_desktop_management_create(struct server *server)
 }
 #endif
 
+#if HAVE_WLR_LAYER_SHELL
+bool wlr_layer_shell_manager_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool wlr_layer_shell_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _VIEW_P_H_ */

@@ -13,3 +13,8 @@ if have_kde_virtual_desktop
   )
 endif
 
+if have_wlr_layer_shell
+  wlcom_sources += files(
+    'wlr_layer_shell.c',
+  )
+endif
