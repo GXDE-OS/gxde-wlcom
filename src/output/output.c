@@ -125,6 +125,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&kywc_output->events.frame);
     wl_signal_init(&kywc_output->events.destroy);
 
+    wl_signal_init(&output->events.geometry);
     wl_signal_init(&output->events.usable_area);
     wl_signal_init(&output->events.update_usable_area);
     wl_signal_init(&output->events.update_late_usable_area);
@@ -587,14 +588,15 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     current->enabled = state->enabled;
 
     /* update geometry and usable area before all signals */
+    bool geometry_changed = false;
     bool usable_area_changed = false;
 
     if (current->enabled) {
         struct kywc_box geo = output->geometry;
         output_update_geometry(output, &output->geometry);
-
+        geometry_changed = !kywc_box_equal(&geo, &output->geometry);
         /* only update usable area when geometry changed */
-        if (!kywc_box_equal(&geo, &output->geometry)) {
+        if (geometry_changed) {
             geo = output->usable_area;
             output_update_usable_area(output, &output->usable_area);
             usable_area_changed = !kywc_box_equal(&geo, &output->usable_area);
@@ -610,6 +612,13 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, NULL);
         }
+    }
+
+    if (geometry_changed) {
+        kywc_log(KYWC_DEBUG, "output %s geometry is (%d, %d) %d x %d", output->base.name,
+                 output->geometry.x, output->geometry.y, output->geometry.width,
+                 output->geometry.height);
+        wl_signal_emit_mutable(&output->events.geometry, NULL);
     }
 
     if (usable_area_changed) {

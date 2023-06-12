@@ -17,6 +17,8 @@ struct output {
     struct kywc_box usable_area;
 
     struct {
+        /* emit when output geometry changed */
+        struct wl_signal geometry;
         /* emit when output usable area changed */
         struct wl_signal usable_area;
         /* emit when output need update usable area */
