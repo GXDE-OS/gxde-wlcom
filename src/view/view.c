@@ -291,6 +291,11 @@ void view_destroy(struct view *view)
         wl_list_remove(&view->link);
     }
 
+    /* there should be no children views when destroy */
+    if (view->subview.parent) {
+        wl_list_remove(&view->subview.link);
+    }
+
     ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
     view->impl->destroy(view);
 }
@@ -400,6 +405,12 @@ struct view *view_from_kywc_view(struct kywc_view *kywc_view)
 void kywc_view_close(struct kywc_view *kywc_view)
 {
     struct view *view = view_from_kywc_view(kywc_view);
+
+    /* it is not allowed to close a view that has children views */
+    if (!wl_list_empty(&view->subview.children)) {
+        kywc_log(KYWC_WARN, "close a view that still have children views");
+        return;
+    }
 
     if (view->impl->close) {
         view->impl->close(view);
@@ -515,6 +526,11 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 
     ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
+    /* raise children if any */
+    struct view *child;
+    wl_list_for_each(child, &view->subview.children, subview.link) {
+        ky_scene_node_raise_to_top(ky_scene_node_from_tree(child->tree));
+    }
 
     /* listen activated view's minimize and destroy signals,
      * so that we can auto activate another view.
