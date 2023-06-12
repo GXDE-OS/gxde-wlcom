@@ -41,6 +41,8 @@ bool decoration_should_use_ssd(struct wlr_surface *surface);
 
 void view_topmost_activate(struct workspace *workspace);
 
+bool positioner_manager_create(struct view_manager *view_manager);
+
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell);
 
