@@ -229,7 +229,7 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     kywc_view_resize(kywc_view, &pending);
 }
 
-static void pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
+static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
                                 double ly)
 {
     struct interactive_grab *grab = pointer_grab->data;
@@ -245,9 +245,10 @@ static void pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
     }
 
     grab->ongoing = true;
+    return true;
 }
 
-static void pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
+static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
                                 uint32_t button, bool pressed)
 {
     kywc_log(KYWC_DEBUG, "grab %p button %d %s", pointer_grab, button,
@@ -257,13 +258,16 @@ static void pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
 
     if (!pressed) {
         interactive_done(grab);
+        return false;
     }
+    return true;
 }
 
-static void pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
+static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
                               double value)
 {
     kywc_log(KYWC_DEBUG, "grab %p axis(%d) %f", pointer_grab, vertical, value);
+    return true;
 }
 
 static void pointer_grab_cancel(struct seat_pointer_grab *pointer_grab)

@@ -7,9 +7,9 @@
 struct seat_pointer_grab;
 
 struct seat_pointer_grab_interface {
-    void (*motion)(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly);
-    void (*button)(struct seat_pointer_grab *grab, uint32_t time, uint32_t button, bool pressed);
-    void (*axis)(struct seat_pointer_grab *grab, uint32_t time, bool vertical, double value);
+    bool (*motion)(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly);
+    bool (*button)(struct seat_pointer_grab *grab, uint32_t time, uint32_t button, bool pressed);
+    bool (*axis)(struct seat_pointer_grab *grab, uint32_t time, bool vertical, double value);
     void (*cancel)(struct seat_pointer_grab *grab);
 };
 
