@@ -24,7 +24,6 @@ struct view_manager {
         struct wl_listener destroy;
     } activated;
 
-
     struct wl_listener new_xdg_surface;
     struct wl_listener server_destroy;
 };

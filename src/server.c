@@ -24,6 +24,7 @@
 #include "plugin.h"
 #include "server.h"
 #include "view/view.h"
+#include "view/xwayland.h"
 
 static int handle_sigterm(int signal, void *data)
 {
@@ -131,6 +132,7 @@ bool server_init(struct server *server)
     output_manager_create(server);
     input_manager_create(server);
     view_manager_create(server);
+    xwayland_server_create(server);
 
     plugin_manager_create(server);
 
@@ -172,6 +174,9 @@ void server_finish(struct server *server)
 {
     wl_event_source_remove(server->sigint);
     wl_event_source_remove(server->sigterm);
+
+    /* make sure all xwayland-shells are destroyed */
+    xwayland_server_destroy();
     wl_display_destroy_clients(server->display);
 
     wl_display_destroy(server->display);
