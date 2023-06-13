@@ -48,6 +48,7 @@ enum view_action {
     VIEW_ACTION_MAXIMIZE = 1 << 2,
     VIEW_ACTION_RESIZE = 1 << 3,
     VIEW_ACTION_TILE = 1 << 4,
+    VIEW_ACTION_MINIMIZE = 1 << 5,
 };
 
 struct view_configure_state {

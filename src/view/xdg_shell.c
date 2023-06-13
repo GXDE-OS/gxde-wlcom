@@ -111,6 +111,14 @@ static void xdg_view_configure(struct view *view)
     struct kywc_view *kywc_view = &xdg_view->view.base;
     uint32_t serial = 0;
 
+    if (view->pending.action & VIEW_ACTION_MINIMIZE) {
+        view->pending.action &= ~VIEW_ACTION_MINIMIZE;
+    }
+
+    if (view->pending.action == VIEW_ACTION_NOP) {
+        return;
+    }
+
     if (view->pending.action & VIEW_ACTION_ACTIVATE) {
         serial = wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, kywc_view->activated);
     }
