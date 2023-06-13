@@ -152,7 +152,7 @@ static void layer_shell_configure_surface(struct layer_shell *layer_shell,
     ky_scene_node_set_position(ky_scene_node_from_tree(layer_shell->tree), box.x, box.y);
     wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
-    if (layer_surface->mapped && state->exclusive_zone > 0) {
+    if (layer_surface->surface->mapped && state->exclusive_zone > 0) {
         layer_surface_exclusive_zone(state, usable_area);
     }
 }
@@ -168,7 +168,7 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
 
     struct output *output = output_from_wlr_output(layer_surface->output);
 
-    if (!layer_surface->mapped) {
+    if (!layer_surface->surface->mapped) {
         /* is not mapped, usable area will not be changed */
         layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
         return;
@@ -320,15 +320,16 @@ static void handle_new_layer_surface(struct wl_listener *listener, void *data)
     wl_signal_add(&layer_surface->surface->events.commit, &layer_shell->commit);
 
     layer_shell->map.notify = layer_shell_handle_map;
-    wl_signal_add(&layer_surface->events.map, &layer_shell->map);
+    wl_signal_add(&layer_surface->surface->events.map, &layer_shell->map);
     layer_shell->unmap.notify = layer_shell_handle_unmap;
-    wl_signal_add(&layer_surface->events.unmap, &layer_shell->unmap);
+    wl_signal_add(&layer_surface->surface->events.unmap, &layer_shell->unmap);
     layer_shell->destroy.notify = layer_shell_handle_destroy;
     wl_signal_add(&layer_surface->events.destroy, &layer_shell->destroy);
     layer_shell->new_popup.notify = layer_shell_handle_new_popup;
     wl_signal_add(&layer_surface->events.new_popup, &layer_shell->new_popup);
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree), layer_surface->mapped);
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree),
+                              layer_surface->surface->mapped);
 }
 
 static void layer_output_destroy_shells(struct layer_output *layer_output)

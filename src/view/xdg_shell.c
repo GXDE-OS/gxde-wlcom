@@ -296,20 +296,14 @@ static void xdg_view_handle_show_window_menu(struct wl_listener *listener, void 
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_show_window_menu);
 }
 
-static void xdg_view_update_parent(struct xdg_view *xdg_view)
+static void xdg_view_handle_set_parent(struct wl_listener *listener, void *data)
 {
+    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, set_parent);
     struct wlr_xdg_toplevel *parent = xdg_view->wlr_xdg_surface->toplevel->parent;
     struct xdg_view *parent_xdg_view = parent ? parent->base->data : NULL;
     struct view *parent_view = parent_xdg_view ? &parent_xdg_view->view : NULL;
 
     view_set_parent(&xdg_view->view, parent_view);
-}
-
-static void xdg_view_handle_set_parent(struct wl_listener *listener, void *data)
-{
-    struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, set_parent);
-
-    xdg_view_update_parent(xdg_view);
 }
 
 static void xdg_view_handle_set_title(struct wl_listener *listener, void *data)
@@ -347,7 +341,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     /* all states are ready when map */
     view_set_app_id(&xdg_view->view, toplevel->app_id);
     view_set_title(&xdg_view->view, toplevel->title);
-    xdg_view_update_parent(xdg_view);
+    xdg_view_handle_set_parent(&xdg_view->set_parent, NULL);
 
     view_set_shadow(&xdg_view->view, !xdg_view_has_shadow(xdg_view));
     view_set_decoration(&xdg_view->view, decoration_should_use_ssd(wlr_surface));
@@ -383,7 +377,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
 
     /* create tree for surface and all sub-surfaces */
     xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
-    /* event node will be destroy in unmap */
+    /* event node will be destroyed when surface_tree destroy */
     input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
                             &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
     view_map(&xdg_view->view);
@@ -405,8 +399,7 @@ static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&xdg_view->set_title.link);
     wl_list_remove(&xdg_view->set_app_id.link);
 
-    /* destroy surface tree as we create it in map */
-    ky_scene_node_destroy(ky_scene_node_from_tree(xdg_view->surface_tree));
+    /* surface_tree is destroyed by scene subsurface */
     view_unmap(&xdg_view->view);
 }
 
@@ -446,9 +439,9 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;
-    wl_signal_add(&wlr_xdg_surface->events.map, &xdg_view->map);
+    wl_signal_add(&wlr_xdg_surface->surface->events.map, &xdg_view->map);
     xdg_view->unmap.notify = xdg_view_handle_unmap;
-    wl_signal_add(&wlr_xdg_surface->events.unmap, &xdg_view->unmap);
+    wl_signal_add(&wlr_xdg_surface->surface->events.unmap, &xdg_view->unmap);
     xdg_view->destroy.notify = xdg_view_handle_destroy;
     wl_signal_add(&wlr_xdg_surface->events.destroy, &xdg_view->destroy);
 }

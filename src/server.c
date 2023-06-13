@@ -85,7 +85,7 @@ static bool wlroots_server_init(struct server *server)
     }
 
     // TODO: set renderer to NULL, drop wlr_client_buffer
-    server->compositor = wlr_compositor_create(server->display, 5, server->renderer);
+    server->compositor = wlr_compositor_create(server->display, 6, server->renderer);
     wlr_subcompositor_create(server->display);
     wlr_renderer_init_wl_display(server->renderer, server->display);
 

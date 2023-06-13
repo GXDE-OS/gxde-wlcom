@@ -4,6 +4,8 @@
 #include "scene.h"
 #include "surface.h"
 
+struct wlr_xdg_surface;
+
 struct ky_scene_tree *ky_scene_xdg_surface_create(struct ky_scene_tree *parent,
                                                   struct wlr_xdg_surface *xdg_surface);
 
