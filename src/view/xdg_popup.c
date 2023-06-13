@@ -17,6 +17,8 @@ struct xdg_popup {
 
     struct wl_listener destroy;
     struct wl_listener new_popup;
+
+    bool topmost_popup;
 };
 
 static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
@@ -26,7 +28,11 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->destroy.link);
     wl_list_remove(&popup->new_popup.link);
 
-    ky_scene_node_destroy(ky_scene_node_from_tree(popup->parent_tree));
+    /* only need to destroy the topmost popup parent tree */
+    if (popup->topmost_popup) {
+        ky_scene_node_destroy(ky_scene_node_from_tree(popup->parent_tree));
+    }
+
     free(popup);
 }
 
@@ -44,10 +50,9 @@ static void popup_handle_new_xdg_popup(struct wl_listener *listener, void *data)
 
 static void popup_unconstrain(struct xdg_popup *popup)
 {
-    /* TODO: popup unconstrain output */
+    /* TODO: popup unconstrain output, add input_manager_get_last_seat */
     struct output *output = input_current_output(input_manager_get_default_seat());
-    // TODO: usable area or effectiive geometry ?
-    struct kywc_box *output_box = &output->usable_area;
+    struct kywc_box *output_box = &output->geometry;
 
     int lx, ly;
     ky_scene_node_coords(ky_scene_node_from_tree(popup->shell_tree), &lx, &ly);
@@ -136,6 +141,7 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
     ky_scene_node_set_position(ky_scene_node_from_tree(parent), lx, ly);
 
     struct xdg_popup *popup = _xdg_popup_create(wlr_xdg_popup, parent, shell);
+    popup->topmost_popup = true;
 
     input_event_node_create(ky_scene_node_from_tree(parent), &xdg_popup_event_node_impl,
                             xdg_popup_get_root, popup);
