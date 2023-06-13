@@ -85,6 +85,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
 
     view->impl = impl;
     view->data = data;
+    wl_list_init(&view->link);
     wl_list_init(&view->children);
     wl_list_init(&view->parent_link);
     wl_signal_init(&view->events.parent);
@@ -290,9 +291,7 @@ void view_destroy(struct view *view)
 
     wl_signal_emit_mutable(&kywc_view->events.destroy, NULL);
 
-    if (view->workspace) {
-        wl_list_remove(&view->link);
-    }
+    wl_list_remove(&view->link);
     wl_list_remove(&view->parent_link);
 
     /* there should be no children views when destroy */
@@ -359,24 +358,23 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
         return;
     }
 
-    if (view->workspace) {
-        wl_list_remove(&view->link);
-    }
+    wl_list_remove(&view->link);
     if (workspace) {
         wl_list_insert(&workspace->views, &view->link);
+        /* reparent view tree to new workspace tree */
+        enum layer layer = view->base.kept_above
+                               ? LAYER_ABOVE
+                               : (view->base.kept_below ? LAYER_BELOW : LAYER_NORMAL);
+        struct view_layer *view_layer = workspace_layer(workspace, layer);
+        ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_layer->tree);
+    } else {
+        wl_list_init(&view->link);
     }
-
-    view->workspace = workspace;
-
-    /* reparent view tree to new workspace tree */
-    struct view_layer *layer = workspace_layer(
-        workspace,
-        view->base.kept_above ? LAYER_ABOVE : (view->base.kept_below ? LAYER_BELOW : LAYER_NORMAL));
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
 
     kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
              workspace ? workspace->name : "none");
 
+    view->workspace = workspace;
     wl_signal_emit_mutable(&view->events.workspace, NULL);
 }
 
@@ -645,15 +643,12 @@ static void view_reparent_fullscreen(struct view *view, bool fullscreen)
                                 : (kywc_view->kept_below ? LAYER_BELOW : LAYER_NORMAL);
         struct view_layer *layer = view_manager_get_layer(LAYER_ACTIVE, false);
         ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
-        /* clear view workspace */
-        view_set_workspace(view, NULL);
         return;
     }
 
     /* restore fullscreen view to workspace */
     struct view_layer *layer = view_manager_get_layer(view->saved.layer, true);
     ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
-    view_set_workspace(view, workspace_manager_get_current());
 }
 
 void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
