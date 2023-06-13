@@ -743,6 +743,11 @@ static void entry_handle_view_destroy(struct wl_listener *listener, void *data)
 static void entry_handle_view_workspace(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_workspace);
+    /* view is not mapped, like xwayland shell */
+    if (!entry->place) {
+        return;
+    }
+
     struct kywc_view *kywc_view = entry->view;
     struct view *view = view_from_kywc_view(kywc_view);
 
