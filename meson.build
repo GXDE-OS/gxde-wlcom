@@ -93,6 +93,7 @@ have_kde_output = get_option('kde_output')
 have_kde_virtual_desktop = get_option('kde_virtual_desktop')
 have_wlr_output = get_option('wlr_output')
 have_wlr_scene = get_option('wlr_scene')
+have_wlr_foreign_toplevel = get_option('wlr_foreign_toplevel')
 have_wlr_layer_shell = get_option('wlr_layer_shell')
 
 if not have_kde_output and not have_wlr_output
@@ -104,6 +105,7 @@ add_project_arguments([
   '-DHAVE_KDE_VIRTUAL_DESKTOP=@0@'.format(have_kde_virtual_desktop.to_int()),
   '-DHAVE_WLR_OUTPUT=@0@'.format(have_wlr_output.to_int()),
   '-DHAVE_WLR_SCENE=@0@'.format(have_wlr_scene.to_int()),
+  '-DHAVE_WLR_FOREIGN_TOPLEVEL=@0@'.format(have_wlr_foreign_toplevel.to_int()),
   '-DHAVE_WLR_LAYER_SHELL=@0@'.format(have_wlr_layer_shell.to_int()),
 ], language: 'c')
 

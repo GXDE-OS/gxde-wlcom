@@ -55,6 +55,16 @@ kde_virtual_desktop_management_create(struct server *server)
 }
 #endif
 
+#if HAVE_WLR_FOREIGN_TOPLEVEL
+bool wlr_foreign_toplevel_manager_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool
+wlr_foreign_toplevel_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #if HAVE_WLR_LAYER_SHELL
 bool wlr_layer_shell_manager_create(struct server *server);
 #else

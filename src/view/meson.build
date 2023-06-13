@@ -20,6 +20,12 @@ if have_kde_virtual_desktop
   )
 endif
 
+if have_wlr_foreign_toplevel
+  wlcom_sources += files(
+    'wlr_foreign_toplevel.c',
+  )
+endif
+
 if have_wlr_layer_shell
   wlcom_sources += files(
     'wlr_layer_shell.c',
