@@ -85,8 +85,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
 
     view->impl = impl;
     view->data = data;
-    wl_list_init(&view->subview.children);
-
+    wl_list_init(&view->children);
+    wl_list_init(&view->parent_link);
     wl_signal_init(&view->events.parent);
     wl_signal_init(&view->events.workspace);
 
@@ -293,10 +293,14 @@ void view_destroy(struct view *view)
     if (view->workspace) {
         wl_list_remove(&view->link);
     }
+    wl_list_remove(&view->parent_link);
 
     /* there should be no children views when destroy */
-    if (view->subview.parent) {
-        wl_list_remove(&view->subview.link);
+    struct view *child, *tmp;
+    wl_list_for_each_safe(child, tmp, &view->children, parent_link) {
+        wl_list_remove(&child->parent_link);
+        wl_list_init(&child->parent_link);
+        child->parent = NULL;
     }
 
     ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
@@ -378,21 +382,20 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
 
 void view_set_parent(struct view *view, struct view *parent)
 {
-    struct view *old_parent = view->subview.parent;
-    if (old_parent == parent) {
+    if (view->parent == parent) {
         return;
     }
 
-    if (old_parent) {
-        wl_list_remove(&view->subview.link);
-    }
+    wl_list_remove(&view->parent_link);
     if (parent) {
-        wl_list_insert(&parent->subview.children, &view->subview.link);
+        wl_list_insert(&parent->children, &view->parent_link);
+    } else {
+        wl_list_init(&view->parent_link);
     }
-    view->subview.parent = parent;
 
     kywc_log(KYWC_DEBUG, "view %p set parent to %p", view, parent);
 
+    view->parent = parent;
     wl_signal_emit_mutable(&view->events.parent, NULL);
 }
 
@@ -412,7 +415,7 @@ void kywc_view_close(struct kywc_view *kywc_view)
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* it is not allowed to close a view that has children views */
-    if (!wl_list_empty(&view->subview.children)) {
+    if (!wl_list_empty(&view->children)) {
         kywc_log(KYWC_WARN, "close a view that still have children views");
         return;
     }
@@ -530,13 +533,13 @@ void kywc_view_activate(struct kywc_view *kywc_view)
         wl_list_insert(&view->workspace->views, &view->link);
     }
 
-    if (view->subview.parent) {
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->subview.parent->tree));
+    if (view->parent) {
+        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->parent->tree));
     }
     ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
     /* raise children if any */
     struct view *child;
-    wl_list_for_each(child, &view->subview.children, subview.link) {
+    wl_list_for_each(child, &view->children, parent_link) {
         ky_scene_node_raise_to_top(ky_scene_node_from_tree(child->tree));
     }
 

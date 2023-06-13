@@ -67,11 +67,9 @@ struct view {
     struct wl_list link;
 
     /* parent and children */
-    struct {
-        struct view *parent;
-        struct wl_list link;
-        struct wl_list children;
-    } subview;
+    struct view *parent;
+    struct wl_list parent_link;
+    struct wl_list children;
 
     struct ky_scene_tree *tree;
 
