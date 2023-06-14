@@ -91,7 +91,7 @@ static bool wlroots_server_init(struct server *server)
     wlr_renderer_init_wl_display(server->renderer, server->display);
 
     server->layout = wlr_output_layout_create();
-    server->scene = ky_scene_create();
+    server->scene = ky_scene_create(server);
     ky_scene_attach_output_layout(server->scene, server->layout);
 
     struct wlr_presentation *presentation =

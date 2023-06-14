@@ -17,7 +17,6 @@
 #define ky_scene_buffer wlr_scene_buffer
 #define ky_scene_output wlr_scene_output
 
-#define ky_scene_create wlr_scene_create
 #define ky_scene_node_destroy wlr_scene_node_destroy
 #define ky_scene_node_set_enabled wlr_scene_node_set_enabled
 #define ky_scene_node_set_position wlr_scene_node_set_position
@@ -47,7 +46,10 @@
 #define ky_scene_set_presentation wlr_scene_set_presentation
 #define ky_scene_buffer_point_accepts_input_func_t wlr_scene_buffer_point_accepts_input_func_t
 
+struct server;
+
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
+SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return wlr_scene_create(); } 
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return scene->presentation; }
 SCENE_API void ky_scene_destroy(struct ky_scene *scene) { ky_scene_node_destroy(&scene->tree.node); }
 SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return &scene->tree.node; }
@@ -90,9 +92,11 @@ struct ky_scene_rect;
 struct ky_scene_buffer;
 struct ky_scene_output;
 
+struct server;
+
 typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer, int sx, int sy);
 
-SCENE_API struct ky_scene *ky_scene_create(void) { return NULL; }
+SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return NULL; } 
 SCENE_API void ky_scene_destroy(struct ky_scene *scene) {}
 SCENE_API struct ky_scene *ky_scene_from_node(struct ky_scene_node *node) { return NULL; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return NULL; }
