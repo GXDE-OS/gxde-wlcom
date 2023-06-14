@@ -4,7 +4,7 @@
 #include <kywc/log.h>
 #include <sys/stat.h>
 
-#include "config.h"
+#include "config_p.h"
 #include "server.h"
 
 static struct config_manager *config_manager = NULL;
@@ -139,6 +139,11 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     config_manager = NULL;
 }
 
+static void handle_server_ready(struct wl_listener *listener, void *data)
+{
+    shortcut_init();
+}
+
 struct config_manager *config_manager_create(struct server *server)
 {
     config_manager = calloc(1, sizeof(struct config_manager));
@@ -164,6 +169,9 @@ struct config_manager *config_manager_create(struct server *server)
     }
 
     wl_list_init(&config_manager->configs);
+
+    config_manager->server_ready.notify = handle_server_ready;
+    wl_signal_add(&server->events.ready, &config_manager->server_ready);
     config_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &config_manager->server_destroy);
     config_manager->display_destroy.notify = handle_display_destroy;
