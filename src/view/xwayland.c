@@ -407,8 +407,6 @@ static void xwayland_view_configure(struct view *view)
     if (current->width == pending->width && current->height == pending->height) {
         view_helper_move(view, pending->x, pending->y);
     }
-
-    view_configured(view);
 }
 
 static const struct view_impl xwl_surface_impl = {
@@ -442,23 +440,29 @@ static bool xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
 static void xwayland_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, commit);
-    struct kywc_box *current = &xwayland_view->view.base.geometry;
 
-    if (!xwayland_view_update_geometry(xwayland_view)) {
+    enum view_action pending_action = xwayland_view->view.pending.action;
+    if (!xwayland_view_update_geometry(xwayland_view) || pending_action == 0) {
         return;
     }
 
+    assert(pending_action & ~VIEW_ACTION_ACTIVATE);
+
+    struct kywc_box *current = &xwayland_view->view.base.geometry;
     struct kywc_box *pending = &xwayland_view->view.pending.geometry;
     int x = pending->x, y = pending->y;
 
-    if (current->x != pending->x) {
-        x = pending->x + pending->width - current->width;
-    }
-    if (current->y != pending->y) {
-        y = pending->y + pending->height - current->height;
+    if (pending_action & VIEW_ACTION_RESIZE) {
+        if (current->x != pending->x) {
+            x = pending->x + pending->width - current->width;
+        }
+        if (current->y != pending->y) {
+            y = pending->y + pending->height - current->height;
+        }
     }
 
     view_helper_move(&xwayland_view->view, x, y);
+    view_configured(&xwayland_view->view);
 }
 
 static void xwayland_view_handle_request_move(struct wl_listener *listener, void *data)
