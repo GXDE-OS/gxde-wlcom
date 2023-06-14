@@ -35,7 +35,7 @@ static int handle_sigterm(int signal, void *data)
 
 void server_add_destroy_listener(struct server *server, struct wl_listener *listener)
 {
-    struct wl_signal *signal = &server->destroy_list;
+    struct wl_signal *signal = &server->events.destroy;
     wl_list_insert(&signal->listener_list, &listener->link);
 }
 
@@ -121,7 +121,8 @@ bool server_init(struct server *server)
     server->sigterm =
         wl_event_loop_add_signal(server->event_loop, SIGTERM, handle_sigterm, server->display);
 
-    wl_signal_init(&server->destroy_list);
+    wl_signal_init(&server->events.ready);
+    wl_signal_init(&server->events.destroy);
 
     config_manager_create(server);
 
@@ -135,6 +136,8 @@ bool server_init(struct server *server)
     xwayland_server_create(server);
 
     plugin_manager_create(server);
+
+    wl_signal_emit_mutable(&server->events.ready, NULL);
 
     return true;
 }
@@ -186,7 +189,7 @@ void server_finish(struct server *server)
     wlr_allocator_destroy(server->allocator);
     wlr_renderer_destroy(server->renderer);
 
-    wl_signal_emit_mutable(&server->destroy_list, NULL);
+    wl_signal_emit_mutable(&server->events.destroy, NULL);
 
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }

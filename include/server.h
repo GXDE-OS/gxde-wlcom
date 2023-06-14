@@ -18,7 +18,11 @@ struct server {
         bool log_to_file;
     } options;
 
-    struct wl_signal destroy_list;
+    struct {
+        struct wl_signal ready;
+        /* must use server_add_destroy_listener */
+        struct wl_signal destroy;
+    } events;
 
     struct wlr_renderer *renderer;
     struct wlr_allocator *allocator;
