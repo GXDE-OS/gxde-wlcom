@@ -417,18 +417,36 @@ static const struct view_impl xwl_surface_impl = {
     .destroy = xwayland_view_destroy,
 };
 
+static bool xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
+{
+    struct wlr_surface_state *state = &xwayland_view->wlr_xwayland_surface->surface->current;
+    xcb_size_hints_t *size_hints = xwayland_view->wlr_xwayland_surface->size_hints;
+    struct kywc_box *current = &xwayland_view->view.base.geometry;
+
+    bool new_size = current->width != state->width || current->height != state->height;
+
+    if (!size_hints) {
+        view_update_size(&xwayland_view->view, state->width, state->height, 0, 0, 0, 0);
+    } else {
+        /* convert -1 to zero followed by xdg-shell */
+        view_update_size(&xwayland_view->view, state->width, state->height,
+                         size_hints->min_width < 0 ? 0 : size_hints->min_width,
+                         size_hints->min_height < 0 ? 0 : size_hints->min_height,
+                         size_hints->max_width < 0 ? 0 : size_hints->max_width,
+                         size_hints->max_height < 0 ? 0 : size_hints->max_height);
+    }
+
+    return new_size;
+}
+
 static void xwayland_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, commit);
-    struct wlr_surface_state *state = &xwayland_view->view.surface->current;
     struct kywc_box *current = &xwayland_view->view.base.geometry;
 
-    if (current->width == state->width && current->height == state->height) {
+    if (!xwayland_view_update_geometry(xwayland_view)) {
         return;
     }
-
-    current->width = state->width;
-    current->height = state->height;
 
     struct kywc_box *pending = &xwayland_view->view.pending.geometry;
     int x = pending->x, y = pending->y;
@@ -538,8 +556,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, map);
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
-    view_update_size(&xwayland_view->view, wlr_xwayland_surface->width,
-                     wlr_xwayland_surface->height, 0, 0, 0, 0);
+    xwayland_view_update_geometry(xwayland_view);
+
     view_set_app_id(&xwayland_view->view, wlr_xwayland_surface->class);
     view_set_title(&xwayland_view->view, wlr_xwayland_surface->title);
     xwayland_view_handle_set_parent(&xwayland_view->set_parent, NULL);
@@ -558,6 +576,13 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     input_event_node_create(ky_scene_node_from_tree(xwayland_view->surface_tree),
                             &xwayland_view_event_node_impl, xwayland_view_get_root, xwayland_view);
     view_map(&xwayland_view->view);
+
+    /* apply the position in size_hints */
+    xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
+    if (size_hints &&
+        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION)) {
+        view_helper_move(&xwayland_view->view, wlr_xwayland_surface->x, wlr_xwayland_surface->y);
+    }
 }
 
 static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
