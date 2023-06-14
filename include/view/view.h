@@ -40,7 +40,6 @@ struct view_layer {
     struct ky_scene_tree *tree;
 };
 
-/* actions need send configure to client */
 enum view_action {
     VIEW_ACTION_NOP = 0,
     VIEW_ACTION_ACTIVATE = 1 << 0,
@@ -49,7 +48,11 @@ enum view_action {
     VIEW_ACTION_RESIZE = 1 << 3,
     VIEW_ACTION_TILE = 1 << 4,
     VIEW_ACTION_MINIMIZE = 1 << 5,
+    VIEW_ACTION_MOVE = 1 << 6,
 };
+
+#define view_action_change_size(action)                                                            \
+    (action & ~(VIEW_ACTION_ACTIVATE | VIEW_ACTION_MINIMIZE | VIEW_ACTION_MOVE))
 
 struct view_configure_state {
     enum view_action action;

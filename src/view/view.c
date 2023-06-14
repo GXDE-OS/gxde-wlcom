@@ -171,7 +171,6 @@ void view_map(struct view *view)
     /* assume that request_minimize may emited before map */
     struct ky_scene_node *node = ky_scene_node_from_tree(view->tree);
     ky_scene_node_set_enabled(node, !kywc_view->minimized);
-    ky_scene_node_set_position(node, kywc_view->geometry.x, kywc_view->geometry.y);
 
     kywc_view_activate(kywc_view);
     seat_focus_surface(input_manager_get_default_seat(), view->surface);
@@ -219,7 +218,7 @@ static int view_handle_configure_timeout(void *data)
              view->base.app_id, CONFIGURE_TIMEOUT_MS);
 
     /* fallback for pending actions */
-    if (!(view->pending.action == VIEW_ACTION_ACTIVATE)) {
+    if (view_action_change_size(view->pending.action)) {
         struct kywc_box *current = &view->base.geometry;
         struct kywc_box *pending = &view->pending.geometry;
         int x = pending->x, y = pending->y;
@@ -255,11 +254,6 @@ void view_configure(struct view *view, uint32_t serial)
 void view_configured(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-
-    if (view->pending.action & VIEW_ACTION_ACTIVATE) {
-        kywc_log(KYWC_DEBUG, "view %s is activated: %d", kywc_view->app_id, kywc_view->activated);
-        wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
-    }
 
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
@@ -438,15 +432,13 @@ void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
-    /* last action not finished, skip move and apply in commit */
-    if (view->pending.action & ~VIEW_ACTION_ACTIVATE) {
-        view->pending.geometry.x = x;
-        view->pending.geometry.y = y;
-        kywc_log(KYWC_DEBUG, "skip move when pending action %d", view->pending.action);
-        return;
-    }
+    view->pending.action |= VIEW_ACTION_MOVE;
+    view->pending.geometry.x = x;
+    view->pending.geometry.y = y;
 
-    view_helper_move(view, x, y);
+    if (kywc_view->mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
 }
 
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
@@ -476,6 +468,8 @@ static void view_set_activated(struct view *view, bool activated)
     if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
     }
+
+    wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
 }
 
 void view_topmost_activate(struct workspace *workspace)

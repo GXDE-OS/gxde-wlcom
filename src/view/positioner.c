@@ -240,7 +240,8 @@ static bool positioner_calc_position(struct positioner *pos, int slot, int *x, i
     return true;
 }
 
-static bool slot_is_suitable(struct positioner *pos, struct kywc_view *view, int slot)
+static bool slot_is_suitable(struct positioner *pos, struct kywc_view *view, int slot, int *x,
+                             int *y)
 {
     /* get slot top-left coord, then combine output usable area */
     struct kywc_box geo;
@@ -256,8 +257,8 @@ static bool slot_is_suitable(struct positioner *pos, struct kywc_view *view, int
     int height = view->geometry.height + view->margin.off_height;
 
     if (geo.width >= width && geo.height >= height) {
-        view->geometry.x = geo.x + view->margin.off_x;
-        view->geometry.y = geo.y + view->margin.off_y;
+        *x = geo.x + view->margin.off_x;
+        *y = geo.y + view->margin.off_y;
         return true;
     }
     return false;
@@ -618,37 +619,38 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
         return;
     }
 
-    if (kywc_view->minimized || kywc_view->fullscreen) {
+    if (kywc_view->minimized || kywc_view->fullscreen || kywc_view->has_initial_position) {
         place_insert_entry(place, entry, -1);
         return;
     }
+
+    /* show view in usable_area top-left as fallback */
+    int lx = pos->usable_area.x + kywc_view->margin.off_x;
+    int ly = pos->usable_area.y + kywc_view->margin.off_y;
+    int slot = -1;
 
     /* move to parent's center position */
     if (view->parent && view->parent->base.mapped) {
         struct kywc_view *parent = &view->parent->base;
         int center_x = parent->geometry.x + parent->geometry.width / 2;
         int center_y = parent->geometry.y + parent->geometry.height / 2;
-        kywc_view->geometry.x = center_x - kywc_view->geometry.width / 2;
-        kywc_view->geometry.y = center_y - kywc_view->geometry.height / 2;
-        place_insert_entry(place, entry, -1);
-        return;
+        lx = center_x - kywc_view->geometry.width / 2;
+        ly = center_y - kywc_view->geometry.height / 2;
+        goto done;
     }
 
     /* if view size is too bigger or no slot */
-    if (!slot_is_suitable(pos, kywc_view, 0) ||
+    if (!slot_is_suitable(pos, kywc_view, 0, &lx, &ly) ||
         (place->last_slot > pos->max_slot && place->free_list < 0)) {
-        /* show view in usable_area top-left */
-        kywc_view->geometry.x = pos->usable_area.x + kywc_view->margin.off_x;
-        kywc_view->geometry.y = pos->usable_area.y + kywc_view->margin.off_y;
-        place_insert_entry(place, entry, 0);
-        return;
+        slot = 0;
+        goto done;
     }
 
     struct slot *slot_p = NULL;
     /* find a suitable positioner slot, set view current (x, y) */
-    int slot = place->free_list;
+    slot = place->free_list;
     while (slot >= 0) {
-        if (slot_is_suitable(pos, kywc_view, slot)) {
+        if (slot_is_suitable(pos, kywc_view, slot, &lx, &ly)) {
             slot_p = place_find_slot(place, slot);
             break;
         }
@@ -658,7 +660,7 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
     /* no free slot or not suitable slot in free list */
     if (!slot_p) {
         for (slot = place->last_slot; slot <= pos->max_slot; slot++) {
-            if (slot_is_suitable(pos, kywc_view, slot)) {
+            if (slot_is_suitable(pos, kywc_view, slot, &lx, &ly)) {
                 slot_p = place_find_slot(place, slot);
                 break;
             }
@@ -666,13 +668,11 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
     }
 
     if (!slot_p) {
-        /* show view in usable_area top-left */
-        kywc_view->geometry.x = pos->usable_area.x + kywc_view->margin.off_x;
-        kywc_view->geometry.y = pos->usable_area.y + kywc_view->margin.off_y;
-        place_insert_entry(place, entry, 0);
-        return;
+        slot = 0;
     }
 
+done:
+    kywc_view_move(kywc_view, lx, ly);
     place_insert_entry(place, entry, slot);
 }
 

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
@@ -109,20 +110,36 @@ static void xdg_view_configure(struct view *view)
     struct xdg_view *xdg_view = xdg_view_from_view(view);
     struct wlr_xdg_toplevel *wlr_xdg_toplevel = xdg_view->wlr_xdg_surface->toplevel;
     struct kywc_view *kywc_view = &xdg_view->view.base;
-    uint32_t serial = 0;
 
+    /* do nothing when minimize */
     if (view->pending.action & VIEW_ACTION_MINIMIZE) {
         view->pending.action &= ~VIEW_ACTION_MINIMIZE;
+    }
+
+    /* ignore activate configure serial */
+    if (view->pending.action & VIEW_ACTION_ACTIVATE) {
+        view->pending.action &= ~VIEW_ACTION_ACTIVATE;
+        wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, kywc_view->activated);
+    }
+
+    /* direct move when not changed size */
+    if (view->pending.action & VIEW_ACTION_MOVE) {
+        view->pending.action &= ~VIEW_ACTION_MOVE;
+        if (!view_action_change_size(view->pending.action)) {
+            view_helper_move(view, view->pending.geometry.x, view->pending.geometry.y);
+        } else {
+            kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
+        }
     }
 
     if (view->pending.action == VIEW_ACTION_NOP) {
         return;
     }
 
-    if (view->pending.action & VIEW_ACTION_ACTIVATE) {
-        serial = wlr_xdg_toplevel_set_activated(wlr_xdg_toplevel, kywc_view->activated);
-    }
+    /* now, only changed size action left */
+    assert(view_action_change_size(view->pending.action));
 
+    uint32_t serial = 0;
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
         serial = wlr_xdg_toplevel_set_fullscreen(wlr_xdg_toplevel, kywc_view->fullscreen);
     }
@@ -137,12 +154,6 @@ static void xdg_view_configure(struct view *view)
 
     if (view->pending.action & VIEW_ACTION_TILE) {
         serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled ? 0xf : 0);
-    }
-
-    /* no need to resize surface when activate only */
-    if (view->pending.action == VIEW_ACTION_ACTIVATE) {
-        view_configure(view, serial);
-        return;
     }
 
     struct kywc_box *current = &view->base.geometry;
@@ -217,6 +228,8 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
         return;
     }
 
+    assert(view_action_change_size(pending_action));
+
     struct kywc_box *current = &view->base.geometry;
     struct kywc_box *pending = &view->pending.geometry;
     int x = pending->x, y = pending->y;
@@ -232,10 +245,7 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
         }
     }
 
-    /* position is not changed when activate only */
-    if (!(pending_action == VIEW_ACTION_ACTIVATE)) {
-        view_helper_move(view, x, y);
-    }
+    view_helper_move(view, x, y);
 
     /* last configure has been acked */
     if (current_serial >= pending_serial) {

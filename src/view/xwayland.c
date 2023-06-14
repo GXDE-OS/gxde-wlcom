@@ -358,6 +358,17 @@ static void xwayland_view_destroy(struct view *view)
     free(xwayland_view);
 }
 
+static void xwayland_view_move(struct xwayland_view *xwayland_view, int x, int y)
+{
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
+    struct view *view = &xwayland_view->view;
+
+    /* xwayland views need always sync position */
+    wlr_xwayland_surface_configure(wlr_xwayland_surface, x, y, wlr_xwayland_surface->width,
+                                   wlr_xwayland_surface->height);
+    view_helper_move(view, x, y);
+}
+
 static void xwayland_view_configure(struct view *view)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
@@ -365,15 +376,12 @@ static void xwayland_view_configure(struct view *view)
     struct kywc_view *kywc_view = &xwayland_view->view.base;
 
     if (view->pending.action & VIEW_ACTION_MINIMIZE) {
-        wlr_xwayland_surface_set_minimized(wlr_xwayland_surface, kywc_view->minimized);
         view->pending.action &= ~VIEW_ACTION_MINIMIZE;
-    }
-
-    if (view->pending.action == VIEW_ACTION_NOP) {
-        return;
+        wlr_xwayland_surface_set_minimized(wlr_xwayland_surface, kywc_view->minimized);
     }
 
     if (view->pending.action & VIEW_ACTION_ACTIVATE) {
+        view->pending.action &= ~VIEW_ACTION_ACTIVATE;
         if (kywc_view->activated && wlr_xwayland_surface->minimized) {
             wlr_xwayland_surface_set_minimized(wlr_xwayland_surface, false);
         }
@@ -383,6 +391,23 @@ static void xwayland_view_configure(struct view *view)
         wlr_xwayland_surface_activate(wlr_xwayland_surface, kywc_view->activated);
     }
 
+    /* direct move when not changed size */
+    if (view->pending.action & VIEW_ACTION_MOVE) {
+        view->pending.action &= ~VIEW_ACTION_MOVE;
+        if (!view_action_change_size(view->pending.action)) {
+            xwayland_view_move(xwayland_view, view->pending.geometry.x, view->pending.geometry.y);
+        } else {
+            kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
+        }
+    }
+
+    if (view->pending.action == VIEW_ACTION_NOP) {
+        return;
+    }
+
+    /* now, only changed size action left */
+    assert(view_action_change_size(view->pending.action));
+
     if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
         wlr_xwayland_surface_set_fullscreen(wlr_xwayland_surface, kywc_view->fullscreen);
     }
@@ -391,22 +416,18 @@ static void xwayland_view_configure(struct view *view)
         wlr_xwayland_surface_set_maximized(wlr_xwayland_surface, kywc_view->maximized);
     }
 
-    /* no need to resize surface when activate only */
-    if (view->pending.action == VIEW_ACTION_ACTIVATE) {
-        view_configured(view);
-        return;
-    }
-
     struct kywc_box *current = &view->base.geometry;
     struct kywc_box *pending = &view->pending.geometry;
 
-    wlr_xwayland_surface_configure(wlr_xwayland_surface, pending->x, pending->y, pending->width,
-                                   pending->height);
-
     /* If no need to resizing, process the move immediately */
     if (current->width == pending->width && current->height == pending->height) {
-        view_helper_move(view, pending->x, pending->y);
+        xwayland_view_move(xwayland_view, pending->x, pending->y);
+        view_configured(&xwayland_view->view);
+        return;
     }
+
+    wlr_xwayland_surface_configure(wlr_xwayland_surface, pending->x, pending->y, pending->width,
+                                   pending->height);
 }
 
 static const struct view_impl xwl_surface_impl = {
@@ -415,13 +436,10 @@ static const struct view_impl xwl_surface_impl = {
     .destroy = xwayland_view_destroy,
 };
 
-static bool xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
+static void xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
 {
     struct wlr_surface_state *state = &xwayland_view->wlr_xwayland_surface->surface->current;
     xcb_size_hints_t *size_hints = xwayland_view->wlr_xwayland_surface->size_hints;
-    struct kywc_box *current = &xwayland_view->view.base.geometry;
-
-    bool new_size = current->width != state->width || current->height != state->height;
 
     if (!size_hints) {
         view_update_size(&xwayland_view->view, state->width, state->height, 0, 0, 0, 0);
@@ -433,20 +451,20 @@ static bool xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
                          size_hints->max_width < 0 ? 0 : size_hints->max_width,
                          size_hints->max_height < 0 ? 0 : size_hints->max_height);
     }
-
-    return new_size;
 }
 
 static void xwayland_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, commit);
 
+    xwayland_view_update_geometry(xwayland_view);
+
     enum view_action pending_action = xwayland_view->view.pending.action;
-    if (!xwayland_view_update_geometry(xwayland_view) || pending_action == 0) {
+    if (pending_action == 0) {
         return;
     }
 
-    assert(pending_action & ~VIEW_ACTION_ACTIVATE);
+    assert(view_action_change_size(pending_action));
 
     struct kywc_box *current = &xwayland_view->view.base.geometry;
     struct kywc_box *pending = &xwayland_view->view.pending.geometry;
@@ -461,7 +479,7 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
         }
     }
 
-    view_helper_move(&xwayland_view->view, x, y);
+    xwayland_view_move(xwayland_view, x, y);
     view_configured(&xwayland_view->view);
 }
 
@@ -579,13 +597,17 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     /* event node will be destroyed when surface_tree destroy */
     input_event_node_create(ky_scene_node_from_tree(xwayland_view->surface_tree),
                             &xwayland_view_event_node_impl, xwayland_view_get_root, xwayland_view);
-    view_map(&xwayland_view->view);
 
     /* apply the position in size_hints */
     xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
-    if (size_hints &&
-        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION)) {
-        view_helper_move(&xwayland_view->view, wlr_xwayland_surface->x, wlr_xwayland_surface->y);
+    xwayland_view->view.base.has_initial_position =
+        size_hints &&
+        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION);
+
+    view_map(&xwayland_view->view);
+
+    if (xwayland_view->view.base.has_initial_position) {
+        xwayland_view_move(xwayland_view, size_hints->x, size_hints->y);
     }
 }
 
@@ -671,6 +693,10 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
 
     struct kywc_box geo = { event->x, event->y, event->width, event->height };
     kywc_view_resize(&xwayland_view->view.base, &geo);
+
+    if (!xwayland_view->view.base.mapped) {
+        xwayland_view->view.base.has_initial_position = true;
+    }
 }
 
 static void xwayland_view_create(struct wlr_xwayland_surface *wlr_xwayland_surface)
