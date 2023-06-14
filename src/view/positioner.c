@@ -624,7 +624,7 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
     }
 
     /* move to parent's center position */
-    if (view->parent) {
+    if (view->parent && view->parent->base.mapped) {
         struct kywc_view *parent = &view->parent->base;
         int center_x = parent->geometry.x + parent->geometry.width / 2;
         int center_y = parent->geometry.y + parent->geometry.height / 2;
