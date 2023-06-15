@@ -269,7 +269,7 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
 {
     double frac_x = (double)dst_box->width / src_box->width;
     double frac_y = (double)dst_box->height / src_box->height;
-    int dx, dy, nx, ny;
+    int x, y, w, h, nx, ny;
 
     struct place *place;
     wl_list_for_each(place, &pos->places, link) {
@@ -279,10 +279,23 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
                 continue;
             }
 
-            dx = MAX(entry->view->geometry.x - entry->view->margin.off_x - src_box->x, 0);
-            dy = MAX(entry->view->geometry.y - entry->view->margin.off_y - src_box->y, 0);
-            nx = ceil(dx * frac_x) + dst_box->x + entry->view->margin.off_x;
-            ny = ceil(dy * frac_y) + dst_box->y + entry->view->margin.off_y;
+            /* actual view geomtry with margin */
+            x = entry->view->geometry.x - entry->view->margin.off_x;
+            y = entry->view->geometry.y - entry->view->margin.off_y;
+            w = entry->view->geometry.width + entry->view->margin.off_width;
+            h = entry->view->geometry.height + entry->view->margin.off_height;
+
+            /* check bottom and right edges */
+            if (src_box->x + src_box->width == x + w) {
+                nx = dst_box->x + dst_box->width - w;
+            } else {
+                nx = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + entry->view->margin.off_x;
+            }
+            if (src_box->y + src_box->height == y + h) {
+                ny = dst_box->y + dst_box->height - h;
+            } else {
+                ny = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + entry->view->margin.off_y;
+            }
 
             /* move to dst */
             entry->skip_update = skip_update;
@@ -341,11 +354,12 @@ static void positioner_handle_output_usable_area(struct wl_listener *listener, v
     struct positioner *pos = wl_container_of(listener, pos, output_usable_area);
     struct output *output = output_from_kywc_output(pos->kywc_output);
 
-    struct kywc_box old = pos->usable_area;
-    if (!positioner_update_grid(pos, &output->usable_area)) {
+    if (kywc_box_equal(&pos->usable_area, &output->usable_area)) {
         return;
     }
 
+    struct kywc_box old = pos->usable_area;
+    positioner_update_grid(pos, &output->usable_area);
     positioner_move_views(pos, &old, &pos->usable_area, false);
 
     struct positioner *tmp;
