@@ -429,7 +429,8 @@ bool layout_manager_create(struct server *server)
     layout_manager->server_destroy.notify = handle_layout_manager_destroy;
     server_add_destroy_listener(server, &layout_manager->server_destroy);
 
-    layout_manager->config = config_manager_add_config("layouts", NULL, NULL, NULL, layout_manager);
+    layout_manager->config =
+        config_manager_add_config("layouts", NULL, NULL, NULL, NULL, layout_manager);
 
     return true;
 }

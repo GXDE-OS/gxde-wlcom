@@ -124,6 +124,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
     struct config *config, *config_tmp;
     wl_list_for_each_safe(config, config_tmp, &config_manager->configs, link) {
+        wl_signal_emit_mutable(&config->events.destroy, NULL);
         wl_list_remove(&config->link);
         sd_bus_slot_unref(config->slot);
         free(config);
@@ -182,8 +183,9 @@ struct config_manager *config_manager_create(struct server *server)
     return config_manager;
 }
 
-struct config *config_manager_add_config(const char *name, const char *path, const char *interface,
-                                         const sd_bus_vtable *vtable, void *data)
+struct config *config_manager_add_config(const char *name, const char *bus, const char *path,
+                                         const char *interface, const sd_bus_vtable *vtable,
+                                         void *data)
 {
     struct config *config = calloc(1, sizeof(struct config));
     if (!config) {
@@ -200,10 +202,15 @@ struct config *config_manager_add_config(const char *name, const char *path, con
     }
     config->json = object;
 
+    if (bus) {
+        sd_bus_request_name(config_manager->bus, bus, 0);
+    }
+
     if (path && interface && vtable) {
         sd_bus_add_object_vtable(config_manager->bus, &config->slot, path, interface, vtable, data);
     }
 
+    wl_signal_init(&config->events.destroy);
     wl_list_insert(&config_manager->configs, &config->link);
     return config;
 }

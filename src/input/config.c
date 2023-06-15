@@ -336,8 +336,8 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool input_manager_config_init(struct input_manager *input_manager)
 {
-    input_manager->config = config_manager_add_config("Inputs", service_path, service_interface,
-                                                      service_vtable, input_manager);
+    input_manager->config = config_manager_add_config(
+        "Inputs", NULL, service_path, service_interface, service_vtable, input_manager);
     return !!input_manager->config;
 }
 

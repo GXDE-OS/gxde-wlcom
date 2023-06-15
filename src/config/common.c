@@ -41,6 +41,6 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool config_manager_common_init(struct config_manager *config_manager)
 {
-    return !!config_manager_add_config(NULL, service_path, service_interface, service_vtable,
+    return !!config_manager_add_config(NULL, NULL, service_path, service_interface, service_vtable,
                                        config_manager);
 }

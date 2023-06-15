@@ -33,8 +33,8 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool output_manager_config_init(struct output_manager *output_manager)
 {
-    output_manager->config = config_manager_add_config("outputs", service_path, service_interface,
-                                                       service_vtable, output_manager);
+    output_manager->config = config_manager_add_config(
+        "outputs", NULL, service_path, service_interface, service_vtable, output_manager);
     return !!output_manager->config;
 }
 

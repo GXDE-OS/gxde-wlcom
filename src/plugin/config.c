@@ -240,8 +240,8 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool plugin_manager_config_init(struct plugin_manager *plugin_manager)
 {
-    plugin_manager->config = config_manager_add_config("plugins", service_path, service_interface,
-                                                       service_vtable, plugin_manager);
+    plugin_manager->config = config_manager_add_config(
+        "plugins", NULL, service_path, service_interface, service_vtable, plugin_manager);
     return !!plugin_manager->config;
 }
 
