@@ -172,10 +172,13 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     input->mapped_output_off.notify = handle_mapped_output_off;
     input->mapped_output_destroy.notify = handle_mapped_output_destroy;
 
-    input->device = wlr_libinput_get_device_handle(wlr_input);
-    input_get_prop(input, &input->prop);
+    if (wlr_input_device_is_libinput(wlr_input)) {
+        input->device = wlr_libinput_get_device_handle(wlr_input);
+    }
 
+    input_get_prop(input, &input->prop);
     input_get_state(input, &input->state);
+
     struct input_state state = input->state;
     bool found = input_read_config(input, &state);
     if (!found) {
