@@ -113,6 +113,7 @@ subdir('src')
 subdir('protocols')
 
 if have_examples
+  subdir('clients')
   subdir('examples')
 endif
 
