@@ -97,6 +97,27 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
     return binding;
 }
 
+struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsigned int modifiers,
+                                                      const char *desc)
+{
+    struct key_binding *binding = calloc(1, sizeof(struct key_binding));
+    if (!binding) {
+        return NULL;
+    }
+
+    binding->modifiers = modifiers;
+    binding->keysyms_len = 1;
+
+    binding->keysyms = calloc(1, sizeof(xkb_keysym_t));
+    memcpy(binding->keysyms, &keysym, binding->keysyms_len * sizeof(xkb_keysym_t));
+    if (desc) {
+        binding->desc = strdup(desc);
+    }
+    wl_list_init(&binding->link);
+
+    return binding;
+}
+
 void kywc_key_binding_destroy(struct key_binding *binding)
 {
     wl_list_remove(&binding->link);

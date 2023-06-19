@@ -5,6 +5,9 @@
 
 struct key_binding *kywc_key_binding_create(const char *keybind, const char *desc);
 
+struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsigned int modifiers,
+                                                      const char *desc);
+
 void kywc_key_binding_destroy(struct key_binding *binding);
 
 bool kywc_key_binding_register(struct key_binding *binding,
