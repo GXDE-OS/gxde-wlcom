@@ -397,21 +397,30 @@ void output_manager_emit_configured(void)
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)
 {
     float scale = 1.0;
+
     if (kywc_output->prop.phys_width == 0 || kywc_output->prop.phys_height == 0) {
         return scale;
     }
 
-    float dpi_x = (float)width / (kywc_output->prop.phys_width / 25.4);
-    float dpi_y = (float)height / (kywc_output->prop.phys_height / 25.4);
-    kywc_log(KYWC_DEBUG, "Output %s resolution: %dx%d, dpi_x: %f, dpi_y: %f", kywc_output->name,
-             width, height, dpi_x, dpi_y);
+    float phys_width = kywc_output->prop.phys_width / 25.4;
+    float phys_height = kywc_output->prop.phys_height / 25.4;
 
-    float dpi_max = dpi_x > dpi_y ? dpi_x : dpi_y;
-    float dpi_ratio = dpi_max / 96;
-    if (dpi_ratio > 1.0) {
-        int multi = dpi_ratio / 0.25;
-        scale = multi * 0.25;
+    float phys_inch = sqrtf(pow(phys_width, 2) + pow(phys_height, 2));
+    float pixels = sqrtf(pow(width, 2) + pow(height, 2));
+    float ppi = pixels / phys_inch;
+
+    kywc_log(KYWC_DEBUG, "Output %s inch: %f, resolution: %dx%d, ppi: %f", kywc_output->name,
+             phys_inch, width, height, ppi);
+
+    if (ppi > 140.0) {
+        float range = ppi - 140.0;
+        int step = range / 40.0;
+        scale = 1.0 + (step * 0.25);
+        if (range >= step * 40) {
+            scale += 0.25;
+        }
     }
+
     return scale;
 }
 
