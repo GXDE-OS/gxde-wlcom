@@ -142,7 +142,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 static void handle_server_ready(struct wl_listener *listener, void *data)
 {
-    shortcut_init();
+    kde_global_accel_manager_create(config_manager->server);
 }
 
 struct config_manager *config_manager_create(struct server *server)
@@ -169,6 +169,7 @@ struct config_manager *config_manager_create(struct server *server)
         kywc_log(KYWC_ERROR, "configure dbus server init failed");
     }
 
+    config_manager->server = server;
     wl_list_init(&config_manager->configs);
 
     config_manager->server_ready.notify = handle_server_ready;

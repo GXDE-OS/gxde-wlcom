@@ -4,6 +4,7 @@
 #include "config.h"
 
 struct config_manager {
+    struct server *server;
     struct wl_list configs;
 
     char *file;
@@ -20,6 +21,13 @@ struct config_manager {
 
 bool config_manager_common_init(struct config_manager *config_manager);
 
-void shortcut_init(void);
+#if HAVE_KDE_GLOBAL_ACCEL
+bool kde_global_accel_manager_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool kde_global_accel_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
 
 #endif /* _CONFIG_P_H_ */

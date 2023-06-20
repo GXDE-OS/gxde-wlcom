@@ -95,6 +95,7 @@ have_wlr_output = get_option('wlr_output')
 have_wlr_scene = get_option('wlr_scene')
 have_wlr_foreign_toplevel = get_option('wlr_foreign_toplevel')
 have_wlr_layer_shell = get_option('wlr_layer_shell')
+have_kde_global_accel = get_option('kde_global_accel')
 
 if not have_kde_output and not have_wlr_output
   error('Must enable one output protocol support at least')
@@ -107,6 +108,7 @@ add_project_arguments([
   '-DHAVE_WLR_SCENE=@0@'.format(have_wlr_scene.to_int()),
   '-DHAVE_WLR_FOREIGN_TOPLEVEL=@0@'.format(have_wlr_foreign_toplevel.to_int()),
   '-DHAVE_WLR_LAYER_SHELL=@0@'.format(have_wlr_layer_shell.to_int()),
+  '-DHAVE_KDE_GLOBAL_ACCEL=@0@'.format(have_kde_global_accel.to_int()),
 ], language: 'c')
 
 subdir('src')

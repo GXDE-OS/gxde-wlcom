@@ -6,3 +6,4 @@ option('wlr_output', type: 'boolean', value: true, description: 'Enable wlroots 
 option('wlr_scene', type: 'boolean', value: true, description: 'Enable wlroots scene as default')
 option('wlr_foreign_toplevel', type: 'boolean', value: true, description: 'Enable wlroots foreign toplevel protocol support')
 option('wlr_layer_shell', type: 'boolean', value: true, description: 'Enable wlroots layer shell protocol support')
+option('kde_global_accel', type: 'boolean', value: true, description: 'Enable kde global accel dbus server support')
