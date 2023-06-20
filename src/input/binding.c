@@ -14,8 +14,7 @@ struct key_binding {
     struct wl_list link;
 
     uint32_t modifiers;
-    size_t keysyms_len;
-    uint32_t *keysyms;
+    uint32_t keysym;
 
     char *keybind;
     char *desc;
@@ -66,28 +65,24 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
         return NULL;
     }
 
-    xkb_keysym_t keysyms[MAX_PRESSED_KEY];
-    uint32_t current_modifiers = 0;
-    size_t lenth = 0;
+    size_t len = 0;
+    char **split_str = split_string(keybind, "+", &len);
 
-    char **split_str = split_string(keybind, "+", &lenth);
-    for (size_t i = 0; i < lenth; i++) {
+    for (size_t i = 0; i < len; i++) {
         kywc_log(KYWC_DEBUG, "keybind split_str = %s", split_str[i]);
         uint32_t mod = keyboard_get_modifier_mask_by_name(split_str[i]);
         if (mod) {
             binding->modifiers |= mod;
-            current_modifiers = mod;
             continue;
         }
-        xkb_keysym_t sym =
-            xkb_keysym_to_lower(xkb_keysym_from_name(split_str[i], XKB_KEYSYM_CASE_INSENSITIVE));
-        keysyms[binding->keysyms_len++] =
-            !(current_modifiers & (WLR_MODIFIER_SHIFT | WLR_MODIFIER_CAPS)) ? sym : sym - 32;
-    }
-    free_split_string(&split_str, lenth);
 
-    binding->keysyms = calloc(1, sizeof(xkb_keysym_t) * binding->keysyms_len);
-    memcpy(binding->keysyms, keysyms, binding->keysyms_len * sizeof(xkb_keysym_t));
+        /* whatever keep the lower keysym */
+        xkb_keysym_t sym = xkb_keysym_from_name(split_str[i], XKB_KEYSYM_CASE_INSENSITIVE);
+        binding->keysym = xkb_keysym_to_lower(sym);
+    }
+
+    free_split_string(&split_str, len);
+
     if (desc) {
         binding->desc = strdup(desc);
     }
@@ -106,10 +101,8 @@ struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsig
     }
 
     binding->modifiers = modifiers;
-    binding->keysyms_len = 1;
+    binding->keysym = keysym;
 
-    binding->keysyms = calloc(1, sizeof(xkb_keysym_t));
-    memcpy(binding->keysyms, &keysym, binding->keysyms_len * sizeof(xkb_keysym_t));
     if (desc) {
         binding->desc = strdup(desc);
     }
@@ -122,37 +115,39 @@ void kywc_key_binding_destroy(struct key_binding *binding)
 {
     wl_list_remove(&binding->link);
 
-    free(binding->keysyms);
     free(binding->keybind);
     free(binding->desc);
     free(binding);
 }
 
+static bool key_binding_is_valid(struct key_binding *binding, uint32_t keysym, uint32_t modifiers)
+{
+    struct key_binding *bind;
+    wl_list_for_each(bind, &bindings->keysym_bindings, link) {
+        /* skip itself */
+        if (bind == binding) {
+            continue;
+        }
+
+        if (!(modifiers ^ bind->modifiers) && keysym == bind->keysym) {
+            kywc_log(KYWC_ERROR, "%s(%s) is already registed by %s(%s)", binding->keybind,
+                     binding->desc, bind->keybind, bind->desc);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool kywc_key_binding_register(struct key_binding *binding,
                                void (*action)(struct key_binding *binding, void *data), void *data)
 {
-    struct key_binding *bind;
-    bool match = false;
+    if (kywc_key_binding_is_registered(binding)) {
+        return true;
+    }
 
-    // TODO: opt with keybind string ?
-    wl_list_for_each(bind, &bindings->keysym_bindings, link) {
-        if (!(binding->modifiers ^ bind->modifiers)) {
-            match = true;
-            size_t syms_len = bind->keysyms_len >= binding->keysyms_len ? binding->keysyms_len
-                                                                        : bind->keysyms_len;
-            for (size_t i = 0; i < syms_len; ++i) {
-                uint32_t keysyms = bind->keysyms[i];
-                if (binding->keysyms[i] != keysyms) {
-                    match = false;
-                    break;
-                }
-            }
-        }
-        if (match) {
-            kywc_log(KYWC_ERROR, "%s is already registed by %s(%s)", binding->keybind,
-                     bind->keybind, bind->desc);
-            return false;
-        }
+    if (!key_binding_is_valid(binding, binding->keysym, binding->modifiers)) {
+        return false;
     }
 
     wl_list_insert(&bindings->keysym_bindings, &binding->link);
@@ -160,6 +155,36 @@ bool kywc_key_binding_register(struct key_binding *binding,
     binding->data = data;
 
     return true;
+}
+
+bool kywc_key_binding_update(struct key_binding *binding, unsigned int keysym,
+                             unsigned int modifiers, const char *desc)
+{
+    if (kywc_key_binding_is_registered(binding) &&
+        !key_binding_is_valid(binding, keysym, modifiers)) {
+        return false;
+    }
+
+    binding->keysym = keysym;
+    binding->modifiers = modifiers;
+
+    if (desc) {
+        free(binding->desc);
+        binding->desc = strdup(desc);
+    }
+
+    return true;
+}
+
+void kywc_key_binding_unregister(struct key_binding *binding)
+{
+    wl_list_remove(&binding->link);
+    wl_list_init(&binding->link);
+}
+
+bool kywc_key_binding_is_registered(struct key_binding *binding)
+{
+    return !wl_list_empty(&binding->link);
 }
 
 struct bindings *bindings_create(struct input_manager *input_manager)
@@ -187,20 +212,14 @@ void bindings_destroy(struct bindings *bindings)
 
 static bool match_key_binding(struct keyboard_state *keyboard_state, struct key_binding *binding)
 {
-    bool match = false;
-    for (size_t i = 0; i < binding->keysyms_len; i++) {
-        match = false;
-        for (size_t j = 0; j < keyboard_state->npressed; j++) {
-            if (binding->keysyms[i] == keyboard_state->pressed_keysyms[j]) {
-                match = true;
-                break;
-            }
-        }
-        if (!match) {
-            break;
+    for (size_t j = 0; j < keyboard_state->npressed; j++) {
+        uint32_t keysym = keyboard_state->pressed_keysyms[j];
+        if (binding->keysym == xkb_keysym_to_lower(keysym)) {
+            return true;
         }
     }
-    return match;
+
+    return false;
 }
 
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state)
@@ -210,7 +229,7 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state)
         if (keyboard_state->last_modifiers ^ binding->modifiers) {
             continue;
         }
-        if (keyboard_state->npressed < binding->keysyms_len) {
+        if (keyboard_state->npressed < 1) {
             continue;
         }
 
