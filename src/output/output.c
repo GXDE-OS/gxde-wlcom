@@ -27,9 +27,23 @@ struct output *output_from_wlr_output(struct wlr_output *wlr_output)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&output_manager->server_destroy.link);
+    wl_list_remove(&output_manager->server_suspend.link);
+    wl_list_remove(&output_manager->server_resume.link);
 
     free(output_manager);
     output_manager = NULL;
+}
+
+static void handle_server_suspend(struct wl_listener *listener, void *data)
+{
+    kywc_log(KYWC_DEBUG, "handle server D-Bus suspend");
+    output_manager_power_outputs(false);
+}
+
+static void handle_server_resume(struct wl_listener *listener, void *data)
+{
+    kywc_log(KYWC_DEBUG, "handle server D-Bus resume");
+    output_manager_power_outputs(true);
 }
 
 static void output_add_mode(struct kywc_output_prop *prop, struct wlr_output_mode *mode)
@@ -333,6 +347,18 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 #endif
 }
 
+void output_manager_power_outputs(bool on)
+{
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->base.state.enabled && output->base.state.power != on) {
+            struct kywc_output_state state = output->base.state;
+            state.power = on;
+            kywc_output_set_state(&output->base, &state);
+        }
+    }
+}
+
 struct output_manager *output_manager_create(struct server *server)
 {
     output_manager = calloc(1, sizeof(struct output_manager));
@@ -348,6 +374,12 @@ struct output_manager *output_manager_create(struct server *server)
 
     output_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &output_manager->server_destroy);
+
+    output_manager->server_suspend.notify = handle_server_suspend;
+    wl_signal_add(&server->events.suspend, &output_manager->server_suspend);
+
+    output_manager->server_resume.notify = handle_server_resume;
+    wl_signal_add(&server->events.resume, &output_manager->server_resume);
 
     wlr_xdg_output_manager_v1_create(server->display, server->layout);
     output_manager->new_output.notify = handle_new_output;

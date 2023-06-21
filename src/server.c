@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <systemd/sd-bus.h>
+#include <systemd/sd-login.h>
+
 #include <wlr/backend.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
@@ -25,6 +28,68 @@
 #include "server.h"
 #include "view/view.h"
 #include "view/xwayland.h"
+
+static const char *dbus_logind_service = "org.freedesktop.login1";
+static const char *dbus_logind_path = "/org/freedesktop/login1";
+static const char *dbus_logind_manager_interface = "org.freedesktop.login1.Manager";
+
+static int dbus_event(int fd, uint32_t mask, void *data)
+{
+    struct server *server = data;
+    if (mask & WL_EVENT_ERROR) {
+        kywc_log(KYWC_ERROR, "IPC system dbus error");
+        return 0;
+    }
+    if (mask & WL_EVENT_HANGUP) {
+        kywc_log(KYWC_DEBUG, "System dbus hung up");
+        return 0;
+    }
+
+    while (sd_bus_process(server->sys_bus, NULL) > 0) {
+        ;
+    }
+    return 0;
+}
+
+static int prepare_for_sleep(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct server *server = userdata;
+
+    /* "b" apparently reads into an int, not a bool */
+    int going_down = 1;
+    int ret = sd_bus_message_read(msg, "b", &going_down);
+    if (ret < 0) {
+        kywc_log(KYWC_WARN, "Failed to parse D-Bus response for Inhibit: %s", strerror(-ret));
+        return 0;
+    }
+    if (!going_down) {
+        wl_signal_emit_mutable(&server->events.resume, NULL);
+    } else {
+        wl_signal_emit_mutable(&server->events.suspend, NULL);
+    }
+    return 0;
+}
+
+static void listen_logind_manager_signal(struct server *server)
+{
+    int ret = sd_bus_default_system(&server->sys_bus);
+    if (ret < 0) {
+        kywc_log(KYWC_ERROR, "Failed to connect to system bus: %s", strerror(-ret));
+        return;
+    }
+
+    int fd = sd_bus_get_fd(server->sys_bus);
+    server->sigpower =
+        wl_event_loop_add_fd(server->event_loop, fd, WL_EVENT_READABLE, dbus_event, server);
+    wl_event_source_check(server->sigpower);
+
+    ret = sd_bus_match_signal(server->sys_bus, NULL, dbus_logind_service, dbus_logind_path,
+                              dbus_logind_manager_interface, "PrepareForSleep", prepare_for_sleep,
+                              server);
+    if (ret < 0) {
+        kywc_log(KYWC_ERROR, "Failed to add D-Bus signal match : sleep");
+    }
+}
 
 static int handle_sigterm(int signal, void *data)
 {
@@ -123,6 +188,10 @@ bool server_init(struct server *server)
 
     wl_signal_init(&server->events.ready);
     wl_signal_init(&server->events.destroy);
+    wl_signal_init(&server->events.suspend);
+    wl_signal_init(&server->events.resume);
+
+    listen_logind_manager_signal(server);
 
     config_manager_create(server);
 
@@ -177,6 +246,7 @@ void server_finish(struct server *server)
 {
     wl_event_source_remove(server->sigint);
     wl_event_source_remove(server->sigterm);
+    wl_event_source_remove(server->sigpower);
 
     /* make sure all xwayland-shells are destroyed */
     xwayland_server_destroy();

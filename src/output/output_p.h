@@ -22,6 +22,8 @@ struct output_manager {
 
     struct wl_listener new_output;
     struct wl_listener server_destroy;
+    struct wl_listener server_suspend;
+    struct wl_listener server_resume;
 
     bool has_layout_manager;
 };

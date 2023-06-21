@@ -9,9 +9,13 @@ struct server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
 
+    /* system bus */
+    struct sd_bus *sys_bus;
+
     /* signal handler */
     struct wl_event_source *sigint;
     struct wl_event_source *sigterm;
+    struct wl_event_source *sigpower;
 
     struct {
         bool enable_xwayland;
@@ -22,6 +26,8 @@ struct server {
         struct wl_signal ready;
         /* must use server_add_destroy_listener */
         struct wl_signal destroy;
+        struct wl_signal suspend;
+        struct wl_signal resume;
     } events;
 
     struct wlr_renderer *renderer;
