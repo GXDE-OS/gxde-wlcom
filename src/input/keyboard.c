@@ -9,6 +9,7 @@
 
 #include "input/keyboard.h"
 #include "input/seat.h"
+#include "input_p.h"
 
 static struct modifier {
     char *name;
@@ -196,7 +197,10 @@ static void keyboard_handle_key(struct wl_listener *listener, void *data)
 {
     struct keyboard *keyboard = wl_container_of(listener, keyboard, key);
     struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
+    struct seat *seat = keyboard->seat;
     struct wlr_keyboard_key_event *event = data;
+
+    idle_manager_notify_activity(seat);
 
     uint32_t modifiers = wlr_keyboard_get_modifiers(wlr_keyboard);
     keyboard_feed_key(keyboard, event->keycode, event->state, event->time_msec, modifiers);

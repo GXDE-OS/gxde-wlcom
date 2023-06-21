@@ -10,6 +10,7 @@
 #include <kywc/log.h>
 
 #include "input/cursor.h"
+#include "input_p.h"
 
 /* cursor images used in compositor */
 static char *cursor_image[] = {
@@ -242,7 +243,9 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
     struct cursor *cursor = wl_container_of(listener, cursor, motion);
     struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
     struct wlr_pointer_motion_event *event = data;
+    struct seat *seat = cursor->seat;
 
+    idle_manager_notify_activity(seat);
     wlr_cursor_move(wlr_cursor, &event->pointer->base, event->delta_x, event->delta_y);
     cursor_feed_motion(cursor, wlr_cursor->x, wlr_cursor->y, event->time_msec);
 }
@@ -253,7 +256,9 @@ static void cursor_handle_motion_absolute(struct wl_listener *listener, void *da
     struct cursor *cursor = wl_container_of(listener, cursor, motion_absolute);
     struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
     struct wlr_pointer_motion_absolute_event *event = data;
+    struct seat *seat = cursor->seat;
 
+    idle_manager_notify_activity(seat);
     wlr_cursor_warp_absolute(wlr_cursor, &event->pointer->base, event->x, event->y);
     cursor_feed_motion(cursor, wlr_cursor->x, wlr_cursor->y, event->time_msec);
 }
@@ -262,7 +267,9 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, button);
     struct wlr_pointer_button_event *event = data;
+    struct seat *seat = cursor->seat;
 
+    idle_manager_notify_activity(seat);
     cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec);
 }
 
@@ -272,6 +279,9 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
     struct wlr_pointer_axis_event *event = data;
 
     struct seat *seat = cursor->seat;
+
+    idle_manager_notify_activity(seat);
+
     if (seat->pointer_grab && seat->pointer_grab->interface->axis &&
         seat->pointer_grab->interface->axis(seat->pointer_grab, event->time_msec,
                                             event->orientation == WLR_AXIS_ORIENTATION_VERTICAL,
