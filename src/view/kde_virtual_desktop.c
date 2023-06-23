@@ -280,5 +280,5 @@ bool kde_virtual_desktop_management_create(struct server *server)
     management->new_workspace.notify = handle_new_workspace;
     workspace_manager_add_new_listener(&management->new_workspace);
 
-    return false;
+    return true;
 }
