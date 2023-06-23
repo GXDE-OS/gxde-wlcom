@@ -569,13 +569,14 @@ static void output_update_usable_area(struct output *output, struct kywc_box *us
 void kywc_output_update_usable_area(struct kywc_output *kywc_output)
 {
     struct output *output = output_from_kywc_output(kywc_output);
-    struct kywc_box usable_area = output->usable_area;
+    struct kywc_box usable_area;
 
-    output_update_usable_area(output, &output->usable_area);
+    output_update_usable_area(output, &usable_area);
     if (kywc_box_equal(&output->usable_area, &usable_area)) {
         return;
     }
 
+    output->usable_area = usable_area;
     kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
              output->usable_area.x, output->usable_area.y, output->usable_area.width,
              output->usable_area.height);
@@ -606,9 +607,11 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         geometry_changed = !kywc_box_equal(&geo, &output->geometry);
         /* only update usable area when geometry changed */
         if (geometry_changed) {
-            geo = output->usable_area;
-            output_update_usable_area(output, &output->usable_area);
-            usable_area_changed = !kywc_box_equal(&geo, &output->usable_area);
+            output_update_usable_area(output, &geo);
+            if (!kywc_box_equal(&geo, &output->usable_area)) {
+                output->usable_area = geo;
+                usable_area_changed = true;
+            }
         }
     }
 
