@@ -577,7 +577,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), minimized);
+    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !minimized);
 
     kywc_view->minimized = minimized;
     view->pending.action |= VIEW_ACTION_MINIMIZE;
