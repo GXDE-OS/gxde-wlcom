@@ -18,6 +18,13 @@ enum cursor_name {
     CURSOR_RESIZE_LEFT,
 };
 
+struct cursor_node {
+    /* node at the cursor position */
+    struct ky_scene_node *node;
+    /* do something if node destroy */
+    struct wl_listener destroy;
+};
+
 struct cursor {
     struct wlr_cursor *wlr_cursor;
     struct wlr_xcursor_manager *xcursor_manager;
@@ -65,14 +72,10 @@ struct cursor {
     bool last_click_pressed;
 
     /* node below the cursor */
-    struct ky_scene_node *hover;
-    /* do something if hover node destroy */
-    struct wl_listener hover_destroy;
+    struct cursor_node hover;
     /* node if button clicked */
-    struct ky_scene_node *focus;
-    /* do something if focus node destroy */
-    struct wl_listener focus_destroy;
-    /* current hover position in node coord */
+    struct cursor_node focus;
+    /* current curosr position in node coord */
     double sx, sy;
 
     /* special: hold a pressed button and leave surface */
