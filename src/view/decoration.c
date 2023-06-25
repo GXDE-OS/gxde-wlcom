@@ -15,9 +15,9 @@ struct decoration_manager {
 
 struct decoration {
     struct wl_list link;
-    struct wlr_surface *surface;
 
-    bool should_use_ssd;
+    struct wlr_surface *surface;
+    struct wl_listener surface_map;
 
     struct wlr_server_decoration *server_deco;
     struct wl_listener server_deco_apply_mode;
@@ -26,9 +26,23 @@ struct decoration {
     struct wlr_xdg_toplevel_decoration_v1 *xdg_deco;
     struct wl_listener xdg_deco_request_mode;
     struct wl_listener xdg_deco_destroy;
+
+    struct view *view;
+    bool should_use_ssd;
 };
 
 static struct decoration_manager *manager = NULL;
+
+static void decoration_handle_surface_map(struct wl_listener *listener, void *data)
+{
+    struct decoration *deco = wl_container_of(listener, deco, surface_map);
+
+    wl_list_remove(&deco->surface_map.link);
+    wl_list_init(&deco->surface_map.link);
+    deco->view = deco->surface->data;
+
+    view_set_decoration(deco->view, deco->should_use_ssd);
+}
 
 static struct decoration *decoration_from_surface(struct wlr_surface *surface)
 {
@@ -44,8 +58,18 @@ static struct decoration *decoration_from_surface(struct wlr_surface *surface)
         return NULL;
     }
 
-    wl_list_insert(&manager->decos, &deco->link);
     deco->surface = surface;
+    deco->view = surface->data;
+
+    /* if xdg_shell new_surface is not emit */
+    if (!deco->view) {
+        deco->surface_map.notify = decoration_handle_surface_map;
+        wl_signal_add(&surface->events.map, &deco->surface_map);
+    } else {
+        wl_list_init(&deco->surface_map.link);
+    }
+
+    wl_list_insert(&manager->decos, &deco->link);
 
     return deco;
 }
@@ -56,6 +80,7 @@ static void decoration_consider_destroy(struct decoration *deco)
         return;
     }
 
+    wl_list_remove(&deco->surface_map.link);
     wl_list_remove(&deco->link);
     free(deco);
 }
@@ -98,11 +123,14 @@ static void handle_xdg_deco_request_mode(struct wl_listener *listener, void *dat
     if (deco->server_deco) {
         uint32_t server_mode = mode;
         deco->server_deco->mode = server_mode;
-        // TODO: add protocol or patch wlroots ?
-        // org_kde_kwin_server_decoration_send_mode(deco->server_deco->resource, server_mode);
+        /* org_kde_kwin_server_decoration_send_mode */
+        wl_resource_post_event(deco->server_deco->resource, 0, server_mode);
     }
 
     deco->should_use_ssd = mode == WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+    if (deco->view) {
+        view_set_decoration(deco->view, deco->should_use_ssd);
+    }
 }
 
 static void xdg_toplevel_decoration(struct wl_listener *listener, void *data)
@@ -137,6 +165,9 @@ static void handle_server_deco_apply_mode(struct wl_listener *listener, void *da
     }
 
     deco->should_use_ssd = mode == WLR_SERVER_DECORATION_MANAGER_MODE_SERVER;
+    if (deco->view) {
+        view_set_decoration(deco->view, deco->should_use_ssd);
+    }
 }
 
 static void server_decoration(struct wl_listener *listener, void *data)
@@ -204,15 +235,4 @@ bool decoration_manager_create(struct view_manager *view_manager)
     server_add_destroy_listener(view_manager->server, &manager->server_destroy);
 
     return true;
-}
-
-bool decoration_should_use_ssd(struct wlr_surface *surface)
-{
-    struct decoration *deco;
-    wl_list_for_each(deco, &manager->decos, link) {
-        if (deco->surface == surface) {
-            return deco->should_use_ssd;
-        }
-    }
-    return false;
 }
