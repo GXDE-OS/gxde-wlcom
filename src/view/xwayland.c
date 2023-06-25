@@ -614,7 +614,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         size_hints &&
         size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION);
 
-    view_map(&xwayland_view->view);
+    view_map(&xwayland_view->view, true);
 
     if (xwayland_view->view.base.has_initial_position) {
         xwayland_view_move(xwayland_view, size_hints->x, size_hints->y);

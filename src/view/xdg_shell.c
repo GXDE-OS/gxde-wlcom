@@ -398,7 +398,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     /* event node will be destroyed when surface_tree destroy */
     input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
                             &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
-    view_map(&xdg_view->view);
+    view_map(&xdg_view->view, true);
 }
 
 static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)

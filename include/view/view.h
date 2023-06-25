@@ -115,7 +115,7 @@ struct view *view_from_kywc_view(struct kywc_view *kywc_view);
 
 void view_init(struct view *view, const struct view_impl *impl, void *data);
 
-void view_map(struct view *view);
+void view_map(struct view *view, bool focus);
 
 void view_unmap(struct view *view);
 

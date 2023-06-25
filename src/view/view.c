@@ -162,7 +162,7 @@ static void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry
     }
 }
 
-void view_map(struct view *view)
+void view_map(struct view *view, bool focus)
 {
     struct kywc_view *kywc_view = &view->base;
 
@@ -173,7 +173,10 @@ void view_map(struct view *view)
     ky_scene_node_set_enabled(node, !kywc_view->minimized);
 
     kywc_view_activate(kywc_view);
-    seat_focus_surface(input_manager_get_default_seat(), view->surface);
+
+    if (focus) {
+        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+    }
 
     if (view->pending.action) {
         /* add a fallback geometry */
