@@ -12,6 +12,18 @@
 #include "view/xwayland.h"
 #include "view_p.h"
 
+/**
+ * window type that not added in wlroots
+ * https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html
+ */
+enum atom_name {
+    NET_WM_WINDOW_TYPE_DESKTOP,
+    NET_WM_WINDOW_TYPE_DOCK,
+    NET_WM_WINDOW_TYPE_TOOLBAR,
+    NET_WM_WINDOW_TYPE_DIALOG,
+    ATOM_LAST,
+};
+
 struct xwayland_server {
     struct wlr_xwayland *wlr_xwayland;
     struct wl_list unmanaged_surfaces;
@@ -19,6 +31,8 @@ struct xwayland_server {
     struct wl_listener xwayland_ready;
     struct wl_listener new_xwayland_surface;
     struct wl_listener server_destroy;
+
+    xcb_atom_t atoms[ATOM_LAST];
 };
 
 struct xwayland_view {
@@ -73,6 +87,13 @@ struct xwayland_unmanaged {
 
     struct wl_listener set_geometry;
     struct wl_listener set_override_redirect;
+};
+
+static const char *const atom_map[ATOM_LAST] = {
+    [NET_WM_WINDOW_TYPE_DESKTOP] = "_NET_WM_WINDOW_TYPE_DESKTOP",
+    [NET_WM_WINDOW_TYPE_DOCK] = "_NET_WM_WINDOW_TYPE_DOCK",
+    [NET_WM_WINDOW_TYPE_DIALOG] = "_NET_WM_WINDOW_TYPE_DIALOG",
+    [NET_WM_WINDOW_TYPE_TOOLBAR] = "_NET_WM_WINDOW_TYPE_TOOLBAR",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -630,7 +651,15 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         size_hints &&
         size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION);
 
-    view_map(&xwayland_view->view, true);
+    bool set_focus = true;
+    for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
+        xcb_atom_t type = wlr_xwayland_surface->window_type[i];
+        if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
+            set_focus = false;
+        }
+    }
+
+    view_map(&xwayland_view->view, set_focus);
 
     if (xwayland_view->view.base.has_initial_position) {
         xwayland_view_move(xwayland_view, size_hints->x, size_hints->y);
@@ -801,6 +830,35 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     kywc_log(KYWC_INFO, "xwayland is ready");
     struct seat *seat = input_manager_get_default_seat();
     wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+
+    xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
+    int err = xcb_connection_has_error(xcb_conn);
+    if (err) {
+        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
+        return;
+    }
+
+    xcb_intern_atom_cookie_t cookies[ATOM_LAST];
+    for (size_t i = 0; i < ATOM_LAST; i++) {
+        cookies[i] = xcb_intern_atom(xcb_conn, 0, strlen(atom_map[i]), atom_map[i]);
+    }
+    for (size_t i = 0; i < ATOM_LAST; i++) {
+        xcb_generic_error_t *error = NULL;
+        xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(xcb_conn, cookies[i], &error);
+        if (reply != NULL && error == NULL) {
+            xwayland->atoms[i] = reply->atom;
+        }
+        free(reply);
+
+        if (error != NULL) {
+            kywc_log(KYWC_ERROR, "could not resolve atom %s, X11 error code %d", atom_map[i],
+                     error->error_code);
+            free(error);
+            break;
+        }
+    }
+
+    xcb_disconnect(xcb_conn);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
