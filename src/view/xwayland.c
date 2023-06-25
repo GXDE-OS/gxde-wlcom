@@ -91,6 +91,25 @@ static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *no
     return false;
 }
 
+static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
+{
+    struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
+
+    if (!wlr_xwayland_or_surface_wants_focus(wlr_xwayland_surface)) {
+        return;
+    }
+
+    /* No Input and Globally Active clients set the input field to False,
+     * which requests that the window manager not set the input focus to their top-level window.
+     */
+    if (wlr_xwayland_surface->hints && !wlr_xwayland_surface->hints->input) {
+        return;
+    }
+
+    struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
+    seat_focus_surface(seat, wlr_xwayland_surface->surface);
+}
+
 static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
                                      bool pressed, uint32_t time, bool dual, void *data)
 {
@@ -108,7 +127,7 @@ static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *no
 
     /* only activate and focus top surface */
     struct xwayland_unmanaged *unmanaged = data;
-    seat_focus_surface(seat, unmanaged->wlr_xwayland_surface->surface);
+    xwayland_unmanaged_focus(unmanaged);
 }
 
 static void xwayland_unmanaged_leave(struct seat *seat, struct ky_scene_node *node, bool last,
@@ -169,10 +188,7 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     /* Stack new surface on top */
     wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
-    if (wlr_xwayland_or_surface_wants_focus(wlr_xwayland_surface)) {
-        struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
-        seat_focus_surface(seat, wlr_xwayland_surface->surface);
-    }
+    xwayland_unmanaged_focus(unmanaged);
 
     unmanaged->set_geometry.notify = unmanaged_handle_set_geometry;
     wl_signal_add(&wlr_xwayland_surface->events.set_geometry, &unmanaged->set_geometry);
