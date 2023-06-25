@@ -14,6 +14,7 @@
 
 struct xwayland_server {
     struct wlr_xwayland *wlr_xwayland;
+    struct wl_list unmanaged_surfaces;
 
     struct wl_listener xwayland_ready;
     struct wl_listener new_xwayland_surface;
@@ -56,6 +57,7 @@ struct xwayland_view {
 };
 
 struct xwayland_unmanaged {
+    struct wl_list link;
     struct wlr_xwayland_surface *wlr_xwayland_surface;
     struct ky_scene_node *surface_node;
 
@@ -164,6 +166,7 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, map);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
 
+    wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     /* Stack new surface on top */
     wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
     if (wlr_xwayland_or_surface_wants_focus(wlr_xwayland_surface)) {
@@ -190,6 +193,7 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, unmap);
 
+    wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->set_geometry.link);
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
     /* surface_node will be destroyed by scene surface */
@@ -385,10 +389,16 @@ static void xwayland_view_configure(struct view *view)
         if (kywc_view->activated && wlr_xwayland_surface->minimized) {
             wlr_xwayland_surface_set_minimized(wlr_xwayland_surface, false);
         }
+        wlr_xwayland_surface_activate(wlr_xwayland_surface, kywc_view->activated);
         if (kywc_view->activated) {
             wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
+            /* Restack unmanaged surfaces on top */
+            struct xwayland_unmanaged *unmanaged;
+            wl_list_for_each(unmanaged, &xwayland->unmanaged_surfaces, link) {
+                wlr_xwayland_surface_restack(unmanaged->wlr_xwayland_surface, NULL,
+                                             XCB_STACK_MODE_ABOVE);
+            }
         }
-        wlr_xwayland_surface_activate(wlr_xwayland_surface, kywc_view->activated);
     }
 
     /* direct move when not changed size */
@@ -804,6 +814,8 @@ bool xwayland_server_create(struct server *server)
         xwayland = NULL;
         return false;
     }
+
+    wl_list_init(&xwayland->unmanaged_surfaces);
 
     xwayland->new_xwayland_surface.notify = handle_new_xwayland_surface;
     wl_signal_add(&xwayland->wlr_xwayland->events.new_surface, &xwayland->new_xwayland_surface);
