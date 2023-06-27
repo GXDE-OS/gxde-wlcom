@@ -8,6 +8,7 @@
 
 #include "input/cursor.h"
 #include "input/seat.h"
+#include "output.h"
 #include "scene/surface.h"
 #include "view/xwayland.h"
 #include "view_p.h"
@@ -58,16 +59,19 @@ struct xwayland_view {
 
     struct wl_listener set_title;
     struct wl_listener set_class;
-    // struct wl_signal set_role;
+    // struct wl_listener set_role;
     struct wl_listener set_parent;
-    // struct wl_signal set_pid;
-    // struct wl_signal set_startup_id;
-    // struct wl_signal set_window_type;
+    // struct wl_listener set_pid;
+    // struct wl_listener set_startup_id;
+    // struct wl_listener set_window_type;
     // struct wl_listener set_hints;
     struct wl_listener set_decorations;
-    // struct wl_signal set_strut_partial;
+    struct wl_listener set_strut_partial;
     struct wl_listener set_override_redirect;
     // struct wl_listener set_geometry;
+
+    // TODO: output changed
+    struct wl_listener output_update_usable_area;
 };
 
 struct xwayland_unmanaged {
@@ -623,6 +627,79 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
     view_set_decoration(&xwayland_view->view, use_ssd);
 }
 
+static void xwayland_view_handle_output_update_usable_area(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, output_update_usable_area);
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
+    struct kywc_box *usable_area = data;
+
+    struct kywc_box geo;
+    kywc_output_effective_geometry(xwayland_view->view.output, &geo);
+
+    xcb_ewmh_wm_strut_partial_t *strut = wlr_xwayland_surface->strut_partial;
+    if (strut->left_start_y != strut->left_end_y) {
+        geo.x += strut->left;
+        geo.width -= strut->left;
+    }
+    if (strut->right_start_y != strut->right_end_y) {
+        geo.width = strut->right;
+    }
+    if (strut->top_start_x != strut->top_end_x) {
+        geo.y += strut->top;
+        geo.height -= strut->top;
+    }
+    if (strut->bottom_start_x != strut->bottom_end_x) {
+        geo.height = strut->bottom;
+    }
+
+    /* intersect usable_area and geo */
+    usable_area->x = geo.x > usable_area->x ? geo.x : usable_area->x;
+    usable_area->y = geo.y > usable_area->y ? geo.y : usable_area->y;
+    usable_area->width = geo.width < usable_area->width ? geo.width : usable_area->width;
+    usable_area->height = geo.height < usable_area->height ? geo.height : usable_area->height;
+}
+
+// XXX: set enabled arg if we need update usable_area when minimize and unmap
+static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view, bool enabled)
+{
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
+    xcb_ewmh_wm_strut_partial_t *strut = wlr_xwayland_surface->strut_partial;
+
+    /* had reserved space before */
+    bool had_area = !wl_list_empty(&xwayland_view->output_update_usable_area.link);
+    bool has_area =
+        enabled && strut &&
+        (strut->left_start_y != strut->left_end_y || strut->right_start_y != strut->right_end_y ||
+         strut->top_start_x != strut->top_end_x || strut->bottom_start_x != strut->bottom_end_x);
+
+    if (!has_area) {
+        if (had_area) {
+            wl_list_remove(&xwayland_view->output_update_usable_area.link);
+            wl_list_init(&xwayland_view->output_update_usable_area.link);
+            kywc_output_update_usable_area(xwayland_view->view.output);
+        }
+        return;
+    }
+
+
+    if (!had_area) {
+        xwayland_view->output_update_usable_area.notify =
+            xwayland_view_handle_output_update_usable_area;
+        output_add_update_usable_area_listener(xwayland_view->view.output,
+                                               &xwayland_view->output_update_usable_area, true);
+    }
+
+    kywc_output_update_usable_area(xwayland_view->view.output);
+}
+
+static void xwayland_view_handle_set_strut_partial(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, set_strut_partial);
+    xwayland_view_set_sruct_partial(xwayland_view, true);
+}
+
 static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, map);
@@ -641,6 +718,9 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     assert(wlr_xwayland_surface->surface == xwayland_view->view.surface);
     xwayland_view->commit.notify = xwayland_view_handle_commit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.commit, &xwayland_view->commit);
+    xwayland_view->set_strut_partial.notify = xwayland_view_handle_set_strut_partial;
+    wl_signal_add(&wlr_xwayland_surface->events.set_strut_partial,
+                  &xwayland_view->set_strut_partial);
 
     /* apply the position in size_hints */
     xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
@@ -653,6 +733,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
         if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
             set_focus = false;
+            xwayland_view->view.base.movable = false;
         }
     }
 
@@ -661,6 +742,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     if (xwayland_view->view.base.has_initial_position) {
         xwayland_view_move(xwayland_view, size_hints->x, size_hints->y);
     }
+
+    xwayland_view_set_sruct_partial(xwayland_view, true);
 }
 
 static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
@@ -668,6 +751,7 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, unmap);
 
     wl_list_remove(&xwayland_view->commit.link);
+    wl_list_remove(&xwayland_view->set_strut_partial.link);
     /* surface_tree is destroyed by scene subsurface */
     view_unmap(&xwayland_view->view);
 }
@@ -724,6 +808,7 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
     wl_list_remove(&xwayland_view->set_parent.link);
     wl_list_remove(&xwayland_view->set_decorations.link);
     wl_list_remove(&xwayland_view->set_override_redirect.link);
+    wl_list_remove(&xwayland_view->output_update_usable_area.link);
 
     view_destroy(&xwayland_view->view);
 }
@@ -770,6 +855,7 @@ static void xwayland_view_create(struct wlr_xwayland_surface *wlr_xwayland_surfa
 
     xwayland_view->wlr_xwayland_surface = wlr_xwayland_surface;
     wlr_xwayland_surface->data = xwayland_view;
+    wl_list_init(&xwayland_view->output_update_usable_area.link);
 
     xwayland_view->associate.notify = xwayland_view_handle_associate;
     wl_signal_add(&wlr_xwayland_surface->events.associate, &xwayland_view->associate);
