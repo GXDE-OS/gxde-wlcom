@@ -633,7 +633,8 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
         return;
     }
 
-    if (kywc_view->minimized || kywc_view->fullscreen || kywc_view->has_initial_position) {
+    if (kywc_view->minimized || kywc_view->fullscreen || !kywc_view->movable ||
+        kywc_view->has_initial_position) {
         place_insert_entry(place, entry, -1);
         return;
     }
@@ -757,13 +758,41 @@ static void entry_handle_view_destroy(struct wl_listener *listener, void *data)
 static void entry_handle_view_workspace(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_workspace);
-    /* view is not mapped, like xwayland shell */
-    if (!entry->place) {
+    struct kywc_view *kywc_view = entry->view;
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    /* view no longer in workspace */
+    if (!view->workspace) {
+        wl_list_remove(&entry->view_unmap.link);
+        wl_list_remove(&entry->view_minimize.link);
+        wl_list_remove(&entry->view_position.link);
+        wl_list_remove(&entry->view_premap.link);
+        wl_list_init(&entry->view_unmap.link);
+        wl_list_init(&entry->view_minimize.link);
+        wl_list_init(&entry->view_position.link);
+        wl_list_init(&entry->view_premap.link);
+        if (entry->place) {
+            place_remove_entry(entry->place, entry);
+        }
         return;
     }
 
-    struct kywc_view *kywc_view = entry->view;
-    struct view *view = view_from_kywc_view(kywc_view);
+    /* view is not mapped, like xwayland shell */
+    if (!kywc_view->mapped) {
+        return;
+    }
+
+    /* add to worksapce again */
+    if (!entry->place) {
+        wl_signal_add(&kywc_view->events.premap, &entry->view_premap);
+        wl_signal_add(&kywc_view->events.position, &entry->view_position);
+        wl_signal_add(&kywc_view->events.minimize, &entry->view_minimize);
+        wl_signal_add(&kywc_view->events.unmap, &entry->view_unmap);
+
+        struct positioner *pos = positioner_from_output(view->output);
+        struct place *place = positioner_get_place(pos, view->workspace);
+        place_insert_entry(place, entry, -1);
+    }
 
     /* we assume that the position of view is not changed */
     struct positioner *pos = entry->place->positioner;
@@ -782,6 +811,7 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     struct kywc_view *kywc_view = data;
     entry->view = kywc_view;
 
+    /* view alwayas has a workspace in view_init */
     entry->view_premap.notify = entry_handle_view_premap;
     wl_signal_add(&kywc_view->events.premap, &entry->view_premap);
     entry->view_position.notify = entry_handle_view_position;
