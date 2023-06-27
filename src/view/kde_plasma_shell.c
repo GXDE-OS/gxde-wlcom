@@ -180,20 +180,22 @@ static void surface_handle_output_update_usable_area(struct wl_listener *listene
     if (view_geo->width > view_geo->height) {
         if (mid_y - geo.y < geo.y + geo.height - mid_y) {
             // position is top
-            geo.y += view_geo->y + view_geo->height;
-            geo.height -= geo.y;
+            int y = view_geo->y + view_geo->height;
+            geo.height -= y - geo.y;
+            geo.y = y;
         } else {
             // position is bottom
-            geo.height = view_geo->y;
+            geo.height = view_geo->y - geo.y;
         }
     } else {
         if (mid_x - geo.x < geo.x + geo.width - mid_x) {
             // position is left
-            geo.x += view_geo->x + view_geo->width;
-            geo.width -= geo.x;
+            int x = view_geo->width + view_geo->x;
+            geo.width -= x - geo.x;
+            geo.x = x;
         } else {
             // position is right
-            geo.width = view_geo->x;
+            geo.width = view_geo->x - geo.x;
         }
     }
 
@@ -227,18 +229,6 @@ static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surfac
     kywc_output_update_usable_area(surface->view->output);
 }
 
-static void surface_handle_view_map(struct wl_listener *listener, void *data)
-{
-    struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_map);
-    kde_plasma_surface_set_usable_area(surface, true);
-}
-
-static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
-{
-    struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_unmap);
-    kde_plasma_surface_set_usable_area(surface, false);
-}
-
 static void surface_handle_view_minimize(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_minimize);
@@ -257,6 +247,30 @@ static void surface_handle_view_position(struct wl_listener *listener, void *dat
     kde_plasma_surface_set_usable_area(surface, true);
 }
 
+static void surface_handle_view_map(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_map);
+    kde_plasma_surface_set_usable_area(surface, true);
+
+    surface->view_minimize.notify = surface_handle_view_minimize;
+    wl_signal_add(&surface->view->base.events.minimize, &surface->view_minimize);
+    surface->view_size.notify = surface_handle_view_size;
+    wl_signal_add(&surface->view->base.events.size, &surface->view_size);
+    surface->view_position.notify = surface_handle_view_position;
+    wl_signal_add(&surface->view->base.events.position, &surface->view_position);
+}
+
+static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_unmap);
+
+    wl_list_remove(&surface->view_minimize.link);
+    wl_list_remove(&surface->view_size.link);
+    wl_list_remove(&surface->view_position.link);
+
+    kde_plasma_surface_set_usable_area(surface, false);
+}
+
 static void surface_handle_view_destroy(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_destroy);
@@ -264,9 +278,6 @@ static void surface_handle_view_destroy(struct wl_listener *listener, void *data
     wl_list_remove(&surface->view_destroy.link);
     wl_list_remove(&surface->view_map.link);
     wl_list_remove(&surface->view_unmap.link);
-    wl_list_remove(&surface->view_minimize.link);
-    wl_list_remove(&surface->view_size.link);
-    wl_list_remove(&surface->view_position.link);
     wl_list_remove(&surface->output_update_usable_area.link);
 
     surface->view = NULL;
@@ -294,12 +305,6 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&surface->view->base.events.map, &surface->view_map);
     surface->view_unmap.notify = surface_handle_view_unmap;
     wl_signal_add(&surface->view->base.events.unmap, &surface->view_unmap);
-    surface->view_minimize.notify = surface_handle_view_minimize;
-    wl_signal_add(&surface->view->base.events.minimize, &surface->view_minimize);
-    surface->view_size.notify = surface_handle_view_size;
-    wl_signal_add(&surface->view->base.events.size, &surface->view_size);
-    surface->view_position.notify = surface_handle_view_position;
-    wl_signal_add(&surface->view->base.events.position, &surface->view_position);
     surface->view_destroy.notify = surface_handle_view_destroy;
     wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
 }
