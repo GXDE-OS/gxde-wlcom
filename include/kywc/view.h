@@ -112,16 +112,18 @@ void kywc_view_move(struct kywc_view *kywc_view, int x, int y);
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry);
 void kywc_view_activate(struct kywc_view *kywc_view);
 
-void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile);
-void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output);
+void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
+                         struct kywc_output *kywc_output);
 
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized);
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view);
 
-void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized);
+void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
+                             struct kywc_output *kywc_output);
 void kywc_view_toggle_maximized(struct kywc_view *kywc_view);
 
-void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen);
+void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
+                              struct kywc_output *kywc_output);
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view);
 
 #endif /* _KYWC_VIEW_H_ */

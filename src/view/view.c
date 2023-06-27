@@ -105,9 +105,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     view->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
 
-    // TODO: only create view for xdg-shell and xwayland-shell(not unmanaged)
     struct output *output = input_current_output(input_manager_get_default_seat());
-    kywc_view_set_output(kywc_view, &output->base);
+    view->output = &output->base;
     view_set_workspace(view, workspace_manager_get_current());
 
     wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
@@ -422,16 +421,6 @@ void kywc_view_close(struct kywc_view *kywc_view)
     }
 }
 
-void kywc_view_set_output(struct kywc_view *kywc_view, struct kywc_output *output)
-{
-    struct view *view = view_from_kywc_view(kywc_view);
-    if (view->output == output) {
-        return;
-    }
-
-    view->output = output;
-}
-
 void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
 {
     struct view *view = view_from_kywc_view(kywc_view);
@@ -550,15 +539,18 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.destroy);
 }
 
-void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile)
+void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
+                         struct kywc_output *kywc_output)
 {
-    if (kywc_view->tiled == tile) {
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    /* tiled mode may switch between outputs */
+    if (kywc_view->tiled == tile && (!kywc_output || kywc_output == view->output)) {
         return;
     }
 
-    struct view *view = view_from_kywc_view(kywc_view);
     struct kywc_box geo = { 0 };
-    view_get_tiled_geometry(view, &geo, view->output, tile);
+    view_get_tiled_geometry(view, &geo, kywc_output ? kywc_output : view->output, tile);
 
     /* may switch between tiled modes */
     if (kywc_view->tiled == KYWC_TILE_NONE && tile != KYWC_TILE_NONE) {
@@ -599,18 +591,22 @@ void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
     kywc_view_set_minimized(kywc_view, !kywc_view->minimized);
 }
 
-void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized)
+void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
+                             struct kywc_output *kywc_output)
 {
+    struct view *view = view_from_kywc_view(kywc_view);
+
     /* tiled to unmaximized after tiled from maximized */
-    if (!kywc_view->maximizable || (!kywc_view->tiled && kywc_view->maximized == maximized)) {
+    if (!kywc_view->maximizable || (!kywc_view->tiled && kywc_view->maximized == maximized &&
+                                    (!kywc_output || kywc_output == view->output))) {
         return;
     }
 
-    struct view *view = view_from_kywc_view(kywc_view);
     struct kywc_box geo = { 0 };
 
     if (maximized) {
-        view_get_tiled_geometry(view, &geo, view->output, KYWC_TILE_ALL);
+        view_get_tiled_geometry(view, &geo, kywc_output ? kywc_output : view->output,
+                                KYWC_TILE_ALL);
         if (!kywc_view->tiled) {
             view->saved.geometry = kywc_view->geometry;
         }
@@ -634,7 +630,7 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized)
 
 void kywc_view_toggle_maximized(struct kywc_view *kywc_view)
 {
-    kywc_view_set_maximized(kywc_view, !kywc_view->maximized);
+    kywc_view_set_maximized(kywc_view, !kywc_view->maximized, NULL);
 }
 
 static void view_reparent_fullscreen(struct view *view, bool fullscreen)
@@ -655,17 +651,20 @@ static void view_reparent_fullscreen(struct view *view, bool fullscreen)
     ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
 }
 
-void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
+void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
+                              struct kywc_output *kywc_output)
 {
-    if (!kywc_view->fullscreenable || kywc_view->fullscreen == fullscreen) {
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    if (!kywc_view->fullscreenable ||
+        (kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output))) {
         return;
     }
 
-    struct view *view = view_from_kywc_view(kywc_view);
     struct kywc_box geo = { 0 };
 
     if (fullscreen) {
-        kywc_output_effective_geometry(view->output, &geo);
+        kywc_output_effective_geometry(kywc_output ? kywc_output : view->output, &geo);
         if (!kywc_view->maximized && !kywc_view->tiled) {
             view->saved.geometry = kywc_view->geometry;
         }
@@ -690,7 +689,7 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen)
 
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view)
 {
-    kywc_view_set_fullscreen(kywc_view, !kywc_view->fullscreen);
+    kywc_view_set_fullscreen(kywc_view, !kywc_view->fullscreen, NULL);
 }
 
 void view_helper_move(struct view *view, int x, int y)

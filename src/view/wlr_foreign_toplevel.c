@@ -42,7 +42,7 @@ static void handle_request_maximize(struct wl_listener *listener, void *data)
     struct wlr_foreign *foreign = wl_container_of(listener, foreign, request_maximize);
     struct wlr_foreign_toplevel_handle_v1_maximized_event *event = data;
 
-    kywc_view_set_maximized(foreign->toplevel_view, event->maximized);
+    kywc_view_set_maximized(foreign->toplevel_view, event->maximized, NULL);
 }
 
 static void handle_request_minimize(struct wl_listener *listener, void *data)
@@ -69,9 +69,15 @@ static void handle_request_fullscreen(struct wl_listener *listener, void *data)
     struct wlr_foreign_toplevel_handle_v1_fullscreen_event *event = data;
     struct kywc_view *view = foreign->toplevel_view;
 
-    struct output *output = output_from_wlr_output(event->output);
-    kywc_view_set_output(view, &output->base);
-    kywc_view_set_fullscreen(view, event->fullscreen);
+    struct kywc_output *kywc_output = NULL;
+    if (event->output) {
+        struct output *output = output_from_wlr_output(event->output);
+        if (output && !output->base.destroying && output->base.state.enabled) {
+            kywc_output = &output->base;
+        }
+    }
+
+    kywc_view_set_fullscreen(view, event->fullscreen, kywc_output);
 }
 
 static void handle_request_close(struct wl_listener *listener, void *data)

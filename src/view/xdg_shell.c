@@ -292,7 +292,7 @@ static void xdg_view_handle_request_maximize(struct wl_listener *listener, void 
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_maximize);
     struct wlr_xdg_toplevel *toplevel = xdg_view->wlr_xdg_surface->toplevel;
 
-    kywc_view_set_maximized(&xdg_view->view.base, toplevel->requested.maximized);
+    kywc_view_set_maximized(&xdg_view->view.base, toplevel->requested.maximized, NULL);
 }
 
 static void xdg_view_handle_request_fullscreen(struct wl_listener *listener, void *data)
@@ -302,11 +302,15 @@ static void xdg_view_handle_request_fullscreen(struct wl_listener *listener, voi
     struct wlr_xdg_toplevel_requested *requested = &toplevel->requested;
     struct kywc_view *kywc_view = &xdg_view->view.base;
 
+    struct kywc_output *kywc_output = NULL;
     if (requested->fullscreen_output) {
         struct output *output = output_from_wlr_output(requested->fullscreen_output);
-        kywc_view_set_output(kywc_view, &output->base);
+        if (output && !output->base.destroying && output->base.state.enabled) {
+            kywc_output = &output->base;
+        }
     }
-    kywc_view_set_fullscreen(kywc_view, requested->fullscreen);
+
+    kywc_view_set_fullscreen(kywc_view, requested->fullscreen, kywc_output);
 }
 
 static void xdg_view_handle_show_window_menu(struct wl_listener *listener, void *data)

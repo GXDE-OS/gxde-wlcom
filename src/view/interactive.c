@@ -57,17 +57,14 @@ static void interactivate_done_move(struct interactive_grab *grab)
 
     /* left */
     if (cur_x - usable->x < VIEW_EDGE_GAP) {
-        kywc_view_set_output(&grab->view->base, &output->base);
-        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_LEFT);
+        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_LEFT, &output->base);
         /* right */
     } else if (usable->x + usable->width - cur_x < VIEW_EDGE_GAP) {
-        kywc_view_set_output(&grab->view->base, &output->base);
-        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_RIGHT);
+        kywc_view_set_tiled(&grab->view->base, KYWC_TILE_RIGHT, &output->base);
         /* top, using <= */
     } else if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && cur_y <= usable->y) {
         /* current cursor focused output, not the view most at output */
-        kywc_view_set_output(&grab->view->base, &output->base);
-        kywc_view_set_maximized(&grab->view->base, true);
+        kywc_view_set_maximized(&grab->view->base, true, &output->base);
     }
 }
 
@@ -136,9 +133,9 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
         grab->geo.x = saved->x;
 
         if (kywc_view->maximized) {
-            kywc_view_set_maximized(kywc_view, false);
+            kywc_view_set_maximized(kywc_view, false, NULL);
         } else {
-            kywc_view_set_tiled(kywc_view, KYWC_TILE_NONE);
+            kywc_view_set_tiled(kywc_view, KYWC_TILE_NONE, NULL);
         }
     }
 

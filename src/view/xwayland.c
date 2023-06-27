@@ -570,7 +570,7 @@ static void xwayland_view_handle_request_maximize(struct wl_listener *listener, 
 
     bool maximized = xwayland_view->wlr_xwayland_surface->maximized_horz &&
                      xwayland_view->wlr_xwayland_surface->maximized_vert;
-    kywc_view_set_maximized(&xwayland_view->view.base, maximized);
+    kywc_view_set_maximized(&xwayland_view->view.base, maximized, NULL);
 }
 
 static void xwayland_view_handle_request_fullscreen(struct wl_listener *listener, void *data)
@@ -579,7 +579,7 @@ static void xwayland_view_handle_request_fullscreen(struct wl_listener *listener
         wl_container_of(listener, xwayland_view, request_fullscreen);
 
     bool fullscreen = xwayland_view->wlr_xwayland_surface->fullscreen;
-    kywc_view_set_fullscreen(&xwayland_view->view.base, fullscreen);
+    kywc_view_set_fullscreen(&xwayland_view->view.base, fullscreen, NULL);
 }
 
 static void xwayland_view_handle_request_activate(struct wl_listener *listener, void *data)
