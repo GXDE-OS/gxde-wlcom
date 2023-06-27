@@ -442,4 +442,7 @@ void cursor_move(struct cursor *cursor, double x, double y, bool delta)
     } else {
         wlr_cursor_warp(wlr_cursor, NULL, x, y);
     }
+
+    cursor->lx = wlr_cursor->x;
+    cursor->ly = wlr_cursor->y;
 }
