@@ -28,7 +28,9 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->destroy.link);
     wl_list_remove(&popup->new_popup.link);
 
-    /* only need to destroy the topmost popup parent tree */
+    /* only need to destroy the topmost popup parent tree,
+     * popup tree will be destroyed by xdg_surface destroy in scene
+     */
     if (popup->topmost_popup) {
         ky_scene_node_destroy(ky_scene_node_from_tree(popup->parent_tree));
     }

@@ -392,11 +392,6 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     xdg_view->commit.notify = xdg_view_handle_commit;
     wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
 
-    /* create tree for surface and all sub-surfaces */
-    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
-    /* event node will be destroyed when surface_tree destroy */
-    input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
-                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
     view_map(&xdg_view->view, true);
 }
 
@@ -416,7 +411,6 @@ static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&xdg_view->set_title.link);
     wl_list_remove(&xdg_view->set_app_id.link);
 
-    /* surface_tree is destroyed by scene subsurface */
     view_unmap(&xdg_view->view);
 }
 
@@ -428,6 +422,7 @@ static void xdg_view_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&xdg_view->map.link);
     wl_list_remove(&xdg_view->unmap.link);
 
+    /* scene tree destroy will be called before by scene */
     view_destroy(&xdg_view->view);
 }
 
@@ -454,6 +449,12 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     xdg_view->wlr_xdg_surface = wlr_xdg_surface;
     wlr_xdg_surface->data = xdg_view;
     wlr_xdg_surface->surface->data = &xdg_view->view;
+
+    /* create tree for surface and all sub-surfaces */
+    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
+    /* event node will be destroyed when xdg_surface destroy */
+    input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
+                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;
