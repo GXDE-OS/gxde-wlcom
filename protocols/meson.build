@@ -34,6 +34,12 @@ if have_wlr_layer_shell
   }
 endif
 
+if have_kde_plasma_shell
+  protocols += {
+    'org-kde-plasma-shell': 'plasma-shell.xml',
+  }
+endif
+
 protos_src = []
 
 protocols_code = {}

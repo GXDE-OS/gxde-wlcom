@@ -31,3 +31,9 @@ if have_wlr_layer_shell
     'wlr_layer_shell.c',
   )
 endif
+
+if have_kde_plasma_shell
+  wlcom_sources += files(
+    'kde_plasma_shell.c',
+  )
+endif

@@ -73,4 +73,13 @@ static __attribute__((unused)) inline bool wlr_layer_shell_manager_create(struct
 }
 #endif
 
+#if HAVE_KDE_PLASMA_SHELL
+bool kde_plasma_shell_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool kde_plasma_shell_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _VIEW_P_H_ */

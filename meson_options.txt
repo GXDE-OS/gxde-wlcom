@@ -7,3 +7,4 @@ option('wlr_scene', type: 'boolean', value: true, description: 'Enable wlroots s
 option('wlr_foreign_toplevel', type: 'boolean', value: true, description: 'Enable wlroots foreign toplevel protocol support')
 option('wlr_layer_shell', type: 'boolean', value: true, description: 'Enable wlroots layer shell protocol support')
 option('kde_global_accel', type: 'boolean', value: true, description: 'Enable kde global accel dbus server support')
+option('kde_plasma_shell', type: 'boolean', value: true, description: 'Enable kde plasma shell protocol support')
