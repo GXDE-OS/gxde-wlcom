@@ -214,16 +214,9 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     unmanaged->set_geometry.notify = unmanaged_handle_set_geometry;
     wl_signal_add(&wlr_xwayland_surface->events.set_geometry, &unmanaged->set_geometry);
 
-    struct view_layer *layer = view_manager_get_layer(LAYER_UNMANAGED, false);
-    struct ky_scene_surface *scene_surface =
-        ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
-    unmanaged->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
-
+    ky_scene_node_set_enabled(unmanaged->surface_node, true);
     ky_scene_node_set_position(unmanaged->surface_node, wlr_xwayland_surface->x,
                                wlr_xwayland_surface->y);
-
-    input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
-                            xwayland_unmanaged_get_root, unmanaged);
 }
 
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
@@ -233,14 +226,21 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->set_geometry.link);
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
-    /* surface_node will be destroyed by scene surface */
-    unmanaged->surface_node = NULL;
 }
 
 static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, associate);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
+
+    struct view_layer *layer = view_manager_get_layer(LAYER_UNMANAGED, false);
+    struct ky_scene_surface *scene_surface =
+        ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
+    unmanaged->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
+    ky_scene_node_set_enabled(unmanaged->surface_node, false);
+
+    input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
+                            xwayland_unmanaged_get_root, unmanaged);
 
     unmanaged->map.notify = unmanaged_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &unmanaged->map);
@@ -251,6 +251,9 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
 static void unmanaged_handle_dissociate(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, dissociate);
+
+    ky_scene_node_destroy(unmanaged->surface_node);
+    unmanaged->surface_node = NULL;
 
     wl_list_remove(&unmanaged->map.link);
     wl_list_remove(&unmanaged->unmap.link);
@@ -639,12 +642,6 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     xwayland_view->commit.notify = xwayland_view_handle_commit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.commit, &xwayland_view->commit);
 
-    xwayland_view->surface_tree =
-        ky_scene_subsurface_tree_create(xwayland_view->view.tree, wlr_xwayland_surface->surface);
-    /* event node will be destroyed when surface_tree destroy */
-    input_event_node_create(ky_scene_node_from_tree(xwayland_view->surface_tree),
-                            &xwayland_view_event_node_impl, xwayland_view_get_root, xwayland_view);
-
     /* apply the position in size_hints */
     xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
     xwayland_view->view.base.has_initial_position =
@@ -682,6 +679,13 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
 
     xwayland_view->view.surface = wlr_xwayland_surface->surface;
 
+    /* create scene tree here as we get surface here */
+    xwayland_view->surface_tree =
+        ky_scene_subsurface_tree_create(xwayland_view->view.tree, wlr_xwayland_surface->surface);
+    /* event node will be destroyed when surface_tree destroy */
+    input_event_node_create(ky_scene_node_from_tree(xwayland_view->surface_tree),
+                            &xwayland_view_event_node_impl, xwayland_view_get_root, xwayland_view);
+
     xwayland_view->map.notify = xwayland_view_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &xwayland_view->map);
     xwayland_view->unmap.notify = xwayland_view_handle_unmap;
@@ -693,6 +697,7 @@ static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, dissociate);
 
     xwayland_view->view.surface = NULL;
+    ky_scene_node_destroy(ky_scene_node_from_tree(xwayland_view->surface_tree));
 
     wl_list_remove(&xwayland_view->map.link);
     wl_list_remove(&xwayland_view->unmap.link);
