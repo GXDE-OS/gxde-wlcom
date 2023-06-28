@@ -514,7 +514,7 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
     xwayland_view_update_geometry(xwayland_view);
 
     enum view_action pending_action = xwayland_view->view.pending.action;
-    if (pending_action == 0) {
+    if (pending_action == VIEW_ACTION_NOP) {
         return;
     }
 

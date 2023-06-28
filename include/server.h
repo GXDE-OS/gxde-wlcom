@@ -11,11 +11,11 @@ struct server {
 
     /* system bus */
     struct sd_bus *sys_bus;
+    struct wl_event_source *dbus;
 
     /* signal handler */
     struct wl_event_source *sigint;
     struct wl_event_source *sigterm;
-    struct wl_event_source *sigpower;
 
     struct {
         bool enable_xwayland;

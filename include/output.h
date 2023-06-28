@@ -38,7 +38,7 @@ void output_manager_add_configured_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);
 
-void output_manager_power_outputs(bool on);
+void output_manager_power_outputs(bool power);
 
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
 

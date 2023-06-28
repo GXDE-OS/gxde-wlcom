@@ -79,9 +79,9 @@ static void listen_logind_manager_signal(struct server *server)
     }
 
     int fd = sd_bus_get_fd(server->sys_bus);
-    server->sigpower =
+    server->dbus =
         wl_event_loop_add_fd(server->event_loop, fd, WL_EVENT_READABLE, dbus_event, server);
-    wl_event_source_check(server->sigpower);
+    wl_event_source_check(server->dbus);
 
     ret = sd_bus_match_signal(server->sys_bus, NULL, dbus_logind_service, dbus_logind_path,
                               dbus_logind_manager_interface, "PrepareForSleep", prepare_for_sleep,
@@ -246,7 +246,7 @@ void server_finish(struct server *server)
 {
     wl_event_source_remove(server->sigint);
     wl_event_source_remove(server->sigterm);
-    wl_event_source_remove(server->sigpower);
+    wl_event_source_remove(server->dbus);
 
     /* make sure all xwayland-shells are destroyed */
     xwayland_server_destroy();

@@ -347,15 +347,16 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 #endif
 }
 
-void output_manager_power_outputs(bool on)
+void output_manager_power_outputs(bool power)
 {
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
-        if (output->base.state.enabled && output->base.state.power != on) {
-            struct kywc_output_state state = output->base.state;
-            state.power = on;
-            kywc_output_set_state(&output->base, &state);
+        if (!output->base.state.enabled || output->base.state.power == power) {
+            continue;
         }
+        struct kywc_output_state state = output->base.state;
+        state.power = power;
+        kywc_output_set_state(&output->base, &state);
     }
 }
 
