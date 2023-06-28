@@ -5,6 +5,7 @@
 
 #include "output.h"
 #include "plasma-shell-protocol.h"
+#include "view/workspace.h"
 #include "view_p.h"
 
 #define PLASMA_SURFACE_VERSION 8
@@ -66,7 +67,7 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
 static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
 {
     struct ky_scene_node *node = ky_scene_node_from_tree(surface->view->tree);
-    struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
+    struct view_layer *layer = workspace_layer(surface->view->workspace, LAYER_NORMAL);
 
     switch (surface->role) {
     case ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL:

@@ -690,7 +690,7 @@ static void view_reparent_fullscreen(struct view *view, bool active)
     }
 
     /* restore fullscreen view to workspace */
-    struct view_layer *layer = view_manager_get_layer(view->saved.layer, true);
+    struct view_layer *layer = workspace_layer(view->workspace, view->saved.layer);
     ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
 }
 
