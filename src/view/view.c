@@ -484,12 +484,18 @@ void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
     }
 }
 
+static void view_reparent_fullscreen(struct view *view, bool active);
 static void view_set_activated(struct view *view, bool activated)
 {
     struct kywc_view *kywc_view = &view->base;
 
     if (kywc_view->activated == activated) {
         return;
+    }
+
+    /* change fullscreen layer when activation changed */
+    if (kywc_view->fullscreen) {
+        view_reparent_fullscreen(view, activated);
     }
 
     kywc_view->activated = activated;
@@ -670,11 +676,11 @@ void kywc_view_toggle_maximized(struct kywc_view *kywc_view)
     kywc_view_set_maximized(kywc_view, !kywc_view->maximized, NULL);
 }
 
-static void view_reparent_fullscreen(struct view *view, bool fullscreen)
+static void view_reparent_fullscreen(struct view *view, bool active)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    if (fullscreen) {
+    if (active) {
         view->saved.layer = kywc_view->kept_above
                                 ? LAYER_ABOVE
                                 : (kywc_view->kept_below ? LAYER_BELOW : LAYER_NORMAL);
