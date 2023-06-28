@@ -77,11 +77,15 @@ struct view {
 
     struct ky_scene_tree *tree;
 
+    /* view will be moved when workspace destroy */
     struct workspace *workspace;
+    // TODO: we may need update output when current output geometry/off/destroy changed
+    // but something is done by positioner
     struct kywc_output *output;
+    struct wl_listener output_destroy;
 
     struct {
-        // struct wl_signal output;
+        struct wl_signal output;
         /* emit if view's parent changed */
         struct wl_signal parent;
         /* emit if view's workspace changed */

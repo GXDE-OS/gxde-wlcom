@@ -66,6 +66,38 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
     }
 }
 
+static void view_update_output(struct view *view)
+{
+    /* no need to update output when unmapped */
+    if (!view->base.mapped) {
+        return;
+    }
+
+    struct kywc_box *geo = &view->base.geometry;
+    /* udpate view most-at output */
+    int lx = geo->x + geo->width / 2;
+    int ly = geo->y + geo->height / 2;
+
+    struct kywc_output *old = view->output;
+    if (!old || old->destroying || !old->state.enabled ||
+        !kywc_box_contains_point(&output_from_kywc_output(old)->geometry, lx, ly)) {
+        view->output = kywc_output_at_point(lx, ly);
+    }
+
+    if (old != view->output) {
+        wl_list_remove(&view->output_destroy.link);
+        wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+
+        wl_signal_emit_mutable(&view->events.output, old);
+    }
+}
+
+static void view_handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct view *view = wl_container_of(listener, view, output_destroy);
+    view_update_output(view);
+}
+
 void view_init(struct view *view, const struct view_impl *impl, void *data)
 {
     struct kywc_view *kywc_view = &view->base;
@@ -92,6 +124,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_list_init(&view->parent_link);
     wl_signal_init(&view->events.parent);
     wl_signal_init(&view->events.workspace);
+    wl_signal_init(&view->events.output);
 
     kywc_view->minimizable = true;
     kywc_view->maximizable = true;
@@ -107,6 +140,9 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
 
     struct output *output = input_current_output(input_manager_get_default_seat());
     view->output = &output->base;
+    view->output_destroy.notify = view_handle_output_destroy;
+    wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+
     view_set_workspace(view, workspace_manager_get_current());
 
     wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
@@ -291,6 +327,7 @@ void view_destroy(struct view *view)
 
     wl_list_remove(&view->link);
     wl_list_remove(&view->parent_link);
+    wl_list_remove(&view->output_destroy.link);
 
     /* there should be no children views when destroy */
     struct view *child, *tmp;
@@ -695,25 +732,22 @@ void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view)
 void view_helper_move(struct view *view, int x, int y)
 {
     struct kywc_box *geo = &view->base.geometry;
-
-    if (geo->x == x && geo->y == y) {
-        return;
-    }
+    bool changed = geo->x != x || geo->y != y;
 
     geo->x = x;
     geo->y = y;
-    ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
 
-    /* udpate view most-at output */
-    int lx = geo->x + geo->width / 2;
-    int ly = geo->y + geo->height / 2;
+    /* if we have two monitor and place a window on the left one,
+     * then unplug the left one, window will be placed to the right one by positioner.
+     * the postion will not change as the right one become (0,0).
+     */
+    view_update_output(view);
 
-    struct output *output = output_from_kywc_output(view->output);
-    if (!kywc_box_contains_point(&output->geometry, lx, ly)) {
-        view->output = kywc_output_at_point(lx, ly);
+    if (changed) {
+        kywc_log(KYWC_INFO, "***%s: %s move to (%d, %d)", __func__, view->base.app_id, x, y);
+        ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
+        wl_signal_emit_mutable(&view->base.events.position, NULL);
     }
-
-    wl_signal_emit_mutable(&view->base.events.position, NULL);
 }
 
 bool view_is_moveable(struct view *view)
@@ -750,6 +784,9 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
     if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {
         kywc_view->geometry.width = width;
         kywc_view->geometry.height = height;
+
+        view_update_output(view);
+
         kywc_log(KYWC_DEBUG, "view %p size to %d x %d", view, width, height);
         wl_signal_emit_mutable(&view->base.events.size, NULL);
     }
