@@ -518,7 +518,16 @@ void view_topmost_activate(struct workspace *workspace)
         }
         kywc_view_activate(&view->base);
         seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        if (view->base.fullscreen) {
+            view_reparent_fullscreen(view, true);
+        }
         return;
+    }
+
+    /* workaround to hide fullscreen view when no view in workspace */
+    view = view_manager->activated.view;
+    if (view && view->base.fullscreen && !view->workspace->activated) {
+        view_reparent_fullscreen(view, false);
     }
 
     /* no view can be activated, clear keyboard focus */
