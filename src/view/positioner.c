@@ -265,8 +265,9 @@ static bool slot_is_suitable(struct positioner *pos, struct kywc_view *view, int
 }
 
 static void positioner_move_views(struct positioner *pos, struct kywc_box *src_box,
-                                  struct kywc_box *dst_box, bool skip_update)
+                                  struct positioner *dst_pos, bool skip_update)
 {
+    struct kywc_box *dst_box = &dst_pos->usable_area;
     double frac_x = (double)dst_box->width / src_box->width;
     double frac_y = (double)dst_box->height / src_box->height;
     int x, y, w, h, nx, ny;
@@ -276,6 +277,21 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
         struct entry *entry, *tmp;
         wl_list_for_each_safe(entry, tmp, &place->entries, link) {
             if (!entry->view->movable) {
+                continue;
+            }
+
+            /* keep entry's place, so we can store when output re-enabled or plugin */
+            entry->skip_update = skip_update;
+
+            if (entry->view->fullscreen) {
+                struct kywc_box geo;
+                kywc_output_effective_geometry(dst_pos->kywc_output, &geo);
+                kywc_view_resize(entry->view, &geo);
+                continue;
+            }
+
+            if (entry->view->maximized) {
+                kywc_view_resize(entry->view, dst_box);
                 continue;
             }
 
@@ -298,9 +314,7 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
             }
 
             /* move to dst */
-            entry->skip_update = skip_update;
             kywc_view_move(entry->view, nx, ny);
-            entry->skip_update = false;
         }
     }
 }
@@ -313,7 +327,7 @@ static void positioner_handle_output_on(struct wl_listener *listener, void *data
     positioner_update_grid(pos, &output->usable_area);
 
     if (!wl_list_empty(&pos->catcher.link)) {
-        positioner_move_views(pos, &pos->catcher.box, &pos->usable_area, false);
+        positioner_move_views(pos, &pos->catcher.box, pos, false);
         wl_list_remove(&pos->catcher.link);
         wl_list_init(&pos->catcher.link);
     }
@@ -338,14 +352,14 @@ static void positioner_handle_output_off(struct wl_listener *listener, void *dat
 
     wl_list_insert(&dst->catcher.positioners, &src->catcher.link);
     src->catcher.box = dst->usable_area;
-    positioner_move_views(src, &src->usable_area, &dst->usable_area, true);
+    positioner_move_views(src, &src->usable_area, dst, true);
 
     struct positioner *tmp;
     wl_list_for_each_safe(pos, tmp, &src->catcher.positioners, catcher.link) {
         wl_list_remove(&pos->catcher.link);
         wl_list_insert(&dst->catcher.positioners, &pos->catcher.link);
         pos->catcher.box = dst->usable_area;
-        positioner_move_views(pos, &src->usable_area, &dst->usable_area, true);
+        positioner_move_views(pos, &src->usable_area, dst, true);
     }
 }
 
@@ -360,12 +374,12 @@ static void positioner_handle_output_usable_area(struct wl_listener *listener, v
 
     struct kywc_box old = pos->usable_area;
     positioner_update_grid(pos, &output->usable_area);
-    positioner_move_views(pos, &old, &pos->usable_area, false);
+    positioner_move_views(pos, &old, pos, false);
 
     struct positioner *tmp;
     wl_list_for_each(tmp, &pos->catcher.positioners, catcher.link) {
         tmp->catcher.box = pos->usable_area;
-        positioner_move_views(tmp, &old, &pos->usable_area, true);
+        positioner_move_views(tmp, &old, pos, true);
     }
 }
 
@@ -695,6 +709,7 @@ static void entry_handle_view_position(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_position);
     if (entry->skip_update) {
+        entry->skip_update = false;
         return;
     }
 
