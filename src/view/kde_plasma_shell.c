@@ -30,10 +30,9 @@ struct kde_plasma_surface {
     struct wl_listener view_minimize;
     struct wl_listener view_size;
     struct wl_listener view_position;
+    struct wl_listener view_output;
     struct wl_listener view_destroy;
 
-    // TODO: output changed
-    struct wl_listener view_output;
     struct wl_listener output_update_usable_area;
 
     int x, y;
@@ -250,6 +249,20 @@ static void surface_handle_view_position(struct wl_listener *listener, void *dat
     kde_plasma_surface_set_usable_area(surface, true);
 }
 
+static void surface_handle_view_output(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_output);
+    struct kywc_output *old_output = data;
+
+    if (!wl_list_empty(&surface->output_update_usable_area.link)) {
+        wl_list_remove(&surface->output_update_usable_area.link);
+        wl_list_init(&surface->output_update_usable_area.link);
+        kywc_output_update_usable_area(old_output);
+    }
+
+    kde_plasma_surface_set_usable_area(surface, true);
+}
+
 static void surface_handle_view_map(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_surface *surface = wl_container_of(listener, surface, view_map);
@@ -261,6 +274,8 @@ static void surface_handle_view_map(struct wl_listener *listener, void *data)
     wl_signal_add(&surface->view->base.events.size, &surface->view_size);
     surface->view_position.notify = surface_handle_view_position;
     wl_signal_add(&surface->view->base.events.position, &surface->view_position);
+    surface->view_output.notify = surface_handle_view_output;
+    wl_signal_add(&surface->view->events.output, &surface->view_output);
 }
 
 static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
@@ -270,6 +285,7 @@ static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&surface->view_minimize.link);
     wl_list_remove(&surface->view_size.link);
     wl_list_remove(&surface->view_position.link);
+    wl_list_remove(&surface->view_output.link);
 
     kde_plasma_surface_set_usable_area(surface, false);
 }
