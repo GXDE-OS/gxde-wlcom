@@ -100,6 +100,7 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
     ky_scene_node_reparent(node, layer->tree);
 }
 
+static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surface, bool enabled);
 static void handle_set_role(struct wl_client *client, struct wl_resource *resource, uint32_t role)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
@@ -108,6 +109,8 @@ static void handle_set_role(struct wl_client *client, struct wl_resource *resour
 
     if (surface->view) {
         kde_plasma_surface_apply_role(surface);
+        /* if plasma shell change role after map */
+        kde_plasma_surface_set_usable_area(surface, true);
     }
 }
 
@@ -301,8 +304,14 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
         kywc_view_move(&surface->view->base, surface->x, surface->y);
     }
 
-    surface->view_map.notify = surface_handle_view_map;
-    wl_signal_add(&surface->view->base.events.map, &surface->view_map);
+    /* workaround to fix this listener is bebind view map */
+    if (surface->view->base.mapped) {
+        wl_list_init(&surface->view_map.link);
+        surface_handle_view_map(&surface->view_map, NULL);
+    } else {
+        surface->view_map.notify = surface_handle_view_map;
+        wl_signal_add(&surface->view->base.events.map, &surface->view_map);
+    }
     surface->view_unmap.notify = surface_handle_view_unmap;
     wl_signal_add(&surface->view->base.events.unmap, &surface->view_unmap);
     surface->view_destroy.notify = surface_handle_view_destroy;
