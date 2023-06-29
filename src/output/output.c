@@ -212,17 +212,18 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
         return;
     }
 
-    if (!wlr_output_attach_render(wlr_output, NULL)) {
-        return;
-    }
-
-    struct wlr_renderer *renderer = wlr_output->renderer;
-    wlr_renderer_begin(renderer, wlr_output->width, wlr_output->height);
-    wlr_renderer_clear(renderer, (float[]){ 0.25f, 0.25f, 0.25f, 1 });
-    wlr_output_render_software_cursors(wlr_output, NULL);
-    wlr_renderer_end(renderer);
-
-    wlr_output_commit(wlr_output);
+    struct wlr_output_state state;
+    wlr_output_state_init(&state);
+    struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL, NULL);
+    wlr_render_pass_add_rect(
+        pass, &(struct wlr_render_rect_options){
+                  .box = { .width = wlr_output->width, .height = wlr_output->height },
+                  .color = { 0.25f, 0.25f, 0.25f, 1 },
+              });
+    wlr_output_add_software_cursors_to_render_pass(wlr_output, pass, NULL);
+    wlr_render_pass_submit(pass);
+    wlr_output_commit_state(wlr_output, &state);
+    wlr_output_state_finish(&state);
 #endif
 }
 
@@ -496,9 +497,10 @@ static void output_find_best_mode(struct wlr_output *wlr_output, int32_t width, 
     }
 }
 
-static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_mode *mode)
+static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_state *wlr_state,
+                               struct wlr_output_mode *mode)
 {
-    if (wlr_output_test(wlr_output)) {
+    if (wlr_output_test_state(wlr_output, wlr_state)) {
         return;
     }
 
@@ -509,8 +511,8 @@ static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_
             continue;
         }
 
-        wlr_output_set_mode(wlr_output, m);
-        if (wlr_output_test(wlr_output)) {
+        wlr_output_state_set_mode(wlr_state, m);
+        if (wlr_output_test_state(wlr_output, wlr_state)) {
             break;
         }
     }
@@ -520,9 +522,11 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 {
     struct wlr_output *wlr_output = output->wlr_output;
     struct server *server = output_manager->server;
-
     bool enabled = state->enabled && state->power;
-    wlr_output_enable(wlr_output, enabled);
+
+    struct wlr_output_state wlr_state;
+    wlr_output_state_init(&wlr_state);
+    wlr_output_state_set_enabled(&wlr_state, enabled);
 
     if (enabled) {
         struct wlr_output_mode *best = NULL;
@@ -534,20 +538,23 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
         }
 
         if (best) {
-            wlr_output_set_mode(wlr_output, best);
+            wlr_output_state_set_mode(&wlr_state, best);
         } else {
-            wlr_output_set_custom_mode(wlr_output, state->width, state->height, state->refresh);
+            wlr_output_state_set_custom_mode(&wlr_state, state->width, state->height,
+                                             state->refresh);
         }
-        output_ensure_mode(wlr_output, best);
+        output_ensure_mode(wlr_output, &wlr_state, best);
 
-        wlr_output_set_transform(wlr_output, state->transform);
-        wlr_output_set_scale(wlr_output, state->scale);
+        wlr_output_state_set_transform(&wlr_state, state->transform);
+        wlr_output_state_set_scale(&wlr_state, state->scale);
     }
 
-    if (!wlr_output_commit(wlr_output)) {
+    if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
         kywc_log(KYWC_ERROR, "Failed to commit output: %s", wlr_output->name);
+        wlr_output_state_finish(&wlr_state);
         return false;
     }
+    wlr_output_state_finish(&wlr_state);
 
     /* after output commit, we get actual status */
     struct wlr_output_layout_output *loutput = wlr_output_layout_get(server->layout, wlr_output);
