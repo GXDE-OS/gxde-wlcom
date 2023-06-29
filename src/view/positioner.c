@@ -276,10 +276,6 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
     wl_list_for_each(place, &pos->places, link) {
         struct entry *entry, *tmp;
         wl_list_for_each_safe(entry, tmp, &place->entries, link) {
-            if (!entry->view->movable) {
-                continue;
-            }
-
             /* keep entry's place, so we can store when output re-enabled or plugin */
             entry->skip_update = skip_update;
 
@@ -647,8 +643,7 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
         return;
     }
 
-    if (kywc_view->minimized || kywc_view->fullscreen || !kywc_view->movable ||
-        kywc_view->has_initial_position) {
+    if (kywc_view->minimized || kywc_view->fullscreen || kywc_view->has_initial_position) {
         place_insert_entry(place, entry, -1);
         return;
     }
