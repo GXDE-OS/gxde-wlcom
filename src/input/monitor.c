@@ -184,6 +184,13 @@ static void handle_configured(struct wl_listener *listener, void *data)
     output_rebase_cursor(input_monitor, 0.0, true);
 }
 
+static void handle_seat_idle(struct idle *idle, void *data){};
+
+static void handle_seat_resume(struct idle *idle, void *data)
+{
+    output_manager_power_outputs(true);
+}
+
 static void handle_new_seat(struct wl_listener *listener, void *data)
 {
     struct input_monitor *input_monitor = wl_container_of(listener, input_monitor, new_seat);
@@ -198,6 +205,8 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
             cursor_move(seat->cursor, 0, 0, true);
         }
     }
+
+    idle_manager_add_idle(seat, false, 0, handle_seat_idle, handle_seat_resume, NULL, NULL);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
