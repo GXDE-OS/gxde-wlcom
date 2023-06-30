@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <wlr/backend.h>
+#include <wlr/backend/headless.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 
@@ -71,6 +72,7 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->model = wlr_output->model;
     prop->serial = wlr_output->serial;
     prop->desc = wlr_output->description;
+    prop->is_virtual = wlr_output_is_headless(wlr_output);
 
     /* fix zero mode in some backend, like wayland */
     if (wl_list_empty(&wlr_output->modes)) {
@@ -112,8 +114,31 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
         state->lx = state->ly = -1;
     }
 
+    struct kywc_output *kywc_output = &output->base;
+    if (kywc_output == output_manager->fallback_output) {
+        state->lx = 0;
+        state->ly = 0;
+    }
     state->brightness = 80;
     state->color_temp = 6500;
+}
+
+static void fallback_output_set_state(struct kywc_output *kywc_output, bool enabled)
+{
+    struct kywc_output_state state = kywc_output->state;
+
+    if (!state.enabled && enabled) {
+        state.power = true;
+        state.scale = kywc_output_preferred_scale(kywc_output, state.width, state.height);
+
+        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
+        state.width = mode->width;
+        state.height = mode->height;
+        state.refresh = mode->refresh;
+    }
+    state.enabled = enabled;
+
+    kywc_output_set_state(kywc_output, &state);
 }
 
 static struct output *output_create(const char *name, struct wlr_output *wlr_output)
@@ -144,9 +169,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&output->events.update_usable_area);
     wl_signal_init(&output->events.update_late_usable_area);
 
-    output->manager = output_manager;
-    wl_list_insert(&output_manager->outputs, &output->link);
-
     /* get props */
     wl_list_init(&kywc_output->prop.modes);
     output_get_prop(output, &kywc_output->prop);
@@ -156,6 +178,19 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
     if (!kywc_output->prop.desc) {
         kywc_output->prop.desc = kywc_output->name;
+    }
+    if (!kywc_output->prop.make) {
+        kywc_output->prop.make = unknown;
+    }
+    if (kywc_output->prop.is_virtual && strcmp(name, "FALLBACK") == 0) {
+        output_manager->fallback_output = kywc_output;
+    }
+
+    output->manager = output_manager;
+    if (kywc_output->prop.is_virtual) {
+        wl_list_init(&output->link);
+    } else {
+        wl_list_insert(&output_manager->outputs, &output->link);
     }
 
     /* read config and apply it */
@@ -178,11 +213,20 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         kywc_output_set_state(kywc_output, &state);
     }
 
+    if (kywc_output == output_manager->fallback_output) {
+        fallback_output_set_state(kywc_output, wl_list_empty(&output_manager->outputs));
+    }
+
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 
     /* fix primary output */
     if (!output_manager->primary_output && kywc_output->state.enabled) {
         kywc_output_set_primary(kywc_output);
+    }
+
+    if (kywc_output != output_manager->fallback_output && output_manager->fallback_output &&
+        !kywc_output->prop.is_virtual && kywc_output->state.enabled) {
+        fallback_output_set_state(output_manager->fallback_output, false);
     }
 
     return output;
@@ -273,6 +317,11 @@ static void fix_outputs(struct kywc_output *destroy_output)
                 kywc_output_set_primary(&output_tmp->base);
             }
             break;
+        }
+
+        if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
+            fallback_output_set_state(output_manager->fallback_output, true);
+            kywc_output_set_primary(output_manager->fallback_output);
         }
     }
 
@@ -386,6 +435,11 @@ struct output_manager *output_manager_create(struct server *server)
     wlr_xdg_output_manager_v1_create(server->display, server->layout);
     output_manager->new_output.notify = handle_new_output;
     wl_signal_add(&server->backend->events.new_output, &output_manager->new_output);
+
+    struct wlr_output *wlr_output = wlr_headless_add_output(server->headless_backend, 1920, 1080);
+    wlr_output->width = 1920;
+    wlr_output->height = 1080;
+    wlr_output_set_name(wlr_output, "FALLBACK");
 
     output_manager_config_init(output_manager);
     output_manager->has_layout_manager = layout_manager_create(server);

@@ -7,6 +7,8 @@
 #include <systemd/sd-login.h>
 
 #include <wlr/backend.h>
+#include <wlr/backend/headless.h>
+#include <wlr/backend/multi.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
@@ -131,6 +133,13 @@ static bool wlroots_server_init(struct server *server)
         kywc_log(KYWC_ERROR, "unable to create backend");
         return false;
     }
+
+    server->headless_backend = wlr_headless_backend_create(server->display);
+    if (!server->headless_backend) {
+        kywc_log(KYWC_ERROR, "unable to create headless backend");
+        return false;
+    }
+    wlr_multi_backend_add(server->backend, server->headless_backend);
 
     server->renderer = wlr_renderer_autocreate(server->backend);
     if (!server->renderer) {

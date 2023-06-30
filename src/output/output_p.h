@@ -10,6 +10,7 @@ struct output_manager {
     struct server *server;
 
     struct wl_list outputs;
+    struct kywc_output *fallback_output;
     struct kywc_output *primary_output;
 
     struct {

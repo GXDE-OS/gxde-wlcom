@@ -29,6 +29,8 @@ struct server {
     struct wlr_renderer *renderer;
     struct wlr_allocator *allocator;
     struct wlr_backend *backend;
+    /* create for the virtual output */
+    struct wlr_backend *headless_backend;
     struct wlr_session *session;
     struct wlr_compositor *compositor;
 

@@ -735,6 +735,11 @@ static void kde_output_device_handle_power(struct wl_listener *listener, void *d
 
 static void kde_output_management_handle_new_output(struct wl_listener *listener, void *data)
 {
+    struct kywc_output *kywc_output = data;
+    if (kywc_output->prop.is_virtual) {
+        return;
+    }
+
     struct kde_output_device *output_device = calloc(1, sizeof(struct kde_output_device));
     if (!output_device) {
         return;
@@ -752,7 +757,6 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
     wl_list_init(&output_device->resources);
     wl_list_insert(&management->output_devices, &output_device->link);
 
-    struct kywc_output *kywc_output = data;
     output_device->kywc_output = kywc_output;
 
     OUTPUT_DEVICE_ADD_SIGNAL(on);

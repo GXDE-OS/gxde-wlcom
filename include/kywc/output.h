@@ -41,6 +41,7 @@ struct kywc_output_mode {
 };
 
 struct kywc_output_prop {
+    bool is_virtual;
     uint32_t capability;
     int32_t phys_width, phys_height;          // mm
     const char *make, *model, *serial, *desc; // may be NULL

@@ -331,13 +331,17 @@ static void output_layout_uuid_generate(struct output_layout *output_layout)
 
 static void layout_manager_handle_new_output(struct wl_listener *listener, void *data)
 {
+    struct kywc_output *kywc_output = data;
+    if (kywc_output->prop.is_virtual) {
+        return;
+    }
+
     struct output_layout *output_layout = calloc(1, sizeof(struct output_layout));
     if (!output_layout) {
         return;
     }
 
     struct layout_manager *layout_manager = wl_container_of(listener, layout_manager, new_output);
-    struct kywc_output *kywc_output = data;
 
     output_layout->output = kywc_output;
     output_layout->layout_manager = layout_manager;

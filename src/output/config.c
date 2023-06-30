@@ -54,7 +54,7 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
     /* finally, get all output config */
     json_object *data;
     if (json_object_object_get_ex(config, "enabled", &data)) {
-        state->enabled = json_object_get_boolean(data);
+        state->power = state->enabled = json_object_get_boolean(data);
     }
     if (json_object_object_get_ex(config, "width", &data)) {
         state->width = json_object_get_int(data);
@@ -93,7 +93,7 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
 void output_write_config(struct output *output)
 {
     struct output_manager *om = output->manager;
-    if (!om->config || !om->config->json) {
+    if (!om->config || !om->config->json || output->base.prop.is_virtual) {
         return;
     }
 
