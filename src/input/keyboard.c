@@ -145,9 +145,9 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
 
     /* Translate libinput keycode -> xkbcommon keysym */
     const xkb_keysym_t *keysyms;
-    size_t keysyms_len = xkb_state_key_get_syms(keyboard_state->xkb_state, key + 8, &keysyms);
+    size_t len = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, key + 8, &keysyms);
 
-    for (size_t i = 0; i < keysyms_len; ++i) {
+    for (size_t i = 0; i < len; ++i) {
         handle_keyboard_state(keyboard_state, modifiers, keysyms[i], pressed);
     }
 
@@ -266,7 +266,6 @@ create:
     keyboard->wlr_keyboard = dst_keyboard;
     dst_keyboard->data = keyboard;
     keyboard->is_virtual = input->prop.is_virtual;
-    keyboard->state.xkb_state = dst_keyboard->xkb_state;
 
     /* insert new keyboard to seat keyboard list */
     keyboard->seat = seat;

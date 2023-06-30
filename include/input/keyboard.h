@@ -6,8 +6,6 @@
 #define MAX_PRESSED_KEY 10
 
 struct keyboard_state {
-    struct xkb_state *xkb_state;
-
     uint32_t pressed_keysyms[MAX_PRESSED_KEY];
     uint32_t last_keysym;
     uint32_t last_modifiers;
