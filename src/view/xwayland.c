@@ -284,9 +284,9 @@ static void unmanaged_handle_set_override_redirect(struct wl_listener *listener,
         wl_container_of(listener, unmanaged, set_override_redirect);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
 
-    bool mapped = wlr_xwayland_surface->surface != NULL && wlr_xwayland_surface->surface->mapped;
-    if (mapped) {
+    if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
         unmanaged_handle_unmap(&unmanaged->unmap, NULL);
+        unmanaged_handle_dissociate(&unmanaged->dissociate, NULL);
     }
     unmanaged_handle_destroy(&unmanaged->destroy, NULL);
 
@@ -318,8 +318,8 @@ static void xwayland_unmanaged_create(struct wlr_xwayland_surface *wlr_xwayland_
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &unmanaged->set_override_redirect);
 
-    bool mapped = wlr_xwayland_surface->surface != NULL && wlr_xwayland_surface->surface->mapped;
-    if (mapped) {
+    if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
+        unmanaged_handle_associate(&unmanaged->associate, NULL);
         unmanaged_handle_map(&unmanaged->map, NULL);
     }
 }
@@ -823,11 +823,10 @@ static void xwayland_view_handle_set_override_redirect(struct wl_listener *liste
         wl_container_of(listener, xwayland_view, set_override_redirect);
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
-    bool mapped = wlr_xwayland_surface->surface != NULL && wlr_xwayland_surface->surface->mapped;
-    if (mapped) {
+    if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
         xwayland_view_handle_unmap(&xwayland_view->unmap, NULL);
+        xwayland_view_handle_dissociate(&xwayland_view->dissociate, NULL);
     }
-
     xwayland_view_handle_destroy(&xwayland_view->destroy, NULL);
     wlr_xwayland_surface->data = NULL;
 
@@ -901,8 +900,8 @@ static void xwayland_view_create(struct wlr_xwayland_surface *wlr_xwayland_surfa
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &xwayland_view->set_override_redirect);
 
-    bool mapped = wlr_xwayland_surface->surface != NULL && wlr_xwayland_surface->surface->mapped;
-    if (mapped) {
+    if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
+        xwayland_view_handle_associate(&xwayland_view->associate, NULL);
         xwayland_view_handle_map(&xwayland_view->map, NULL);
     }
 }
