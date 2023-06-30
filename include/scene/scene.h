@@ -55,6 +55,7 @@ SCENE_API void ky_scene_destroy(struct ky_scene *scene) { ky_scene_node_destroy(
 SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return &scene->tree.node; }
 SCENE_API void *ky_scene_node_get_user_data(struct ky_scene_node *node) { return node->data; };
 SCENE_API void ky_scene_node_set_user_data(struct ky_scene_node *node, void *user_data) { node->data = user_data; };
+SCENE_API void ky_scene_node_get_position(struct ky_scene_node *node, int *x, int *y) { *x = node->x; *y = node->y; }
 SCENE_API void ky_scene_node_add_destroy_listener(struct ky_scene_node *node, struct wl_listener *listener) { wl_signal_add(&node->events.destroy, listener); }
 SCENE_API struct wlr_addon_set *ky_scene_node_get_addon_set(struct ky_scene_node *node) { return &node->addons; }
 SCENE_API struct ky_scene_tree *ky_scene_create_tree(struct ky_scene *scene) { return ky_scene_tree_create(&scene->tree); }
@@ -103,6 +104,7 @@ SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene)
 SCENE_API void ky_scene_node_destroy(struct ky_scene_node *node) {}
 SCENE_API void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled) {}
 SCENE_API void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y) {}
+SCENE_API void ky_scene_node_get_position(struct ky_scene_node *node, int *x, int *y) {}
 SCENE_API void ky_scene_node_place_above(struct ky_scene_node *node, struct ky_scene_node *sibling) {}
 SCENE_API void ky_scene_node_place_below(struct ky_scene_node *node, struct ky_scene_node *sibling) {}
 SCENE_API void ky_scene_node_raise_to_top(struct ky_scene_node *node) {}
