@@ -10,6 +10,7 @@ struct ky_scene_surface {
     // private state
 
     struct wlr_addon addon;
+    struct wlr_addon node_addon;
 
     struct wl_listener outputs_update;
     struct wl_listener output_enter;
@@ -29,5 +30,7 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer *scene_buffer);
 
 struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node);
+
+struct ky_scene_buffer *wlr_scene_buffer_try_from_surface(struct wlr_surface *wlr_surface);
 
 #endif /* _SCENE_SURFACE_H_ */

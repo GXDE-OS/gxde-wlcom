@@ -153,6 +153,7 @@ static void surface_addon_destroy(struct wlr_addon *addon)
     scene_buffer_unmark_client_buffer(surface->buffer);
 
     wlr_addon_finish(&surface->addon);
+    wlr_addon_finish(&surface->node_addon);
 
     wl_list_remove(&surface->outputs_update.link);
     wl_list_remove(&surface->output_enter.link);
@@ -180,6 +181,30 @@ struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer
     }
 
     struct ky_scene_surface *surface = wl_container_of(addon, surface, addon);
+    return surface;
+}
+
+static void surface_node_addon_destroy(struct wlr_addon *addon)
+{
+    /* do nothing, surface destroy singal emitted before surface addon_set finish
+     * scene node destroy will call surface_addon_destroy.
+     */
+}
+
+static const struct wlr_addon_interface surface_node_addon_impl = {
+    .name = "ky_scene_surface_node",
+    .destroy = surface_node_addon_destroy,
+};
+
+static struct ky_scene_surface *ky_scene_surface_try_from_surface(struct wlr_surface *wlr_surface)
+{
+    struct wlr_addon *node_addon =
+        wlr_addon_find(&wlr_surface->addons, wlr_surface, &surface_node_addon_impl);
+    if (!node_addon) {
+        return NULL;
+    }
+
+    struct ky_scene_surface *surface = wl_container_of(node_addon, surface, node_addon);
     return surface;
 }
 
@@ -225,6 +250,8 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
     struct wlr_addon_set *addons =
         ky_scene_node_get_addon_set(ky_scene_node_from_buffer(scene_buffer));
     wlr_addon_init(&surface->addon, addons, scene_buffer, &surface_addon_impl);
+    wlr_addon_init(&surface->node_addon, &wlr_surface->addons, wlr_surface,
+                   &surface_node_addon_impl);
 
     set_buffer_with_surface_state(scene_buffer, wlr_surface);
 
@@ -239,4 +266,14 @@ struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node)
         return NULL;
     }
     return scene_surface->surface;
+}
+
+struct ky_scene_buffer *wlr_scene_buffer_try_from_surface(struct wlr_surface *wlr_surface)
+{
+    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_surface(wlr_surface);
+    if (!scene_surface) {
+        return NULL;
+    }
+
+    return scene_surface->buffer;
 }
