@@ -79,4 +79,12 @@ bool input_method_handle_key(struct keyboard *keyboard, uint32_t time, uint32_t 
 
 bool input_method_handle_modifiers(struct keyboard *keyboard);
 
+/**
+ * selection drag icon
+ */
+
+bool selection_manager_create(struct input_manager *input_manager);
+
+void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
+
 #endif /* _INPUT_P_H_ */

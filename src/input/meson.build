@@ -10,4 +10,5 @@ wlcom_sources += files(
   'libinput.c',
   'monitor.c',
   'seat.c',
+  'selection.c',
 )

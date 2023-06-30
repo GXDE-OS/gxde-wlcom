@@ -4,8 +4,7 @@
 
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
-#include <wlr/types/wlr_data_device.h>
-#include <wlr/types/wlr_primary_selection_v1.h>
+#include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
 #include <wlr/types/wlr_virtual_pointer_v1.h>
 
@@ -285,9 +284,6 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
 
-    wlr_data_device_manager_create(server->display);
-    wlr_primary_selection_v1_device_manager_create(server->display);
-
     input_manager->new_input.notify = handle_new_input;
     wl_signal_add(&server->backend->events.new_input, &input_manager->new_input);
 
@@ -304,6 +300,7 @@ struct input_manager *input_manager_create(struct server *server)
                   &input_manager->new_virtual_keyboard);
 
     input_manager_config_init(input_manager);
+    selection_manager_create(input_manager);
     input_monitor_create(input_manager);
     input_manager->bindings = bindings_create(input_manager);
     input_method_manager_create(input_manager);

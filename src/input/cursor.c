@@ -100,13 +100,7 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
                            inode->data);
     }
 
-#if 0
-    /* update dnd icon if support */
-    if (seat->selection->draging && seat->selection->tree_icon) {
-        ky_scene_node_set_position(&seat->selection->tree_icon->node, cursor->wlr_cursor->x,
-                                    cursor->wlr_cursor->y);
-    }
-#endif
+    selection_handle_cursor_move(seat, cursor->lx, cursor->ly);
 
     if (!cursor->hover.node) {
         /* once no node found under the cursor, restore cursor to default */
