@@ -41,6 +41,8 @@ struct seat {
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
 
+    struct input_method_relay *relay;
+
     struct {
         struct wl_signal destroy;
     } events;

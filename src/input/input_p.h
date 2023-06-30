@@ -2,6 +2,7 @@
 #define _INPUT_P_H_
 
 #include "input/cursor.h"
+#include "input/keyboard.h"
 
 struct input_manager {
     struct server *server;
@@ -64,5 +65,18 @@ struct idle *idle_manager_add_idle(struct seat *seat, bool support_inhibit, uint
                                    void (*destroy_func)(struct idle *idle, void *data), void *data);
 
 void idle_destroy(struct idle *idle);
+
+/**
+ * input method and text input
+ */
+
+bool input_method_manager_create(struct input_manager *input_manager);
+
+void input_method_set_focus(struct seat *seat, struct wlr_surface *wlr_surface);
+
+bool input_method_handle_key(struct keyboard *keyboard, uint32_t time, uint32_t key,
+                             uint32_t state);
+
+bool input_method_handle_modifiers(struct keyboard *keyboard);
 
 #endif /* _INPUT_P_H_ */

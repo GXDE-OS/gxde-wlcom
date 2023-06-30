@@ -172,6 +172,11 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
         return;
     }
 
+    handled = input_method_handle_key(keyboard, time, key, state);
+    if (handled) {
+        return;
+    }
+
     struct wlr_seat *wlr_seat = keyboard->seat->wlr_seat;
     wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
     wlr_seat_keyboard_notify_key(wlr_seat, time, key, state);
@@ -186,6 +191,10 @@ static void keyboard_feed_modifiers(struct keyboard *keyboard,
         modifiers_mask_debug(modifiers->latched, "latched");
         modifiers_mask_debug(modifiers->locked, "locked");
         modifiers_mask_debug(modifiers->group, "group");
+    }
+
+    if (input_method_handle_modifiers(keyboard)) {
+        return;
     }
 
     struct wlr_seat *wlr_seat = keyboard->seat->wlr_seat;

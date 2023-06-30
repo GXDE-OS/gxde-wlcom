@@ -239,5 +239,6 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
     if (kb) {
         wlr_seat_keyboard_notify_enter(wlr_seat, surface, kb->keycodes, kb->num_keycodes,
                                        &kb->modifiers);
+        input_method_set_focus(seat, surface);
     }
 }
