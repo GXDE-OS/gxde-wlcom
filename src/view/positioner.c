@@ -73,7 +73,7 @@ struct place {
     int free_list;
 };
 
-/* pre-alloced per slot in place */
+/* pre-allocated per slot in place */
 struct slot {
     int prev, next;
     int entries;
@@ -151,7 +151,7 @@ static struct slot *place_find_slot(struct place *place, int slot)
     if (slot < 0 || slot > pos->max_slot) {
         return NULL;
     }
-    /* slot is alreay alloced */
+    /* slot is alreay allocated */
     if (place->alloc_number > slot) {
         return &place->slots[slot];
     }
@@ -169,7 +169,7 @@ static struct slot *place_find_slot(struct place *place, int slot)
         return NULL;
     }
 
-    /* mark new alloced entries as free */
+    /* mark new allocated entries as free */
     size_t current = place->alloc_number * sizeof(struct slot);
     memset((char *)data + current, 0, alloc_size - current);
     place->slots = data;
