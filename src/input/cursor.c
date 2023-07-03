@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
@@ -350,7 +351,6 @@ struct cursor *cursor_create(struct seat *seat)
 
     /* xcursor manager per seat for cursor theme */
     cursor->xcursor_manager = wlr_xcursor_manager_create(xcursor_theme, size);
-    wlr_xcursor_manager_load(cursor->xcursor_manager, 1.0);
 
     CURSOR_ADD_SIGNAL(motion);
     CURSOR_ADD_SIGNAL(motion_absolute);
@@ -385,11 +385,8 @@ void cursor_destroy(struct cursor *cursor)
         wl_list_remove(&cursor->focus.destroy.link);
     }
 
-    struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
-    struct wlr_xcursor_manager *xcursor_manager = cursor->xcursor_manager;
-    wlr_xcursor_manager_destroy(xcursor_manager);
-
-    wlr_cursor_destroy(wlr_cursor);
+    wlr_xcursor_manager_destroy(cursor->xcursor_manager);
+    wlr_cursor_destroy(cursor->wlr_cursor);
 
     cursor->seat->cursor = NULL;
     free(cursor);
@@ -415,14 +412,13 @@ static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool
     }
 
     if (name == CURSOR_NONE) {
-        wlr_cursor_set_surface(cursor->wlr_cursor, NULL, 0, 0);
+        wlr_cursor_unset_image(cursor->wlr_cursor);
         return;
     }
 
     cursor->client_requested = false;
     cursor->name = name;
-    wlr_xcursor_manager_set_cursor_image(cursor->xcursor_manager, cursor_image[name],
-                                         cursor->wlr_cursor);
+    wlr_cursor_set_xcursor(cursor->wlr_cursor, cursor->xcursor_manager, cursor_image[name]);
     kywc_log(KYWC_DEBUG, "set cursor to %s", cursor_image[name]);
 }
 
