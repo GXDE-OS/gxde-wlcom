@@ -8,6 +8,7 @@
 
 #include <kywc/log.h>
 
+#include "input/event.h"
 #include "input_p.h"
 #include "output.h"
 #include "scene/surface.h"
@@ -402,6 +403,38 @@ static void handle_input_popup_destroy(struct wl_listener *listener, void *data)
     free(popup);
 }
 
+static bool input_popup_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
+                              uint32_t time, bool first, bool hold, void *data)
+{
+    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    seat_notify_motion(seat, surface, time, x, y, first);
+    return false;
+}
+
+static void input_popup_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
+                              bool pressed, uint32_t time, bool dual, void *data)
+{
+    seat_notify_button(seat, time, button, pressed);
+}
+
+static void input_popup_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data)
+{
+    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    seat_notify_leave(seat, surface);
+}
+
+static const struct input_event_node_impl input_popup_event_node_impl = {
+    .hover = input_popup_hover,
+    .click = input_popup_click,
+    .leave = input_popup_leave,
+};
+
+static struct ky_scene_node *input_popup_get_root(void *data)
+{
+    struct input_popup *popup = data;
+    return popup->surface_node;
+}
+
 static void handle_new_popup_surface(struct wl_listener *listener, void *data)
 {
     struct input_method_relay *relay = wl_container_of(listener, relay, new_popup_surface);
@@ -421,7 +454,9 @@ static void handle_new_popup_surface(struct wl_listener *listener, void *data)
     struct ky_scene_surface *scene_surface =
         ky_scene_surface_create(layer->tree, popup_surface->surface);
     popup->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
-    ky_scene_node_set_enabled(popup->surface_node, false);
+    input_event_node_create(popup->surface_node, &input_popup_event_node_impl, input_popup_get_root,
+                            popup);
+    ky_scene_node_set_enabled(popup->surface_node, popup_surface->surface->mapped);
 
     popup->surface_map.notify = handle_input_surface_map;
     wl_signal_add(&popup->popup_surface->surface->events.map, &popup->surface_map);
