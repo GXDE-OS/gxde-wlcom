@@ -38,6 +38,7 @@ struct kde_plasma_surface {
 
     int x, y;
     enum org_kde_plasma_surface_role role;
+    bool skip_taskbar;
 };
 
 static void handle_destroy(struct wl_client *client, struct wl_resource *resource)
@@ -124,7 +125,12 @@ static void handle_set_panel_behavior(struct wl_client *client, struct wl_resour
 static void handle_set_skip_taskbar(struct wl_client *client, struct wl_resource *resource,
                                     uint32_t skip)
 {
-    // Not implemented yet
+    struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    surface->skip_taskbar = skip;
+
+    if (surface->view) {
+        surface->view->base.skip_taskbar = surface->skip_taskbar;
+    }
 }
 
 static void handle_panel_auto_hide_hide(struct wl_client *client, struct wl_resource *resource)
@@ -314,6 +320,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
 
     /* get view from surface */
     surface->view = surface->wlr_surface->data;
+    surface->view->base.skip_taskbar = surface->skip_taskbar;
     kde_plasma_surface_apply_role(surface);
 
     /* apply set_position called beform map */
