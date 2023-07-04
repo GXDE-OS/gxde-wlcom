@@ -499,6 +499,10 @@ static void view_set_activated(struct view *view, bool activated)
         view_reparent_fullscreen(view, activated);
     }
 
+    if (kywc_view->minimized && activated) {
+        kywc_view_set_minimized(kywc_view, false);
+    }
+
     kywc_view->activated = activated;
     view->pending.action |= VIEW_ACTION_ACTIVATE;
 
@@ -537,8 +541,10 @@ void view_topmost_activate(struct workspace *workspace)
 
 static void handle_activated_view_minimized(struct wl_listener *listener, void *data)
 {
-    /* listener will removed in kywc_view_activate */
-    view_topmost_activate(workspace_manager_get_current());
+    if (view_manager->activated.view->base.minimized) {
+        /* listener will removed in kywc_view_activate */
+        view_topmost_activate(workspace_manager_get_current());
+    }
 }
 
 static void handle_activated_view_destroy(struct wl_listener *listener, void *data)
