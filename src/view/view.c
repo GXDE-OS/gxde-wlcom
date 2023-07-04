@@ -519,7 +519,7 @@ void view_topmost_activate(struct workspace *workspace)
     struct view *view;
     /* find topmost enabled(mapped and not minimized) view and activate it */
     wl_list_for_each(view, &workspace->views, link) {
-        if (!view->base.mapped || view->base.minimized) {
+        if (!view->base.activatable || !view->base.mapped || view->base.minimized) {
             continue;
         }
         kywc_view_activate(&view->base);
@@ -561,7 +561,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 {
     struct view *view = view_from_kywc_view(kywc_view);
     struct view *last = view_manager->activated.view;
-    if (!view_is_activatable(view) || last == view) {
+    if (!view->base.activatable || last == view) {
         return;
     }
 
@@ -767,7 +767,6 @@ void view_helper_move(struct view *view, int x, int y)
     view_update_output(view);
 
     if (changed) {
-        kywc_log(KYWC_INFO, "***%s: %s move to (%d, %d)", __func__, view->base.app_id, x, y);
         ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
         wl_signal_emit_mutable(&view->base.events.position, NULL);
     }
@@ -783,12 +782,6 @@ bool view_is_resizable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
     return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
-}
-
-bool view_is_activatable(struct view *view)
-{
-    struct kywc_view *kywc_view = &view->base;
-    return kywc_view->activatable;
 }
 
 void view_update_size(struct view *view, int width, int height, int min_width, int min_height,

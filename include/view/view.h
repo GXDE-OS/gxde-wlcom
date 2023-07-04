@@ -152,6 +152,4 @@ bool view_is_moveable(struct view *view);
 
 bool view_is_resizable(struct view *view);
 
-bool view_is_activatable(struct view *view);
-
 #endif /* __VIEW_H_ */
