@@ -132,6 +132,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->closeable = true;
     kywc_view->movable = true;
     kywc_view->resizable = true;
+    kywc_view->activatable = true;
 
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
@@ -553,7 +554,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 {
     struct view *view = view_from_kywc_view(kywc_view);
     struct view *last = view_manager->activated.view;
-    if (last == view) {
+    if (!view_is_activatable(view) || last == view) {
         return;
     }
 
@@ -768,15 +769,19 @@ void view_helper_move(struct view *view, int x, int y)
 bool view_is_moveable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-
     return kywc_view->movable && !kywc_view->fullscreen;
 }
 
 bool view_is_resizable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-
     return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
+}
+
+bool view_is_activatable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    return kywc_view->activatable;
 }
 
 void view_update_size(struct view *view, int width, int height, int min_width, int min_height,

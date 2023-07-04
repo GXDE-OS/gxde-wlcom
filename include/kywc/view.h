@@ -62,7 +62,7 @@ struct kywc_view {
 
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
-    bool closeable, movable, resizable;
+    bool closeable, movable, resizable, activatable;
 
     /* app_id: class when xwayland shell */
     const char *title, *app_id;

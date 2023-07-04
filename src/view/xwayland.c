@@ -733,6 +733,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
         if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
             set_focus = false;
+            xwayland_view->view.base.activatable = false;
 
             /* reparent to dock layer and remove from workspace */
             struct view_layer *layer = view_manager_get_layer(LAYER_DOCK, false);

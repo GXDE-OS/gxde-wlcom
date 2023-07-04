@@ -95,6 +95,7 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
 
     if (surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL) {
         view_set_workspace(surface->view, NULL);
+        surface->view->base.activatable = false;
     }
 
     ky_scene_node_reparent(node, layer->tree);
