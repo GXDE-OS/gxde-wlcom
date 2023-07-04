@@ -76,8 +76,6 @@ enum state {
 static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum state state,
                                         bool flag)
 {
-    kywc_log(KYWC_INFO, "++++%s: state=%d flag=%d", __func__, state, flag);
-
     switch (state) {
     case STATE_ACTIVE:
         assert(flag);
@@ -139,7 +137,6 @@ static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum s
 static void handle_set_state(struct wl_client *client, struct wl_resource *resource, uint32_t flags,
                              uint32_t state)
 {
-    kywc_log(KYWC_INFO, "++++%s: state=%d flag=%d", __func__, state, flags);
     struct kde_plasma_window *window = wl_resource_get_user_data(resource);
     for (int i = 0; i < STATE_LAST; i++) {
         if ((state >> i) & 0x1) {
