@@ -82,4 +82,14 @@ static __attribute__((unused)) inline bool kde_plasma_shell_create(struct server
 }
 #endif
 
+#if HAVE_KDE_PLASMA_WINDOW_MANAGEMENT
+bool kde_plasma_window_management_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool
+kde_plasma_window_management_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _VIEW_P_H_ */

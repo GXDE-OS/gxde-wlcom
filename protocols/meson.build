@@ -40,6 +40,12 @@ if have_kde_plasma_shell
   }
 endif
 
+if have_kde_plasma_window_management
+  protocols += {
+    'org-kde-plasma-window-management': 'plasma-window-management.xml',
+  }
+endif
+
 protos_src = []
 
 protocols_code = {}

@@ -37,3 +37,9 @@ if have_kde_plasma_shell
     'kde_plasma_shell.c',
   )
 endif
+
+if have_kde_plasma_window_management
+  wlcom_sources += files(
+    'kde_plasma_window.c',
+  )
+endif

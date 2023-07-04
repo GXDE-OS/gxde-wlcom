@@ -46,6 +46,7 @@ struct view_manager *view_manager_create(struct server *server)
     wlr_layer_shell_manager_create(server);
     wlr_foreign_toplevel_manager_create(server);
     kde_plasma_shell_create(server);
+    kde_plasma_window_management_create(server);
 
     return view_manager;
 }
