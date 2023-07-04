@@ -997,6 +997,7 @@ bool xwayland_server_create(struct server *server)
 
     /* set xwayland cursor, use the default seat0 */
     struct seat *seat = input_manager_get_default_seat();
+    wlr_xcursor_manager_load(seat->cursor->xcursor_manager, 1.0);
     struct wlr_xcursor *xcursor =
         wlr_xcursor_manager_get_xcursor(seat->cursor->xcursor_manager, "left_ptr", 1);
     if (xcursor) {
