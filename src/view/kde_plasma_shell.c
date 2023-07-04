@@ -68,10 +68,11 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
 static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
 {
     struct ky_scene_node *node = ky_scene_node_from_tree(surface->view->tree);
-    struct view_layer *layer = workspace_layer(surface->view->workspace, LAYER_NORMAL);
+    struct view_layer *layer = NULL;
 
     switch (surface->role) {
     case ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL:
+        layer = view_manager_get_layer(LAYER_NORMAL, true);
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP:
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
@@ -97,6 +98,9 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
     if (surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL) {
         view_set_workspace(surface->view, NULL);
         surface->view->base.activatable = false;
+    } else {
+        view_set_workspace(surface->view, workspace_manager_get_current());
+        surface->view->base.activatable = true;
     }
 
     ky_scene_node_reparent(node, layer->tree);
