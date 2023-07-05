@@ -51,12 +51,12 @@ struct cursor {
     struct wl_signal touch_cancel;
     struct wl_signal touch_frame;
 
-    struct wl_listener tool_axis;
-    struct wl_listener tool_proximity;
-    struct wl_listener tool_tip;
-    struct wl_listener tool_button;
-    bool tool_tip_simulation_pointer;
-    bool tool_button_simulation_pointer;
+    struct wl_listener tablet_tool_axis;
+    struct wl_listener tablet_tool_proximity;
+    struct wl_listener tablet_tool_tip;
+    struct wl_listener tablet_tool_button;
+    bool tablet_tool_tip_simulation_pointer;
+    bool tablet_tool_button_simulation_pointer;
 
     struct wl_listener request_set_cursor;
     bool client_requested;

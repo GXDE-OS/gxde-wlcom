@@ -125,10 +125,21 @@ void seat_add_input(struct seat *seat, struct input *input)
     input->seat = seat;
     wl_list_insert(&seat->inputs, &input->seat_link);
 
-    if (input->prop.type == WLR_INPUT_DEVICE_POINTER) {
+    switch (input->prop.type) {
+    case WLR_INPUT_DEVICE_TABLET_TOOL:
+        /* fallthrough: add tablet tool to cursor */
+    case WLR_INPUT_DEVICE_POINTER:
         curosr_add_input(seat, input);
-    } else if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
+        break;
+    case WLR_INPUT_DEVICE_KEYBOARD:
         keyboard_add_input(seat, input);
+        break;
+    case WLR_INPUT_DEVICE_TABLET_PAD:
+        break;
+    case WLR_INPUT_DEVICE_TOUCH:
+        break;
+    case WLR_INPUT_DEVICE_SWITCH:
+        break;
     }
 
     seat_update_capabilities(seat);
@@ -138,10 +149,20 @@ void seat_remove_input(struct input *input)
 {
     struct seat *seat = input->seat;
 
-    if (input->prop.type == WLR_INPUT_DEVICE_POINTER) {
+    switch (input->prop.type) {
+    case WLR_INPUT_DEVICE_TABLET_TOOL:
+    case WLR_INPUT_DEVICE_POINTER:
         cursor_remove_input(input);
-    } else if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
+        break;
+    case WLR_INPUT_DEVICE_KEYBOARD:
         keyboard_remove_input(input);
+        break;
+    case WLR_INPUT_DEVICE_TABLET_PAD:
+        break;
+    case WLR_INPUT_DEVICE_TOUCH:
+        break;
+    case WLR_INPUT_DEVICE_SWITCH:
+        break;
     }
 
     wl_list_remove(&input->seat_link);

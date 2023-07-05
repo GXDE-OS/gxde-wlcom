@@ -6,6 +6,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
 #include <kywc/log.h>
@@ -113,15 +114,15 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     }
 }
 
-static void cursor_feed_motion(struct cursor *cursor, double lx, double ly, uint32_t time)
+static void cursor_feed_motion(struct cursor *cursor, uint32_t time)
 {
-    cursor->lx = lx;
-    cursor->ly = ly;
+    cursor->lx = cursor->wlr_cursor->x;
+    cursor->ly = cursor->wlr_cursor->y;
     // kywc_log(KYWC_DEBUG, "cursor move to (%f, %f)", cursor->lx, cursor->ly);
 
     struct seat *seat = cursor->seat;
     if (seat->pointer_grab && seat->pointer_grab->interface->motion &&
-        seat->pointer_grab->interface->motion(seat->pointer_grab, time, lx, ly)) {
+        seat->pointer_grab->interface->motion(seat->pointer_grab, time, cursor->lx, cursor->ly)) {
         return;
     }
 
@@ -242,12 +243,11 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
 
     idle_manager_notify_activity(seat);
     wlr_cursor_move(wlr_cursor, &event->pointer->base, event->delta_x, event->delta_y);
-    cursor_feed_motion(cursor, wlr_cursor->x, wlr_cursor->y, event->time_msec);
+    cursor_feed_motion(cursor, event->time_msec);
 }
 
 static void cursor_handle_motion_absolute(struct wl_listener *listener, void *data)
 {
-
     struct cursor *cursor = wl_container_of(listener, cursor, motion_absolute);
     struct wlr_cursor *wlr_cursor = cursor->wlr_cursor;
     struct wlr_pointer_motion_absolute_event *event = data;
@@ -255,7 +255,7 @@ static void cursor_handle_motion_absolute(struct wl_listener *listener, void *da
 
     idle_manager_notify_activity(seat);
     wlr_cursor_warp_absolute(wlr_cursor, &event->pointer->base, event->x, event->y);
-    cursor_feed_motion(cursor, wlr_cursor->x, wlr_cursor->y, event->time_msec);
+    cursor_feed_motion(cursor, event->time_msec);
 }
 
 static void cursor_handle_button(struct wl_listener *listener, void *data)
@@ -272,11 +272,9 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, axis);
     struct wlr_pointer_axis_event *event = data;
-
     struct seat *seat = cursor->seat;
 
     idle_manager_notify_activity(seat);
-
     if (seat->pointer_grab && seat->pointer_grab->interface->axis &&
         seat->pointer_grab->interface->axis(seat->pointer_grab, event->time_msec,
                                             event->orientation == WLR_AXIS_ORIENTATION_VERTICAL,
@@ -297,6 +295,83 @@ static void cursor_handle_frame(struct wl_listener *listener, void *data)
     /* Notify the client with pointer focus of the frame event. */
     struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;
     wlr_seat_pointer_notify_frame(wlr_seat);
+}
+
+static void handle_tablet_tool_position(struct cursor *cursor, struct wlr_tablet *tablet,
+                                        struct wlr_tablet_tool *tool, bool change_x, bool change_y,
+                                        double x, double y, double dx, double dy, int32_t time_msec)
+{
+    if (!change_x && !change_y) {
+        return;
+    }
+
+    switch (tool->type) {
+    case WLR_TABLET_TOOL_TYPE_LENS:
+    case WLR_TABLET_TOOL_TYPE_MOUSE:
+        wlr_cursor_move(cursor->wlr_cursor, &tablet->base, dx, dy);
+        break;
+    default:
+        wlr_cursor_warp_absolute(cursor->wlr_cursor, &tablet->base, change_x ? x : NAN,
+                                 change_y ? y : NAN);
+        break;
+    }
+
+    cursor_feed_motion(cursor, time_msec);
+    /* point every motion send frame event, so it need to be added */
+    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+}
+
+static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_axis);
+    struct wlr_tablet_tool_axis_event *event = data;
+    struct seat *seat = cursor->seat;
+
+    idle_manager_notify_activity(seat);
+
+    // TODO: check proximity in
+    handle_tablet_tool_position(cursor, event->tablet, event->tool,
+                                event->updated_axes & WLR_TABLET_TOOL_AXIS_X,
+                                event->updated_axes & WLR_TABLET_TOOL_AXIS_Y, event->x, event->y,
+                                event->dx, event->dy, event->time_msec);
+}
+
+static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_proximity);
+    struct wlr_tablet_tool_proximity_event *event = data;
+    struct seat *seat = cursor->seat;
+
+    idle_manager_notify_activity(seat);
+
+    if (event->state == WLR_TABLET_TOOL_PROXIMITY_OUT) {
+        return;
+    }
+
+    handle_tablet_tool_position(cursor, event->tablet, event->tool, true, true, event->x, event->y,
+                                0, 0, event->time_msec);
+}
+
+static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_tip);
+    struct wlr_tablet_tool_tip_event *event = data;
+    struct seat *seat = cursor->seat;
+
+    idle_manager_notify_activity(seat);
+    cursor_feed_button(cursor, BTN_LEFT, event->state == WLR_TABLET_TOOL_TIP_DOWN,
+                       event->time_msec);
+}
+
+static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_button);
+    struct wlr_tablet_tool_button_event *event = data;
+    struct seat *seat = cursor->seat;
+
+    idle_manager_notify_activity(seat);
+    // TODO: check proximity in
+    cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec);
 }
 
 static void cursor_handle_request_set_cursor(struct wl_listener *listener, void *data)
@@ -358,6 +433,11 @@ struct cursor *cursor_create(struct seat *seat)
     CURSOR_ADD_SIGNAL(axis);
     CURSOR_ADD_SIGNAL(frame);
 
+    CURSOR_ADD_SIGNAL(tablet_tool_axis);
+    CURSOR_ADD_SIGNAL(tablet_tool_proximity);
+    CURSOR_ADD_SIGNAL(tablet_tool_tip);
+    CURSOR_ADD_SIGNAL(tablet_tool_button);
+
     cursor->request_set_cursor.notify = cursor_handle_request_set_cursor;
     wl_signal_add(&seat->wlr_seat->events.request_set_cursor, &cursor->request_set_cursor);
 
@@ -377,6 +457,10 @@ void cursor_destroy(struct cursor *cursor)
     wl_list_remove(&cursor->axis.link);
     wl_list_remove(&cursor->frame.link);
     wl_list_remove(&cursor->request_set_cursor.link);
+    wl_list_remove(&cursor->tablet_tool_axis.link);
+    wl_list_remove(&cursor->tablet_tool_proximity.link);
+    wl_list_remove(&cursor->tablet_tool_tip.link);
+    wl_list_remove(&cursor->tablet_tool_button.link);
 
     if (cursor->hover.node) {
         wl_list_remove(&cursor->hover.destroy.link);
