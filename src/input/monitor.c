@@ -39,7 +39,7 @@ void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kyw
     geo.x += geo.width / 2;
     geo.y += geo.height / 2;
 
-    cursor_move(cursor, geo.x, geo.y, false);
+    cursor_move(cursor, NULL, geo.x, geo.y, false, false);
     // kywc_log(KYWC_INFO, "move %s cursor to %s conter", cursor->seat->name, kywc_output->name);
 }
 
@@ -202,7 +202,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
         if (input_monitor->primary) {
             cursor_move_to_output_center(seat->cursor, input_monitor->primary);
         } else {
-            cursor_move(seat->cursor, 0, 0, true);
+            cursor_move(seat->cursor, NULL, 0, 0, true, false);
         }
     }
 
