@@ -126,17 +126,15 @@ void seat_add_input(struct seat *seat, struct input *input)
     wl_list_insert(&seat->inputs, &input->seat_link);
 
     switch (input->prop.type) {
-    case WLR_INPUT_DEVICE_TABLET_TOOL:
-        /* fallthrough: add tablet tool to cursor */
     case WLR_INPUT_DEVICE_POINTER:
+    case WLR_INPUT_DEVICE_TOUCH:
+    case WLR_INPUT_DEVICE_TABLET_TOOL:
         curosr_add_input(seat, input);
         break;
     case WLR_INPUT_DEVICE_KEYBOARD:
         keyboard_add_input(seat, input);
         break;
     case WLR_INPUT_DEVICE_TABLET_PAD:
-        break;
-    case WLR_INPUT_DEVICE_TOUCH:
         break;
     case WLR_INPUT_DEVICE_SWITCH:
         break;
@@ -150,16 +148,15 @@ void seat_remove_input(struct input *input)
     struct seat *seat = input->seat;
 
     switch (input->prop.type) {
-    case WLR_INPUT_DEVICE_TABLET_TOOL:
     case WLR_INPUT_DEVICE_POINTER:
+    case WLR_INPUT_DEVICE_TOUCH:
+    case WLR_INPUT_DEVICE_TABLET_TOOL:
         cursor_remove_input(input);
         break;
     case WLR_INPUT_DEVICE_KEYBOARD:
         keyboard_remove_input(input);
         break;
     case WLR_INPUT_DEVICE_TABLET_PAD:
-        break;
-    case WLR_INPUT_DEVICE_TOUCH:
         break;
     case WLR_INPUT_DEVICE_SWITCH:
         break;

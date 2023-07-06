@@ -7,6 +7,7 @@
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_tablet_tool.h>
+#include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
 #include <kywc/log.h>
@@ -234,8 +235,7 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, motion);
     struct wlr_pointer_motion_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y, true, false);
     cursor_feed_motion(cursor, event->time_msec);
@@ -245,8 +245,7 @@ static void cursor_handle_motion_absolute(struct wl_listener *listener, void *da
 {
     struct cursor *cursor = wl_container_of(listener, cursor, motion_absolute);
     struct wlr_pointer_motion_absolute_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_move(cursor, &event->pointer->base, event->x, event->y, false, true);
     cursor_feed_motion(cursor, event->time_msec);
@@ -256,8 +255,7 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, button);
     struct wlr_pointer_button_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec);
 }
@@ -294,8 +292,7 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
 {
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_axis);
     struct wlr_tablet_tool_axis_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     bool change_x = event->updated_axes & WLR_TABLET_TOOL_AXIS_X;
     bool change_y = event->updated_axes & WLR_TABLET_TOOL_AXIS_Y;
@@ -321,8 +318,7 @@ static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, vo
 {
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_proximity);
     struct wlr_tablet_tool_proximity_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_move(cursor, &event->tablet->base, event->x, event->y, false, true);
 
@@ -338,8 +334,7 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
 {
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_tip);
     struct wlr_tablet_tool_tip_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_feed_button(cursor, BTN_LEFT, event->state == WLR_TABLET_TOOL_TIP_DOWN,
                        event->time_msec);
@@ -350,10 +345,54 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
 {
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_button);
     struct wlr_tablet_tool_button_event *event = data;
-    struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
+    idle_manager_notify_activity(cursor->seat);
 
     cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec);
+    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+}
+
+static void cursor_handle_touch_up(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, touch_up);
+    struct wlr_touch_up_event *event = data;
+    idle_manager_notify_activity(cursor->seat);
+
+    cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+}
+
+static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, touch_down);
+    struct wlr_touch_down_event *event = data;
+    idle_manager_notify_activity(cursor->seat);
+
+    cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
+    cursor_feed_motion(cursor, event->time_msec);
+    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec);
+}
+
+static void cursor_handle_touch_motion(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, touch_motion);
+    struct wlr_touch_motion_event *event = data;
+    idle_manager_notify_activity(cursor->seat);
+
+    cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
+    cursor_feed_motion(cursor, event->time_msec);
+}
+
+static void cursor_handle_touch_cancel(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, touch_cancel);
+    struct wlr_touch_cancel_event *event = data;
+    idle_manager_notify_activity(cursor->seat);
+
+    cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+}
+
+static void cursor_handle_touch_frame(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, touch_frame);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 }
 
@@ -416,6 +455,12 @@ struct cursor *cursor_create(struct seat *seat)
     CURSOR_ADD_SIGNAL(axis);
     CURSOR_ADD_SIGNAL(frame);
 
+    CURSOR_ADD_SIGNAL(touch_up);
+    CURSOR_ADD_SIGNAL(touch_down);
+    CURSOR_ADD_SIGNAL(touch_motion);
+    CURSOR_ADD_SIGNAL(touch_cancel);
+    CURSOR_ADD_SIGNAL(touch_frame);
+
     CURSOR_ADD_SIGNAL(tablet_tool_axis);
     CURSOR_ADD_SIGNAL(tablet_tool_proximity);
     CURSOR_ADD_SIGNAL(tablet_tool_tip);
@@ -440,6 +485,11 @@ void cursor_destroy(struct cursor *cursor)
     wl_list_remove(&cursor->axis.link);
     wl_list_remove(&cursor->frame.link);
     wl_list_remove(&cursor->request_set_cursor.link);
+    wl_list_remove(&cursor->touch_up.link);
+    wl_list_remove(&cursor->touch_down.link);
+    wl_list_remove(&cursor->touch_motion.link);
+    wl_list_remove(&cursor->touch_cancel.link);
+    wl_list_remove(&cursor->touch_frame.link);
     wl_list_remove(&cursor->tablet_tool_axis.link);
     wl_list_remove(&cursor->tablet_tool_proximity.link);
     wl_list_remove(&cursor->tablet_tool_tip.link);

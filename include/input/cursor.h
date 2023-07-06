@@ -45,11 +45,11 @@ struct cursor {
     struct wl_listener hold_begin;
     struct wl_listener hold_end;
 
-    struct wl_signal touch_up;
-    struct wl_signal touch_down;
-    struct wl_signal touch_motion;
-    struct wl_signal touch_cancel;
-    struct wl_signal touch_frame;
+    struct wl_listener touch_up;
+    struct wl_listener touch_down;
+    struct wl_listener touch_motion;
+    struct wl_listener touch_cancel;
+    struct wl_listener touch_frame;
 
     struct wl_listener tablet_tool_axis;
     struct wl_listener tablet_tool_proximity;
