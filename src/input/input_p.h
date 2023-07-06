@@ -10,6 +10,10 @@ struct input_manager {
     struct wl_list seats;
     struct wl_list inputs;
 
+    struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard;
+    struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
+    struct wlr_pointer_gestures_v1 *pointer_gestures;
+
     struct {
         struct wl_signal new_input;
         struct wl_signal new_seat;

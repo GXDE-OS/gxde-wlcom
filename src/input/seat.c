@@ -36,6 +36,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->wlr_seat->data = seat;
     seat->scene = input_manager->server->scene;
     seat->layout = input_manager->server->layout;
+    seat->pointer_gestures = input_manager->pointer_gestures;
 
     seat->destroy.notify = handle_seat_destroy;
     wl_signal_add(&seat->wlr_seat->events.destroy, &seat->destroy);
@@ -48,7 +49,6 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->cursor = cursor_create(seat);
 
     wl_list_insert(&input_manager->seats, &seat->link);
-
     kywc_log(KYWC_DEBUG, "seat(%s) is created", seat->name);
     wl_signal_emit_mutable(&input_manager->events.new_seat, seat);
 

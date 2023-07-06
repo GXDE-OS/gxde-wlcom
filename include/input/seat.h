@@ -40,6 +40,7 @@ struct seat {
 
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
+    struct wlr_pointer_gestures_v1 *pointer_gestures;
 
     struct input_method_relay *relay;
     struct selection *selection;
