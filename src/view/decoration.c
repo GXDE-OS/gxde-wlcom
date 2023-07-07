@@ -39,7 +39,7 @@ static void decoration_handle_surface_map(struct wl_listener *listener, void *da
 
     wl_list_remove(&deco->surface_map.link);
     wl_list_init(&deco->surface_map.link);
-    deco->view = deco->surface->data;
+    deco->view = view_try_from_wlr_surface(deco->surface);
 
     view_set_decoration(deco->view, deco->should_use_ssd);
 }
@@ -59,7 +59,7 @@ static struct decoration *decoration_from_surface(struct wlr_surface *surface)
     }
 
     deco->surface = surface;
-    deco->view = surface->data;
+    deco->view = view_try_from_wlr_surface(surface);
 
     /* if xdg_shell new_surface is not emit */
     if (!deco->view) {

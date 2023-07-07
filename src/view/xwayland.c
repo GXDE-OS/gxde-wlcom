@@ -682,7 +682,6 @@ static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view,
         return;
     }
 
-
     if (!had_area) {
         xwayland_view->output_update_usable_area.notify =
             xwayland_view_handle_output_update_usable_area;
@@ -767,6 +766,7 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
     xwayland_view->view.surface = wlr_xwayland_surface->surface;
+    wlr_xwayland_surface->surface->data = xwayland_view;
 
     /* create scene tree here as we get surface here */
     xwayland_view->surface_tree =
@@ -785,6 +785,7 @@ static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, dissociate);
 
+    xwayland_view->wlr_xwayland_surface->surface->data = NULL;
     xwayland_view->view.surface = NULL;
     ky_scene_node_destroy(ky_scene_node_from_tree(xwayland_view->surface_tree));
 

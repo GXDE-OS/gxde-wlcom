@@ -117,6 +117,8 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
 
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);
 
+struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface);
+
 void view_init(struct view *view, const struct view_impl *impl, void *data);
 
 void view_map(struct view *view, bool focus);

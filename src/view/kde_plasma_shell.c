@@ -323,7 +323,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     wl_list_init(&surface->surface_map.link);
 
     /* get view from surface */
-    surface->view = surface->wlr_surface->data;
+    surface->view = view_try_from_wlr_surface(surface->wlr_surface);
     surface->view->base.skip_taskbar = surface->skip_taskbar;
     kde_plasma_surface_apply_role(surface);
 

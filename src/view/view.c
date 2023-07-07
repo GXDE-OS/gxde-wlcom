@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include <wlr/types/wlr_compositor.h>
+
 #include <kywc/log.h>
 
 #include "input/seat.h"
@@ -443,6 +445,11 @@ struct view *view_from_kywc_view(struct kywc_view *kywc_view)
 {
     struct view *view = wl_container_of(kywc_view, view, base);
     return view;
+}
+
+struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface)
+{
+    return wlr_surface->data;
 }
 
 void kywc_view_close(struct kywc_view *kywc_view)
