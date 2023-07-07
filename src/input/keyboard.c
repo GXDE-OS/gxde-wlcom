@@ -166,8 +166,15 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
 {
     modifiers_mask_debug(modifiers, "modifiers");
 
-    bool handled =
-        keyboard_handle_bindings(keyboard, key, state == WL_KEYBOARD_KEY_STATE_PRESSED, modifiers);
+    struct seat *seat = keyboard->seat;
+    bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+
+    if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
+        seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed)) {
+        return;
+    }
+
+    bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers);
     if (handled) {
         return;
     }
@@ -177,9 +184,8 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
         return;
     }
 
-    struct wlr_seat *wlr_seat = keyboard->seat->wlr_seat;
-    wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
-    wlr_seat_keyboard_notify_key(wlr_seat, time, key, state);
+    wlr_seat_set_keyboard(seat->wlr_seat, keyboard->wlr_keyboard);
+    wlr_seat_keyboard_notify_key(seat->wlr_seat, time, key, state);
 }
 
 static void keyboard_feed_modifiers(struct keyboard *keyboard,

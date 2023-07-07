@@ -206,6 +206,23 @@ bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_
     return true;
 }
 
+bool seat_set_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab)
+{
+    if (seat->keyboard_grab == keyboard_grab) {
+        return true;
+    }
+
+    if (seat->keyboard_grab && keyboard_grab) {
+        kywc_log(KYWC_WARN, "%s is alreay has a keyboard grab", seat->name);
+        return false;
+        // TODO: or replace current grab ?
+        // seat->keyboard_grab->interface->cancel(seat->keyboard_grab);
+    }
+
+    seat->keyboard_grab = keyboard_grab;
+    return true;
+}
+
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
                         double sy, bool first_enter)
 {

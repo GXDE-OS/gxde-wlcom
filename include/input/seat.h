@@ -5,6 +5,7 @@
 #include "scene/scene.h"
 
 struct seat_pointer_grab;
+struct seat_keyboard_grab;
 
 struct seat_pointer_grab_interface {
     bool (*motion)(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly);
@@ -19,8 +20,16 @@ struct seat_pointer_grab {
     void *data;
 };
 
-// TODO: interal grab for compositor: pointer_grab keyboard_grab touch_grab
-// struct seat_keyboard_grab *keyboard_grab;
+struct seat_keyboard_grab_interface {
+    bool (*key)(struct seat_keyboard_grab *grab, uint32_t time, uint32_t key, bool pressed);
+    void (*cancel)(struct seat_keyboard_grab *grab);
+};
+
+struct seat_keyboard_grab {
+    const struct seat_keyboard_grab_interface *interface;
+    struct seat *seat;
+    void *data;
+};
 
 struct seat {
     struct wlr_seat *wlr_seat;
@@ -36,7 +45,9 @@ struct seat {
     struct cursor *cursor;
     struct wl_list keyboards;
 
+    /* internal grabs */
     struct seat_pointer_grab *pointer_grab;
+    struct seat_keyboard_grab *keyboard_grab;
 
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
@@ -65,6 +76,8 @@ struct seat *seat_from_resource(struct wl_resource *resource);
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
 
 bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
+
+bool seat_set_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab);
 
 struct wlr_surface;
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,

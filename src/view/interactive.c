@@ -1,3 +1,4 @@
+#include <linux/input-event-codes.h>
 #include <stdlib.h>
 
 #include "input/cursor.h"
@@ -9,6 +10,8 @@
 #define VIEW_BOTTOM_GAP 100
 #define VIEW_MIN_WIDTH 200
 #define VIEW_MIN_HEIGHT 100
+#define VIEW_MOVE_STEP 10
+#define VIEW_RESIZE_STEP 10
 
 enum interactive_mode {
     INTERACTIVE_MODE_NONE = 0,
@@ -18,6 +21,7 @@ enum interactive_mode {
 
 struct interactive_grab {
     struct seat_pointer_grab pointer_grab;
+    struct seat_keyboard_grab keyboard_grab;
 
     struct seat *seat;
     // struct wl_listener *seat_destroy;
@@ -42,6 +46,7 @@ static void interactive_grab_destroy(struct interactive_grab *grab)
 {
     wl_list_remove(&grab->view_unmap.link);
     seat_set_pointer_grab(grab->seat, NULL);
+    seat_set_keyboard_grab(grab->seat, NULL);
     free(grab);
 }
 
@@ -248,9 +253,6 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
 static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
                                 uint32_t button, bool pressed)
 {
-    kywc_log(KYWC_DEBUG, "grab %p button %d %s", pointer_grab, button,
-             pressed ? "pressed" : "released");
-
     struct interactive_grab *grab = pointer_grab->data;
 
     if (!pressed) {
@@ -280,6 +282,46 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
     .cancel = pointer_grab_cancel,
 };
 
+static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
+                              bool pressed)
+{
+    struct interactive_grab *grab = keyboard_grab->data;
+    kywc_log(KYWC_INFO, "keyboard grab get key %d pressed %d", key, pressed);
+    if (!pressed) {
+        return true;
+    }
+
+    int step = grab->mode == INTERACTIVE_MODE_MOVE ? VIEW_MOVE_STEP : VIEW_RESIZE_STEP;
+    int dx = key == KEY_RIGHT ? step : (key == KEY_LEFT ? -step : 0);
+    int dy = key == KEY_DOWN ? step : (key == KEY_UP ? -step : 0);
+
+    /* restore to the orig geometry */
+    if (key == KEY_ESC) {
+        kywc_view_resize(&grab->view->base, &grab->geo);
+        interactive_done(grab);
+        return false;
+    }
+    if (key == KEY_ENTER) {
+        return false;
+    }
+
+    struct cursor *cursor = grab->seat->cursor;
+    cursor_move(cursor, NULL, dx, dy, true, false);
+    pointer_grab_motion(&grab->pointer_grab, time, cursor->lx, cursor->ly);
+    return true;
+}
+
+static void keyboard_grab_cancel(struct seat_keyboard_grab *keyboard_grab)
+{
+    struct interactive_grab *grab = keyboard_grab->data;
+    interactive_grab_destroy(grab);
+}
+
+static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
+    .key = keyboard_grab_key,
+    .cancel = keyboard_grab_cancel,
+};
+
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct interactive_grab *grab = wl_container_of(listener, grab, view_unmap);
@@ -295,13 +337,14 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
         return;
     }
 
-    grab->pointer_grab.interface = &pointer_grab_impl;
-    grab->pointer_grab.seat = seat;
-    grab->pointer_grab.data = grab;
+    grab->pointer_grab = (struct seat_pointer_grab){ &pointer_grab_impl, seat, grab };
     if (!seat_set_pointer_grab(seat, &grab->pointer_grab)) {
         free(grab);
         return;
     }
+    // XXX: check ?
+    grab->keyboard_grab = (struct seat_keyboard_grab){ &keyboard_grab_impl, seat, grab };
+    seat_set_keyboard_grab(seat, &grab->keyboard_grab);
 
     grab->seat = seat;
     grab->mode = mode;
