@@ -280,6 +280,12 @@ static struct ky_scene_node *layer_shell_get_root(void *data)
     return ky_scene_node_from_tree(layer_shell->tree);
 }
 
+static struct wlr_surface *layer_shell_get_toplevel(void *data)
+{
+    struct layer_shell *layer_shell = data;
+    return layer_shell->layer_surface->surface;
+}
+
 static const struct input_event_node_impl layer_shell_event_node_impl = {
     .hover = layer_shell_hover,
     .click = layer_shell_click,
@@ -314,7 +320,8 @@ static void handle_new_layer_surface(struct wl_listener *listener, void *data)
     ky_scene_subsurface_tree_create(layer_shell->tree, layer_surface->surface);
 
     input_event_node_create(ky_scene_node_from_tree(layer_shell->tree),
-                            &layer_shell_event_node_impl, layer_shell_get_root, layer_shell);
+                            &layer_shell_event_node_impl, layer_shell_get_root,
+                            layer_shell_get_toplevel, layer_shell);
 
     layer_shell->commit.notify = layer_shell_handle_commit;
     wl_signal_add(&layer_surface->surface->events.commit, &layer_shell->commit);

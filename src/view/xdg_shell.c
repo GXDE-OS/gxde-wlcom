@@ -87,6 +87,12 @@ static struct ky_scene_node *xdg_view_get_root(void *data)
     return ky_scene_node_from_tree(xdg_view->view.tree);
 }
 
+static struct wlr_surface *xdg_view_get_toplevel(void *data)
+{
+    struct xdg_view *xdg_view = data;
+    return xdg_view->view.surface;
+}
+
 static const struct input_event_node_impl xdg_view_event_node_impl = {
     .hover = xdg_view_hover,
     .click = xdg_view_click,
@@ -458,7 +464,8 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
     /* event node will be destroyed when xdg_surface destroy */
     input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
-                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view);
+                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view_get_toplevel,
+                            xdg_view);
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;

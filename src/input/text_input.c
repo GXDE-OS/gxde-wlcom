@@ -455,7 +455,7 @@ static void handle_new_popup_surface(struct wl_listener *listener, void *data)
         ky_scene_surface_create(layer->tree, popup_surface->surface);
     popup->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
     input_event_node_create(popup->surface_node, &input_popup_event_node_impl, input_popup_get_root,
-                            popup);
+                            NULL, popup);
     ky_scene_node_set_enabled(popup->surface_node, popup_surface->surface->mapped);
 
     popup->surface_map.notify = handle_input_surface_map;

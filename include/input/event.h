@@ -30,18 +30,25 @@ struct input_event_node_impl {
 
 typedef struct ky_scene_node *(*input_event_node_get_root)(void *data);
 
+typedef struct wlr_surface *(*input_event_node_get_toplevel)(void *data);
+
 struct input_event_node {
     const struct input_event_node_impl *impl;
     /* free input_event_node when node destroy */
     struct wl_listener node_destroy;
-    /* return the root this event node beloong to */
+    /* return the root this event node belong to */
     input_event_node_get_root get_root;
+    /* return the toplevel surface this event node belong to, may be NULL */
+    input_event_node_get_toplevel get_toplevel;
+    /* user data */
     void *data;
 };
 
 struct input_event_node *input_event_node_create(struct ky_scene_node *node,
                                                  const struct input_event_node_impl *impl,
-                                                 input_event_node_get_root get_root, void *data);
+                                                 input_event_node_get_root get_root,
+                                                 input_event_node_get_toplevel get_toplevel,
+                                                 void *data);
 
 struct input_event_node *input_event_dumb_node_create(struct ky_scene_node *node,
                                                       struct ky_scene_node *root);
@@ -50,5 +57,7 @@ struct input_event_node *input_event_dumb_node_create(struct ky_scene_node *node
 struct input_event_node *input_event_node_from_node(struct ky_scene_node *node);
 
 struct ky_scene_node *input_event_node_root(struct input_event_node *event_node);
+
+struct wlr_surface *input_event_node_toplevel(struct input_event_node *event_node);
 
 #endif /* _EVENT_H_ */

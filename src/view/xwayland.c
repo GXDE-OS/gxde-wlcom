@@ -169,6 +169,12 @@ static struct ky_scene_node *xwayland_unmanaged_get_root(void *data)
     return unmanaged->surface_node;
 }
 
+static struct wlr_surface *xwayland_unmanaged_get_toplevel(void *data)
+{
+    struct xwayland_unmanaged *unmanaged = data;
+    return unmanaged->wlr_xwayland_surface->surface;
+}
+
 static const struct input_event_node_impl xwayland_unmanaged_event_node_impl = {
     .hover = xwayland_unmanaged_hover,
     .click = xwayland_unmanaged_click,
@@ -244,7 +250,8 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
 
     input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
-                            xwayland_unmanaged_get_root, unmanaged);
+                            xwayland_unmanaged_get_root, xwayland_unmanaged_get_toplevel,
+                            unmanaged);
 
     unmanaged->map.notify = unmanaged_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &unmanaged->map);
@@ -380,6 +387,12 @@ static struct ky_scene_node *xwayland_view_get_root(void *data)
 {
     struct xwayland_view *xwayland_view = data;
     return ky_scene_node_from_tree(xwayland_view->view.tree);
+}
+
+static struct wlr_surface *xwayland_view_get_toplevel(void *data)
+{
+    struct xwayland_view *xwayland_view = data;
+    return xwayland_view->view.surface;
 }
 
 static const struct input_event_node_impl xwayland_view_event_node_impl = {
@@ -773,7 +786,8 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
         ky_scene_subsurface_tree_create(xwayland_view->view.tree, wlr_xwayland_surface->surface);
     /* event node will be destroyed when surface_tree destroy */
     input_event_node_create(ky_scene_node_from_tree(xwayland_view->surface_tree),
-                            &xwayland_view_event_node_impl, xwayland_view_get_root, xwayland_view);
+                            &xwayland_view_event_node_impl, xwayland_view_get_root,
+                            xwayland_view_get_toplevel, xwayland_view);
 
     xwayland_view->map.notify = xwayland_view_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &xwayland_view->map);

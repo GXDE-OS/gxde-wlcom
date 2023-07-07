@@ -56,7 +56,7 @@ static void popup_unconstrain(struct xdg_popup *popup)
     struct output *output = input_current_output(input_manager_get_default_seat());
     struct kywc_box *output_box = &output->geometry;
 
-    int lx, ly;
+    int lx = 0, ly = 0;
     ky_scene_node_coords(ky_scene_node_from_tree(popup->shell_tree), &lx, &ly);
 
     struct wlr_box toplevel_space_box = {
@@ -146,5 +146,5 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
     popup->topmost_popup = true;
 
     input_event_node_create(ky_scene_node_from_tree(parent), &xdg_popup_event_node_impl,
-                            xdg_popup_get_root, popup);
+                            xdg_popup_get_root, NULL, popup);
 }
