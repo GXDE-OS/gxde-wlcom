@@ -22,6 +22,7 @@ enum interactive_mode {
 struct interactive_grab {
     struct seat_pointer_grab pointer_grab;
     struct seat_keyboard_grab keyboard_grab;
+    struct seat_touch_grab touch_grab;
 
     struct seat *seat;
     // struct wl_listener *seat_destroy;
@@ -47,6 +48,7 @@ static void interactive_grab_destroy(struct interactive_grab *grab)
     wl_list_remove(&grab->view_unmap.link);
     seat_set_pointer_grab(grab->seat, NULL);
     seat_set_keyboard_grab(grab->seat, NULL);
+    seat_set_touch_grab(grab->seat, NULL);
     free(grab);
 }
 
@@ -285,12 +287,11 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
                               bool pressed)
 {
-    struct interactive_grab *grab = keyboard_grab->data;
-    kywc_log(KYWC_INFO, "keyboard grab get key %d pressed %d", key, pressed);
     if (!pressed) {
         return true;
     }
 
+    struct interactive_grab *grab = keyboard_grab->data;
     int step = grab->mode == INTERACTIVE_MODE_MOVE ? VIEW_MOVE_STEP : VIEW_RESIZE_STEP;
     int dx = key == KEY_RIGHT ? step : (key == KEY_LEFT ? -step : 0);
     int dy = key == KEY_DOWN ? step : (key == KEY_UP ? -step : 0);
@@ -322,6 +323,37 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
     .cancel = keyboard_grab_cancel,
 };
 
+static bool touch_grab_touch(struct seat_touch_grab *touch_grab, uint32_t time, bool down)
+{
+    if (down) {
+        return true;
+    }
+
+    struct interactive_grab *grab = touch_grab->data;
+    interactive_done(grab);
+    return false;
+}
+
+static bool touch_grab_motion(struct seat_touch_grab *touch_grab, uint32_t time, double lx,
+                              double ly)
+{
+    struct interactive_grab *grab = touch_grab->data;
+    pointer_grab_motion(&grab->pointer_grab, time, lx, ly);
+    return true;
+}
+
+static void touch_grab_cancel(struct seat_touch_grab *touch_grab)
+{
+    struct interactive_grab *grab = touch_grab->data;
+    interactive_grab_destroy(grab);
+}
+
+static const struct seat_touch_grab_interface touch_grab_impl = {
+    .touch = touch_grab_touch,
+    .motion = touch_grab_motion,
+    .cancel = touch_grab_cancel,
+};
+
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct interactive_grab *grab = wl_container_of(listener, grab, view_unmap);
@@ -345,6 +377,8 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     // XXX: check ?
     grab->keyboard_grab = (struct seat_keyboard_grab){ &keyboard_grab_impl, seat, grab };
     seat_set_keyboard_grab(seat, &grab->keyboard_grab);
+    grab->touch_grab = (struct seat_touch_grab){ &touch_grab_impl, seat, grab };
+    seat_set_touch_grab(seat, &grab->touch_grab);
 
     grab->seat = seat;
     grab->mode = mode;

@@ -103,13 +103,11 @@ static void seat_update_capabilities(struct seat *seat)
             seat->caps |= WL_SEAT_CAPABILITY_KEYBOARD;
             break;
         case WLR_INPUT_DEVICE_POINTER:
+        case WLR_INPUT_DEVICE_TABLET_TOOL:
             seat->caps |= WL_SEAT_CAPABILITY_POINTER;
             break;
         case WLR_INPUT_DEVICE_TOUCH:
             seat->caps |= WL_SEAT_CAPABILITY_TOUCH;
-            break;
-        case WLR_INPUT_DEVICE_TABLET_TOOL:
-            seat->caps |= WL_SEAT_CAPABILITY_POINTER;
             break;
         case WLR_INPUT_DEVICE_SWITCH:
         case WLR_INPUT_DEVICE_TABLET_PAD:
@@ -220,6 +218,23 @@ bool seat_set_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboa
     }
 
     seat->keyboard_grab = keyboard_grab;
+    return true;
+}
+
+bool seat_set_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
+{
+    if (seat->touch_grab == touch_grab) {
+        return true;
+    }
+
+    if (seat->touch_grab && touch_grab) {
+        kywc_log(KYWC_WARN, "%s is alreay has a touch grab", seat->name);
+        return false;
+        // TODO: or replace current grab ?
+        // seat->touch_grab->interface->cancel(seat->touch_grab);
+    }
+
+    seat->touch_grab = touch_grab;
     return true;
 }
 
