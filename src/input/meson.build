@@ -9,6 +9,7 @@ wlcom_sources += files(
   'keyboard.c',
   'libinput.c',
   'monitor.c',
+  'touch.c',
   'seat.c',
   'selection.c',
 )

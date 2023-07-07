@@ -91,4 +91,23 @@ bool selection_manager_create(struct input_manager *input_manager);
 
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
 
+/**
+ * touchscreen manager
+ */
+
+struct wlr_touch_up_event;
+struct wlr_touch_down_event;
+struct wlr_touch_motion_event;
+struct wlr_touch_cancel_event;
+
+bool touch_manager_create(struct input_manager *input_manager);
+
+bool touch_handle_down(struct wlr_touch_down_event *event);
+
+void touch_handle_up(struct wlr_touch_up_event *event);
+
+void touch_handle_motion(struct wlr_touch_motion_event *event);
+
+void touch_handle_cancel(struct wlr_touch_cancel_event *event);
+
 #endif /* _INPUT_P_H_ */

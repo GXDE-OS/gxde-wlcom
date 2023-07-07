@@ -55,16 +55,21 @@ struct cursor {
     struct wl_listener tablet_tool_proximity;
     struct wl_listener tablet_tool_tip;
     struct wl_listener tablet_tool_button;
-    bool tablet_tool_tip_simulation_pointer;
-    bool tablet_tool_button_simulation_pointer;
 
     struct wl_listener request_set_cursor;
-    bool client_requested;
+
+    bool touch_simulation_pointer;
+    bool pointer_touch_up;
+    int32_t pointer_touch_id;
+
+    bool tablet_tool_tip_simulation_pointer;
+    bool tablet_tool_button_simulation_pointer;
 
     enum cursor_name name;
     float scale;
     /* current cursor position in layout coord */
     double lx, ly;
+    bool client_requested;
 
     /* cached button clicked info */
     uint32_t last_click_time;
