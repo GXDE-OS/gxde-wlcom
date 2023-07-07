@@ -89,14 +89,21 @@ static void handle_request_set_selection(struct wl_listener *listener, void *dat
 static void handle_request_start_drag(struct wl_listener *listener, void *data)
 {
     struct selection *selection = wl_container_of(listener, selection, request_start_drag);
-    struct wlr_seat *seat = selection->seat->wlr_seat;
+    struct wlr_seat *wlr_seat = selection->seat->wlr_seat;
     struct wlr_seat_request_start_drag_event *event = data;
 
-    if (wlr_seat_validate_pointer_grab_serial(seat, event->origin, event->serial)) {
-        wlr_seat_start_pointer_drag(seat, event->drag, event->serial);
-    } else {
-        wlr_data_source_destroy(event->drag->source);
+    if (wlr_seat_validate_pointer_grab_serial(wlr_seat, event->origin, event->serial)) {
+        wlr_seat_start_pointer_drag(wlr_seat, event->drag, event->serial);
+        return;
     }
+
+    struct wlr_touch_point *point;
+    if (wlr_seat_validate_touch_grab_serial(wlr_seat, event->origin, event->serial, &point)) {
+        wlr_seat_start_touch_drag(wlr_seat, event->drag, event->serial, point);
+        return;
+    }
+
+    wlr_data_source_destroy(event->drag->source);
 }
 
 static void handle_start_drag(struct wl_listener *listener, void *data)
