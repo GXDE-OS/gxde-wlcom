@@ -4,6 +4,7 @@ wayland_scanner = find_program('wayland-scanner')
 protocols = {
   'xdg-shell': wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
   'ext-idle-notifier-v1': wl_protocol_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
+  'zwp-tablet-manager-v2': wl_protocol_dir / 'unstable/tablet/tablet-unstable-v2.xml',
   'org-kde-kwin-idle': 'idle.xml',
 }
 

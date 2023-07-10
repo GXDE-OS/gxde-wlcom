@@ -64,6 +64,7 @@ struct cursor {
 
     bool tablet_tool_tip_simulation_pointer;
     bool tablet_tool_button_simulation_pointer;
+    uint32_t tablet_tool_buttons;
 
     enum cursor_name name;
     float scale;

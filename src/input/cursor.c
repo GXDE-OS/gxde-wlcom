@@ -295,6 +295,11 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
     struct wlr_tablet_tool_axis_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    /* force to pointer when move and resize */
+    if (cursor->seat->pointer_grab) {
+        cursor->tablet_tool_tip_simulation_pointer = true;
+    }
+
     bool change_x = event->updated_axes & WLR_TABLET_TOOL_AXIS_X;
     bool change_y = event->updated_axes & WLR_TABLET_TOOL_AXIS_Y;
     if (change_x || change_y) {
@@ -306,13 +311,19 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
         default:
             cursor_move(cursor, &event->tablet->base, change_x ? event->x : NAN,
                         change_y ? event->y : NAN, false, true);
-
             break;
+        }
+
+        if (cursor->tablet_tool_tip_simulation_pointer) {
+            cursor_feed_motion(cursor, event->time_msec);
+            wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+            return;
         }
     }
 
-    cursor_feed_motion(cursor, event->time_msec);
-    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+    if (!cursor->tablet_tool_tip_simulation_pointer) {
+        tablet_handle_tool_axis(event);
+    }
 }
 
 static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, void *data)
@@ -320,8 +331,11 @@ static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, vo
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_proximity);
     struct wlr_tablet_tool_proximity_event *event = data;
     idle_manager_notify_activity(cursor->seat);
-
     cursor_move(cursor, &event->tablet->base, event->x, event->y, false, true);
+
+    if (!cursor->tablet_tool_tip_simulation_pointer && tablet_handle_tool_proximity(event)) {
+        return;
+    }
 
     if (event->state == WLR_TABLET_TOOL_PROXIMITY_OUT) {
         return;
@@ -337,8 +351,19 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
     struct wlr_tablet_tool_tip_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    cursor_feed_button(cursor, BTN_LEFT, event->state == WLR_TABLET_TOOL_TIP_DOWN,
-                       event->time_msec);
+    if (cursor->tablet_tool_tip_simulation_pointer && event->state == WLR_TABLET_TOOL_TIP_UP) {
+        cursor->tablet_tool_tip_simulation_pointer = false;
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+        wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+        /* workaround to send a tool-tip up */
+    }
+
+    if (tablet_handle_tool_tip(event)) {
+        return;
+    }
+
+    cursor->tablet_tool_tip_simulation_pointer = true;
+    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 }
 
@@ -348,8 +373,27 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
     struct wlr_tablet_tool_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec);
-    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+    if (cursor->tablet_tool_buttons > 0 && cursor->tablet_tool_button_simulation_pointer) {
+        cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec);
+        wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+    } else if (tablet_handle_tool_button(event)) {
+        cursor->tablet_tool_button_simulation_pointer = false;
+    } else {
+        cursor->tablet_tool_button_simulation_pointer = true;
+    }
+
+    switch (event->state) {
+    case WLR_BUTTON_PRESSED:
+        cursor->tablet_tool_buttons++;
+        break;
+    case WLR_BUTTON_RELEASED:
+        if (cursor->tablet_tool_buttons == 0) {
+            kywc_log(KYWC_ERROR, "inconsistent tablet tool button events");
+        } else {
+            cursor->tablet_tool_buttons--;
+        }
+        break;
+    }
 }
 
 static void cursor_handle_touch_up(struct wl_listener *listener, void *data)
@@ -374,8 +418,10 @@ static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
     struct cursor *cursor = wl_container_of(listener, cursor, touch_down);
     struct wlr_touch_down_event *event = data;
     idle_manager_notify_activity(cursor->seat);
-
+    // TODO: hide cursor and show it when pointer motion
+    // cursor_set_image(cursor, CURSOR_NONE);
     cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
+
     if (touch_handle_down(event)) {
         return;
     }

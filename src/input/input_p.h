@@ -92,6 +92,27 @@ bool selection_manager_create(struct input_manager *input_manager);
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
 
 /**
+ * tablet manager
+ */
+
+struct wlr_tablet_tool_axis_event;
+struct wlr_tablet_tool_proximity_event;
+struct wlr_tablet_tool_tip_event;
+struct wlr_tablet_tool_button_event;
+
+bool tablet_manager_create(struct input_manager *input_manager);
+
+void tablet_set_focus(struct seat *seat, struct wlr_surface *surface);
+
+void tablet_handle_tool_axis(struct wlr_tablet_tool_axis_event *event);
+
+bool tablet_handle_tool_proximity(struct wlr_tablet_tool_proximity_event *event);
+
+bool tablet_handle_tool_tip(struct wlr_tablet_tool_tip_event *event);
+
+bool tablet_handle_tool_button(struct wlr_tablet_tool_button_event *event);
+
+/**
  * touchscreen manager
  */
 
