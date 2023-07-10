@@ -356,6 +356,8 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
         cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
         wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
         /* workaround to send a tool-tip up */
+        tablet_handle_tool_tip(event);
+        return;
     }
 
     if (tablet_handle_tool_tip(event)) {

@@ -404,7 +404,9 @@ static bool tablet_handle_tool_position(struct tablet_tool *tablet_tool)
         selection_handle_cursor_move(cursor->seat, cursor->lx, cursor->ly);
         return true;
     }
+
     wlr_tablet_v2_tablet_tool_notify_proximity_out(tablet_tool->tablet_tool);
+    cursor_set_image(cursor, CURSOR_DEFAULT);
     return false;
 }
 
