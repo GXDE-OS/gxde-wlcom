@@ -594,13 +594,13 @@ struct cursor *cursor_create(struct seat *seat)
 {
     struct cursor *cursor = calloc(1, sizeof(struct cursor));
     if (!cursor) {
-        return false;
+        return NULL;
     }
 
     struct wlr_cursor *wlr_cursor = wlr_cursor_create();
     if (!wlr_cursor) {
         free(cursor);
-        return false;
+        return NULL;
     }
 
     cursor->seat = seat;

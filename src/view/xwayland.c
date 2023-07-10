@@ -553,7 +553,6 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
 static void xwayland_view_handle_request_move(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, request_move);
-
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
     interactive_begin_move(&xwayland_view->view, seat);
 }

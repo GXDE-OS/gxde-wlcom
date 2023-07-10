@@ -175,7 +175,7 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
         return true;
     }
 
-    struct wlr_surface *toplevel;
+    struct wlr_surface *toplevel = NULL;
     double sx, sy;
     struct wlr_surface *surface = touch_get_surface(touch, &sx, &sy, &toplevel);
     if (!surface || !wlr_surface_accepts_touch(seat->wlr_seat, surface)) {
