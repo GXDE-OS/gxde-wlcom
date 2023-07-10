@@ -424,13 +424,16 @@ static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
     // cursor_set_image(cursor, CURSOR_NONE);
     cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
 
+    /* workaround to fix peony drag icon position */
+    cursor_feed_motion(cursor, event->time_msec);
+    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+
     if (touch_handle_down(event)) {
         return;
     }
 
     cursor->touch_simulation_pointer = true;
     cursor->pointer_touch_id = event->touch_id;
-    cursor_feed_motion(cursor, event->time_msec);
     cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec);
 }
 
