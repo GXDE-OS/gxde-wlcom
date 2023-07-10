@@ -101,7 +101,6 @@ void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t
 void seat_notify_button(struct seat *seat, uint32_t time, uint32_t button, bool pressed);
 void seat_notify_leave(struct seat *seat, struct wlr_surface *surface);
 
-/* keyboard focus */
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface);
 
 #endif /* _SEAT_H_ */

@@ -270,25 +270,23 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
     }
 }
 
+// TODO: set xwayland seat if surface is xwayland surface
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
     struct wlr_seat *wlr_seat = seat->wlr_seat;
-    struct wlr_surface *prev = wlr_seat->keyboard_state.focused_surface;
 
-    if (!surface) {
+    if (surface) {
+        struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(wlr_seat);
+        if (keyboard) {
+            wlr_seat_keyboard_notify_enter(wlr_seat, surface, keyboard->keycodes,
+                                           keyboard->num_keycodes, &keyboard->modifiers);
+        } else {
+            wlr_seat_keyboard_notify_enter(seat->wlr_seat, surface, NULL, 0, NULL);
+        }
+    } else {
         wlr_seat_keyboard_notify_clear_focus(wlr_seat);
-        return;
     }
 
-    // if (prev == surface || seat->keyboard_grab) {
-    if (prev == surface) {
-        return;
-    }
-
-    struct wlr_keyboard *kb = wlr_seat_get_keyboard(wlr_seat);
-    if (kb) {
-        wlr_seat_keyboard_notify_enter(wlr_seat, surface, kb->keycodes, kb->num_keycodes,
-                                       &kb->modifiers);
-        input_method_set_focus(seat, surface);
-    }
+    input_method_set_focus(seat, surface);
+    tablet_set_focus(seat, surface);
 }
