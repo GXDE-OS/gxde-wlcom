@@ -44,7 +44,19 @@ static struct shortcut {
     { "Ctrl+Alt+Down", "switch to down workspace", DIRECTION_DOWN },
 };
 
-static void shortcut_action(struct key_binding *binding, void *data)
+static struct gesture {
+    enum gesture_type type;
+    uint8_t fingers;
+    uint32_t directions;
+    char *desc;
+    enum direction direction;
+} gestures[] = {
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DIRECTION_LEFT, "switch to left workspace", DIRECTION_LEFT },
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DIRECTION_RIGHT, "switch to right workspace",
+      DIRECTION_RIGHT },
+};
+
+static void workspace_switch_to(enum direction direction)
 {
     if (workspace_manager->count == 1) {
         kywc_log(KYWC_INFO, "only one workspace, no need to switch");
@@ -57,14 +69,13 @@ static void shortcut_action(struct key_binding *binding, void *data)
     int32_t last = workspace_manager->count - 1;
     int32_t pending = current;
 
-    struct shortcut *shortcut = data;
-    if (shortcut->direction == DIRECTION_LEFT) {
+    if (direction == DIRECTION_LEFT) {
         pending = current - 1;
         pending = pending < 0 ? last : pending;
-    } else if (shortcut->direction == DIRECTION_RIGHT) {
+    } else if (direction == DIRECTION_RIGHT) {
         pending = current + 1;
         pending = pending > last ? 0 : pending;
-    } else if (shortcut->direction == DIRECTION_UP) {
+    } else if (direction == DIRECTION_UP) {
         pending = current - column;
         pending = pending < 0 ? current + row * column : pending;
         pending = pending > last ? pending - column : pending;
@@ -75,6 +86,18 @@ static void shortcut_action(struct key_binding *binding, void *data)
     }
 
     workspace_activate(workspace_manager->workspaces[pending]);
+}
+
+static void shortcut_action(struct key_binding *binding, void *data)
+{
+    struct shortcut *shortcut = data;
+    workspace_switch_to(shortcut->direction);
+}
+
+static void gesture_action(struct gesture_binding *binding, void *data)
+{
+    struct gesture *gesture = data;
+    workspace_switch_to(gesture->direction);
 }
 
 static void workspace_register_shortcut(void)
@@ -88,6 +111,20 @@ static void workspace_register_shortcut(void)
 
         if (!kywc_key_binding_register(binding, shortcut_action, shortcut)) {
             kywc_key_binding_destroy(binding);
+            continue;
+        }
+    }
+
+    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
+        struct gesture *gesture = &gestures[i];
+        struct gesture_binding *binding = kywc_gesture_binding_create(
+            gesture->type, gesture->directions, gesture->fingers, gesture->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_gesture_binding_register(binding, gesture_action, gesture)) {
+            kywc_gesture_binding_destroy(binding);
             continue;
         }
     }
