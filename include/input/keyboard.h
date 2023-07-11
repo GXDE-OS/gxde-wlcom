@@ -35,14 +35,4 @@ uint32_t keyboard_get_modifier_mask_by_name(const char *name);
 
 const char *keyboard_get_modifier_name_by_mask(uint32_t modifier);
 
-/**
- * bindings
- */
-
-struct bindings *bindings_create(struct input_manager *input_manager);
-
-void bindings_destroy(struct bindings *bindings);
-
-bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
-
 #endif /* _KEYBOARD_H_ */

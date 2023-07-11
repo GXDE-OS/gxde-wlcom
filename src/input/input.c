@@ -37,8 +37,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         seat_destroy(seat);
     }
 
-    bindings_destroy(input_manager->bindings);
-
     free(input_manager);
     input_manager = NULL;
 }
@@ -306,7 +304,7 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager_config_init(input_manager);
     selection_manager_create(input_manager);
     input_monitor_create(input_manager);
-    input_manager->bindings = bindings_create(input_manager);
+    bindings_create(input_manager);
     input_method_manager_create(input_manager);
 
     touch_manager_create(input_manager);

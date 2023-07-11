@@ -20,7 +20,6 @@ struct input_manager {
     } events;
 
     struct config *config;
-    struct bindings *bindings;
 
     struct wl_listener new_input;
     struct wl_listener new_virtual_pointer;
@@ -130,5 +129,13 @@ void touch_handle_up(struct wlr_touch_up_event *event);
 void touch_handle_motion(struct wlr_touch_motion_event *event);
 
 void touch_handle_cancel(struct wlr_touch_cancel_event *event);
+
+/**
+ * binding manager for keysym, gesture
+ */
+
+bool bindings_create(struct input_manager *input_manager);
+
+bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
 
 #endif /* _INPUT_P_H_ */

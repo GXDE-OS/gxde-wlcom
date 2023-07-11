@@ -3,6 +3,10 @@
 
 #include <stdbool.h>
 
+/**
+ * keysym bindings
+ */
+
 struct key_binding *kywc_key_binding_create(const char *keybind, const char *desc);
 
 struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsigned int modifiers,

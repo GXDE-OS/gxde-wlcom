@@ -8,7 +8,8 @@
 #include <kywc/binding.h>
 #include <kywc/log.h>
 
-#include "input/keyboard.h"
+#include "input_p.h"
+#include "server.h"
 
 struct key_binding {
     struct wl_list link;
@@ -24,8 +25,8 @@ struct key_binding {
 };
 
 static struct bindings {
-    struct input_manager *manager;
     struct wl_list keysym_bindings;
+    struct wl_listener server_destroy;
 } *bindings = NULL;
 
 static char **split_string(const char *str, const char *delims, size_t *len)
@@ -187,27 +188,32 @@ bool kywc_key_binding_is_registered(struct key_binding *binding)
     return !wl_list_empty(&binding->link);
 }
 
-struct bindings *bindings_create(struct input_manager *input_manager)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
-    bindings = calloc(1, sizeof(struct bindings));
-    if (!bindings) {
-        return NULL;
-    }
+    wl_list_remove(&bindings->server_destroy.link);
 
-    wl_list_init(&bindings->keysym_bindings);
-
-    return bindings;
-}
-
-void bindings_destroy(struct bindings *bindings)
-{
-    struct key_binding *bind, *tmp;
-    wl_list_for_each_safe(bind, tmp, &bindings->keysym_bindings, link) {
-        kywc_key_binding_destroy(bind);
+    struct key_binding *key_binding, *key_binding_tmp;
+    wl_list_for_each_safe(key_binding, key_binding_tmp, &bindings->keysym_bindings, link) {
+        kywc_key_binding_destroy(key_binding);
     }
 
     free(bindings);
     bindings = NULL;
+}
+
+bool bindings_create(struct input_manager *input_manager)
+{
+    bindings = calloc(1, sizeof(struct bindings));
+    if (!bindings) {
+        return false;
+    }
+
+    wl_list_init(&bindings->keysym_bindings);
+    wl_list_init(&bindings->gesture_bindings);
+
+    bindings->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(input_manager->server, &bindings->server_destroy);
+    return true;
 }
 
 static bool match_key_binding(struct keyboard_state *keyboard_state, struct key_binding *binding)
@@ -234,7 +240,7 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state)
         }
 
         if (match_key_binding(keyboard_state, binding)) {
-            kywc_log(KYWC_DEBUG, "start binding: %s", binding->desc);
+            kywc_log(KYWC_DEBUG, "start key binding: %s", binding->desc);
             if (binding->action) {
                 binding->action(binding, binding->data);
             }
