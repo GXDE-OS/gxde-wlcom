@@ -2,6 +2,7 @@
 #define _CURSOR_H_
 
 #include "event.h"
+#include "gesture.h"
 #include "input.h"
 
 enum cursor_name {
@@ -57,6 +58,8 @@ struct cursor {
     struct wl_listener tablet_tool_button;
 
     struct wl_listener request_set_cursor;
+
+    struct gesture_state gestures;
 
     bool touch_simulation_pointer;
     bool pointer_touch_up;

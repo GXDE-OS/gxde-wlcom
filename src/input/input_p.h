@@ -2,6 +2,7 @@
 #define _INPUT_P_H_
 
 #include "input/cursor.h"
+#include "input/gesture.h"
 #include "input/keyboard.h"
 
 struct input_manager {
@@ -137,5 +138,7 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event);
 bool bindings_create(struct input_manager *input_manager);
 
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
+
+bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
 
 #endif /* _INPUT_P_H_ */
