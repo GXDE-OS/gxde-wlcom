@@ -21,10 +21,10 @@ struct touch {
     struct input *input;
     struct wl_listener input_destroy;
 
-    struct wl_list pointers;
+    struct wl_list points;
 };
 
-struct touch_pointer {
+struct touch_point {
     struct touch *touch;
     struct wl_list link;
     struct wlr_surface *surface;
@@ -42,10 +42,10 @@ static void touch_handle_input_destroy(struct wl_listener *listener, void *data)
     struct touch *touch = wl_container_of(listener, touch, input_destroy);
     wl_list_remove(&touch->input_destroy.link);
 
-    struct touch_pointer *pointer, *tmp;
-    wl_list_for_each_safe(pointer, tmp, &touch->pointers, link) {
-        wl_list_remove(&pointer->link);
-        free(pointer);
+    struct touch_point *point, *tmp;
+    wl_list_for_each_safe(point, tmp, &touch->points, link) {
+        wl_list_remove(&point->link);
+        free(point);
     }
 
     free(touch);
@@ -72,7 +72,7 @@ static void handle_new_input(struct wl_listener *listener, void *data)
 
     touch->wlr_touch = wlr_touch_from_input_device(input->wlr_input);
     touch->wlr_touch->data = touch;
-    wl_list_init(&touch->pointers);
+    wl_list_init(&touch->points);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -113,53 +113,53 @@ static struct wlr_surface *touch_get_surface(struct touch *touch, double *sx, do
     return wlr_surface_try_from_node(node);
 }
 
-static struct touch_pointer *touch_pointer_create(struct touch *touch, int32_t touch_id)
+static struct touch_point *touch_point_create(struct touch *touch, int32_t touch_id)
 {
-    struct touch_pointer *pointer, *free_pointer = NULL;
-    wl_list_for_each(pointer, &touch->pointers, link) {
-        if (pointer->touch_id == touch_id) {
-            return pointer;
+    struct touch_point *point, *free_point = NULL;
+    wl_list_for_each(point, &touch->points, link) {
+        if (point->touch_id == touch_id) {
+            return point;
         }
-        if (!free_pointer && pointer->touch_id < 0) {
-            free_pointer = pointer;
+        if (!free_point && point->touch_id < 0) {
+            free_point = point;
         }
     }
 
     /* not found, reuse the first free one */
-    if (free_pointer) {
-        free_pointer->touch_id = touch_id;
-        return free_pointer;
+    if (free_point) {
+        free_point->touch_id = touch_id;
+        return free_point;
     }
 
     /* alloc one if all in used */
-    pointer = calloc(1, sizeof(struct touch_pointer));
-    if (!pointer) {
+    point = calloc(1, sizeof(struct touch_point));
+    if (!point) {
         return NULL;
     }
 
-    pointer->touch_id = touch_id;
-    pointer->touch = touch;
-    wl_list_insert(touch->pointers.prev, &pointer->link);
-    return pointer;
+    point->touch_id = touch_id;
+    point->touch = touch;
+    wl_list_insert(touch->points.prev, &point->link);
+    return point;
 }
 
-static struct touch_pointer *touch_pointer_from_id(struct touch *touch, int32_t touch_id)
+static struct touch_point *touch_point_from_id(struct touch *touch, int32_t touch_id)
 {
-    struct touch_pointer *pointer;
-    wl_list_for_each(pointer, &touch->pointers, link) {
-        if (pointer->touch_id == touch_id) {
-            return pointer;
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        if (point->touch_id == touch_id) {
+            return point;
         }
     }
     return NULL;
 }
 
-static void touch_pointer_reset(struct touch_pointer *pointer)
+static void touch_point_reset(struct touch_point *point)
 {
-    pointer->touch_id = -1;
+    point->touch_id = -1;
     /* reinsert to tail */
-    wl_list_remove(&pointer->link);
-    wl_list_insert(pointer->touch->pointers.prev, &pointer->link);
+    wl_list_remove(&point->link);
+    wl_list_insert(point->touch->points.prev, &point->link);
 }
 
 bool touch_handle_down(struct wlr_touch_down_event *event)
@@ -182,12 +182,12 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
         return false;
     }
 
-    struct touch_pointer *pointer = touch_pointer_create(touch, event->touch_id);
-    pointer->surface = surface;
-    pointer->ref_lx = seat->cursor->lx;
-    pointer->ref_ly = seat->cursor->ly;
-    pointer->ref_sx = sx;
-    pointer->ref_sy = sy;
+    struct touch_point *point = touch_point_create(touch, event->touch_id);
+    point->surface = surface;
+    point->ref_lx = seat->cursor->lx;
+    point->ref_ly = seat->cursor->ly;
+    point->ref_sx = sx;
+    point->ref_sy = sy;
 
     wlr_seat_touch_notify_down(seat->wlr_seat, surface, event->time_msec, event->touch_id, sx, sy);
 
@@ -217,16 +217,16 @@ void touch_handle_motion(struct wlr_touch_motion_event *event)
         return;
     }
 
-    struct touch_pointer *pointer = touch_pointer_from_id(touch, event->touch_id);
-    if (!pointer) {
-        kywc_log(KYWC_DEBUG, "touch pointer %d may not has down", event->touch_id);
+    struct touch_point *point = touch_point_from_id(touch, event->touch_id);
+    if (!point) {
+        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
         return;
     }
 
-    double moved_x = seat->cursor->lx - pointer->ref_lx;
-    double moved_y = seat->cursor->ly - pointer->ref_ly;
-    double sx = moved_x + pointer->ref_sx;
-    double sy = moved_y + pointer->ref_sy;
+    double moved_x = seat->cursor->lx - point->ref_lx;
+    double moved_y = seat->cursor->ly - point->ref_ly;
+    double sx = moved_x + point->ref_sx;
+    double sy = moved_y + point->ref_sy;
     selection_handle_cursor_move(seat, seat->cursor->lx, seat->cursor->ly);
     wlr_seat_touch_notify_motion(seat->wlr_seat, event->time_msec, event->touch_id, sx, sy);
 }
@@ -244,14 +244,14 @@ void touch_handle_up(struct wlr_touch_up_event *event)
         return;
     }
 
-    struct touch_pointer *pointer = touch_pointer_from_id(touch, event->touch_id);
-    if (!pointer) {
-        kywc_log(KYWC_DEBUG, "touch pointer %d may not has down", event->touch_id);
+    struct touch_point *point = touch_point_from_id(touch, event->touch_id);
+    if (!point) {
+        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
         return;
     }
 
     wlr_seat_touch_notify_up(seat->wlr_seat, event->time_msec, event->touch_id);
-    touch_pointer_reset(pointer);
+    touch_point_reset(point);
 }
 
 void touch_handle_cancel(struct wlr_touch_cancel_event *event)
@@ -261,13 +261,13 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event)
         return;
     }
 
-    struct touch_pointer *pointer = touch_pointer_from_id(touch, event->touch_id);
-    if (!pointer) {
-        kywc_log(KYWC_DEBUG, "touch pointer %d may not has down", event->touch_id);
+    struct touch_point *point = touch_point_from_id(touch, event->touch_id);
+    if (!point) {
+        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
         return;
     }
 
     struct seat *seat = touch->input->seat;
-    wlr_seat_touch_notify_cancel(seat->wlr_seat, pointer->surface);
-    touch_pointer_reset(pointer);
+    wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
+    touch_point_reset(point);
 }
