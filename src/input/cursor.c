@@ -493,7 +493,8 @@ static void cursor_handle_swipe_begin(struct wl_listener *listener, void *data)
     struct wlr_pointer_swipe_begin_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_SWIPE, event->fingers);
+    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHPAD,
+                        event->fingers);
     wlr_pointer_gestures_v1_send_swipe_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                              event->time_msec, event->fingers);
 }
@@ -504,7 +505,8 @@ static void cursor_handle_swipe_update(struct wl_listener *listener, void *data)
     struct wlr_pointer_swipe_update_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    gesture_state_update(&cursor->gestures, GESTURE_TYPE_SWIPE, event->dx, event->dy, NAN, NAN);
+    gesture_state_update(&cursor->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHPAD, event->dx,
+                         event->dy, NAN, NAN);
     wlr_pointer_gestures_v1_send_swipe_update(cursor->seat->pointer_gestures,
                                               cursor->seat->wlr_seat, event->time_msec, event->dx,
                                               event->dy);
@@ -516,7 +518,8 @@ static void cursor_handle_swipe_end(struct wl_listener *listener, void *data)
     struct wlr_pointer_swipe_end_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_SWIPE, event->cancelled);
+    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHPAD,
+                                     event->cancelled);
     /* tell client the gesture is cancelled if gesture handled by compositor */
     wlr_pointer_gestures_v1_send_swipe_end(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                            event->time_msec, event->cancelled || handled);
@@ -528,7 +531,8 @@ static void cursor_handle_pinch_begin(struct wl_listener *listener, void *data)
     struct wlr_pointer_pinch_begin_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_PINCH, event->fingers);
+    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_PINCH, GESTURE_DEVICE_TOUCHPAD,
+                        event->fingers);
     wlr_pointer_gestures_v1_send_pinch_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                              event->time_msec, event->fingers);
 }
@@ -539,8 +543,8 @@ static void cursor_handle_pinch_update(struct wl_listener *listener, void *data)
     struct wlr_pointer_pinch_update_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    gesture_state_update(&cursor->gestures, GESTURE_TYPE_PINCH, event->dx, event->dy, event->scale,
-                         event->rotation);
+    gesture_state_update(&cursor->gestures, GESTURE_TYPE_PINCH, GESTURE_DEVICE_TOUCHPAD, event->dx,
+                         event->dy, event->scale, event->rotation);
     wlr_pointer_gestures_v1_send_pinch_update(cursor->seat->pointer_gestures,
                                               cursor->seat->wlr_seat, event->time_msec, event->dx,
                                               event->dy, event->scale, event->rotation);
@@ -552,7 +556,8 @@ static void cursor_handle_pinch_end(struct wl_listener *listener, void *data)
     struct wlr_pointer_pinch_end_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_PINCH, event->cancelled);
+    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_PINCH, GESTURE_DEVICE_TOUCHPAD,
+                                     event->cancelled);
     wlr_pointer_gestures_v1_send_pinch_end(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                            event->time_msec, event->cancelled || handled);
 }
@@ -563,7 +568,8 @@ static void cursor_handle_hold_begin(struct wl_listener *listener, void *data)
     struct wlr_pointer_hold_begin_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_HOLD, event->fingers);
+    gesture_state_begin(&cursor->gestures, GESTURE_TYPE_HOLD, GESTURE_DEVICE_TOUCHPAD,
+                        event->fingers);
     wlr_pointer_gestures_v1_send_hold_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                             event->time_msec, event->fingers);
 }
@@ -574,7 +580,8 @@ static void cursor_handle_hold_end(struct wl_listener *listener, void *data)
     struct wlr_pointer_hold_end_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_HOLD, event->cancelled);
+    bool handled = gesture_state_end(&cursor->gestures, GESTURE_TYPE_HOLD, GESTURE_DEVICE_TOUCHPAD,
+                                     event->cancelled);
     wlr_pointer_gestures_v1_send_hold_end(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                           event->time_msec, event->cancelled || handled);
 }

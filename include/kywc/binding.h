@@ -11,6 +11,12 @@ enum gesture_type {
     GESTURE_TYPE_HOLD,
 };
 
+enum gesture_device {
+    GESTURE_DEVICE_NONE = 0,
+    GESTURE_DEVICE_TOUCHPAD = 1 << 0,
+    GESTURE_DEVICE_TOUCHSCREEN = 1 << 1,
+};
+
 enum gesture_direction {
     GESTURE_DIRECTION_NONE = 0,
     // Directions based on delta x and y
@@ -31,9 +37,9 @@ enum gesture_direction {
  */
 
 // TODO: create by gesture bind string
-struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
-                                                    enum gesture_direction directions,
-                                                    uint8_t fingers, const char *desc);
+struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
+                                                    uint32_t directions, uint8_t fingers,
+                                                    const char *desc);
 
 void kywc_gesture_binding_destroy(struct gesture_binding *binding);
 

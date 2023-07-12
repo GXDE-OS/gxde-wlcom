@@ -47,13 +47,15 @@ static struct shortcut {
 static struct gesture {
     enum gesture_type type;
     uint8_t fingers;
+    uint32_t devices;
     uint32_t directions;
     char *desc;
     enum direction direction;
 } gestures[] = {
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DIRECTION_LEFT, "switch to left workspace", DIRECTION_LEFT },
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DIRECTION_RIGHT, "switch to right workspace",
-      DIRECTION_RIGHT },
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD, GESTURE_DIRECTION_LEFT,
+      "switch to left workspace", DIRECTION_LEFT },
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD, GESTURE_DIRECTION_RIGHT,
+      "switch to right workspace", DIRECTION_RIGHT },
 };
 
 static void workspace_switch_to(enum direction direction)
@@ -118,7 +120,7 @@ static void workspace_register_shortcut(void)
     for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
         struct gesture *gesture = &gestures[i];
         struct gesture_binding *binding = kywc_gesture_binding_create(
-            gesture->type, gesture->directions, gesture->fingers, gesture->desc);
+            gesture->type, gesture->devices, gesture->directions, gesture->fingers, gesture->desc);
         if (!binding) {
             continue;
         }

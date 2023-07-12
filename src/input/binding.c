@@ -29,6 +29,7 @@ struct gesture_binding {
 
     enum gesture_type type;
     uint8_t fingers;
+    uint32_t devices;
     uint32_t directions;
     char *desc;
 
@@ -276,7 +277,7 @@ void kywc_gesture_binding_destroy(struct gesture_binding *binding)
 }
 
 static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gesture_type type,
-                                     uint8_t fingers, uint32_t directions)
+                                     uint32_t devices, uint32_t directions, uint8_t fingers)
 {
     struct gesture_binding *bind;
     wl_list_for_each(bind, &bindings->gesture_bindings, link) {
@@ -285,7 +286,8 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
             continue;
         }
 
-        if (bind->type == type && (bind->directions & directions) && bind->fingers == fingers) {
+        if (bind->type == type && (bind->devices & devices) && (bind->directions & directions) &&
+            bind->fingers == fingers) {
             return false;
         }
     }
@@ -293,9 +295,9 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
     return true;
 }
 
-struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
-                                                    enum gesture_direction directions,
-                                                    uint8_t fingers, const char *desc)
+struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
+                                                    uint32_t directions, uint8_t fingers,
+                                                    const char *desc)
 {
     // TODO: check type, directions and fingers
 
@@ -305,6 +307,7 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
     }
 
     binding->type = type;
+    binding->devices = devices;
     binding->directions = directions;
     binding->fingers = fingers;
     if (desc) {
@@ -322,7 +325,8 @@ bool kywc_gesture_binding_register(struct gesture_binding *binding,
     if (!wl_list_empty(&binding->link)) {
         return true;
     }
-    if (!gesture_binding_is_valid(binding, binding->type, binding->directions, binding->fingers)) {
+    if (!gesture_binding_is_valid(binding, binding->type, binding->devices, binding->directions,
+                                  binding->fingers)) {
         return false;
     }
 
@@ -343,7 +347,8 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
         if (gesture_state->fingers != binding->fingers) {
             continue;
         }
-        if (gesture_state->directions & binding->directions) {
+        if ((gesture_state->device & binding->devices) &&
+            (gesture_state->directions & binding->directions)) {
             kywc_log(KYWC_DEBUG, "start gesture binding: %s", binding->desc);
             if (binding->action) {
                 binding->action(binding, binding->data);

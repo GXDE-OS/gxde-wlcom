@@ -45,9 +45,11 @@ void gesture_state_finish(struct gesture_state *state)
     }
 }
 
-void gesture_state_begin(struct gesture_state *state, enum gesture_type type, uint8_t fingers)
+void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
+                         enum gesture_device device, uint8_t fingers)
 {
     state->type = type;
+    state->device = device;
     state->fingers = fingers;
 
     state->dx = 0.0;
@@ -62,10 +64,11 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type, ui
     kywc_log(KYWC_DEBUG, "gesture %s state begin: fingers: %u", gestures[type], fingers);
 }
 
-void gesture_state_update(struct gesture_state *state, enum gesture_type type, double dx, double dy,
-                          double scale, double rotation)
+void gesture_state_update(struct gesture_state *state, enum gesture_type type,
+                          enum gesture_device device, double dx, double dy, double scale,
+                          double rotation)
 {
-    if (state->type != type) {
+    if (state->type != type || state->device != device) {
         return;
     }
 
@@ -87,9 +90,10 @@ void gesture_state_update(struct gesture_state *state, enum gesture_type type, d
              state->rotation);
 }
 
-bool gesture_state_end(struct gesture_state *state, enum gesture_type type, bool cancelled)
+bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
+                       enum gesture_device device, bool cancelled)
 {
-    if (state->type != type) {
+    if (state->type != type || state->device != device) {
         return false;
     }
 
