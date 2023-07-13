@@ -461,7 +461,7 @@ static void xwayland_view_configure(struct view *view)
     /* direct move when not changed size */
     if (view->pending.action & VIEW_ACTION_MOVE) {
         view->pending.action &= ~VIEW_ACTION_MOVE;
-        if (!view_action_change_size(view->pending.action)) {
+        if (!view_action_change_size(view->pending.action) || kywc_view->has_initial_position) {
             xwayland_view_move(xwayland_view, view->pending.geometry.x, view->pending.geometry.y);
         } else {
             kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
@@ -733,12 +733,6 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_xwayland_surface->events.set_strut_partial,
                   &xwayland_view->set_strut_partial);
 
-    /* apply the position in size_hints */
-    xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
-    xwayland_view->view.base.has_initial_position =
-        size_hints &&
-        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION);
-
     bool set_focus = true;
     for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
@@ -753,11 +747,15 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         }
     }
 
-    view_map(&xwayland_view->view, set_focus);
-
-    if (xwayland_view->view.base.has_initial_position) {
-        xwayland_view_move(xwayland_view, size_hints->x, size_hints->y);
+    /* apply the position in size_hints */
+    xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
+    if (size_hints &&
+        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION)) {
+        xwayland_view->view.base.has_initial_position = true;
+        kywc_view_move(&xwayland_view->view.base, size_hints->x, size_hints->y);
     }
+
+    view_map(&xwayland_view->view, set_focus);
 
     xwayland_view_set_sruct_partial(xwayland_view, true);
 }

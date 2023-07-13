@@ -227,6 +227,7 @@ void view_map(struct view *view, bool focus)
         }
     }
 
+    kywc_view->has_initial_position = false;
     kywc_view->mapped = true;
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
