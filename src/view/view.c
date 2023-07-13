@@ -78,6 +78,9 @@ static void view_update_output(struct view *view)
         /* udpate view most-at output */
         lx = geo->x + geo->width / 2;
         ly = geo->y + geo->height / 2;
+    } else if (view->output) {
+        /* no need to update output when unmapped except output was destroyed */
+        return;
     }
 
     struct kywc_output *old = view->output;
@@ -97,6 +100,7 @@ static void view_update_output(struct view *view)
 static void view_handle_output_destroy(struct wl_listener *listener, void *data)
 {
     struct view *view = wl_container_of(listener, view, output_destroy);
+    view->output = NULL;
     view_update_output(view);
 }
 
