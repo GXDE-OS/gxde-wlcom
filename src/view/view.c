@@ -71,15 +71,14 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 
 static void view_update_output(struct view *view)
 {
-    /* no need to update output when unmapped */
-    if (!view->base.mapped) {
-        return;
-    }
+    int lx = 0, ly = 0;
 
-    struct kywc_box *geo = &view->base.geometry;
-    /* udpate view most-at output */
-    int lx = geo->x + geo->width / 2;
-    int ly = geo->y + geo->height / 2;
+    if (view->base.mapped) {
+        struct kywc_box *geo = &view->base.geometry;
+        /* udpate view most-at output */
+        lx = geo->x + geo->width / 2;
+        ly = geo->y + geo->height / 2;
+    }
 
     struct kywc_output *old = view->output;
     if (!old || old->destroying || !old->state.enabled ||
