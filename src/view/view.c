@@ -152,8 +152,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_emit_mutable(&view_manager->events.new_view, kywc_view);
 }
 
-static void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
-                                    struct kywc_output *kywc_output, enum kywc_tile tile)
+void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
+                             struct kywc_output *kywc_output, enum kywc_tile tile)
 {
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *usable = &output->usable_area;

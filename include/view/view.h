@@ -154,4 +154,7 @@ bool view_is_moveable(struct view *view);
 
 bool view_is_resizable(struct view *view);
 
+void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
+                             struct kywc_output *kywc_output, enum kywc_tile tile);
+
 #endif /* __VIEW_H_ */

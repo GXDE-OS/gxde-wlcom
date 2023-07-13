@@ -853,12 +853,17 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     struct xwayland_view *xwayland_view =
         wl_container_of(listener, xwayland_view, request_configure);
     struct wlr_xwayland_surface_configure_event *event = data;
+    struct kywc_view *kywc_view = &xwayland_view->view.base;
 
     struct kywc_box geo = { event->x, event->y, event->width, event->height };
-    kywc_view_resize(&xwayland_view->view.base, &geo);
+    if (kywc_view->maximized) {
+        struct kywc_output *kywc_output = kywc_output_at_point(event->x, event->y);
+        view_get_tiled_geometry(&xwayland_view->view, &geo, kywc_output, KYWC_TILE_ALL);
+    }
+    kywc_view_resize(kywc_view, &geo);
 
-    if (!xwayland_view->view.base.mapped) {
-        xwayland_view->view.base.has_initial_position = true;
+    if (!kywc_view->mapped) {
+        kywc_view->has_initial_position = true;
     }
 }
 
