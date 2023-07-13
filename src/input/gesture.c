@@ -12,6 +12,7 @@ static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 static void gesture_state_reset(struct gesture_state *state)
 {
     state->type = GESTURE_TYPE_NONE;
+    state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
     if (state->timer) {
         wl_event_source_timer_update(state->timer, 0);
@@ -31,11 +32,11 @@ static int gesture_handle_timer(void *data)
     return 0;
 }
 
-void gesture_state_init(struct gesture_state *state)
+void gesture_state_init(struct gesture_state *state, void *display)
 {
-    struct cursor *cursor = wl_container_of(state, cursor, gestures);
-    struct wl_event_loop *loop = wl_display_get_event_loop(cursor->seat->wlr_seat->display);
+    struct wl_event_loop *loop = wl_display_get_event_loop(display);
     state->timer = wl_event_loop_add_timer(loop, gesture_handle_timer, state);
+    gesture_state_reset(state);
 }
 
 void gesture_state_finish(struct gesture_state *state)

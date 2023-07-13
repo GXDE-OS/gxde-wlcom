@@ -17,7 +17,7 @@ struct gesture_state {
     struct wl_event_source *timer;
 };
 
-void gesture_state_init(struct gesture_state *state);
+void gesture_state_init(struct gesture_state *state, void *display);
 
 void gesture_state_finish(struct gesture_state *state);
 

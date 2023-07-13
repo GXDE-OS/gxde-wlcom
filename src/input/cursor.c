@@ -671,7 +671,7 @@ struct cursor *cursor_create(struct seat *seat)
     cursor->hover.destroy.notify = cursor_node_handle_destroy;
     cursor->focus.destroy.notify = cursor_node_handle_destroy;
 
-    gesture_state_init(&cursor->gestures);
+    gesture_state_init(&cursor->gestures, seat->wlr_seat->display);
 
     return cursor;
 }
