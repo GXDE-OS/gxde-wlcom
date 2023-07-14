@@ -7,6 +7,8 @@
 #include "input/gesture.h"
 #include "input_p.h"
 
+#define GESTURE_HOLD_TIMEOUT (800)
+
 static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 
 static void gesture_state_reset(struct gesture_state *state)
@@ -26,7 +28,7 @@ static int gesture_handle_timer(void *data)
         return 0;
     }
 
-    kywc_log(KYWC_DEBUG, "hold gesture triggered");
+    kywc_log(KYWC_DEBUG, "hold gesture triggered: fingers=%d", state->fingers);
     bindings_handle_gesture_binding(state);
     gesture_state_reset(state);
     return 0;
@@ -59,7 +61,7 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
     state->rotation = 0.0;
 
     if (state->timer && type == GESTURE_TYPE_HOLD) {
-        wl_event_source_timer_update(state->timer, 800);
+        wl_event_source_timer_update(state->timer, GESTURE_HOLD_TIMEOUT);
     }
 
     kywc_log(KYWC_DEBUG, "gesture %s state begin: fingers: %u", gestures[type], fingers);
