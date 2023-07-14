@@ -125,11 +125,11 @@ bool touch_manager_create(struct input_manager *input_manager);
 
 bool touch_handle_down(struct wlr_touch_down_event *event);
 
-void touch_handle_up(struct wlr_touch_up_event *event);
+void touch_handle_up(struct wlr_touch_up_event *event, bool handle);
 
-void touch_handle_motion(struct wlr_touch_motion_event *event);
+void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle);
 
-void touch_handle_cancel(struct wlr_touch_cancel_event *event);
+void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle);
 
 /**
  * binding manager for keysym, gesture

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_seat.h>
@@ -11,6 +12,9 @@
 #include "server.h"
 #include "view/view.h"
 
+#define TOUCH_HOLD_TIMEOUT (100)
+#define TOUCH_FILTER_TIMEOUT (200)
+
 struct touch_manager {
     struct wl_listener new_input;
     struct wl_listener server_destroy;
@@ -22,14 +26,33 @@ struct touch {
     struct wl_listener input_destroy;
 
     struct wl_list points;
+    uint32_t points_count;
+
+    /* timer for gesture detect filter */
+    struct wl_event_source *filter;
+    bool filter_enabled;
+
+    /* current gesture state per touch */
+    struct gesture_state gestures;
+    uint32_t hold_points;
 };
 
 struct touch_point {
     struct touch *touch;
     struct wl_list link;
     struct wlr_surface *surface;
-    double ref_lx, ref_ly, ref_sx, ref_sy;
+
+    /* timer for hold gesture */
+    struct wl_event_source *timer;
+    bool hold, moved;
+
+    double ref_lx, ref_ly;
+    double ref_sx, ref_sy;
+    double abs_x, abs_y;
+    double last_x, last_y;
+    double dx, dy;
     int32_t touch_id;
+    uint32_t directions;
 };
 
 static struct touch *touch_from_wlr_touch(struct wlr_touch *wlr_touch)
@@ -41,14 +64,115 @@ static void touch_handle_input_destroy(struct wl_listener *listener, void *data)
 {
     struct touch *touch = wl_container_of(listener, touch, input_destroy);
     wl_list_remove(&touch->input_destroy.link);
+    gesture_state_finish(&touch->gestures);
+    wl_event_source_remove(touch->filter);
 
     struct touch_point *point, *tmp;
     wl_list_for_each_safe(point, tmp, &touch->points, link) {
         wl_list_remove(&point->link);
+        if (point->timer) {
+            wl_event_source_remove(point->timer);
+        }
         free(point);
     }
 
     free(touch);
+}
+
+static void touch_gesture_begin(struct touch *touch, enum gesture_type gesture, uint8_t fingers)
+{
+    struct gesture_state *state = &touch->gestures;
+    if (state->type == gesture && state->fingers == fingers) {
+        return;
+    }
+    /* cancel current gesture and enter the new hold */
+    if (state->type != GESTURE_TYPE_NONE) {
+        gesture_state_end(state, state->type, state->device, true);
+    }
+    if (gesture == GESTURE_TYPE_NONE) {
+        return;
+    }
+
+    gesture_state_begin(state, gesture, GESTURE_DEVICE_TOUCHSCREEN, fingers);
+}
+
+static void touch_gesture_detect(struct touch *touch)
+{
+    if (touch->points_count == 0) {
+        return;
+    }
+
+    bool all_points_moved = true;
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        if (!point->moved) {
+            all_points_moved = false;
+            break;
+        }
+    }
+
+    if (!all_points_moved) {
+        /* hold geture if all hold points not moved */
+        if (touch->hold_points) {
+            touch_gesture_begin(touch, GESTURE_TYPE_HOLD, touch->hold_points);
+        }
+        return;
+    }
+
+    /* moved when one touch point, cancel all gestrure */
+    if (touch->points_count == 1) {
+        touch_gesture_begin(touch, GESTURE_TYPE_NONE, 0);
+        return;
+    }
+
+    /* swipre or pinch check */
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        if (!point->moved) {
+            all_points_moved = false;
+            break;
+        }
+    }
+
+    bool one_direction = true;
+    uint32_t directions = GESTURE_DIRECTION_NONE;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        if (directions == GESTURE_DIRECTION_NONE) {
+            directions = point->directions;
+        } else if (directions != point->directions) {
+            one_direction = false;
+            break;
+        }
+    }
+
+    touch_gesture_begin(touch, one_direction ? GESTURE_TYPE_SWIPE : GESTURE_TYPE_PINCH,
+                        touch->points_count);
+}
+
+static void touch_filter_enable(struct touch *touch, bool enabled)
+{
+    wl_event_source_timer_update(touch->filter, enabled ? TOUCH_FILTER_TIMEOUT : 0);
+    touch->filter_enabled = enabled;
+}
+
+static int touch_handle_timer(void *data)
+{
+    struct touch *touch = data;
+
+    touch->filter_enabled = false;
+    touch_gesture_detect(touch);
+    return 0;
 }
 
 static void handle_new_input(struct wl_listener *listener, void *data)
@@ -66,6 +190,14 @@ static void handle_new_input(struct wl_listener *listener, void *data)
         return;
     }
 
+    struct wl_display *display = input->seat->wlr_seat->display;
+    struct wl_event_loop *loop = wl_display_get_event_loop(display);
+    touch->filter = wl_event_loop_add_timer(loop, touch_handle_timer, touch);
+    if (!touch->filter) {
+        free(touch);
+        return;
+    }
+
     touch->input = input;
     touch->input_destroy.notify = touch_handle_input_destroy;
     wl_signal_add(&input->events.destroy, &touch->input_destroy);
@@ -73,6 +205,8 @@ static void handle_new_input(struct wl_listener *listener, void *data)
     touch->wlr_touch = wlr_touch_from_input_device(input->wlr_input);
     touch->wlr_touch->data = touch;
     wl_list_init(&touch->points);
+
+    gesture_state_init(&touch->gestures, display);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -113,6 +247,29 @@ static struct wlr_surface *touch_get_surface(struct touch *touch, double *sx, do
     return wlr_surface_try_from_node(node);
 }
 
+static int touch_point_handle_timer(void *data)
+{
+    struct touch_point *point = data;
+    point->hold = true;
+    point->touch->hold_points++;
+
+    if (point->touch->filter_enabled) {
+        return 0;
+    }
+
+    if (point->touch->gestures.type == GESTURE_TYPE_NONE) {
+        touch_filter_enable(point->touch, true);
+        return 0;
+    }
+
+    /* keep hold gesture */
+    if (point->touch->gestures.type == GESTURE_TYPE_HOLD) {
+        touch_gesture_begin(point->touch, GESTURE_TYPE_HOLD, point->touch->hold_points);
+    }
+
+    return 0;
+}
+
 static struct touch_point *touch_point_create(struct touch *touch, int32_t touch_id)
 {
     struct touch_point *point, *free_point = NULL;
@@ -140,6 +297,11 @@ static struct touch_point *touch_point_create(struct touch *touch, int32_t touch
     point->touch_id = touch_id;
     point->touch = touch;
     wl_list_insert(touch->points.prev, &point->link);
+
+    struct wl_display *display = touch->input->seat->wlr_seat->display;
+    struct wl_event_loop *loop = wl_display_get_event_loop(display);
+    point->timer = wl_event_loop_add_timer(loop, touch_point_handle_timer, point);
+
     return point;
 }
 
@@ -154,9 +316,42 @@ static struct touch_point *touch_point_from_id(struct touch *touch, int32_t touc
     return NULL;
 }
 
-static void touch_point_reset(struct touch_point *point)
+static void touch_cancel_points(struct touch *touch)
 {
+    struct seat *seat = touch->input->seat;
+
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        if (point->touch_id < 0 || !point->surface) {
+            continue;
+        }
+        point->abs_x = point->last_x;
+        point->abs_y = point->last_y;
+        wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
+    }
+}
+
+static void touch_point_reset(struct touch_point *point, bool cancelled)
+{
+    struct gesture_state *state = &point->touch->gestures;
+    if (state->type != GESTURE_TYPE_NONE &&
+        gesture_state_end(state, state->type, state->device, cancelled)) {
+        touch_cancel_points(point->touch);
+    }
+
     point->touch_id = -1;
+    point->surface = NULL;
+    point->touch->points_count--;
+
+    if (point->timer) {
+        wl_event_source_timer_update(point->timer, 0);
+    }
+
+    if (point->hold) {
+        point->touch->hold_points--;
+        point->hold = false;
+    }
+
     /* reinsert to tail */
     wl_list_remove(&point->link);
     wl_list_insert(point->touch->points.prev, &point->link);
@@ -175,6 +370,15 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
         return true;
     }
 
+    struct touch_point *point = touch_point_create(touch, event->touch_id);
+    if (point->timer) {
+        wl_event_source_timer_update(point->timer, TOUCH_HOLD_TIMEOUT);
+    }
+    touch->points_count++;
+    point->abs_x = point->last_x = event->x;
+    point->abs_y = point->last_y = event->y;
+    point->moved = false;
+
     struct wlr_surface *toplevel = NULL;
     double sx, sy;
     struct wlr_surface *surface = touch_get_surface(touch, &sx, &sy, &toplevel);
@@ -182,7 +386,6 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
         return false;
     }
 
-    struct touch_point *point = touch_point_create(touch, event->touch_id);
     point->surface = surface;
     point->ref_lx = seat->cursor->lx;
     point->ref_ly = seat->cursor->ly;
@@ -203,7 +406,46 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     return true;
 }
 
-void touch_handle_motion(struct wlr_touch_motion_event *event)
+static uint32_t touch_point_calc_directions(struct touch_point *point, double dx, double dy)
+{
+    uint32_t directions = GESTURE_DIRECTION_NONE;
+
+    if (fabs(dx) > fabs(dy)) {
+        if (dx > 0) {
+            directions |= GESTURE_DIRECTION_RIGHT;
+        } else {
+            directions |= GESTURE_DIRECTION_LEFT;
+        }
+    } else {
+        if (dy > 0) {
+            directions |= GESTURE_DIRECTION_DOWN;
+        } else {
+            directions |= GESTURE_DIRECTION_UP;
+        }
+    }
+
+    return directions;
+}
+
+static void touch_calc_average_delta(struct touch *touch, double *dx, double *dy)
+{
+    double total_dx = 0, total_dy = 0;
+
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        total_dx += point->dx;
+        total_dy += point->dy;
+    }
+
+    *dx = total_dx / touch->points_count;
+    *dy = total_dy / touch->points_count;
+}
+
+void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
 {
     struct touch *touch = touch_from_wlr_touch(event->touch);
     if (!touch) {
@@ -219,7 +461,34 @@ void touch_handle_motion(struct wlr_touch_motion_event *event)
 
     struct touch_point *point = touch_point_from_id(touch, event->touch_id);
     if (!point) {
-        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
+        return;
+    }
+
+    point->dx = event->x - point->last_x;
+    point->dy = event->y - point->last_y;
+    point->last_x = event->x;
+    point->last_y = event->y;
+
+    double dx = event->x - point->abs_x;
+    double dy = event->y - point->abs_y;
+    point->moved = fabs(dx) > 0.01f || fabs(dy) > 0.01f;
+    /* calc point motion directions */
+    point->directions = touch_point_calc_directions(point, dx, dy);
+
+    if (!touch->filter_enabled) {
+        touch_gesture_detect(touch);
+        if (touch->gestures.type == GESTURE_TYPE_SWIPE) {
+            double avg_dx = 0, avg_dy = 0;
+            touch_calc_average_delta(touch, &avg_dx, &avg_dy);
+            gesture_state_update(&touch->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHSCREEN,
+                                 avg_dx, avg_dy, NAN, NAN);
+        } else if (touch->gestures.type == GESTURE_TYPE_PINCH) {
+            // TODO: pinch scale and rotation
+            // gesture_state_update();
+        }
+    }
+
+    if (!handle) {
         return;
     }
 
@@ -231,11 +500,16 @@ void touch_handle_motion(struct wlr_touch_motion_event *event)
     wlr_seat_touch_notify_motion(seat->wlr_seat, event->time_msec, event->touch_id, sx, sy);
 }
 
-void touch_handle_up(struct wlr_touch_up_event *event)
+void touch_handle_up(struct wlr_touch_up_event *event, bool handle)
 {
     struct touch *touch = touch_from_wlr_touch(event->touch);
     if (!touch) {
         return;
+    }
+
+    struct touch_point *point = touch_point_from_id(touch, event->touch_id);
+    if (point) {
+        touch_point_reset(point, false);
     }
 
     struct seat *seat = touch->input->seat;
@@ -244,17 +518,18 @@ void touch_handle_up(struct wlr_touch_up_event *event)
         return;
     }
 
-    struct touch_point *point = touch_point_from_id(touch, event->touch_id);
     if (!point) {
-        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
         return;
     }
 
-    wlr_seat_touch_notify_up(seat->wlr_seat, event->time_msec, event->touch_id);
-    touch_point_reset(point);
+    touch_filter_enable(touch, true);
+
+    if (handle) {
+        wlr_seat_touch_notify_up(seat->wlr_seat, event->time_msec, event->touch_id);
+    }
 }
 
-void touch_handle_cancel(struct wlr_touch_cancel_event *event)
+void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle)
 {
     struct touch *touch = touch_from_wlr_touch(event->touch);
     if (!touch) {
@@ -262,12 +537,18 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event)
     }
 
     struct touch_point *point = touch_point_from_id(touch, event->touch_id);
-    if (!point) {
-        kywc_log(KYWC_DEBUG, "touch point %d may not has down", event->touch_id);
-        return;
+    if (point) {
+        touch_point_reset(point, true);
     }
 
     struct seat *seat = touch->input->seat;
-    wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
-    touch_point_reset(point);
+    if (seat->touch_grab && seat->touch_grab->interface->touch &&
+        seat->touch_grab->interface->touch(seat->touch_grab, event->time_msec, false)) {
+        return;
+    }
+
+    if (point && handle) {
+        struct seat *seat = touch->input->seat;
+        wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
+    }
 }

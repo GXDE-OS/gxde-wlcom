@@ -404,15 +404,12 @@ static void cursor_handle_touch_up(struct wl_listener *listener, void *data)
     struct wlr_touch_up_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    if (cursor->touch_simulation_pointer) {
-        if (cursor->pointer_touch_id == event->touch_id) {
-            cursor->pointer_touch_up = true;
-            cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
-        }
-        return;
-    }
+    touch_handle_up(event, !cursor->touch_simulation_pointer);
 
-    touch_handle_up(event);
+    if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
+        cursor->pointer_touch_up = true;
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+    }
 }
 
 static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
@@ -444,14 +441,11 @@ static void cursor_handle_touch_motion(struct wl_listener *listener, void *data)
     idle_manager_notify_activity(cursor->seat);
     cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
 
-    if (cursor->touch_simulation_pointer) {
-        if (cursor->pointer_touch_id == event->touch_id) {
-            cursor_feed_motion(cursor, event->time_msec);
-        }
-        return;
-    }
+    touch_handle_motion(event, !cursor->touch_simulation_pointer);
 
-    touch_handle_motion(event);
+    if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
+        cursor_feed_motion(cursor, event->time_msec);
+    }
 }
 
 static void cursor_handle_touch_cancel(struct wl_listener *listener, void *data)
@@ -460,15 +454,12 @@ static void cursor_handle_touch_cancel(struct wl_listener *listener, void *data)
     struct wlr_touch_cancel_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    if (cursor->touch_simulation_pointer) {
-        if (cursor->pointer_touch_id == event->touch_id) {
-            cursor->pointer_touch_up = true;
-            cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
-        }
-        return;
-    }
+    touch_handle_cancel(event, !cursor->touch_simulation_pointer);
 
-    touch_handle_cancel(event);
+    if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
+        cursor->pointer_touch_up = true;
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+    }
 }
 
 static void cursor_handle_touch_frame(struct wl_listener *listener, void *data)
