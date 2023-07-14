@@ -201,7 +201,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
 #if HAVE_WLR_SCENE
     struct ky_scene_output *scene_output =
         ky_scene_get_scene_output(output_manager->server->scene, wlr_output);
-    ky_scene_output_commit(scene_output);
+    ky_scene_output_commit(scene_output, NULL);
 
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);

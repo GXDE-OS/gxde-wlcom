@@ -16,6 +16,7 @@
 #define ky_scene_rect wlr_scene_rect
 #define ky_scene_buffer wlr_scene_buffer
 #define ky_scene_output wlr_scene_output
+#define ky_scene_output_state_options wlr_scene_output_state_options
 
 #define ky_scene_node_destroy wlr_scene_node_destroy
 #define ky_scene_node_set_enabled wlr_scene_node_set_enabled
@@ -92,6 +93,7 @@ struct ky_scene_tree;
 struct ky_scene_rect;
 struct ky_scene_buffer;
 struct ky_scene_output;
+struct ky_scene_output_state_options;
 
 struct server;
 
@@ -143,7 +145,7 @@ SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *s
 SCENE_API struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene,struct wlr_output *output) { return NULL; }
 SCENE_API struct wlr_output *ky_scene_output_get_output(struct ky_scene_output *output) { return NULL; }
 SCENE_API bool ky_scene_attach_output_layout(struct ky_scene *scene, struct wlr_output_layout *output_layout) { return false; }
-SCENE_API bool ky_scene_output_commit(struct ky_scene_output *scene_output) { return false; }
+SCENE_API bool ky_scene_output_commit(struct ky_scene_output *scene_output, const struct ky_scene_output_state_options *options) { return false; }
 SCENE_API void ky_scene_output_send_frame_done(struct ky_scene_output *scene_output, struct timespec *now) {}
 SCENE_API void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *presentation) {}
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return NULL; }
