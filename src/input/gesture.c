@@ -30,7 +30,9 @@ static int gesture_handle_timer(void *data)
 
     kywc_log(KYWC_DEBUG, "hold gesture triggered: fingers=%d", state->fingers);
     bindings_handle_gesture_binding(state);
-    gesture_state_reset(state);
+    if (state->type != GESTURE_TYPE_HOLD) {
+        gesture_state_reset(state);
+    }
     return 0;
 }
 

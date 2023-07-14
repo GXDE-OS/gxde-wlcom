@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_seat.h>
@@ -14,6 +15,9 @@
 
 #define TOUCH_HOLD_TIMEOUT (100)
 #define TOUCH_FILTER_TIMEOUT (200)
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 struct touch_manager {
     struct wl_listener new_input;
@@ -35,6 +39,9 @@ struct touch {
     /* current gesture state per touch */
     struct gesture_state gestures;
     uint32_t hold_points;
+
+    /* pinch angle */
+    double angle;
 };
 
 struct touch_point {
@@ -123,9 +130,9 @@ static void touch_gesture_detect(struct touch *touch)
         return;
     }
 
-    /* moved when one touch point, cancel all gestrure */
+    /* moved when one touch point swipe from edge*/
     if (touch->points_count == 1) {
-        touch_gesture_begin(touch, GESTURE_TYPE_NONE, 0);
+        touch_gesture_begin(touch, GESTURE_TYPE_SWIPE, 1);
         return;
     }
 
@@ -378,6 +385,7 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     point->abs_x = point->last_x = event->x;
     point->abs_y = point->last_y = event->y;
     point->moved = false;
+    touch->angle = 0.0;
 
     struct wlr_surface *toplevel = NULL;
     double sx, sy;
@@ -445,6 +453,70 @@ static void touch_calc_average_delta(struct touch *touch, double *dx, double *dy
     *dy = total_dy / touch->points_count;
 }
 
+static double touch_calc_average_scale(struct touch *touch)
+{
+    double start_min = 1.0, current_min = 1.0;
+    double start_max = 0.0, current_max = 0.0;
+
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        if (start_min == 1.0 && start_max == 0.0) {
+            start_min = start_max = point->abs_x;
+            current_min = current_max = point->last_x;
+        } else {
+            start_min = MIN(start_min, point->abs_x);
+            start_max = MAX(start_max, point->abs_x);
+            current_min = MIN(current_min, point->last_x);
+            current_max = MAX(current_max, point->last_x);
+        }
+    }
+    double start_width = start_max - start_min;
+    double current_width = current_max - current_min;
+    if (start_width == 0.0) {
+        kywc_log(KYWC_WARN, "start(max=%f, min=%f), current(max=%f, min=%f)", start_max, start_min,
+                 current_max, current_min);
+        return 1.0;
+    }
+
+    return current_width / start_width;
+}
+
+static double touch_calc_average_angle_delta(struct touch *touch)
+{
+    double dx = 0.0;
+    double dy = 0.0;
+
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        dx = point->last_x - dx;
+        dy = point->last_y - dy;
+    }
+
+    double tangle = atan2(dy, dx) * 180.0 / 3.14;
+    if (touch->angle == 0.0) {
+        touch->angle = tangle;
+    }
+
+    double angle_delta = tangle - touch->angle;
+    if (angle_delta > 180.0) {
+        angle_delta -= 360.0;
+    } else if (angle_delta < -180.0) {
+        angle_delta += 360.0;
+    }
+
+    touch->angle = tangle;
+
+    return angle_delta;
+}
+
 void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
 {
     struct touch *touch = touch_from_wlr_touch(event->touch);
@@ -483,8 +555,12 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
             gesture_state_update(&touch->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHSCREEN,
                                  avg_dx, avg_dy, NAN, NAN);
         } else if (touch->gestures.type == GESTURE_TYPE_PINCH) {
-            // TODO: pinch scale and rotation
-            // gesture_state_update();
+            double avg_dx = 0, avg_dy = 0;
+            touch_calc_average_delta(touch, &avg_dx, &avg_dy);
+            double scale = touch_calc_average_scale(touch);
+            double angle_delta = touch_calc_average_angle_delta(touch);
+            gesture_state_update(&touch->gestures, GESTURE_TYPE_PINCH, GESTURE_DEVICE_TOUCHSCREEN,
+                                 avg_dx, avg_dy, scale, angle_delta);
         }
     }
 
