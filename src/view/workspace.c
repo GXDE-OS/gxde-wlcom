@@ -52,10 +52,10 @@ static struct gesture {
     char *desc;
     enum direction direction;
 } gestures[] = {
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD, GESTURE_DIRECTION_LEFT,
-      "switch to left workspace", DIRECTION_LEFT },
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD, GESTURE_DIRECTION_RIGHT,
-      "switch to right workspace", DIRECTION_RIGHT },
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN,
+      GESTURE_DIRECTION_LEFT, "switch to left workspace", DIRECTION_LEFT },
+    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN,
+      GESTURE_DIRECTION_RIGHT, "switch to right workspace", DIRECTION_RIGHT },
 };
 
 static void workspace_switch_to(enum direction direction)
