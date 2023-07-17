@@ -15,7 +15,7 @@ struct ky_scene_surface {
     struct wl_listener outputs_update;
     struct wl_listener output_enter;
     struct wl_listener output_leave;
-    struct wl_listener output_present;
+    struct wl_listener output_sample;
     struct wl_listener frame_done;
     struct wl_listener surface_destroy;
     struct wl_listener surface_commit;

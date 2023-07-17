@@ -16,6 +16,7 @@ static void handle_scene_buffer_outputs_update(struct wl_listener *listener, voi
     }
     double scale = ky_scene_output_get_output(primary_output)->scale;
     wlr_fractional_scale_v1_notify_scale(surface->surface, scale);
+    wlr_surface_set_preferred_buffer_scale(surface->surface, ceil(scale));
 }
 
 static void handle_scene_buffer_output_enter(struct wl_listener *listener, void *data)
@@ -34,20 +35,28 @@ static void handle_scene_buffer_output_leave(struct wl_listener *listener, void 
     wlr_surface_send_leave(surface->surface, ky_scene_output_get_output(output));
 }
 
-static void handle_scene_buffer_output_present(struct wl_listener *listener, void *data)
+static void handle_scene_buffer_output_sample(struct wl_listener *listener, void *data)
 {
-    struct ky_scene_surface *surface = wl_container_of(listener, surface, output_present);
-    struct ky_scene_output *scene_output = data;
+    struct ky_scene_surface *surface = wl_container_of(listener, surface, output_sample);
+    const struct ky_scene_output_sample_event *event = data;
+    struct ky_scene_output *scene_output = ky_scene_output_sample_event_output(event);
 
     struct ky_scene_output *primary_output = ky_scene_buffer_get_primary_output(surface->buffer);
-    if (primary_output == scene_output) {
-        struct ky_scene *root = ky_scene_from_node(ky_scene_node_from_buffer(surface->buffer));
-        struct wlr_presentation *presentation = ky_scene_get_presentation(root);
+    if (primary_output != scene_output) {
+        return;
+    }
 
-        if (presentation) {
-            wlr_presentation_surface_sampled_on_output(presentation, surface->surface,
-                                                       ky_scene_output_get_output(scene_output));
-        }
+    struct ky_scene *root = ky_scene_from_node(ky_scene_node_from_buffer(surface->buffer));
+    struct wlr_presentation *presentation = ky_scene_get_presentation(root);
+    if (!presentation) {
+        return;
+    }
+
+    struct wlr_output *output = ky_scene_output_get_output(scene_output);
+    if (ky_scene_output_sample_event_direct_scanout(event)) {
+        wlr_presentation_surface_scanned_out_on_output(presentation, surface->surface, output);
+    } else {
+        wlr_presentation_surface_textured_on_output(presentation, surface->surface, output);
     }
 }
 
@@ -158,7 +167,7 @@ static void surface_addon_destroy(struct wlr_addon *addon)
     wl_list_remove(&surface->outputs_update.link);
     wl_list_remove(&surface->output_enter.link);
     wl_list_remove(&surface->output_leave.link);
-    wl_list_remove(&surface->output_present.link);
+    wl_list_remove(&surface->output_sample.link);
     wl_list_remove(&surface->frame_done.link);
     wl_list_remove(&surface->surface_destroy.link);
     wl_list_remove(&surface->surface_commit.link);
@@ -235,8 +244,8 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
     surface->output_leave.notify = handle_scene_buffer_output_leave;
     ky_scene_buffer_add_output_leave_listener(scene_buffer, &surface->output_leave);
 
-    surface->output_present.notify = handle_scene_buffer_output_present;
-    ky_scene_buffer_add_output_present_listener(scene_buffer, &surface->output_present);
+    surface->output_sample.notify = handle_scene_buffer_output_sample;
+    ky_scene_buffer_add_output_sample_listener(scene_buffer, &surface->output_sample);
 
     surface->frame_done.notify = handle_scene_buffer_frame_done;
     ky_scene_buffer_add_frame_done_listener(scene_buffer, &surface->frame_done);

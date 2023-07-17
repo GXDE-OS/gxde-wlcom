@@ -17,6 +17,7 @@
 #define ky_scene_buffer wlr_scene_buffer
 #define ky_scene_output wlr_scene_output
 #define ky_scene_output_state_options wlr_scene_output_state_options
+#define ky_scene_output_sample_event wlr_scene_output_sample_event
 
 #define ky_scene_node_destroy wlr_scene_node_destroy
 #define ky_scene_node_set_enabled wlr_scene_node_set_enabled
@@ -70,7 +71,9 @@ SCENE_API void ky_scene_buffer_set_point_accepts_input(struct ky_scene_buffer *s
 SCENE_API void ky_scene_buffer_add_outputs_update_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.outputs_update, listener); }
 SCENE_API void ky_scene_buffer_add_output_enter_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.output_enter, listener); }
 SCENE_API void ky_scene_buffer_add_output_leave_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.output_leave, listener); }
-SCENE_API void ky_scene_buffer_add_output_present_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.output_present, listener); }
+SCENE_API void ky_scene_buffer_add_output_sample_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.output_sample, listener); }
+SCENE_API struct ky_scene_output *ky_scene_output_sample_event_output(const struct ky_scene_output_sample_event *event) { return event->output; }
+SCENE_API bool ky_scene_output_sample_event_direct_scanout(const struct ky_scene_output_sample_event *event) { return event->direct_scanout; }
 SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.frame_done, listener); }
 
 #else
@@ -94,6 +97,7 @@ struct ky_scene_rect;
 struct ky_scene_buffer;
 struct ky_scene_output;
 struct ky_scene_output_state_options;
+struct ky_scene_output_sample_event;
 
 struct server;
 
@@ -140,7 +144,9 @@ SCENE_API void ky_scene_buffer_set_point_accepts_input(struct ky_scene_buffer *s
 SCENE_API void ky_scene_buffer_add_outputs_update_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
 SCENE_API void ky_scene_buffer_add_output_enter_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
 SCENE_API void ky_scene_buffer_add_output_leave_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API void ky_scene_buffer_add_output_present_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
+SCENE_API void ky_scene_buffer_add_output_sample_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
+SCENE_API struct ky_scene_output *ky_scene_output_sample_event_output(const struct ky_scene_output_sample_event *event) { return NULL; }
+SCENE_API bool ky_scene_output_sample_event_direct_scanout(const struct ky_scene_output_sample_event *event) { return false; }
 SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
 SCENE_API struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene,struct wlr_output *output) { return NULL; }
 SCENE_API struct wlr_output *ky_scene_output_get_output(struct ky_scene_output *output) { return NULL; }
