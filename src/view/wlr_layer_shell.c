@@ -1,11 +1,13 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include <wlr/types/wlr_seat.h>
 
 #include "input/event.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
+#include "view/workspace.h"
 #include "view_p.h"
 
 struct wlr_layer_shell_manager {
@@ -42,6 +44,7 @@ struct layer_shell {
 
     struct ky_scene_tree *tree;
     struct wlr_layer_surface_v1 *layer_surface;
+    struct wlr_seat_keyboard_grab keyboard_grab;
 
     struct wl_listener commit;
     struct wl_listener map;
@@ -51,6 +54,71 @@ struct layer_shell {
 };
 
 static struct wlr_layer_shell_manager *manager = NULL;
+
+static void layer_shell_keyboard_enter(struct wlr_seat_keyboard_grab *grab,
+                                       struct wlr_surface *surface, const uint32_t keycodes[],
+                                       size_t num_keycodes,
+                                       const struct wlr_keyboard_modifiers *modifiers)
+{
+    // keyboard focus should remain on the layer shell
+}
+
+static void layer_shell_keyboard_clear_focus(struct wlr_seat_keyboard_grab *grab)
+{
+    // keyboard focus should remain on the layer shell
+}
+
+static void layer_shell_keyboard_key(struct wlr_seat_keyboard_grab *grab, uint32_t time,
+                                     uint32_t key, uint32_t state)
+{
+    wlr_seat_keyboard_send_key(grab->seat, time, key, state);
+}
+
+static void layer_shell_keyboard_modifiers(struct wlr_seat_keyboard_grab *grab,
+                                           const struct wlr_keyboard_modifiers *modifiers)
+{
+    wlr_seat_keyboard_send_modifiers(grab->seat, modifiers);
+}
+
+static void layer_shell_keyboard_cancel(struct wlr_seat_keyboard_grab *grab)
+{
+    grab->seat = NULL;
+}
+
+static const struct wlr_keyboard_grab_interface layer_shell_keyboard_grab = {
+    .enter = layer_shell_keyboard_enter,
+    .clear_focus = layer_shell_keyboard_clear_focus,
+    .key = layer_shell_keyboard_key,
+    .modifiers = layer_shell_keyboard_modifiers,
+    .cancel = layer_shell_keyboard_cancel,
+};
+
+static void layer_shell_keyboard_interactivity(struct layer_shell *layer_shell, struct seat *seat)
+{
+    struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
+
+    if (layer_surface->surface->mapped) {
+        if (layer_surface->current.keyboard_interactive) {
+            seat_focus_surface(seat, layer_surface->surface);
+            /* start a seat keyboard grab */
+            if (layer_surface->current.layer >= ZWLR_LAYER_SHELL_V1_LAYER_TOP) {
+                layer_shell->keyboard_grab.interface = &layer_shell_keyboard_grab;
+                layer_shell->keyboard_grab.seat = seat->wlr_seat;
+                layer_shell->keyboard_grab.data = layer_shell;
+                wlr_seat_keyboard_start_grab(seat->wlr_seat, &layer_shell->keyboard_grab);
+            }
+        }
+    } else {
+        struct wlr_seat *wlr_seat = layer_shell->keyboard_grab.seat;
+        if (wlr_seat && wlr_seat->keyboard_state.grab == &layer_shell->keyboard_grab) {
+            wlr_seat_keyboard_end_grab(wlr_seat);
+        }
+        // XXX: auto focus layer_shell
+        if (seat->wlr_seat->keyboard_state.focused_surface == layer_surface->surface) {
+            view_topmost_activate(workspace_manager_get_current());
+        }
+    }
+}
 
 static struct layer_output *layer_output_from_wlr_output(struct wlr_output *wlr_output)
 {
@@ -183,7 +251,7 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
     }
 
     if (committed & WLR_LAYER_SURFACE_V1_STATE_KEYBOARD_INTERACTIVITY) {
-        // TODO: process keyboard interactivity
+        layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
         committed &= ~WLR_LAYER_SURFACE_V1_STATE_KEYBOARD_INTERACTIVITY;
     }
 
@@ -205,7 +273,7 @@ static void layer_shell_handle_map(struct wl_listener *listener, void *data)
         kywc_output_update_usable_area(&output->base);
     }
 
-    // TODO: process keyboard interactivity
+    layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
 }
 
 /* called when precommit */
@@ -219,6 +287,8 @@ static void layer_shell_handle_unmap(struct wl_listener *listener, void *data)
     if (!layer_surface->output) {
         return;
     }
+
+    layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
 
     if (layer_surface->current.exclusive_zone > 0) {
         kywc_output_update_usable_area(&output_from_wlr_output(layer_surface->output)->base);
@@ -264,7 +334,9 @@ static bool layer_shell_hover(struct seat *seat, struct ky_scene_node *node, dou
 static void layer_shell_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
                               bool pressed, uint32_t time, bool dual, void *data)
 {
+    struct layer_shell *layer_shell = data;
     seat_notify_button(seat, time, button, pressed);
+    layer_shell_keyboard_interactivity(layer_shell, seat);
 }
 
 static void layer_shell_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data)
