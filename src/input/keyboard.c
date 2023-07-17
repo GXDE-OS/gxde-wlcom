@@ -1,5 +1,7 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <strings.h>
+#include <time.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <wlr/types/wlr_keyboard_group.h>
@@ -107,6 +109,10 @@ static void keyboard_state_add_key(struct keyboard_state *keyboard_state, uint32
     if (keyboard_state->npressed >= MAX_PRESSED_KEY) {
         return;
     }
+    if (keyboard_state->npressed > 0 &&
+        keyboard_state->pressed_keysyms[keyboard_state->npressed - 1] == keysym) {
+        return;
+    }
 
     keyboard_state->pressed_keysyms[keyboard_state->npressed] = keysym;
     keyboard_state->npressed++;
@@ -161,6 +167,42 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     return false;
 }
 
+static void keyboard_repeat_stop(struct keyboard *keyboard)
+{
+    if (keyboard->repeat.key == 0) {
+        return;
+    }
+
+    keyboard->repeat.key = 0;
+    wl_event_source_timer_update(keyboard->repeat.timer, 0);
+}
+
+static void keybaord_repeat_start(struct keyboard *keyboard, uint32_t key, bool pressed)
+{
+    if (keyboard->repeat.key > 0) {
+        if (keyboard->repeat.key == key && !pressed) {
+            keyboard_repeat_stop(keyboard);
+        }
+        return;
+    }
+
+    /* only enable key repeat when pressed state */
+    if (!pressed) {
+        return;
+    }
+
+    // TODO: add no_repeat flag for some bindings, like workspace switch
+    int32_t delay = keyboard->wlr_keyboard->repeat_info.delay;
+    if (delay > 0) {
+        keyboard->repeat.key = key;
+        if (wl_event_source_timer_update(keyboard->repeat.timer, delay) < 0) {
+            kywc_log(KYWC_DEBUG, "failed to set key repeat timer");
+        }
+    } else if (keyboard->repeat.key > 0) {
+        keyboard_repeat_stop(keyboard);
+    }
+}
+
 static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
                               enum wl_keyboard_key_state state, uint32_t time, uint32_t modifiers)
 {
@@ -171,13 +213,17 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
 
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed)) {
+        keybaord_repeat_start(keyboard, key, pressed);
         return;
     }
 
     bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers);
     if (handled) {
+        keybaord_repeat_start(keyboard, key, pressed);
         return;
     }
+
+    keyboard_repeat_stop(keyboard);
 
     handled = input_method_handle_key(keyboard, time, key, state);
     if (handled) {
@@ -227,6 +273,32 @@ static void keyboard_handle_modifiers(struct wl_listener *listener, void *data)
     struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
 
     keyboard_feed_modifiers(keyboard, &wlr_keyboard->modifiers);
+}
+
+static void keyboard_feed_fake_key(struct keyboard *keyboard, uint32_t key)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+    uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
+    keyboard_feed_key(keyboard, key, WL_KEYBOARD_KEY_STATE_PRESSED, time, modifiers);
+}
+
+static int keyboard_handle_repeat(void *data)
+{
+    struct keyboard *keyboard = data;
+    if (keyboard->repeat.key > 0) {
+        if (keyboard->wlr_keyboard->repeat_info.rate > 0) {
+            // We queue the next event first, as the command might cancel it
+            if (wl_event_source_timer_update(keyboard->repeat.timer,
+                                             1000 / keyboard->wlr_keyboard->repeat_info.rate) < 0) {
+                kywc_log(KYWC_DEBUG, "failed to update key repeat timer");
+            }
+        }
+        keyboard_feed_fake_key(keyboard, keyboard->repeat.key);
+    }
+    return 0;
 }
 
 void keyboard_add_input(struct seat *seat, struct input *input)
@@ -289,6 +361,12 @@ create:
     struct wlr_seat *wlr_seat = seat->wlr_seat;
     wlr_seat_set_keyboard(wlr_seat, dst_keyboard);
 
+    /* create timer for internal key repeat */
+    if (!input->prop.is_virtual) {
+        struct wl_event_loop *loop = wl_display_get_event_loop(wlr_seat->display);
+        keyboard->repeat.timer = wl_event_loop_add_timer(loop, keyboard_handle_repeat, keyboard);
+    }
+
     keyboard->key.notify = keyboard_handle_key;
     wl_signal_add(&dst_keyboard->events.key, &keyboard->key);
     keyboard->modifiers.notify = keyboard_handle_modifiers;
@@ -313,6 +391,7 @@ void keyboard_destroy(struct keyboard *keyboard)
         wlr_keyboard_group_destroy(wlr_group);
     }
 
+    wl_event_source_remove(keyboard->repeat.timer);
     free(keyboard);
 }
 

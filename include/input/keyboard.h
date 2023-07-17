@@ -23,6 +23,11 @@ struct keyboard {
 
     bool is_virtual;
     struct keyboard_state state;
+
+    struct {
+        uint32_t key;
+        struct wl_event_source *timer;
+    } repeat;
 };
 
 void keyboard_destroy(struct keyboard *keyboard);
