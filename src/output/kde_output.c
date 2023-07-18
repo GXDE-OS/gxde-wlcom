@@ -11,7 +11,7 @@
 #define OUTPUT_DEVICE_VERSION 2
 #define OUTPUT_DEVICE_MODE_VERSION 1
 #define OUTPUT_MANAGER_VERSION 2
-#define KDE_PRIMARY_OUTPUT_VERSION 1
+#define KDE_PRIMARY_OUTPUT_VERSION 2
 #define ORG_KDE_KWIN_DPMS_MANAGER_VERSION 1
 
 struct kde_output_management {
@@ -767,6 +767,15 @@ static void kde_output_management_handle_new_output(struct wl_listener *listener
 
 #undef OUTPUT_DEVICE_ADD_SIGNAL
 
+static void kde_primary_output_destroy(struct wl_client *client, struct wl_resource *resource)
+{
+    wl_resource_destroy(resource);
+}
+
+static const struct kde_primary_output_v1_interface kde_primary_output_impl = {
+    .destroy = kde_primary_output_destroy,
+};
+
 static void kde_primary_output_unbind(struct wl_resource *resource)
 {
     wl_list_remove(wl_resource_get_link(resource));
@@ -782,7 +791,8 @@ static void kde_primary_output_bind(struct wl_client *client, void *data, uint32
         return;
     }
 
-    wl_resource_set_destructor(resource, kde_primary_output_unbind);
+    wl_resource_set_implementation(resource, &kde_primary_output_impl, NULL,
+                                   kde_primary_output_unbind);
     wl_list_insert(&management->primary_output.resources, wl_resource_get_link(resource));
 
     struct kywc_output *primary = management->primary_output.current_primary;

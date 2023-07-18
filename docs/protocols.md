@@ -102,7 +102,7 @@ wayland协议支持情况
 | kde_output_device_v2                           |    2     | 3     |
 | kde_output_management_v2                       |    2     | 4     |
 | kde_output_order_v1                            |    no    | 2     |
-| kde_primary_output_v1                          |    1     | 2     |
+| kde_primary_output_v1                          |    2     |       |
 | kde_screen_edge_manager_v1                     |    no    | 1     |
 | org_kde_kwin_keystate                          |    no    | 4     |
 | org_kde_plasma_virtual_desktop_management      |    2     | check |

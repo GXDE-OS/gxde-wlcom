@@ -622,7 +622,7 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
                                           output_device);
     } else if (!strcmp(interface, kde_primary_output_v1_interface.name)) {
         output_manager->primary =
-            wl_registry_bind(registry, name, &kde_primary_output_v1_interface, 1);
+            wl_registry_bind(registry, name, &kde_primary_output_v1_interface, 2);
         kde_primary_output_v1_add_listener(output_manager->primary, &primary_output_listener,
                                            output_manager);
     } else if (!strcmp(interface, org_kde_kwin_dpms_manager_interface.name)) {
