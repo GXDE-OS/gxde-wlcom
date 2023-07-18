@@ -71,6 +71,12 @@ struct idle *idle_manager_add_idle(struct seat *seat, bool support_inhibit, uint
 void idle_destroy(struct idle *idle);
 
 /**
+ * idle inhibitor manager
+ */
+
+bool idle_inhibit_manager_create(struct server *server);
+
+/**
  * input method and text input
  */
 
