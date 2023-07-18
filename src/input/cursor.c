@@ -486,7 +486,7 @@ static void cursor_handle_swipe_begin(struct wl_listener *listener, void *data)
     idle_manager_notify_activity(cursor->seat);
 
     gesture_state_begin(&cursor->gestures, GESTURE_TYPE_SWIPE, GESTURE_DEVICE_TOUCHPAD,
-                        event->fingers);
+                        GESTURE_EDGE_NONE, event->fingers);
     wlr_pointer_gestures_v1_send_swipe_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                              event->time_msec, event->fingers);
 }
@@ -524,7 +524,7 @@ static void cursor_handle_pinch_begin(struct wl_listener *listener, void *data)
     idle_manager_notify_activity(cursor->seat);
 
     gesture_state_begin(&cursor->gestures, GESTURE_TYPE_PINCH, GESTURE_DEVICE_TOUCHPAD,
-                        event->fingers);
+                        GESTURE_EDGE_NONE, event->fingers);
     wlr_pointer_gestures_v1_send_pinch_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                              event->time_msec, event->fingers);
 }
@@ -561,7 +561,7 @@ static void cursor_handle_hold_begin(struct wl_listener *listener, void *data)
     idle_manager_notify_activity(cursor->seat);
 
     gesture_state_begin(&cursor->gestures, GESTURE_TYPE_HOLD, GESTURE_DEVICE_TOUCHPAD,
-                        event->fingers);
+                        GESTURE_EDGE_NONE, event->fingers);
     wlr_pointer_gestures_v1_send_hold_begin(cursor->seat->pointer_gestures, cursor->seat->wlr_seat,
                                             event->time_msec, event->fingers);
 }

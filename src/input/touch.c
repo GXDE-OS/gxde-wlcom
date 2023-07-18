@@ -86,6 +86,45 @@ static void touch_handle_input_destroy(struct wl_listener *listener, void *data)
     free(touch);
 }
 
+static enum gesture_edge touch_calc_edge(struct touch *touch)
+{
+    double abs_avg_x = 0.0;
+    double abs_avg_y = 0.0;
+
+    struct touch_point *point;
+    wl_list_for_each(point, &touch->points, link) {
+        /* meet the first free point */
+        if (point->touch_id < 0) {
+            break;
+        }
+        abs_avg_x += point->abs_x;
+        abs_avg_y += point->abs_y;
+    }
+
+    abs_avg_x /= touch->points_count;
+    abs_avg_y /= touch->points_count;
+    // TODO: edge normalize by physical size of touch
+
+    enum gesture_edge edge = GESTURE_EDGE_NONE;
+    if (abs_avg_y <= 0.05) {
+        edge = GESTURE_EDGE_TOP;
+    }
+
+    if (abs_avg_x <= 0.05) {
+        edge = GESTURE_EDGE_LEFT;
+    }
+
+    if (abs_avg_x >= 0.95) {
+        edge = GESTURE_EDGE_RIGHT;
+    }
+
+    if (abs_avg_y >= 0.95) {
+        edge = GESTURE_EDGE_BOTTOM;
+    }
+
+    return edge;
+}
+
 static void touch_gesture_begin(struct touch *touch, enum gesture_type gesture, uint8_t fingers)
 {
     struct gesture_state *state = &touch->gestures;
@@ -100,7 +139,8 @@ static void touch_gesture_begin(struct touch *touch, enum gesture_type gesture, 
         return;
     }
 
-    gesture_state_begin(state, gesture, GESTURE_DEVICE_TOUCHSCREEN, fingers);
+    enum gesture_edge edge = touch_calc_edge(touch);
+    gesture_state_begin(state, gesture, GESTURE_DEVICE_TOUCHSCREEN, edge, fingers);
 }
 
 static void touch_gesture_detect(struct touch *touch)

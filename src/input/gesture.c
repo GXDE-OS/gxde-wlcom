@@ -16,6 +16,7 @@ static void gesture_state_reset(struct gesture_state *state)
     state->type = GESTURE_TYPE_NONE;
     state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
+    state->edge = GESTURE_EDGE_NONE;
     if (state->timer) {
         wl_event_source_timer_update(state->timer, 0);
     }
@@ -51,7 +52,7 @@ void gesture_state_finish(struct gesture_state *state)
 }
 
 void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
-                         enum gesture_device device, uint8_t fingers)
+                         enum gesture_device device, enum gesture_edge edge, uint8_t fingers)
 {
     state->type = type;
     state->device = device;
@@ -61,6 +62,7 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
     state->dy = 0.0;
     state->scale = 1.0;
     state->rotation = 0.0;
+    state->edge = edge;
 
     if (state->timer && type == GESTURE_TYPE_HOLD) {
         wl_event_source_timer_update(state->timer, GESTURE_HOLD_TIMEOUT);

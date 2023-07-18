@@ -6,6 +6,7 @@
 struct gesture_state {
     enum gesture_type type;
     enum gesture_device device;
+    enum gesture_edge edge;
     uint8_t fingers;
     uint32_t directions;
 
@@ -22,7 +23,7 @@ void gesture_state_init(struct gesture_state *state, void *display);
 void gesture_state_finish(struct gesture_state *state);
 
 void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
-                         enum gesture_device device, uint8_t fingers);
+                         enum gesture_device device, enum gesture_edge edge, uint8_t fingers);
 
 void gesture_state_update(struct gesture_state *state, enum gesture_type type,
                           enum gesture_device device, double dx, double dy, double scale,

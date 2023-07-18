@@ -32,14 +32,22 @@ enum gesture_direction {
     GESTURE_DIRECTION_COUNTERCLOCKWISE = 1 << 7,
 };
 
+enum gesture_edge {
+    GESTURE_EDGE_NONE = 0,
+    GESTURE_EDGE_TOP = 1 << 0,
+    GESTURE_EDGE_BOTTOM = 1 << 1,
+    GESTURE_EDGE_LEFT = 1 << 2,
+    GESTURE_EDGE_RIGHT = 1 << 3,
+};
+
 /**
  * gesture bindings
  */
 
 // TODO: create by gesture bind string
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
-                                                    uint32_t directions, uint8_t fingers,
-                                                    const char *desc);
+                                                    uint32_t directions, uint32_t edges,
+                                                    uint8_t fingers, const char *desc);
 
 void kywc_gesture_binding_destroy(struct gesture_binding *binding);
 

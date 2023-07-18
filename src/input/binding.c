@@ -31,6 +31,7 @@ struct gesture_binding {
     uint8_t fingers;
     uint32_t devices;
     uint32_t directions;
+    uint32_t edges;
     char *desc;
 
     void (*action)(struct gesture_binding *binding, void *data);
@@ -296,8 +297,8 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
 }
 
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
-                                                    uint32_t directions, uint8_t fingers,
-                                                    const char *desc)
+                                                    uint32_t directions, uint32_t edges,
+                                                    uint8_t fingers, const char *desc)
 {
     // TODO: check type, directions and fingers
 
@@ -310,6 +311,7 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint
     binding->devices = devices;
     binding->directions = directions;
     binding->fingers = fingers;
+    binding->edges = edges;
     if (desc) {
         binding->desc = strdup(desc);
     }
@@ -348,7 +350,9 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
             continue;
         }
         if ((gesture_state->device & binding->devices) &&
-            (gesture_state->directions & binding->directions)) {
+            (gesture_state->directions & binding->directions) &&
+            (binding->edges == GESTURE_EDGE_NONE ||
+             (binding->edges != GESTURE_EDGE_NONE && gesture_state->edge & binding->edges))) {
             kywc_log(KYWC_DEBUG, "start gesture binding: %s", binding->desc);
             if (binding->action) {
                 binding->action(binding, binding->data);
