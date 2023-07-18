@@ -135,7 +135,7 @@ static struct idle *idle_create(enum idle_type type, struct seat *seat, bool sup
 
     idle->type = type;
     idle->timeout_ms = timeout;
-    idle->support_inhibit = true;
+    idle->support_inhibit = support_inhibit;
     idle->seat = seat;
 
     idle->idle_func = idle_func;
