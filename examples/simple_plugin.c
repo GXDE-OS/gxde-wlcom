@@ -33,11 +33,32 @@ static struct shortcut {
     { "Win+Shift+t", "Win+Shift+t rigger", NULL },
 };
 
+static struct gesture {
+    char *gesture_str;
+    char *desc;
+    struct gesture_binding *binding;
+} gestures[] = {
+    { "pinch:any:2:inward+outward+clockwise", "2 fingers pinch in out or clockwise trigger", NULL },
+    { "swipe:touch:1:left:right", "1 fingers swipe from right edge to left trigger", NULL },
+    { "swipe:touch:2:left+right:left+right", "2 fingers swipe from left/right edge trigger", NULL },
+    { "swipe:touch:3:up:bottom", "3 fingers swipe from top edge down trigger", NULL },
+    { "swipe:any:4:up+down:none", "4 fingers swipe up down trigger", NULL },
+    { "swipe:touchpad:4:left", "4 fingers touch pad swipe trigger", NULL },
+    { "swipe:touch:5:left", "5 fingers touch swipe trigger", NULL },
+};
+
 static void shortcut_action(struct key_binding *binding, void *data)
 {
     struct shortcut *shortcut = data;
 
     printf("simple plugin call action: %s\n", shortcut->desc);
+}
+
+static void gesture_action(struct gesture_binding *binding, void *data)
+{
+    struct gesture *gesture = data;
+
+    printf("simple plugin call action: %s\n", gesture->desc);
 }
 
 static void simple_plugin_register_shortcuts(void)
@@ -56,6 +77,22 @@ static void simple_plugin_register_shortcuts(void)
 
         shortcut->binding = binding;
     }
+
+    // gesture
+    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
+        struct gesture *gesture = &gestures[i];
+        struct gesture_binding *binding =
+            kywc_gesture_binding_create_by_string(gesture->gesture_str, gesture->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_gesture_binding_register(binding, gesture_action, gesture)) {
+            kywc_gesture_binding_destroy(binding);
+            continue;
+        }
+        gesture->binding = binding;
+    }
 }
 
 static void simple_plugin_unregister_shortcuts(void)
@@ -64,6 +101,14 @@ static void simple_plugin_unregister_shortcuts(void)
         struct shortcut *shortcut = &shortcuts[i];
         if (shortcut->binding) {
             kywc_key_binding_destroy(shortcut->binding);
+        }
+    }
+
+    // gesture
+    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
+        struct gesture *gesture = &gestures[i];
+        if (gesture->binding) {
+            kywc_gesture_binding_destroy(gesture->binding);
         }
     }
 }
