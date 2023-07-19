@@ -296,11 +296,179 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
     return true;
 }
 
+static uint32_t gesture_string_parse_directions(const char *str)
+{
+    uint32_t directions = GESTURE_DIRECTION_NONE;
+
+    size_t len = 0;
+    char **split_str = split_string(str, "+", &len);
+
+    for (size_t i = 0; i < len; i++) {
+        if (strcmp(split_str[i], "up") == 0) {
+            directions |= GESTURE_DIRECTION_UP;
+        } else if (strcmp(split_str[i], "down") == 0) {
+            directions |= GESTURE_DIRECTION_DOWN;
+        } else if (strcmp(split_str[i], "left") == 0) {
+            directions |= GESTURE_DIRECTION_LEFT;
+        } else if (strcmp(split_str[i], "right") == 0) {
+            directions |= GESTURE_DIRECTION_RIGHT;
+        } else if (strcmp(split_str[i], "inward") == 0) {
+            directions |= GESTURE_DIRECTION_INWARD;
+        } else if (strcmp(split_str[i], "outward") == 0) {
+            directions |= GESTURE_DIRECTION_OUTWARD;
+        } else if (strcmp(split_str[i], "clockwise") == 0) {
+            directions |= GESTURE_DIRECTION_CLOCKWISE;
+        } else if (strcmp(split_str[i], "counterclockwise") == 0) {
+            directions |= GESTURE_DIRECTION_COUNTERCLOCKWISE;
+        } else {
+            kywc_log(KYWC_WARN, "expected directions, got %s", str);
+        }
+    }
+
+    free_split_string(&split_str, len);
+
+    return directions;
+}
+
+static uint32_t gesture_string_parse_edges(const char *str)
+{
+    uint32_t edges = GESTURE_EDGE_NONE;
+
+    size_t len = 0;
+    char **split_str = split_string(str, "+", &len);
+
+    for (size_t i = 0; i < len; i++) {
+        if (strcmp(split_str[i], "none") == 0) {
+            edges |= GESTURE_EDGE_NONE;
+        } else if (strcmp(split_str[i], "top") == 0) {
+            edges |= GESTURE_EDGE_TOP;
+        } else if (strcmp(split_str[i], "bottom") == 0) {
+            edges |= GESTURE_EDGE_BOTTOM;
+        } else if (strcmp(split_str[i], "left") == 0) {
+            edges |= GESTURE_EDGE_LEFT;
+        } else if (strcmp(split_str[i], "right") == 0) {
+            edges |= GESTURE_EDGE_RIGHT;
+        } else {
+            kywc_log(KYWC_WARN, "expected edges, got %s", str);
+        }
+    }
+
+    free_split_string(&split_str, len);
+
+    return edges;
+}
+
+struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestures,
+                                                              const char *desc)
+{
+    enum gesture_type type;
+    uint8_t fingers;
+    uint32_t devices;
+    uint32_t directions;
+    uint32_t edges = GESTURE_EDGE_NONE;
+
+    size_t len = 0;
+    char **split_str = split_string(gestures, ":", &len);
+    if (len != 4 && len != 5) {
+        kywc_log(KYWC_ERROR, "expected <gesture>:<device>:<fingers>:<direction>[:edges] got %s",
+                 gestures);
+        goto err;
+    }
+    // type
+    if (strcmp(split_str[0], "hold") == 0) {
+        type = GESTURE_TYPE_HOLD;
+    } else if (strcmp(split_str[0], "pinch") == 0) {
+        type = GESTURE_TYPE_PINCH;
+    } else if (strcmp(split_str[0], "swipe") == 0) {
+        type = GESTURE_TYPE_SWIPE;
+    } else {
+        kywc_log(KYWC_ERROR, "expected hold|pinch|swipe, got %s", gestures);
+        goto err;
+    }
+    // device
+    if (strcmp(split_str[1], "any") == 0) {
+        devices = GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN;
+    } else if (strcmp(split_str[1], "touch") == 0) {
+        devices = GESTURE_DEVICE_TOUCHSCREEN;
+    } else if (strcmp(split_str[1], "touchpad") == 0) {
+        devices = GESTURE_DEVICE_TOUCHPAD;
+    } else {
+        kywc_log(KYWC_ERROR, "expected any|touch|touchpad, got %s", gestures);
+        goto err;
+    }
+    /* fingers: 1 - 9 */
+    /* direction: up down left right inward outward clockwise counterclockwise */
+    /* edge: top bottom left right */
+    if ('1' <= split_str[2][0] && split_str[2][0] <= '9') {
+        fingers = atoi(split_str[2]);
+        directions = gesture_string_parse_directions(split_str[3]);
+        if (len > 4) {
+            edges = gesture_string_parse_edges(split_str[4]);
+        }
+    } else {
+        kywc_log(KYWC_ERROR, "expected 1 - 9 got %s", gestures);
+        goto err;
+    }
+
+    free_split_string(&split_str, len);
+
+    kywc_log(KYWC_DEBUG, "gesture binding: %s", gestures);
+    return kywc_gesture_binding_create(type, devices, directions, edges, fingers, desc);
+
+err:
+    free_split_string(&split_str, len);
+    return NULL;
+}
+
+static bool gesture_checked(enum gesture_type type, uint32_t devices, uint32_t directions,
+                            uint32_t edges, uint8_t fingers)
+{
+    /* gesture type、devices and fingers cannot be 0 */
+    if (type == GESTURE_TYPE_NONE || devices == GESTURE_DEVICE_NONE || fingers == 0) {
+        return false;
+    }
+
+    /* pinch gesture fingers require no less than 2 */
+    if (type == GESTURE_TYPE_PINCH && fingers < 2) {
+        return false;
+    }
+
+    /* pinch or touchpad all gestures edges need to be 0 */
+    if ((type == GESTURE_TYPE_PINCH || devices & GESTURE_DEVICE_TOUCHPAD) &&
+        edges != GESTURE_EDGE_NONE) {
+        return false;
+    }
+
+    /* the number of fingers for touchpad swipe gestures need to be greater than 1 */
+    if (type == GESTURE_TYPE_SWIPE && devices & GESTURE_DEVICE_TOUCHPAD && fingers == 1) {
+        return false;
+    }
+
+    /* the edge of the swipe gesture for one finger of the touchscreen cannot be 0 */
+    if (type == GESTURE_TYPE_SWIPE && edges == GESTURE_EDGE_NONE && fingers == 1) {
+        return false;
+    }
+
+    /* swipe gesture from edge, the start edges and directions need to be set properly */
+    if (edges != GESTURE_EDGE_NONE &&
+        ((directions & GESTURE_DIRECTION_LEFT && !(edges & GESTURE_EDGE_RIGHT)) ||
+         (directions & GESTURE_DIRECTION_RIGHT && !(edges & GESTURE_EDGE_LEFT)) ||
+         (directions & GESTURE_DIRECTION_UP && !(edges & GESTURE_EDGE_BOTTOM)) ||
+         (directions & GESTURE_DIRECTION_DOWN && !(edges & GESTURE_EDGE_TOP)))) {
+        return false;
+    }
+
+    return true;
+}
+
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
                                                     uint8_t fingers, const char *desc)
 {
-    // TODO: check type, directions and fingers
+    if (!gesture_checked(type, devices, directions, edges, fingers)) {
+        kywc_log(KYWC_ERROR, "gesture checkes are illega");
+        return NULL;
+    }
 
     struct gesture_binding *binding = calloc(1, sizeof(struct gesture_binding));
     if (!binding) {

@@ -44,7 +44,9 @@ enum gesture_edge {
  * gesture bindings
  */
 
-// TODO: create by gesture bind string
+struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestures,
+                                                              const char *desc);
+
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
                                                     uint8_t fingers, const char *desc);
