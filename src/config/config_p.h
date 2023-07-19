@@ -30,4 +30,13 @@ static __attribute__((unused)) inline bool kde_global_accel_manager_create(struc
 }
 #endif
 
+#if HAVE_KDE_INPUT
+bool kde_input_manager_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool kde_input_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _CONFIG_P_H_ */

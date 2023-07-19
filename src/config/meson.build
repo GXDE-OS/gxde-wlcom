@@ -17,3 +17,9 @@ if have_kde_global_accel
     'kde_global_accel.c',
   )
 endif
+
+if have_kde_input
+  wlcom_sources += files(
+    'kde_input.c',
+  )
+endif
