@@ -95,8 +95,7 @@ static void input_popup_update(struct input_popup *popup, struct seat *seat)
     }
 
     struct wlr_text_input_v3 *input = text_input->wlr_text_input;
-    struct ky_scene_buffer *scene_buffer =
-        wlr_scene_buffer_try_from_surface(input->focused_surface);
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(input->focused_surface);
     assert(scene_buffer);
     /* surface primary output */
     struct ky_scene_output *scene_output = ky_scene_buffer_get_primary_output(scene_buffer);

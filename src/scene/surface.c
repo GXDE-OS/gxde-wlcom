@@ -277,7 +277,7 @@ struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node)
     return scene_surface->surface;
 }
 
-struct ky_scene_buffer *wlr_scene_buffer_try_from_surface(struct wlr_surface *wlr_surface)
+struct ky_scene_buffer *ky_scene_buffer_try_from_surface(struct wlr_surface *wlr_surface)
 {
     struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_surface(wlr_surface);
     if (!scene_surface) {
