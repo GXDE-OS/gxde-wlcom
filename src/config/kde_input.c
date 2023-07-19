@@ -78,6 +78,15 @@ static int is_keyboard(sd_bus *bus, const char *path, const char *interface, con
     return sd_bus_message_append_basic(reply, 'b', &is_keyboard);
 }
 
+static int is_touchpad(sd_bus *bus, const char *path, const char *interface, const char *property,
+                       sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t is_touchpad =
+        input->input->prop.type == WLR_INPUT_DEVICE_POINTER && input->input->prop.tap_finger_count;
+    return sd_bus_message_append_basic(reply, 'b', &is_touchpad);
+}
+
 static int is_tablet_tool(sd_bus *bus, const char *path, const char *interface,
                           const char *property, sd_bus_message *reply, void *userdata,
                           sd_bus_error *ret_error)
@@ -115,6 +124,61 @@ static int sys_name(sd_bus *bus, const char *path, const char *interface, const 
 {
     struct kde_input *input = userdata;
     return sd_bus_message_append_basic(reply, 's', input->sys_name);
+}
+
+static int product(sd_bus *bus, const char *path, const char *interface, const char *property,
+                   sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t product = input->input->prop.product;
+    return sd_bus_message_append_basic(reply, 'i', &product);
+}
+
+static int supports_disable_events(sd_bus *bus, const char *path, const char *interface,
+                                   const char *property, sd_bus_message *reply, void *userdata,
+                                   sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t event = input->input->prop.send_events_modes;
+    uint32_t enable = event & LIBINPUT_CONFIG_SEND_EVENTS_DISABLED;
+    return sd_bus_message_append_basic(reply, 'b', &enable);
+}
+
+static int supports_disable_events_on_external_mouse(sd_bus *bus, const char *path,
+                                                     const char *interface, const char *property,
+                                                     sd_bus_message *reply, void *userdata,
+                                                     sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t event = input->input->prop.send_events_modes;
+    uint32_t enable = event & LIBINPUT_CONFIG_SEND_EVENTS_DISABLED_ON_EXTERNAL_MOUSE;
+    return sd_bus_message_append_basic(reply, 'b', &enable);
+}
+
+static int get_touchpad_enable(sd_bus *bus, const char *path, const char *interface,
+                               const char *property, sd_bus_message *reply, void *userdata,
+                               sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t mode = input->input->state.send_events_mode;
+    uint32_t enable = mode == LIBINPUT_CONFIG_SEND_EVENTS_ENABLED;
+    return sd_bus_message_append_basic(reply, 'b', &enable);
+}
+
+static int set_touchpad_enable(sd_bus *bus, const char *_path, const char *interface,
+                               const char *property, sd_bus_message *reply, void *userdata,
+                               sd_bus_error *ret_error)
+{
+    uint32_t touchpad_enable;
+    CK(sd_bus_message_read(reply, "b", &touchpad_enable));
+
+    struct kde_input *input = userdata;
+    struct input_state state = input->input->state;
+    state.send_events_mode = touchpad_enable
+                                 ? LIBINPUT_CONFIG_SEND_EVENTS_ENABLED
+                                 : LIBINPUT_CONFIG_SEND_EVENTS_DISABLED_ON_EXTERNAL_MOUSE;
+    input_set_state(input->input, &state);
+    return sd_bus_reply_method_return(reply, NULL);
 }
 
 static int supports_pointer_acceleration(sd_bus *bus, const char *path, const char *interface,
@@ -289,15 +353,201 @@ static int set_natural_scroll(sd_bus *bus, const char *path, const char *interfa
     return sd_bus_reply_method_return(reply, NULL);
 }
 
+static int tap_finger_count(sd_bus *bus, const char *path, const char *interface,
+                            const char *property, sd_bus_message *reply, void *userdata,
+                            sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t tap_finger_count = input->input->prop.tap_finger_count;
+    return sd_bus_message_append_basic(reply, 'i', &tap_finger_count);
+}
+
+static int tap_to_click_enabled_by_default(sd_bus *bus, const char *path, const char *interface,
+                                           const char *property, sd_bus_message *reply,
+                                           void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t tap_to_click = input->input->default_state.tap_to_click;
+    return sd_bus_message_append_basic(reply, 'b', &tap_to_click);
+}
+
+static int get_tap_click(sd_bus *bus, const char *path, const char *interface, const char *property,
+                         sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t tap_to_click = input->input->state.tap_to_click;
+    return sd_bus_message_append_basic(reply, 'b', &tap_to_click);
+}
+
+static int set_tap_click(sd_bus *bus, const char *path, const char *interface, const char *property,
+                         sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    uint32_t is_tap_click;
+    CK(sd_bus_message_read(reply, "b", &is_tap_click));
+
+    struct kde_input *input = userdata;
+    struct input_state state = input->input->state;
+    state.tap_to_click = is_tap_click;
+    input_set_state(input->input, &state);
+    return sd_bus_reply_method_return(reply, NULL);
+}
+
+static int supports_scroll_two_finger(sd_bus *bus, const char *path, const char *interface,
+                                      const char *property, sd_bus_message *reply, void *userdata,
+                                      sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_methods = input->input->prop.scroll_methods;
+    uint32_t two_finger = scroll_methods & LIBINPUT_CONFIG_SCROLL_2FG;
+    return sd_bus_message_append_basic(reply, 'b', &two_finger);
+}
+
+static int scroll_two_finger_enabled_by_default(sd_bus *bus, const char *path,
+                                                const char *interface, const char *property,
+                                                sd_bus_message *reply, void *userdata,
+                                                sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_methods = input->input->default_state.scroll_method;
+    uint32_t two_finger = scroll_methods & LIBINPUT_CONFIG_SCROLL_2FG;
+    return sd_bus_message_append_basic(reply, 'b', &two_finger);
+}
+
+static int get_scroll_two_finger(sd_bus *bus, const char *path, const char *interface,
+                                 const char *property, sd_bus_message *reply, void *userdata,
+                                 sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_methods = input->input->state.scroll_method;
+    uint32_t two_finger = scroll_methods & LIBINPUT_CONFIG_SCROLL_2FG;
+    return sd_bus_message_append_basic(reply, 'b', &two_finger);
+}
+
+static int set_scroll_two_finger(sd_bus *bus, const char *path, const char *interface,
+                                 const char *property, sd_bus_message *reply, void *userdata,
+                                 sd_bus_error *ret_error)
+{
+    uint32_t method;
+    CK(sd_bus_message_read(reply, "b", &method));
+
+    struct kde_input *input = userdata;
+    int32_t current = input->input->state.scroll_method;
+    method = method ? LIBINPUT_CONFIG_SCROLL_2FG : LIBINPUT_CONFIG_SCROLL_NO_SCROLL;
+    if ((current != LIBINPUT_CONFIG_SCROLL_2FG && method == LIBINPUT_CONFIG_SCROLL_2FG) ||
+        (current != LIBINPUT_CONFIG_SCROLL_EDGE && method == LIBINPUT_CONFIG_SCROLL_NO_SCROLL)) {
+        struct input_state state = input->input->state;
+        state.scroll_method = method;
+        input_set_state(input->input, &state);
+    }
+    return sd_bus_reply_method_return(reply, NULL);
+}
+
+static int supports_scroll_edge(sd_bus *bus, const char *path, const char *interface,
+                                const char *property, sd_bus_message *reply, void *userdata,
+                                sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_methods = input->input->prop.scroll_methods;
+    uint32_t is_scroll_edge = scroll_methods & LIBINPUT_CONFIG_SCROLL_EDGE;
+    return sd_bus_message_append_basic(reply, 'b', &is_scroll_edge);
+}
+
+static int scroll_edge_enabled_by_default(sd_bus *bus, const char *path, const char *interface,
+                                          const char *property, sd_bus_message *reply,
+                                          void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_method = input->input->default_state.scroll_method;
+    uint32_t is_scroll_edge = scroll_method & LIBINPUT_CONFIG_SCROLL_EDGE;
+    return sd_bus_message_append_basic(reply, 'b', &is_scroll_edge);
+}
+
+static int get_scroll_edge(sd_bus *bus, const char *path, const char *interface,
+                           const char *property, sd_bus_message *reply, void *userdata,
+                           sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t scroll_method = input->input->state.scroll_method;
+    uint32_t is_scroll_edge = scroll_method & LIBINPUT_CONFIG_SCROLL_EDGE;
+    return sd_bus_message_append_basic(reply, 'b', &is_scroll_edge);
+}
+
+static int set_scroll_edge(sd_bus *bus, const char *path, const char *interface,
+                           const char *property, sd_bus_message *reply, void *userdata,
+                           sd_bus_error *ret_error)
+{
+    uint32_t method;
+    CK(sd_bus_message_read(reply, "b", &method));
+
+    struct kde_input *input = userdata;
+    uint32_t current = input->input->state.scroll_method;
+    method = method ? LIBINPUT_CONFIG_SCROLL_EDGE : LIBINPUT_CONFIG_SCROLL_NO_SCROLL;
+    if ((current != LIBINPUT_CONFIG_SCROLL_EDGE && method == LIBINPUT_CONFIG_SCROLL_EDGE) ||
+        (current != LIBINPUT_CONFIG_SCROLL_2FG && method == LIBINPUT_CONFIG_SCROLL_NO_SCROLL)) {
+        struct input_state state = input->input->state;
+        state.scroll_method = method;
+        input_set_state(input->input, &state);
+    }
+    return sd_bus_reply_method_return(reply, NULL);
+}
+
+static int supports_disable_while_typing(sd_bus *bus, const char *path, const char *interface,
+                                         const char *property, sd_bus_message *reply,
+                                         void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t dwt = input->input->prop.has_dwt;
+    return sd_bus_message_append_basic(reply, 'b', &dwt);
+}
+
+static int disable_while_typing_enabled_by_default(sd_bus *bus, const char *path,
+                                                   const char *interface, const char *property,
+                                                   sd_bus_message *reply, void *userdata,
+                                                   sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t dwt = input->input->default_state.dwt;
+    return sd_bus_message_append_basic(reply, 'b', &dwt);
+}
+
+static int get_disable_while_typing(sd_bus *bus, const char *path, const char *interface,
+                                    const char *property, sd_bus_message *reply, void *userdata,
+                                    sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t dwt = input->input->state.dwt;
+    return sd_bus_message_append_basic(reply, 'b', &dwt);
+}
+
+static int set_disable_while_typing(sd_bus *bus, const char *path, const char *interface,
+                                    const char *property, sd_bus_message *reply, void *userdata,
+                                    sd_bus_error *ret_error)
+{
+    uint32_t dwt;
+    CK(sd_bus_message_read(reply, "b", &dwt));
+
+    struct kde_input *input = userdata;
+    struct input_state state = input->input->state;
+    state.dwt = dwt;
+    input_set_state(input->input, &state);
+    return sd_bus_reply_method_return(reply, NULL);
+}
+
 static const sd_bus_vtable input_vtable[] = {
     SD_BUS_VTABLE_START(0),
     KDE_PROP("pointer", "b", is_pointer),
     KDE_PROP("keyboard", "b", is_keyboard),
+    KDE_PROP("touchpad", "b", is_touchpad),
     KDE_PROP("tabletTool", "b", is_tablet_tool),
     KDE_PROP("tabletPad", "b", is_tablet_pad),
     KDE_PROP("switchDevice", "b", is_switch),
     KDE_PROP("name", "s", name),
     KDE_PROP("sysName", "s", sys_name),
+    KDE_PROP("product", "i", product),
+    KDE_PROP("supportsDisableEvents", "b", supports_disable_events),
+    KDE_PROP("supportsDisableEventsOnExternalMouse", "b",
+             supports_disable_events_on_external_mouse),
+    KDE_WPROP("enabled", "b", get_touchpad_enable, set_touchpad_enable),
 
     KDE_PROP("supportsPointerAcceleration", "b", supports_pointer_acceleration),
     KDE_PROP("defaultPointerAcceleration", "d", default_pointer_acceleration),
@@ -316,6 +566,22 @@ static const sd_bus_vtable input_vtable[] = {
     KDE_PROP("supportsNaturalScroll", "b", supports_natural_scroll),
     KDE_PROP("naturalScrollEnabledByDefault", "b", natural_scroll_enabled_by_default),
     KDE_WPROP("naturalScroll", "b", get_natural_scroll, set_natural_scroll),
+
+    KDE_PROP("tapFingerCount", "b", tap_finger_count),
+    KDE_PROP("tapToClickEnabledByDefault", "b", tap_to_click_enabled_by_default),
+    KDE_WPROP("tapToClick", "b", get_tap_click, set_tap_click),
+
+    KDE_PROP("supportsScrollTwoFinger", "b", supports_scroll_two_finger),
+    KDE_PROP("scrollTwoFingerEnabledByDefault", "b", scroll_two_finger_enabled_by_default),
+    KDE_WPROP("scrollTwoFinger", "b", get_scroll_two_finger, set_scroll_two_finger),
+
+    KDE_PROP("supportsScrollEdge", "b", supports_scroll_edge),
+    KDE_PROP("scrollEdgeEnabledByDefault", "b", scroll_edge_enabled_by_default),
+    KDE_WPROP("scrollEdge", "b", get_scroll_edge, set_scroll_edge),
+
+    KDE_PROP("supportsDisableWhileTyping", "b", supports_disable_while_typing),
+    KDE_PROP("disableWhileTypingEnabledByDefault", "b", disable_while_typing_enabled_by_default),
+    KDE_WPROP("disableWhileTyping", "b", get_disable_while_typing, set_disable_while_typing),
 
     SD_BUS_VTABLE_END,
 };
