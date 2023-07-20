@@ -586,6 +586,31 @@ static const sd_bus_vtable input_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
+static int set_keyboard_repeat(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    uint32_t enable, delay, rate;
+    sd_bus_message_read(m, "bii", &enable, &rate, &delay);
+
+    struct kde_input_manager *manager = userdata;
+    struct kde_input *kde_input;
+    wl_list_for_each(kde_input, &manager->inputs, link) {
+        struct input *input = kde_input->input;
+        if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
+            struct input_state state = input->state;
+            state.repeat_delay = enable ? delay : 0;
+            state.repeat_rate = enable ? rate : 0;
+            input_set_state(input, &state);
+        }
+    }
+    return 1;
+}
+
+static const sd_bus_vtable ukui_kwin_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("setKeyboardRepeat", "bii", "", set_keyboard_repeat, 0),
+    SD_BUS_VTABLE_END,
+};
+
 static void kde_input_destroy(struct kde_input *input)
 {
     wl_list_remove(&input->link);
@@ -670,6 +695,9 @@ bool kde_input_manager_create(struct server *server)
 
     kde_input_manager->destroy.notify = handle_destroy;
     wl_signal_add(&kde_input_manager->config->events.destroy, &kde_input_manager->destroy);
+
+    config_manager_add_config(NULL, "org.ukui.KWin", "/KWin", "org.ukui.KWin", ukui_kwin_vtable,
+                              kde_input_manager);
 
     return true;
 }
