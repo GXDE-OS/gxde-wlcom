@@ -3,7 +3,7 @@ wlcom_sources += files(
   'config.c',
 )
 
-if have_kde_virtual_desktop
+if have_kde_global_accel
   qtkey_mapper_gen = executable('qtkey-mapper', 'qtkey_mapper.c')
   map_table_h = custom_target(
     'qtkey_map_table.h',
