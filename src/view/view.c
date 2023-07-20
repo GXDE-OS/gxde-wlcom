@@ -764,6 +764,48 @@ void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view)
     kywc_view_set_fullscreen(kywc_view, !kywc_view->fullscreen, NULL);
 }
 
+void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above)
+{
+    if (kywc_view->kept_above == kept_above) {
+        return;
+    }
+
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    kywc_view->kept_above = kept_above;
+    kywc_view->kept_below = false;
+
+    enum layer layer = kept_above ? LAYER_ABOVE : LAYER_NORMAL;
+    struct view_layer *view_layer = workspace_layer(workspace_manager_get_current(), layer);
+    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_layer->tree);
+}
+
+void kywc_view_toggle_kept_above(struct kywc_view *kywc_view)
+{
+    kywc_view_set_kept_above(kywc_view, !kywc_view->kept_above);
+}
+
+void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below)
+{
+    if (kywc_view->kept_below == kept_below) {
+        return;
+    }
+
+    struct view *view = view_from_kywc_view(kywc_view);
+
+    kywc_view->kept_below = kept_below;
+    kywc_view->kept_above = false;
+
+    enum layer layer = kept_below ? LAYER_BELOW : LAYER_NORMAL;
+    struct view_layer *view_layer = workspace_layer(workspace_manager_get_current(), layer);
+    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_layer->tree);
+}
+
+void kywc_view_toggle_kept_below(struct kywc_view *kywc_view)
+{
+    kywc_view_set_kept_below(kywc_view, !kywc_view->kept_below);
+}
+
 void view_helper_move(struct view *view, int x, int y)
 {
     struct kywc_box *geo = &view->base.geometry;
