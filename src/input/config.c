@@ -16,77 +16,97 @@ static const char *input_type_map[] = {
 void input_prop_and_state_debug(struct input *input)
 {
     struct input_prop *prop = &input->prop;
+    struct input_state *default_state = &input->default_state;
     struct input_state *state = &input->state;
 
     kywc_log(KYWC_DEBUG, "input %s(%s) prop debug", input->name, input_type_map[prop->type]);
     kywc_log(KYWC_DEBUG, "\t send_event_modes = %d", prop->send_events_modes);
-    kywc_log(KYWC_DEBUG, "\t\t send_events_mode = %d", state->send_events_mode);
+    kywc_log(KYWC_DEBUG, "\t\t send_events_mode = %d (%d)", state->send_events_mode,
+             default_state->send_events_mode);
 
     if (prop->click_methods != 0) {
         kywc_log(KYWC_DEBUG, "\t click_methods = %d", prop->click_methods);
-        kywc_log(KYWC_DEBUG, "\t\t click_method = %d", state->click_method);
+        kywc_log(KYWC_DEBUG, "\t\t click_method = %d (%d)", state->click_method,
+                 default_state->click_method);
     }
 
     if (prop->tap_finger_count > 0) {
         kywc_log(KYWC_DEBUG, "\t tap_finger_count = %d", prop->tap_finger_count);
-        kywc_log(KYWC_DEBUG, "\t\t tap_to_click = %d", state->tap_to_click);
-        kywc_log(KYWC_DEBUG, "\t\t tap_button_map = %d", state->tap_button_map);
-        kywc_log(KYWC_DEBUG, "\t\t tap_and_drag = %d", state->tap_and_drag);
-        kywc_log(KYWC_DEBUG, "\t\t tap_drag_lock = %d", state->tap_drag_lock);
+        kywc_log(KYWC_DEBUG, "\t\t tap_to_click = %d (%d)", state->tap_to_click,
+                 default_state->tap_to_click);
+        kywc_log(KYWC_DEBUG, "\t\t tap_button_map = %d (%d)", state->tap_button_map,
+                 default_state->tap_button_map);
+        kywc_log(KYWC_DEBUG, "\t\t tap_and_drag = %d (%d)", state->tap_and_drag,
+                 default_state->tap_and_drag);
+        kywc_log(KYWC_DEBUG, "\t\t tap_drag_lock = %d (%d)", state->tap_drag_lock,
+                 default_state->tap_drag_lock);
     }
 
     if (prop->scroll_methods != 0) {
         kywc_log(KYWC_DEBUG, "\t scroll_methods = %d", prop->scroll_methods);
-        kywc_log(KYWC_DEBUG, "\t\t scroll_method = %d", state->scroll_method);
+        kywc_log(KYWC_DEBUG, "\t\t scroll_method = %d (%d)", state->scroll_method,
+                 default_state->scroll_method);
         if (prop->scroll_methods & 0x4) {
-            kywc_log(KYWC_DEBUG, "\t\t scroll_button = %d", state->scroll_button);
-            kywc_log(KYWC_DEBUG, "\t\t scroll_button_lock = %d", state->scroll_button_lock);
+            kywc_log(KYWC_DEBUG, "\t\t scroll_button = %d (%d)", state->scroll_button,
+                     default_state->scroll_button);
+            kywc_log(KYWC_DEBUG, "\t\t scroll_button_lock = %d (%d)", state->scroll_button_lock,
+                     default_state->scroll_button_lock);
         }
     }
 
     if (prop->has_pointer_accel) {
         kywc_log(KYWC_DEBUG, "\t has_pointer_accel = %d", prop->has_pointer_accel);
-        kywc_log(KYWC_DEBUG, "\t\t pointer_accel_speed = %f", state->pointer_accel_speed);
+        kywc_log(KYWC_DEBUG, "\t\t pointer_accel_speed = %f (%f)", state->pointer_accel_speed,
+                 default_state->pointer_accel_speed);
         kywc_log(KYWC_DEBUG, "\t accel_profiles = %d", prop->accel_profiles);
-        kywc_log(KYWC_DEBUG, "\t\t accel_profile = %d", state->accel_profile);
+        kywc_log(KYWC_DEBUG, "\t\t accel_profile = %d (%d)", state->accel_profile,
+                 default_state->accel_profile);
     }
 
     if (prop->has_calibration_matrix) {
         kywc_log(KYWC_DEBUG, "\t has_calibration_matrix = %d", prop->has_calibration_matrix);
-        kywc_log(KYWC_DEBUG, "\t\t calibration_set_matrix(%f, %f, %f, %f, %f, %f)",
+        kywc_log(KYWC_DEBUG,
+                 "\t\t calibration_set_matrix(%f, %f, %f, %f, %f, %f) (%f, %f, %f, %f, %f, %f)",
                  state->calibration_matrix[0], state->calibration_matrix[1],
                  state->calibration_matrix[2], state->calibration_matrix[3],
-                 state->calibration_matrix[4], state->calibration_matrix[5]);
+                 state->calibration_matrix[4], state->calibration_matrix[5],
+                 default_state->calibration_matrix[0], default_state->calibration_matrix[1],
+                 default_state->calibration_matrix[2], default_state->calibration_matrix[3],
+                 default_state->calibration_matrix[4], default_state->calibration_matrix[5]);
     }
 
     if (prop->has_natural_scroll) {
         kywc_log(KYWC_DEBUG, "\t has_natural_scroll = %d", prop->has_natural_scroll);
-        kywc_log(KYWC_DEBUG, "\t\t natural_scroll = %d", state->natural_scroll);
+        kywc_log(KYWC_DEBUG, "\t\t natural_scroll = %d (%d)", state->natural_scroll,
+                 default_state->natural_scroll);
     }
 
     if (prop->has_left_handed) {
         kywc_log(KYWC_DEBUG, "\t has_left_handed = %d", prop->has_left_handed);
-        kywc_log(KYWC_DEBUG, "\t\t left_handed = %d", state->left_handed);
+        kywc_log(KYWC_DEBUG, "\t\t left_handed = %d (%d)", state->left_handed,
+                 default_state->left_handed);
     }
 
     if (prop->has_middle_emulation) {
         kywc_log(KYWC_DEBUG, "\t has_middle_emulation = %d", prop->has_middle_emulation);
-        kywc_log(KYWC_DEBUG, "\t\t middle_emulation = %d", state->middle_emulation);
+        kywc_log(KYWC_DEBUG, "\t\t middle_emulation = %d (%d)", state->middle_emulation,
+                 state->middle_emulation);
     }
 
     if (prop->has_dwt) {
         kywc_log(KYWC_DEBUG, "\t has_dwt = %d", prop->has_dwt);
-        kywc_log(KYWC_DEBUG, "\t\t dwt = %d", state->dwt);
+        kywc_log(KYWC_DEBUG, "\t\t dwt = %d (%d)", state->dwt, default_state->dwt);
     }
 
     if (prop->has_dwtp) {
         kywc_log(KYWC_DEBUG, "\t has_dwtp = %d", prop->has_dwtp);
-        kywc_log(KYWC_DEBUG, "\t\t dwtp = %d", state->dwtp);
+        kywc_log(KYWC_DEBUG, "\t\t dwtp = %d (%d)", state->dwtp, default_state->dwtp);
     }
 
     if (prop->has_rotation) {
         kywc_log(KYWC_DEBUG, "\t has_rotation = %d", prop->has_rotation);
-        kywc_log(KYWC_DEBUG, "\t\t rotation_angle = %d", state->rotation_angle);
+        kywc_log(KYWC_DEBUG, "\t\t rotation_angle = %d (%d)", state->rotation_angle,
+                 default_state->rotation_angle);
     }
 }
 
@@ -462,6 +482,13 @@ bool input_read_config(struct input *input, struct input_state *state)
     return true;
 }
 
+#define WRITE_CONFIG(entry, type)                                                                  \
+    if (state->entry == default_state->entry) {                                                    \
+        json_object_object_del(config, #entry);                                                    \
+    } else {                                                                                       \
+        json_object_object_add(config, #entry, json_object_new_##type(state->entry));              \
+    }
+
 void input_write_config(struct input *input)
 {
     struct input_manager *manager = input->manager;
@@ -492,77 +519,75 @@ void input_write_config(struct input *input)
         json_object_object_del(config, "seat");
     }
 
-    json_object_object_add(config, "send_events_mode",
-                           json_object_new_int(state->send_events_mode));
+    /* filter by default state */
+    struct input_state *default_state = &input->default_state;
+    WRITE_CONFIG(send_events_mode, int);
 
     if (input->prop.tap_finger_count > 0) {
-        json_object_object_add(config, "tap_to_click",
-                               json_object_new_boolean(state->tap_to_click));
-        json_object_object_add(config, "tap_button_map",
-                               json_object_new_int(state->tap_button_map));
-        json_object_object_add(config, "tap_and_drag",
-                               json_object_new_boolean(state->tap_and_drag));
-        json_object_object_add(config, "tap_drag_lock",
-                               json_object_new_boolean(state->tap_drag_lock));
+        WRITE_CONFIG(tap_to_click, boolean);
+        WRITE_CONFIG(tap_button_map, int);
+        WRITE_CONFIG(tap_and_drag, boolean);
+        WRITE_CONFIG(tap_drag_lock, boolean);
     }
 
     if (input->prop.has_natural_scroll) {
-        json_object_object_add(config, "natural_scroll",
-                               json_object_new_boolean(state->natural_scroll));
+        WRITE_CONFIG(natural_scroll, boolean);
     }
 
     if (input->prop.has_middle_emulation) {
-        json_object_object_add(config, "middle_emulation",
-                               json_object_new_boolean(state->middle_emulation));
+        WRITE_CONFIG(middle_emulation, boolean);
     }
 
     if (input->prop.has_left_handed) {
-        json_object_object_add(config, "left_handed", json_object_new_boolean(state->left_handed));
+        WRITE_CONFIG(left_handed, boolean);
     }
 
     if (input->prop.has_dwt) {
-        json_object_object_add(config, "dwt", json_object_new_boolean(state->dwt));
+        WRITE_CONFIG(dwt, boolean);
     }
 
     if (input->prop.has_dwtp) {
-        json_object_object_add(config, "dwtp", json_object_new_boolean(state->dwtp));
+        WRITE_CONFIG(dwtp, boolean);
     }
 
     if (input->prop.scroll_methods) {
-        json_object_object_add(config, "scroll_method", json_object_new_int(state->scroll_method));
+        WRITE_CONFIG(scroll_method, int);
         if (input->prop.scroll_methods & 0x4) {
-            json_object_object_add(config, "scroll_button",
-                                   json_object_new_int(state->scroll_button));
-            json_object_object_add(config, "scroll_button_lock",
-                                   json_object_new_boolean(state->scroll_button_lock));
+            WRITE_CONFIG(scroll_button, int);
+            WRITE_CONFIG(scroll_button_lock, boolean);
         }
     }
 
     if (input->prop.click_methods) {
-        json_object_object_add(config, "click_method", json_object_new_int(state->click_method));
+        WRITE_CONFIG(click_method, int);
     }
 
     if (input->prop.has_pointer_accel) {
-        json_object_object_add(config, "pointer_accel_speed",
-                               json_object_new_double(state->pointer_accel_speed));
+        WRITE_CONFIG(pointer_accel_speed, double);
         if (input->prop.accel_profiles) {
-            json_object_object_add(config, "accel_profile",
-                                   json_object_new_int(state->accel_profile));
+            WRITE_CONFIG(accel_profile, int);
         }
     }
 
     if (input->prop.has_calibration_matrix) {
-        json_object *matrix = json_object_new_array_ext(6);
-        for (int i = 0; i < 6; i++) {
-            json_object_array_add(matrix, json_object_new_double(state->calibration_matrix[i]));
+        if (memcmp(state->calibration_matrix, default_state->calibration_matrix,
+                   sizeof(state->calibration_matrix)) == 0) {
+            json_object_object_del(config, "calibration_matrix");
+        } else {
+            json_object *matrix = json_object_new_array_ext(6);
+            for (int i = 0; i < 6; i++) {
+                json_object_array_add(matrix, json_object_new_double(state->calibration_matrix[i]));
+            }
+            json_object_object_add(config, "calibration_matrix", matrix);
         }
-        json_object_object_add(config, "calibration_matrix", matrix);
     }
 
     // TODO: rotation angle
 
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
-        json_object_object_add(config, "repeat_delay", json_object_new_int(state->repeat_delay));
-        json_object_object_add(config, "repeat_rate", json_object_new_int(state->repeat_rate));
+        WRITE_CONFIG(repeat_delay, int);
+        WRITE_CONFIG(repeat_rate, int);
     }
 }
+
+#undef WRITE_CONFIG

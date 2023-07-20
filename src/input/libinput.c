@@ -89,6 +89,68 @@ void libinput_get_state(struct input *input, struct input_state *state)
     }
 }
 
+void libinput_get_default_state(struct input *input, struct input_state *state)
+{
+    struct libinput_device *device = input->device;
+    if (!device) {
+        kywc_log(KYWC_DEBUG, "input %s is not a libinput device", input->name);
+        return;
+    }
+
+    struct input_prop *prop = &input->prop;
+
+    state->send_events_mode = libinput_device_config_send_events_get_default_mode(device);
+    state->click_method = libinput_device_config_click_get_default_method(device);
+
+    if (prop->tap_finger_count > 0) {
+        state->tap_to_click = libinput_device_config_tap_get_default_enabled(device);
+        state->tap_button_map = libinput_device_config_tap_get_default_button_map(device);
+        state->tap_and_drag = libinput_device_config_tap_get_default_drag_enabled(device);
+        state->tap_drag_lock = libinput_device_config_tap_get_default_drag_lock_enabled(device);
+    }
+
+    if (prop->has_calibration_matrix) {
+        libinput_device_config_calibration_get_default_matrix(device, state->calibration_matrix);
+    }
+
+    if (prop->has_pointer_accel) {
+        state->pointer_accel_speed = libinput_device_config_accel_get_default_speed(device);
+        state->accel_profile = libinput_device_config_accel_get_default_profile(device);
+    }
+
+    if (prop->has_natural_scroll) {
+        state->natural_scroll =
+            libinput_device_config_scroll_get_default_natural_scroll_enabled(device);
+    }
+
+    if (prop->has_left_handed) {
+        state->left_handed = libinput_device_config_left_handed_get_default(device);
+    }
+
+    if (prop->has_middle_emulation) {
+        state->middle_emulation =
+            libinput_device_config_middle_emulation_get_default_enabled(device);
+    }
+
+    state->scroll_method = libinput_device_config_scroll_get_default_method(device);
+    if (state->scroll_method == LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN) {
+        state->scroll_button = libinput_device_config_scroll_get_default_button(device);
+        state->scroll_button_lock = libinput_device_config_scroll_get_default_button_lock(device);
+    }
+
+    if (prop->has_dwt) {
+        state->dwt = libinput_device_config_dwt_get_default_enabled(device);
+    }
+
+    if (prop->has_dwtp) {
+        state->dwtp = libinput_device_config_dwtp_get_default_enabled(device);
+    }
+
+    if (prop->has_rotation) {
+        state->rotation_angle = libinput_device_config_rotation_get_default_angle(device);
+    }
+}
+
 static bool log_status(enum libinput_config_status status)
 {
     if (status != LIBINPUT_CONFIG_STATUS_SUCCESS) {

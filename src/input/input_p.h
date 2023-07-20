@@ -43,6 +43,8 @@ void libinput_get_prop(struct input *input, struct input_prop *prop);
 
 void libinput_get_state(struct input *input, struct input_state *state);
 
+void libinput_get_default_state(struct input *input, struct input_state *state);
+
 bool libinput_set_state(struct input *input, struct input_state *state);
 
 /**

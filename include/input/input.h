@@ -110,6 +110,7 @@ struct input {
     /* input device prop and state per device */
     struct input_prop prop;
     struct input_state state;
+    struct input_state default_state;
 
     struct {
         struct wl_signal destroy;

@@ -153,6 +153,21 @@ static void input_get_state(struct input *input, struct input_state *state)
     }
 }
 
+static void input_get_default_state(struct input *input, struct input_state *state)
+{
+    state->seat = NULL;
+    state->mapped_to_output = NULL;
+
+    if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
+        state->repeat_rate = 25;
+        state->repeat_delay = 600;
+    }
+
+    if (input->device) {
+        libinput_get_default_state(input, state);
+    }
+}
+
 static struct input *input_create(const char *name, struct wlr_input_device *wlr_input)
 {
     struct input *input = calloc(1, sizeof(struct input));
@@ -175,6 +190,7 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     }
 
     input_get_prop(input, &input->prop);
+    input_get_default_state(input, &input->default_state);
     input_get_state(input, &input->state);
 
     struct input_state state = input->state;
