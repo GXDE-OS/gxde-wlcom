@@ -169,6 +169,10 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
 
 static void keyboard_repeat_stop(struct keyboard *keyboard)
 {
+    if (!keyboard->repeat.timer) {
+        return;
+    }
+
     if (keyboard->repeat.key == 0) {
         return;
     }
@@ -179,6 +183,10 @@ static void keyboard_repeat_stop(struct keyboard *keyboard)
 
 static void keybaord_repeat_start(struct keyboard *keyboard, uint32_t key, bool pressed)
 {
+    if (!keyboard->repeat.timer) {
+        return;
+    }
+
     if (keyboard->repeat.key > 0) {
         if (keyboard->repeat.key == key && !pressed) {
             keyboard_repeat_stop(keyboard);
@@ -391,7 +399,9 @@ void keyboard_destroy(struct keyboard *keyboard)
         wlr_keyboard_group_destroy(wlr_group);
     }
 
-    wl_event_source_remove(keyboard->repeat.timer);
+    if (keyboard->repeat.timer) {
+        wl_event_source_remove(keyboard->repeat.timer);
+    }
     free(keyboard);
 }
 
