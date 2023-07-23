@@ -86,6 +86,8 @@ struct kywc_view {
         struct wl_signal minimize;
         /* emit when view's fullscreen state has changed */
         struct wl_signal fullscreen;
+        /* emit when view's tiled state has changed */
+        struct wl_signal tile;
 
         /* emit when view's title has changed */
         struct wl_signal title;

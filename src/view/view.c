@@ -117,6 +117,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.maximize);
     wl_signal_init(&kywc_view->events.minimize);
     wl_signal_init(&kywc_view->events.fullscreen);
+    wl_signal_init(&kywc_view->events.tile);
     wl_signal_init(&kywc_view->events.title);
     wl_signal_init(&kywc_view->events.app_id);
     wl_signal_init(&kywc_view->events.position);
@@ -316,6 +317,7 @@ void view_configured(struct view *view)
     }
 
     if (view->pending.action & VIEW_ACTION_TILE) {
+        wl_signal_emit_mutable(&kywc_view->events.tile, NULL);
     }
 
     if (view->pending.configure_timeout) {
