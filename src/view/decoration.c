@@ -114,7 +114,7 @@ static void handle_xdg_deco_request_mode(struct wl_listener *listener, void *dat
     enum wlr_xdg_toplevel_decoration_v1_mode mode = wlr_xdg_decoration->requested_mode;
 
     if (mode == WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_NONE) {
-        mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+        mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
     }
 
     kywc_log(KYWC_DEBUG, "surface %p xdg-decoration mode is %d", deco->surface, mode);
@@ -185,6 +185,8 @@ static void server_decoration(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_server_decoration->events.destroy, &deco->server_deco_destroy);
     deco->server_deco_apply_mode.notify = handle_server_deco_apply_mode;
     wl_signal_add(&wlr_server_decoration->events.mode, &deco->server_deco_apply_mode);
+    /* apply current deco type */
+    handle_server_deco_apply_mode(&deco->server_deco_apply_mode, wlr_server_decoration);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -216,7 +218,7 @@ bool decoration_manager_create(struct view_manager *view_manager)
     if (!server_decoration_manager) {
         kywc_log(KYWC_ERROR, "unable to create the server deco manager");
     } else {
-        uint32_t default_mode = WLR_SERVER_DECORATION_MANAGER_MODE_NONE;
+        uint32_t default_mode = WLR_SERVER_DECORATION_MANAGER_MODE_SERVER;
         wlr_server_decoration_manager_set_default_mode(server_decoration_manager, default_mode);
         manager->server_decoration.notify = server_decoration;
         wl_signal_add(&server_decoration_manager->events.new_decoration,

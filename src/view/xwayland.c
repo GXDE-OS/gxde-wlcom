@@ -721,7 +721,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     view_set_app_id(&xwayland_view->view, wlr_xwayland_surface->class);
     view_set_title(&xwayland_view->view, wlr_xwayland_surface->title);
     xwayland_view_handle_set_parent(&xwayland_view->set_parent, NULL);
-
+    // TODO: all ?
+    view_set_shadow(&xwayland_view->view, true);
     kywc_view_set_minimized(&xwayland_view->view.base, wlr_xwayland_surface->minimized);
     xwayland_view_handle_request_maximize(&xwayland_view->request_maximize, NULL);
     xwayland_view_handle_request_fullscreen(&xwayland_view->request_fullscreen, NULL);
@@ -739,6 +740,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
             set_focus = false;
             xwayland_view->view.base.activatable = false;
+            view_set_decoration(&xwayland_view->view, false);
 
             /* reparent to dock layer and remove from workspace */
             struct view_layer *layer = view_manager_get_layer(LAYER_DOCK, false);
