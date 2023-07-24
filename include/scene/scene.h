@@ -33,6 +33,7 @@
 #define ky_scene_rect_create wlr_scene_rect_create
 #define ky_scene_rect_set_size wlr_scene_rect_set_size
 #define ky_scene_rect_set_color wlr_scene_rect_set_color
+#define ky_scene_rect_from_node wlr_scene_rect_from_node
 #define ky_scene_buffer_from_node wlr_scene_buffer_from_node
 #define ky_scene_buffer_create wlr_scene_buffer_create
 #define ky_scene_buffer_set_buffer wlr_scene_buffer_set_buffer
@@ -64,6 +65,7 @@ SCENE_API struct ky_scene_tree *ky_scene_create_tree(struct ky_scene *scene) { r
 SCENE_API struct ky_scene_tree *ky_scene_node_get_parent(struct ky_scene_node *node) { return node->parent; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_tree(struct ky_scene_tree *tree) { return &tree->node; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_buffer(struct ky_scene_buffer *buffer) { return &buffer->node; }
+SCENE_API struct ky_scene_node *ky_scene_node_from_rect(struct ky_scene_rect *rect) { return &rect->node; }
 SCENE_API struct wlr_output *ky_scene_output_get_output(struct ky_scene_output *output) { return output->output; }
 SCENE_API struct ky_scene_output *ky_scene_buffer_get_primary_output(struct ky_scene_buffer *scene_buffer) { return scene_buffer->primary_output; }
 SCENE_API struct wlr_buffer *ky_scene_buffer_get_buffer(struct ky_scene_buffer *scene_buffer) { return scene_buffer->buffer; }
@@ -129,6 +131,8 @@ SCENE_API struct ky_scene_node *ky_scene_node_from_tree(struct ky_scene_tree *tr
 SCENE_API struct ky_scene_rect *ky_scene_rect_create(struct ky_scene_tree *parent, int width, int height, const float color[static 4]) { return NULL; }
 SCENE_API void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height) {}
 SCENE_API void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[static 4]) {}
+SCENE_API struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node) { return NULL;};
+SCENE_API struct ky_scene_node *ky_scene_node_from_rect(struct ky_scene_rect *rect) { return NULL; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_buffer(struct ky_scene_buffer *buffer) { return NULL; }
 SCENE_API struct ky_scene_buffer *ky_scene_buffer_create(struct ky_scene_tree *parent, struct wlr_buffer *buffer) { return NULL; }
 SCENE_API struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node) { return NULL; }
