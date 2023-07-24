@@ -19,7 +19,7 @@
 
 struct input_method_manager {
     struct wlr_input_method_manager_v2 *input_method;
-    struct wlr_text_input_manager_v3 *text_input;
+    struct wlr_text_input_manager_v3 *text_input_v3;
 
     struct wl_listener new_seat;
     struct wl_listener server_destroy;
@@ -45,7 +45,8 @@ struct input_method_relay {
 };
 
 struct text_input {
-    struct wlr_text_input_v3 *wlr_text_input;
+    struct wlr_text_input_v3 *text_input_v3;
+
     struct input_method_relay *relay;
     struct wl_list link;
 
@@ -76,7 +77,7 @@ static struct text_input *relay_get_focused_text_input(struct input_method_relay
 {
     struct text_input *text_input = NULL;
     wl_list_for_each(text_input, &relay->text_inputs, link) {
-        if (text_input->wlr_text_input->focused_surface) {
+        if (text_input->text_input_v3->focused_surface) {
             return text_input;
         }
     }
@@ -90,11 +91,11 @@ static void input_popup_update(struct input_popup *popup, struct seat *seat)
     }
 
     struct text_input *text_input = relay_get_focused_text_input(popup->relay);
-    if (!text_input || !text_input->wlr_text_input->focused_surface) {
+    if (!text_input || !text_input->text_input_v3->focused_surface) {
         return;
     }
 
-    struct wlr_text_input_v3 *input = text_input->wlr_text_input;
+    struct wlr_text_input_v3 *input = text_input->text_input_v3;
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(input->focused_surface);
     assert(scene_buffer);
     /* surface primary output */
@@ -175,14 +176,14 @@ static void handle_text_input_enable(struct wl_listener *listener, void *data)
     }
 
     wlr_input_method_v2_send_activate(text_input->relay->wlr_input_method);
-    relay_send_input_method_state(text_input->relay, text_input->wlr_text_input);
+    relay_send_input_method_state(text_input->relay, text_input->text_input_v3);
 }
 
 static void handle_text_input_commit(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_commit);
 
-    if (!text_input->wlr_text_input->current_enabled) {
+    if (!text_input->text_input_v3->current_enabled) {
         kywc_log(KYWC_INFO, "Inactive text input tried to commit an update");
         return;
     }
@@ -193,7 +194,7 @@ static void handle_text_input_commit(struct wl_listener *listener, void *data)
         return;
     }
 
-    relay_send_input_method_state(text_input->relay, text_input->wlr_text_input);
+    relay_send_input_method_state(text_input->relay, text_input->text_input_v3);
 }
 
 static void relay_disable_text_input(struct input_method_relay *relay,
@@ -204,14 +205,14 @@ static void relay_disable_text_input(struct input_method_relay *relay,
         return;
     }
     wlr_input_method_v2_send_deactivate(relay->wlr_input_method);
-    relay_send_input_method_state(relay, text_input->wlr_text_input);
+    relay_send_input_method_state(relay, text_input->text_input_v3);
 }
 
 static void handle_text_input_disable(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_disable);
 
-    if (text_input->wlr_text_input->focused_surface == NULL) {
+    if (text_input->text_input_v3->focused_surface == NULL) {
         kywc_log(KYWC_DEBUG, "Disabling text input, but no longer focused");
         return;
     }
@@ -235,7 +236,7 @@ static void handle_text_input_destroy(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_destroy);
 
-    if (text_input->wlr_text_input->current_enabled) {
+    if (text_input->text_input_v3->current_enabled) {
         relay_disable_text_input(text_input->relay, text_input);
     }
 
@@ -276,7 +277,7 @@ static void handle_new_text_input(struct wl_listener *listener, void *data)
         return;
     }
 
-    text_input->wlr_text_input = wlr_text_input;
+    text_input->text_input_v3 = wlr_text_input;
     text_input->relay = relay;
     wl_list_insert(&relay->text_inputs, &text_input->link);
 
@@ -305,19 +306,19 @@ static void handle_input_method_commit(struct wl_listener *listener, void *data)
     assert(context == relay->wlr_input_method);
     if (context->current.preedit.text) {
         wlr_text_input_v3_send_preedit_string(
-            text_input->wlr_text_input, context->current.preedit.text,
+            text_input->text_input_v3, context->current.preedit.text,
             context->current.preedit.cursor_begin, context->current.preedit.cursor_end);
     }
     if (context->current.commit_text) {
-        wlr_text_input_v3_send_commit_string(text_input->wlr_text_input,
+        wlr_text_input_v3_send_commit_string(text_input->text_input_v3,
                                              context->current.commit_text);
     }
     if (context->current.delete.before_length || context->current.delete.after_length) {
-        wlr_text_input_v3_send_delete_surrounding_text(text_input->wlr_text_input,
+        wlr_text_input_v3_send_delete_surrounding_text(text_input->text_input_v3,
                                                        context->current.delete.before_length,
                                                        context->current.delete.after_length);
     }
-    wlr_text_input_v3_send_done(text_input->wlr_text_input);
+    wlr_text_input_v3_send_done(text_input->text_input_v3);
 }
 
 static void handle_input_method_keyboard_grab_destroy(struct wl_listener *listener, void *data)
@@ -363,8 +364,8 @@ static void handle_input_method_destroy(struct wl_listener *listener, void *data
         // keyboard focus is still there, so keep the surface at hand in case
         // the input method returns
         text_input_set_pending_focused_surface(text_input,
-                                               text_input->wlr_text_input->focused_surface);
-        wlr_text_input_v3_send_leave(text_input->wlr_text_input);
+                                               text_input->text_input_v3->focused_surface);
+        wlr_text_input_v3_send_leave(text_input->text_input_v3);
     }
 }
 
@@ -501,7 +502,7 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
         if (!text_input->pending_focused_surface) {
             continue;
         }
-        wlr_text_input_v3_send_enter(text_input->wlr_text_input,
+        wlr_text_input_v3_send_enter(text_input->text_input_v3,
                                      text_input->pending_focused_surface);
         text_input_set_pending_focused_surface(text_input, NULL);
         break;
@@ -539,7 +540,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     relay->new_input_method.notify = handle_new_input_method;
     wl_signal_add(&manager->input_method->events.input_method, &relay->new_input_method);
     relay->new_text_input.notify = handle_new_text_input;
-    wl_signal_add(&manager->text_input->events.text_input, &relay->new_text_input);
+    wl_signal_add(&manager->text_input_v3->events.text_input, &relay->new_text_input);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -558,7 +559,7 @@ bool input_method_manager_create(struct input_manager *input_manager)
     }
 
     manager->input_method = wlr_input_method_manager_v2_create(input_manager->server->display);
-    manager->text_input = wlr_text_input_manager_v3_create(input_manager->server->display);
+    manager->text_input_v3 = wlr_text_input_manager_v3_create(input_manager->server->display);
 
     manager->new_seat.notify = handle_new_seat;
     wl_signal_add(&input_manager->events.new_seat, &manager->new_seat);
@@ -576,25 +577,25 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
     struct text_input *text_input;
     wl_list_for_each(text_input, &relay->text_inputs, link) {
         if (text_input->pending_focused_surface) {
-            assert(text_input->wlr_text_input->focused_surface == NULL);
+            assert(text_input->text_input_v3->focused_surface == NULL);
             if (surface != text_input->pending_focused_surface) {
                 text_input_set_pending_focused_surface(text_input, NULL);
             }
-        } else if (text_input->wlr_text_input->focused_surface) {
+        } else if (text_input->text_input_v3->focused_surface) {
             assert(text_input->pending_focused_surface == NULL);
-            if (surface != text_input->wlr_text_input->focused_surface) {
+            if (surface != text_input->text_input_v3->focused_surface) {
                 relay_disable_text_input(relay, text_input);
-                wlr_text_input_v3_send_leave(text_input->wlr_text_input);
+                wlr_text_input_v3_send_leave(text_input->text_input_v3);
             } else {
                 kywc_log(KYWC_DEBUG, "IM relay set_focus already focused");
                 continue;
             }
         }
 
-        if (surface && wl_resource_get_client(text_input->wlr_text_input->resource) ==
+        if (surface && wl_resource_get_client(text_input->text_input_v3->resource) ==
                            wl_resource_get_client(surface->resource)) {
             if (relay->wlr_input_method) {
-                wlr_text_input_v3_send_enter(text_input->wlr_text_input, surface);
+                wlr_text_input_v3_send_enter(text_input->text_input_v3, surface);
             } else {
                 text_input_set_pending_focused_surface(text_input, surface);
             }
