@@ -9,6 +9,7 @@ wlcom_sources = files(
 subdir('config')
 subdir('input')
 subdir('output')
+subdir('painter')
 subdir('scene')
 subdir('view')
 subdir('util')

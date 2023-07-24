@@ -79,6 +79,10 @@ math = cc.find_library('m')
 jsonc = dependency('json-c', version: '>=0.13')
 sdbus = dependency('libsystemd')
 dl = cc.find_library('dl')
+cairo = dependency('cairo')
+pango = dependency('pango')
+pangocairo = dependency('pangocairo')
+rsvg  = dependency('librsvg-2.0', version: '>=2.46')
 
 plugindir = get_option('plugin_directory')
 if plugindir == ''
@@ -130,7 +134,7 @@ wlcom_deps = [
   wlroots, xkbcommon, drm, input,
   pixman, math, jsonc,
   sdbus, util, dl,
-  #widget,
+  cairo, pango, pangocairo, rsvg,
 ]
 
 symbols_file = 'wlcom.syms'
