@@ -1,5 +1,6 @@
-#include <linux/input-event-codes.h>
 #include <stdlib.h>
+
+#include <linux/input-event-codes.h>
 
 #include "input/cursor.h"
 #include "input/seat.h"

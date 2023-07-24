@@ -1,7 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
-#include <linux/input-event-codes.h>
 #include <stdlib.h>
 #include <time.h>
+
+#include <linux/input-event-codes.h>
 
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>

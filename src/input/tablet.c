@@ -388,7 +388,7 @@ static struct wlr_surface *tablet_get_surface(struct tablet *tablet, double *sx,
 static bool tablet_handle_tool_position(struct tablet_tool *tablet_tool)
 {
     struct cursor *cursor = tablet_tool->tablet->input->seat->cursor;
-    double sx, sy;
+    double sx = 0, sy = 0;
 
     struct wlr_surface *surface = tablet_get_surface(tablet_tool->tablet, &sx, &sy, NULL);
     if ((surface && wlr_surface_accepts_tablet_v2(tablet_tool->tablet->tablet, surface)) ||

@@ -302,20 +302,17 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->new_input.notify = handle_new_input;
     wl_signal_add(&server->backend->events.new_input, &input_manager->new_input);
 
-    input_manager->virtual_pointer =
-        wlr_virtual_pointer_manager_v1_create(input_manager->server->display);
+    input_manager->virtual_pointer = wlr_virtual_pointer_manager_v1_create(server->display);
     input_manager->new_virtual_pointer.notify = handle_new_virtual_pointer;
     wl_signal_add(&input_manager->virtual_pointer->events.new_virtual_pointer,
                   &input_manager->new_virtual_pointer);
 
-    input_manager->virtual_keyboard =
-        wlr_virtual_keyboard_manager_v1_create(input_manager->server->display);
+    input_manager->virtual_keyboard = wlr_virtual_keyboard_manager_v1_create(server->display);
     input_manager->new_virtual_keyboard.notify = handle_new_virtual_keyboard;
     wl_signal_add(&input_manager->virtual_keyboard->events.new_virtual_keyboard,
                   &input_manager->new_virtual_keyboard);
 
-    input_manager->pointer_gestures =
-        wlr_pointer_gestures_v1_create(input_manager->server->display);
+    input_manager->pointer_gestures = wlr_pointer_gestures_v1_create(server->display);
 
     input_manager_config_init(input_manager);
     selection_manager_create(input_manager);
