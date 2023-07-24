@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <pango/pangocairo.h>
 #include <systemd/sd-bus.h>
 #include <systemd/sd-login.h>
 
@@ -263,5 +264,7 @@ void server_finish(struct server *server)
 
     wl_signal_emit_mutable(&server->events.destroy, NULL);
 
+    /* free memory in fontconfig */
+    pango_cairo_font_map_set_default(NULL);
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }
