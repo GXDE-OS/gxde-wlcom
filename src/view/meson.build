@@ -3,6 +3,7 @@ wlcom_sources += files(
   'interactive.c',
   'positioner.c',
   'shadow.c',
+  'ssd.c',
   'view.c',
   'workspace.c',
   'xdg_popup.c',
