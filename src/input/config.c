@@ -131,7 +131,7 @@ static int list_inputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
     CK(sd_bus_message_close_container(reply));
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
-    return 0;
+    return 1;
 }
 
 static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)

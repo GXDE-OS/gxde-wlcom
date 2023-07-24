@@ -22,7 +22,7 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
     CK(sd_bus_message_close_container(reply));
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
-    return 0;
+    return 1;
 }
 
 static const sd_bus_vtable service_vtable[] = {

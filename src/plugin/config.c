@@ -49,7 +49,7 @@ static int list_plugins(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
     CK(sd_bus_message_close_container(reply));
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
-    return 0;
+    return 1;
 }
 
 static int print_plugin_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -77,7 +77,7 @@ static int print_plugin_info(sd_bus_message *m, void *userdata, sd_bus_error *re
                           plugin->info->abi_version);
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
-    return 0;
+    return 1;
 }
 
 static int print_plugin_config(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -110,7 +110,7 @@ static int print_plugin_config(sd_bus_message *m, void *userdata, sd_bus_error *
 
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
-    return 0;
+    return 1;
 }
 
 static int load_plugin(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
