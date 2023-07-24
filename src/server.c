@@ -26,6 +26,7 @@
 #include "output.h"
 #include "plugin.h"
 #include "server.h"
+#include "theme.h"
 #include "view/view.h"
 #include "view/xwayland.h"
 
@@ -199,6 +200,7 @@ bool server_init(struct server *server)
         return false;
     }
 
+    theme_manager_create(server);
     output_manager_create(server);
     input_manager_create(server);
     view_manager_create(server);

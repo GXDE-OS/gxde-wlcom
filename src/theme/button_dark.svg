@@ -1,0 +1,41 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+    <defs>
+        <style>.cls-1{fill:#f86457;}.cls-2{opacity:0.75;}.cls-3{fill:#fff;}
+        .cls-4,.cls-5{fill:#fff;}.cls-4{opacity:0.15;}.cls-5{opacity:0.75;}</style>
+    </defs>
+    <g>
+        <rect class="cls-4" width="30" height="30" rx="4"/>
+        <rect class="cls-5" x="10" y="15" width="10" height="1" rx="0.5"/>
+    </g>
+    <g>
+        <rect class="cls-4" x="30" width="30" height="30" rx="4"/>
+        <path class="cls-5" d="M49,10a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H41a1,1,0,0,1-1-1V11a1,1,0,0,1,1-1h8m0-1H41a2,2,0,0,0-2,2v8a2,2,0,0,0,2,2h8a2,2,0,0,0,2-2V11a2,2,0,0,0-2-2Z"/>
+    </g>
+    <g>
+        <rect class="cls-4" x="60" width="30" height="30" rx="4"/>
+        <path class="cls-5" d="M79,8H73a2,2,0,0,0-2,2v1H70a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V18h1a2,2,0,0,0,2-2V10A2,2,0,0,0,79,8ZM77,19a1,1,0,0,1-1,1H70a1,1,0,0,1-1-1V13a1,1,0,0,1,1-1h6a1,1,0,0,1,1,1Zm3-3a1,1,0,0,1-1,1H78V13a2,2,0,0,0-2-2H72V10a1,1,0,0,1,1-1h6a1,1,0,0,1,1,1Z"/>
+    </g>
+    <g>
+        <rect class="cls-1" x="90" width="30" height="30" rx="4"/>
+        <g class="cls-2">
+            <rect class="cls-3" x="98" y="14.5" width="14" height="1" rx="0.5" transform="rotate(45 105 15)"/>
+            <rect class="cls-3" x="98" y="14.5" width="14" height="1" rx="0.5" transform="rotate(-45 105 15)"/>
+        </g>
+    </g>
+    <g>
+        <rect class="cls-5" x="10" y="45" width="10" height="1" rx="0.5"/>
+    </g>
+    <g>
+        <path class="cls-5" d="M49,40a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H41a1,1,0,0,1-1-1V41a1,1,0,0,1,1-1h8m0-1H41a2,2,0,0,0-2,2v8a2,2,0,0,0,2,2h8a2,2,0,0,0,2-2V41a2,2,0,0,0-2-2Z"/>
+    </g>
+    <g>
+        <path class="cls-5" d="M79,38H73a2,2,0,0,0-2,2v1H70a2,2,0,0,0-2,2v6a2,2,0,0,0,2,2h6a2,2,0,0,0,2-2V48h1a2,2,0,0,0,2-2V40A2,2,0,0,0,79,38ZM77,49a1,1,0,0,1-1,1H70a1,1,0,0,1-1-1V43a1,1,0,0,1,1-1h6a1,1,0,0,1,1,1Zm3-3a1,1,0,0,1-1,1H78V43a2,2,0,0,0-2-2H72V40a1,1,0,0,1,1-1h6a1,1,0,0,1,1,1Z"/>
+    </g>
+    <g>
+        <g class="cls-2">
+            <rect class="cls-5" x="98" y="44.5" width="14" height="1" rx="0.5" transform="rotate(45 105 45)"/>
+            <rect class="cls-5" x="98" y="44.5" width="14" height="1" rx="0.5" transform="rotate(-45 105 45)"/>
+        </g>
+    </g>
+</svg>
