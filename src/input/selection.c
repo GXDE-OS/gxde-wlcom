@@ -111,14 +111,16 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
     struct selection *selection = wl_container_of(listener, selection, start_drag);
     struct wlr_drag *wlr_drag = data;
     struct wlr_drag_icon *drag_icon = wlr_drag->icon;
+
+    selection->draging = true;
+    selection->drag_icon = drag_icon;
+    wl_signal_add(&wlr_drag->events.destroy, &selection->destroy_drag);
+
     /* drag icon may be NULL */
     if (!drag_icon) {
         kywc_log(KYWC_INFO, "Started drag but not set a drag icon");
         return;
     }
-
-    selection->draging = true;
-    selection->drag_icon = drag_icon;
 
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     struct ky_scene_tree *tree = ky_scene_tree_create(layer->tree);
@@ -138,7 +140,6 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
     wl_signal_add(&drag_icon->surface->events.commit, &selection->drag_icon_commit);
     selection->drag_icon_destroy.notify = handle_drag_icon_destroy;
     wl_signal_add(&drag_icon->events.destroy, &selection->drag_icon_destroy);
-    wl_signal_add(&wlr_drag->events.destroy, &selection->destroy_drag);
 }
 
 static void handle_destroy_drag(struct wl_listener *listener, void *data)
