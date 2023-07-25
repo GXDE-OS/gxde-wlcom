@@ -234,3 +234,8 @@ void selection_handle_cursor_move(struct seat *seat, int lx, int ly)
     /* update dnd icon if support */
     ky_scene_node_set_position(seat->selection->icon_node, lx, ly);
 }
+
+bool selection_is_draging(struct seat *seat)
+{
+    return seat->selection && seat->selection->draging;
+}

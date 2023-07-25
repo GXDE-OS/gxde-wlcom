@@ -99,6 +99,8 @@ bool selection_manager_create(struct input_manager *input_manager);
 
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
 
+bool selection_is_draging(struct seat *seat);
+
 /**
  * tablet manager
  */

@@ -74,8 +74,8 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     bool left_button_pressed =
         LEFT_BUTTON_PRESSED(cursor->last_click_button, cursor->last_click_pressed);
     /* if hold press moving but not draging */
-    if (left_button_pressed && cursor->focus.node && cursor->focus.node != cursor->hover.node) {
-        // && !seat->selection->draging) {
+    if (left_button_pressed && cursor->focus.node && cursor->focus.node != cursor->hover.node &&
+        !selection_is_draging(seat)) {
         struct input_event_node *inode = input_event_node_from_node(cursor->focus.node);
         if (inode && inode->impl->hover) {
             cursor->hold_mode = inode->impl->hover(seat, cursor->focus.node, cursor->lx, cursor->ly,
