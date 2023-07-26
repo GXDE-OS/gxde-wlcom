@@ -356,6 +356,8 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
     ssd->parts[index].color = color;                                                               \
     ssd->parts[index].update |= SSD_UPDATE_COLOR
 
+#define WRAP(w) (w > 0 ? w : 0)
+
 static void redraw_title_text(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
@@ -493,10 +495,9 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
             UPDATE_PART_SIZE(SSD_TITLE_RECT, view_w + 2 * border_w, title_h);
         } else {
             UPDATE_PART_POSITION(SSD_TITLE_RECT, border_w + button_w, border_w);
-            UPDATE_PART_SIZE(SSD_TITLE_RECT, view_w - 2 * button_w, title_h);
+            UPDATE_PART_SIZE(SSD_TITLE_RECT, WRAP(view_w - 2 * button_w), title_h);
             /* update corner buffer */
-            int x = view_w + border_w - button_w;
-            UPDATE_PART_POSITION(SSD_CORNER_TOP_RIGHT, x, 0);
+            UPDATE_PART_POSITION(SSD_CORNER_TOP_RIGHT, view_w + border_w - button_w, 0);
         }
     }
 
@@ -552,7 +553,7 @@ static void ssd_update_border(struct ssd *ssd, uint32_t cause)
             UPDATE_PART_SIZE(SSD_BORDER_TOP, view_w + 2 * border_w, border_w);
         } else {
             UPDATE_PART_POSITION(SSD_BORDER_TOP, button_w, -(title_h + border_w));
-            UPDATE_PART_SIZE(SSD_BORDER_TOP, view_w - 2 * button_w, border_w);
+            UPDATE_PART_SIZE(SSD_BORDER_TOP, WRAP(view_w - 2 * button_w), border_w);
         }
     }
 
@@ -607,14 +608,14 @@ static void ssd_update_extend(struct ssd *ssd, uint32_t cause)
         if (ssd->view_width != view->geometry.width) {
             UPDATE_PART_POSITION(SSD_EXTEND_TOP_RIGHT, x3, y1);
             UPDATE_PART_POSITION(SSD_EXTEND_RIGHT, x3, y2);
-            UPDATE_PART_SIZE(SSD_EXTEND_TOP, w, size);
-            UPDATE_PART_SIZE(SSD_EXTEND_BOTTOM, w, size);
+            UPDATE_PART_SIZE(SSD_EXTEND_TOP, WRAP(w), size);
+            UPDATE_PART_SIZE(SSD_EXTEND_BOTTOM, WRAP(w), size);
         }
         if (ssd->view_height != view->geometry.height) {
             UPDATE_PART_POSITION(SSD_EXTEND_BOTTOM, x2, y3);
             UPDATE_PART_POSITION(SSD_EXTEND_BOTTOM_LEFT, x1, y3);
-            UPDATE_PART_SIZE(SSD_EXTEND_RIGHT, size, h);
-            UPDATE_PART_SIZE(SSD_EXTEND_LEFT, size, h);
+            UPDATE_PART_SIZE(SSD_EXTEND_RIGHT, size, WRAP(h));
+            UPDATE_PART_SIZE(SSD_EXTEND_LEFT, size, WRAP(h));
         }
         UPDATE_PART_POSITION(SSD_EXTEND_BOTTOM_RIGHT, x3, y3);
     }
@@ -627,6 +628,7 @@ static void ssd_update_extend(struct ssd *ssd, uint32_t cause)
 
 #undef UPDATE_PART_POSITON
 #undef UPDATE_PART_SIZE
+#undef WRAP
 
 static void ssd_apply_parts(struct ssd *ssd)
 {
