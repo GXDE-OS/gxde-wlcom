@@ -61,7 +61,7 @@ wayland协议支持情况
 | zwp_relative_pointer_manager_v1           |    no    | 1           |
 | zwp_tablet_manager_v1                     |    -     | v2          |
 | zwp_tablet_manager_v2                     |    1     |             |
-| zwp_text_input_v1                         |    -     | 1 v3        |
+| zwp_text_input_v1                         |    1     |             |
 | zwp_text_input_v3                         |    1     |             |
 | zxdg_decoration_manager_v1                |    1     |             |
 | zxdg_exporter_v1                          |    no    | 1           |

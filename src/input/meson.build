@@ -12,6 +12,7 @@ wlcom_sources += files(
   'libinput.c',
   'monitor.c',
   'tablet.c',
+  'text_input_v1.c',
   'touch.c',
   'seat.c',
   'selection.c',
