@@ -11,10 +11,8 @@
 
 struct kde_plasma_window_management {
     struct wl_global *global;
+    struct wl_list resources;
     struct wl_list windows;
-
-    /* Only one client can bind this interface at a time */
-    struct wl_resource *client;
 
     struct wl_listener new_view;
     struct wl_listener display_destroy;
@@ -24,21 +22,14 @@ struct kde_plasma_window_management {
 };
 
 struct kde_plasma_window {
+    struct wl_list resources;
     struct wl_list link;
     struct kde_plasma_window_management *management;
 
-    /* Only one client can bind this interface at a time */
-    struct wl_resource *client;
-
-    /* The internal window id and uuid */
-    uint32_t id;
-    const char *uuid;
-
     struct kywc_view *kywc_view;
     struct wl_listener view_map;
-    struct wl_listener view_destroy;
-
     struct wl_listener view_unmap;
+    struct wl_listener view_destroy;
     struct wl_listener view_title;
     struct wl_listener view_app_id;
     struct wl_listener view_activate;
@@ -46,6 +37,9 @@ struct kde_plasma_window {
     struct wl_listener view_maximize;
     struct wl_listener view_fullscreen;
 
+    /* The internal window id and uuid */
+    uint32_t id;
+    const char *uuid;
     /* bitfield of state flags */
     uint32_t states;
 };
@@ -134,15 +128,22 @@ static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum s
     }
 }
 
+static void kde_plasma_window_send_state(struct kde_plasma_window *window,
+                                         struct wl_resource *resource, bool force);
+
 static void handle_set_state(struct wl_client *client, struct wl_resource *resource, uint32_t flags,
                              uint32_t state)
 {
     struct kde_plasma_window *window = wl_resource_get_user_data(resource);
+    if (!window) {
+        return;
+    }
     for (int i = 0; i < STATE_LAST; i++) {
         if ((state >> i) & 0x1) {
             kde_plasma_window_set_state(window, i, (flags >> i) & 0x1);
         }
     }
+    kde_plasma_window_send_state(window, resource, false);
 }
 
 static void handle_set_virtual_desktop(struct wl_client *client, struct wl_resource *resource,
@@ -167,6 +168,9 @@ static void handle_unset_minimized_geometry(struct wl_client *client, struct wl_
 static void handle_close(struct wl_client *client, struct wl_resource *resource)
 {
     struct kde_plasma_window *window = wl_resource_get_user_data(resource);
+    if (!window) {
+        return;
+    }
     kywc_view_close(window->kywc_view);
 }
 
@@ -270,39 +274,44 @@ kde_plasma_window_from_uuid(struct kde_plasma_window_management *management, con
 
 static void window_handle_resource_destroy(struct wl_resource *resource)
 {
-    struct kde_plasma_window *window = wl_resource_get_user_data(resource);
-    assert(window->client == resource);
-    window->client = NULL;
     wl_resource_set_destructor(resource, NULL);
-
-    wl_list_remove(&window->view_unmap.link);
-    wl_list_remove(&window->view_title.link);
-    wl_list_remove(&window->view_app_id.link);
-    wl_list_remove(&window->view_activate.link);
-    wl_list_remove(&window->view_minimize.link);
-    wl_list_remove(&window->view_maximize.link);
-    wl_list_remove(&window->view_fullscreen.link);
+    wl_resource_set_user_data(resource, NULL);
+    wl_list_remove(&resource->link);
 }
 
 static void window_handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_unmap);
-    org_kde_plasma_window_send_unmapped(window->client);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_unmapped(resource);
+    }
 }
 
 static void window_handle_view_title(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_title);
-    if (window->kywc_view->title) {
-        org_kde_plasma_window_send_title_changed(window->client, window->kywc_view->title);
+    if (!window->kywc_view->title) {
+        return;
+    }
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_title_changed(resource, window->kywc_view->title);
     }
 }
 
 static void window_handle_view_app_id(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_app_id);
-    if (window->kywc_view->app_id) {
-        org_kde_plasma_window_send_app_id_changed(window->client, window->kywc_view->app_id);
+    if (!window->kywc_view->app_id) {
+        return;
+    }
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_app_id_changed(resource, window->kywc_view->app_id);
     }
 }
 
@@ -317,31 +326,48 @@ static void window_handle_view_activate(struct wl_listener *listener, void *data
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_activate);
     set_state(window->states, window->kywc_view->activated, ACTIVE);
-    org_kde_plasma_window_send_state_changed(window->client, window->states);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_state_changed(resource, window->states);
+    }
 }
 
 static void window_handle_view_minimize(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_minimize);
     set_state(window->states, window->kywc_view->minimized, MINIMIZED);
-    org_kde_plasma_window_send_state_changed(window->client, window->states);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_state_changed(resource, window->states);
+    }
 }
 
 static void window_handle_view_maximize(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_maximize);
     set_state(window->states, window->kywc_view->maximized, MAXIMIZED);
-    org_kde_plasma_window_send_state_changed(window->client, window->states);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_state_changed(resource, window->states);
+    }
 }
 
 static void window_handle_view_fullscreen(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_fullscreen);
     set_state(window->states, window->kywc_view->fullscreen, FULLSCREEN);
-    org_kde_plasma_window_send_state_changed(window->client, window->states);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_state_changed(resource, window->states);
+    }
 }
 
-static void kde_plasma_window_send_state(struct kde_plasma_window *window)
+static void kde_plasma_window_send_state(struct kde_plasma_window *window,
+                                         struct wl_resource *resource, bool force)
 {
     struct kywc_view *kywc_view = window->kywc_view;
     uint32_t states = window->states;
@@ -366,16 +392,16 @@ static void kde_plasma_window_send_state(struct kde_plasma_window *window)
     // ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_VIRTUAL_DESKTOP_CHANGEABLE
     set_state(states, kywc_view->skip_switcher, SKIPSWITCHER);
 
-    if (states != window->states) {
+    if (force || states != window->states) {
         window->states = states;
-        org_kde_plasma_window_send_state_changed(window->client, window->states);
+        org_kde_plasma_window_send_state_changed(resource, window->states);
     }
 }
 
 #undef set_state
 
-static void kde_plasma_window_init(struct kde_plasma_window *window,
-                                   struct wl_resource *management_resource, uint32_t id)
+static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
+                                           struct wl_resource *management_resource, uint32_t id)
 {
     struct wl_client *client = wl_resource_get_client(management_resource);
     uint32_t version = wl_resource_get_version(management_resource);
@@ -386,29 +412,14 @@ static void kde_plasma_window_init(struct kde_plasma_window *window,
         return;
     }
 
-    window->client = resource;
+    wl_list_insert(&window->resources, &resource->link);
     wl_resource_set_implementation(resource, &kde_plasma_window_impl, window,
                                    window_handle_resource_destroy);
 
-    struct kywc_view *kywc_view = window->kywc_view;
-    window->view_unmap.notify = window_handle_view_unmap;
-    wl_signal_add(&kywc_view->events.unmap, &window->view_unmap);
-    window->view_title.notify = window_handle_view_title;
-    wl_signal_add(&kywc_view->events.title, &window->view_title);
-    window->view_app_id.notify = window_handle_view_app_id;
-    wl_signal_add(&kywc_view->events.app_id, &window->view_app_id);
-    window->view_activate.notify = window_handle_view_activate;
-    wl_signal_add(&kywc_view->events.activate, &window->view_activate);
-    window->view_minimize.notify = window_handle_view_minimize;
-    wl_signal_add(&kywc_view->events.minimize, &window->view_minimize);
-    window->view_maximize.notify = window_handle_view_maximize;
-    wl_signal_add(&kywc_view->events.maximize, &window->view_maximize);
-    window->view_fullscreen.notify = window_handle_view_fullscreen;
-    wl_signal_add(&kywc_view->events.fullscreen, &window->view_fullscreen);
-
     /* send states */
-    kde_plasma_window_send_state(window);
+    kde_plasma_window_send_state(window, resource, true);
 
+    struct kywc_view *kywc_view = window->kywc_view;
     if (kywc_view->title) {
         org_kde_plasma_window_send_title_changed(resource, kywc_view->title);
     }
@@ -445,11 +456,11 @@ static void handle_get_window(struct wl_client *client, struct wl_resource *mana
     struct kde_plasma_window_management *management =
         wl_resource_get_user_data(management_resource);
     struct kde_plasma_window *window = kde_plasma_window_from_id(management, internal_window_id);
-    if (!window || window->client) {
+    if (!window) {
         return;
     }
 
-    kde_plasma_window_init(window, management_resource, id);
+    kde_plasma_window_add_resource(window, management_resource, id);
 }
 
 static void handle_get_window_by_uuid(struct wl_client *client,
@@ -460,11 +471,11 @@ static void handle_get_window_by_uuid(struct wl_client *client,
         wl_resource_get_user_data(management_resource);
     struct kde_plasma_window *window =
         kde_plasma_window_from_uuid(management, internal_window_uuid);
-    if (!window || window->client) {
+    if (!window) {
         return;
     }
 
-    kde_plasma_window_init(window, management_resource, id);
+    kde_plasma_window_add_resource(window, management_resource, id);
 }
 
 static void handle_show_desktop(struct wl_client *client, struct wl_resource *resource,
@@ -481,19 +492,13 @@ static const struct org_kde_plasma_window_management_interface kde_plasma_window
 
 static void management_handle_resource_destroy(struct wl_resource *resource)
 {
-    struct kde_plasma_window_management *management = wl_resource_get_user_data(resource);
-    assert(management->client == resource);
-    management->client = NULL;
+    wl_list_remove(&resource->link);
 }
 
 static void kde_plasma_window_management_bind(struct wl_client *client, void *data,
                                               uint32_t version, uint32_t id)
 {
     struct kde_plasma_window_management *management = data;
-    if (management->client) {
-        kywc_log(KYWC_WARN, "Only one client can bind plasma window management at a time");
-        return;
-    }
 
     struct wl_resource *resource =
         wl_resource_create(client, &org_kde_plasma_window_management_interface, version, id);
@@ -501,7 +506,8 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         wl_client_post_no_memory(client);
         return;
     }
-    management->client = resource;
+
+    wl_list_insert(&management->resources, &resource->link);
     wl_resource_set_implementation(resource, &kde_plasma_window_management_impl, management,
                                    management_handle_resource_destroy);
 
@@ -513,9 +519,8 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         if (!window->kywc_view->mapped) {
             continue;
         }
-        org_kde_plasma_window_management_send_window(management->client, window->id);
-        org_kde_plasma_window_management_send_window_with_uuid(management->client, window->id,
-                                                               window->uuid);
+        org_kde_plasma_window_management_send_window(resource, window->id);
+        org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
     }
 
     // TODO: stacking_order_changed, stacking_order_uuid_changed
@@ -525,13 +530,12 @@ static void window_handle_view_map(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_map);
     struct kde_plasma_window_management *management = window->management;
-    if (!management->client) {
-        return;
-    }
 
-    org_kde_plasma_window_management_send_window(management->client, window->id);
-    org_kde_plasma_window_management_send_window_with_uuid(management->client, window->id,
-                                                           window->uuid);
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &management->resources) {
+        org_kde_plasma_window_management_send_window(resource, window->id);
+        org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
+    }
 }
 
 static void window_handle_view_destroy(struct wl_listener *listener, void *data)
@@ -540,10 +544,18 @@ static void window_handle_view_destroy(struct wl_listener *listener, void *data)
 
     wl_list_remove(&window->view_destroy.link);
     wl_list_remove(&window->view_map.link);
+    wl_list_remove(&window->view_unmap.link);
+    wl_list_remove(&window->view_title.link);
+    wl_list_remove(&window->view_app_id.link);
+    wl_list_remove(&window->view_activate.link);
+    wl_list_remove(&window->view_minimize.link);
+    wl_list_remove(&window->view_maximize.link);
+    wl_list_remove(&window->view_fullscreen.link);
     wl_list_remove(&window->link);
 
-    if (window->client) {
-        window_handle_resource_destroy(window->client);
+    struct wl_resource *resource, *tmp;
+    wl_resource_for_each_safe(resource, tmp, &window->resources) {
+        window_handle_resource_destroy(resource);
     }
 
     free((void *)window->uuid);
@@ -562,6 +574,7 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     }
 
     window->management = management;
+    wl_list_init(&window->resources);
     wl_list_insert(&management->windows, &window->link);
 
     window->id = management->window_id_counter++;
@@ -570,8 +583,22 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     window->kywc_view = kywc_view;
     window->view_map.notify = window_handle_view_map;
     wl_signal_add(&kywc_view->events.map, &window->view_map);
+    window->view_unmap.notify = window_handle_view_unmap;
+    wl_signal_add(&kywc_view->events.unmap, &window->view_unmap);
     window->view_destroy.notify = window_handle_view_destroy;
     wl_signal_add(&kywc_view->events.destroy, &window->view_destroy);
+    window->view_title.notify = window_handle_view_title;
+    wl_signal_add(&kywc_view->events.title, &window->view_title);
+    window->view_app_id.notify = window_handle_view_app_id;
+    wl_signal_add(&kywc_view->events.app_id, &window->view_app_id);
+    window->view_activate.notify = window_handle_view_activate;
+    wl_signal_add(&kywc_view->events.activate, &window->view_activate);
+    window->view_minimize.notify = window_handle_view_minimize;
+    wl_signal_add(&kywc_view->events.minimize, &window->view_minimize);
+    window->view_maximize.notify = window_handle_view_maximize;
+    wl_signal_add(&kywc_view->events.maximize, &window->view_maximize);
+    window->view_fullscreen.notify = window_handle_view_fullscreen;
+    wl_signal_add(&kywc_view->events.fullscreen, &window->view_fullscreen);
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
@@ -609,6 +636,7 @@ bool kde_plasma_window_management_create(struct server *server)
     }
 
     wl_list_init(&management->windows);
+    wl_list_init(&management->resources);
     management->window_id_counter = 0;
 
     management->server_destroy.notify = handle_server_destroy;
