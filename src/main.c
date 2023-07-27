@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <getopt.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -7,6 +8,12 @@
 #include "server.h"
 #include "util/logger.h"
 #include "util/spawn.h"
+
+static struct server server = {
+    .options.enable_xwayland = true,
+    .options.log_to_file = true,
+};
+static int exit_value = 0;
 
 static const struct option long_options[] = {
     { "help", no_argument, NULL, 'h' },    { "debug", no_argument, NULL, 'd' },
@@ -49,12 +56,23 @@ static void enable_debug_flag(struct server *server, const char *flag)
     }
 }
 
+static void terminate(int exit_code)
+{
+    if (!server.display) {
+        exit(exit_code);
+    } else {
+        exit_value = exit_code;
+        wl_display_terminate(server.display);
+    }
+}
+
+static void sig_handler(int signal)
+{
+    terminate(EXIT_SUCCESS);
+}
+
 int main(int argc, char *argv[])
 {
-    struct server server = {
-        .options.enable_xwayland = true,
-        .options.log_to_file = true,
-    };
     bool enable_debug = false;
     bool enable_verbose = false;
     char *session_process = NULL;
@@ -106,11 +124,21 @@ int main(int argc, char *argv[])
     }
     logger_init(level, server.options.log_to_file);
 
+    /* ignore SIGPIPE */
+    signal(SIGPIPE, SIG_IGN);
+    /* handle SIGTERM signals */
+    signal(SIGTERM, sig_handler);
+    signal(SIGINT, sig_handler);
+
     if (!server_init(&server)) {
-        exit(EXIT_FAILURE);
+        terminate(EXIT_FAILURE);
+        goto shutdown;
     }
 
-    server_start(&server);
+    if (!server_start(&server)) {
+        terminate(EXIT_FAILURE);
+        goto shutdown;
+    }
 
     if (session_process) {
         spawn_invoke(session_process);
@@ -118,7 +146,9 @@ int main(int argc, char *argv[])
 
     server_run(&server);
 
+shutdown:
     server_finish(&server);
     logger_finish();
-    return 0;
+
+    return exit_value;
 }

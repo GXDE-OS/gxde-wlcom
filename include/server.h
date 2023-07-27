@@ -13,10 +13,6 @@ struct server {
     struct sd_bus *sys_bus;
     struct wl_event_source *dbus;
 
-    /* signal handler */
-    struct wl_event_source *sigint;
-    struct wl_event_source *sigterm;
-
     struct {
         bool enable_xwayland;
         bool log_to_file;

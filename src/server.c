@@ -1,5 +1,4 @@
 #define _POSIX_C_SOURCE 200809L
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -93,13 +92,6 @@ static void listen_logind_manager_signal(struct server *server)
     }
 }
 
-static int handle_sigterm(int signal, void *data)
-{
-    struct wl_display *display = data;
-    wl_display_terminate(display);
-    return 0;
-}
-
 void server_add_destroy_listener(struct server *server, struct wl_listener *listener)
 {
     struct wl_signal *signal = &server->events.destroy;
@@ -180,14 +172,6 @@ bool server_init(struct server *server)
     server->display = wl_display_create();
     server->event_loop = wl_display_get_event_loop(server->display);
 
-    /* ignore SIGPIPE */
-    signal(SIGPIPE, SIG_IGN);
-
-    server->sigint =
-        wl_event_loop_add_signal(server->event_loop, SIGINT, handle_sigterm, server->display);
-    server->sigterm =
-        wl_event_loop_add_signal(server->event_loop, SIGTERM, handle_sigterm, server->display);
-
     wl_signal_init(&server->events.ready);
     wl_signal_init(&server->events.destroy);
     wl_signal_init(&server->events.suspend);
@@ -247,8 +231,6 @@ void server_run(struct server *server)
 
 void server_finish(struct server *server)
 {
-    wl_event_source_remove(server->sigint);
-    wl_event_source_remove(server->sigterm);
     wl_event_source_remove(server->dbus);
 
     /* make sure all xwayland-shells are destroyed */
