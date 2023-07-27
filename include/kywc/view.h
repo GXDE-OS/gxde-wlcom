@@ -62,7 +62,8 @@ struct kywc_view {
 
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
-    bool closeable, movable, resizable, activatable;
+    bool closeable, movable, resizable;
+    bool activatable, focusable;
     bool skip_taskbar, skip_switcher;
 
     /* app_id: class when xwayland shell */

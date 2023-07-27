@@ -404,7 +404,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     xdg_view->commit.notify = xdg_view_handle_commit;
     wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
 
-    view_map(&xdg_view->view, true);
+    view_map(&xdg_view->view);
 }
 
 static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)

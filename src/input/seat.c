@@ -9,6 +9,7 @@
 #include "input/seat.h"
 #include "input_p.h"
 #include "server.h"
+#include "view/view.h"
 
 static void handle_seat_destroy(struct wl_listener *listener, void *data)
 {
@@ -273,8 +274,12 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
 // TODO: set xwayland seat if surface is xwayland surface
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
-    struct wlr_seat *wlr_seat = seat->wlr_seat;
+    struct view *view = surface ? view_try_from_wlr_surface(surface) : NULL;
+    if (view && !view->base.focusable) {
+        return;
+    }
 
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
     if (surface) {
         struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(wlr_seat);
         if (keyboard) {

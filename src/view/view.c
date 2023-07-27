@@ -143,6 +143,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->movable = true;
     kywc_view->resizable = true;
     kywc_view->activatable = true;
+    kywc_view->focusable = true;
 
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
@@ -209,7 +210,7 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
     }
 }
 
-void view_map(struct view *view, bool focus)
+void view_map(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
@@ -221,7 +222,7 @@ void view_map(struct view *view, bool focus)
 
     kywc_view_activate(kywc_view);
 
-    if (focus) {
+    if (kywc_view->focusable) {
         seat_focus_surface(input_manager_get_default_seat(), view->surface);
     }
 

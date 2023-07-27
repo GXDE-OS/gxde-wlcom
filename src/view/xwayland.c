@@ -735,11 +735,10 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_xwayland_surface->events.set_strut_partial,
                   &xwayland_view->set_strut_partial);
 
-    bool set_focus = true;
     for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
         if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
-            set_focus = false;
+            xwayland_view->view.base.focusable = false;
             xwayland_view->view.base.activatable = false;
             view_set_decoration(&xwayland_view->view, false);
 
@@ -758,7 +757,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         kywc_view_move(&xwayland_view->view.base, size_hints->x, size_hints->y);
     }
 
-    view_map(&xwayland_view->view, set_focus);
+    view_map(&xwayland_view->view);
 
     xwayland_view_set_sruct_partial(xwayland_view, true);
 }

@@ -121,7 +121,7 @@ struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface);
 
 void view_init(struct view *view, const struct view_impl *impl, void *data);
 
-void view_map(struct view *view, bool focus);
+void view_map(struct view *view);
 
 void view_unmap(struct view *view);
 
