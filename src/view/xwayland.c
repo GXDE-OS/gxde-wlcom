@@ -848,6 +848,24 @@ static void xwayland_view_handle_set_override_redirect(struct wl_listener *liste
     xwayland_unmanaged_create(wlr_xwayland_surface);
 }
 
+static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, struct kywc_box *geo)
+{
+    struct kywc_view *kywc_view = &xwayland_view->view.base;
+    struct kywc_output *kywc_output = kywc_output_at_point(geo->x, geo->y);
+
+    if (kywc_view->maximized) {
+        view_get_tiled_geometry(&xwayland_view->view, geo, kywc_output, KYWC_TILE_ALL);
+    } else if (!kywc_view->fullscreen) {
+        struct output *output = output_from_kywc_output(kywc_output);
+        /* update ssd and make sure ssd is visible */
+        xwayland_view_handle_set_decorations(&xwayland_view->set_decorations, NULL);
+        int min_x = output->usable_area.x + kywc_view->margin.off_x;
+        int min_y = output->usable_area.y + kywc_view->margin.off_y;
+        geo->x = geo->x <= min_x ? min_x : geo->x;
+        geo->y = geo->y <= min_y ? min_y : geo->y;
+    }
+}
+
 static void xwayland_view_handle_request_configure(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view =
@@ -857,10 +875,7 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
     struct kywc_box geo = { event->x, event->y, event->width, event->height };
-    if (kywc_view->maximized) {
-        struct kywc_output *kywc_output = kywc_output_at_point(event->x, event->y);
-        view_get_tiled_geometry(&xwayland_view->view, &geo, kywc_output, KYWC_TILE_ALL);
-    }
+    xwayland_view_adjust_geometry(xwayland_view, &geo);
     kywc_view_resize(kywc_view, &geo);
 
     if (!kywc_view->mapped) {
