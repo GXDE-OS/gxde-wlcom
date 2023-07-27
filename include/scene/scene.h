@@ -54,7 +54,7 @@ struct server;
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return wlr_scene_create(); } 
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return scene->presentation; }
-SCENE_API void ky_scene_destroy(struct ky_scene *scene) { ky_scene_node_destroy(&scene->tree.node); }
+SCENE_API void ky_scene_destroy(struct ky_scene *scene) { scene ? ky_scene_node_destroy(&scene->tree.node) : true; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return &scene->tree.node; }
 SCENE_API void *ky_scene_node_get_user_data(struct ky_scene_node *node) { return node->data; };
 SCENE_API void ky_scene_node_set_user_data(struct ky_scene_node *node, void *user_data) { node->data = user_data; };
