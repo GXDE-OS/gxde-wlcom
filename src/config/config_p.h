@@ -22,18 +22,20 @@ struct config_manager {
 bool config_manager_common_init(struct config_manager *config_manager);
 
 #if HAVE_KDE_GLOBAL_ACCEL
-bool kde_global_accel_manager_create(struct server *server);
+bool kde_global_accel_manager_create(struct config_manager *config_manager);
 #else
-static __attribute__((unused)) inline bool kde_global_accel_manager_create(struct server *server)
+static __attribute__((unused)) inline bool
+kde_global_accel_manager_create(struct config_manager *config_manager)
 {
     return false;
 }
 #endif
 
 #if HAVE_KDE_INPUT
-bool kde_input_manager_create(struct server *server);
+bool kde_input_manager_create(struct config_manager *config_manager);
 #else
-static __attribute__((unused)) inline bool kde_input_manager_create(struct server *server)
+static __attribute__((unused)) inline bool
+kde_input_manager_create(struct config_manager *config_manager)
 {
     return false;
 }

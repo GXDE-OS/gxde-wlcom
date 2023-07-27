@@ -1057,7 +1057,7 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
     registry = NULL;
 }
 
-bool kde_global_accel_manager_create(struct server *server)
+bool kde_global_accel_manager_create(struct config_manager *config_manager)
 {
     registry = calloc(1, sizeof(struct global_shortcut_registry));
     if (!registry) {

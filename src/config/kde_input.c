@@ -673,7 +673,7 @@ static void handle_destroy(struct wl_listener *listener, void *data)
     kde_input_manager = NULL;
 }
 
-bool kde_input_manager_create(struct server *server)
+bool kde_input_manager_create(struct config_manager *config_manager)
 {
     kde_input_manager = calloc(1, sizeof(struct kde_input_manager));
     if (!kde_input_manager) {
