@@ -461,7 +461,7 @@ static void xwayland_view_configure(struct view *view)
     /* direct move when not changed size */
     if (view->pending.action & VIEW_ACTION_MOVE) {
         view->pending.action &= ~VIEW_ACTION_MOVE;
-        if (!view_action_change_size(view->pending.action) || kywc_view->has_initial_position) {
+        if (!view_action_change_size(view->pending.action)) {
             xwayland_view_move(xwayland_view, view->pending.geometry.x, view->pending.geometry.y);
         } else {
             kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
@@ -854,6 +854,7 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
         wl_container_of(listener, xwayland_view, request_configure);
     struct wlr_xwayland_surface_configure_event *event = data;
     struct kywc_view *kywc_view = &xwayland_view->view.base;
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
     struct kywc_box geo = { event->x, event->y, event->width, event->height };
     if (kywc_view->maximized) {
@@ -863,6 +864,7 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     kywc_view_resize(kywc_view, &geo);
 
     if (!kywc_view->mapped) {
+        wlr_xwayland_surface_configure(wlr_xwayland_surface, geo.x, geo.y, geo.width, geo.height);
         kywc_view->has_initial_position = true;
     }
 }
