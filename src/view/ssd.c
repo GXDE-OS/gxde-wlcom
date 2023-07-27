@@ -87,7 +87,6 @@ struct ssd {
     struct wl_list link;
 
     struct kywc_view *kywc_view;
-    struct wl_listener view_premap;
     struct wl_listener view_map;
     struct wl_listener view_unmap;
     struct wl_listener view_destroy;
@@ -652,11 +651,11 @@ static void ssd_apply_parts(struct ssd *ssd)
     }
 }
 
-static void ssd_update_margin(struct ssd *ssd, bool clear)
+static void ssd_update_margin(struct ssd *ssd)
 {
     struct kywc_view *view = ssd->kywc_view;
 
-    if (clear || !view->need_ssd) {
+    if (!view->need_ssd) {
         memset(&view->margin, 0, 4 * sizeof(int));
         return;
     }
@@ -671,11 +670,6 @@ static void ssd_update_margin(struct ssd *ssd, bool clear)
 static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
 {
     assert(ssd->created && ssd->kywc_view->need_ssd);
-
-    if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        /* update view margin, redraw all ssds */
-        ssd_update_margin(ssd, false);
-    }
 
     if (cause & SSD_UPDATE_CAUSE_FULLSCREEN) {
         bool enabled = !ssd->kywc_view->fullscreen;
@@ -776,6 +770,7 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
 static void handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, theme_update);
+    ssd_update_margin(ssd);
     ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);
 }
 
@@ -879,7 +874,6 @@ static void ssd_parts_destroy(struct ssd *ssd)
     wl_list_remove(&ssd->view_fullscreen.link);
     wl_list_remove(&ssd->theme_update.link);
 
-    ssd_update_margin(ssd, true);
     // XXX: destroyed in view_destroy, check ssd->tree ?
     ky_scene_node_destroy(ky_scene_node_from_tree(ssd->tree));
 }
@@ -887,43 +881,32 @@ static void ssd_parts_destroy(struct ssd *ssd)
 static void handle_view_decoration(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_decoration);
-    if (!ssd->kywc_view->need_ssd) {
-        ssd_parts_destroy(ssd);
-    } else {
-        ssd_parts_create(ssd);
+    ssd_update_margin(ssd);
+    /* view may not be mapped */
+    if (!ssd->kywc_view->mapped) {
+        return;
     }
-}
 
-static void handle_view_premap(struct wl_listener *listener, void *data)
-{
-    struct ssd *ssd = wl_container_of(listener, ssd, view_premap);
-    /* only set margin here */
-    ssd_update_margin(ssd, false);
+    if (ssd->kywc_view->need_ssd) {
+        ssd_parts_create(ssd);
+    } else {
+        ssd_parts_destroy(ssd);
+    }
 }
 
 static void handle_view_map(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_map);
-    struct kywc_view *kywc_view = ssd->kywc_view;
-
-    ssd->view_decoration.notify = handle_view_decoration;
-    wl_signal_add(&kywc_view->events.decoration, &ssd->view_decoration);
-
-    // XXX: may use_ssd changed between pre_map and map ?
-    ssd_update_margin(ssd, false);
-
     /* skip if not need ssd */
-    if (!kywc_view->need_ssd) {
+    if (!ssd->kywc_view->need_ssd) {
         return;
     }
-
     ssd_parts_create(ssd);
 }
 
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_unmap);
-    wl_list_remove(&ssd->view_decoration.link);
     ssd_parts_destroy(ssd);
 }
 
@@ -931,7 +914,7 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_destroy);
     wl_list_remove(&ssd->view_destroy.link);
-    wl_list_remove(&ssd->view_premap.link);
+    wl_list_remove(&ssd->view_decoration.link);
     wl_list_remove(&ssd->view_map.link);
     wl_list_remove(&ssd->view_unmap.link);
     wl_list_remove(&ssd->link);
@@ -951,8 +934,8 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     ssd->kywc_view = kywc_view;
     wl_list_insert(&manager->ssds, &ssd->link);
 
-    ssd->view_premap.notify = handle_view_premap;
-    wl_signal_add(&kywc_view->events.premap, &ssd->view_premap);
+    ssd->view_decoration.notify = handle_view_decoration;
+    wl_signal_add(&kywc_view->events.decoration, &ssd->view_decoration);
     ssd->view_map.notify = handle_view_map;
     wl_signal_add(&kywc_view->events.map, &ssd->view_map);
     ssd->view_unmap.notify = handle_view_unmap;
