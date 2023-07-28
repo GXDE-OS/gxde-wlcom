@@ -29,17 +29,17 @@ static struct theme light = {
     .button_width = 30,
     .corner_radius = 12,
     .title_height = 38,
-    .cursor_border = 13,
+    .resize_border = 13,
     .shadow_border = 30,
     .font_name = "sans",
     .font_size = 11,
-    .window_active_border_color = { 1.0, 1.0, 1.0, 1.0 },
-    .window_inactive_border_color = { 1.0, 1.0, 1.0, 1.0 },
-    .window_active_title_bg_color = { 0xfc / 255.0, 0xfc / 255.0, 0xfc / 255.0, 1.0 },
-    .window_inactive_title_bg_color = { 0xef / 255.0, 0xf0 / 255.0, 0xf1 / 255.0, 1.0 },
-    .window_active_label_text_color = { 0.0, 0.0, 0.0, 1.0 },
-    .window_inactive_label_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
-    .window_label_text_justify = JUSTIFY_LEFT,
+    .active_border_color = { 1.0, 1.0, 1.0, 1.0 },
+    .inactive_border_color = { 1.0, 1.0, 1.0, 1.0 },
+    .active_bg_color = { 0xfc / 255.0, 0xfc / 255.0, 0xfc / 255.0, 1.0 },
+    .inactive_bg_color = { 0xef / 255.0, 0xf0 / 255.0, 0xf1 / 255.0, 1.0 },
+    .active_text_color = { 0.0, 0.0, 0.0, 1.0 },
+    .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
+    .text_justify = JUSTIFY_LEFT,
 
     .theme_name = DEFAULT_THEME,
     .button_svg = button_light_svg_src,
@@ -55,17 +55,17 @@ static struct theme dark = {
     .button_width = 30,
     .corner_radius = 12,
     .title_height = 38,
-    .cursor_border = 13,
+    .resize_border = 13,
     .shadow_border = 30,
     .font_name = "sans",
     .font_size = 11,
-    .window_active_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
-    .window_inactive_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
-    .window_active_title_bg_color = { 0x23 / 255.0, 0x26 / 255.0, 0x29 / 255.0, 1.0 },
-    .window_inactive_title_bg_color = { 0x31 / 255.0, 0x36 / 255.0, 0x3b / 255.0, 1.0 },
-    .window_active_label_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
-    .window_inactive_label_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
-    .window_label_text_justify = JUSTIFY_LEFT,
+    .active_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
+    .inactive_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
+    .active_bg_color = { 0x23 / 255.0, 0x26 / 255.0, 0x29 / 255.0, 1.0 },
+    .inactive_bg_color = { 0x31 / 255.0, 0x36 / 255.0, 0x3b / 255.0, 1.0 },
+    .active_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
+    .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
+    .text_justify = JUSTIFY_LEFT,
 
     .theme_name = DEFAULT_DARK_THEME,
     .button_svg = button_dark_svg_src,
@@ -92,21 +92,21 @@ static void draw_theme_corner(struct theme *theme, float scale, struct theme_buf
     /* draw top-left corner */
     info.corner_mask = CORNER_MASK_TOP_LEFT;
     info.border_mask = BORDER_MASK_LEFT | BORDER_MASK_TOP;
-    info.solid_rgba = theme->window_active_title_bg_color;
-    info.border_rgba = theme->window_active_border_color;
+    info.solid_rgba = theme->active_bg_color;
+    info.border_rgba = theme->active_border_color;
     buffers->buf[CORNER_TOP_LEFT_ACTIVE_BUFFER] = painter_draw_buffer(&info);
-    info.solid_rgba = theme->window_inactive_title_bg_color;
-    info.border_rgba = theme->window_inactive_border_color;
+    info.solid_rgba = theme->inactive_bg_color;
+    info.border_rgba = theme->inactive_border_color;
     buffers->buf[CORNER_TOP_LEFT_INACTIVE_BUFFER] = painter_draw_buffer(&info);
 
     /* draw top-right corner */
     info.corner_mask = CORNER_MASK_TOP_RIGHT;
     info.border_mask = BORDER_MASK_TOP | BORDER_MASK_RIGHT;
-    info.solid_rgba = theme->window_active_title_bg_color;
-    info.border_rgba = theme->window_active_border_color;
+    info.solid_rgba = theme->active_bg_color;
+    info.border_rgba = theme->active_border_color;
     buffers->buf[CORNER_TOP_RIGHT_ACTIVE_BUFFER] = painter_draw_buffer(&info);
-    info.solid_rgba = theme->window_inactive_title_bg_color;
-    info.border_rgba = theme->window_inactive_border_color;
+    info.solid_rgba = theme->inactive_bg_color;
+    info.border_rgba = theme->inactive_border_color;
     buffers->buf[CORNER_TOP_RIGHT_INACTIVE_BUFFER] = painter_draw_buffer(&info);
 }
 

@@ -43,25 +43,28 @@ struct theme {
     int button_width;
     int corner_radius;
     int title_height;
-    int cursor_border;
+    int resize_border;
     int shadow_border;
 
     /* font */
     const char *font_name;
     int font_size;
 
-    /* window border */
-    float window_active_border_color[4];
-    float window_inactive_border_color[4];
+    /* border color */
+    float active_border_color[4];
+    float inactive_border_color[4];
 
-    /* window titlebar background */
-    float window_active_title_bg_color[4];
-    float window_inactive_title_bg_color[4];
+    /* background color */
+    float active_bg_color[4];
+    float inactive_bg_color[4];
 
-    /* window titlebar text */
-    float window_active_label_text_color[4];
-    float window_inactive_label_text_color[4];
-    enum justification window_label_text_justify;
+    /* text color */
+    float active_text_color[4];
+    float inactive_text_color[4];
+    enum justification text_justify;
+
+    /* selected color */
+    float selected_color[4];
 
     /* button svg string */
     const char *button_svg;

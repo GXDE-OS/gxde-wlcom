@@ -376,8 +376,7 @@ static void redraw_title_text(struct ssd *ssd)
         .text = view->title ? view->title : "",
         .font = theme->font_name,
         .font_size = theme->font_size,
-        .font_rgba = view->activated ? theme->window_active_label_text_color
-                                     : theme->window_inactive_label_text_color,
+        .font_rgba = view->activated ? theme->active_text_color : theme->inactive_text_color,
         .auto_resize = true,
     };
 
@@ -403,7 +402,7 @@ static void ssd_update_title(struct ssd *ssd, bool force)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    enum justification justify = theme->window_label_text_justify;
+    enum justification justify = theme->text_justify;
     int button_w = theme->button_width;
     int border_w = theme->border_width;
     int view_w = view->geometry.width;
@@ -512,8 +511,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
-        float *color = view->activated ? theme->window_active_title_bg_color
-                                       : theme->window_inactive_title_bg_color;
+        float *color = view->activated ? theme->active_bg_color : theme->inactive_bg_color;
         UPDATE_PART_COLOR(SSD_TITLE_RECT, color);
         ssd_part_update_theme_buffer(&ssd->parts[SSD_CORNER_TOP_LEFT], view->activated);
         ssd_part_update_theme_buffer(&ssd->parts[SSD_CORNER_TOP_RIGHT], view->activated);
@@ -569,8 +567,7 @@ static void ssd_update_border(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
-        float *color = view->activated ? theme->window_active_border_color
-                                       : theme->window_inactive_border_color;
+        float *color = view->activated ? theme->active_border_color : theme->inactive_border_color;
         UPDATE_PART_COLOR(SSD_BORDER_TOP, color);
         UPDATE_PART_COLOR(SSD_BORDER_LEFT, color);
         UPDATE_PART_COLOR(SSD_BORDER_BOTTOM, color);
@@ -583,13 +580,13 @@ static void ssd_update_extend(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int size = theme->cursor_border + theme->corner_radius + theme->border_width;
+    int size = theme->resize_border + theme->corner_radius + theme->border_width;
     int w = view->geometry.width - 2 * theme->corner_radius;
     int h = view->geometry.height + theme->title_height - 2 * theme->corner_radius;
-    int x1 = -(theme->cursor_border + theme->border_width);
+    int x1 = -(theme->resize_border + theme->border_width);
     int x2 = theme->corner_radius;
     int x3 = theme->corner_radius + w;
-    int y1 = -(theme->title_height + theme->border_width + theme->cursor_border);
+    int y1 = -(theme->title_height + theme->border_width + theme->resize_border);
     int y2 = -(theme->title_height - theme->corner_radius);
     int y3 = view->geometry.height - theme->corner_radius;
 
@@ -750,11 +747,11 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
         } else {
             float *color = (float[4]){ 0.f, 0.f, 0.f, 0.f };
             if (i == SSD_TITLE_RECT) {
-                color = ssd->kywc_view->activated ? theme->window_active_title_bg_color
-                                                  : theme->window_inactive_title_bg_color;
+                color =
+                    ssd->kywc_view->activated ? theme->active_bg_color : theme->inactive_bg_color;
             } else if (i <= SSD_BORDER_LEFT) {
-                color = ssd->kywc_view->activated ? theme->window_active_border_color
-                                                  : theme->window_inactive_border_color;
+                color = ssd->kywc_view->activated ? theme->active_border_color
+                                                  : theme->inactive_border_color;
             }
             struct ky_scene_rect *rect = ky_scene_rect_create(parent, 0, 0, color);
             ssd->parts[i].node = ky_scene_node_from_rect(rect);
