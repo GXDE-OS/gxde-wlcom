@@ -608,6 +608,11 @@ static void output_update_usable_area(struct output *output, struct kywc_box *us
 
 void kywc_output_update_usable_area(struct kywc_output *kywc_output)
 {
+    /* no need to update usable area when disabled or destroyed */
+    if (!kywc_output || kywc_output->destroying || !kywc_output->state.enabled) {
+        return;
+    }
+
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box usable_area;
 
