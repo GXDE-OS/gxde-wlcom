@@ -38,10 +38,10 @@ static struct shortcut {
     char *desc;
     enum direction direction;
 } shortcuts[] = {
-    { "Ctrl+Alt+Left", "switch to left workspace", DIRECTION_LEFT },
-    { "Ctrl+Alt+Right", "switch to right workspace", DIRECTION_RIGHT },
-    { "Ctrl+Alt+Up", "switch to up workspace", DIRECTION_UP },
-    { "Ctrl+Alt+Down", "switch to down workspace", DIRECTION_DOWN },
+    { "Ctrl+Alt+Left:no", "switch to left workspace", DIRECTION_LEFT },
+    { "Ctrl+Alt+Right:no", "switch to right workspace", DIRECTION_RIGHT },
+    { "Ctrl+Alt+Up:no", "switch to up workspace", DIRECTION_UP },
+    { "Ctrl+Alt+Down:no", "switch to down workspace", DIRECTION_DOWN },
 };
 
 static struct gesture {
