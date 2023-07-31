@@ -145,9 +145,10 @@ static void handle_keyboard_state(struct keyboard_state *keyboard_state, uint32_
 }
 
 static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bool pressed,
-                                     uint32_t modifiers)
+                                     uint32_t modifiers, bool *repeat)
 {
     struct keyboard_state *keyboard_state = &keyboard->state;
+    *repeat = false;
 
     /* Translate libinput keycode -> xkbcommon keysym */
     const xkb_keysym_t *keysyms;
@@ -162,7 +163,7 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     // }
 
     if (pressed) {
-        return bindings_handle_key_binding(keyboard_state);
+        return bindings_handle_key_binding(keyboard_state, repeat);
     }
     return false;
 }
@@ -172,7 +173,6 @@ static void keyboard_repeat_stop(struct keyboard *keyboard)
     if (!keyboard->repeat.timer) {
         return;
     }
-
     if (keyboard->repeat.key == 0) {
         return;
     }
@@ -199,7 +199,6 @@ static void keybaord_repeat_start(struct keyboard *keyboard, uint32_t key, bool 
         return;
     }
 
-    // TODO: add no_repeat flag for some bindings, like workspace switch
     int32_t delay = keyboard->wlr_keyboard->repeat_info.delay;
     if (delay > 0) {
         keyboard->repeat.key = key;
@@ -225,9 +224,12 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
         return;
     }
 
-    bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers);
+    /* don't auto repeat for some bindings, like vt switch */
+    bool need_repeat = false;
+    bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers, &need_repeat);
     if (handled) {
-        keybaord_repeat_start(keyboard, key, pressed);
+        need_repeat ? keybaord_repeat_start(keyboard, key, pressed)
+                    : keyboard_repeat_stop(keyboard);
         return;
     }
 

@@ -64,7 +64,7 @@ bool kywc_gesture_binding_register(struct gesture_binding *binding,
 struct key_binding *kywc_key_binding_create(const char *keybind, const char *desc);
 
 struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsigned int modifiers,
-                                                      const char *desc);
+                                                      bool no_repeat, const char *desc);
 
 void kywc_key_binding_destroy(struct key_binding *binding);
 

@@ -147,7 +147,7 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle);
 
 bool bindings_create(struct input_manager *input_manager);
 
-bool bindings_handle_key_binding(struct keyboard_state *keyboard_state);
+bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *repeat);
 
 bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
 

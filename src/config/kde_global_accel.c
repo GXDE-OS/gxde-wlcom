@@ -354,7 +354,7 @@ static void global_shortcut_create_binding(struct global_shortcut *shortcut)
         kywc_key_binding_update(shortcut->binding, keysym, modifiers, NULL);
     } else {
         shortcut->binding =
-            kywc_key_binding_create_by_symbol(keysym, modifiers, shortcut->unique_name);
+            kywc_key_binding_create_by_symbol(keysym, modifiers, false, shortcut->unique_name);
     }
 }
 

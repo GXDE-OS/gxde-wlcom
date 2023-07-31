@@ -16,6 +16,7 @@ struct key_binding {
 
     uint32_t modifiers;
     uint32_t keysym;
+    bool no_repeat;
 
     char *keybind;
     char *desc;
@@ -48,16 +49,16 @@ static char **split_string(const char *str, const char *delims, size_t *len)
 {
     char **split_str = malloc(sizeof(void *) * 10);
     char *copy = strdup(str);
-    size_t lenth = 0;
+    size_t length = 0;
 
     char *token = strtok(copy, delims);
     while (token) {
-        split_str[lenth++] = strdup(token);
+        split_str[length++] = strdup(token);
         token = strtok(NULL, delims);
     }
     free(copy);
 
-    *len = lenth;
+    *len = length;
     return split_str;
 }
 
@@ -81,8 +82,14 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
         return NULL;
     }
 
+    /* check no_repeat first */
+    size_t length = 0;
+    char **bind_str = split_string(keybind, ":", &length);
+    binding->no_repeat = length == 2 && strcmp(bind_str[1], "no") == 0;
+
     size_t len = 0;
-    char **split_str = split_string(keybind, "+", &len);
+    char **split_str = split_string(length == 2 ? bind_str[0] : keybind, "+", &len);
+    free_split_string(&bind_str, length);
 
     for (size_t i = 0; i < len; i++) {
         kywc_log(KYWC_DEBUG, "keybind split_str = %s", split_str[i]);
@@ -109,7 +116,7 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
 }
 
 struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsigned int modifiers,
-                                                      const char *desc)
+                                                      bool no_repeat, const char *desc)
 {
     struct key_binding *binding = calloc(1, sizeof(struct key_binding));
     if (!binding) {
@@ -118,6 +125,7 @@ struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsig
 
     binding->modifiers = modifiers;
     binding->keysym = keysym;
+    binding->no_repeat = no_repeat;
 
     if (desc) {
         binding->desc = strdup(desc);
@@ -248,7 +256,7 @@ static bool match_key_binding(struct keyboard_state *keyboard_state, struct key_
     return false;
 }
 
-bool bindings_handle_key_binding(struct keyboard_state *keyboard_state)
+bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *repeat)
 {
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
@@ -264,6 +272,7 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state)
             if (binding->action) {
                 binding->action(binding, binding->data);
             }
+            *repeat = !binding->no_repeat;
             return true;
         }
     }
