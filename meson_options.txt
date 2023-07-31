@@ -11,3 +11,4 @@ option('kde_input', type: 'boolean', value: true, description: 'Enable kde input
 option('kde_plasma_shell', type: 'boolean', value: true, description: 'Enable kde plasma shell protocol support')
 option('kde_plasma_window_management', type: 'boolean', value: true, description: 'Enable kde plasma window management protocol support')
 option('kde_blur', type: 'boolean', value: true, description: 'Enable kde blur protocol support')
+option('kde_global_settings', type: 'boolean', value: true, description: 'Enable kde global settings dbus server support')

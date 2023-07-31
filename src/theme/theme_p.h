@@ -18,10 +18,16 @@ struct theme_buffer {
     struct wlr_buffer *buf[THEME_BUFFER_COUNT];
 };
 
+struct theme_override {
+    /* font config override by dbus */
+    char *font_name;
+    int32_t font_size;
+};
+
 struct theme_manager {
     struct wl_list themes;
     struct theme *current;
-
+    struct theme_override override;
     struct config *config;
 
     struct {

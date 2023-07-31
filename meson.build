@@ -104,6 +104,7 @@ have_kde_input = get_option('kde_input')
 have_kde_plasma_shell = get_option('kde_plasma_shell')
 have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
+have_kde_global_settings = get_option('kde_global_settings')
 
 if not have_kde_output and not have_wlr_output
   error('Must enable one output protocol support at least')
@@ -121,6 +122,7 @@ add_project_arguments([
   '-DHAVE_KDE_PLASMA_SHELL=@0@'.format(have_kde_plasma_shell.to_int()),
   '-DHAVE_KDE_PLASMA_WINDOW_MANAGEMENT=@0@'.format(have_kde_plasma_window_management.to_int()),
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
+  '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
 ], language: 'c')
 
 subdir('src')

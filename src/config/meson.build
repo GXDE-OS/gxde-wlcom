@@ -23,3 +23,9 @@ if have_kde_input
     'kde_input.c',
   )
 endif
+
+if have_kde_global_settings
+  wlcom_sources += files(
+    'kde_global_settings.c',
+  )
+endif

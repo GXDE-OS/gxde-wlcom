@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
 
@@ -163,6 +164,24 @@ static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
     return painter_draw_buffer(&info);
 }
 
+static void theme_override_config(struct theme *theme)
+{
+    struct theme_override *override = &manager->override;
+
+    if (override->font_name && strcmp(override->font_name, theme->font_name)) {
+        if (theme->builtin) {
+            theme->font_name = override->font_name;
+        } else {
+            free((void *)theme->font_name);
+            theme->font_name = strdup(override->font_name);
+        }
+    }
+
+    if (override->font_size > 0 && override->font_size != theme->font_size) {
+        theme->font_size = override->font_size;
+    }
+}
+
 static struct theme *theme_create(const char *name, float scale)
 {
     if (!name || !*name) {
@@ -181,6 +200,9 @@ static struct theme *theme_create(const char *name, float scale)
 
     wl_list_init(&theme->scaled_buffers);
     wl_list_insert(&manager->themes, &theme->link);
+
+    /* override some configs */
+    theme_override_config(theme);
 
     /* paint all buffers in scale */
     draw_theme_buffers(theme, scale);
@@ -221,6 +243,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         theme_destroy(theme);
     }
 
+    free(manager->override.font_name);
     free(manager);
     manager = NULL;
 }
@@ -242,13 +265,14 @@ struct theme_manager *theme_manager_create(struct server *server)
     theme_manager_config_init(manager);
 
     /* load theme from config */
-    const char *current = theme_manager_read_config(manager);
-    if (!current) {
-        current = DEFAULT_THEME;
-        theme_manager_write_config(manager, current);
+    const char *theme = theme_manager_read_config(manager);
+    manager->current = theme_create(theme ? theme : DEFAULT_THEME, 1.0);
+    /* theme load failed, fallback to default theme */
+    if (!manager->current) {
+        manager->current = theme_create(DEFAULT_THEME, 1.0);
     }
-    manager->current = theme_create(current, 1.0);
 
+    theme_manager_write_config(manager, manager->current->theme_name);
     return manager;
 }
 
@@ -327,6 +351,33 @@ bool theme_manager_set_theme(const char *name)
     }
 
     theme_manager_write_config(manager, name);
+    return true;
+}
 
+bool theme_manager_set_font(const char *name, int size)
+{
+    struct theme_override *override = &manager->override;
+    struct theme *current = manager->current;
+    bool changed = false;
+
+    if (name && strcmp(name, current->font_name) != 0) {
+        free(override->font_name);
+        override->font_name = strdup(name);
+        changed = true;
+    }
+
+    if (size > 0 && current->font_size != size) {
+        override->font_size = size;
+        changed = true;
+    }
+
+    if (!changed) {
+        return false;
+    }
+
+    theme_override_config(current);
+    wl_signal_emit_mutable(&manager->events.update, current);
+
+    theme_manager_write_config(manager, NULL);
     return true;
 }

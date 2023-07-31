@@ -1,4 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <string.h>
 
 #include "config.h"
 #include "theme_p.h"
@@ -61,6 +63,15 @@ const char *theme_manager_read_config(struct theme_manager *manager)
     }
 
     json_object *data;
+    /* some override configs */
+    if (json_object_object_get_ex(manager->config->json, "font_name", &data)) {
+        free(manager->override.font_name);
+        manager->override.font_name = strdup(json_object_get_string(data));
+    }
+    if (json_object_object_get_ex(manager->config->json, "font_size", &data)) {
+        manager->override.font_size = json_object_get_int(data);
+    }
+
     if (json_object_object_get_ex(manager->config->json, "name", &data)) {
         return json_object_get_string(data);
     }
@@ -72,5 +83,15 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
 {
     if (name && name[0]) {
         json_object_object_add(manager->config->json, "name", json_object_new_string(name));
+    }
+
+    if (manager->override.font_name) {
+        json_object_object_add(manager->config->json, "font_name",
+                               json_object_new_string(manager->override.font_name));
+    }
+
+    if (manager->override.font_size > 0) {
+        json_object_object_add(manager->config->json, "font_size",
+                               json_object_new_int(manager->override.font_size));
     }
 }
