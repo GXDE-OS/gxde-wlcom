@@ -158,14 +158,19 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
         handle_keyboard_state(keyboard_state, modifiers, keysyms[i], pressed);
     }
 
-    // if (check_vt_switch(raw_key, modifiers)) {
-    //    return true;
-    // }
-
-    if (pressed) {
-        return bindings_handle_key_binding(keyboard_state, repeat);
+    if (!pressed) {
+        return false;
     }
-    return false;
+
+    for (size_t i = 0; i < len; ++i) {
+        xkb_keysym_t keysym = keysyms[i];
+        if (keysym >= XKB_KEY_XF86Switch_VT_1 && keysym <= XKB_KEY_XF86Switch_VT_12) {
+            input_manager_switch_vt(keysym - XKB_KEY_XF86Switch_VT_1 + 1);
+            return true;
+        }
+    }
+
+    return bindings_handle_key_binding(keyboard_state, repeat);
 }
 
 static void keyboard_repeat_stop(struct keyboard *keyboard)

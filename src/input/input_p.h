@@ -36,6 +36,8 @@ void input_write_config(struct input *input);
 
 void input_prop_and_state_debug(struct input *input);
 
+void input_manager_switch_vt(unsigned vt);
+
 /**
  * libinput helper functions
  */

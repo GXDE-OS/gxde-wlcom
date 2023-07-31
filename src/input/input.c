@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <wlr/backend/libinput.h>
+#include <wlr/backend/session.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/types/wlr_seat.h>
@@ -482,4 +483,12 @@ struct output *input_current_output(struct seat *seat)
     struct wlr_output *wlr_output =
         wlr_output_layout_output_at(seat->layout, seat->cursor->lx, seat->cursor->ly);
     return wlr_output ? output_from_wlr_output(wlr_output) : NULL;
+}
+
+void input_manager_switch_vt(unsigned vt)
+{
+    struct wlr_session *session = input_manager->server->session;
+    if (session) {
+        wlr_session_change_vt(session, vt);
+    }
 }
