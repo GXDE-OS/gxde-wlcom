@@ -21,7 +21,7 @@ struct view_manager {
         /* only one activated view in all workspaces at once */
         struct view *view;
         struct wl_listener minimize;
-        struct wl_listener destroy;
+        struct wl_listener unmap;
     } activated;
 
     struct wl_listener new_xdg_surface;

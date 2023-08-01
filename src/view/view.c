@@ -565,10 +565,10 @@ static void handle_activated_view_minimized(struct wl_listener *listener, void *
     }
 }
 
-static void handle_activated_view_destroy(struct wl_listener *listener, void *data)
+static void handle_activated_view_unmap(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->activated.minimize.link);
-    wl_list_remove(&view_manager->activated.destroy.link);
+    wl_list_remove(&view_manager->activated.unmap.link);
     view_manager->activated.view = NULL;
 
     view_topmost_activate(workspace_manager_get_current());
@@ -584,7 +584,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 
     if (last) {
         wl_list_remove(&view_manager->activated.minimize.link);
-        wl_list_remove(&view_manager->activated.destroy.link);
+        wl_list_remove(&view_manager->activated.unmap.link);
         view_set_activated(last, false);
     }
 
@@ -606,14 +606,14 @@ void kywc_view_activate(struct kywc_view *kywc_view)
         ky_scene_node_raise_to_top(ky_scene_node_from_tree(child->tree));
     }
 
-    /* listen activated view's minimize and destroy signals,
+    /* listen activated view's minimize and unmap signals,
      * so that we can auto activate another view.
      */
     view_manager->activated.view = view;
     view_manager->activated.minimize.notify = handle_activated_view_minimized;
-    view_manager->activated.destroy.notify = handle_activated_view_destroy;
+    view_manager->activated.unmap.notify = handle_activated_view_unmap;
     wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
-    wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.destroy);
+    wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.unmap);
 }
 
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
