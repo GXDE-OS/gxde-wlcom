@@ -335,18 +335,17 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
         kywc_view_move(&surface->view->base, surface->x, surface->y);
     }
 
-    /* workaround to fix this listener is bebind view map */
-    if (surface->view->base.mapped) {
-        wl_list_init(&surface->view_map.link);
-        surface_handle_view_map(&surface->view_map, NULL);
-    } else {
-        surface->view_map.notify = surface_handle_view_map;
-        wl_signal_add(&surface->view->base.events.map, &surface->view_map);
-    }
+    surface->view_map.notify = surface_handle_view_map;
+    wl_signal_add(&surface->view->base.events.map, &surface->view_map);
     surface->view_unmap.notify = surface_handle_view_unmap;
     wl_signal_add(&surface->view->base.events.unmap, &surface->view_unmap);
     surface->view_destroy.notify = surface_handle_view_destroy;
     wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
+
+    /* workaround to fix this listener is bebind view map */
+    if (surface->view->base.mapped) {
+        surface_handle_view_map(&surface->view_map, NULL);
+    }
 }
 
 static void kde_plasma_surface_handle_resource_destroy(struct wl_resource *resource)
