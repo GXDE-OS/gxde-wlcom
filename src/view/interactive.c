@@ -368,6 +368,7 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
         return false;
     }
     if (key == KEY_ENTER) {
+        interactive_done(grab);
         return false;
     }
 
