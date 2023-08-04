@@ -224,17 +224,18 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         if (LEFT_BUTTON_RELEASED(button, pressed)) {
             kywc_view_close(kywc_view);
         }
-        break;
+        return;
     case SSD_BUTTON_MAXIMIZE:
         if (LEFT_BUTTON_RELEASED(button, pressed)) {
             kywc_view_toggle_maximized(kywc_view);
+            break;
         }
-        break;
+        return;
     case SSD_BUTTON_MINIMIZE:
         if (LEFT_BUTTON_RELEASED(button, pressed)) {
             kywc_view_set_minimized(kywc_view, true);
         }
-        break;
+        return;
     case SSD_CORNER_TOP_LEFT ... SSD_TITLE_RECT:
         if (LEFT_BUTTON_PRESSED(button, pressed)) {
             interactive_begin_move(view, seat);
