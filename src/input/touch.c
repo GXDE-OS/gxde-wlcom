@@ -170,7 +170,7 @@ static void touch_gesture_detect(struct touch *touch)
         return;
     }
 
-    /* moved when one touch point swipe from edge*/
+    /* moved when one touch point swipe from edge */
     if (touch->points_count == 1) {
         touch_gesture_begin(touch, GESTURE_TYPE_SWIPE, 1);
         return;
@@ -663,7 +663,7 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle)
         return;
     }
 
-    if (point && handle) {
+    if (point && handle && point->surface) {
         struct seat *seat = touch->input->seat;
         wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
     }
