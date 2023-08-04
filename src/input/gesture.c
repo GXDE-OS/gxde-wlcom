@@ -7,6 +7,7 @@
 #include "input/gesture.h"
 #include "input_p.h"
 
+#define GESTURE_TIMEOUT (200)
 #define GESTURE_HOLD_TIMEOUT (800)
 
 static char *gestures[] = { "none", "pinch", "swipe", "hold" };
@@ -17,99 +18,15 @@ static void gesture_state_reset(struct gesture_state *state)
     state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
     state->edge = GESTURE_EDGE_NONE;
+    state->triggered = false;
+    state->handled = false;
     if (state->timer) {
         wl_event_source_timer_update(state->timer, 0);
     }
 }
 
-static int gesture_handle_timer(void *data)
+static void gesture_state_trigger(struct gesture_state *state)
 {
-    struct gesture_state *state = data;
-    if (state->type != GESTURE_TYPE_HOLD) {
-        return 0;
-    }
-
-    kywc_log(KYWC_DEBUG, "hold gesture triggered: fingers=%d", state->fingers);
-    bindings_handle_gesture_binding(state);
-    if (state->type != GESTURE_TYPE_HOLD) {
-        gesture_state_reset(state);
-    }
-    return 0;
-}
-
-void gesture_state_init(struct gesture_state *state, void *display)
-{
-    struct wl_event_loop *loop = wl_display_get_event_loop(display);
-    state->timer = wl_event_loop_add_timer(loop, gesture_handle_timer, state);
-    gesture_state_reset(state);
-}
-
-void gesture_state_finish(struct gesture_state *state)
-{
-    if (state->timer) {
-        wl_event_source_remove(state->timer);
-    }
-}
-
-void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
-                         enum gesture_device device, enum gesture_edge edge, uint8_t fingers)
-{
-    state->type = type;
-    state->device = device;
-    state->fingers = fingers;
-
-    state->dx = 0.0;
-    state->dy = 0.0;
-    state->scale = 1.0;
-    state->rotation = 0.0;
-    state->edge = edge;
-
-    if (state->timer && type == GESTURE_TYPE_HOLD) {
-        wl_event_source_timer_update(state->timer, GESTURE_HOLD_TIMEOUT);
-    }
-
-    kywc_log(KYWC_DEBUG, "gesture %s state begin: fingers: %u", gestures[type], fingers);
-}
-
-void gesture_state_update(struct gesture_state *state, enum gesture_type type,
-                          enum gesture_device device, double dx, double dy, double scale,
-                          double rotation)
-{
-    if (state->type != type || state->device != device) {
-        return;
-    }
-
-    if (state->type == GESTURE_TYPE_HOLD) {
-        assert("hold does not update.");
-        return;
-    }
-
-    state->dx += dx;
-    state->dy += dy;
-
-    if (state->type == GESTURE_TYPE_PINCH) {
-        state->scale = scale;
-        state->rotation += rotation;
-    }
-
-    kywc_log(KYWC_DEBUG, "gesture %s state update: fingers: %u gesture: %f %f %f %f",
-             gestures[state->type], state->fingers, state->dx, state->dy, state->scale,
-             state->rotation);
-}
-
-bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
-                       enum gesture_device device, bool cancelled)
-{
-    if (state->type != type || state->device != device) {
-        return false;
-    }
-
-    if (cancelled) {
-        kywc_log(KYWC_DEBUG, "gesture %s state cancelled", gestures[state->type]);
-        gesture_state_reset(state);
-        return false;
-    }
-
     // Ignore gesture under some threshold
     const double min_rotation = 5;
     const double min_scale_delta = 0.1;
@@ -156,10 +73,99 @@ bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
         break;
     }
 
-    kywc_log(KYWC_DEBUG, "gesture %s state end: fingers: %u, directions: %d", gestures[state->type],
+    kywc_log(KYWC_DEBUG, "gesture %s triggered: fingers: %u, directions: %d", gestures[state->type],
              state->fingers, state->directions);
 
-    bool handled = bindings_handle_gesture_binding(state);
+    state->triggered = true;
+    state->handled = bindings_handle_gesture_binding(state);
+}
+
+static int gesture_handle_timer(void *data)
+{
+    struct gesture_state *state = data;
+    gesture_state_trigger(state);
+    return 0;
+}
+
+void gesture_state_init(struct gesture_state *state, void *display)
+{
+    struct wl_event_loop *loop = wl_display_get_event_loop(display);
+    state->timer = wl_event_loop_add_timer(loop, gesture_handle_timer, state);
+    gesture_state_reset(state);
+}
+
+void gesture_state_finish(struct gesture_state *state)
+{
+    if (state->timer) {
+        wl_event_source_remove(state->timer);
+    }
+}
+
+void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
+                         enum gesture_device device, enum gesture_edge edge, uint8_t fingers)
+{
+    state->type = type;
+    state->device = device;
+    state->fingers = fingers;
+
+    state->dx = 0.0;
+    state->dy = 0.0;
+    state->scale = 1.0;
+    state->rotation = 0.0;
+    state->edge = edge;
+
+    if (state->timer) {
+        int timeout = state->type == GESTURE_TYPE_HOLD ? GESTURE_HOLD_TIMEOUT : GESTURE_TIMEOUT;
+        wl_event_source_timer_update(state->timer, timeout);
+    }
+
+    kywc_log(KYWC_DEBUG, "gesture %s state begin: fingers: %u", gestures[type], fingers);
+}
+
+void gesture_state_update(struct gesture_state *state, enum gesture_type type,
+                          enum gesture_device device, double dx, double dy, double scale,
+                          double rotation)
+{
+    if (state->type != type || state->device != device) {
+        return;
+    }
+
+    if (state->type == GESTURE_TYPE_HOLD) {
+        assert("hold does not update.");
+        return;
+    }
+
+    state->dx += dx;
+    state->dy += dy;
+
+    if (state->type == GESTURE_TYPE_PINCH) {
+        state->scale = scale;
+        state->rotation += rotation;
+    }
+
+    kywc_log(KYWC_DEBUG, "gesture %s state update: fingers: %u gesture: %f %f %f %f",
+             gestures[state->type], state->fingers, state->dx, state->dy, state->scale,
+             state->rotation);
+}
+
+bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
+                       enum gesture_device device, bool cancelled)
+{
+    if (state->type != type || state->device != device) {
+        return false;
+    }
+
+    if (cancelled) {
+        kywc_log(KYWC_DEBUG, "gesture %s state cancelled", gestures[state->type]);
+        gesture_state_reset(state);
+        return false;
+    }
+
+    if (!state->triggered && state->type != GESTURE_TYPE_HOLD) {
+        gesture_state_trigger(state);
+    }
+
+    bool handled = state->handled;
     gesture_state_reset(state);
     return handled;
 }

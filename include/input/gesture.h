@@ -13,6 +13,8 @@ struct gesture_state {
     double dx, dy;
     double scale;
     double rotation;
+    bool triggered;
+    bool handled;
 
     /* timer for hold gesture */
     struct wl_event_source *timer;
