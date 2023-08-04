@@ -101,7 +101,7 @@ void cursor_destroy(struct cursor *cursor);
 
 void cursor_set_image(struct cursor *cursor, enum cursor_name name);
 
-void cursor_reload_image(struct cursor *cursor, float scale);
+void cursor_rebase(struct cursor *cursor);
 
 void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, double y,
                  bool delta, bool absolute);

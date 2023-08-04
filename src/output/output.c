@@ -462,6 +462,11 @@ void kywc_output_set_primary(struct kywc_output *kywc_output)
     wl_signal_emit_mutable(&output_manager->events.primary_output, kywc_output);
 }
 
+struct kywc_output *output_manager_get_primary(void)
+{
+    return output_manager->primary_output;
+}
+
 void kywc_output_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&output_manager->events.new_output, listener);
