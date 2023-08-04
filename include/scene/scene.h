@@ -34,7 +34,6 @@
 #define ky_scene_rect_set_size wlr_scene_rect_set_size
 #define ky_scene_rect_set_color wlr_scene_rect_set_color
 #define ky_scene_rect_from_node wlr_scene_rect_from_node
-#define ky_scene_buffer_from_node wlr_scene_buffer_from_node
 #define ky_scene_buffer_create wlr_scene_buffer_create
 #define ky_scene_buffer_set_buffer wlr_scene_buffer_set_buffer
 #define ky_scene_buffer_set_buffer_with_damage wlr_scene_buffer_set_buffer_with_damage
@@ -52,6 +51,7 @@
 struct server;
 
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
+SCENE_API struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node) { return node->type == WLR_SCENE_NODE_BUFFER ? wlr_scene_buffer_from_node(node) : NULL; };
 SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return wlr_scene_create(); } 
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return scene->presentation; }
 SCENE_API void ky_scene_destroy(struct ky_scene *scene) { scene ? ky_scene_node_destroy(&scene->tree.node) : true; }
