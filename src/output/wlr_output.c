@@ -13,10 +13,8 @@ struct wlr_output_management {
     struct wl_listener power_set_mode;
 
     struct wl_list heads;
-    struct kywc_output *current_primary;
 
     struct wl_listener new_output;
-    struct wl_listener primary_output;
     struct wl_listener configured;
 
     struct wl_listener display_destroy;
@@ -43,7 +41,6 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&management->display_destroy.link);
     wl_list_remove(&management->new_output.link);
-    wl_list_remove(&management->primary_output.link);
     wl_list_remove(&management->configured.link);
 }
 
@@ -93,12 +90,6 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     manager_update_configuration();
 }
 
-static void handle_primary_output(struct wl_listener *listener, void *data)
-{
-    struct kywc_output *kywc_output = data;
-    management->current_primary = kywc_output;
-}
-
 static void handle_configured(struct wl_listener *listener, void *data)
 {
     manager_update_configuration();
@@ -145,7 +136,7 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_DEBUG, "wlr output manager apply");
     struct wlr_output_configuration_v1 *config = data;
-    struct kywc_output *primary_output = management->current_primary;
+    struct kywc_output *primary_output = output_manager_get_primary();
 
     if (wl_list_empty(&management->heads) || !primary_output) {
         kywc_log(KYWC_WARN, "configuration cannot be applied");
@@ -259,8 +250,6 @@ bool wlr_output_management_create(struct server *server)
 
     management->new_output.notify = handle_new_output;
     kywc_output_add_new_listener(&management->new_output);
-    management->primary_output.notify = handle_primary_output;
-    kywc_output_add_primary_listener(&management->primary_output);
     management->configured.notify = handle_configured;
     output_manager_add_configured_listener(&management->configured);
 

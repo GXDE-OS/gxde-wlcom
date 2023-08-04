@@ -8,11 +8,9 @@
 struct layout_manager {
     struct wl_list outputs;
     struct config *config;
-    struct kywc_output *primary;
 
     struct wl_listener server_destroy;
     struct wl_listener new_output;
-    struct wl_listener primary_output;
     struct wl_listener configured;
 
     char outputs_layout[16];
@@ -155,7 +153,7 @@ static void output_layout_write_config(struct output_layout *output_layout,
     }
 
     struct kywc_output_state *state = &output_layout->output->state;
-    bool primary = lm->primary == output_layout->output;
+    bool primary = output_manager_get_primary() == output_layout->output;
 
     json_object_object_add(config, "enabled", json_object_new_boolean(state->enabled));
     if (!state->enabled) {
@@ -238,7 +236,7 @@ static void layout_manager_config_outputs(struct layout_manager *layout_manager)
         }
 
         ol->state.enabled = ol->state.power = true;
-        ol->primary = layout_manager->primary == ol->output;
+        ol->primary = output_manager_get_primary() == ol->output;
 
         struct kywc_output_mode *mode = kywc_output_preferred_mode(ol->output);
         ol->state.width = mode->width;
@@ -377,7 +375,7 @@ static void layout_manager_handle_configured(struct wl_listener *listener, void 
 
         wl_list_for_each(ol, &layout_manager->outputs, link) {
             struct kywc_output_state *state = &ol->output->state;
-            bool primary = layout_manager->primary == ol->output;
+            bool primary = output_manager_get_primary() == ol->output;
             kywc_log(KYWC_INFO,
                      "\t output %s: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
                      ol->output->name, state->width, state->height, state->refresh, state->scale,
@@ -387,15 +385,6 @@ static void layout_manager_handle_configured(struct wl_listener *listener, void 
     }
 }
 
-static void layout_manager_handle_primary(struct wl_listener *listener, void *data)
-{
-    struct layout_manager *layout_manager =
-        wl_container_of(listener, layout_manager, primary_output);
-
-    struct kywc_output *kywc_output = data;
-    layout_manager->primary = kywc_output;
-}
-
 static void handle_layout_manager_destroy(struct wl_listener *listener, void *data)
 {
     struct layout_manager *layout_manager =
@@ -403,7 +392,6 @@ static void handle_layout_manager_destroy(struct wl_listener *listener, void *da
 
     wl_list_remove(&layout_manager->server_destroy.link);
     wl_list_remove(&layout_manager->configured.link);
-    wl_list_remove(&layout_manager->primary_output.link);
     wl_list_remove(&layout_manager->new_output.link);
 
     free(layout_manager);
@@ -421,10 +409,6 @@ bool layout_manager_create(struct server *server)
     /* listener new_output signal */
     layout_manager->new_output.notify = layout_manager_handle_new_output;
     kywc_output_add_new_listener(&layout_manager->new_output);
-
-    /* listener primary_output signal */
-    layout_manager->primary_output.notify = layout_manager_handle_primary;
-    kywc_output_add_primary_listener(&layout_manager->primary_output);
 
     /* listener output configured signal */
     layout_manager->configured.notify = layout_manager_handle_configured;
