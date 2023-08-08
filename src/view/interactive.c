@@ -350,7 +350,7 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
 };
 
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
-                              bool pressed)
+                              bool pressed, uint32_t modifiers)
 {
     if (!pressed) {
         return true;

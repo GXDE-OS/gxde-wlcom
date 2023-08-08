@@ -224,7 +224,7 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
     bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
 
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
-        seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed)) {
+        seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
         keybaord_repeat_start(keyboard, key, pressed);
         return;
     }

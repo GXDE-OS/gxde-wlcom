@@ -22,7 +22,8 @@ struct seat_pointer_grab {
 };
 
 struct seat_keyboard_grab_interface {
-    bool (*key)(struct seat_keyboard_grab *grab, uint32_t time, uint32_t key, bool pressed);
+    bool (*key)(struct seat_keyboard_grab *grab, uint32_t time, uint32_t key, bool pressed,
+                uint32_t modidiers);
     void (*cancel)(struct seat_keyboard_grab *grab);
 };
 
