@@ -24,6 +24,7 @@ struct workspace_manager {
     } events;
 
     struct wl_listener display_destroy;
+    struct wl_listener server_ready;
     struct wl_listener server_destroy;
 
     uint32_t count, rows, columns;
@@ -165,6 +166,15 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     }
 }
 
+static void handle_server_ready(struct wl_listener *listener, void *data)
+{
+    /* create the default workspace and activate it */
+    workspace_activate(workspace_create(NULL, 0));
+    workspace_create(NULL, 1);
+    workspace_create(NULL, 2);
+    workspace_create(NULL, 3);
+}
+
 bool workspace_manager_create(struct view_manager *view_manager)
 {
     workspace_manager = calloc(1, sizeof(struct workspace_manager));
@@ -178,6 +188,8 @@ bool workspace_manager_create(struct view_manager *view_manager)
 
     wl_signal_init(&workspace_manager->events.new_workspace);
 
+    workspace_manager->server_ready.notify = handle_server_ready;
+    wl_signal_add(&view_manager->server->events.ready, &workspace_manager->server_ready);
     workspace_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(view_manager->server, &workspace_manager->server_destroy);
     workspace_manager->display_destroy.notify = handle_display_destroy;
@@ -186,12 +198,6 @@ bool workspace_manager_create(struct view_manager *view_manager)
 
     /* kde-plasma-virtual-desktop support */
     kde_virtual_desktop_management_create(view_manager->server);
-
-    /* create the default workspace and activate it */
-    workspace_activate(workspace_create(NULL, 0));
-    workspace_create(NULL, 1);
-    workspace_create(NULL, 2);
-    workspace_create(NULL, 3);
 
     workspace_register_shortcut();
 
