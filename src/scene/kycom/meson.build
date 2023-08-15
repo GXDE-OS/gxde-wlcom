@@ -1,0 +1,18 @@
+wlcom_sources += files(
+  'opengl.c',
+  'output_layout.c',
+  'rect.c',
+  'scene.c',
+  'target.c',
+  'texture.c',
+)
+
+epoxy = dependency('epoxy')
+cglm = dependency('cglm')
+
+kycom_scene_deps = [
+  epoxy, cglm,
+]
+
+subdir('shaders')
+

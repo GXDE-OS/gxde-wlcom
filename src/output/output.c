@@ -246,12 +246,11 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     struct output *output = wl_container_of(listener, output, frame);
     struct kywc_output *kywc_output = &output->base;
     struct wlr_output *wlr_output = output->wlr_output;
-    // kywc_log(KYWC_DEBUG, "output %s frame coming", kywc_output->name);
 
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
-#if HAVE_WLR_SCENE
+#if HAVE_WLR_SCENE | HAVE_KYCOM_SCENE
     struct ky_scene_output *scene_output =
         ky_scene_get_scene_output(output_manager->server->scene, wlr_output);
     ky_scene_output_commit(scene_output, NULL);
