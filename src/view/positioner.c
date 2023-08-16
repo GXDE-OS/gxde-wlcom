@@ -287,7 +287,13 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
             }
 
             if (entry->view->maximized) {
-                kywc_view_resize(entry->view, dst_box);
+                struct kywc_box box = {
+                    .x = dst_box->x + entry->view->margin.off_x,
+                    .y = dst_box->y + entry->view->margin.off_y,
+                    .width = dst_box->width - entry->view->margin.off_width,
+                    .height = dst_box->height - entry->view->margin.off_height,
+                };
+                kywc_view_resize(entry->view, &box);
                 continue;
             }
 
