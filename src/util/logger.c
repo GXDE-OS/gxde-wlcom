@@ -10,6 +10,11 @@
 static FILE *log_fp = NULL;
 static enum kywc_log_level log_level = KYWC_WARN;
 
+static const char *level_colors[] = {
+    [KYWC_SILENT] = "",         [KYWC_FATAL] = "\x1B[7;31m", [KYWC_ERROR] = "\x1B[1;31m",
+    [KYWC_WARN] = "\x1B[1;35m", [KYWC_INFO] = "\x1B[1;34m",  [KYWC_DEBUG] = "\x1B[1;90m",
+};
+
 static const char *level_headers[] = {
     [KYWC_SILENT] = "",     [KYWC_FATAL] = "[FATAL]", [KYWC_ERROR] = "[ERROR]",
     [KYWC_WARN] = "[WARN]", [KYWC_INFO] = "[INFO]",   [KYWC_DEBUG] = "[DEBUG]",
@@ -26,8 +31,11 @@ static void log_file(enum kywc_log_level level, const char *fmt, va_list args)
     struct tm *tm_log = localtime(&time_log);
     fprintf(log_fp, "[%04d-%02d-%02d %02d:%02d:%02d] %s: ", tm_log->tm_year + 1900,
             tm_log->tm_mon + 1, tm_log->tm_mday, tm_log->tm_hour, tm_log->tm_min, tm_log->tm_sec,
-            level_headers[level]);
+            log_fp == stdout ? level_colors[level] : level_headers[level]);
     vfprintf(log_fp, fmt, args);
+    if (log_fp == stdout) {
+        fprintf(log_fp, "\x1B[0m");
+    }
     fprintf(log_fp, "\n");
 
     fflush(log_fp);

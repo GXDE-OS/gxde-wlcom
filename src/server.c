@@ -130,26 +130,26 @@ static bool wlroots_server_init(struct server *server)
 
     server->backend = wlr_backend_autocreate(server->display, &server->session);
     if (!server->backend) {
-        kywc_log(KYWC_ERROR, "unable to create backend");
+        kywc_log(KYWC_FATAL, "unable to create backend");
         return false;
     }
 
     server->headless_backend = wlr_headless_backend_create(server->display);
     if (!server->headless_backend) {
-        kywc_log(KYWC_ERROR, "unable to create headless backend");
+        kywc_log(KYWC_FATAL, "unable to create headless backend");
         return false;
     }
     wlr_multi_backend_add(server->backend, server->headless_backend);
 
     server->renderer = wlr_renderer_autocreate(server->backend);
     if (!server->renderer) {
-        kywc_log(KYWC_ERROR, "unable to create renderer");
+        kywc_log(KYWC_FATAL, "unable to create renderer");
         return false;
     }
 
     server->allocator = wlr_allocator_autocreate(server->backend, server->renderer);
     if (!server->allocator) {
-        kywc_log(KYWC_ERROR, "unable to create allocator");
+        kywc_log(KYWC_FATAL, "unable to create allocator");
         return false;
     }
 
@@ -224,7 +224,7 @@ bool server_start(struct server *server)
     }
 
     if (!wlr_backend_start(server->backend)) {
-        kywc_log(KYWC_ERROR, "unable to start the wlroots backend");
+        kywc_log(KYWC_FATAL, "unable to start the wlroots backend");
         return false;
     }
 
