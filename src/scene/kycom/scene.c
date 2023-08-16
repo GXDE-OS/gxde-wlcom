@@ -10,6 +10,7 @@
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
 
+#include "scene/kycom/effects_impl.h"
 #include "kywc/kycom/scene.h"
 #include "kywc/kycom/texture.h"
 #include "scene/kycom/opengl_p.h"
@@ -834,6 +835,16 @@ static void root_push_damage(struct kywc_node *node, const struct wlr_box *damag
     scene_damage_outputs(root, &whole_local_damage);
 }
 
+static struct _kywc_scene_data {
+    struct kywc_root *scene;
+    struct wl_listener server_ready_listener;
+} scene_data;
+
+static void scene_handle_server_ready_listener(struct wl_listener *listener, void *data)
+{
+    _kywc_effect_add_new_view_listener();
+}
+
 static struct kywc_root *root_create(void)
 {
     struct kywc_root *scene = calloc(1, sizeof(struct kywc_root));
@@ -856,9 +867,14 @@ static struct kywc_root *root_create(void)
 
 struct kywc_root *kywc_root_create_with_server(struct server *kywc_server)
 {
+    _kywc_effect_init(kywc_server);
     _kywc_gl_init(kywc_server->renderer);
 
-    return root_create();
+    scene_data.server_ready_listener.notify = scene_handle_server_ready_listener;
+    wl_signal_add(&kywc_server->events.ready, &scene_data.server_ready_listener);
+
+    scene_data.scene = root_create();
+    return scene_data.scene;
 }
 
 static void scene_handle_presentation_destroy(struct wl_listener *listener, void *data)
@@ -1013,6 +1029,7 @@ struct kywc_scene_output *kywc_scene_output_create(struct kywc_root *scene,
 
     scene_output->output = output;
     scene_output->scene = scene;
+    scene_output->effect_output = _kywc_effect_output_create(scene_output);
     wlr_addon_init(&scene_output->addon, &output->addons, scene, &output_addon_impl);
 
     wlr_damage_ring_init(&scene_output->damage_ring);
@@ -1058,6 +1075,8 @@ void kywc_scene_output_destroy(struct kywc_scene_output *scene_output)
     }
 
     wl_signal_emit_mutable(&scene_output->events.destroy, NULL);
+
+    _kywc_effect_output_destroy(scene_output->effect_output);
 
     scene_node_output_update(&scene_output->scene->group.node, &scene_output->scene->outputs,
                              scene_output);
@@ -1149,16 +1168,19 @@ void kywc_scene_output_send_frame_done(struct kywc_scene_output *scene_output, s
 }
 
 bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
-                              struct kywc_effects_manager *output_manager)
+                              struct kywc_effect_output *output_manager)
 {
     struct wlr_output *output = scene_output->output;
     struct wlr_renderer *renderer = output->renderer;
     struct wlr_damage_ring *damage_ring = &scene_output->damage_ring;
     struct kywc_root *scene = scene_output->scene;
+    struct kywc_effect_output *effect_output = scene_output->effect_output;
     int output_lx = scene_output->x;
     int output_ly = scene_output->y;
     assert(renderer);
 
+    _kywc_effects_run(OUTPUT_EFFECT_PRE);
+    _kywc_effects_run(OUTPUT_EFFECT_DAMAGE);
     int buffer_age;
     if (!wlr_output_attach_render(output, &buffer_age)) {
         return false;
@@ -1174,6 +1196,7 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
         wlr_output_rollback(output);
         return true;
     }
+    _kywc_effects_post_update_framebuffer(effect_output);
 
     /* Draw scenegraph */
     struct wl_list *render_task_list = &scene_output->render_task_list;
@@ -1205,6 +1228,8 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
         kywc_render_task_release(task);
     }
 
+    _kywc_effects_run(OUTPUT_EFFECT_OVERLAY);
+    _kywc_effects_run_post(effect_output);
     struct wlr_render_pass *pass = 
         wlr_renderer_begin_buffer_pass(renderer, output->back_buffer, NULL);
     wlr_output_add_software_cursors_to_render_pass(output, pass, &damage);
@@ -1226,7 +1251,7 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
     if (success) {
         wlr_damage_ring_rotate(damage_ring);
     }
-
+    _kywc_effects_run(OUTPUT_EFFECT_POST);
     return success;
 }
 

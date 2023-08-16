@@ -5,6 +5,7 @@ wlcom_sources += files(
   'scene.c',
   'target.c',
   'texture.c',
+  'transform.c',
 )
 
 epoxy = dependency('epoxy')
@@ -15,4 +16,5 @@ kycom_scene_deps = [
 ]
 
 subdir('shaders')
+subdir('effect')
 

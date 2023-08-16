@@ -20,7 +20,7 @@ struct server;
 struct kywc_node;
 struct kywc_node_visitor;
 struct kywc_texture_node;
-struct kywc_effects_manager;
+struct kywc_effect_output;
 struct kywc_scene_output_layout;
 
 enum kywc_visitor_flag {
@@ -120,6 +120,7 @@ struct kywc_scene_output {
     struct wl_list link;
     int x, y;
 
+    struct kywc_effect_output *effect_output;
     struct wlr_damage_ring damage_ring;
     struct wlr_output *output;
     struct kywc_root *scene;
@@ -287,7 +288,7 @@ void kywc_scene_output_send_frame_done(struct kywc_scene_output *scene_output,
                                        struct timespec *now);
 
 bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
-                              struct kywc_effects_manager *output_manager);
+                              struct kywc_effect_output *output_manager);
 
 struct kywc_root *kywc_node_get_root(struct kywc_node *node);
 
