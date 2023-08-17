@@ -31,6 +31,8 @@ uint32_t workspace_manager_get_rows(void);
 
 struct workspace *workspace_manager_get_current(void);
 
+uint32_t workspace_manager_get_count(void);
+
 struct workspace *workspace_create(const char *name, uint32_t position);
 
 void workspace_destroy(struct workspace *workspace);
@@ -38,5 +40,7 @@ void workspace_destroy(struct workspace *workspace);
 void workspace_activate(struct workspace *workspace);
 
 struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer);
+
+struct workspace *workspace_by_position(uint32_t position);
 
 #endif /* _WORKSPACE_H_ */

@@ -230,6 +230,11 @@ struct workspace *workspace_manager_get_current(void)
     return workspace_manager->current;
 }
 
+uint32_t workspace_manager_get_count(void)
+{
+    return workspace_manager->count;
+}
+
 static void workspace_set_enabled(struct workspace *workspace, bool enabled)
 {
     for (int i = 0; i < 3; i++) {
@@ -373,4 +378,13 @@ struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer
     default:
         return NULL;
     }
+}
+
+struct workspace *workspace_by_position(uint32_t position)
+{
+    if (position >= workspace_manager->count) {
+        return NULL;
+    }
+
+    return workspace_manager->workspaces[position];
 }
