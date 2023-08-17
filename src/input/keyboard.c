@@ -122,6 +122,13 @@ static void keyboard_state_add_key(struct keyboard_state *keyboard_state, uint32
     }
 }
 
+static void keyboard_state_clear(struct keyboard_state *keyboard_state)
+{
+    if (keyboard_state->npressed > 0) {
+        *keyboard_state = (struct keyboard_state){ 0 };
+    }
+}
+
 static void handle_keyboard_state(struct keyboard_state *keyboard_state, uint32_t modifiers,
                                   uint32_t keysym, bool pressed)
 {
@@ -225,6 +232,7 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
 
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
+        keyboard_state_clear(&keyboard->state);
         keybaord_repeat_start(keyboard, key, pressed);
         return;
     }
