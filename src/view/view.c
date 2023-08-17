@@ -12,50 +12,6 @@
 
 static struct view_manager *view_manager = NULL;
 
-static void handle_server_destroy(struct wl_listener *listener, void *data)
-{
-    wl_list_remove(&view_manager->server_destroy.link);
-
-    free(view_manager);
-    view_manager = NULL;
-}
-
-struct view_manager *view_manager_create(struct server *server)
-{
-    view_manager = calloc(1, sizeof(struct view_manager));
-    if (!view_manager) {
-        return NULL;
-    }
-
-    view_manager->server = server;
-    wl_signal_init(&view_manager->events.new_view);
-
-    view_manager->server_destroy.notify = handle_server_destroy;
-    server_add_destroy_listener(server, &view_manager->server_destroy);
-
-    /* create all layers */
-    for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
-        view_manager->layers[layer].layer = layer;
-        view_manager->layers[layer].tree = ky_scene_create_tree(server->scene);
-    }
-
-    workspace_manager_create(view_manager);
-    decoration_manager_create(view_manager);
-    server_decoration_manager_create(view_manager);
-    positioner_manager_create(view_manager);
-    shadow_manager_create(view_manager);
-
-    xdg_shell_init(view_manager);
-
-    wlr_layer_shell_manager_create(server);
-    wlr_foreign_toplevel_manager_create(server);
-    kde_plasma_shell_create(server);
-    kde_plasma_window_management_create(server);
-    // kde_blur_manager_create(server);
-
-    return view_manager;
-}
-
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 {
     if (!in_workspace) {
@@ -537,8 +493,6 @@ static void view_set_activated(struct view *view, bool activated)
          * so that we can auto activate another view.
          */
         view_manager->activated.view = view;
-        view_manager->activated.minimize.notify = handle_activated_view_minimized;
-        view_manager->activated.unmap.notify = handle_activated_view_unmap;
         wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
         wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.unmap);
     } else {
@@ -877,4 +831,51 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
         kywc_log(KYWC_DEBUG, "view %p size to %d x %d", view, width, height);
         wl_signal_emit_mutable(&view->base.events.size, NULL);
     }
+}
+
+static void handle_server_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&view_manager->server_destroy.link);
+
+    free(view_manager);
+    view_manager = NULL;
+}
+
+struct view_manager *view_manager_create(struct server *server)
+{
+    view_manager = calloc(1, sizeof(struct view_manager));
+    if (!view_manager) {
+        return NULL;
+    }
+
+    view_manager->server = server;
+    wl_signal_init(&view_manager->events.new_view);
+
+    view_manager->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(server, &view_manager->server_destroy);
+
+    view_manager->activated.minimize.notify = handle_activated_view_minimized;
+    view_manager->activated.unmap.notify = handle_activated_view_unmap;
+
+    /* create all layers */
+    for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
+        view_manager->layers[layer].layer = layer;
+        view_manager->layers[layer].tree = ky_scene_create_tree(server->scene);
+    }
+
+    workspace_manager_create(view_manager);
+    decoration_manager_create(view_manager);
+    server_decoration_manager_create(view_manager);
+    positioner_manager_create(view_manager);
+    shadow_manager_create(view_manager);
+
+    xdg_shell_init(view_manager);
+
+    wlr_layer_shell_manager_create(server);
+    wlr_foreign_toplevel_manager_create(server);
+    kde_plasma_shell_create(server);
+    kde_plasma_window_management_create(server);
+    // kde_blur_manager_create(server);
+
+    return view_manager;
 }
