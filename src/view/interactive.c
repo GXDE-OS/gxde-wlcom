@@ -72,8 +72,7 @@ static void snap_box_update(struct interactive_grab *grab, struct kywc_box *geo,
 
 static void interactive_move_show_snap_box(struct interactive_grab *grab, int cur_x, int cur_y)
 {
-    struct kywc_output *kywc_output = kywc_output_at_point(cur_x, cur_y);
-    struct output *output = output_from_kywc_output(kywc_output);
+    struct output *output = input_current_output(grab->seat);
     struct kywc_box *usable = &output->usable_area;
     struct kywc_box geo = { 0 };
     bool enable = true;
