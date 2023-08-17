@@ -503,13 +503,48 @@ void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
     }
 }
 
+static void view_set_activated(struct view *view, bool activated);
+
+static void handle_activated_view_minimized(struct wl_listener *listener, void *data)
+{
+    struct view *view = view_manager->activated.view;
+    if (!view->base.minimized) {
+        return;
+    }
+
+    view_set_activated(view, false);
+    view_topmost_activate(workspace_manager_get_current());
+}
+
+static void handle_activated_view_unmap(struct wl_listener *listener, void *data)
+{
+    struct view *view = view_manager->activated.view;
+    view_set_activated(view, false);
+    view_topmost_activate(workspace_manager_get_current());
+}
+
 static void view_reparent_fullscreen(struct view *view, bool active);
+
 static void view_set_activated(struct view *view, bool activated)
 {
     struct kywc_view *kywc_view = &view->base;
-
     if (kywc_view->activated == activated) {
         return;
+    }
+
+    if (activated) {
+        /* listen activated view's minimize and unmap signals,
+         * so that we can auto activate another view.
+         */
+        view_manager->activated.view = view;
+        view_manager->activated.minimize.notify = handle_activated_view_minimized;
+        view_manager->activated.unmap.notify = handle_activated_view_unmap;
+        wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
+        wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.unmap);
+    } else {
+        wl_list_remove(&view_manager->activated.minimize.link);
+        wl_list_remove(&view_manager->activated.unmap.link);
+        view_manager->activated.view = NULL;
     }
 
     /* change fullscreen layer when activation changed */
@@ -551,27 +586,11 @@ void view_topmost_activate(struct workspace *workspace)
     view = view_manager->activated.view;
     if (view && view->base.fullscreen && !view->workspace->activated) {
         view_reparent_fullscreen(view, false);
+        view_set_activated(view, false);
     }
 
     /* no view can be activated, clear keyboard focus */
     seat_focus_surface(input_manager_get_default_seat(), NULL);
-}
-
-static void handle_activated_view_minimized(struct wl_listener *listener, void *data)
-{
-    if (view_manager->activated.view->base.minimized) {
-        /* listener will removed in kywc_view_activate */
-        view_topmost_activate(workspace_manager_get_current());
-    }
-}
-
-static void handle_activated_view_unmap(struct wl_listener *listener, void *data)
-{
-    wl_list_remove(&view_manager->activated.minimize.link);
-    wl_list_remove(&view_manager->activated.unmap.link);
-    view_manager->activated.view = NULL;
-
-    view_topmost_activate(workspace_manager_get_current());
 }
 
 void kywc_view_activate(struct kywc_view *kywc_view)
@@ -583,8 +602,6 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 
     if (last) {
-        wl_list_remove(&view_manager->activated.minimize.link);
-        wl_list_remove(&view_manager->activated.unmap.link);
         view_set_activated(last, false);
     }
 
@@ -605,15 +622,6 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     wl_list_for_each(child, &view->children, parent_link) {
         ky_scene_node_raise_to_top(ky_scene_node_from_tree(child->tree));
     }
-
-    /* listen activated view's minimize and unmap signals,
-     * so that we can auto activate another view.
-     */
-    view_manager->activated.view = view;
-    view_manager->activated.minimize.notify = handle_activated_view_minimized;
-    view_manager->activated.unmap.notify = handle_activated_view_unmap;
-    wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
-    wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.unmap);
 }
 
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
