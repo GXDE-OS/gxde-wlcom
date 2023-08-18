@@ -634,8 +634,16 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_decorations);
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
-
     bool use_ssd = wlr_xwayland_surface->decorations == WLR_XWAYLAND_SURFACE_DECORATIONS_ALL;
+
+    for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
+        xcb_atom_t type = wlr_xwayland_surface->window_type[i];
+        if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
+            use_ssd = false;
+            break;
+        }
+    }
+
     view_set_decoration(&xwayland_view->view, use_ssd);
 }
 
@@ -766,12 +774,11 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         if (type == xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
             xwayland_view->view.base.focusable = false;
             xwayland_view->view.base.activatable = false;
-            view_set_decoration(&xwayland_view->view, false);
-
             /* reparent to dock layer and remove from workspace */
             struct view_layer *layer = view_manager_get_layer(LAYER_DOCK, false);
             ky_scene_node_reparent(ky_scene_node_from_tree(xwayland_view->view.tree), layer->tree);
             view_set_workspace(&xwayland_view->view, NULL);
+            break;
         }
     }
 
