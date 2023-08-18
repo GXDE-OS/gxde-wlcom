@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include <linux/input-event-codes.h>
+#include <wlr/types/wlr_seat.h>
 
 #include "input/cursor.h"
 #include "input/seat.h"
@@ -8,17 +9,25 @@
 #include "theme.h"
 #include "view_p.h"
 
-#define VIEW_EDGE_GAP 50
+#define VIEW_EDGE_GAP 20
 #define VIEW_BOTTOM_GAP 100
 #define VIEW_MIN_WIDTH 200
 #define VIEW_MIN_HEIGHT 100
 #define VIEW_MOVE_STEP 10
 #define VIEW_RESIZE_STEP 10
+#define SNAP_BOX_FILTER 200
 
 enum interactive_mode {
     INTERACTIVE_MODE_NONE = 0,
     INTERACTIVE_MODE_MOVE,
     INTERACTIVE_MODE_RESIZE,
+};
+
+enum snap_box_mode {
+    SNAP_BOX_MODE_NONE = 0,
+    SNAP_BOX_MODE_LEFT,
+    SNAP_BOX_MODE_RIGHT,
+    SNAP_BOX_MODE_TOP,
 };
 
 struct interactive_grab {
@@ -46,9 +55,13 @@ struct interactive_grab {
     /* snap_box */
     struct ky_scene_node *snap_node;
     struct ky_scene_rect *snap_rect;
+    enum snap_box_mode snap_mode;
+    struct wl_event_source *filter;
+    bool filter_enabled;
 };
 
-static void snap_box_update(struct interactive_grab *grab, struct kywc_box *geo, bool enable)
+static void snap_box_update(struct interactive_grab *grab, struct kywc_box *usable,
+                            enum snap_box_mode mode)
 {
     struct view *view = grab->view;
 
@@ -59,47 +72,100 @@ static void snap_box_update(struct interactive_grab *grab, struct kywc_box *geo,
         ky_scene_node_lower_to_bottom(grab->snap_node);
     }
 
-    if (!enable) {
-        ky_scene_node_set_enabled(grab->snap_node, false);
+    grab->snap_mode = mode;
+    ky_scene_node_set_enabled(grab->snap_node, mode != SNAP_BOX_MODE_NONE);
+    /* return early, usable may be NULL */
+    if (mode == SNAP_BOX_MODE_NONE) {
         return;
     }
 
-    ky_scene_rect_set_size(grab->snap_rect, geo->width, geo->height);
-    ky_scene_node_set_position(grab->snap_node, geo->x - view->pending.geometry.x,
-                               geo->y - view->pending.geometry.y);
-    ky_scene_node_set_enabled(grab->snap_node, true);
+    struct kywc_box geo = { .y = usable->y, .height = usable->height };
+
+    switch (mode) {
+    case SNAP_BOX_MODE_NONE:
+        return;
+    case SNAP_BOX_MODE_LEFT:
+        geo.x = usable->x;
+        geo.width = usable->width / 2;
+        break;
+    case SNAP_BOX_MODE_RIGHT:
+        geo.x = usable->x + usable->width / 2;
+        geo.width = usable->width / 2;
+        break;
+    case SNAP_BOX_MODE_TOP:
+        geo.x = usable->x;
+        geo.width = usable->width;
+        break;
+    }
+
+    ky_scene_rect_set_size(grab->snap_rect, geo.width, geo.height);
+    ky_scene_node_set_position(grab->snap_node, geo.x - view->pending.geometry.x,
+                               geo.y - view->pending.geometry.y);
+}
+
+static void snap_box_enable_filter(struct interactive_grab *grab, bool enabled)
+{
+    if (grab->filter_enabled == enabled) {
+        return;
+    }
+    grab->filter_enabled = enabled;
+    wl_event_source_timer_update(grab->filter, enabled ? SNAP_BOX_FILTER : 0);
+}
+
+static int handle_snap_box(void *data)
+{
+    struct interactive_grab *grab = data;
+    struct output *output = input_current_output(grab->seat);
+    struct kywc_box *usable = &output->usable_area;
+    enum snap_box_mode mode = SNAP_BOX_MODE_NONE;
+
+    double cur_x = grab->seat->cursor->lx;
+    /* left */
+    if (cur_x - usable->x < VIEW_EDGE_GAP) {
+        mode = SNAP_BOX_MODE_LEFT;
+        /* right */
+    } else if (usable->x + usable->width - cur_x < VIEW_EDGE_GAP) {
+        mode = SNAP_BOX_MODE_RIGHT;
+    }
+
+    grab->filter_enabled = false;
+    snap_box_update(grab, usable, mode);
+    return 0;
 }
 
 static void interactive_move_show_snap_box(struct interactive_grab *grab, int cur_x, int cur_y)
 {
     struct output *output = input_current_output(grab->seat);
     struct kywc_box *usable = &output->usable_area;
-    struct kywc_box geo = { 0 };
-    bool enable = true;
+    enum snap_box_mode mode = SNAP_BOX_MODE_NONE;
 
     /* left */
     if (cur_x - usable->x < VIEW_EDGE_GAP) {
-        geo.x = usable->x;
-        geo.y = usable->y;
-        geo.width = usable->width / 2;
-        geo.height = usable->height;
+        /* trigger timer to show snap box if not the leftmost output */
+        if (!output_at_layout_edge(output, LAYOUT_EDGE_LEFT) &&
+            grab->snap_mode != SNAP_BOX_MODE_LEFT) {
+            snap_box_update(grab, usable, SNAP_BOX_MODE_NONE);
+            snap_box_enable_filter(grab, true);
+            return;
+        }
+        mode = SNAP_BOX_MODE_LEFT;
         /* right */
     } else if (usable->x + usable->width - cur_x < VIEW_EDGE_GAP) {
-        geo.x = usable->x + usable->width / 2;
-        geo.y = usable->y;
-        geo.width = usable->width / 2;
-        geo.height = usable->height;
+        /* trigger timer to show snap box if not the rightmost output */
+        if (!output_at_layout_edge(output, LAYOUT_EDGE_RIGHT) &&
+            grab->snap_mode != SNAP_BOX_MODE_RIGHT) {
+            snap_box_update(grab, usable, SNAP_BOX_MODE_NONE);
+            snap_box_enable_filter(grab, true);
+            return;
+        }
+        mode = SNAP_BOX_MODE_RIGHT;
         /* top, using <= */
     } else if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && cur_y <= usable->y) {
-        geo.x = usable->x;
-        geo.y = usable->y;
-        geo.width = usable->width;
-        geo.height = usable->height;
-    } else {
-        enable = false;
+        mode = SNAP_BOX_MODE_TOP;
     }
 
-    snap_box_update(grab, &geo, enable);
+    snap_box_enable_filter(grab, false);
+    snap_box_update(grab, usable, mode);
 }
 
 static void interactive_grab_destroy(struct interactive_grab *grab)
@@ -109,6 +175,7 @@ static void interactive_grab_destroy(struct interactive_grab *grab)
     seat_set_keyboard_grab(grab->seat, NULL);
     seat_set_touch_grab(grab->seat, NULL);
     ky_scene_node_destroy(grab->snap_node);
+    wl_event_source_remove(grab->filter);
     free(grab);
 }
 
@@ -122,7 +189,7 @@ static void interactivate_done_move(struct interactive_grab *grab)
     struct output *output = input_current_output(grab->seat);
     struct kywc_box *usable = &output->usable_area;
 
-    snap_box_update(grab, NULL, false);
+    snap_box_update(grab, NULL, SNAP_BOX_MODE_NONE);
 
     /* left */
     if (cur_x - usable->x < VIEW_EDGE_GAP) {
@@ -456,6 +523,9 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     grab->view = view;
     grab->view_unmap.notify = handle_view_unmap;
     wl_signal_add(&view->base.events.unmap, &grab->view_unmap);
+
+    struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
+    grab->filter = wl_event_loop_add_timer(loop, handle_snap_box, grab);
 }
 
 void interactive_begin_move(struct view *view, struct seat *seat)
