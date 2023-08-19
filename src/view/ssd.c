@@ -236,7 +236,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
             kywc_view_set_minimized(kywc_view, true);
         }
         return;
-    case SSD_CORNER_TOP_LEFT ... SSD_TITLE_RECT:
+    case SSD_CORNER_TOP_LEFT ... SSD_BORDER_TOP:
         if (LEFT_BUTTON_PRESSED(button, pressed)) {
             interactive_begin_move(view, seat);
         } else if (RIGHT_BUTTON_RELEASED(button, pressed)) {
