@@ -204,6 +204,10 @@ void view_map(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
+
+    if (view->workspace) {
+        wl_signal_emit_mutable(&view->workspace->events.view_enter, view);
+    }
 }
 
 void view_unmap(struct view *view)
@@ -221,6 +225,10 @@ void view_unmap(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
+
+    if (view->workspace) {
+        wl_signal_emit_mutable(&view->workspace->events.view_leave, view);
+    }
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
@@ -387,8 +395,16 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
     kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
              workspace ? workspace->name : "none");
 
+    if (view->workspace && view->base.mapped) {
+        wl_signal_emit_mutable(&view->workspace->events.view_leave, view);
+    }
+
     view->workspace = workspace;
     wl_signal_emit_mutable(&view->events.workspace, NULL);
+
+    if (view->workspace && view->base.mapped) {
+        wl_signal_emit_mutable(&view->workspace->events.view_enter, view);
+    }
 }
 
 void view_set_parent(struct view *view, struct view *parent)

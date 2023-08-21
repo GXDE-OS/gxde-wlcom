@@ -264,6 +264,8 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     wl_list_init(&workspace->views);
     wl_signal_init(&workspace->events.activate);
     wl_signal_init(&workspace->events.destroy);
+    wl_signal_init(&workspace->events.view_enter);
+    wl_signal_init(&workspace->events.view_leave);
 
     /* create 3 tree per workspace and disabled default */
     struct view_layer *layers = workspace_manager->view_manager->layers;

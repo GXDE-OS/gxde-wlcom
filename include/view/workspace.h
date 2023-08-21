@@ -15,6 +15,10 @@ struct workspace {
     bool activated;
 
     struct {
+        /* view is shown in this workspace */
+        struct wl_signal view_enter;
+        /* view is gone or unmapped */
+        struct wl_signal view_leave;
         // TODO: name and position
         struct wl_signal activate;
         struct wl_signal destroy;
