@@ -239,9 +239,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     case SSD_CORNER_TOP_LEFT ... SSD_BORDER_TOP:
         if (LEFT_BUTTON_PRESSED(button, pressed)) {
             interactive_begin_move(view, seat);
-        } else if (RIGHT_BUTTON_RELEASED(button, pressed)) {
+        } else if (RIGHT_BUTTON_PRESSED(button, pressed)) {
             /* show window menu, menu will grab seat to hide itself */
-            // TODO: menu
+            view_show_window_menu(view, seat, seat->cursor->lx, seat->cursor->ly);
+            return;
         }
         break;
     case SSD_EXTEND_TOP_LEFT:

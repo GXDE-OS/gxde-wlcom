@@ -322,6 +322,13 @@ static void xdg_view_handle_request_fullscreen(struct wl_listener *listener, voi
 static void xdg_view_handle_show_window_menu(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, request_show_window_menu);
+    struct wlr_xdg_toplevel_show_window_menu_event *event = data;
+    struct kywc_view *kywc_view = &xdg_view->view.base;
+
+    struct seat *seat = seat_from_wlr_seat(event->seat->seat);
+    int off_x = kywc_view->geometry.x - xdg_view->wlr_xdg_surface->current.geometry.x;
+    int off_y = kywc_view->geometry.y - xdg_view->wlr_xdg_surface->current.geometry.y;
+    view_show_window_menu(&xdg_view->view, seat, off_x + event->x, off_y + event->y);
 }
 
 static void xdg_view_handle_set_parent(struct wl_listener *listener, void *data)

@@ -833,6 +833,12 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
     }
 }
 
+void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
+{
+    struct view_show_window_menu_event event = { view, seat, x, y };
+    wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
@@ -850,6 +856,7 @@ struct view_manager *view_manager_create(struct server *server)
 
     view_manager->server = server;
     wl_signal_init(&view_manager->events.new_view);
+    wl_signal_init(&view_manager->events.window_menu);
 
     view_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &view_manager->server_destroy);

@@ -12,6 +12,7 @@ struct view_manager {
 
     struct {
         struct wl_signal new_view;
+        struct wl_signal window_menu;
     } events;
 
     struct view_layer layers[LAYER_NUMBER];
@@ -28,10 +29,19 @@ struct view_manager {
     struct wl_listener server_destroy;
 };
 
+struct view_show_window_menu_event {
+    struct view *view;
+    struct seat *seat;
+    int x, y;
+};
+
 /* for interactive move and resize */
 struct seat;
 void interactive_begin_move(struct view *view, struct seat *seat);
+
 void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
+
+void view_show_window_menu(struct view *view, struct seat *seat, int x, int y);
 
 bool xdg_shell_init(struct view_manager *view_manager);
 
