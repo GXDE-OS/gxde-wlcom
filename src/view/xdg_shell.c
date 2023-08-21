@@ -470,7 +470,7 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     wlr_xdg_surface->surface->data = &xdg_view->view;
 
     /* create tree for surface and all sub-surfaces */
-    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
+    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.content, wlr_xdg_surface);
     /* event node will be destroyed when xdg_surface destroy */
     input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
                             &xdg_view_event_node_impl, xdg_view_get_root, xdg_view_get_toplevel,

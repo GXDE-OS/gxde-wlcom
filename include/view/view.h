@@ -76,6 +76,7 @@ struct view {
     struct wl_list children;
 
     struct ky_scene_tree *tree;
+    struct ky_scene_tree *content;
 
     /* view will be moved when workspace destroy */
     struct workspace *workspace;

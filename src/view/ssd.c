@@ -837,7 +837,7 @@ static void ssd_parts_create(struct ssd *ssd)
     theme_manager_add_update_listener(&ssd->theme_update);
 
     struct view *view = view_from_kywc_view(kywc_view);
-    ssd->tree = ky_scene_tree_create(view->tree);
+    ssd->tree = ky_scene_tree_create(view->content);
     ky_scene_node_lower_to_bottom(ky_scene_node_from_tree(ssd->tree));
 
     /* subtrees in ssd tree */
