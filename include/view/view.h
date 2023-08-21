@@ -102,6 +102,8 @@ struct view {
 
     struct view_configure_state pending;
 
+    struct wlr_addon_set addons;
+
     const struct view_impl *impl;
     void *data;
 };
