@@ -134,6 +134,7 @@ endif
 
 subdir('src')
 subdir('protocols')
+subdir('data')
 
 if have_examples
   subdir('clients')
