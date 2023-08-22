@@ -64,4 +64,23 @@ void kywc_theme_manager_add_update_listener(struct wl_listener *listener);
 
 void *kywc_theme_manager_get_current(const char *name);
 
+/*************************************************************************/
+struct kde_blur {
+    struct wl_list link;
+    struct wl_resource *resource;
+    struct kde_blur_manager *manager;
+
+    struct wlr_surface *wlr_surface;
+    struct wl_listener surface_destroy;
+
+    pixman_region32_t region, pending_region;
+    uint32_t strength, pending_strength;
+
+    struct {
+        struct wl_signal commit;
+    } events;
+};
+
+struct kywc_texture_node *kywc_blur_get_texture_node(struct kde_blur *blur);
+
 #endif

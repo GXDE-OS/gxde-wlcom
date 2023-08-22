@@ -57,6 +57,9 @@ void kywc_target_get_frame_region(struct kywc_render_target *target,
                                   const pixman_region32_t *logic_region,
                                   pixman_region32_t *framebuffer_region);
 
+void kywc_target_cpy_framebuffer_box(struct kywc_gl_buffer *dst, struct kywc_render_target *src,
+                                     struct wlr_box *cpy_box);
+
 void kywc_target_get_orth(struct kywc_render_target *framebuffer, mat4 transform_mat4,
                           mat4 ortho_proj_mat4);
 

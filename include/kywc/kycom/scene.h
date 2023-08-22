@@ -348,4 +348,9 @@ void kywc_box_scale_xy(const struct wlr_box *src, struct wlr_box *dst, float sca
 void kywc_region_adjust(pixman_region32_t *dst, const pixman_region32_t *src, int top, int left,
                         int bottom, int right);
 
+void kywc_region_scale_xy(pixman_region32_t *dst, const pixman_region32_t *src, float scale_x,
+                          float scale_y);
+
+void kywc_region_scale(pixman_region32_t *dst, const pixman_region32_t *src, float scale);
+
 #endif

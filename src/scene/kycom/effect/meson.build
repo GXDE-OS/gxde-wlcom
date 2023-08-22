@@ -26,3 +26,16 @@ shared_module(
     install: true
 )
 
+shared_module(
+    'kywc_blur_effect',
+    ['blur.c'],
+    include_directories : [wlcom_inc,
+                         '/usr/include/pixman-1',
+                         wlr_inc
+                         ],
+    c_args: '-fvisibility=default',
+    link_args : effects_ld_args,
+    link_depends : effects_link_depends,
+    install_dir: plugindir,
+    install: true
+)

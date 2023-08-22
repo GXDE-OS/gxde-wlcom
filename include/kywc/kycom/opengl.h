@@ -174,4 +174,7 @@ void kywc_gl_buffer_release(struct kywc_gl_buffer *buffer);
 
 void kywc_gl_buffer_draw_region(struct kywc_gl_buffer *target, pixman_region32_t *region);
 
+void kywc_gl_buffer_blit_box(struct kywc_gl_buffer *dst, const struct kywc_gl_buffer *src,
+                             const struct wlr_box *src_box, const struct wlr_box *dst_box);
+
 #endif

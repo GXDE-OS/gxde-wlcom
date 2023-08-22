@@ -1263,6 +1263,24 @@ void kywc_box_scale_xy(const struct wlr_box *src, struct wlr_box *dst, float sca
     dst->height = ceil((src->y + src->height) * scale_y) - dst->y;
 }
 
+static void pimxman_box_scale_xy(const pixman_box32_t *src_rect, pixman_box32_t *dst_rect,
+                                 float scale_x, float scale_y)
+{
+    struct wlr_box dst;
+    struct wlr_box src = {
+        .x = src_rect->x1,
+        .y = src_rect->y1,
+        .width = src_rect->x2 - src_rect->x1,
+        .height = src_rect->y2 - src_rect->y1,
+    };
+    kywc_box_scale_xy(&src, &dst, scale_x, scale_y);
+
+    dst_rect->x1 = dst.x;
+    dst_rect->y1 = dst.y;
+    dst_rect->x2 = dst.x + dst.width;
+    dst_rect->y2 = dst.y + dst.height;
+}
+
 void kywc_region_adjust(pixman_region32_t *dst, const pixman_region32_t *src, int top, int left,
                         int bottom, int right)
 {
@@ -1289,6 +1307,36 @@ void kywc_region_adjust(pixman_region32_t *dst, const pixman_region32_t *src, in
     pixman_region32_fini(dst);
     pixman_region32_init_rects(dst, dst_rects, nrects);
     free(dst_rects);
+}
+
+void kywc_region_scale_xy(pixman_region32_t *dst, const pixman_region32_t *src, float scale_x,
+                          float scale_y)
+{
+    if (scale_x == 1.0 && scale_y == 1.0) {
+        pixman_region32_copy(dst, src);
+        return;
+    }
+
+    int nrects;
+    const pixman_box32_t *src_rects = pixman_region32_rectangles(src, &nrects);
+
+    pixman_box32_t *dst_rects = malloc(nrects * sizeof(pixman_box32_t));
+    if (dst_rects == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < nrects; ++i) {
+        pimxman_box_scale_xy(&src_rects[i], &dst_rects[i], scale_x, scale_y);
+    }
+
+    pixman_region32_fini(dst);
+    pixman_region32_init_rects(dst, dst_rects, nrects);
+    free(dst_rects);
+}
+
+void kywc_region_scale(pixman_region32_t *dst, const pixman_region32_t *src, float scale)
+{
+    kywc_region_scale_xy(dst, src, scale, scale);
 }
 
 void kywc_scene_node_render(struct kywc_node *node, struct kywc_render_target *target,

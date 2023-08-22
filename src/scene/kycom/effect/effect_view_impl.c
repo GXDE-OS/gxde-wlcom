@@ -249,6 +249,14 @@ struct kywc_texture_node *kywc_effect_view_get_texture_node(struct kywc_effect_v
     return tex_node;
 }
 
+struct kywc_texture_node *kywc_blur_get_texture_node(struct kde_blur *blur)
+{
+    if (!blur) {
+        return NULL;
+    }
+    return ky_scene_buffer_try_from_surface(blur->wlr_surface);
+}
+
 static void set_view_visible(struct kywc_effect_view *view, bool visible)
 {
     struct effect_view *effects_view = _kywc_get_effect_view(view);

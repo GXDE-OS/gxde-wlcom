@@ -180,6 +180,19 @@ void kywc_target_get_frame_region(struct kywc_render_target *target,
     }
 }
 
+void kywc_target_cpy_framebuffer_box(struct kywc_gl_buffer *dst, struct kywc_render_target *src,
+                                     struct wlr_box *cpy_box)
+{
+    struct wlr_box dst_box = {
+        .x = 0,
+        .y = 0,
+        .width = cpy_box->width,
+        .height = cpy_box->height,
+    };
+
+    kywc_gl_buffer_blit_box(dst, &src->buffer, cpy_box, &dst_box);
+}
+
 void kywc_target_get_orth(struct kywc_render_target *framebuffer, mat4 transform_mat4,
                           mat4 ortho_proj_mat4)
 {

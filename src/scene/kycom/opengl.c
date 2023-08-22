@@ -965,7 +965,7 @@ bool kywc_gl_buffer_allocate(struct kywc_gl_buffer *buffer, GLuint current_ofb, 
 
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
-            wlr_log(WLR_ERROR, "Failed to create FBO");
+            wlr_log(WLR_ERROR, " Failed to create frame buffer.");
             return false;
         }
     }
@@ -1023,4 +1023,15 @@ void kywc_gl_buffer_draw_region(struct kywc_gl_buffer *buffer, pixman_region32_t
     }
 
     glDisable(GL_SCISSOR_TEST);
+}
+
+void kywc_gl_buffer_blit_box(struct kywc_gl_buffer *dst, const struct kywc_gl_buffer *src,
+                             const struct wlr_box *src_box, const struct wlr_box *dst_box)
+{
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->fb);
+    glBlitFramebuffer(src_box->x, src_box->y, src_box->x + src_box->width,
+                      src_box->y + src_box->height, dst_box->x, dst_box->y,
+                      dst_box->x + dst_box->width, dst_box->y + dst_box->height,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
