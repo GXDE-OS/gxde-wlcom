@@ -5,6 +5,7 @@ util_resources = files(
   'identifier.c',
   'logger.c',
   'spawn.c',
+  'sysfs.c',
 )
 
 util_static = static_library(

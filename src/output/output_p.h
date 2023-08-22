@@ -35,6 +35,12 @@ bool output_read_config(struct output *output, struct kywc_output_state *state);
 
 void output_write_config(struct output *output);
 
+bool output_support_brightness(struct output *output);
+
+bool output_get_brightness(struct kywc_output *kywc_output, int32_t *brightness);
+
+void output_set_brightness(struct kywc_output *kywc_output, int32_t brightness);
+
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);
 #else

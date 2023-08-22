@@ -25,9 +25,29 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
     return 1;
 }
 
+static int set_brightness(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct output_manager *om = userdata;
+
+    char *name = NULL;
+    uint32_t value = 0;
+    CK(sd_bus_message_read(m, "su", &name, &value));
+
+    struct output *output;
+    wl_list_for_each(output, &om->outputs, link) {
+        if (strcmp(output->base.name, name) == 0) {
+            struct kywc_output *kywc_output = &output->base;
+            output_set_brightness(kywc_output, value);
+        }
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllOutputs", "", "a(ss)", list_outputs, 0),
+    SD_BUS_METHOD("SetBrightness", "su", "", set_brightness, 0),
     SD_BUS_VTABLE_END,
 };
 

@@ -73,6 +73,7 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->serial = wlr_output->serial;
     prop->desc = wlr_output->description;
     prop->is_virtual = wlr_output_is_headless(wlr_output);
+    prop->brightness_support = output_support_brightness(output);
 
     /* fix zero mode in some backend, like wayland */
     if (wl_list_empty(&wlr_output->modes)) {
@@ -119,7 +120,9 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
         state->lx = 0;
         state->ly = 0;
     }
-    state->brightness = 80;
+    if (!output_get_brightness(kywc_output, &state->brightness)) {
+        state->brightness = 80;
+    }
     state->color_temp = 6500;
 }
 
