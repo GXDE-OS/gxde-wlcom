@@ -74,6 +74,7 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->desc = wlr_output->description;
     prop->is_virtual = wlr_output_is_headless(wlr_output);
     prop->brightness_support = output_support_brightness(output);
+    prop->gamma_size = wlr_output_get_gamma_size(wlr_output);
 
     /* fix zero mode in some backend, like wayland */
     if (wl_list_empty(&wlr_output->modes)) {
@@ -609,6 +610,11 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 
         wlr_output_state_set_transform(&wlr_state, state->transform);
         wlr_output_state_set_scale(&wlr_state, state->scale);
+
+        if (output->base.prop.gamma_size > 1) {
+            output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, &wlr_state,
+                                 state->color_temp);
+        }
     }
 
     if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
@@ -708,6 +714,10 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
     // XXX: fix current.enabled for dpms power
     current->enabled = state->enabled;
+    current->color_temp = state->color_temp;
+
+    /* fix gamma supoort by get gamma_size again */
+    kywc_output->prop.gamma_size = wlr_output_get_gamma_size(output->wlr_output);
 
     /* update geometry and usable area before all signals */
     bool geometry_changed = false;
