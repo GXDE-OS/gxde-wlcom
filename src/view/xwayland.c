@@ -116,23 +116,32 @@ static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *no
     return false;
 }
 
-static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
+static bool xwayland_unmanaged_is_focusable(struct xwayland_unmanaged *unmanaged)
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
 
     if (!wlr_xwayland_or_surface_wants_focus(wlr_xwayland_surface)) {
-        return;
+        return false;
     }
 
     /* No Input and Globally Active clients set the input field to False,
      * which requests that the window manager not set the input focus to their top-level window.
      */
     if (wlr_xwayland_surface->hints && !wlr_xwayland_surface->hints->input) {
+        return false;
+    }
+
+    return true;
+}
+
+static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
+{
+    if (!xwayland_unmanaged_is_focusable(unmanaged)) {
         return;
     }
 
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
-    seat_focus_surface(seat, wlr_xwayland_surface->surface);
+    seat_focus_surface(seat, unmanaged->wlr_xwayland_surface->surface);
 }
 
 static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
@@ -172,6 +181,10 @@ static struct ky_scene_node *xwayland_unmanaged_get_root(void *data)
 static struct wlr_surface *xwayland_unmanaged_get_toplevel(void *data)
 {
     struct xwayland_unmanaged *unmanaged = data;
+    /* only return surface if focusable */
+    if (!xwayland_unmanaged_is_focusable(unmanaged)) {
+        return NULL;
+    }
     return unmanaged->wlr_xwayland_surface->surface;
 }
 
