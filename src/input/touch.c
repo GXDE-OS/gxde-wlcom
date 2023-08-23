@@ -53,8 +53,6 @@ struct touch_point {
     struct wl_event_source *timer;
     bool hold, moved;
 
-    double ref_lx, ref_ly;
-    double ref_sx, ref_sy;
     double abs_x, abs_y;
     double last_x, last_y;
     double dx, dy;
@@ -290,7 +288,9 @@ static struct wlr_surface *touch_get_surface(struct touch *touch, double *sx, do
         return NULL;
     }
 
-    *toplevel = input_event_node_toplevel(input_event_node_from_node(node));
+    if (toplevel) {
+        *toplevel = input_event_node_toplevel(input_event_node_from_node(node));
+    }
     return wlr_surface_try_from_node(node);
 }
 
@@ -435,11 +435,6 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     }
 
     point->surface = surface;
-    point->ref_lx = seat->cursor->lx;
-    point->ref_ly = seat->cursor->ly;
-    point->ref_sx = sx;
-    point->ref_sy = sy;
-
     wlr_seat_touch_notify_down(seat->wlr_seat, surface, event->time_msec, event->touch_id, sx, sy);
 
     /* activate and focus the toplevel surface */
@@ -604,14 +599,22 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
         }
     }
 
-    if (!handle) {
+    if (!handle || !point->surface) {
         return;
     }
 
-    double moved_x = seat->cursor->lx - point->ref_lx;
-    double moved_y = seat->cursor->ly - point->ref_ly;
-    double sx = moved_x + point->ref_sx;
-    double sy = moved_y + point->ref_sy;
+    double sx, sy;
+    struct wlr_surface *surface = touch_get_surface(touch, &sx, &sy, NULL);
+
+    /* if motion out of point->surface */
+    if (surface != point->surface) {
+        int lx, ly;
+        struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(point->surface);
+        ky_scene_node_coords(ky_scene_node_from_buffer(scene_buffer), &lx, &ly);
+        sx = seat->cursor->lx - lx;
+        sy = seat->cursor->ly - ly;
+    }
+
     selection_handle_cursor_move(seat, seat->cursor->lx, seat->cursor->ly);
     wlr_seat_touch_notify_motion(seat->wlr_seat, event->time_msec, event->touch_id, sx, sy);
 }
