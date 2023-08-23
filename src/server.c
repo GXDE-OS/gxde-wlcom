@@ -9,6 +9,7 @@
 #include <wlr/backend.h>
 #include <wlr/backend/headless.h>
 #include <wlr/backend/multi.h>
+#include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
@@ -123,6 +124,13 @@ static void kywc_log_callback(enum wlr_log_importance verbosity, const char *fmt
     kywc_vlog(level, fmt, args);
 }
 
+static void handle_session_active(struct wl_listener *listener, void *data)
+{
+    struct server *server = wl_container_of(listener, server, session_active);
+    struct wlr_session *session = server->session;
+    wl_signal_emit_mutable(&server->events.active, (void *)session->active);
+}
+
 static bool wlroots_server_init(struct server *server)
 {
     /* verbosity is not used when we replaced log_callback */
@@ -132,6 +140,11 @@ static bool wlroots_server_init(struct server *server)
     if (!server->backend) {
         kywc_log(KYWC_FATAL, "unable to create backend");
         return false;
+    }
+
+    if (server->session) {
+        server->session_active.notify = handle_session_active;
+        wl_signal_add(&server->session->events.active, &server->session_active);
     }
 
     server->headless_backend = wlr_headless_backend_create(server->display);
@@ -185,6 +198,7 @@ bool server_init(struct server *server)
     wl_signal_init(&server->events.destroy);
     wl_signal_init(&server->events.suspend);
     wl_signal_init(&server->events.resume);
+    wl_signal_init(&server->events.active);
 
     listen_logind_manager_signal(server);
 

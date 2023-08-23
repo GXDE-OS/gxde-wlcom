@@ -24,7 +24,10 @@ struct server {
         struct wl_signal destroy;
         struct wl_signal suspend;
         struct wl_signal resume;
+        struct wl_signal active;
     } events;
+
+    struct wl_listener session_active;
 
     struct wlr_renderer *renderer;
     struct wlr_allocator *allocator;
