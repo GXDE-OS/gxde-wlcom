@@ -51,4 +51,14 @@ kde_global_settings_create(struct config_manager *config_manager)
 }
 #endif
 
+#if HAVE_KDE_NIGHTCOLOR
+bool kde_nightcolor_manager_create(struct config_manager *config_manager);
+#else
+static __attribute__((unused)) inline bool
+kde_nightcolor_manager_create(struct config_manager *config_manager)
+{
+    return false;
+}
+#endif
+
 #endif /* _CONFIG_P_H_ */

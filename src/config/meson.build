@@ -29,3 +29,9 @@ if have_kde_global_settings
     'kde_global_settings.c',
   )
 endif
+
+if have_kde_nightcolor
+  wlcom_sources += files(
+    'kde_nightcolor.c',
+  )
+endif
