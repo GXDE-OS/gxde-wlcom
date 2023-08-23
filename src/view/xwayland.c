@@ -112,8 +112,16 @@ static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *no
         wlr_xwayland_set_seat(wlr_xwayland, seat->wlr_seat);
     }
 
-    seat_notify_motion(seat, surface, time, x, y, first);
-    return false;
+    if (!hold) {
+        seat_notify_motion(seat, surface, time, x, y, first);
+        return false;
+    }
+
+    struct xwayland_unmanaged *unmanaged = data;
+    double sx = x - unmanaged->surface_node->x;
+    double sy = y - unmanaged->surface_node->y;
+    seat_notify_motion(seat, surface, time, sx, sy, first);
+    return true;
 }
 
 static bool xwayland_unmanaged_is_focusable(struct xwayland_unmanaged *unmanaged)
