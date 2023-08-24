@@ -586,7 +586,8 @@ static int max(int max1, int max2)
 static void group_node_get_bounding_box(const struct kywc_node *node, struct wlr_box *box)
 {
     struct kywc_group_node *group = kywc_group_node_from_node(node);
-    if (!group || !box) {
+    if (!group || !box || !node->enabled) {
+        memset(box, 0, sizeof(*box));
         return;
     }
     if (wl_list_empty(&group->children)) {
@@ -1255,14 +1256,6 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
     return success;
 }
 
-void kywc_box_scale_xy(const struct wlr_box *src, struct wlr_box *dst, float scale_x, float scale_y)
-{
-    dst->x = floor(src->x * scale_x);
-    dst->y = floor(src->y * scale_y);
-    dst->width = ceil((src->x + src->width) * scale_x) - dst->x;
-    dst->height = ceil((src->y + src->height) * scale_y) - dst->y;
-}
-
 static void pimxman_box_scale_xy(const pixman_box32_t *src_rect, pixman_box32_t *dst_rect,
                                  float scale_x, float scale_y)
 {
@@ -1279,6 +1272,14 @@ static void pimxman_box_scale_xy(const pixman_box32_t *src_rect, pixman_box32_t 
     dst_rect->y1 = dst.y;
     dst_rect->x2 = dst.x + dst.width;
     dst_rect->y2 = dst.y + dst.height;
+}
+
+void kywc_box_scale_xy(const struct wlr_box *src, struct wlr_box *dst, float scale_x, float scale_y)
+{
+    dst->x = floor(src->x * scale_x);
+    dst->y = floor(src->y * scale_y);
+    dst->width = ceil((src->x + src->width) * scale_x) - dst->x;
+    dst->height = ceil((src->y + src->height) * scale_y) - dst->y;
 }
 
 void kywc_region_adjust(pixman_region32_t *dst, const pixman_region32_t *src, int top, int left,

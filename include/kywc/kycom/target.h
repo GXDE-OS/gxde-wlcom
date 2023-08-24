@@ -78,4 +78,9 @@ void kywc_target_render_texture_with_transform(struct kywc_gl_texture *texture,
                                                const struct kywc_gl_geometry *geometry, vec4 color,
                                                uint32_t cache_flag);
 
+void kywc_target_render_texture(struct kywc_gl_texture *texture,
+                                struct kywc_render_target *framebuffer,
+                                const struct kywc_gl_geometry *geometry, vec4 color,
+                                uint32_t cache_flag);
+
 #endif

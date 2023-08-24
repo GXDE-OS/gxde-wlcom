@@ -2,6 +2,7 @@ wlcom_sources += files(
     'effects.c',
     'effect_error.c',
     'effect_addon.c',
+    'effect_transform.c',
     'effect_view_impl.c'
 )
 
@@ -39,3 +40,17 @@ shared_module(
     install_dir: plugindir,
     install: true
 )
+
+shared_module(
+     'kywc_scale_effect',
+     ['scale.c'],
+    include_directories : [wlcom_inc,
+                          '/usr/include/pixman-1',
+                          wlr_inc
+                          ],
+     c_args: '-fvisibility=default',
+     link_args : effects_ld_args,
+     link_depends : effects_link_depends,
+     install_dir: plugindir,
+     install: true
+ )

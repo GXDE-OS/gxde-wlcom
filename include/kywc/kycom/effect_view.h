@@ -14,6 +14,10 @@
 struct kywc_group_node;
 struct kywc_effect_view;
 
+struct padding {
+    int top, bottom, left, right;
+};
+
 enum kywc_effects_state {
     EFFECTS_END = 0,
     EFFECTS_MAXIMIZING = 0x01,
@@ -31,6 +35,7 @@ struct kywc_effect_view {
     struct kywc_group_node *view_node;
     struct kywc_effect_box dst_box;
     struct kywc_effect_box last_box;
+    struct padding shadow_box;
     struct kywc_gl_buffer *view_snap_buffer;
     enum kywc_effects_state effects_state;
 
@@ -82,5 +87,17 @@ struct kde_blur {
 };
 
 struct kywc_texture_node *kywc_blur_get_texture_node(struct kde_blur *blur);
+
+bool kywc_effect_view_is_minimized(struct kywc_effect_view *view);
+
+void kywc_effect_view_get_geometry_box(struct kywc_effect_view *view, struct kywc_effect_box *box);
+
+void kywc_effect_view_get_padding_region(struct kywc_effect_view *view,
+                                         struct kywc_effect_box *geometry_box,
+                                         struct padding *padding_box);
+
+void kywc_effect_view_get_shadow_box(struct kywc_effect_box *box, struct kywc_effect_view *view);
+
+void kywc_get_bound_box(struct kywc_effect_view *view, struct kywc_effect_box *box);
 
 #endif

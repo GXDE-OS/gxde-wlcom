@@ -27,6 +27,75 @@ struct effect_view *_kywc_get_effect_view(const struct kywc_effect_view *view)
     return NULL;
 }
 
+void kywc_effect_view_get_geometry_box(struct kywc_effect_view *view, struct kywc_effect_box *box)
+{
+    struct effect_view *effect_view = _kywc_get_effect_view(view);
+    if (!effect_view) {
+        return;
+    }
+    struct view *_view = effect_view->view;
+    box->x = _view->saved.geometry.x ;
+    box->y = _view->saved.geometry.y;
+    box->width = _view->saved.geometry.width;
+    box->height = _view->saved.geometry.height;
+}
+
+void kywc_effect_view_get_padding_region(struct kywc_effect_view *view,
+                                         struct kywc_effect_box *geometry_box,
+                                         struct padding *padding_box)
+{
+    struct kywc_view * ky_view = view->kywc_view;
+    if (!ky_view) {
+        return;
+    }
+
+    if (ky_view->need_ssd) {
+        float width_scale = 1.0 * geometry_box->width / (ky_view->geometry.width + ky_view->margin.off_width);
+        float height_scale = 1.0 * geometry_box->height / (ky_view->geometry.height + ky_view->margin.off_height);
+        if (ky_view->maximized) {
+            memset(padding_box, 0, sizeof(*padding_box));
+        } else {
+            padding_box->left =  width_scale * view->shadow_box.left;
+            padding_box->right = width_scale * view->shadow_box.right;
+            padding_box->top = ceil(width_scale * view->shadow_box.top);
+            padding_box->bottom = ceil(height_scale * view->shadow_box.bottom);
+        }
+    } else {
+        float width_scale = 1.0 * geometry_box->width / ky_view->geometry.width;
+        float height_scale = 1.0 * geometry_box->height / ky_view->geometry.height;
+        padding_box->left = width_scale * ky_view->padding.left;
+        padding_box->right = width_scale * ky_view->padding.right;
+        padding_box->top = ceil(width_scale * ky_view->padding.top);
+        padding_box->bottom = ceil(height_scale * ky_view->padding.bottom);
+    }
+}
+
+void kywc_effect_view_get_shadow_box(struct kywc_effect_box *box, struct kywc_effect_view *view)
+{
+    if (!view || !view->kywc_view->need_ssd) {
+        return;
+    }
+    struct kywc_view *_view = view->kywc_view;
+    view->shadow_box.top = (box->width - _view->geometry.width - _view->margin.off_width) / 2;
+    view->shadow_box.bottom = (box->height -_view->geometry.height - _view->margin.off_height) / 2;
+    view->shadow_box.left = view->shadow_box.top;
+    view->shadow_box.right = view->shadow_box.top;
+}
+
+void kywc_get_bound_box(struct kywc_effect_view *view, struct kywc_effect_box *box)
+{
+    if (!view || !view->kywc_view->need_ssd) {
+        return;
+    }
+    struct kywc_node *node = &view->view_node->node;
+    struct wlr_box bound_box;
+    node->get_bounding_box(node, &bound_box);
+    box->x = bound_box.x;
+    box->y = bound_box.y;
+    box->width = bound_box.width;
+    box->height = bound_box.height;
+}
+
 static void effect_handle_view_size_changed(struct wl_listener *listener, void *data)
 {
     struct effect_view *_view = wl_container_of(listener, _view, view_handle_size_changed);
@@ -194,7 +263,7 @@ struct kywc_gl_texture *kywc_effect_view_generate_texture(struct kywc_effect_vie
 
     pixman_region32_t damage;
     pixman_region32_init(&damage);
-    pixman_region32_init_rect(&damage, 0, 0, width, height);
+    pixman_region32_init_rect(&damage, bound_box.x, bound_box.y, width, height);
 
     kywc_scene_node_render(&view->view_node->node, &_view->snap_target, &damage);
 
@@ -202,6 +271,12 @@ struct kywc_gl_texture *kywc_effect_view_generate_texture(struct kywc_effect_vie
 
     view->view_snap_buffer = &_view->snap_target.buffer;
     return _view->snap_target.buffer.fb_tex;
+}
+
+bool kywc_effect_view_is_minimized(struct kywc_effect_view *view)
+{
+    struct effect_view *effects_view = _kywc_get_effect_view(view);
+    return effects_view->view->base.minimized;
 }
 
 static void effect_set_view_visible(struct effect_view *effects_view, bool visible)

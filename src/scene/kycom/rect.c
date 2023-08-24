@@ -171,7 +171,8 @@ static void rect_node_travel(struct kywc_node *node, struct kywc_node_visitor *v
 static void rect_node_get_bounding_box(const struct kywc_node *node, struct wlr_box *box)
 {
     struct kywc_rect_node *rect_node = rect_from_node(node);
-    if (!box || !rect_node) {
+    if (!box || !rect_node || !node->enabled) {
+        memset(box, 0, sizeof(*box));
         return;
     }
     box->x = 0;

@@ -280,6 +280,27 @@ void kywc_target_render_rectangle(struct kywc_render_target *target, struct wlr_
     kywc_gl_render_rectangle(geometry, color, ortho_proj_mat4, cache_flag);
 }
 
+void kywc_target_render_texture(struct kywc_gl_texture *texture,
+                                struct kywc_render_target *framebuffer,
+                                const struct kywc_gl_geometry *geometry, vec4 color,
+                                uint32_t cache_flag)
+{
+    mat4 transform_mat4, ortho_proj_mat4;
+    kywc_target_get_transform_mat4(framebuffer, transform_mat4);
+    kywc_target_get_orth(framebuffer, transform_mat4, ortho_proj_mat4);
+    struct kywc_gl_geometry texture_coord = {
+        .x1 = 0,
+        .y1 = 0,
+        .x2 = 1.0f,
+        .y2 = 1.0f,
+    };
+    /* invert_y */
+    texture_coord.y1 = 1.0f - texture_coord.y1;
+    texture_coord.y2 = 1.0f - texture_coord.y2;
+    kywc_gl_render_texture(texture, geometry, &texture_coord,
+                           ortho_proj_mat4, color, cache_flag);
+}
+
 static void get_transformed_tex_vertex(enum kywc_gl_transform transform,
                                        GLfloat transformed_vertex[8], GLfloat normal_vertex[8])
 {
