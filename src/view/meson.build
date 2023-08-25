@@ -6,6 +6,7 @@ wlcom_sources += files(
   'shadow.c',
   'ssd.c',
   'view.c',
+  'window_menu.c',
   'workspace.c',
   'xdg_popup.c',
   'xdg_shell.c',
