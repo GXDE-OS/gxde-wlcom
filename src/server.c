@@ -245,17 +245,17 @@ void server_finish(struct server *server)
     /* make sure all xwayland-shells are destroyed */
     xwayland_server_destroy();
     wl_display_destroy_clients(server->display);
-
     wl_display_destroy(server->display);
+
+    /* call all server_destroy listeners */
+    wl_signal_emit_mutable(&server->events.destroy, NULL);
 
     ky_scene_destroy(server->scene);
     wlr_output_layout_destroy(server->layout);
     wlr_allocator_destroy(server->allocator);
     wlr_renderer_destroy(server->renderer);
-
-    wl_signal_emit_mutable(&server->events.destroy, NULL);
-
     /* free memory in fontconfig */
     pango_cairo_font_map_set_default(NULL);
+
     kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
 }
