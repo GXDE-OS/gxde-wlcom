@@ -115,6 +115,8 @@ struct view_manager *view_manager_create(struct server *server);
 
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
 
+struct view *view_manager_get_activated(void);
+
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);
 
 struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface);

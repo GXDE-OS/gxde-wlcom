@@ -12,6 +12,11 @@
 
 static struct view_manager *view_manager = NULL;
 
+struct view *view_manager_get_activated(void)
+{
+    return view_manager->activated.view;
+}
+
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 {
     if (!in_workspace) {
