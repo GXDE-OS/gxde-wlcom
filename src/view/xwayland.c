@@ -118,9 +118,9 @@ static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *no
     }
 
     struct xwayland_unmanaged *unmanaged = data;
-    double sx = x - unmanaged->surface_node->x;
-    double sy = y - unmanaged->surface_node->y;
-    seat_notify_motion(seat, surface, time, sx, sy, first);
+    int lx, ly;
+    ky_scene_node_coords(unmanaged->surface_node, &lx, &ly);
+    seat_notify_motion(seat, surface, time, x - lx, y - ly, first);
     return true;
 }
 
