@@ -83,6 +83,17 @@ void seat_destroy(struct seat *seat)
 
     wl_list_remove(&seat->link);
 
+    /* cancel grab when seat destroy */
+    if (seat->pointer_grab && seat->pointer_grab->interface->cancel) {
+        seat->pointer_grab->interface->cancel(seat->pointer_grab);
+    }
+    if (seat->keyboard_grab && seat->keyboard_grab->interface->cancel) {
+        seat->keyboard_grab->interface->cancel(seat->keyboard_grab);
+    }
+    if (seat->touch_grab && seat->touch_grab->interface->cancel) {
+        seat->touch_grab->interface->cancel(seat->touch_grab);
+    }
+
     struct input *input;
     wl_list_for_each(input, &seat->inputs, seat_link) {
         seat_remove_input(input);
@@ -180,20 +191,19 @@ struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat)
     return wlr_seat->data;
 }
 
-bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab)
+void seat_start_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab)
 {
-    if (seat->pointer_grab == pointer_grab) {
-        return true;
+    struct seat_pointer_grab *grab = seat->pointer_grab;
+    if (grab == pointer_grab) {
+        return;
     }
 
-    if (seat->pointer_grab && pointer_grab) {
-        kywc_log(KYWC_WARN, "%s is alreay has a pointer grab", seat->name);
-        return false;
-        // TODO: or replace current grab ?
-        // seat->pointer_grab->interface->cancel(seat->pointer_grab);
-    }
-
+    pointer_grab->seat = seat;
     seat->pointer_grab = pointer_grab;
+
+    if (grab && grab->interface->cancel) {
+        grab->interface->cancel(grab);
+    }
 
     /* when we move quickly with left buttion pressed at view edges,
      * hold_mode is entered by a cursor motion event then client requests move
@@ -201,42 +211,57 @@ bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_
     seat->cursor->hold_mode = false;
     /* clear last click state */
     seat->cursor->last_click_pressed = false;
-
-    return true;
 }
 
-bool seat_set_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab)
+void seat_end_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab)
+{
+    if (seat->pointer_grab == pointer_grab) {
+        seat->pointer_grab = NULL;
+    }
+}
+
+void seat_start_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab)
+{
+    struct seat_keyboard_grab *grab = seat->keyboard_grab;
+    if (grab == keyboard_grab) {
+        return;
+    }
+
+    keyboard_grab->seat = seat;
+    seat->keyboard_grab = keyboard_grab;
+
+    if (grab && grab->interface->cancel) {
+        grab->interface->cancel(grab);
+    }
+}
+
+void seat_end_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab)
 {
     if (seat->keyboard_grab == keyboard_grab) {
-        return true;
+        seat->keyboard_grab = NULL;
     }
-
-    if (seat->keyboard_grab && keyboard_grab) {
-        kywc_log(KYWC_WARN, "%s is alreay has a keyboard grab", seat->name);
-        return false;
-        // TODO: or replace current grab ?
-        // seat->keyboard_grab->interface->cancel(seat->keyboard_grab);
-    }
-
-    seat->keyboard_grab = keyboard_grab;
-    return true;
 }
 
-bool seat_set_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
+void seat_start_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
+{
+    struct seat_touch_grab *grab = seat->touch_grab;
+    if (grab == touch_grab) {
+        return;
+    }
+
+    touch_grab->seat = seat;
+    seat->touch_grab = touch_grab;
+
+    if (grab && grab->interface->cancel) {
+        grab->interface->cancel(grab);
+    }
+}
+
+void seat_end_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
 {
     if (seat->touch_grab == touch_grab) {
-        return true;
+        seat->touch_grab = NULL;
     }
-
-    if (seat->touch_grab && touch_grab) {
-        kywc_log(KYWC_WARN, "%s is alreay has a touch grab", seat->name);
-        return false;
-        // TODO: or replace current grab ?
-        // seat->touch_grab->interface->cancel(seat->touch_grab);
-    }
-
-    seat->touch_grab = touch_grab;
-    return true;
 }
 
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,

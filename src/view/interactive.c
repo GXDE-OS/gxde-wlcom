@@ -171,9 +171,9 @@ static void interactive_move_show_snap_box(struct interactive_grab *grab, int cu
 static void interactive_grab_destroy(struct interactive_grab *grab)
 {
     wl_list_remove(&grab->view_unmap.link);
-    seat_set_pointer_grab(grab->seat, NULL);
-    seat_set_keyboard_grab(grab->seat, NULL);
-    seat_set_touch_grab(grab->seat, NULL);
+    seat_end_pointer_grab(grab->seat, &grab->pointer_grab);
+    seat_end_keyboard_grab(grab->seat, &grab->keyboard_grab);
+    seat_end_touch_grab(grab->seat, &grab->touch_grab);
     ky_scene_node_destroy(grab->snap_node);
     wl_event_source_remove(grab->filter);
     free(grab);
@@ -502,15 +502,11 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     }
 
     grab->pointer_grab = (struct seat_pointer_grab){ &pointer_grab_impl, seat, grab };
-    if (!seat_set_pointer_grab(seat, &grab->pointer_grab)) {
-        free(grab);
-        return;
-    }
-    // XXX: check ?
+    seat_start_pointer_grab(seat, &grab->pointer_grab);
     grab->keyboard_grab = (struct seat_keyboard_grab){ &keyboard_grab_impl, seat, grab };
-    seat_set_keyboard_grab(seat, &grab->keyboard_grab);
+    seat_start_keyboard_grab(seat, &grab->keyboard_grab);
     grab->touch_grab = (struct seat_touch_grab){ &touch_grab_impl, seat, grab };
-    seat_set_touch_grab(seat, &grab->touch_grab);
+    seat_start_touch_grab(seat, &grab->touch_grab);
 
     grab->seat = seat;
     grab->mode = mode;

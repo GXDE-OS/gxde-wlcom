@@ -90,11 +90,14 @@ struct seat *seat_from_resource(struct wl_resource *resource);
 
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
 
-bool seat_set_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
+void seat_start_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
+void seat_end_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
 
-bool seat_set_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab);
+void seat_start_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab);
+void seat_end_keyboard_grab(struct seat *seat, struct seat_keyboard_grab *keyboard_grab);
 
-bool seat_set_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab);
+void seat_start_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab);
+void seat_end_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab);
 
 struct wlr_surface;
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
