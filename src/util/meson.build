@@ -1,6 +1,7 @@
 crypto = dependency('openssl')
 
 util_resources = files(
+  'global.c',
   'identifier.c',
   'logger.c',
   'spawn.c',

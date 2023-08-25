@@ -634,7 +634,7 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     }
 
     /* global destroy when output destroy */
-    wlr_global_destroy_safe(output_device->global);
+    kywc_global_destroy_safe(output_device->global);
 
     free(output_device);
 }
