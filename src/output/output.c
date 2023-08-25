@@ -624,9 +624,9 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 
     /* if output disabled, skip output_layout_add */
     if (going_on && (state->lx == -1 || state->ly == -1)) {
-        wlr_output_layout_add_auto(server->layout, wlr_output);
+        loutput = wlr_output_layout_add_auto(server->layout, wlr_output);
     } else if (going_on) {
-        wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
+        loutput = wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
     } else if (going_off) {
         /* layout output will destroyed */
         wlr_output_layout_remove(server->layout, wlr_output);
@@ -635,6 +635,11 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
          * output_commit. only need move when (x, y) of output is different.
          */
         wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
+    }
+
+    if (going_on && loutput) {
+        struct ky_scene_output *scene_output = ky_scene_output_create(server->scene, wlr_output);
+        ky_scene_output_layout_add_output(server->scene_layout, loutput, scene_output);
     }
 
     return true;

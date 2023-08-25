@@ -160,7 +160,7 @@ static bool wlroots_server_init(struct server *server)
 
     server->layout = wlr_output_layout_create();
     server->scene = ky_scene_create(server);
-    ky_scene_attach_output_layout(server->scene, server->layout);
+    server->scene_layout = ky_scene_attach_output_layout(server->scene, server->layout);
 
     struct wlr_presentation *presentation =
         wlr_presentation_create(server->display, server->backend);

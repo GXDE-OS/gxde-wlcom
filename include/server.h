@@ -35,6 +35,7 @@ struct server {
     struct wlr_compositor *compositor;
 
     struct ky_scene *scene;
+    struct ky_scene_output_layout *scene_layout;
     struct wlr_output_layout *layout;
 };
 

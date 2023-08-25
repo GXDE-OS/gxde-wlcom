@@ -136,7 +136,7 @@ static void handle_xdg_deco_request_mode(struct wl_listener *listener, void *dat
 static void xdg_toplevel_decoration(struct wl_listener *listener, void *data)
 {
     struct wlr_xdg_toplevel_decoration_v1 *wlr_xdg_decoration = data;
-    struct wlr_surface *surface = wlr_xdg_decoration->surface->surface;
+    struct wlr_surface *surface = wlr_xdg_decoration->toplevel->base->surface;
 
     struct decoration *deco = decoration_from_surface(surface);
     if (!deco) {
