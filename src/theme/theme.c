@@ -42,6 +42,7 @@ static struct theme light = {
     .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
     .text_justify = JUSTIFY_LEFT,
     .selected_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
+    .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
 
     .theme_name = DEFAULT_THEME,
     .button_svg = button_light_svg_src,
@@ -69,6 +70,7 @@ static struct theme dark = {
     .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
     .text_justify = JUSTIFY_LEFT,
     .selected_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
+    .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
 
     .theme_name = DEFAULT_DARK_THEME,
     .button_svg = button_dark_svg_src,

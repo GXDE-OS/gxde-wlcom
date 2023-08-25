@@ -65,6 +65,7 @@ struct theme {
 
     /* selected color */
     float selected_color[4];
+    float accent_color[4];
 
     /* button svg string */
     const char *button_svg;
