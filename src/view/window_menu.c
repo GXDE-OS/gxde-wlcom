@@ -7,6 +7,7 @@
 #include "input/cursor.h"
 #include "input/event.h"
 #include "input/seat.h"
+#include "nls.h"
 #include "output.h"
 #include "painter.h"
 #include "theme.h"
@@ -621,14 +622,14 @@ static void window_menu_set_position(struct window_menu *window_menu, int x, int
 
 static void menu_add_more_action_submenu(struct menu *menu)
 {
-    struct menu_item *item = menu_add_item(menu, "  More(M)", KEY_M, WINDOW_ACTION_NONE);
+    struct menu_item *item = menu_add_item(menu, tr("  More(M)"), KEY_M, WINDOW_ACTION_NONE);
     struct menu *submenu = menu_create(item->tree, item);
     item->submenu = submenu;
 
-    menu_add_item(submenu, "  Move(M)", KEY_M, WINDOW_ACTION_MOVE);
-    menu_add_item(submenu, "  Resize(R)", KEY_R, WINDOW_ACTION_RESIZE);
-    menu_add_item(submenu, "  Keep-Above(A)", KEY_A, WINDOW_ACTION_KEEP_ABOVE);
-    menu_add_item(submenu, "  Keep-Below(B)", KEY_B, WINDOW_ACTION_KEEP_BELOW);
+    menu_add_item(submenu, tr("  Move(M)"), KEY_M, WINDOW_ACTION_MOVE);
+    menu_add_item(submenu, tr("  Resize(R)"), KEY_R, WINDOW_ACTION_RESIZE);
+    menu_add_item(submenu, tr("  Keep-Above(A)"), KEY_A, WINDOW_ACTION_KEEP_ABOVE);
+    menu_add_item(submenu, tr("  Keep-Below(B)"), KEY_B, WINDOW_ACTION_KEEP_BELOW);
     menu_render_items(submenu);
 }
 
@@ -655,10 +656,10 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the toplevel menu: items and submenus */
     window_menu->toplevel = menu_create(manager->tree, NULL);
-    menu_add_item(window_menu->toplevel, "  Minimize(N)", KEY_N, WINDOW_ACTION_MINIMIZE);
-    menu_add_item(window_menu->toplevel, "  Maximize(X)", KEY_X, WINDOW_ACTION_MAXIMIZE);
-    menu_add_item(window_menu->toplevel, "  Fullscreen(F)", KEY_F, WINDOW_ACTION_FULLSCREEN);
-    menu_add_item(window_menu->toplevel, "  Close(C)", KEY_C, WINDOW_ACTION_CLOSE);
+    menu_add_item(window_menu->toplevel, tr("  Minimize(N)"), KEY_N, WINDOW_ACTION_MINIMIZE);
+    menu_add_item(window_menu->toplevel, tr("  Maximize(X)"), KEY_X, WINDOW_ACTION_MAXIMIZE);
+    menu_add_item(window_menu->toplevel, tr("  Fullscreen(F)"), KEY_F, WINDOW_ACTION_FULLSCREEN);
+    menu_add_item(window_menu->toplevel, tr("  Close(C)"), KEY_C, WINDOW_ACTION_CLOSE);
     menu_add_more_action_submenu(window_menu->toplevel);
     menu_render_items(window_menu->toplevel);
 

@@ -125,6 +125,13 @@ add_project_arguments([
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
 ], language: 'c')
 
+msgfmt = find_program('msgfmt', required: get_option('nls'))
+add_project_arguments('-DHAVE_NLS=@0@'.format(msgfmt.found().to_int()), language: 'c')
+if msgfmt.found()
+  source_root = meson.current_source_dir()
+  subdir('po')
+endif
+
 subdir('src')
 subdir('protocols')
 

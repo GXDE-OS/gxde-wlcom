@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "nls.h"
 #include "server.h"
 #include "util/logger.h"
 #include "util/spawn.h"
@@ -73,6 +74,12 @@ static void sig_handler(int signal)
 
 int main(int argc, char *argv[])
 {
+#if HAVE_NLS
+    setlocale(LC_ALL, "");
+    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+    textdomain(GETTEXT_PACKAGE);
+#endif
+
     bool enable_debug = false;
     bool enable_verbose = false;
     char *session_process = NULL;
