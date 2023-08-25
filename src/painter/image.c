@@ -6,13 +6,13 @@
 // SVG signature
 static const uint8_t signature[] = { '<' };
 
-bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data)
+bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box)
 {
     RsvgRectangle viewport = {
-        .x = 0,
-        .y = 0,
-        .width = buffer->width,
-        .height = buffer->height,
+        .x = box->x,
+        .y = box->y,
+        .width = box->width,
+        .height = box->height,
     };
 
     size_t size = strlen(data);

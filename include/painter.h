@@ -30,10 +30,12 @@ enum text_align {
 
 struct draw_info {
     /* unscaled size */
-    float width, height;
+    int width, height;
     float scale;
 
     float *solid_rgba;
+    float *hover_rgba;
+
     float *border_rgba;
     float border_width;
     enum border_mask border_mask;
@@ -48,17 +50,19 @@ struct draw_info {
     float *font_rgba;
     int font_size;
     enum text_align align;
-    bool submenu;
+    bool submenu; // ">"
     bool auto_resize;
 
     /* blur support */
     int blur_margin;
 
     /* image: svg only */
-    const char *svg;
+    const char *svg, *hover_svg;
 };
 
 struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
+
+void painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info);
 
 void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height);
 

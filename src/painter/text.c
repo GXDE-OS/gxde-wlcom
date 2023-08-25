@@ -38,10 +38,10 @@ void text_extents(const char *font, int font_size, const char *text, int *width,
     }
 }
 
-bool cairo_buffer_draw_text(struct cairo_buffer *buffer, const char *text, const char *font,
-                            int font_size, float *font_color, int align, bool submenu)
+bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
+                            struct kywc_box *box)
 {
-    if (!text || !*text) {
+    if (!info->text || !*info->text) {
         return false;
     }
 
@@ -49,29 +49,31 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, const char *text, const
     cairo_surface_t *surf = buffer->surface;
 
     int width, height;
-    text_extents(font, font_size, "fg", &width, &height);
-    double y = (double)(buffer->height - height) / 2;
+    text_extents(info->font, info->font_size, "fg", &width, &height);
+    double ly = (double)(box->height - height) / 2;
+    ly = ly < 0 ? 0 : ly;
 
-    cairo_set_source_rgba(cairo, font_color[0], font_color[1], font_color[2], font_color[3]);
-    cairo_move_to(cairo, 0, y < 0 ? 0 : y);
+    cairo_set_source_rgba(cairo, info->font_rgba[0], info->font_rgba[1], info->font_rgba[2],
+                          info->font_rgba[3]);
+    cairo_move_to(cairo, box->x, box->y + ly);
 
     PangoLayout *layout = pango_cairo_create_layout(cairo);
-    pango_layout_set_width(layout, (buffer->width - (submenu ? width * 2 : 0)) * PANGO_SCALE);
-    pango_layout_set_text(layout, text, -1);
+    pango_layout_set_width(layout, (box->width - (info->submenu ? width * 2 : 0)) * PANGO_SCALE);
+    pango_layout_set_text(layout, info->text, -1);
     pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
-    pango_layout_set_alignment(layout, align);
+    pango_layout_set_alignment(layout, (PangoAlignment)info->align);
 
     PangoFontDescription *desc = pango_font_description_new();
-    pango_font_description_set_family(desc, font);
-    pango_font_description_set_size(desc, font_size * PANGO_SCALE);
+    pango_font_description_set_family(desc, info->font);
+    pango_font_description_set_size(desc, info->font_size * PANGO_SCALE);
 
     pango_layout_set_font_description(layout, desc);
     pango_cairo_update_layout(cairo, layout);
     pango_cairo_show_layout(cairo, layout);
     g_object_unref(layout);
 
-    if (submenu) {
-        cairo_move_to(cairo, buffer->width - width, y);
+    if (info->submenu) {
+        cairo_move_to(cairo, box->width - width, box->y + ly);
         PangoLayout *layout = pango_cairo_create_layout(cairo);
         pango_layout_set_width(layout, -1);
         pango_layout_set_text(layout, ">", -1);

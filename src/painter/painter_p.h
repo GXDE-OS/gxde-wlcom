@@ -4,6 +4,7 @@
 #include <cairo/cairo.h>
 #include <wlr/types/wlr_buffer.h>
 
+#include <kywc/boxes.h>
 #include <kywc/log.h>
 
 #include "painter.h"
@@ -21,10 +22,10 @@ struct cairo_buffer {
 
 struct cairo_buffer *cairo_buffer_create(uint32_t width, uint32_t height, float scale);
 
-bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data);
+bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box);
 
-bool cairo_buffer_draw_text(struct cairo_buffer *buffer, const char *text, const char *font,
-                            int font_size, float *font_color, int align, bool submenu);
+bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
+                            struct kywc_box *box);
 
 bool cairo_buffer_draw_blur(struct cairo_buffer *buffer, int margin, bool circle);
 

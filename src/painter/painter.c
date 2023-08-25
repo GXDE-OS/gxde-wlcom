@@ -3,36 +3,40 @@
 #define PI 3.1415926
 #define ANGLE(ang) (ang * PI / 180.0)
 
-static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
+static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, struct kywc_box *box,
+                        bool hover)
 {
     cairo_t *cairo = buffer->cairo;
     cairo_surface_t *surf = buffer->surface;
-    double width = buffer->width;
-    double height = buffer->height;
+    double width = box->width;
+    double height = box->height;
     double radius = info->corner_radius;
 
     if (info->circle) {
-        cairo_arc(cairo, width / 2, height / 2, radius, 0, 2 * PI);
+        cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
     } else {
         if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
-            cairo_arc(cairo, radius, radius, radius, ANGLE(-180), ANGLE(-90));
+            cairo_arc(cairo, box->x + radius, box->y + radius, radius, ANGLE(-180), ANGLE(-90));
         } else {
-            cairo_line_to(cairo, 0, 0);
+            cairo_line_to(cairo, box->x, box->y);
         }
         if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
-            cairo_arc(cairo, width - radius, radius, radius, ANGLE(-90), ANGLE(0));
+            cairo_arc(cairo, box->x + width - radius, box->y + radius, radius, ANGLE(-90),
+                      ANGLE(0));
         } else {
-            cairo_line_to(cairo, width, 0);
+            cairo_line_to(cairo, box->x + width, box->y);
         }
         if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
-            cairo_arc(cairo, width - radius, height - radius, radius, ANGLE(0), ANGLE(90));
+            cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius, ANGLE(0),
+                      ANGLE(90));
         } else {
-            cairo_line_to(cairo, width, height);
+            cairo_line_to(cairo, box->x + width, box->y + height);
         }
         if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
-            cairo_arc(cairo, radius, height - radius, radius, ANGLE(90), ANGLE(180));
+            cairo_arc(cairo, box->x + radius, box->y + height - radius, radius, ANGLE(90),
+                      ANGLE(180));
         } else {
-            cairo_line_to(cairo, 0, height);
+            cairo_line_to(cairo, box->x, box->y + height);
         }
     }
 
@@ -41,6 +45,27 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
                           info->solid_rgba[3]);
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_fill(cairo);
+
+    if (hover) {
+        if (info->circle) {
+            cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
+        } else {
+            double offset = box->width * 0.02;
+            double x = box->x + offset;
+            double y = box->y + offset;
+            double w = box->width - 2 * offset;
+            double h = box->height - 2 * offset;
+            cairo_arc(cairo, x + radius, y + radius, radius, ANGLE(-180), ANGLE(-90));
+            cairo_arc(cairo, x + w - radius, y + radius, radius, ANGLE(-90), ANGLE(0));
+            cairo_arc(cairo, x + w - radius, y + h - radius, radius, ANGLE(0), ANGLE(90));
+            cairo_arc(cairo, x + radius, y + h - radius, radius, ANGLE(90), ANGLE(180));
+        }
+        cairo_close_path(cairo);
+        cairo_set_source_rgba(cairo, info->hover_rgba[0], info->hover_rgba[1], info->hover_rgba[2],
+                              info->hover_rgba[3]);
+        cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+        cairo_fill(cairo);
+    }
 
     if (!info->border_rgba || !info->border_width || (!info->border_mask && !info->circle)) {
         cairo_surface_flush(surf);
@@ -55,7 +80,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
     cairo_set_line_width(cairo, info->border_width);
 
     if (info->circle) {
-        cairo_arc(cairo, width / 2, height / 2, radius + half, 0, 2 * PI);
+        cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius + half, 0, 2 * PI);
         cairo_stroke(cairo);
         cairo_surface_flush(surf);
         return;
@@ -63,16 +88,18 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
 
     if (info->border_mask & BORDER_MASK_TOP) {
         if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
-            cairo_move_to(cairo, half, radius);
-            cairo_arc(cairo, radius, radius, radius - half, ANGLE(-180), ANGLE(-90));
+            cairo_move_to(cairo, box->x + half, box->y + radius);
+            cairo_arc(cairo, box->x + radius, box->y + radius, radius - half, ANGLE(-180),
+                      ANGLE(-90));
         } else {
-            cairo_move_to(cairo, 0, half);
+            cairo_move_to(cairo, box->x, box->y + half);
         }
         if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
-            cairo_line_to(cairo, width - radius, half);
-            cairo_arc(cairo, width - radius, radius, radius - half, ANGLE(-90), ANGLE(0));
+            cairo_line_to(cairo, box->x + width - radius, box->y + half);
+            cairo_arc(cairo, box->x + width - radius, box->y + radius, radius - half, ANGLE(-90),
+                      ANGLE(0));
         } else {
-            cairo_line_to(cairo, width, half);
+            cairo_line_to(cairo, box->x + width, box->y + half);
         }
         cairo_stroke(cairo);
     }
@@ -81,19 +108,21 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
         if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
             bool have_top_right = info->border_mask & BORDER_MASK_TOP;
             if (have_top_right) {
-                cairo_move_to(cairo, width - half, radius);
+                cairo_move_to(cairo, box->x + width - half, box->y + radius);
             } else {
-                cairo_move_to(cairo, width - radius, half);
-                cairo_arc(cairo, width - radius, radius, radius - half, ANGLE(-90), ANGLE(0));
+                cairo_move_to(cairo, box->x + width - radius, box->y + half);
+                cairo_arc(cairo, box->x + width - radius, box->y + radius, radius - half,
+                          ANGLE(-90), ANGLE(0));
             }
         } else {
-            cairo_move_to(cairo, width - half, 0);
+            cairo_move_to(cairo, box->x + width - half, box->y);
         }
         if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
-            cairo_line_to(cairo, width - half, height - radius);
-            cairo_arc(cairo, width - radius, height - radius, radius - half, ANGLE(0), ANGLE(90));
+            cairo_line_to(cairo, box->x + width - half, box->y + height - radius);
+            cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius - half,
+                      ANGLE(0), ANGLE(90));
         } else {
-            cairo_line_to(cairo, width - half, height);
+            cairo_line_to(cairo, box->x + width - half, box->y + height);
         }
         cairo_stroke(cairo);
     }
@@ -102,20 +131,21 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
         if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
             bool have_bottom_right = info->border_mask & BORDER_MASK_RIGHT;
             if (have_bottom_right) {
-                cairo_move_to(cairo, width - radius, height - half);
+                cairo_move_to(cairo, box->x + width - radius, box->y + height - half);
             } else {
-                cairo_move_to(cairo, width - half, height - radius);
-                cairo_arc(cairo, width - radius, height - radius, radius - half, ANGLE(0),
-                          ANGLE(90));
+                cairo_move_to(cairo, box->x + width - half, box->y + height - radius);
+                cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius - half,
+                          ANGLE(0), ANGLE(90));
             }
         } else {
-            cairo_move_to(cairo, width, height - half);
+            cairo_move_to(cairo, box->x + width, box->y + height - half);
         }
         if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
-            cairo_line_to(cairo, radius, height - half);
-            cairo_arc(cairo, radius, height - radius, radius - half, ANGLE(90), ANGLE(180));
+            cairo_line_to(cairo, box->x + radius, box->y + height - half);
+            cairo_arc(cairo, box->x + radius, box->y + height - radius, radius - half, ANGLE(90),
+                      ANGLE(180));
         } else {
-            cairo_line_to(cairo, 0, height - half);
+            cairo_line_to(cairo, box->x, box->y + height - half);
         }
         cairo_stroke(cairo);
     }
@@ -124,29 +154,79 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info)
         if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
             bool have_bottom_left = info->border_mask & BORDER_MASK_BOTTOM;
             if (have_bottom_left) {
-                cairo_move_to(cairo, half, height - radius);
+                cairo_move_to(cairo, box->x + half, box->y + height - radius);
             } else {
-                cairo_move_to(cairo, radius, height - half);
-                cairo_arc(cairo, radius, height - radius, radius - half, ANGLE(90), ANGLE(180));
+                cairo_move_to(cairo, box->x + radius, box->y + height - half);
+                cairo_arc(cairo, box->x + radius, box->y + height - radius, radius - half,
+                          ANGLE(90), ANGLE(180));
             }
         } else {
-            cairo_move_to(cairo, half, height);
+            cairo_move_to(cairo, box->x + half, box->y + height);
         }
         if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
             bool have_top_left = info->border_mask & BORDER_MASK_TOP;
             if (have_top_left) {
-                cairo_line_to(cairo, half, radius);
+                cairo_line_to(cairo, box->x + half, box->y + radius);
             } else {
-                cairo_line_to(cairo, half, radius);
-                cairo_arc(cairo, radius, radius, radius - half, ANGLE(-180), ANGLE(-90));
+                cairo_line_to(cairo, box->x + half, box->y + radius);
+                cairo_arc(cairo, box->x + radius, box->y + radius, radius - half, ANGLE(-180),
+                          ANGLE(-90));
             }
         } else {
-            cairo_line_to(cairo, half, 0);
+            cairo_line_to(cairo, box->x + half, box->y);
         }
         cairo_stroke(cairo);
     }
 
     cairo_surface_flush(surf);
+}
+
+static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info)
+{
+    /* corner, solid and border */
+    if (info->solid_rgba) {
+        if (info->hover_rgba) {
+            int height = info->height / 2;
+            buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, height }, false);
+            buffer_draw(buffer, info, &(struct kywc_box){ 0, height, info->width, height }, true);
+        } else {
+            buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, info->height }, false);
+        }
+    }
+
+    /* text */
+    if (info->text && *info->text) {
+        if (info->hover_rgba) {
+            int height = info->height / 2;
+            cairo_buffer_draw_text(buffer, info, &(struct kywc_box){ 0, 0, info->width, height });
+            cairo_buffer_draw_text(buffer, info,
+                                   &(struct kywc_box){ 0, height, info->width, height });
+        } else {
+            cairo_buffer_draw_text(buffer, info,
+                                   &(struct kywc_box){ 0, 0, info->width, info->height });
+        }
+    }
+
+    /* svg picture */
+    if (info->svg) {
+        if (info->hover_svg) {
+            int height = info->height / 2;
+            cairo_buffer_draw_svg(buffer, info->svg,
+                                  &(struct kywc_box){ 0, 0, info->width, height });
+            cairo_buffer_draw_svg(buffer, info->hover_svg,
+                                  &(struct kywc_box){ 0, height, info->width, height });
+        } else {
+            cairo_buffer_draw_svg(buffer, info->svg,
+                                  &(struct kywc_box){ 0, 0, info->width, info->height });
+        }
+    }
+
+    /* blur */
+    if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin, info->circle)) {
+        return false;
+    }
+
+    return true;
 }
 
 struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
@@ -165,35 +245,32 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
         info->submenu = false;
     }
 
+    /* draw hover together */
+    if (info->hover_rgba || info->hover_svg) {
+        info->height *= 2;
+    }
+
     struct cairo_buffer *buffer = cairo_buffer_create(info->width, info->height, info->scale);
     if (!buffer) {
         return NULL;
     }
 
-    /* corner, solid and border */
-    if (info->solid_rgba) {
-        buffer_draw(buffer, info);
-    }
-
-    /* text */
-    if (info->text && *info->text) {
-        cairo_buffer_draw_text(buffer, info->text, info->font, info->font_size, info->font_rgba,
-                               info->align, info->submenu);
-    }
-
-    /* svg picture */
-    if (info->svg && !cairo_buffer_draw_svg(buffer, info->svg)) {
-        wlr_buffer_drop(&buffer->base);
-        return NULL;
-    }
-
-    /* blur */
-    if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin, info->circle)) {
+    if (!painter_draw(buffer, info)) {
         wlr_buffer_drop(&buffer->base);
         return NULL;
     }
 
     return &buffer->base;
+}
+
+void painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info)
+{
+    struct cairo_buffer *buf = cairo_buffer_from_wlr_buffer(buffer);
+    if (!buf) {
+        return;
+    }
+
+    painter_draw(buf, info);
 }
 
 void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height)
