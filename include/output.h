@@ -59,7 +59,10 @@ enum layout_edge {
     LAYOUT_EDGE_LEFT,
     LAYOUT_EDGE_RIGHT,
 };
+
 bool output_at_layout_edge(struct output *output, enum layout_edge edge);
+
+struct output *output_adjacent_output(struct output *output, enum layout_edge edge);
 
 struct kywc_output *kywc_output_at_point(double lx, double ly);
 

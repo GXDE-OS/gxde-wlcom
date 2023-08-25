@@ -808,32 +808,73 @@ void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
     }
 }
 
-bool output_at_layout_edge(struct output *output, enum layout_edge edge)
+static void output_edge_position(struct output *output, enum layout_edge edge, int *lx, int *ly)
 {
-    struct wlr_output_layout *layout = output->manager->server->layout;
     struct kywc_box *geo = &output->geometry;
-    int lx = 0, ly = 0;
 
     switch (edge) {
     case LAYOUT_EDGE_TOP:
-        lx = geo->x + geo->width / 2;
-        ly = geo->y - 1;
+        *lx = geo->x + geo->width / 2;
+        *ly = geo->y - 1;
         break;
     case LAYOUT_EDGE_BOTTOM:
-        lx = geo->x + geo->width / 2;
-        ly = geo->y + geo->height;
+        *lx = geo->x + geo->width / 2;
+        *ly = geo->y + geo->height;
         break;
     case LAYOUT_EDGE_LEFT:
-        lx = geo->x - 1;
-        ly = geo->y + geo->height / 2;
+        *lx = geo->x - 1;
+        *ly = geo->y + geo->height / 2;
         break;
     case LAYOUT_EDGE_RIGHT:
-        lx = geo->x + geo->width;
-        ly = geo->y + geo->height / 2;
+        *lx = geo->x + geo->width;
+        *ly = geo->y + geo->height / 2;
+        break;
+    }
+}
+
+bool output_at_layout_edge(struct output *output, enum layout_edge edge)
+{
+    int lx, ly;
+    output_edge_position(output, edge, &lx, &ly);
+
+    struct wlr_output_layout *layout = output->manager->server->layout;
+    return !wlr_output_layout_contains_point(layout, NULL, lx, ly);
+}
+
+struct output *output_adjacent_output(struct output *output, enum layout_edge edge)
+{
+#if 1
+    int lx, ly;
+    output_edge_position(output, edge, &lx, &ly);
+
+    struct wlr_output_layout *layout = output_manager->server->layout;
+    struct wlr_output *wlr_output = wlr_output_layout_output_at(layout, lx, ly);
+    return wlr_output ? output_from_wlr_output(wlr_output) : output;
+#else
+    struct wlr_output_layout *layout = output_manager->server->layout;
+    struct wlr_output *wlr_output = NULL;
+
+    switch (edge) {
+    case LAYOUT_EDGE_LEFT:
+        wlr_output =
+            wlr_output_layout_adjacent_output(layout, WLR_DIRECTION_LEFT, output->wlr_output, 1, 0);
+        break;
+    case LAYOUT_EDGE_RIGHT:
+        wlr_output = wlr_output_layout_adjacent_output(layout, WLR_DIRECTION_RIGHT,
+                                                       output->wlr_output, 1, 0);
+        break;
+    case LAYOUT_EDGE_TOP:
+        wlr_output =
+            wlr_output_layout_adjacent_output(layout, WLR_DIRECTION_UP, output->wlr_output, 0, 1);
+        break;
+    case LAYOUT_EDGE_BOTTOM:
+        wlr_output =
+            wlr_output_layout_adjacent_output(layout, WLR_DIRECTION_DOWN, output->wlr_output, 0, 1);
         break;
     }
 
-    return !wlr_output_layout_contains_point(layout, NULL, lx, ly);
+    return wlr_output ? output_from_wlr_output(wlr_output) : NULL;
+#endif
 }
 
 struct kywc_output *kywc_output_at_point(double lx, double ly)
