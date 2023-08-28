@@ -183,11 +183,8 @@ void view_map(struct view *view)
     struct ky_scene_node *node = ky_scene_node_from_tree(view->tree);
     ky_scene_node_set_enabled(node, !kywc_view->minimized);
 
-    kywc_view_activate(kywc_view);
-
-    if (kywc_view->focusable) {
-        seat_focus_surface(input_manager_get_default_seat(), view->surface);
-    }
+    kywc_view->has_initial_position = false;
+    kywc_view->mapped = true;
 
     if (view->pending.action) {
         /* add a fallback geometry */
@@ -199,8 +196,8 @@ void view_map(struct view *view)
         }
     }
 
-    kywc_view->has_initial_position = false;
-    kywc_view->mapped = true;
+    kywc_view_activate(kywc_view);
+    seat_focus_surface(input_manager_get_default_seat(), view->surface);
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
