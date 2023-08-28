@@ -66,6 +66,8 @@ bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info);
 
 void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height);
 
+void painter_buffer_size(struct wlr_buffer *buffer, int *width, int *height);
+
 void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name);
 
 #endif /* _PAINTER_H_ */
