@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_touch.h>
 
@@ -48,6 +49,7 @@ struct touch_point {
     struct touch *touch;
     struct wl_list link;
     struct wlr_surface *surface;
+    struct wl_listener surface_destroy;
 
     /* timer for hold gesture */
     struct wl_event_source *timer;
@@ -75,6 +77,9 @@ static void touch_handle_input_destroy(struct wl_listener *listener, void *data)
     struct touch_point *point, *tmp;
     wl_list_for_each_safe(point, tmp, &touch->points, link) {
         wl_list_remove(&point->link);
+        if (point->surface) {
+            wl_list_remove(&point->surface_destroy.link);
+        }
         if (point->timer) {
             wl_event_source_remove(point->timer);
         }
@@ -317,6 +322,13 @@ static int touch_point_handle_timer(void *data)
     return 0;
 }
 
+static void touch_point_handle_surface_destroy(struct wl_listener *listener, void *data)
+{
+    struct touch_point *point = wl_container_of(listener, point, surface_destroy);
+    wl_list_remove(&point->surface_destroy.link);
+    point->surface = NULL;
+}
+
 static struct touch_point *touch_point_create(struct touch *touch, int32_t touch_id)
 {
     struct touch_point *point, *free_point = NULL;
@@ -343,6 +355,7 @@ static struct touch_point *touch_point_create(struct touch *touch, int32_t touch
 
     point->touch_id = touch_id;
     point->touch = touch;
+    point->surface_destroy.notify = touch_point_handle_surface_destroy;
     wl_list_insert(touch->points.prev, &point->link);
 
     struct wl_display *display = touch->input->seat->wlr_seat->display;
@@ -387,8 +400,12 @@ static void touch_point_reset(struct touch_point *point, bool cancelled)
     }
 
     point->touch_id = -1;
-    point->surface = NULL;
     point->touch->points_count--;
+
+    if (point->surface) {
+        point->surface = NULL;
+        wl_list_remove(&point->surface_destroy.link);
+    }
 
     if (point->timer) {
         wl_event_source_timer_update(point->timer, 0);
@@ -435,6 +452,8 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     }
 
     point->surface = surface;
+    wl_signal_add(&surface->events.destroy, &point->surface_destroy);
+
     wlr_seat_touch_notify_down(seat->wlr_seat, surface, event->time_msec, event->touch_id, sx, sy);
 
     /* activate and focus the toplevel surface */
