@@ -47,10 +47,9 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 static void widget_buffer_get_size(struct widget *widget, struct wlr_buffer *buffer,
                                    struct wlr_fbox *src, int *width, int *height)
 {
-    int w, h;
+    int w, h, scaled_w, scaled_h;
+    painter_buffer_size(buffer, &scaled_w, &scaled_h);
     painter_buffer_unscaled_size(buffer, &w, &h);
-    double scaled_w = w * widget->scale;
-    double scaled_h = h * widget->scale;
 
     src->x = 0;
     src->y = widget->hovered ? scaled_h / 2 : 0;
