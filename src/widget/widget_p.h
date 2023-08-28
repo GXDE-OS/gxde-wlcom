@@ -28,6 +28,7 @@ struct widget {
     const char *font_name;
     int font_size;
     int text_align;
+    bool text_truncated;
 
     /* color in this widget */
     float background_color[4];

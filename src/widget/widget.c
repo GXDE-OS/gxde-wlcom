@@ -12,7 +12,7 @@
 
 #define color_valid(color) (color[3] != 0.0f)
 
-static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale)
+static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale, bool redraw_only)
 {
     struct draw_info info = {
         .width = widget->auto_resize ? widget->max_width : widget->width,
@@ -41,7 +41,23 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .hover_svg = widget->hover_svg,
     };
 
-    return painter_draw_buffer(&info);
+    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    if (buffer && redraw_only) {
+        painter_redraw_buffer(buffer, &info);
+    } else {
+        buffer = painter_draw_buffer(&info);
+        if (!buffer) {
+            return NULL;
+        }
+    }
+
+    if (widget->auto_resize) {
+        int width;
+        painter_buffer_unscaled_size(buffer, &width, NULL);
+        widget->text_truncated = width == widget->max_width;
+    }
+
+    return buffer;
 }
 
 static void widget_buffer_get_size(struct widget *widget, struct wlr_buffer *buffer,
@@ -78,7 +94,10 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer)
 
     ky_scene_buffer_set_source_box(scene_buffer, &src);
     ky_scene_buffer_set_dest_size(scene_buffer, width, height);
-    wlr_buffer_drop(old_buffer);
+
+    if (old_buffer != buffer) {
+        wlr_buffer_drop(old_buffer);
+    }
 }
 
 static void widget_do_update(struct widget *widget)
@@ -93,36 +112,53 @@ static void widget_do_update(struct widget *widget)
         return;
     }
 
-    /* we need paint a new buffer if size changed */
-    if (widget->pending_cause &
-        (WIDGET_UPDATE_CAUSE_SIZE | WIDGET_UPDATE_CAUSE_CONTENT | WIDGET_UPDATE_CAUSE_SCALE)) {
+    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    /* draw it in scaled buffer update at the first time */
+    if (widget->scale == 0.0 || !buffer) {
         widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
-        /* draw it in scaled buffer update */
-        if (widget->scale == 0.0) {
-            widget_set_buffer(widget, NULL);
-            return;
-        }
-
-        // TODO: support text_is_cut
-        struct wlr_buffer *buf = widget_paint_buffer(widget, widget->scale);
-        if (buf) {
-            widget_set_buffer(widget, buf);
-        }
+        widget_set_buffer(widget, NULL);
         return;
     }
 
-    // TODO: only redraw content if size not changed
-
-    if (widget->pending_cause & WIDGET_UPDATE_CAUSE_HOVERED) {
-        widget->pending_cause &= ~WIDGET_UPDATE_CAUSE_HOVERED;
-        struct wlr_buffer *buf = ky_scene_buffer_get_buffer(widget->content.buffer);
+    /* we need paint a new buffer if content and scale changed */
+    if (widget->pending_cause & (WIDGET_UPDATE_CAUSE_CONTENT | WIDGET_UPDATE_CAUSE_SCALE)) {
+        /* only redraw content if size or scale not changed */
+        bool redraw_only =
+            !widget->auto_resize &&
+            !(widget->pending_cause & (WIDGET_UPDATE_CAUSE_SIZE | WIDGET_UPDATE_CAUSE_SCALE));
+        struct wlr_buffer *buf = widget_paint_buffer(widget, widget->scale, redraw_only);
         if (buf) {
-            struct wlr_fbox src;
-            int width, height;
-            widget_buffer_get_size(widget, buf, &src, &width, &height);
-            ky_scene_buffer_set_source_box(widget->content.buffer, &src);
-            ky_scene_buffer_set_dest_size(widget->content.buffer, width, height);
+            widget_set_buffer(widget, buf);
         }
+        widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+        return;
+    }
+
+    if (widget->pending_cause & WIDGET_UPDATE_CAUSE_SIZE) {
+        int width;
+        painter_buffer_unscaled_size(buffer, &width, NULL);
+        /* skip paint buffer if text not truncated when auto-resized */
+        if (widget->auto_resize && !widget->text_truncated && width <= widget->max_width) {
+            widget->pending_cause &= ~WIDGET_UPDATE_CAUSE_SIZE;
+        } else {
+            struct wlr_buffer *buf = widget_paint_buffer(widget, widget->scale, false);
+            if (buf) {
+                widget_set_buffer(widget, buf);
+            }
+            widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+            return;
+        }
+    }
+
+    /* hovered changed only */
+    if (widget->pending_cause & WIDGET_UPDATE_CAUSE_HOVERED) {
+        widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+        struct wlr_fbox src;
+        int width, height;
+        widget_buffer_get_size(widget, buffer, &src, &width, &height);
+        ky_scene_buffer_set_source_box(widget->content.buffer, &src);
+        ky_scene_buffer_set_dest_size(widget->content.buffer, width, height);
+        return;
     }
 }
 
@@ -348,7 +384,7 @@ static void widget_update_buffer(struct ky_scene_buffer *buffer, float scale, vo
         return;
     }
 
-    struct wlr_buffer *buf = widget_paint_buffer(widget, scale);
+    struct wlr_buffer *buf = widget_paint_buffer(widget, scale, false);
     if (buf) {
         widget_set_buffer(widget, buf);
     }
