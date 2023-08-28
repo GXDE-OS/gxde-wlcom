@@ -263,14 +263,18 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
     return &buffer->base;
 }
 
-void painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info)
+bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info)
 {
     struct cairo_buffer *buf = cairo_buffer_from_wlr_buffer(buffer);
     if (!buf) {
-        return;
+        return false;
     }
 
-    painter_draw(buf, info);
+    /* clear the surface */
+    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(buf->cairo);
+
+    return painter_draw(buf, info);
 }
 
 void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height)

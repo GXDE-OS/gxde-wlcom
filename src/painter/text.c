@@ -55,6 +55,7 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
 
     cairo_set_source_rgba(cairo, info->font_rgba[0], info->font_rgba[1], info->font_rgba[2],
                           info->font_rgba[3]);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_move_to(cairo, box->x, box->y + ly);
 
     PangoLayout *layout = pango_cairo_create_layout(cairo);
