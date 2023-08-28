@@ -11,6 +11,7 @@
 #include "theme.h"
 #include "view_p.h"
 #include "widget/scaled_buffer.h"
+#include "widget/widget.h"
 
 enum {
     /* buttons */
@@ -107,10 +108,9 @@ struct ssd {
     struct ky_scene_tree *extend_tree;
 
     struct ssd_part parts[SSD_PART_COUNT];
+    struct widget *title_text;
 
     bool created;
-    /* trick to reduce text redraw */
-    bool title_is_cut;
     /* view size to reduce redraw */
     int view_width, view_height;
 };
@@ -359,96 +359,57 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 
 #define WRAP(w) (w > 0 ? w : 0)
 
-static void redraw_title_text(struct ssd *ssd)
+static void ssd_update_title(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
-    struct ssd_part *part = &ssd->parts[SSD_TITLE_TEXT];
 
+    int max_width = view->geometry.width - 4 * theme->button_width;
     /* no space left for title text */
-    int text_width = view->geometry.width - 4 * theme->button_width;
-    if (text_width <= 0) {
+    if (max_width <= 0) {
+        widget_set_enabled(ssd->title_text, false);
+        widget_update(ssd->title_text, true);
         return;
-    }
-
-    struct draw_info info = {
-        .width = text_width,
-        .height = theme->title_height,
-        .scale = part->scale,
-        .text = view->title ? view->title : "",
-        .font = theme->font_name,
-        .font_size = theme->font_size,
-        .font_rgba = view->activated ? theme->active_text_color : theme->inactive_text_color,
-        .auto_resize = true,
-    };
-
-    struct ky_scene_buffer *scene_buf;
-    struct wlr_buffer *buffer, *old_buffer;
-    /* static value is better, so we always apply new value */
-    static int width, height;
-
-    /* set_buffer -> output_enter -> redraw_title_text -> set_buffer */
-    scene_buf = ky_scene_buffer_from_node(part->node);
-    old_buffer = ky_scene_buffer_get_buffer(scene_buf);
-    buffer = painter_draw_buffer(&info);
-    /* get buffer size before set_buffer, as set_buffer recursion here */
-    painter_buffer_unscaled_size(buffer, &width, &height);
-    ky_scene_buffer_set_buffer(scene_buf, buffer);
-    /* set_dest_size must after set_buffer, otherwise no damage added */
-    ky_scene_buffer_set_dest_size(scene_buf, width, height);
-    wlr_buffer_drop(old_buffer);
-}
-
-static void ssd_update_title(struct ssd *ssd, bool force)
-{
-    struct theme *theme = theme_manager_get_current();
-    struct kywc_view *view = ssd->kywc_view;
-
-    enum justification justify = theme->text_justify;
-    int button_w = theme->button_width;
-    int border_w = theme->border_width;
-    int view_w = view->geometry.width;
-    int title_h = theme->title_height;
-    int max_width = view_w - 4 * button_w;
-    int x, y, text_width, text_height;
-
-    struct ky_scene_buffer *scene_buf = ky_scene_buffer_from_node(ssd->parts[SSD_TITLE_TEXT].node);
-
-    /* if title not draw to buffer */
-    bool redraw = force || !ky_scene_buffer_get_buffer(scene_buf);
-
-    /* already have same title buffer */
-    if (!redraw) {
-        painter_buffer_unscaled_size(ky_scene_buffer_get_buffer(scene_buf), &text_width,
-                                     &text_height);
-        /* but is too bigger or cut off */
-        redraw = ssd->title_is_cut || text_width > max_width;
     }
 
     /* redraw title buffer */
-    if (redraw) {
-        redraw_title_text(ssd);
+    if (cause & SSD_UPDATE_CAUSE_TITLE) {
+        widget_set_text(ssd->title_text, view->title, TEXT_ALIGN_LEFT, false);
+        widget_set_font(ssd->title_text, theme->font_name, theme->font_size);
     }
+    if (cause & SSD_UPDATE_CAUSE_SIZE) {
+        widget_set_max_size(ssd->title_text, max_width, theme->title_height);
+        widget_set_auto_resize(ssd->title_text, true);
+    }
+    if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
+        widget_set_front_color(ssd->title_text, view->activated ? theme->active_text_color
+                                                                : theme->inactive_text_color);
+    }
+    widget_set_enabled(ssd->title_text, true);
+    widget_update(ssd->title_text, true);
 
-    /* redraw was failed */
-    if (!ky_scene_buffer_get_buffer(scene_buf)) {
+    /* skip setting position if activate changed only */
+    if (cause == SSD_UPDATE_CAUSE_ACTIVATE) {
         return;
     }
 
-    painter_buffer_unscaled_size(ky_scene_buffer_get_buffer(scene_buf), &text_width, &text_height);
-    ssd->title_is_cut = text_width == max_width;
+    /* get actual size when auto-sized */
+    int text_width, text_height;
+    widget_get_size(ssd->title_text, &text_width, &text_height);
 
-    y = border_w + (title_h - text_height) / 2;
-    if (justify == JUSTIFY_LEFT) {
-        x = button_w + border_w;
-    } else if (justify == JUSTIFY_CENTER) {
-        x = (border_w * 2 + view_w - text_width) / 2;
+    /* calc the text position by jystify */
+    int x, y;
+    y = theme->border_width + (theme->title_height - text_height) / 2;
+    if (theme->text_justify == JUSTIFY_LEFT) {
+        x = theme->button_width + theme->border_width;
+    } else if (theme->text_justify == JUSTIFY_CENTER) {
+        x = (theme->border_width * 2 + view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
-        if (text_width + 4 * button_w > max_width) {
-            x -= button_w;
+        if (text_width + 4 * view->geometry.width > max_width) {
+            x -= theme->button_width;
         }
     } else {
-        x = border_w + button_w + max_width - text_width;
+        x = theme->border_width + theme->button_width + max_width - text_width;
     }
     /* setting position directly is better */
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_TEXT].node, x, y);
@@ -502,13 +463,9 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & (SSD_UPDATE_CAUSE_TITLE | SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_SIZE)) {
-        /* don't force redraw when when resize only */
-        if (cause == SSD_UPDATE_CAUSE_SIZE) {
-            if (ssd->view_width != view_w) {
-                ssd_update_title(ssd, false);
-            }
-        } else {
-            ssd_update_title(ssd, true);
+        /* no need to redraw when resize height only */
+        if (!(cause == SSD_UPDATE_CAUSE_SIZE && ssd->view_width == view_w)) {
+            ssd_update_title(ssd, cause);
         }
     }
 
@@ -696,9 +653,6 @@ static void ssd_update_buffer(struct ky_scene_buffer *buffer, float scale, void 
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
         ssd_part_update_theme_buffer(part, part->ssd->kywc_view->activated);
         break;
-    case SSD_TITLE_TEXT:
-        ssd_update_title(part->ssd, true);
-        break;
     }
     kywc_log(KYWC_DEBUG, "%s redraw in %f", ssd_part_name[part->type], scale);
 }
@@ -706,13 +660,8 @@ static void ssd_update_buffer(struct ky_scene_buffer *buffer, float scale, void 
 static void ssd_destroy_buffer(struct ky_scene_buffer *buffer, void *data)
 {
     struct ssd_part *part = data;
-
     kywc_log(KYWC_DEBUG, "%s node destroy", ssd_part_name[part->type]);
-    /* only destroy title text buffers, others are destroy in theme */
-    if (part->type == SSD_TITLE_TEXT) {
-        kywc_log(KYWC_DEBUG, "%s buffer destroy", ssd_part_name[part->type]);
-        wlr_buffer_drop(ky_scene_buffer_get_buffer(buffer));
-    }
+    /* buffers are destroyed in theme */
 }
 
 static void ssd_create_parts(struct ssd *ssd, float scale)
@@ -736,10 +685,14 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
         }
 
         if (i < SSD_TITLE_RECT) {
-            struct ky_scene_buffer *buf;
-            buf = scaled_buffer_create(parent, scale, ssd_update_buffer, ssd_destroy_buffer,
-                                       &ssd->parts[i]);
-            ssd->parts[i].node = ky_scene_node_from_buffer(buf);
+            if (i == SSD_TITLE_TEXT) {
+                ssd->title_text = widget_create(parent);
+                ssd->parts[i].node = ky_scene_node_from_widget(ssd->title_text);
+            } else {
+                struct ky_scene_buffer *buf = scaled_buffer_create(
+                    parent, scale, ssd_update_buffer, ssd_destroy_buffer, &ssd->parts[i]);
+                ssd->parts[i].node = ky_scene_node_from_buffer(buf);
+            }
             ssd->parts[i].scale = scale;
 
             /* set_buffer will emit output_enter,
