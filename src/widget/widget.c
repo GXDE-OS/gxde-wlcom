@@ -374,3 +374,16 @@ struct widget *widget_create(struct ky_scene_tree *parent)
 
     return widget;
 }
+
+void widget_get_size(struct widget *widget, int *width, int *height)
+{
+    *width = 0;
+    *height = 0;
+
+    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    if (!buffer) {
+        return;
+    }
+
+    painter_buffer_unscaled_size(buffer, width, height);
+}
