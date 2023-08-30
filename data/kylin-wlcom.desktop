@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Kylin Wlcom
+Comment=The Kylin Wayland Compositor
+Exec=kylin-wlcom -s ukui-session
+Type=Application
