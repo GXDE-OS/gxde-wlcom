@@ -38,6 +38,10 @@ void input_prop_and_state_debug(struct input *input);
 
 void input_manager_switch_vt(unsigned vt);
 
+struct seat *seat_by_name(const char *seat_name);
+
+void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size);
+
 /**
  * libinput helper functions
  */

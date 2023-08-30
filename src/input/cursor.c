@@ -604,6 +604,26 @@ static void cursor_node_handle_destroy(struct wl_listener *listener, void *data)
     cursor->signal.notify = cursor_handle_##signal;                                                \
     wl_signal_add(&wlr_cursor->events.signal, &cursor->signal);
 
+void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size)
+{
+    bool need_set = !cursor->xcursor_manager;
+    if (!need_set) {
+        bool same_theme = (!cursor->xcursor_manager->name && !theme) ||
+                          (theme && cursor->xcursor_manager->name &&
+                           strcmp(theme, cursor->xcursor_manager->name) == 0);
+        need_set = !same_theme || cursor->xcursor_manager->size != size;
+    }
+    if (!need_set) {
+        return;
+    }
+
+    /* destroy the prev one, NULL is ok */
+    wlr_xcursor_manager_destroy(cursor->xcursor_manager);
+    cursor->xcursor_manager = wlr_xcursor_manager_create(theme, size);
+    /* apply the new configuration */
+    cursor_rebase(cursor);
+}
+
 struct cursor *cursor_create(struct seat *seat)
 {
     struct cursor *cursor = calloc(1, sizeof(struct cursor));
@@ -629,7 +649,7 @@ struct cursor *cursor_create(struct seat *seat)
     uint32_t size = xcursor_size ? atoi(xcursor_size) : 24;
 
     /* xcursor manager per seat for cursor theme */
-    cursor->xcursor_manager = wlr_xcursor_manager_create(xcursor_theme, size);
+    cursor_set_xcursor_manager(cursor, xcursor_theme, size);
 
     CURSOR_ADD_SIGNAL(motion);
     CURSOR_ADD_SIGNAL(motion_absolute);

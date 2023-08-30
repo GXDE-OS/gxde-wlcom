@@ -340,6 +340,24 @@ static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *seat_name, *cursor_theme;
+    uint32_t cursor_size;
+    CK(sd_bus_message_read(m, "ssu", &seat_name, &cursor_theme, &cursor_size));
+
+    struct seat *seat = seat_by_name(seat_name);
+    if (!seat) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    cursor_set_xcursor_manager(seat->cursor, cursor_theme, cursor_size);
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllInputs", "", "a(ss)", list_inputs, 0),
@@ -351,6 +369,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
+    SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
     SD_BUS_VTABLE_END,
 };
 
