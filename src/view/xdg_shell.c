@@ -361,14 +361,6 @@ static void xdg_view_handle_set_app_id(struct wl_listener *listener, void *data)
     view_set_app_id(&xdg_view->view, app_id);
 }
 
-static bool xdg_view_has_shadow(struct xdg_view *xdg_view)
-{
-    // FIXME: map with maximized or fullscren
-    /* often have invisible portions like drop-shadows */
-    struct wlr_xdg_surface_state *current = &xdg_view->wlr_xdg_surface->current;
-    return current->geometry.x || current->geometry.y;
-}
-
 static void xdg_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, map);
@@ -383,7 +375,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     view_set_title(&xdg_view->view, toplevel->title);
     xdg_view_handle_set_parent(&xdg_view->set_parent, NULL);
 
-    bool need_shadow = !xdg_view_has_shadow(xdg_view) || xdg_view->view.base.need_ssd;
+    bool need_shadow = xdg_view->view.base.need_ssd;
     view_set_shadow(&xdg_view->view, need_shadow);
 
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
