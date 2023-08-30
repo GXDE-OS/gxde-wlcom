@@ -163,7 +163,9 @@ static void handle_view_title(struct wl_listener *listener, void *data)
     struct wlr_foreign_toplevel_handle_v1 *toplevel = foreign->toplevel_handle;
     struct kywc_view *view = foreign->toplevel_view;
 
-    wlr_foreign_toplevel_handle_v1_set_title(toplevel, view->title);
+    if (view->title) {
+        wlr_foreign_toplevel_handle_v1_set_title(toplevel, view->title);
+    }
 }
 
 static void handle_view_app_id(struct wl_listener *listener, void *data)
@@ -172,15 +174,14 @@ static void handle_view_app_id(struct wl_listener *listener, void *data)
     struct wlr_foreign_toplevel_handle_v1 *toplevel = foreign->toplevel_handle;
     struct kywc_view *view = foreign->toplevel_view;
 
-    wlr_foreign_toplevel_handle_v1_set_app_id(toplevel, view->app_id);
+    if (view->app_id) {
+        wlr_foreign_toplevel_handle_v1_set_app_id(toplevel, view->app_id);
+    }
 }
 
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct wlr_foreign *foreign = wl_container_of(listener, foreign, view_unmap);
-
-    wl_list_remove(&foreign->view_map.link);
-    wl_list_remove(&foreign->view_unmap.link);
 
     if (foreign->toplevel_handle) {
         wlr_foreign_toplevel_handle_v1_destroy(foreign->toplevel_handle);
@@ -262,6 +263,8 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 {
     struct wlr_foreign *foreign = wl_container_of(listener, foreign, view_destroy);
     wl_list_remove(&foreign->view_destroy.link);
+    wl_list_remove(&foreign->view_map.link);
+    wl_list_remove(&foreign->view_unmap.link);
     free(foreign);
 }
 
