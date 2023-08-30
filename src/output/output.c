@@ -729,15 +729,10 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
     if (current->enabled) {
         struct kywc_box geo = output->geometry;
-        bool need_update = !old.enabled;
-
-        if (!need_update) {
-            /* only update usable area when geometry changed */
-            output_update_geometry(output, &output->geometry);
-            need_update = !kywc_box_equal(&geo, &output->geometry);
-        }
-
-        if (need_update) {
+        output_update_geometry(output, &output->geometry);
+        geometry_changed = !kywc_box_equal(&geo, &output->geometry);
+        /* only update usable area when geometry changed */
+        if (!old.enabled || geometry_changed) {
             output_update_usable_area(output, &geo);
             if (!kywc_box_equal(&geo, &output->usable_area)) {
                 output->usable_area = geo;
