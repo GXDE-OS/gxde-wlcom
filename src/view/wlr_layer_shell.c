@@ -260,6 +260,7 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
     }
 
     if (committed) {
+        layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
         kywc_output_update_usable_area(&output->base);
     }
 }
