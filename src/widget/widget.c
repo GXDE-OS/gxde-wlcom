@@ -310,13 +310,23 @@ void widget_set_hovered(struct widget *widget, bool hovered)
 
 void widget_set_image(struct widget *widget, const char *svg, const char *hover_svg)
 {
-    free((void *)widget->svg);
-    free((void *)widget->hover_svg);
+    bool same_svg = widget->svg && svg && strcmp(widget->svg, svg) == 0;
+    bool same_hover_svg =
+        widget->hover_svg && hover_svg && strcmp(widget->hover_svg, hover_svg) == 0;
 
-    widget->svg = svg ? strdup(svg) : NULL;
-    widget->hover_svg = hover_svg ? strdup(hover_svg) : NULL;
+    if (!same_svg) {
+        free((void *)widget->svg);
+        widget->svg = svg ? strdup(svg) : NULL;
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+    }
+
+    if (!same_hover_svg) {
+        free((void *)widget->hover_svg);
+        widget->hover_svg = hover_svg ? strdup(hover_svg) : NULL;
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+    }
+
     widget->hoverable = hover_svg != NULL;
-    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
 void widget_set_font(struct widget *widget, const char *name, int size)
