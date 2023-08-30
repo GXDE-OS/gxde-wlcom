@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
 #ifndef _ACTION_H_
 #define _ACTION_H_
 

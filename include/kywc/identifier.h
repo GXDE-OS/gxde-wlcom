@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
 #ifndef _KYWC_IDENTIFIER_H_
 #define _KYWC_IDENTIFIER_H_
 

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
 #include <assert.h>
 #include <stdlib.h>
 #include <wlr/types/wlr_compositor.h>

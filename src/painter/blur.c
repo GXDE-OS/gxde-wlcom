@@ -1,33 +1,6 @@
-/*
- * Copyright © 2008 Kristian Høgsberg
- * Copyright © 2012 Intel Corporation
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice (including the
- * next paragraph) shall be included in all copies or substantial
- * portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
-/*
- * functions 'blur_surface' from weston project:
- * https://gitlab.freedesktop.org/wayland/weston/raw/master/shared/cairo-util.c
- */
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
 
 #include <math.h>
 #include <stdint.h>
@@ -35,12 +8,6 @@
 
 #include "painter_p.h"
 
-/**
- * Compile-time computation of number of items in a hardcoded array.
- *
- * @param a the array being measured.
- * @return the number of items hardcoded into the array.
- */
 #ifndef ARRAY_LENGTH
 #define ARRAY_LENGTH(a) (sizeof(a) / sizeof(a)[0])
 #endif
@@ -53,6 +20,10 @@ static bool point_in_circle(int width, int height, int x, int y, double radius)
     return dis <= radius;
 }
 
+/*
+ * functions 'blur_surface' from weston project:
+ * https://gitlab.freedesktop.org/wayland/weston/raw/master/shared/cairo-util.c
+ */
 static bool blur_surface(cairo_surface_t *surface, int margin, bool circle)
 {
     int32_t width, height, stride, x, y, z, w;
