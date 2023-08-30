@@ -300,19 +300,22 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
 {
     struct theme *theme = theme_manager_get_current();
 
-    static struct wlr_fbox src;
+    struct wlr_fbox src;
     struct wlr_buffer *buf = theme_buffer_load(theme, part->scale, type, &src);
+    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
+    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+        ky_scene_buffer_set_buffer(buffer, buf);
+    }
+    /* shortcut here if set_buffer triggered scaled buffer update */
+    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+        return;
+    }
 
-    static int width, height;
+    int width, height;
     if (type > BUTTON_CLOSE) {
         painter_buffer_unscaled_size(buf, &width, &height);
     } else {
         width = height = theme->button_width;
-    }
-
-    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
-        ky_scene_buffer_set_buffer(buffer, buf);
     }
     ky_scene_buffer_set_dest_size(buffer, width, height);
     ky_scene_buffer_set_source_box(buffer, &src);
