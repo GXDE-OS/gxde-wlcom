@@ -85,19 +85,21 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer)
         return;
     }
 
-    static struct wlr_fbox src;
-    static int width, height;
-    widget_buffer_get_size(widget, buffer, &src, &width, &height);
-
     struct wlr_buffer *old_buffer = ky_scene_buffer_get_buffer(scene_buffer);
-    ky_scene_buffer_set_buffer(scene_buffer, buffer);
-
-    ky_scene_buffer_set_source_box(scene_buffer, &src);
-    ky_scene_buffer_set_dest_size(scene_buffer, width, height);
-
     if (old_buffer != buffer) {
         wlr_buffer_drop(old_buffer);
     }
+    ky_scene_buffer_set_buffer(scene_buffer, buffer);
+    /* shortcut here if set_buffer triggered scaled buffer update */
+    if (ky_scene_buffer_get_buffer(scene_buffer) != buffer) {
+        return;
+    }
+
+    struct wlr_fbox src;
+    int width, height;
+    widget_buffer_get_size(widget, buffer, &src, &width, &height);
+    ky_scene_buffer_set_source_box(scene_buffer, &src);
+    ky_scene_buffer_set_dest_size(scene_buffer, width, height);
 }
 
 static void widget_do_update(struct widget *widget)
