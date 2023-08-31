@@ -80,7 +80,7 @@ static void widget_buffer_get_size(struct widget *widget, struct wlr_buffer *buf
     *height = widget->hoverable ? h / 2 : h;
 }
 
-static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer)
+static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer, bool redraw_only)
 {
     struct ky_scene_buffer *scene_buffer = widget->content.buffer;
 
@@ -93,7 +93,9 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer)
     if (old_buffer != buffer) {
         wlr_buffer_drop(old_buffer);
     }
-    ky_scene_buffer_set_buffer(scene_buffer, buffer);
+    if (old_buffer != buffer || redraw_only) {
+        ky_scene_buffer_set_buffer(scene_buffer, buffer);
+    }
     /* shortcut here if set_buffer triggered scaled buffer update */
     if (ky_scene_buffer_get_buffer(scene_buffer) != buffer) {
         return;
@@ -122,7 +124,7 @@ static void widget_do_update(struct widget *widget)
     /* draw it in scaled buffer update at the first time */
     if (widget->scale == 0.0 || !buffer) {
         widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
-        widget_set_buffer(widget, NULL);
+        widget_set_buffer(widget, NULL, false);
         return;
     }
 
@@ -134,7 +136,7 @@ static void widget_do_update(struct widget *widget)
             !(widget->pending_cause & (WIDGET_UPDATE_CAUSE_SIZE | WIDGET_UPDATE_CAUSE_SCALE));
         struct wlr_buffer *buf = widget_paint_buffer(widget, widget->scale, redraw_only);
         if (buf) {
-            widget_set_buffer(widget, buf);
+            widget_set_buffer(widget, buf, redraw_only);
         }
         widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
         return;
@@ -149,7 +151,7 @@ static void widget_do_update(struct widget *widget)
         } else {
             struct wlr_buffer *buf = widget_paint_buffer(widget, widget->scale, false);
             if (buf) {
-                widget_set_buffer(widget, buf);
+                widget_set_buffer(widget, buf, false);
             }
             widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
             return;
@@ -402,7 +404,7 @@ static void widget_update_buffer(struct ky_scene_buffer *buffer, float scale, vo
 
     struct wlr_buffer *buf = widget_paint_buffer(widget, scale, false);
     if (buf) {
-        widget_set_buffer(widget, buf);
+        widget_set_buffer(widget, buf, false);
     }
 }
 
