@@ -1,7 +1,7 @@
 
 # 如何贡献
 
-1. 将问题提交issues。提交issues不限定格式，而是需要提供一些合理的信息，例如执行了什么操作，你预计会发生什么，实际的现象以及复现问题的步骤。请尝试使用默认配置。如果可以的话，试着做一些[调试](#调试)。
+1. 将问题提交issues。提交issues暂时没有固定格式，只需要提供一些合理的信息，例如执行了什么操作，你预计会发生什么，实际的现象以及复现问题的步骤。如果可以的话，试着做一些[调试](#调试)，并附上日志输入，方便问题定位。
 
 2. 提交补丁完善代码。如果您希望引入重大更改或新功能，请首先在issues中进行讨论。
 
@@ -11,8 +11,8 @@
 
 如果合成器崩溃，可在构建时使用ASAN/UBSAN来回溯
 
-    meson -Db_sanitize=address,undefined build/
-    ninja -C build/
+    meson setup build -Dbuildtype=debug -Db_sanitize=address,undefined
+    ninja -C build
 
 ## Debug日志
 
@@ -20,11 +20,11 @@
 
     WAYLAND_DEBUG=1
 
-服务端debug日志默认路径
+服务端日志默认路径
 
     $HOME/.log/kylin-wlcom.log
 
-可通过入参直接打印debug信息
+可通过入参`-Dlogtostdout`直接打印日志到stdout
 
     "Usage: kylin-wlcom [options] [command]"
     "  -d, --debug              Enables full logging, including debug information.\n"
@@ -32,13 +32,9 @@
 
 ## 输出
 
-如果你认为damage有问题，可这样运行kylin-wlcom
+如果显示渲染输出存在问题，可在编译时选择kylin-wlcom的scene实现，进行基本的定位
 
-    WLR_SCENE_DEBUG_DAMAGE=highlight ./kylin-wlcom
-
-若要排除运行时的驱动问题，可按如下方式运行
-
-    WLR_RENDERER=pixman ./kylin-wlcom
+    meson setup build -Dwlr_scene=true -Dky_scene=false
 
 ## 输入
 
@@ -55,7 +51,7 @@
 
 代码风格参照linux内核代码，并使用clang工具进行调整，例如
 
-    clang-format-15 -i src/view/workspace.c
+    clang-format -i src/view/workspace.c
 
 # Commit信息
 
@@ -69,17 +65,4 @@
 - 不使用句号
 
 commit信息标题请控制在74个字符以内。
-
-# 版本升级
-
-通常只有首席维护人员会升级，但为了不忘记任何关键步骤，或在其他人有需要使用的情况下，请遵循如下步骤:
-
-1. 如果合适，请更新 `subprojects/wlroots.wrap` 中的 `revision` ，并且运行
- `git commit -m 'wlroots.wrap: use A.B.C'`
-2. 更新发布的 `NEWS.md` 并且运行 `git commit -m 'NEWS.md: update notes on X.Y.Z'`
-3. 在 `meson.build` 中更新版本和wlroots库版本(如果需要更新wlroots)，然后运行
-  `git commit -m 'build: bump version to X.Y.Z'`
-4. 运行 `git tag -a X.Y.Z` ，commit消息的第一行应该是版本号，正文应该是从标题中删除散列字符(#)的 `NEWS.md` 添加，否则这些字符将被git忽略
-5. 在仓库中新建一个 'Release' 来发行版本
-6. 更新手册页
 

@@ -23,18 +23,18 @@
 
 构建时添加参数:
 
-    meson build/ -Db_sanitize=address,undefined
+    meson setup build -Db_sanitize=address,undefined
     ninja -C build
 
 ## 打印
 
 设置debug信息输出到屏幕: 
 
-    ./kylin-wlcom -d -D logtostdout.
+    ./kylin-wlcom -d -Dlogtostdout.
 
 不开启xwayland: 
 
-    ./kylin-wlcom -D noxwayland
+    ./kylin-wlcom -Dnoxwayland
 
 # wlcom支持哪些窗口特效?
 
