@@ -326,6 +326,11 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
 
     /* get view from surface */
     surface->view = view_try_from_wlr_surface(surface->wlr_surface);
+    if (!surface->view) {
+        kywc_log(KYWC_WARN, "surface is not a toplevel");
+        return;
+    }
+
     surface->view->base.skip_taskbar = surface->skip_taskbar;
     kde_plasma_surface_apply_role(surface);
 
