@@ -317,7 +317,9 @@ static uint32_t gesture_string_parse_directions(const char *str)
     char **split_str = split_string(str, "+", &len);
 
     for (size_t i = 0; i < len; i++) {
-        if (strcmp(split_str[i], "up") == 0) {
+        if (strcmp(split_str[i], "none") == 0) {
+            directions |= GESTURE_DIRECTION_NONE;
+        } else if (strcmp(split_str[i], "up") == 0) {
             directions |= GESTURE_DIRECTION_UP;
         } else if (strcmp(split_str[i], "down") == 0) {
             directions |= GESTURE_DIRECTION_DOWN;
@@ -531,9 +533,9 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
             continue;
         }
         if ((gesture_state->device & binding->devices) &&
-            (gesture_state->directions & binding->directions) &&
-            (binding->edges == GESTURE_EDGE_NONE ||
-             (binding->edges != GESTURE_EDGE_NONE && gesture_state->edge & binding->edges))) {
+            (binding->directions == GESTURE_DIRECTION_NONE ||
+             gesture_state->directions & binding->directions) &&
+            (binding->edges == GESTURE_EDGE_NONE || gesture_state->edge & binding->edges)) {
             kywc_log(KYWC_DEBUG, "start gesture binding: %s", binding->desc);
             if (binding->action) {
                 binding->action(binding, binding->data);
