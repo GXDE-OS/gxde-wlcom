@@ -657,7 +657,8 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
         return;
     }
 
-    if (kywc_view->minimized || kywc_view->fullscreen || kywc_view->has_initial_position) {
+    if (kywc_view->maximized || kywc_view->minimized || kywc_view->fullscreen ||
+        kywc_view->has_initial_position) {
         place_insert_entry(place, entry, -1);
         return;
     }
