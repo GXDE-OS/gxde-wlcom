@@ -24,25 +24,15 @@ struct kde_blur_manager {
 
 struct kde_blur {
     struct wl_list link;
+    struct wl_resource *resource;
     struct kde_blur_manager *manager;
 
     struct wlr_surface *wlr_surface;
+    struct wl_listener surface_destroy;
 
     pixman_region32_t region, pending_region;
     uint32_t strength, pending_strength;
 };
-
-static struct kde_blur *kde_blur_from_wlr_surface(struct kde_blur_manager *manager,
-                                                  struct wlr_surface *wlr_surface)
-{
-    struct kde_blur *blur;
-    wl_list_for_each(blur, &manager->kde_blurs, link) {
-        if (blur->wlr_surface == wlr_surface) {
-            return blur;
-        }
-    }
-    return NULL;
-}
 
 static void kde_blur_handle_commit(struct wl_client *client, struct wl_resource *resource)
 {
@@ -85,7 +75,9 @@ static const struct org_kde_kwin_blur_interface kde_blur_impl = {
 
 static void kde_blur_destroy(struct kde_blur *blur)
 {
+    wl_resource_set_destructor(blur->resource, NULL);
     wl_list_remove(&blur->link);
+    wl_list_remove(&blur->surface_destroy.link);
     pixman_region32_fini(&blur->region);
     pixman_region32_fini(&blur->pending_region);
     free(blur);
@@ -94,6 +86,12 @@ static void kde_blur_destroy(struct kde_blur *blur)
 static void kde_blur_handle_resource_destroy(struct wl_resource *resource)
 {
     struct kde_blur *blur = wl_resource_get_user_data(resource);
+    kde_blur_destroy(blur);
+}
+
+static void blur_handle_surface_destroy(struct wl_listener *listener, void *data)
+{
+    struct kde_blur *blur = wl_container_of(listener, blur, surface_destroy);
     kde_blur_destroy(blur);
 }
 
@@ -118,6 +116,7 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
         return;
     }
 
+    blur->resource = resource;
     wl_resource_set_implementation(resource, &kde_blur_impl, blur,
                                    kde_blur_handle_resource_destroy);
 
@@ -128,6 +127,8 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
     pixman_region32_init(&blur->pending_region);
 
     blur->wlr_surface = wlr_surface;
+    blur->surface_destroy.notify = blur_handle_surface_destroy;
+    wl_signal_add(&wlr_surface->events.destroy, &blur->surface_destroy);
 }
 
 static void handle_unset(struct wl_client *client, struct wl_resource *manager_resource,
@@ -139,12 +140,13 @@ static void handle_unset(struct wl_client *client, struct wl_resource *manager_r
     }
 
     struct kde_blur_manager *manager = wl_resource_get_user_data(manager_resource);
-    struct kde_blur *blur = kde_blur_from_wlr_surface(manager, wlr_surface);
-    if (!blur) {
-        return;
+    struct kde_blur *blur, *tmp;
+    wl_list_for_each_safe(blur, tmp, &manager->kde_blurs, link) {
+        if (blur->wlr_surface != wlr_surface) {
+            continue;
+        }
+        kde_blur_destroy(blur);
     }
-
-    kde_blur_destroy(blur);
 }
 
 static const struct org_kde_kwin_blur_manager_interface kde_blur_manager_impl = {
