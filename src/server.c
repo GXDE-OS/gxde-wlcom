@@ -260,10 +260,9 @@ void server_finish(struct server *server)
 {
     wl_event_source_remove(server->dbus);
 
-    wl_display_destroy_clients(server->display);
     /* make sure all xwayland-shells are destroyed */
     xwayland_server_destroy();
-
+    wl_display_destroy_clients(server->display);
     wl_display_destroy(server->display);
 
     /* call all server_destroy listeners */
