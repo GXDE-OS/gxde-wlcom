@@ -4,6 +4,7 @@ wlcom_sources += files(
   'layout.c',
   'brightness.c',
   'colortemp.c',
+  'modes.c',
 )
 
 if have_kde_output

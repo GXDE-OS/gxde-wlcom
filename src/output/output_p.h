@@ -50,6 +50,8 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
 
 void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp);
 
+void output_add_common_modes(struct output *output);
+
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);
 #else

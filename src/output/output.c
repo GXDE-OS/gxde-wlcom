@@ -177,6 +177,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&output->events.update_usable_area);
     wl_signal_init(&output->events.update_late_usable_area);
 
+    output_add_common_modes(output);
     /* get props */
     wl_list_init(&kywc_output->prop.modes);
     output_get_prop(output, &kywc_output->prop);
