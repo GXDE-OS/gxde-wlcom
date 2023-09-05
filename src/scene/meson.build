@@ -1,5 +1,6 @@
 wlcom_sources += files(
   'animation.c',
+  'box.c',
   'scene.c',
   'surface.c',
   'subsurface.c',
