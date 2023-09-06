@@ -134,7 +134,6 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
                               struct kywc_output *kywc_output);
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view);
 
-// TODO: call by menu or shortcut key
 void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above);
 void kywc_view_toggle_kept_above(struct kywc_view *kywc_view);
 

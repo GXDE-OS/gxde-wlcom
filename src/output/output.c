@@ -872,7 +872,7 @@ struct output *output_adjacent_output(struct output *output, enum layout_edge ed
 
     struct wlr_output_layout *layout = output_manager->server->layout;
     struct wlr_output *wlr_output = wlr_output_layout_output_at(layout, lx, ly);
-    return wlr_output ? output_from_wlr_output(wlr_output) : output;
+    return wlr_output ? output_from_wlr_output(wlr_output) : NULL;
 #else
     struct wlr_output_layout *layout = output_manager->server->layout;
     struct wlr_output *wlr_output = NULL;

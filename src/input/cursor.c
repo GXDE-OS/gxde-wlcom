@@ -90,7 +90,7 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
         }
     }
 
-    /* mark grab_mode to false, hover to node again */
+    /* mark hold_mode to false, hover to node again */
     cursor->hold_mode = false;
 
     /* cursor has moved to another node */
