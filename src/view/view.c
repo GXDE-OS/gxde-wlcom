@@ -59,8 +59,11 @@ static void view_update_output(struct view *view)
 
     if (old != view->output) {
         wl_list_remove(&view->output_destroy.link);
-        wl_signal_add(&view->output->events.destroy, &view->output_destroy);
-
+        if (view->output) {
+            wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+        } else {
+            wl_list_init(&view->output_destroy.link);
+        }
         wl_signal_emit_mutable(&view->events.output, old);
     }
 }
