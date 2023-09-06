@@ -718,14 +718,17 @@ done:
 static void entry_handle_view_position(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_position);
+    struct kywc_view *kywc_view = entry->view;
+    if (!kywc_view->mapped) {
+        return;
+    }
+
     if (entry->skip_update) {
         entry->skip_update = false;
         return;
     }
 
-    struct kywc_view *kywc_view = entry->view;
     struct view *view = view_from_kywc_view(kywc_view);
-
     /* the view is on the most output */
     struct kywc_output *kywc_output = view->output;
     struct output *output = output_from_kywc_output(kywc_output);
@@ -749,6 +752,9 @@ static void entry_handle_view_minimize(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_minimize);
     struct kywc_view *kywc_view = entry->view;
+    if (!kywc_view->mapped) {
+        return;
+    }
 
     if (kywc_view->minimized) {
         place_update_entry(entry->place, entry, -1);
