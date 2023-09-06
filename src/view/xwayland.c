@@ -69,7 +69,7 @@ struct xwayland_view {
     // struct wl_listener set_pid;
     // struct wl_listener set_startup_id;
     // struct wl_listener set_window_type;
-    // struct wl_listener set_hints;
+    struct wl_listener set_hints;
     struct wl_listener set_decorations;
     struct wl_listener set_strut_partial;
     struct wl_listener set_override_redirect;
@@ -667,6 +667,18 @@ static void xwayland_view_handle_set_parent(struct wl_listener *listener, void *
     view_set_parent(&xwayland_view->view, parent_view);
 }
 
+static void xwayland_view_handle_set_hints(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_hints);
+    enum wlr_xwayland_icccm_input_model input_model =
+        wlr_xwayland_icccm_input_model(xwayland_view->wlr_xwayland_surface);
+
+    if (input_model == WLR_ICCCM_INPUT_MODEL_NONE || input_model == WLR_ICCCM_INPUT_MODEL_GLOBAL) {
+        xwayland_view->view.base.focusable = false;
+        xwayland_view->view.base.activatable = false;
+    }
+}
+
 static void xwayland_view_handle_set_decorations(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_decorations);
@@ -913,6 +925,7 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
     wl_list_remove(&xwayland_view->set_title.link);
     wl_list_remove(&xwayland_view->set_class.link);
     wl_list_remove(&xwayland_view->set_parent.link);
+    wl_list_remove(&xwayland_view->set_hints.link);
     wl_list_remove(&xwayland_view->set_decorations.link);
     wl_list_remove(&xwayland_view->set_override_redirect.link);
     wl_list_remove(&xwayland_view->output_update_usable_area.link);
@@ -1000,6 +1013,8 @@ static void xwayland_view_create(struct wlr_xwayland_surface *wlr_xwayland_surfa
     xwayland_view->set_parent.notify = xwayland_view_handle_set_parent;
     wl_signal_add(&wlr_xwayland_surface->events.set_parent, &xwayland_view->set_parent);
 
+    xwayland_view->set_hints.notify = xwayland_view_handle_set_hints;
+    wl_signal_add(&wlr_xwayland_surface->events.set_hints, &xwayland_view->set_hints);
     xwayland_view->set_decorations.notify = xwayland_view_handle_set_decorations;
     wl_signal_add(&wlr_xwayland_surface->events.set_decorations, &xwayland_view->set_decorations);
 
