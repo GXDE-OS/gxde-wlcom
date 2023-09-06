@@ -1247,13 +1247,10 @@ static void handle_destroy(struct wl_listener *listener, void *data)
 
     if (manager->clockskew) {
         wl_event_source_remove(manager->clockskew);
-        free(manager->clockskew);
     }
 
     wl_event_source_remove(manager->adjust_timer);
     wl_event_source_remove(manager->slow_update_start_timer);
-    free(manager->adjust_timer);
-    free(manager->slow_update_start_timer);
 
     /* destroy kde_output devices*/
     struct kde_output *output, *output_tmp;
@@ -1391,7 +1388,7 @@ bool kde_nightcolor_manager_create(struct config_manager *config_manager)
     kywc_output_add_new_listener(&manager->new_output);
 
     manager->destroy.notify = handle_destroy;
-    wl_signal_add(&manager->config->events.destroy, &manager->destroy);
+    wl_display_add_destroy_listener(display, &manager->destroy);
 
     nightcolor_manager_init(manager);
 
