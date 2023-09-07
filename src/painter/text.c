@@ -56,14 +56,16 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
     text_extents(info->font, info->font_size, "fg", &width, &height);
     double ly = (double)(box->height - height) / 2;
     ly = ly < 0 ? 0 : ly;
+    double lx = info->auto_resize ? 0 : ly;
 
     cairo_set_source_rgba(cairo, info->font_rgba[0], info->font_rgba[1], info->font_rgba[2],
                           info->font_rgba[3]);
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_move_to(cairo, box->x, box->y + ly);
+    cairo_move_to(cairo, box->x + lx, box->y + ly);
 
     PangoLayout *layout = pango_cairo_create_layout(cairo);
-    pango_layout_set_width(layout, (box->width - (info->submenu ? width * 2 : 0)) * PANGO_SCALE);
+    int left = box->width - lx - (info->submenu ? width * 2 : 0);
+    pango_layout_set_width(layout, left * PANGO_SCALE);
     pango_layout_set_text(layout, info->text, -1);
     pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
     pango_layout_set_alignment(layout, (PangoAlignment)info->align);
@@ -78,7 +80,7 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
     g_object_unref(layout);
 
     if (info->submenu) {
-        cairo_move_to(cairo, box->width - width, box->y + ly);
+        cairo_move_to(cairo, box->width - width - lx, box->y + ly);
         PangoLayout *layout = pango_cairo_create_layout(cairo);
         pango_layout_set_width(layout, -1);
         pango_layout_set_text(layout, ">", -1);
