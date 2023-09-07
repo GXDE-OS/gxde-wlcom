@@ -185,8 +185,15 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     cairo_surface_flush(surf);
 }
 
-static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info)
+static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bool clear)
 {
+    /* clear the surface */
+    if (clear) {
+        cairo_set_operator(buffer->cairo, CAIRO_OPERATOR_CLEAR);
+        cairo_paint(buffer->cairo);
+        cairo_move_to(buffer->cairo, 0, 0);
+    }
+
     /* corner, solid and border */
     if (info->solid_rgba) {
         if (info->hover_rgba) {
@@ -259,7 +266,7 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
         return NULL;
     }
 
-    if (!painter_draw(buffer, info)) {
+    if (!painter_draw(buffer, info, false)) {
         wlr_buffer_drop(&buffer->base);
         return NULL;
     }
@@ -274,11 +281,10 @@ bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info)
         return false;
     }
 
-    /* clear the surface */
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(buf->cairo);
-
-    return painter_draw(buf, info);
+    /* fix size to buffer unscaled size */
+    info->width = buf->width;
+    info->height = buf->height;
+    return painter_draw(buf, info, true);
 }
 
 void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height)
