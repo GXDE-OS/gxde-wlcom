@@ -20,7 +20,7 @@
 #include "widget/widget.h"
 
 #define ITEM_WIDTH (160)
-#define ITEM_HEIGHT (40)
+#define ITEM_HEIGHT (36)
 #define MENU_GAP (2)
 
 struct menu_item {
@@ -226,6 +226,7 @@ static void window_menu_set_enabled(struct window_menu *window_menu, bool enable
         return;
     }
 
+    ky_scene_node_raise_to_top(ky_scene_node_from_tree(manager->tree));
     seat_start_pointer_grab(window_menu->seat, &window_menu->pointer_grab);
     seat_start_keyboard_grab(window_menu->seat, &window_menu->keyboard_grab);
     seat_start_touch_grab(window_menu->seat, &window_menu->touch_grab);
@@ -484,7 +485,7 @@ static void menu_draw_item(struct menu_item *item)
     widget_set_front_color(item->content, theme->active_text_color);
     widget_set_hovered_color(item->content, theme->accent_color);
 
-    widget_set_border(item->content, theme->inactive_border_color, border_mask, 1);
+    widget_set_border(item->content, theme->inactive_bg_color, border_mask, 1);
     widget_set_round_coner(item->content, corner_mask, 8);
 
     widget_update(item->content, true);
@@ -626,14 +627,14 @@ static void window_menu_set_position(struct window_menu *window_menu, int x, int
 
 static void menu_add_more_action_submenu(struct menu *menu)
 {
-    struct menu_item *item = menu_add_item(menu, tr("  More(M)"), KEY_M, WINDOW_ACTION_NONE);
+    struct menu_item *item = menu_add_item(menu, tr("More(M)"), KEY_M, WINDOW_ACTION_NONE);
     struct menu *submenu = menu_create(item->tree, item);
     item->submenu = submenu;
 
-    menu_add_item(submenu, tr("  Move(M)"), KEY_M, WINDOW_ACTION_MOVE);
-    menu_add_item(submenu, tr("  Resize(R)"), KEY_R, WINDOW_ACTION_RESIZE);
-    menu_add_item(submenu, tr("  Keep-Above(A)"), KEY_A, WINDOW_ACTION_KEEP_ABOVE);
-    menu_add_item(submenu, tr("  Keep-Below(B)"), KEY_B, WINDOW_ACTION_KEEP_BELOW);
+    menu_add_item(submenu, tr("Move(M)"), KEY_M, WINDOW_ACTION_MOVE);
+    menu_add_item(submenu, tr("Resize(R)"), KEY_R, WINDOW_ACTION_RESIZE);
+    menu_add_item(submenu, tr("Keep-Above(A)"), KEY_A, WINDOW_ACTION_KEEP_ABOVE);
+    menu_add_item(submenu, tr("Keep-Below(B)"), KEY_B, WINDOW_ACTION_KEEP_BELOW);
     menu_render_items(submenu);
 }
 
@@ -660,10 +661,10 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the toplevel menu: items and submenus */
     window_menu->toplevel = menu_create(manager->tree, NULL);
-    menu_add_item(window_menu->toplevel, tr("  Minimize(N)"), KEY_N, WINDOW_ACTION_MINIMIZE);
-    menu_add_item(window_menu->toplevel, tr("  Maximize(X)"), KEY_X, WINDOW_ACTION_MAXIMIZE);
-    menu_add_item(window_menu->toplevel, tr("  Fullscreen(F)"), KEY_F, WINDOW_ACTION_FULLSCREEN);
-    menu_add_item(window_menu->toplevel, tr("  Close(C)"), KEY_C, WINDOW_ACTION_CLOSE);
+    menu_add_item(window_menu->toplevel, tr("Minimize(N)"), KEY_N, WINDOW_ACTION_MINIMIZE);
+    menu_add_item(window_menu->toplevel, tr("Maximize(X)"), KEY_X, WINDOW_ACTION_MAXIMIZE);
+    menu_add_item(window_menu->toplevel, tr("Fullscreen(F)"), KEY_F, WINDOW_ACTION_FULLSCREEN);
+    menu_add_item(window_menu->toplevel, tr("Close(C)"), KEY_C, WINDOW_ACTION_CLOSE);
     menu_add_more_action_submenu(window_menu->toplevel);
     menu_render_items(window_menu->toplevel);
 
