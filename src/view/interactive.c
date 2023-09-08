@@ -250,15 +250,15 @@ static void interactive_move_constraints(struct interactive_grab *grab, int *x, 
     int uy2 = usable->y + usable->height;
 
     /* window edge adsorption in left, right */
-    if (*x < current->x && x1 < usable->x && usable->x - x1 < VIEW_EDGE_GAP) {
+    if (abs(usable->x - x1) < VIEW_EDGE_GAP) {
         *x = usable->x + kywc_view->margin.off_x;
-    } else if (*x > current->x && x2 > ux2 && x2 - ux2 < VIEW_EDGE_GAP) {
+    } else if (abs(x2 - ux2) < VIEW_EDGE_GAP) {
         *x = ux2 - current->width - kywc_view->margin.off_width + kywc_view->margin.off_x;
     }
     /* top and bottom */
-    if (*y < current->y && y1 < usable->y && usable->y - y1 < VIEW_EDGE_GAP) {
+    if (abs(usable->y - y1) < VIEW_EDGE_GAP) {
         *y = usable->y + kywc_view->margin.off_y;
-    } else if (*y > current->y && y2 > uy2 && y2 - uy2 < VIEW_EDGE_GAP) {
+    } else if (abs(y2 - uy2) < VIEW_EDGE_GAP) {
         *y = uy2 - current->height - kywc_view->margin.off_height + kywc_view->margin.off_y;
     }
 
