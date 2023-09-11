@@ -7,8 +7,10 @@
 
 #include <linux/input-event-codes.h>
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_seat.h>
 
 #include "input/cursor.h"
+#include "nls.h"
 #include "output.h"
 #include "painter.h"
 #include "scene/scene.h"
@@ -24,11 +26,9 @@ enum {
     SSD_BUTTON_CLOSE,
 
     /* titlebar */
+    SSD_TITLE_ICON,
     SSD_CORNER_TOP_LEFT,
     SSD_CORNER_TOP_RIGHT,
-    /* one text buffer is enough.
-     * when resize or set_title, view always be active.
-     */
     SSD_TITLE_TEXT,
     SSD_TITLE_RECT,
 
@@ -69,11 +69,26 @@ enum ssd_update_cause {
     SSD_UPDATE_CAUSE_ALL = (1 << 7) - 1,
 };
 
+struct ssd_tooltip {
+    struct wl_list link;
+    struct widget *icon, *minimize, *maximize, *close;
+    struct wl_listener theme_update;
+
+    struct seat *seat;
+    struct wl_listener seat_destroy;
+
+    struct wl_event_source *timer;
+    int hovered_part;
+    bool timer_triggerd, timer_for_hidden;
+};
+
 struct ssd_manager {
     /* enable or disable all ssds */
     struct wl_list ssds;
+    struct wl_list tooltips;
 
     struct wl_listener new_view;
+    struct wl_listener new_seat;
     struct wl_listener server_destroy;
 };
 
@@ -119,13 +134,180 @@ struct ssd {
     int view_width, view_height;
 };
 
+static struct ssd_manager *manager = NULL;
+
 static const char ssd_part_name[][SSD_PART_COUNT] = {
-    "button_minimize",  "button_maximize",    "button_close", "corner_top_left",
-    "corner_top_right", "title_text",         "title_rect",   "border_top",
-    "border_right",     "border_bottom",      "border_left",  "extend_top_left",
-    "extend_top",       "extend_top_right",   "extend_right", "extend_bottom_right",
-    "extend_bottom",    "extend_bottom_left", "extend_left",
+    "button_minimize",     "button_maximize",  "button_close",       "title_icon",
+    "corner_top_left",     "corner_top_right", "title_text",         "title_rect",
+    "border_top",          "border_right",     "border_bottom",      "border_left",
+    "extend_top_left",     "extend_top",       "extend_top_right",   "extend_right",
+    "extend_bottom_right", "extend_bottom",    "extend_bottom_left", "extend_left",
 };
+
+/**
+ * button tooltip support
+ */
+
+static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat);
+
+static struct ssd_tooltip *ssd_tooltip_from_seat(struct seat *seat)
+{
+    struct ssd_tooltip *tooltip;
+    wl_list_for_each(tooltip, &manager->tooltips, link) {
+        if (tooltip->seat == seat) {
+            return tooltip;
+        }
+    }
+    return ssd_tooltip_create(seat);
+}
+
+static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
+{
+    struct ssd_tooltip *tooltip = ssd_tooltip_from_seat(seat);
+    if (!tooltip) {
+        return;
+    }
+
+    struct widget *widget;
+    switch (part) {
+    case SSD_BUTTON_MINIMIZE:
+        widget = tooltip->minimize;
+        break;
+    case SSD_BUTTON_MAXIMIZE:
+        widget = tooltip->maximize;
+        break;
+    case SSD_BUTTON_CLOSE:
+        widget = tooltip->close;
+        break;
+    case SSD_TITLE_ICON:
+        widget = tooltip->icon;
+        break;
+    default:
+        return;
+    }
+
+    if (!enabled) {
+        wl_event_source_timer_update(tooltip->timer, 0);
+        tooltip->timer_triggerd = false;
+        tooltip->timer_for_hidden = false;
+        widget_set_enabled(widget, false);
+        widget_update(widget, true);
+        return;
+    }
+
+    if (!tooltip->timer_triggerd) {
+        wl_event_source_timer_update(tooltip->timer, 500);
+        tooltip->hovered_part = part;
+        tooltip->timer_for_hidden = false;
+        return;
+    }
+
+    widget_set_enabled(widget, true);
+    widget_update(widget, true);
+
+    int x = seat->cursor->lx;
+    int y = seat->cursor->ly + 24;
+    int w, h;
+    widget_get_size(widget, &w, &h);
+
+    struct output *output = input_current_output(seat);
+    int max_x = output->geometry.x + output->geometry.width;
+    int max_y = output->geometry.y + output->geometry.height;
+    if (x + w > max_x) {
+        x = max_x - w;
+    }
+    if (y + h > max_y) {
+        y = seat->cursor->ly - h - 24;
+    }
+
+    struct ky_scene_node *node = ky_scene_node_from_widget(widget);
+    ky_scene_node_set_position(node, x, y);
+    ky_scene_node_raise_to_top(node);
+
+    tooltip->timer_for_hidden = true;
+    wl_event_source_timer_update(tooltip->timer, 10000);
+}
+
+static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
+{
+    struct theme *theme = theme_manager_get_current();
+
+    widget_set_text(widget, text, TEXT_ALIGN_CENTER, false);
+    widget_set_font(widget, theme->font_name, theme->font_size);
+    widget_set_max_size(widget, 1024, 1024);
+    widget_set_auto_resize(widget, true);
+    widget_set_backgrond_color(widget, theme->inactive_bg_color);
+    widget_set_front_color(widget, theme->active_text_color);
+    widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, 1);
+    widget_set_round_coner(widget, CORNER_MASK_ALL, 8);
+    widget_update(widget, true);
+}
+
+static void ssd_tooltip_draw_widgets(struct ssd_tooltip *tooltip)
+{
+    ssd_tooltip_draw_widget(tooltip->icon, tr("More actions for this window"));
+    ssd_tooltip_draw_widget(tooltip->minimize, tr("Minimize"));
+    ssd_tooltip_draw_widget(tooltip->maximize, tr("Maximize"));
+    ssd_tooltip_draw_widget(tooltip->close, tr("Close"));
+}
+
+static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *data)
+{
+    struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, theme_update);
+    ssd_tooltip_draw_widgets(tooltip);
+}
+
+static int handle_snap_box(void *data)
+{
+    struct ssd_tooltip *tooltip = data;
+    tooltip->timer_triggerd = true;
+    ssd_tooltip_show(tooltip->seat, tooltip->hovered_part, !tooltip->timer_for_hidden);
+    return 0;
+}
+
+static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *data)
+{
+    struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, seat_destroy);
+    wl_list_remove(&tooltip->seat_destroy.link);
+    wl_list_remove(&tooltip->link);
+
+    widget_destroy(tooltip->icon);
+    widget_destroy(tooltip->minimize);
+    widget_destroy(tooltip->maximize);
+    widget_destroy(tooltip->close);
+
+    wl_event_source_remove(tooltip->timer);
+    free(tooltip);
+}
+
+static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
+{
+    struct ssd_tooltip *tooltip = calloc(1, sizeof(struct ssd_tooltip));
+    if (!tooltip) {
+        return NULL;
+    }
+
+    tooltip->seat = seat;
+    tooltip->seat_destroy.notify = ssd_tooltip_handle_seat_destroy;
+    wl_signal_add(&seat->events.destroy, &tooltip->seat_destroy);
+    wl_list_insert(&manager->tooltips, &tooltip->link);
+
+    tooltip->theme_update.notify = ssd_tooltip_handle_theme_update;
+    theme_manager_add_update_listener(&tooltip->theme_update);
+
+    struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
+    tooltip->timer = wl_event_loop_add_timer(loop, handle_snap_box, tooltip);
+
+    /* create widgets in popup layer */
+    struct view_layer *layer = view_manager_get_layer(LAYER_POPUP, false);
+    tooltip->icon = widget_create(layer->tree);
+    tooltip->minimize = widget_create(layer->tree);
+    tooltip->maximize = widget_create(layer->tree);
+    tooltip->close = widget_create(layer->tree);
+    ssd_tooltip_draw_widgets(tooltip);
+
+    return tooltip;
+}
 
 static enum cursor_name get_resize_name(int type)
 {
@@ -167,6 +349,9 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_update_theme_buffer(part, true);
+        // fallthrough to icon
+    case SSD_TITLE_ICON:
+        ssd_tooltip_show(seat, part->type, true);
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
@@ -189,6 +374,9 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_update_theme_buffer(part, false);
+        // fallthrough to icon
+    case SSD_TITLE_ICON:
+        ssd_tooltip_show(seat, part->type, false);
         break;
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
         /* we have changed cursor image when hover */
@@ -206,6 +394,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     struct kywc_view *kywc_view = part->ssd->kywc_view;
     struct view *view = view_from_kywc_view(kywc_view);
     enum kywc_edges edges = KYWC_EDGE_NONE;
+
+    if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_TITLE_ICON) {
+        ssd_tooltip_show(seat, part->type, false);
+    }
 
     if (dual) {
         if (button != BTN_LEFT) {
@@ -238,6 +430,11 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     case SSD_BUTTON_MINIMIZE:
         if (LEFT_BUTTON_RELEASED(button, pressed)) {
             kywc_view_set_minimized(kywc_view, true);
+        }
+        return;
+    case SSD_TITLE_ICON:
+        if (LEFT_BUTTON_RELEASED(button, pressed) || RIGHT_BUTTON_RELEASED(button, pressed)) {
+            view_show_window_menu(view, seat, seat->cursor->lx, seat->cursor->ly);
         }
         return;
     case SSD_CORNER_TOP_LEFT ... SSD_BORDER_TOP:
@@ -325,6 +522,28 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
     ky_scene_buffer_set_source_box(buffer, &src);
 }
 
+static void ssd_part_set_icon_buffer(struct ssd_part *part)
+{
+    struct kywc_view *view = part->ssd->kywc_view;
+
+    struct wlr_buffer *buf = theme_icon_load(view->app_id, part->scale);
+    if (!buf) {
+        return;
+    }
+
+    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
+    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+        ky_scene_buffer_set_buffer(buffer, buf);
+    }
+    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+        return;
+    }
+
+    int width, height;
+    painter_buffer_unscaled_size(buf, &width, &height);
+    ky_scene_buffer_set_dest_size(buffer, width, height);
+}
+
 static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 {
     switch (part->type) {
@@ -339,6 +558,9 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
         break;
     case SSD_BUTTON_CLOSE:
         ssd_part_set_theme_buffer(part, change ? BUTTON_CLOSE_HOVER : BUTTON_CLOSE);
+        break;
+    case SSD_TITLE_ICON:
+        ssd_part_set_icon_buffer(part);
         break;
     case SSD_CORNER_TOP_LEFT:
         ssd_part_set_theme_buffer(part, change ? CORNER_TOP_LEFT_ACTIVE : CORNER_TOP_LEFT_INACTIVE);
@@ -366,7 +588,14 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 
 #define WRAP(w) (w > 0 ? w : 0)
 
-static void ssd_update_title(struct ssd *ssd, uint32_t cause)
+static void ssd_update_title_icon(struct ssd *ssd, uint32_t cause)
+{
+    struct theme *theme = theme_manager_get_current();
+    int y = theme->border_width + (theme->title_height - 24) / 2;
+    ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node, y, y);
+}
+
+static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
@@ -412,7 +641,7 @@ static void ssd_update_title(struct ssd *ssd, uint32_t cause)
     } else if (theme->text_justify == JUSTIFY_CENTER) {
         x = (theme->border_width * 2 + view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
-        if (text_width + 4 * view->geometry.width > max_width) {
+        if (text_width + 4 * theme->button_width > max_width) {
             x -= theme->button_width;
         }
     } else {
@@ -436,6 +665,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         ky_scene_node_set_position(ky_scene_node_from_tree(ssd->titlebar_tree), -border_w,
                                    -(title_h + border_w));
+        ssd_update_title_icon(ssd, cause);
     }
 
     /* only set button tree position when view w changed */
@@ -472,7 +702,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & (SSD_UPDATE_CAUSE_TITLE | SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_SIZE)) {
         /* no need to redraw when resize height only */
         if (!(cause == SSD_UPDATE_CAUSE_SIZE && ssd->view_width == view_w)) {
-            ssd_update_title(ssd, cause);
+            ssd_update_title_text(ssd, cause);
         }
     }
 
@@ -657,6 +887,9 @@ static void ssd_update_buffer(struct ky_scene_buffer *buffer, float scale, void 
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_update_theme_buffer(part, false);
         break;
+    case SSD_TITLE_ICON:
+        ssd_part_set_icon_buffer(part);
+        break;
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
         ssd_part_update_theme_buffer(part, part->ssd->kywc_view->activated);
         break;
@@ -699,13 +932,12 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
                 struct ky_scene_buffer *buf = scaled_buffer_create(
                     parent, scale, ssd_update_buffer, ssd_destroy_buffer, &ssd->parts[i]);
                 ssd->parts[i].node = ky_scene_node_from_buffer(buf);
+                ssd->parts[i].scale = scale;
+                /* set_buffer will emit output_enter,
+                 * otherwise we cannot get initial output the view in.
+                 */
+                ssd_part_update_theme_buffer(&ssd->parts[i], false);
             }
-            ssd->parts[i].scale = scale;
-
-            /* set_buffer will emit output_enter,
-             * otherwise we cannot get initial output the view in.
-             */
-            ssd_part_update_theme_buffer(&ssd->parts[i], false);
         } else {
             float *color = (float[4]){ 0.f, 0.f, 0.f, 0.f };
             if (i == SSD_TITLE_RECT) {
@@ -882,7 +1114,6 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 
 static void handle_new_view(struct wl_listener *listener, void *data)
 {
-    struct ssd_manager *manager = wl_container_of(listener, manager, new_view);
     struct kywc_view *kywc_view = data;
 
     struct ssd *ssd = calloc(1, sizeof(struct ssd));
@@ -905,7 +1136,6 @@ static void handle_new_view(struct wl_listener *listener, void *data)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
-    struct ssd_manager *manager = wl_container_of(listener, manager, server_destroy);
     wl_list_remove(&manager->server_destroy.link);
     wl_list_remove(&manager->new_view.link);
     free(manager);
@@ -913,12 +1143,13 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 bool server_decoration_manager_create(struct view_manager *view_manager)
 {
-    struct ssd_manager *manager = calloc(1, sizeof(struct ssd_manager));
+    manager = calloc(1, sizeof(struct ssd_manager));
     if (!manager) {
         return false;
     }
 
     wl_list_init(&manager->ssds);
+    wl_list_init(&manager->tooltips);
 
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(view_manager->server, &manager->server_destroy);
