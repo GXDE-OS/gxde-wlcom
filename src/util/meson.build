@@ -1,6 +1,7 @@
 crypto = dependency('openssl')
 
-util_resources = files(
+util_sources = files(
+  'fscan.c',
   'global.c',
   'identifier.c',
   'logger.c',
@@ -10,7 +11,7 @@ util_resources = files(
 
 util_static = static_library(
   'util_static',
-  util_resources,
+  util_sources,
   include_directories: wlcom_inc,
   dependencies : crypto,
   build_by_default : false,
