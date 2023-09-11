@@ -249,6 +249,8 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         theme_destroy(theme);
     }
 
+    icon_theme_destroy(manager->icon_theme);
+
     free(manager->override.font_name);
     free(manager);
     manager = NULL;
@@ -278,6 +280,8 @@ struct theme_manager *theme_manager_create(struct server *server)
         manager->current = theme_create(DEFAULT_THEME, 1.0);
     }
 
+    manager->icon_theme = icon_theme_load("ukui-icon-theme-default");
+
     theme_manager_write_config(manager, manager->current->theme_name);
     return manager;
 }
@@ -297,8 +301,9 @@ static struct theme_buffer *theme_buffers_load(struct theme *theme, float scale)
     /* find scale buffers */
     struct theme_buffer *bufs;
     wl_list_for_each(bufs, &theme->scaled_buffers, link) {
-        if (bufs->scale == scale)
+        if (bufs->scale == scale) {
             return bufs;
+        }
     }
 
     return draw_theme_buffers(theme, scale);
@@ -386,4 +391,48 @@ bool theme_manager_set_font(const char *name, int size)
 
     theme_manager_write_config(manager, NULL);
     return true;
+}
+
+static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
+{
+    struct icon_buffer *buf;
+    wl_list_for_each(buf, &icon->buffers, link) {
+        if (buf->scale == scale) {
+            return buf;
+        }
+    }
+
+    buf = calloc(1, sizeof(struct icon_buffer));
+    if (!buf) {
+        return NULL;
+    }
+
+    struct draw_info info = {
+        .width = 24,
+        .height = 24,
+        .scale = scale,
+        .svg = icon->svg,
+    };
+
+    buf->buffer = painter_draw_buffer(&info);
+    if (!buf->buffer) {
+        free(buf);
+        return NULL;
+    }
+
+    buf->scale = scale;
+    wl_list_insert(&icon->buffers, &buf->link);
+    return buf;
+}
+
+struct wlr_buffer *theme_icon_load(const char *name, float scale)
+{
+    struct icon_theme *theme = manager->icon_theme;
+    struct icon *icon = icon_theme_get_icon(theme, name);
+    if (!icon) {
+        icon = theme->fallback;
+    }
+
+    struct icon_buffer *buf = icon_get_buffer(icon, scale);
+    return buf ? buf->buffer : NULL;
 }

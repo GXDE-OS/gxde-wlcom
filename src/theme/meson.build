@@ -3,6 +3,7 @@ embed = find_program('./embed.sh', native: true)
 svgs = [
   'button_light.svg',
   'button_dark.svg',
+  'unknown.svg'
 ]
 
 foreach name : svgs
@@ -20,5 +21,6 @@ endforeach
 
 wlcom_sources += files(
   'config.c',
+  'icon.c',
   'theme.c',
 )

@@ -22,6 +22,30 @@ struct theme_buffer {
     struct wlr_buffer *buf[THEME_BUFFER_COUNT];
 };
 
+struct icon_buffer {
+    struct wl_list link;
+    struct wlr_buffer *buffer;
+    float scale;
+};
+
+struct icon_name {
+    struct wl_list link;
+    char *name;
+};
+
+struct icon {
+    struct wl_list link;
+    struct wl_list buffers;
+    struct wl_list names;
+    char *svg;
+};
+
+struct icon_theme {
+    char *name;
+    struct wl_list icons;
+    struct icon *fallback;
+};
+
 struct theme_override {
     /* font config override by dbus */
     char *font_name;
@@ -33,6 +57,9 @@ struct theme_manager {
     struct theme *current;
     struct theme_override override;
     struct config *config;
+
+    /* current icon theme */
+    struct icon_theme *icon_theme;
 
     struct {
         struct wl_signal update;
@@ -46,5 +73,11 @@ bool theme_manager_config_init(struct theme_manager *manager);
 const char *theme_manager_read_config(struct theme_manager *manager);
 
 void theme_manager_write_config(struct theme_manager *manager, const char *name);
+
+struct icon_theme *icon_theme_load(const char *name);
+
+void icon_theme_destroy(struct icon_theme *theme);
+
+struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name);
 
 #endif /* _THEME_P_H */

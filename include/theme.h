@@ -93,4 +93,6 @@ bool theme_manager_set_font(const char *name, int size);
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);
 
+struct wlr_buffer *theme_icon_load(const char *name, float scale);
+
 #endif /* _THEME_H_ */
