@@ -34,10 +34,10 @@ static enum kywc_tile view_tile_invert(enum kywc_tile edge)
         return KYWC_TILE_RIGHT;
     case KYWC_TILE_RIGHT:
         return KYWC_TILE_LEFT;
-    case KYWC_TILE_UP:
-        return KYWC_TILE_DOWN;
-    case KYWC_TILE_DOWN:
-        return KYWC_TILE_UP;
+    case KYWC_TILE_TOP:
+        return KYWC_TILE_BOTTOM;
+    case KYWC_TILE_BOTTOM:
+        return KYWC_TILE_TOP;
     default:
         return KYWC_TILE_NONE;
     }
@@ -56,10 +56,10 @@ static void window_snap(struct view *view, enum kywc_tile tile)
         case KYWC_TILE_RIGHT:
             new_output = output_adjacent_output(output, LAYOUT_EDGE_RIGHT);
             break;
-        case KYWC_TILE_UP:
+        case KYWC_TILE_TOP:
             new_output = output_adjacent_output(output, LAYOUT_EDGE_TOP);
             break;
-        case KYWC_TILE_DOWN:
+        case KYWC_TILE_BOTTOM:
             new_output = output_adjacent_output(output, LAYOUT_EDGE_BOTTOM);
             break;
         default:

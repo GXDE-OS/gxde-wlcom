@@ -136,40 +136,90 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *usable = &output->usable_area;
     struct kywc_view *kywc_view = &view->base;
+    int32_t min_width = kywc_view->min_width;
+    int32_t min_height = kywc_view->min_height;
+    bool is_min_width = usable->width / 2 < min_width;
+    bool is_min_height = usable->height / 2 < min_height;
 
     switch (tile) {
     case KYWC_TILE_NONE:
         *geometry = view->saved.geometry;
         return;
-    case KYWC_TILE_UP:
+    case KYWC_TILE_TOP:
         geometry->x = usable->x + kywc_view->margin.off_x;
         geometry->y = usable->y + kywc_view->margin.off_y;
         geometry->width = usable->width - kywc_view->margin.off_width;
-        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
         return;
-    case KYWC_TILE_DOWN:
+    case KYWC_TILE_BOTTOM:
         geometry->x = usable->x + kywc_view->margin.off_x;
-        geometry->y = usable->y + usable->height / 2 + kywc_view->margin.off_y;
+        geometry->y = is_min_height ? usable->y + usable->height - min_height
+                                    : usable->y + usable->height / 2 + kywc_view->margin.off_y;
         geometry->width = usable->width - kywc_view->margin.off_width;
-        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
         return;
     case KYWC_TILE_LEFT:
         geometry->x = usable->x + kywc_view->margin.off_x;
         geometry->y = usable->y + kywc_view->margin.off_y;
-        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
         geometry->height = usable->height - kywc_view->margin.off_height;
         return;
     case KYWC_TILE_RIGHT:
-        geometry->x = usable->x + usable->width / 2 + kywc_view->margin.off_x;
+        geometry->x = is_min_width ? usable->x + usable->width - min_width
+                                   : usable->x + usable->width / 2 + kywc_view->margin.off_x;
         geometry->y = usable->y + kywc_view->margin.off_y;
-        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
         geometry->height = usable->height - kywc_view->margin.off_height;
         return;
+    case KYWC_TILE_TOP_LEFT:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_BOTTOM_LEFT:
+        geometry->x = usable->x + kywc_view->margin.off_x;
+        geometry->y = is_min_height ? usable->y + usable->height - min_height
+                                    : usable->y + usable->height / 2 + kywc_view->margin.off_y;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_TOP_RIGHT:
+        geometry->x = is_min_width ? usable->x + usable->width - min_width
+                                   : usable->x + usable->width / 2 + kywc_view->margin.off_x;
+        geometry->y = usable->y + kywc_view->margin.off_y;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
+        return;
+    case KYWC_TILE_BOTTOM_RIGHT:
+        geometry->x = is_min_width ? usable->x + usable->width - min_width
+                                   : usable->x + usable->width / 2 + kywc_view->margin.off_x;
+        geometry->y = is_min_height ? usable->y + usable->height - min_height
+                                    : usable->y + usable->height / 2 + kywc_view->margin.off_y;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
+        return;
     case KYWC_TILE_CENTER:
-        geometry->x = usable->x + usable->width / 4 + kywc_view->margin.off_x;
-        geometry->y = usable->y + usable->height / 4 + kywc_view->margin.off_y;
-        geometry->width = usable->width / 2 - kywc_view->margin.off_width;
-        geometry->height = usable->height / 2 - kywc_view->margin.off_height;
+        geometry->x = is_min_width ? usable->x + usable->width / 2 - min_width / 2
+                                   : usable->x + usable->width / 4 + kywc_view->margin.off_x;
+        geometry->y = is_min_height ? usable->y + usable->height / 2 - min_height / 2
+                                    : usable->y + usable->height / 4 + kywc_view->margin.off_y;
+        geometry->width =
+            is_min_width ? min_width : usable->width / 2 - kywc_view->margin.off_width;
+        geometry->height =
+            is_min_height ? min_height : usable->height / 2 - kywc_view->margin.off_height;
         return;
     case KYWC_TILE_ALL:
         geometry->x = usable->x + kywc_view->margin.off_x;
