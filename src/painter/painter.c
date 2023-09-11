@@ -246,8 +246,8 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
     if (info->auto_resize && info->text && *info->text) {
         int width, height;
         text_extents(info->font, info->font_size, info->text, &width, &height);
-        width += height;
         height += height / 2;
+        width += height / 2;
         if (width < info->width) {
             info->width = width;
         }

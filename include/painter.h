@@ -16,6 +16,7 @@ enum corner_mask {
     CORNER_MASK_TOP_RIGHT = 1 << 1,
     CORNER_MASK_BOTTOM_LEFT = 1 << 2,
     CORNER_MASK_BOTTOM_RIGHT = 1 << 3,
+    CORNER_MASK_ALL = (1 << 4) - 1,
 };
 
 enum border_mask {
@@ -24,6 +25,7 @@ enum border_mask {
     BORDER_MASK_RIGHT = 1 << 1,
     BORDER_MASK_BOTTOM = 1 << 2,
     BORDER_MASK_LEFT = 1 << 3,
+    BORDER_MASK_ALL = (1 << 4) - 1,
 };
 
 enum text_align {
