@@ -291,13 +291,21 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
             }
 
             if (entry->view->maximized) {
-                struct kywc_box box = {
+                struct kywc_box geo = {
                     .x = dst_box->x + entry->view->margin.off_x,
                     .y = dst_box->y + entry->view->margin.off_y,
                     .width = dst_box->width - entry->view->margin.off_width,
                     .height = dst_box->height - entry->view->margin.off_height,
                 };
-                kywc_view_resize(entry->view, &box);
+                kywc_view_resize(entry->view, &geo);
+                continue;
+            }
+
+            if (entry->view->tiled) {
+                struct kywc_box geo;
+                view_get_tiled_geometry(view_from_kywc_view(entry->view), &geo,
+                                        dst_pos->kywc_output, entry->view->tiled);
+                kywc_view_resize(entry->view, &geo);
                 continue;
             }
 
