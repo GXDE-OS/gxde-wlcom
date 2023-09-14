@@ -280,10 +280,12 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
         return;
     }
 
+    double scroll_factor = (seat->state.scroll_factor <= 0) ? 1.0 : seat->state.scroll_factor;
     /* Notify the client with pointer focus of the axis event. */
     struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;
-    wlr_seat_pointer_notify_axis(wlr_seat, event->time_msec, event->orientation, event->delta,
-                                 event->delta_discrete, event->source);
+    wlr_seat_pointer_notify_axis(wlr_seat, event->time_msec, event->orientation,
+                                 scroll_factor * event->delta,
+                                 roundf(scroll_factor * event->delta_discrete), event->source);
 }
 
 static void cursor_handle_frame(struct wl_listener *listener, void *data)
@@ -608,7 +610,7 @@ static void cursor_node_handle_destroy(struct wl_listener *listener, void *data)
     cursor->signal.notify = cursor_handle_##signal;                                                \
     wl_signal_add(&wlr_cursor->events.signal, &cursor->signal);
 
-void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size)
+void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size, bool saved)
 {
     bool need_set = !cursor->xcursor_manager;
     if (!need_set) {
@@ -628,6 +630,11 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     cursor->xcursor_manager = wlr_xcursor_manager_create(theme, size);
     /* apply the new configuration */
     cursor_rebase(cursor);
+
+    if (saved) {
+        cursor->seat->state.cursor_theme = cursor->xcursor_manager->name;
+        cursor->seat->state.cursor_size = cursor->xcursor_manager->size;
+    }
 }
 
 struct cursor *cursor_create(struct seat *seat)
@@ -652,10 +659,11 @@ struct cursor *cursor_create(struct seat *seat)
 
     const char *xcursor_theme = getenv("XCURSOR_THEME");
     const char *xcursor_size = getenv("XCURSOR_SIZE");
-    uint32_t size = xcursor_size ? atoi(xcursor_size) : 24;
 
     /* xcursor manager per seat for cursor theme */
-    cursor_set_xcursor_manager(cursor, xcursor_theme, size);
+    cursor_set_xcursor_manager(
+        cursor, xcursor_theme ? xcursor_theme : seat->state.cursor_theme,
+        xcursor_size ? (uint32_t)atoi(xcursor_size) : seat->state.cursor_size, false);
 
     CURSOR_ADD_SIGNAL(motion);
     CURSOR_ADD_SIGNAL(motion_absolute);

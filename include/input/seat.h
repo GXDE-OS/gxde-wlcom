@@ -56,6 +56,8 @@ struct seat {
 
     uint32_t caps; // enum wl_seat_capability
 
+    struct input_manager *manager;
+
     /* input devices attached */
     struct wl_list inputs;
 
@@ -78,6 +80,12 @@ struct seat {
     struct {
         struct wl_signal destroy;
     } events;
+
+    struct {
+        const char *cursor_theme;
+        uint32_t cursor_size;
+        double scroll_factor;
+    } state;
 
     struct wl_listener destroy;
 };

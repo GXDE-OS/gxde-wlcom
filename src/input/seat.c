@@ -42,6 +42,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->scene = input_manager->server->scene;
     seat->layout = input_manager->server->layout;
     seat->pointer_gestures = input_manager->pointer_gestures;
+    seat->manager = input_manager;
 
     seat->destroy.notify = handle_seat_destroy;
     wl_signal_add(&seat->wlr_seat->events.destroy, &seat->destroy);
@@ -50,6 +51,13 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     wl_list_init(&seat->inputs);
     wl_list_init(&seat->keyboards);
     wl_signal_init(&seat->events.destroy);
+
+    seat->state.cursor_theme = NULL;
+    seat->state.cursor_size = 24;
+    seat->state.scroll_factor = 1.0;
+    if (!seat_read_config(seat)) {
+        kywc_log(KYWC_ERROR, "seat(%s) read config error!", seat->name);
+    }
 
     seat->cursor = cursor_create(seat);
 

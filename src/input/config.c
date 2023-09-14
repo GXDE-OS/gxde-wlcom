@@ -8,8 +8,10 @@
 #include "input_p.h"
 #include "output.h"
 
-static const char *service_path = "/com/kylin/Wlcom/Input";
-static const char *service_interface = "com.kylin.Wlcom.Input";
+static const char *service_input_path = "/com/kylin/Wlcom/Input";
+static const char *service_input_interface = "com.kylin.Wlcom.Input";
+static const char *service_seat_path = "/com/kylin/Wlcom/Seat";
+static const char *service_seat_interface = "com.kylin.Wlcom.Seat";
 
 static const char *input_type_map[] = {
     [WLR_INPUT_DEVICE_KEYBOARD] = "keyboard",    [WLR_INPUT_DEVICE_POINTER] = "pointer",
@@ -357,12 +359,39 @@ static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
         return sd_bus_reply_method_error(m, &error);
     }
 
-    cursor_set_xcursor_manager(seat->cursor, cursor_theme, cursor_size);
+    cursor_set_xcursor_manager(seat->cursor, cursor_theme, cursor_size, true);
+    seat_write_config(seat);
 
     return sd_bus_reply_method_return(m, NULL);
 }
 
-static const sd_bus_vtable service_vtable[] = {
+static int set_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *seat_name;
+    double scroll_factor;
+    CK(sd_bus_message_read(m, "sd", &seat_name, &scroll_factor));
+
+    struct seat *seat = seat_by_name(seat_name);
+    if (!seat) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (scroll_factor <= 0) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild scroll_factor.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    seat->state.scroll_factor = scroll_factor;
+
+    seat_write_config(seat);
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllInputs", "", "a(ss)", list_inputs, 0),
     SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
@@ -373,15 +402,26 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable service_seat_vtable[] = {
+    SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
+    SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
     SD_BUS_VTABLE_END,
 };
 
 bool input_manager_config_init(struct input_manager *input_manager)
 {
-    input_manager->config = config_manager_add_config(
-        "Inputs", NULL, service_path, service_interface, service_vtable, input_manager);
-    return !!input_manager->config;
+    input_manager->config =
+        config_manager_add_config("Inputs", NULL, service_input_path, service_input_interface,
+                                  service_input_vtable, input_manager);
+    input_manager->seat_config =
+        config_manager_add_config("Seats", NULL, service_seat_path, service_seat_interface,
+                                  service_seat_vtable, input_manager);
+
+    return !!input_manager->config && !!input_manager->seat_config;
 }
 
 bool input_read_config(struct input *input, struct input_state *state)
@@ -614,3 +654,53 @@ void input_write_config(struct input *input)
 }
 
 #undef WRITE_CONFIG
+
+bool seat_read_config(struct seat *seat)
+{
+    if (!seat->manager->seat_config || !seat->manager->seat_config->json) {
+        return false;
+    }
+
+    json_object *config = json_object_object_get(seat->manager->seat_config->json, seat->name);
+    if (!config) {
+        return true;
+    }
+
+    json_object *data;
+    if (json_object_object_get_ex(config, "cursor_theme", &data)) {
+        seat->state.cursor_theme = json_object_get_string(data);
+    }
+    if (json_object_object_get_ex(config, "cursor_size", &data)) {
+        seat->state.cursor_size = json_object_get_int(data);
+    }
+    if (json_object_object_get_ex(config, "scroll_factor", &data)) {
+        seat->state.scroll_factor = json_object_get_double(data);
+    }
+
+    return true;
+}
+
+void seat_write_config(struct seat *seat)
+{
+    if (!seat->manager->seat_config) {
+        return;
+    }
+
+    json_object *config = json_object_object_get(seat->manager->seat_config->json, seat->name);
+    if (!config) {
+        config = json_object_new_object();
+        json_object_object_add(seat->manager->seat_config->json, seat->name, config);
+    }
+
+    if (seat->state.cursor_theme && strcmp(seat->state.cursor_theme, "default")) {
+        json_object_object_add(config, "cursor_theme",
+                               json_object_new_string(seat->state.cursor_theme));
+    }
+    if (seat->state.cursor_size != 24) {
+        json_object_object_add(config, "cursor_size", json_object_new_int(seat->state.cursor_size));
+    }
+    if (seat->state.scroll_factor != 1.0) {
+        json_object_object_add(config, "scroll_factor",
+                               json_object_new_double(seat->state.scroll_factor));
+    }
+}

@@ -25,6 +25,7 @@ struct input_manager {
     } events;
 
     struct config *config;
+    struct config *seat_config;
 
     struct wl_listener new_input;
     struct wl_listener new_virtual_pointer;
@@ -44,7 +45,12 @@ void input_manager_switch_vt(unsigned vt);
 
 struct seat *seat_by_name(const char *seat_name);
 
-void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size);
+void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size,
+                                bool saved);
+
+bool seat_read_config(struct seat *seat);
+
+void seat_write_config(struct seat *seat);
 
 /**
  * libinput helper functions
