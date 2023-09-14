@@ -27,29 +27,54 @@ static struct shortcut {
     { "win+right", "window snap edge right", WINDOW_ACTION_SNAP_RIGHT },
 };
 
-static enum kywc_tile view_tile_invert(enum kywc_tile edge)
+static enum kywc_tile view_tile_invert(enum kywc_tile current, enum kywc_tile dir,
+                                       bool has_extend_output)
 {
-    switch (edge) {
+    enum kywc_tile tiled = dir;
+    switch (current) {
     case KYWC_TILE_LEFT:
-        return KYWC_TILE_RIGHT;
+        if (dir == KYWC_TILE_LEFT) {
+            tiled = has_extend_output ? KYWC_TILE_RIGHT : KYWC_TILE_NONE;
+        }
+        break;
     case KYWC_TILE_RIGHT:
-        return KYWC_TILE_LEFT;
+        if (dir == KYWC_TILE_RIGHT) {
+            tiled = has_extend_output ? KYWC_TILE_LEFT : KYWC_TILE_NONE;
+        }
+        break;
     case KYWC_TILE_TOP:
-        return KYWC_TILE_BOTTOM;
+        if (dir == KYWC_TILE_TOP) {
+            tiled = has_extend_output ? KYWC_TILE_BOTTOM : KYWC_TILE_NONE;
+        } else if (dir == KYWC_TILE_LEFT) {
+            tiled = KYWC_TILE_TOP_LEFT;
+        } else if (dir == KYWC_TILE_RIGHT) {
+            tiled = KYWC_TILE_TOP_RIGHT;
+        }
+        break;
     case KYWC_TILE_BOTTOM:
-        return KYWC_TILE_TOP;
+        if (dir == KYWC_TILE_BOTTOM) {
+            tiled = has_extend_output ? KYWC_TILE_TOP : KYWC_TILE_NONE;
+        } else if (dir == KYWC_TILE_LEFT) {
+            tiled = KYWC_TILE_BOTTOM_LEFT;
+        } else if (dir == KYWC_TILE_RIGHT) {
+            tiled = KYWC_TILE_BOTTOM_RIGHT;
+        }
+        break;
     default:
-        return KYWC_TILE_NONE;
+        break;
     }
+    return tiled;
 }
 
-static void window_snap(struct view *view, enum kywc_tile tile)
+static void window_snap(struct view *view, enum kywc_tile dir)
 {
     struct output *output = output_from_kywc_output(view->output);
     struct output *new_output = NULL;
+    bool has_extend_output = false;
+    enum kywc_tile tiled;
 
-    if (view->base.tiled == tile) {
-        switch (tile) {
+    if (view->base.tiled == dir) {
+        switch (dir) {
         case KYWC_TILE_LEFT:
             new_output = output_adjacent_output(output, LAYOUT_EDGE_LEFT);
             break;
@@ -66,16 +91,16 @@ static void window_snap(struct view *view, enum kywc_tile tile)
             // cannot get here
             break;
         }
-        if (new_output && new_output != output) {
-            tile = view_tile_invert(tile);
-            output = new_output;
-        } else {
-            /* restore to normal */
-            tile = KYWC_TILE_NONE;
-        }
     }
 
-    kywc_view_set_tiled(&view->base, tile, &output->base);
+    if (new_output && new_output != output) {
+        output = new_output;
+        has_extend_output = true;
+    }
+
+    tiled = view_tile_invert(view->base.tiled, dir, has_extend_output);
+
+    kywc_view_set_tiled(&view->base, tiled, &output->base);
 }
 
 void window_action(struct view *view, struct seat *seat, enum window_action action)
