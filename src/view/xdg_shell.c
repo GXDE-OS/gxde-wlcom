@@ -253,12 +253,12 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
         if (current->y != pending->y) {
             y += pending->height - current->height;
         }
+        view_helper_move(view, x, y);
     }
-
-    view_helper_move(view, x, y);
 
     /* last configure has been acked */
     if (current_serial >= pending_serial) {
+        view_helper_move(view, x, y);
         view_configured(&xdg_view->view);
     }
 }
