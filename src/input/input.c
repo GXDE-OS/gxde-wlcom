@@ -501,7 +501,7 @@ struct seat *seat_by_name(const char *seat_name)
 {
     struct seat *seat;
     wl_list_for_each(seat, &input_manager->seats, link) {
-        if (strcmp(seat->name, seat->name) == 0) {
+        if (strcmp(seat->name, seat_name) == 0) {
             return seat;
         }
     }
