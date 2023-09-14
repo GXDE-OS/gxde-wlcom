@@ -900,6 +900,12 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
         kywc_log(KYWC_DEBUG, "view %p maximal size to %d x %d", view, max_width, max_height);
     }
 
+    if (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
+        kywc_view->min_width == kywc_view->max_width &&
+        kywc_view->min_height == kywc_view->max_height) {
+        kywc_view->maximizable = false;
+    }
+
     if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {
         kywc_view->geometry.width = width;
         kywc_view->geometry.height = height;
