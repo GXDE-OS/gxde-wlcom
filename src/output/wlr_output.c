@@ -79,12 +79,16 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 
 static void handle_new_output(struct wl_listener *listener, void *data)
 {
+    struct kywc_output *kywc_output = data;
+    if (kywc_output->prop.is_virtual) {
+        return;
+    }
+
     struct output_head *head = calloc(1, sizeof(struct output_head));
     if (!head) {
         return;
     }
 
-    struct kywc_output *kywc_output = data;
     head->kywc_output = kywc_output;
     wl_list_insert(&management->heads, &head->link);
 

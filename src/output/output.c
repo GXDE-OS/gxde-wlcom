@@ -137,7 +137,7 @@ static void fallback_output_set_state(struct kywc_output *kywc_output, bool enab
 
     if (!state.enabled && enabled) {
         state.power = true;
-        state.scale = kywc_output_preferred_scale(kywc_output, state.width, state.height);
+        state.scale = 1.0;
 
         struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
         state.width = mode->width;
@@ -567,8 +567,6 @@ struct output_manager *output_manager_create(struct server *server)
     wl_signal_add(&server->backend->events.new_output, &output_manager->new_output);
 
     struct wlr_output *wlr_output = wlr_headless_add_output(server->headless_backend, 1920, 1080);
-    wlr_output->width = 1920;
-    wlr_output->height = 1080;
     wlr_output_set_name(wlr_output, "FALLBACK");
 
     output_manager_config_init(output_manager);

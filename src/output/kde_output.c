@@ -474,6 +474,10 @@ static void kde_output_device_bind(struct wl_client *client, void *data, uint32_
                                    uint32_t id)
 {
     struct kde_output_device *output_device = data;
+    if (!output_device) {
+        return;
+    }
+
     struct kywc_output *kywc_output = output_device->kywc_output;
 
     struct kde_output_device_client *kod_client =
