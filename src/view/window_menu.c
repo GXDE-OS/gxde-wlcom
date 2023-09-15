@@ -46,6 +46,7 @@ struct menu {
     struct wl_list items;
     struct menu_item *parent;
     struct menu_item *hovered;
+    struct window_menu *window_menu;
 
     /* redraw menu and items */
     struct wl_listener theme_update;
@@ -244,7 +245,7 @@ static bool menu_item_hover(struct seat *seat, struct ky_scene_node *node, doubl
         return false;
     }
 
-    struct window_menu *window_menu = window_menu_by_seat(seat);
+    struct window_menu *window_menu = item->menu->window_menu;
     menu_item_set_hovered(item);
     window_menu->current = item->menu;
 
@@ -283,8 +284,8 @@ static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint3
         return;
     }
 
-    struct window_menu *window_menu = window_menu_by_seat(seat);
     struct menu_item *item = data;
+    struct window_menu *window_menu = item->menu->window_menu;
 
     if (menu_item_action(item, window_menu)) {
         window_menu_set_enabled(window_menu, false);
@@ -585,6 +586,10 @@ static struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *
     menu->theme_update.notify = menu_handle_theme_update;
     theme_manager_add_update_listener(&menu->theme_update);
 
+    if (parent_item) {
+        menu->window_menu = parent_item->menu->window_menu;
+    }
+
     return menu;
 }
 
@@ -661,6 +666,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the toplevel menu: items and submenus */
     window_menu->toplevel = menu_create(manager->tree, NULL);
+    window_menu->toplevel->window_menu = window_menu;
     menu_add_item(window_menu->toplevel, tr("Minimize(N)"), KEY_N, WINDOW_ACTION_MINIMIZE);
     menu_add_item(window_menu->toplevel, tr("Maximize(X)"), KEY_X, WINDOW_ACTION_MAXIMIZE);
     menu_add_item(window_menu->toplevel, tr("Fullscreen(F)"), KEY_F, WINDOW_ACTION_FULLSCREEN);
