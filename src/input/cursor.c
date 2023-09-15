@@ -621,6 +621,8 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
         return;
     }
 
+    /* clear wlr_cursor state */
+    wlr_cursor_unset_image(cursor->wlr_cursor);
     /* destroy the prev one, NULL is ok */
     wlr_xcursor_manager_destroy(cursor->xcursor_manager);
     cursor->xcursor_manager = wlr_xcursor_manager_create(theme, size);
