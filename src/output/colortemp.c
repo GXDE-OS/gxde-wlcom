@@ -300,8 +300,13 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
 {
     uint16_t *gamma_ramp = malloc(gamma_size * sizeof(uint16_t) * 3);
     fill_gamma_ramp_with_colortemp(gamma_ramp, gamma_size, color_temp);
-    wlr_output_state_set_gamma_lut(wlr_state, gamma_size, &gamma_ramp[0],
-                                   &gamma_ramp[1 * gamma_size], &gamma_ramp[2 * gamma_size]);
+    if (wlr_state) {
+        wlr_output_state_set_gamma_lut(wlr_state, gamma_size, &gamma_ramp[0],
+                                       &gamma_ramp[1 * gamma_size], &gamma_ramp[2 * gamma_size]);
+    } else {
+        wlr_output_set_gamma(wlr_output, gamma_size, &gamma_ramp[0], &gamma_ramp[1 * gamma_size],
+                             &gamma_ramp[2 * gamma_size]);
+    }
     free(gamma_ramp);
 
     kywc_log(KYWC_DEBUG, "output:%s set gama lut colr_tempe: %d", wlr_output->name, color_temp);
@@ -314,11 +319,12 @@ void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp)
         return;
     }
     color_temp = COLORTEMP_CLAMP(color_temp);
-    if (!kywc_output->state.enabled || kywc_output->state.color_temp == color_temp) {
+    if (!kywc_output->state.enabled) {
         return;
     }
+    kywc_output->state.color_temp = color_temp;
 
-    struct kywc_output_state state = kywc_output->state;
-    state.color_temp = color_temp;
-    kywc_output_set_state(kywc_output, &state);
+    struct output *output = output_from_kywc_output(kywc_output);
+    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL, color_temp);
+    wlr_output_schedule_frame(output->wlr_output);
 }

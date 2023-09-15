@@ -763,31 +763,26 @@ static int get_current_target_colortemperature(void)
                                              manager->configs.night_colortempe);
 }
 
-static void colortemperature_commit(int colortempe)
+static void colortemperature_commit(int colortempe, bool force)
 {
     struct kde_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
         struct kywc_output *kywc_output = output->kywc_output;
-        if (kywc_output->prop.gamma_size <= 1) {
-            continue;
-        }
-        if (!kywc_output->state.enabled || kywc_output->state.color_temp == colortempe) {
-            return;
-        }
-
-        struct kywc_output_state state = kywc_output->state;
-        state.color_temp = colortempe;
-        kywc_output_set_state(kywc_output, &state);
+        output_set_colortemp(kywc_output, colortempe);
     }
 
     if (manager->current_colortempe != colortempe) {
         send_change_property(PROP_CURRENT_COLORTEMPE);
     }
+
     manager->current_colortempe = colortempe;
 }
 
 static void handle_colortemperature(bool force)
 {
+    if (!manager->initial) {
+        return;
+    }
     /* cancel timer */
     wl_event_source_timer_update(manager->adjust_timer, 0);
     wl_event_source_timer_update(manager->slow_update_start_timer, 0);
@@ -801,8 +796,8 @@ static void handle_colortemperature(bool force)
 
     int target_colortempe = get_current_target_colortemperature();
 
-    if (force) {
-        colortemperature_commit(target_colortempe);
+    if (force && manager->running) {
+        colortemperature_commit(target_colortempe, force);
     }
 
     int delta_tempe = abs(target_colortempe - manager->current_colortempe);
@@ -1008,7 +1003,7 @@ static int handle_colortempe_adjust_timer(void *data)
 
     kywc_log(KYWC_DEBUG, "nexttempe :%d,targettempe :%d", next_colortempe, target_colortempe);
 
-    colortemperature_commit(next_colortempe);
+    colortemperature_commit(next_colortempe, false);
 
     if (next_colortempe != target_colortempe) {
         wl_event_source_timer_update(manager->adjust_timer, manager->adjust_timeout);
@@ -1044,7 +1039,7 @@ static int handle_slow_update_start_timer(void *data)
     // We've reached the target color temperature or the transition time is zero.
     if (manager->prev_dtime.begin == manager->prev_dtime.end ||
         manager->current_colortempe == manager->target_colortempe) {
-        colortemperature_commit(manager->target_colortempe);
+        colortemperature_commit(manager->target_colortempe, false);
         return 0;
     }
 
@@ -1159,8 +1154,12 @@ static int config_changed(sd_bus_message *msg, void *userdata, sd_bus_error *ret
 
             if (strcmp(mode, "NightColor.Mode") == 0) {
                 load_manager_configs();
-                handle_colortemperature(!manager->initial);
-                manager->initial = !manager->initial ? true : manager->initial;
+                if (!manager->initial) {
+                    manager->initial = true;
+                    handle_colortemperature(true);
+                } else {
+                    handle_colortemperature(false);
+                }
             }
             free(mode);
         }
@@ -1176,10 +1175,6 @@ static void nightcolor_manager_init(struct kde_nightcolor_manager *manager)
     manager->inhibit_refer_count = 0;
     manager->current_colortempe = 6500;
     manager->target_colortempe = 6500;
-
-    configs_init(&manager->configs);
-    load_manager_configs();
-    handle_colortemperature(true);
 }
 
 static void kde_output_destroy(struct kde_output *output)
@@ -1202,12 +1197,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
     struct kde_output *output = wl_container_of(listener, output, on);
     struct kywc_output *kywc_output = output->kywc_output;
 
-    if (kywc_output->prop.gamma_size <= 1) {
-        return;
-    }
-    struct kywc_output_state state = kywc_output->state;
-    state.color_temp = manager->current_colortempe;
-    kywc_output_set_state(kywc_output, &state);
+    output_set_colortemp(kywc_output, manager->current_colortempe);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
