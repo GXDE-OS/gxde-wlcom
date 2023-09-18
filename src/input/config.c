@@ -346,6 +346,27 @@ static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int list_seats(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct input_manager *manager = userdata;
+
+    sd_bus_message *reply = NULL;
+    CK(sd_bus_message_new_method_return(m, &reply));
+    CK(sd_bus_message_open_container(reply, 'a', "(ss)"));
+
+    struct seat *seat;
+    wl_list_for_each(seat, &manager->seats, link) {
+        json_object *config = json_object_object_get(manager->seat_config->json, seat->name);
+        const char *cfg = json_object_to_json_string(config);
+        sd_bus_message_append(reply, "(ss)", seat->name, cfg);
+    }
+
+    CK(sd_bus_message_close_container(reply));
+    CK(sd_bus_send(NULL, reply, NULL));
+    sd_bus_message_unref(reply);
+    return 1;
+}
+
 static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *seat_name, *cursor_theme;
@@ -407,6 +428,7 @@ static const sd_bus_vtable service_input_vtable[] = {
 
 static const sd_bus_vtable service_seat_vtable[] = {
     SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("ListAllSeats", "", "a(ss)", list_seats, 0),
     SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
     SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
     SD_BUS_VTABLE_END,
