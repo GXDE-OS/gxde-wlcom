@@ -655,6 +655,10 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
                          struct kywc_output *kywc_output)
 {
+    if (kywc_view->fullscreen) {
+        return;
+    }
+
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* tiled mode may switch between outputs */
@@ -667,7 +671,14 @@ void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
 
     /* may switch between tiled modes */
     if (kywc_view->tiled == KYWC_TILE_NONE && tile != KYWC_TILE_NONE) {
-        view->saved.geometry = view->base.geometry;
+        if (!kywc_view->maximized) {
+            view->saved.geometry = view->base.geometry;
+        }
+    }
+
+    if (kywc_view->maximized) {
+        view->pending.action |= VIEW_ACTION_MAXIMIZE;
+        kywc_view->maximized = false;
     }
 
     kywc_view->tiled = tile;
@@ -724,12 +735,13 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
             view->saved.geometry = kywc_view->geometry;
         }
     } else {
-        /* don't restore tiled mode followed other compositors */
-        if (kywc_view->tiled) {
-            view->pending.action |= VIEW_ACTION_TILE;
-            kywc_view->tiled = KYWC_TILE_NONE;
-        }
         geo = view->saved.geometry;
+    }
+
+    /* don't restore tiled mode followed other compositors */
+    if (kywc_view->tiled) {
+        view->pending.action |= VIEW_ACTION_TILE;
+        kywc_view->tiled = KYWC_TILE_NONE;
     }
 
     kywc_view->maximized = maximized;
