@@ -21,6 +21,18 @@ enum SHADOW_PART {
     SHADOW_PART_COUNT,
 };
 
+enum SHADOW_PART_MASK {
+    SHADOW_MASK_TOP_LEFT = 1 << 0,
+    SHADOW_MASK_TOP = 1 << 1,
+    SHADOW_MASK_TOP_RIGHT = 1 << 2,
+    SHADOW_MASK_RIGHT = 1 << 3,
+    SHADOW_MASK_BOTTOM_RIGHT = 1 << 4,
+    SHADOW_MASK_BOTTOM = 1 << 5,
+    SHADOW_MASK_BOTTOM_LEFT = 1 << 6,
+    SHADOW_MASK_LEFT = 1 << 7,
+    SHADOW_MASK_ALL = (1 << 8) - 1,
+};
+
 enum shadow_update_cause {
     SHADOW_UPDATE_CAUSE_SIZE = 1 << 0,
     SHADOW_UPDATE_CAUSE_MAXIMIZE = 1 << 1,
@@ -151,6 +163,85 @@ static void shadow_create_parts(struct shadow *shadow)
 #define UPDATE_PART_SIZE(i, w, h)                                                                  \
     ky_scene_buffer_set_dest_size(ky_scene_buffer_from_node(shadow->parts[i].node), w, h);
 
+static void set_shadow_part(struct shadow *shadow, uint32_t mask)
+{
+    for (int i = SHADOW_PART_TOP_LEFT; i < SHADOW_PART_COUNT; i++) {
+        ky_scene_node_set_enabled(shadow->parts[i].node, (mask >> i) & 0x1);
+    }
+}
+
+static void shadow_update_parts_tiled(struct shadow *shadow, enum kywc_tile tiled)
+{
+    struct theme *theme = theme_manager_get_current();
+    struct kywc_view *view = shadow->kywc_view;
+    /* use view margin to calc all positions */
+    int size = theme->shadow_border + theme->corner_radius;
+    int w = view->geometry.width + view->margin.off_width - 2 * theme->corner_radius;
+    int h = view->geometry.height + view->margin.off_height - 2 * theme->corner_radius;
+    int x1 = -theme->shadow_border;
+    int x2 = theme->corner_radius;
+    int x3 = theme->corner_radius + w;
+    int y1 = -theme->shadow_border;
+    int y2 = theme->corner_radius;
+    int y3 = theme->corner_radius + h;
+
+    switch (tiled) {
+    case KYWC_TILE_TOP:
+        UPDATE_PART_POSITION(SHADOW_PART_BOTTOM, 0, y3);
+        UPDATE_PART_SIZE(SHADOW_PART_BOTTOM, w + 2 * theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_BOTTOM);
+        break;
+    case KYWC_TILE_BOTTOM:
+        UPDATE_PART_POSITION(SHADOW_PART_TOP, 0, y1);
+        UPDATE_PART_SIZE(SHADOW_PART_TOP, w + 2 * theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_TOP);
+        break;
+    case KYWC_TILE_LEFT:
+        UPDATE_PART_POSITION(SHADOW_PART_RIGHT, x3, 0);
+        UPDATE_PART_SIZE(SHADOW_PART_RIGHT, size, h + 2 * theme->corner_radius);
+        set_shadow_part(shadow, SHADOW_MASK_RIGHT);
+        break;
+    case KYWC_TILE_RIGHT:
+        UPDATE_PART_POSITION(SHADOW_PART_LEFT, x1, 0);
+        UPDATE_PART_SIZE(SHADOW_PART_LEFT, size, h + 2 * theme->corner_radius);
+        set_shadow_part(shadow, SHADOW_MASK_LEFT);
+        break;
+    case KYWC_TILE_TOP_LEFT:
+        UPDATE_PART_POSITION(SHADOW_PART_RIGHT, x3, 0);
+        UPDATE_PART_POSITION(SHADOW_PART_BOTTOM, 0, y3);
+        UPDATE_PART_POSITION(SHADOW_PART_BOTTOM_RIGHT, x3, y3);
+        UPDATE_PART_SIZE(SHADOW_PART_RIGHT, size, h + theme->corner_radius);
+        UPDATE_PART_SIZE(SHADOW_PART_BOTTOM, w + theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_RIGHT | SHADOW_MASK_BOTTOM_RIGHT | SHADOW_MASK_BOTTOM);
+        break;
+    case KYWC_TILE_BOTTOM_LEFT:
+        UPDATE_PART_POSITION(SHADOW_PART_TOP, 0, y1);
+        UPDATE_PART_POSITION(SHADOW_PART_RIGHT, x3, y2);
+        UPDATE_PART_POSITION(SHADOW_PART_TOP_RIGHT, x3, y1);
+        UPDATE_PART_SIZE(SHADOW_PART_RIGHT, size, h + theme->corner_radius);
+        UPDATE_PART_SIZE(SHADOW_PART_TOP, w + theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_RIGHT | SHADOW_MASK_TOP_RIGHT | SHADOW_MASK_TOP);
+        break;
+    case KYWC_TILE_TOP_RIGHT:
+        UPDATE_PART_POSITION(SHADOW_PART_LEFT, x1, 0);
+        UPDATE_PART_POSITION(SHADOW_PART_BOTTOM, x2, y3);
+        UPDATE_PART_POSITION(SHADOW_PART_BOTTOM_LEFT, x1, y3);
+        UPDATE_PART_SIZE(SHADOW_PART_LEFT, size, h + theme->corner_radius);
+        UPDATE_PART_SIZE(SHADOW_PART_BOTTOM, w + theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_LEFT | SHADOW_MASK_BOTTOM_LEFT | SHADOW_MASK_BOTTOM);
+        break;
+    case KYWC_TILE_BOTTOM_RIGHT:
+        UPDATE_PART_POSITION(SHADOW_PART_LEFT, x1, y2);
+        UPDATE_PART_POSITION(SHADOW_PART_TOP, x2, y1);
+        UPDATE_PART_SIZE(SHADOW_PART_LEFT, size, h + theme->corner_radius);
+        UPDATE_PART_SIZE(SHADOW_PART_TOP, w + theme->corner_radius, size);
+        set_shadow_part(shadow, SHADOW_MASK_LEFT | SHADOW_MASK_TOP_LEFT | SHADOW_MASK_TOP);
+        break;
+    default:
+        break;
+    }
+}
+
 static void shadow_update_parts(struct shadow *shadow, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
@@ -167,9 +258,8 @@ static void shadow_update_parts(struct shadow *shadow, uint32_t cause)
     int y2 = theme->corner_radius;
     int y3 = theme->corner_radius + h;
 
-    if (cause & (SHADOW_UPDATE_CAUSE_TILE | SHADOW_UPDATE_CAUSE_MAXIMIZE |
-                 SHADOW_UPDATE_CAUSE_FULLSCREEN)) {
-        bool enabled = !view->tiled && !view->maximized && !view->fullscreen;
+    if (cause & (SHADOW_UPDATE_CAUSE_MAXIMIZE | SHADOW_UPDATE_CAUSE_FULLSCREEN)) {
+        bool enabled = !view->maximized && !view->fullscreen;
         ky_scene_node_set_enabled(shadow->node, enabled);
     }
 
@@ -184,7 +274,33 @@ static void shadow_update_parts(struct shadow *shadow, uint32_t cause)
         UPDATE_PART_SIZE(SHADOW_PART_BOTTOM_LEFT, size, size);
     }
 
+    if (cause & SHADOW_UPDATE_CAUSE_TILE) {
+        if (view->tiled) {
+            set_shadow_part(shadow, 0);
+            shadow_update_parts_tiled(shadow, view->tiled);
+        } else {
+            UPDATE_PART_POSITION(SHADOW_PART_LEFT, x1, y2);
+            UPDATE_PART_POSITION(SHADOW_PART_TOP, x2, y1);
+            UPDATE_PART_POSITION(SHADOW_PART_RIGHT, x3, y2);
+            UPDATE_PART_POSITION(SHADOW_PART_BOTTOM, x2, y3);
+
+            UPDATE_PART_SIZE(SHADOW_PART_LEFT, size, h);
+            UPDATE_PART_SIZE(SHADOW_PART_TOP, w, size);
+            UPDATE_PART_SIZE(SHADOW_PART_RIGHT, size, h);
+            UPDATE_PART_SIZE(SHADOW_PART_BOTTOM, w, size);
+
+            set_shadow_part(shadow, SHADOW_MASK_ALL);
+        }
+    }
+
     if (cause & SHADOW_UPDATE_CAUSE_SIZE) {
+
+        if (view->tiled) {
+            /* When the zoom ratio changes, recalculate the shading when tiled */
+            shadow_update_parts_tiled(shadow, view->tiled);
+            return;
+        }
+
         if (shadow->view_width != view->geometry.width) {
             UPDATE_PART_POSITION(SHADOW_PART_TOP_RIGHT, x3, y1);
             UPDATE_PART_POSITION(SHADOW_PART_RIGHT, x3, y2);
