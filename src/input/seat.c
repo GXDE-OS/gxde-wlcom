@@ -106,8 +106,8 @@ void seat_destroy(struct seat *seat)
         seat->touch_grab->interface->cancel(seat->touch_grab);
     }
 
-    struct input *input;
-    wl_list_for_each(input, &seat->inputs, seat_link) {
+    struct input *input, *tmp;
+    wl_list_for_each_safe(input, tmp, &seat->inputs, seat_link) {
         seat_remove_input(input);
     }
 
