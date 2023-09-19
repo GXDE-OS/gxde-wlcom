@@ -311,7 +311,6 @@ static void surface_handle_view_destroy(struct wl_listener *listener, void *data
     wl_list_remove(&surface->view_destroy.link);
     wl_list_remove(&surface->view_map.link);
     wl_list_remove(&surface->view_unmap.link);
-    wl_list_remove(&surface->output_update_usable_area.link);
 
     surface->view = NULL;
 }
@@ -347,7 +346,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     surface->view_destroy.notify = surface_handle_view_destroy;
     wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
 
-    /* workaround to fix this listener is bebind view map */
+    /* workaround to fix this listener is behind view map */
     if (surface->view->base.mapped) {
         surface_handle_view_map(&surface->view_map, NULL);
     }
@@ -359,13 +358,12 @@ static void kde_plasma_surface_handle_resource_destroy(struct wl_resource *resou
     wl_list_remove(&surface->surface_map.link);
 
     if (surface->view) {
+        if (surface->view->base.mapped) {
+            surface_handle_view_unmap(&surface->view_unmap, NULL);
+        }
         wl_list_remove(&surface->view_destroy.link);
         wl_list_remove(&surface->view_map.link);
         wl_list_remove(&surface->view_unmap.link);
-        wl_list_remove(&surface->view_minimize.link);
-        wl_list_remove(&surface->view_size.link);
-        wl_list_remove(&surface->view_position.link);
-        wl_list_remove(&surface->output_update_usable_area.link);
     }
 
     free(surface);
