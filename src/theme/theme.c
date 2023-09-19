@@ -428,7 +428,11 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
 struct wlr_buffer *theme_icon_load(const char *name, float scale)
 {
     struct icon_theme *theme = manager->icon_theme;
-    struct icon *icon = icon_theme_get_icon(theme, name);
+    struct icon *icon = NULL;
+
+    if (name) {
+        icon = icon_theme_get_icon(theme, name);
+    }
     if (!icon) {
         icon = theme->fallback;
     }

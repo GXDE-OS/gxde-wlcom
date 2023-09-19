@@ -14,8 +14,15 @@
 #include "unknown_svg_src.h"
 #include "util/fscan.h"
 
-#define ICONPATH "/usr/share/icons:~/.icons:~/.local/share/icons"
-#define APPPATH "/usr/share/applications:/usr/local/share/applications:~/.local/share/applications"
+// https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
+
+#define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
+#define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
+
+// TODO: PNG, XPM
+// /usr/share/pixmaps /usr/local/share/icons
+// hicolor
+// look at the mtime of the toplevel icon directories
 
 static void icon_create(struct icon_theme *theme, FILE *fp, char *name)
 {
@@ -50,19 +57,6 @@ static void icon_create(struct icon_theme *theme, FILE *fp, char *name)
 
     wl_list_init(&icon->buffers);
     wl_list_insert(&theme->icons, &icon->link);
-}
-
-static void icon_load(FILE *fp, char *name, void *data)
-{
-    struct icon_theme *theme = data;
-    icon_create(theme, fp, name);
-}
-
-static void icon_load_theme(struct icon_theme *theme)
-{
-    char *subdir = fscan_build_fullname(theme->name, "scalable", "apps");
-    fscan_start(ICONPATH, subdir, icon_load, theme);
-    free(subdir);
 }
 
 static void icon_destroy(struct icon *icon)
@@ -185,6 +179,19 @@ static void desktop_load(FILE *fp, char *name, void *data)
 static void icon_load_desktop(struct icon_theme *theme)
 {
     fscan_start(APPPATH, "", desktop_load, theme);
+}
+
+static void icon_load(FILE *fp, char *name, void *data)
+{
+    struct icon_theme *theme = data;
+    icon_create(theme, fp, name);
+}
+
+static void icon_load_theme(struct icon_theme *theme)
+{
+    char *subdir = fscan_build_fullname(theme->name, "scalable", "apps");
+    fscan_start(ICONPATH, subdir, icon_load, theme);
+    free(subdir);
 }
 
 struct icon_theme *icon_theme_load(const char *name)
