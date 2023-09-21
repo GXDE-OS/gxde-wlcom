@@ -36,6 +36,7 @@ struct interactive_grab {
 
     struct seat *seat;
     // struct wl_listener *seat_destroy;
+    struct output *output;
 
     /* view being moved or resized */
     struct view *view;
@@ -51,9 +52,11 @@ struct interactive_grab {
     struct kywc_box geo;
     /* resize edges */
     uint32_t resize_edges;
+
     /* snap_box */
     struct ky_scene_node *snap_node;
     struct ky_scene_rect *snap_rect;
+    struct output *snap_output;
     enum kywc_tile snap_mode;
     struct wl_event_source *filter;
     bool filter_enabled;
@@ -65,8 +68,7 @@ static enum kywc_tile get_kywc_tile_mode(struct interactive_grab *grab)
     double cur_y = grab->seat->cursor->ly;
     enum kywc_tile mode = KYWC_TILE_NONE;
     /* current output usable area */
-    struct output *output = input_current_output(grab->seat);
-    struct kywc_box *usable = &output->usable_area;
+    struct kywc_box *usable = &grab->output->usable_area;
     int32_t y1 = cur_y - usable->y;
 
     /* left */
@@ -103,32 +105,36 @@ static enum kywc_tile get_kywc_tile_mode(struct interactive_grab *grab)
 
 static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
 {
+    if (grab->snap_mode == mode && grab->snap_output == grab->output) {
+        return;
+    }
+
     struct view *view = grab->view;
 
     if (!grab->snap_rect) {
         struct theme *theme = theme_manager_get_current();
-        grab->snap_rect = ky_scene_rect_create(view->tree, 0, 0, theme->selected_color);
+        struct ky_scene_node *sibling = ky_scene_node_from_tree(view->tree);
+        struct ky_scene_tree *parent = ky_scene_node_get_parent(sibling);
+        grab->snap_rect = ky_scene_rect_create(parent, 0, 0, theme->selected_color);
         grab->snap_node = ky_scene_node_from_rect(grab->snap_rect);
-        ky_scene_node_lower_to_bottom(grab->snap_node);
+        ky_scene_node_place_below(grab->snap_node, sibling);
     }
 
     grab->snap_mode = mode;
+    grab->snap_output = grab->output;
     ky_scene_node_set_enabled(grab->snap_node, mode != KYWC_TILE_NONE);
-    /* return early, usable may be NULL */
     if (mode == KYWC_TILE_NONE) {
         return;
     }
 
     struct kywc_box geo = { 0 };
-    struct output *output = input_current_output(grab->seat);
-    view_get_tiled_geometry(view, &geo, &output->base, mode);
+    view_get_tiled_geometry(view, &geo, &grab->output->base, mode);
     geo.x -= view->base.margin.off_x;
     geo.y -= view->base.margin.off_y;
     geo.width += view->base.margin.off_width;
     geo.height += view->base.margin.off_height;
     ky_scene_rect_set_size(grab->snap_rect, geo.width, geo.height);
-    ky_scene_node_set_position(grab->snap_node, geo.x - view->pending.geometry.x,
-                               geo.y - view->pending.geometry.y);
+    ky_scene_node_set_position(grab->snap_node, geo.x, geo.y);
 }
 
 static void snap_box_enable_filter(struct interactive_grab *grab, bool enabled)
@@ -143,6 +149,7 @@ static void snap_box_enable_filter(struct interactive_grab *grab, bool enabled)
 static int handle_snap_box(void *data)
 {
     struct interactive_grab *grab = data;
+    grab->output = input_current_output(grab->seat);
     enum kywc_tile mode = get_kywc_tile_mode(grab);
 
     grab->filter_enabled = false;
@@ -152,13 +159,12 @@ static int handle_snap_box(void *data)
 
 static void interactive_move_show_snap_box(struct interactive_grab *grab, int cur_x, int cur_y)
 {
-    struct output *output = input_current_output(grab->seat);
-    struct kywc_box *usable = &output->usable_area;
+    struct kywc_box *usable = &grab->output->usable_area;
 
     /* left */
     if (cur_x - usable->x < VIEW_EDGE_GAP) {
         /* trigger timer to show snap box if not the leftmost output */
-        if (!output_at_layout_edge(output, LAYOUT_EDGE_LEFT) &&
+        if (!output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) &&
             grab->snap_mode != KYWC_TILE_TOP_LEFT && grab->snap_mode != KYWC_TILE_LEFT &&
             grab->snap_mode != KYWC_TILE_BOTTOM_LEFT) {
             snap_box_update(grab, KYWC_TILE_NONE);
@@ -168,7 +174,7 @@ static void interactive_move_show_snap_box(struct interactive_grab *grab, int cu
         /* right */
     } else if (usable->x + usable->width - cur_x < VIEW_EDGE_GAP) {
         /* trigger timer to show snap box if not the rightmost output */
-        if (!output_at_layout_edge(output, LAYOUT_EDGE_RIGHT) &&
+        if (!output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) &&
             grab->snap_mode != KYWC_TILE_RIGHT && grab->snap_mode != KYWC_TILE_TOP_RIGHT &&
             grab->snap_mode != KYWC_TILE_BOTTOM_RIGHT) {
             snap_box_update(grab, KYWC_TILE_NONE);
@@ -178,7 +184,8 @@ static void interactive_move_show_snap_box(struct interactive_grab *grab, int cu
         /* all */
     } else if (cur_y - usable->y < VIEW_TOP_GAP) {
         /* trigger timer to show snap box if not the rightmost output */
-        if (!output_at_layout_edge(output, LAYOUT_EDGE_TOP) && grab->snap_mode != KYWC_TILE_ALL) {
+        if (!output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) &&
+            grab->snap_mode != KYWC_TILE_ALL) {
             snap_box_update(grab, KYWC_TILE_NONE);
             snap_box_enable_filter(grab, true);
             return;
@@ -203,22 +210,20 @@ static void interactive_grab_destroy(struct interactive_grab *grab)
 
 static void interactivate_done_move(struct interactive_grab *grab)
 {
+    grab->output = input_current_output(grab->seat);
     snap_box_update(grab, KYWC_TILE_NONE);
     enum kywc_tile mode = get_kywc_tile_mode(grab);
     if (mode == KYWC_TILE_NONE) {
         return;
     }
 
-    /* current output*/
-    struct output *output = input_current_output(grab->seat);
-
     if (mode == KYWC_TILE_ALL) {
         /* current cursor focused output, not the view most at output */
-        kywc_view_set_maximized(&grab->view->base, true, &output->base);
+        kywc_view_set_maximized(&grab->view->base, true, &grab->output->base);
         return;
     }
 
-    kywc_view_set_tiled(&grab->view->base, mode, &output->base);
+    kywc_view_set_tiled(&grab->view->base, mode, &grab->output->base);
 }
 
 static void interactive_done(struct interactive_grab *grab)
@@ -235,8 +240,7 @@ static void interactive_done(struct interactive_grab *grab)
 static void interactive_move_constraints(struct interactive_grab *grab, int *x, int *y)
 {
     /* get current seat constraints output */
-    struct output *output = input_current_output(grab->seat);
-    struct kywc_box *usable = &output->usable_area;
+    struct kywc_box *usable = &grab->output->usable_area;
     struct kywc_view *kywc_view = &grab->view->base;
     struct kywc_box *current = &kywc_view->geometry;
 
@@ -263,9 +267,10 @@ static void interactive_move_constraints(struct interactive_grab *grab, int *x, 
     }
 
     /* constraints when moving to top and bottom */
-    if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
+    if (output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
         *y = usable->y + kywc_view->margin.off_y;
-    } else if (output_at_layout_edge(output, LAYOUT_EDGE_BOTTOM) && uy2 - y1 < VIEW_BOTTOM_GAP) {
+    } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) &&
+               uy2 - y1 < VIEW_BOTTOM_GAP) {
         *y = uy2 - VIEW_BOTTOM_GAP + kywc_view->margin.off_y;
     }
 }
@@ -303,8 +308,7 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
 static void interactive_resize_constraints(struct interactive_grab *grab, struct kywc_box *box)
 {
     /* get current seat constraints output */
-    struct output *output = input_current_output(grab->seat);
-    struct kywc_box *usable = &output->usable_area;
+    struct kywc_box *usable = &grab->output->usable_area;
     struct kywc_view *kywc_view = &grab->view->base;
     struct kywc_box *current = &kywc_view->geometry;
 
@@ -318,22 +322,22 @@ static void interactive_resize_constraints(struct interactive_grab *grab, struct
     int uy2 = usable->y + usable->height;
 
     /* constraints when resize to top and bottom */
-    if (grab->resize_edges & KYWC_EDGE_TOP && output_at_layout_edge(output, LAYOUT_EDGE_TOP) &&
-        y1 < usable->y) {
+    if (grab->resize_edges & KYWC_EDGE_TOP &&
+        output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
         box->y = usable->y + kywc_view->margin.off_y;
         box->height = current->height + current->y - box->y;
     } else if (grab->resize_edges & KYWC_EDGE_BOTTOM &&
-               output_at_layout_edge(output, LAYOUT_EDGE_BOTTOM) && y2 > uy2) {
+               output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) && y2 > uy2) {
         box->height = uy2 - y1 - kywc_view->margin.off_height;
     }
 
     /* constraints when resize to left and right */
-    if (grab->resize_edges & KYWC_EDGE_LEFT && output_at_layout_edge(output, LAYOUT_EDGE_LEFT) &&
-        x1 < usable->x) {
+    if (grab->resize_edges & KYWC_EDGE_LEFT &&
+        output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) && x1 < usable->x) {
         box->x = usable->x + kywc_view->margin.off_x;
         box->width = current->width + current->x - box->x;
     } else if (grab->resize_edges & KYWC_EDGE_RIGHT &&
-               output_at_layout_edge(output, LAYOUT_EDGE_RIGHT) && x2 > ux2) {
+               output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) && x2 > ux2) {
         box->width = ux2 - x1 - kywc_view->margin.off_width;
     }
 }
@@ -385,6 +389,7 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
                                 double ly)
 {
     struct interactive_grab *grab = pointer_grab->data;
+    grab->output = input_current_output(grab->seat);
 
     if (grab->mode == INTERACTIVE_MODE_MOVE) {
         /* set moving cursor image in server side, may replaced by client set_cursor later */
