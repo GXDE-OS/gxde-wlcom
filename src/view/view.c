@@ -655,7 +655,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
                          struct kywc_output *kywc_output)
 {
-    if (kywc_view->fullscreen) {
+    if (kywc_view->fullscreen || !kywc_view->resizable) {
         return;
     }
 
@@ -912,6 +912,7 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
         kywc_view->min_width == kywc_view->max_width &&
         kywc_view->min_height == kywc_view->max_height) {
         kywc_view->maximizable = false;
+        kywc_view->resizable = false;
     }
 
     if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {

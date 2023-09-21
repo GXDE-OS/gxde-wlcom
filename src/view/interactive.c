@@ -159,6 +159,10 @@ static int handle_snap_box(void *data)
 
 static void interactive_move_show_snap_box(struct interactive_grab *grab, int cur_x, int cur_y)
 {
+    if (!grab->view->base.resizable) {
+        return;
+    }
+
     struct kywc_box *usable = &grab->output->usable_area;
 
     /* left */
