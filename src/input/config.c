@@ -717,12 +717,20 @@ void seat_write_config(struct seat *seat)
     if (seat->state.cursor_theme && strcmp(seat->state.cursor_theme, "default")) {
         json_object_object_add(config, "cursor_theme",
                                json_object_new_string(seat->state.cursor_theme));
+    } else {
+        json_object_object_del(config, "cursor_theme");
     }
+
     if (seat->state.cursor_size != 24) {
         json_object_object_add(config, "cursor_size", json_object_new_int(seat->state.cursor_size));
+    } else {
+        json_object_object_del(config, "cursor_size");
     }
+
     if (seat->state.scroll_factor != 1.0) {
         json_object_object_add(config, "scroll_factor",
                                json_object_new_double(seat->state.scroll_factor));
+    } else {
+        json_object_object_del(config, "scroll_factor");
     }
 }
