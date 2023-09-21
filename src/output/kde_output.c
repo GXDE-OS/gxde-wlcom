@@ -205,20 +205,6 @@ static void output_configure_handle_scale(struct wl_client *client, struct wl_re
     }
 }
 
-static struct kde_output_config *
-output_device_config_in_configs(struct kde_output_configs *configs,
-                                struct kde_output_device *output_device)
-{
-    struct kde_output_config *config;
-    wl_list_for_each(config, &configs->configs, link) {
-        if (output_device == config->device) {
-            return config;
-        }
-    }
-
-    return NULL;
-}
-
 static void output_configure_handle_apply(struct wl_client *client, struct wl_resource *resource)
 {
     struct kde_output_configs *configs = wl_resource_get_user_data(resource);
@@ -230,88 +216,20 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
         return;
     }
 
-    /* primary output may be disabled, fixup it */
-    bool need_fix_primary_output = !configs->pending_primary->state.enabled;
-
-    struct kywc_output *kywc_output;
     struct kde_output_config *config;
     wl_list_for_each(config, &configs->configs, link) {
-        kywc_output = config->device->kywc_output;
-        /* It's going to disable the primary output and no new primary config */
-        if (kywc_output->state.enabled && !config->pending.enabled &&
-            configs->pending_primary == primary_output && kywc_output == primary_output) {
-            need_fix_primary_output = true;
-            break;
-        }
+        struct output *output = output_from_kywc_output(config->device->kywc_output);
+        output_manager_add_output_pending_state(output, config->pending);
     }
 
-    /* if all outputs will be disabled in config, find others not in config */
-    bool have_enabled_output = false, have_zero_coord = false;
-    struct kde_output_device *output_device;
-    wl_list_for_each(output_device, &management->output_devices, link) {
-        config = output_device_config_in_configs(configs, output_device);
-        if (config) {
-            have_enabled_output |= config->pending.enabled;
-            have_zero_coord |=
-                config->pending.enabled && config->pending.lx == 0 && config->pending.ly == 0;
-        } else {
-            have_enabled_output |= output_device->kywc_output->state.enabled;
-            have_zero_coord |= output_device->kywc_output->state.enabled &&
-                               output_device->kywc_output->state.lx == 0 &&
-                               output_device->kywc_output->state.ly == 0;
-        }
+    kywc_output_set_pending_primary(configs->pending_primary);
 
-        /* fixup primary output */
-        if (have_enabled_output && need_fix_primary_output) {
-            kywc_log(KYWC_WARN, "Fixup primary output to %s", output_device->kywc_output->name);
-            need_fix_primary_output = false;
-            configs->pending_primary = output_device->kywc_output;
-        }
-
-        if (have_enabled_output && have_zero_coord) {
-            break;
-        }
-    }
-
-    if (!have_enabled_output) {
-        kywc_log(KYWC_WARN, "All outputs will be disabled, reject this configuration");
+    if (!output_manager_configure_outputs()) {
         kde_output_configuration_v2_send_failed(resource);
         return;
-    }
-
-    if (!have_zero_coord) {
-        kywc_log(KYWC_WARN, "There will be no zero coord, reject this configuration");
-        kde_output_configuration_v2_send_failed(resource);
-        return;
-    }
-
-    /* call kywc_output_set_state in all outputs, enable first and disable outputs later */
-    wl_list_for_each(config, &configs->configs, link) {
-        if (!config->pending.enabled) {
-            continue;
-        }
-        if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
-            kde_output_configuration_v2_send_failed(resource);
-            output_manager_emit_configured();
-            return;
-        }
-    }
-
-    kywc_output_set_primary(configs->pending_primary);
-
-    wl_list_for_each(config, &configs->configs, link) {
-        if (config->pending.enabled) {
-            continue;
-        }
-        if (!kywc_output_set_state(config->device->kywc_output, &config->pending)) {
-            kde_output_configuration_v2_send_failed(resource);
-            output_manager_emit_configured();
-            return;
-        }
     }
 
     kde_output_configuration_v2_send_applied(resource);
-    output_manager_emit_configured();
 }
 
 static void output_configure_handle_destroy(struct wl_client *client, struct wl_resource *resource)

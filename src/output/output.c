@@ -202,41 +202,24 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         wl_list_insert(&output_manager->outputs, &output->link);
     }
 
-    /* read config and apply it */
     output_get_state(output, &kywc_output->state);
 
-    if (!output_manager->has_layout_manager) {
-        struct kywc_output_state state = kywc_output->state;
-        bool found = output_read_config(output, &state);
-        if (!found) {
-            state.enabled = state.power = true;
-
-            struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
-            state.width = mode->width;
-            state.height = mode->height;
-            state.refresh = mode->refresh;
-
-            state.scale = kywc_output_preferred_scale(kywc_output, state.width, state.height);
-        }
-
-        kywc_output_set_state(kywc_output, &state);
+    /* read config and apply it */
+    output->modeset = false;
+    if (!kywc_output->prop.is_virtual) {
+        output_uuid_generate(kywc_output);
+        output_manager_get_layout_configs(output_manager);
+        output_manager_configure_outputs();
     }
 
-    if (kywc_output == output_manager->fallback_output) {
-        fallback_output_set_state(kywc_output, wl_list_empty(&output_manager->outputs));
+    if (kywc_output == output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
+        fallback_output_set_state(kywc_output, true);
+        kywc_output_set_primary(kywc_output);
+        output_manager_emit_configured();
     }
+    output->modeset = true;
 
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
-
-    /* fix primary output */
-    if (!output_manager->primary_output && kywc_output->state.enabled) {
-        kywc_output_set_primary(kywc_output);
-    }
-
-    if (kywc_output != output_manager->fallback_output && output_manager->fallback_output &&
-        !kywc_output->prop.is_virtual && kywc_output->state.enabled) {
-        fallback_output_set_state(output_manager->fallback_output, false);
-    }
 
     return output;
 }
@@ -293,52 +276,6 @@ static void handle_output_needs_frame(struct wl_listener *listener, void *data)
     wlr_output_schedule_frame(output->wlr_output);
 }
 
-static void fix_outputs(struct kywc_output *destroy_output)
-{
-    bool have_enabled_output = false;
-    struct output *output_tmp;
-    wl_list_for_each(output_tmp, &output_manager->outputs, link) {
-        if (!output_tmp->base.state.enabled) {
-            continue;
-        }
-
-        have_enabled_output = true;
-        /* fixup primary output if not fixed by destroy listeners */
-        if (destroy_output == output_manager->primary_output) {
-            kywc_output_set_primary(&output_tmp->base);
-        }
-        break;
-    }
-
-    /* all outputs are disabled or no output in manager */
-    if (!have_enabled_output) {
-        struct output *output_tmp;
-        wl_list_for_each(output_tmp, &output_manager->outputs, link) {
-            /* enable this output to keep one enabled */
-            struct kywc_output_state state = output_tmp->base.state;
-            state.enabled = state.power = true;
-            state.lx = state.ly = 0;
-            kywc_output_set_state(&output_tmp->base, &state);
-
-            /* fixup primary with this output */
-            if (destroy_output == output_manager->primary_output) {
-                kywc_output_set_primary(&output_tmp->base);
-            }
-            break;
-        }
-
-        if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
-            fallback_output_set_state(output_manager->fallback_output, true);
-            kywc_output_set_primary(output_manager->fallback_output);
-        }
-    }
-
-    /* no output to fixup primary */
-    if (destroy_output == output_manager->primary_output) {
-        kywc_output_set_primary(NULL);
-    }
-}
-
 static void output_destroy(struct output *output)
 {
     struct kywc_output *kywc_output = &output->base;
@@ -347,9 +284,15 @@ static void output_destroy(struct output *output)
     wl_signal_emit_mutable(&kywc_output->events.destroy, NULL);
 
     wl_list_remove(&output->link);
+    /* get layouts configure outputs */
+    output_manager_get_layout_configs(output_manager);
+    output_manager_configure_outputs();
 
-    /* fix primary and power on all output */
-    fix_outputs(kywc_output);
+    if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
+        fallback_output_set_state(output_manager->fallback_output, true);
+        kywc_output_set_primary(output_manager->fallback_output);
+        output_manager_emit_configured();
+    }
 
     struct kywc_output_mode *mode, *tmp_mode;
     wl_list_for_each_safe(mode, tmp_mode, &kywc_output->prop.modes, link) {
@@ -418,6 +361,184 @@ void output_manager_power_outputs(bool power)
     }
 }
 
+static struct output_pending_config *get_output_pending_config(struct output *output)
+{
+    struct output_pending_config *pending_config;
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        if (pending_config->output == output) {
+            return pending_config;
+        }
+    }
+    return NULL;
+}
+
+bool output_manager_configure_outputs(void)
+{
+    bool ret = false;
+
+    if (wl_list_empty(&output_manager->outputs)) {
+        goto failed;
+    }
+
+    /* 1.check configs */
+    bool need_fix_primary_output = false;
+    if (!output_manager->pending_primary && output_manager->primary_output &&
+        !output_manager->primary_output->prop.is_virtual) {
+        struct output *output;
+        wl_list_for_each(output, &output_manager->outputs, link) {
+            struct kywc_output *kywc_output = &output->base;
+            /* filter primary output is destroing output */
+            if (kywc_output != output_manager->primary_output) {
+                continue;
+            }
+            output_manager->pending_primary = output_manager->primary_output;
+            kywc_log(KYWC_WARN, "pending_primay is null set as the primary_output:%s",
+                     output_manager->primary_output->name);
+            break;
+        }
+    }
+    need_fix_primary_output = !output_manager->pending_primary;
+
+    /* primary output may be disabled, fixup it */
+    struct output_pending_config *pending_config, *temp;
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        /* It's going to disable the primary output and no new primary config */
+        struct kywc_output *kywc_output = &pending_config->output->base;
+        if (kywc_output == output_manager->pending_primary && !pending_config->state.enabled) {
+            need_fix_primary_output = true;
+            break;
+        }
+    }
+
+    /* if all outputs will be disabled in config, find others not in config */
+    bool have_enabled_output = false;
+    bool have_auto_coord = false;
+    bool have_zero_coord = false;
+    int auto_coord_outputs = 0;
+    struct output *output = NULL;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        pending_config = get_output_pending_config(output);
+        if (pending_config) {
+            have_enabled_output |= pending_config->state.enabled;
+            have_zero_coord |= pending_config->state.enabled && pending_config->state.lx == 0 &&
+                               pending_config->state.ly == 0;
+            have_auto_coord = pending_config->state.enabled && pending_config->state.lx == -1 &&
+                              pending_config->state.ly == -1;
+            if (have_auto_coord) {
+                auto_coord_outputs++;
+            }
+        } else {
+            struct kywc_output *kywc_output = &output->base;
+            have_enabled_output |= kywc_output->state.enabled;
+            have_zero_coord |= kywc_output->state.enabled && kywc_output->state.lx == 0 &&
+                               kywc_output->state.ly == 0;
+        }
+
+        /* fixup primary output */
+        if (have_enabled_output && need_fix_primary_output) {
+            kywc_log(KYWC_WARN, "Fixup primary output to %s", output->base.name);
+            need_fix_primary_output = false;
+            kywc_output_set_pending_primary(&output->base);
+        }
+
+        if (have_enabled_output && have_zero_coord) {
+            break;
+        }
+    }
+
+    if (!have_zero_coord && auto_coord_outputs == wl_list_length(&output_manager->output_configs)) {
+        have_zero_coord = true;
+        pending_config->state.lx = pending_config->state.ly = 0;
+    }
+
+    if (!have_enabled_output || (!have_zero_coord && !have_auto_coord)) {
+        kywc_log(KYWC_WARN, "All outputs will be disabled or no zero coord, reject this configure");
+        goto failed;
+    }
+
+    /* 2.config outputs */
+    /* call kywc_output_set_state in all pending outputs, enable first and disable outputs later */
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        if (!pending_config->state.enabled) {
+            continue;
+        }
+        struct kywc_output *kywc_output = &pending_config->output->base;
+        if (!kywc_output_set_state(kywc_output, &pending_config->state)) {
+            goto error;
+        }
+    }
+
+    kywc_output_set_primary(output_manager->pending_primary);
+
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        if (pending_config->state.enabled) {
+            continue;
+        }
+        struct kywc_output *kywc_output = &pending_config->output->base;
+        if (!kywc_output_set_state(kywc_output, &pending_config->state)) {
+            goto error;
+        }
+    }
+
+    if (output_manager->fallback_output && output_manager->fallback_output->state.enabled) {
+        fallback_output_set_state(output_manager->fallback_output, false);
+    }
+
+    if (kywc_log_get_level() >= KYWC_INFO) {
+        wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+            struct kywc_output *kywc_output = &pending_config->output->base;
+            kywc_log(KYWC_INFO,
+                     "\t output %s: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
+                     kywc_output->name, kywc_output->state.width, kywc_output->state.height,
+                     kywc_output->state.refresh, kywc_output->state.scale, kywc_output->state.lx,
+                     kywc_output->state.ly, kywc_output->state.transform,
+                     kywc_output->state.enabled ? "enabled" : "disabled",
+                     output_manager->primary_output == kywc_output ? "primary" : "");
+        }
+    }
+
+    ret = true;
+error:
+    output_manager_emit_configured();
+failed:
+    output_manager->pending_primary = NULL;
+
+    wl_list_for_each_safe(pending_config, temp, &output_manager->output_configs, link) {
+        free(pending_config);
+    }
+    wl_list_init(&output_manager->output_configs);
+
+    return ret;
+}
+
+void output_manager_add_output_pending_state(struct output *output, struct kywc_output_state state)
+{
+    struct output_pending_config *pending_config = NULL;
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        if (pending_config->output == output) {
+            pending_config->state = state;
+            return;
+        }
+    }
+
+    pending_config = calloc(1, sizeof(*pending_config));
+    if (!pending_config) {
+        return;
+    }
+    pending_config->output = output;
+
+    /* copy colortemp and brightness to pending */
+    state.color_temp = output->base.state.color_temp;
+    state.brightness = output->base.state.brightness;
+    pending_config->state = state;
+    kywc_log(KYWC_DEBUG,
+             "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
+             output->base.name, state.width, state.height, state.refresh, state.scale, state.lx,
+             state.ly, state.transform, state.enabled ? "enabled" : "disabled",
+             output_manager->pending_primary == &output->base ? "primary" : "");
+    wl_list_insert(&output_manager->output_configs, &pending_config->link);
+}
+
 struct output_manager *output_manager_create(struct server *server)
 {
     output_manager = calloc(1, sizeof(struct output_manager));
@@ -427,6 +548,7 @@ struct output_manager *output_manager_create(struct server *server)
 
     output_manager->server = server;
     wl_list_init(&output_manager->outputs);
+    wl_list_init(&output_manager->output_configs);
     wl_signal_init(&output_manager->events.new_output);
     wl_signal_init(&output_manager->events.primary_output);
     wl_signal_init(&output_manager->events.configured);
@@ -450,12 +572,21 @@ struct output_manager *output_manager_create(struct server *server)
     wlr_output_set_name(wlr_output, "FALLBACK");
 
     output_manager_config_init(output_manager);
-    output_manager->has_layout_manager = layout_manager_create(server);
+    output_manager_layout_init(output_manager);
 
     kde_output_management_create(server);
     wlr_output_management_create(server);
 
     return output_manager;
+}
+
+void kywc_output_set_pending_primary(struct kywc_output *kywc_output)
+{
+    if (output_manager->pending_primary == kywc_output) {
+        return;
+    }
+
+    output_manager->pending_primary = kywc_output;
 }
 
 void kywc_output_set_primary(struct kywc_output *kywc_output)
@@ -585,49 +716,69 @@ static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_
     }
 }
 
+static bool output_compare_state(struct output *output, const struct kywc_output_state *state)
+{
+    struct kywc_output_state *current_state = &output->base.state;
+
+    bool changed = current_state->enabled != state->enabled;
+    changed |= current_state->power != state->power;
+    changed |= current_state->width != state->width || current_state->height != state->height ||
+               current_state->refresh != state->refresh;
+    changed |= current_state->transform != state->transform;
+    changed |= current_state->vrr_policy != state->vrr_policy;
+    changed |= current_state->scale != state->scale;
+    changed |= output->base.prop.gamma_size < 1;
+    changed |= output->base.prop.gamma_size > 1 && current_state->color_temp != state->color_temp;
+
+    return changed;
+}
+
 static bool output_set_state(struct output *output, struct kywc_output_state *state)
 {
     struct wlr_output *wlr_output = output->wlr_output;
     struct server *server = output_manager->server;
-    bool enabled = state->enabled && state->power;
 
-    struct wlr_output_state wlr_state;
-    wlr_output_state_init(&wlr_state);
-    wlr_output_state_set_enabled(&wlr_state, enabled);
+    bool changed = !output->modeset || output_compare_state(output, state);
+    if (changed) {
+        bool enabled = state->enabled && state->power;
+        struct wlr_output_state wlr_state;
+        wlr_output_state_init(&wlr_state);
+        wlr_output_state_set_enabled(&wlr_state, enabled);
 
-    if (enabled) {
-        struct wlr_output_mode *best = NULL;
-        if (state->width <= 0 || state->height <= 0) {
-            kywc_log(KYWC_INFO, "set preferred mode as no config found");
-            best = wlr_output_preferred_mode(wlr_output);
-        } else {
-            output_find_best_mode(wlr_output, state->width, state->height, state->refresh, &best);
+        if (enabled) {
+            struct wlr_output_mode *best = NULL;
+            if (state->width <= 0 || state->height <= 0) {
+                kywc_log(KYWC_INFO, "set preferred mode as no config found");
+                best = wlr_output_preferred_mode(wlr_output);
+            } else {
+                output_find_best_mode(wlr_output, state->width, state->height, state->refresh,
+                                      &best);
+            }
+
+            if (best) {
+                wlr_output_state_set_mode(&wlr_state, best);
+            } else {
+                wlr_output_state_set_custom_mode(&wlr_state, state->width, state->height,
+                                                 state->refresh);
+            }
+            output_ensure_mode(wlr_output, &wlr_state, best);
+
+            wlr_output_state_set_transform(&wlr_state, state->transform);
+            wlr_output_state_set_scale(&wlr_state, state->scale);
+
+            if (output->base.prop.gamma_size > 1) {
+                output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, &wlr_state,
+                                     state->color_temp);
+            }
         }
 
-        if (best) {
-            wlr_output_state_set_mode(&wlr_state, best);
-        } else {
-            wlr_output_state_set_custom_mode(&wlr_state, state->width, state->height,
-                                             state->refresh);
+        if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
+            kywc_log(KYWC_ERROR, "Failed to commit output: %s", wlr_output->name);
+            wlr_output_state_finish(&wlr_state);
+            return false;
         }
-        output_ensure_mode(wlr_output, &wlr_state, best);
-
-        wlr_output_state_set_transform(&wlr_state, state->transform);
-        wlr_output_state_set_scale(&wlr_state, state->scale);
-
-        if (output->base.prop.gamma_size > 1) {
-            output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, &wlr_state,
-                                 state->color_temp);
-        }
-    }
-
-    if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
-        kywc_log(KYWC_ERROR, "Failed to commit output: %s", wlr_output->name);
         wlr_output_state_finish(&wlr_state);
-        return false;
     }
-    wlr_output_state_finish(&wlr_state);
-
     /* after output commit, we get actual status */
     struct wlr_output_layout_output *loutput = wlr_output_layout_get(server->layout, wlr_output);
     bool need_layout = state->enabled;
@@ -718,7 +869,9 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
     // XXX: fix current.enabled for dpms power
     current->enabled = state->enabled;
-    current->color_temp = state->color_temp;
+    if (kywc_output->prop.gamma_size > 1) {
+        current->color_temp = state->color_temp;
+    }
 
     /* fix gamma supoort by get gamma_size again */
     kywc_output->prop.gamma_size = wlr_output_get_gamma_size(output->wlr_output);

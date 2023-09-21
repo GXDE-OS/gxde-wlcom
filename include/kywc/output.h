@@ -57,6 +57,7 @@ struct kywc_output_prop {
 /* connector with a monitor */
 struct kywc_output {
     const char *name;
+    char uuid[16];
     bool destroying;
 
     struct kywc_output_prop prop;
@@ -83,6 +84,8 @@ void kywc_output_add_primary_listener(struct wl_listener *listener);
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state);
 
 void kywc_output_set_primary(struct kywc_output *kywc_output);
+
+void kywc_output_set_pending_primary(struct kywc_output *kywc_output);
 
 struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_output);
 

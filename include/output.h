@@ -9,6 +9,12 @@
 
 struct server;
 
+struct output_pending_config {
+    struct output *output;
+    struct kywc_output_state state;
+    struct wl_list link;
+};
+
 struct output {
     struct kywc_output base;
     struct wlr_output *wlr_output;
@@ -34,6 +40,8 @@ struct output {
     struct wl_listener damage;
     struct wl_listener needs_frame;
     struct wl_listener destroy;
+
+    bool modeset;
 };
 
 struct output_manager *output_manager_create(struct server *server);
@@ -44,7 +52,11 @@ void output_manager_add_configured_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);
 
+bool output_manager_configure_outputs(void);
+
 void output_manager_power_outputs(bool power);
+
+void output_manager_add_output_pending_state(struct output *output, struct kywc_output_state state);
 
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
 

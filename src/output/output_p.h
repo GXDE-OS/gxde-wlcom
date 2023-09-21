@@ -14,8 +14,11 @@ struct output_manager {
     struct server *server;
 
     struct wl_list outputs;
+    struct wl_list output_configs; /* output pending configs */
+
     struct kywc_output *fallback_output;
     struct kywc_output *primary_output;
+    struct kywc_output *pending_primary;
 
     struct {
         struct wl_signal new_output;
@@ -24,13 +27,15 @@ struct output_manager {
     } events;
 
     struct config *config;
+    struct config *layout_config;
 
     struct wl_listener new_output;
+    struct wl_listener configured;
     struct wl_listener server_destroy;
     struct wl_listener server_suspend;
     struct wl_listener server_resume;
 
-    bool has_layout_manager;
+    char outputs_layout[16];
 };
 
 bool output_manager_config_init(struct output_manager *output_manager);
@@ -51,6 +56,12 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
 void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp);
 
 void output_add_common_modes(struct output *output);
+
+void output_uuid_generate(struct kywc_output *kywc_output);
+
+bool output_manager_layout_init(struct output_manager *output_manager);
+
+void output_manager_get_layout_configs(struct output_manager *output_manager);
 
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);

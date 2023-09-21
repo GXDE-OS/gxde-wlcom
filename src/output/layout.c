@@ -9,53 +9,29 @@
 #include "config.h"
 #include "output_p.h"
 
-struct layout_manager {
-    struct wl_list outputs;
-    struct config *config;
-
-    struct wl_listener server_destroy;
-    struct wl_listener new_output;
-    struct wl_listener configured;
-
-    char outputs_layout[16];
-};
-
-struct output_layout {
-    struct wl_list link;
-    struct kywc_output *output;
-    struct layout_manager *layout_manager;
-
-    struct wl_listener destroy;
-
-    char uuid[16];
-
-    struct kywc_output_state state;
-    bool primary;
-};
-
 struct output_uuid {
     const char *name;
     const char *uuid;
 };
 
-static void output_layout_get_layout(struct output_layout *output_layout, const char *active_layout,
-                                     char *layout)
+static void output_get_layout(struct output *output, const char *active_layout, char *layout)
 {
     memcpy(layout, active_layout, 15);
     layout[15] = ':';
-    memcpy(layout + 16, output_layout->uuid, 15);
+    memcpy(layout + 16, output->base.uuid, 15);
     layout[31] = '\0';
 }
 
-static const char *layout_manager_get_active_layout(struct layout_manager *layout_manager)
+static const char *output_manager_get_active_layout(struct output_manager *output_manager)
 {
-    struct layout_manager *lm = layout_manager;
-    if (!lm->config || !lm->config->json) {
+    struct output_manager *om = output_manager;
+    if (!om->layout_config || !om->layout_config->json) {
         return NULL;
     }
 
     /* get outputs_layout from layouts */
-    json_object *outputs_layout = json_object_object_get(lm->config->json, lm->outputs_layout);
+    json_object *outputs_layout =
+        json_object_object_get(om->layout_config->json, om->outputs_layout);
     if (!outputs_layout) {
         return NULL;
     }
@@ -69,41 +45,41 @@ static const char *layout_manager_get_active_layout(struct layout_manager *layou
     return NULL;
 }
 
-static void layout_manager_set_active_layout(struct layout_manager *layout_manager,
+static void output_manager_set_active_layout(struct output_manager *manager,
                                              const char *active_layout)
 {
-    struct layout_manager *lm = layout_manager;
-    if (!lm->config || !lm->config->json || !active_layout) {
+    if (!manager->layout_config || !manager->layout_config->json || !active_layout) {
         return;
     }
 
     /* get outputs_layout in layouts, create if no */
-    json_object *outputs_layout = json_object_object_get(lm->config->json, lm->outputs_layout);
+    json_object *outputs_layout =
+        json_object_object_get(manager->layout_config->json, manager->outputs_layout);
     if (!outputs_layout) {
         outputs_layout = json_object_new_object();
-        json_object_object_add(lm->config->json, lm->outputs_layout, outputs_layout);
+        json_object_object_add(manager->layout_config->json, manager->outputs_layout,
+                               outputs_layout);
     }
 
     json_object_object_add(outputs_layout, "active_layout", json_object_new_string(active_layout));
 }
 
-static bool output_layout_read_config(struct output_layout *output_layout,
+static bool output_read_layout_config(struct output *output, struct kywc_output_state *state,
                                       const char *active_layout)
 {
-    struct layout_manager *lm = output_layout->layout_manager;
-    if (!lm->config || !lm->config->json || !active_layout) {
+    struct output_manager *om = output->manager;
+    if (!om->layout_config || !om->layout_config->json || !active_layout) {
         return false;
     }
 
     char layout[32];
-    output_layout_get_layout(output_layout, active_layout, layout);
-    json_object *config = json_object_object_get(lm->config->json, layout);
+    output_get_layout(output, active_layout, layout);
+    json_object *config = json_object_object_get(om->layout_config->json, layout);
     if (!config) {
         return false;
     }
 
     json_object *data;
-    struct kywc_output_state *state = &output_layout->state;
 
     if (json_object_object_get_ex(config, "enabled", &data)) {
         state->enabled = state->power = json_object_get_boolean(data);
@@ -113,7 +89,10 @@ static bool output_layout_read_config(struct output_layout *output_layout,
     }
 
     if (json_object_object_get_ex(config, "primary", &data)) {
-        output_layout->primary = json_object_get_boolean(data);
+        bool primary = json_object_get_boolean(data);
+        if (primary) {
+            kywc_output_set_pending_primary(&output->base);
+        }
     }
     if (json_object_object_get_ex(config, "width", &data)) {
         state->width = json_object_get_int(data);
@@ -139,25 +118,25 @@ static bool output_layout_read_config(struct output_layout *output_layout,
     return true;
 }
 
-static void output_layout_write_config(struct output_layout *output_layout,
-                                       const char *active_layout)
+static void output_write_layout_config(struct output *output, const char *active_layout)
 {
-    struct layout_manager *lm = output_layout->layout_manager;
-    if (!lm->config || !lm->config->json || !active_layout) {
+    struct output_manager *om = output->manager;
+    if (!om->layout_config || !om->layout_config->json || !active_layout) {
         return;
     }
 
     char layout[32];
-    output_layout_get_layout(output_layout, active_layout, layout);
+    output_get_layout(output, active_layout, layout);
 
-    json_object *config = json_object_object_get(lm->config->json, layout);
+    json_object *config = json_object_object_get(om->layout_config->json, layout);
     if (!config) {
         config = json_object_new_object();
-        json_object_object_add(lm->config->json, layout, config);
+        json_object_object_add(om->layout_config->json, layout, config);
     }
 
-    struct kywc_output_state *state = &output_layout->output->state;
-    bool primary = output_manager_get_primary() == output_layout->output;
+    struct kywc_output *kywc_output = &output->base;
+    struct kywc_output_state *state = &kywc_output->state;
+    bool primary = output_manager_get_primary() == kywc_output;
 
     json_object_object_add(config, "enabled", json_object_new_boolean(state->enabled));
     if (!state->enabled) {
@@ -181,22 +160,22 @@ static int compare_output_uuid(const void *p1, const void *p2)
     return strcmp(v1, v2);
 }
 
-static void layout_manager_generate_layout(struct layout_manager *layout_manager, char *layout_uuid,
+static void output_manager_generate_layout(struct output_manager *output_manager, char *layout_uuid,
                                            bool is_active_layout)
 {
     struct output_uuid *o_uuids = NULL;
     int actual_cnt = 0;
 
-    struct output_layout *ol;
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        struct kywc_output *kywc_output = ol->output;
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
         if (is_active_layout && !kywc_output->state.enabled) {
             continue;
         }
 
         o_uuids = realloc(o_uuids, (actual_cnt + 1) * sizeof(struct output_uuid));
         o_uuids[actual_cnt].name = kywc_output->name;
-        o_uuids[actual_cnt].uuid = ol->uuid;
+        o_uuids[actual_cnt].uuid = kywc_output->uuid;
         actual_cnt++;
     }
 
@@ -222,207 +201,96 @@ static void layout_manager_generate_layout(struct layout_manager *layout_manager
     free(uuids);
 }
 
-static void layout_manager_config_outputs(struct layout_manager *layout_manager)
+void output_manager_get_layout_configs(struct output_manager *output_manager)
 {
+    if (wl_list_empty(&output_manager->outputs)) {
+        return;
+    }
     /* update current outputs layout */
-    layout_manager_generate_layout(layout_manager, layout_manager->outputs_layout, false);
+    output_manager_generate_layout(output_manager, output_manager->outputs_layout, false);
 
-    const char *active_layout = layout_manager_get_active_layout(layout_manager);
+    const char *active_layout = output_manager_get_active_layout(output_manager);
     kywc_log(KYWC_INFO, "configure outputs layout %s with active layout %s",
-             layout_manager->outputs_layout, active_layout);
+             output_manager->outputs_layout, active_layout);
 
     /* get all outputs configuration */
-    struct output_layout *ol;
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        ol->state = ol->output->state;
-        if (output_layout_read_config(ol, active_layout)) {
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        struct kywc_output_state pending = { 0 };
+        if (output_read_layout_config(output, &pending, active_layout)) {
+            output_manager_add_output_pending_state(output, pending);
             continue;
         }
+        struct kywc_output *kywc_output = &output->base;
+        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
 
-        ol->state.enabled = ol->state.power = true;
-        ol->primary = output_manager_get_primary() == ol->output;
-
-        struct kywc_output_mode *mode = kywc_output_preferred_mode(ol->output);
-        ol->state.width = mode->width;
-        ol->state.height = mode->height;
-        ol->state.refresh = mode->refresh;
-
-        ol->state.scale =
-            kywc_output_preferred_scale(ol->output, ol->state.width, ol->state.height);
+        pending.enabled = pending.power = true;
+        pending.lx = pending.ly = -1;
+        pending.width = mode->width;
+        pending.height = mode->height;
+        pending.refresh = mode->refresh;
+        pending.scale = kywc_output_preferred_scale(kywc_output, pending.width, pending.height);
+        output_manager_add_output_pending_state(output, pending);
     }
-
-    /* fix zero coord and primary output */
-    struct output_layout *primary_ol = NULL;
-    int enabled_outputs = 0;
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        if (!ol->state.enabled) {
-            continue;
-        }
-        if (ol->primary) {
-            primary_ol = ol;
-        }
-        if (!primary_ol) {
-            primary_ol = ol;
-        }
-        enabled_outputs++;
-    }
-
-    if (enabled_outputs == 0) {
-        primary_ol = wl_container_of(layout_manager->outputs.prev, primary_ol, link);
-        primary_ol->state.enabled = ol->state.power = true;
-        enabled_outputs = 1;
-        kywc_log(KYWC_WARN, "There is no enabled output, auto enable %s", primary_ol->output->name);
-    }
-    if (enabled_outputs == 1) {
-        primary_ol->primary = true;
-        primary_ol->state.lx = primary_ol->state.ly = 0;
-    }
-
-    if (kywc_log_get_level() >= KYWC_INFO) {
-        wl_list_for_each(ol, &layout_manager->outputs, link) {
-            kywc_log(KYWC_INFO,
-                     "\t output %s: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
-                     ol->output->name, ol->state.width, ol->state.height, ol->state.refresh,
-                     ol->state.scale, ol->state.lx, ol->state.ly, ol->state.transform,
-                     ol->state.enabled ? "enabled" : "disabled", ol->primary ? "primary" : "");
-        }
-    }
-
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        if (!ol->state.enabled) {
-            continue;
-        }
-        kywc_output_set_state(ol->output, &ol->state);
-    }
-
-    kywc_output_set_primary(primary_ol->output);
-
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        if (ol->state.enabled) {
-            continue;
-        }
-        kywc_output_set_state(ol->output, &ol->state);
-    }
-
-    output_manager_emit_configured();
 }
 
-static void output_layout_handle_destroy(struct wl_listener *listener, void *data)
+static void output_manager_save_layouts(struct output_manager *manager)
 {
-    struct output_layout *output_layout = wl_container_of(listener, output_layout, destroy);
-    kywc_log(KYWC_DEBUG, "destroy output layout %s", output_layout->output->name);
-
-    wl_list_remove(&output_layout->link);
-    wl_list_remove(&output_layout->destroy.link);
-
-    struct layout_manager *layout_manager = output_layout->layout_manager;
-    if (!wl_list_empty(&layout_manager->outputs)) {
-        layout_manager_config_outputs(layout_manager);
-    }
-
-    free(output_layout);
-}
-
-static void output_layout_uuid_generate(struct output_layout *output_layout)
-{
-    const char *desc = output_layout->output->prop.desc;
-
-    kywc_identifier_md5_generate_ex((void *)desc, strlen(desc), output_layout->uuid, 16);
-    kywc_log(KYWC_INFO, "new output %s: %s", output_layout->output->name, output_layout->uuid);
-}
-
-static void layout_manager_handle_new_output(struct wl_listener *listener, void *data)
-{
-    struct kywc_output *kywc_output = data;
-    if (kywc_output->prop.is_virtual) {
-        return;
-    }
-
-    struct output_layout *output_layout = calloc(1, sizeof(struct output_layout));
-    if (!output_layout) {
-        return;
-    }
-
-    struct layout_manager *layout_manager = wl_container_of(listener, layout_manager, new_output);
-
-    output_layout->output = kywc_output;
-    output_layout->layout_manager = layout_manager;
-    wl_list_insert(&layout_manager->outputs, &output_layout->link);
-
-    output_layout_uuid_generate(output_layout);
-    layout_manager_config_outputs(layout_manager);
-
-    output_layout->destroy.notify = output_layout_handle_destroy;
-    wl_signal_add(&kywc_output->events.destroy, &output_layout->destroy);
-}
-
-static void layout_manager_handle_configured(struct wl_listener *listener, void *data)
-{
-    struct layout_manager *layout_manager = wl_container_of(listener, layout_manager, configured);
-
-    if (wl_list_empty(&layout_manager->outputs)) {
+    if (wl_list_empty(&manager->outputs)) {
         return;
     }
 
     char active_layout[16];
-    layout_manager_generate_layout(layout_manager, active_layout, true);
-    layout_manager_set_active_layout(layout_manager, active_layout);
+    output_manager_generate_layout(manager, active_layout, true);
+    output_manager_set_active_layout(manager, active_layout);
 
-    struct output_layout *ol;
-    wl_list_for_each(ol, &layout_manager->outputs, link) {
-        output_layout_write_config(ol, active_layout);
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        output_write_layout_config(output, active_layout);
     }
 
     if (kywc_log_get_level() >= KYWC_INFO) {
-        kywc_log(KYWC_INFO, "save outputs layout %s with active layout %s",
-                 layout_manager->outputs_layout, active_layout);
+        kywc_log(KYWC_INFO, "save outputs layout %s with active layout %s", manager->outputs_layout,
+                 active_layout);
 
-        wl_list_for_each(ol, &layout_manager->outputs, link) {
-            struct kywc_output_state *state = &ol->output->state;
-            bool primary = output_manager_get_primary() == ol->output;
+        wl_list_for_each(output, &manager->outputs, link) {
+            struct kywc_output *kywc_output = &output->base;
+            struct kywc_output_state *state = &kywc_output->state;
+            bool primary = output_manager_get_primary() == kywc_output;
             kywc_log(KYWC_INFO,
                      "\t output %s: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
-                     ol->output->name, state->width, state->height, state->refresh, state->scale,
+                     kywc_output->name, state->width, state->height, state->refresh, state->scale,
                      state->lx, state->ly, state->transform,
                      state->enabled ? "enabled" : "disabled", primary ? "primary" : "");
         }
     }
 }
 
-static void handle_layout_manager_destroy(struct wl_listener *listener, void *data)
+void output_uuid_generate(struct kywc_output *kywc_output)
 {
-    struct layout_manager *layout_manager =
-        wl_container_of(listener, layout_manager, server_destroy);
+    const char *desc = kywc_output->prop.desc;
 
-    wl_list_remove(&layout_manager->server_destroy.link);
-    wl_list_remove(&layout_manager->configured.link);
-    wl_list_remove(&layout_manager->new_output.link);
-
-    free(layout_manager);
+    kywc_identifier_md5_generate_ex((void *)desc, strlen(desc), kywc_output->uuid, 16);
+    kywc_log(KYWC_INFO, "new output %s: %s", kywc_output->name, kywc_output->uuid);
 }
 
-bool layout_manager_create(struct server *server)
+static void output_manager_handle_configured(struct wl_listener *listener, void *data)
 {
-    struct layout_manager *layout_manager = calloc(1, sizeof(struct layout_manager));
-    if (!layout_manager) {
-        return false;
+    struct output_manager *output_manager = wl_container_of(listener, output_manager, configured);
+
+    if (wl_list_empty(&output_manager->outputs)) {
+        return;
     }
 
-    wl_list_init(&layout_manager->outputs);
+    output_manager_save_layouts(output_manager);
+}
 
-    /* listener new_output signal */
-    layout_manager->new_output.notify = layout_manager_handle_new_output;
-    kywc_output_add_new_listener(&layout_manager->new_output);
-
+bool output_manager_layout_init(struct output_manager *output_manager)
+{
+    output_manager->layout_config =
+        config_manager_add_config("layouts", NULL, NULL, NULL, NULL, output_manager);
     /* listener output configured signal */
-    layout_manager->configured.notify = layout_manager_handle_configured;
-    output_manager_add_configured_listener(&layout_manager->configured);
-
-    layout_manager->server_destroy.notify = handle_layout_manager_destroy;
-    server_add_destroy_listener(server, &layout_manager->server_destroy);
-
-    layout_manager->config =
-        config_manager_add_config("layouts", NULL, NULL, NULL, NULL, layout_manager);
-
-    return true;
+    output_manager->configured.notify = output_manager_handle_configured;
+    output_manager_add_configured_listener(&output_manager->configured);
+    return !!output_manager->layout_config;
 }
