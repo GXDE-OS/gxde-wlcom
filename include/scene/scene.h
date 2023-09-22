@@ -87,10 +87,11 @@ SCENE_API bool ky_scene_output_sample_event_direct_scanout(const struct ky_scene
 SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.frame_done, listener); }
 
 #elif HAVE_KYCOM_SCENE
-#include "kywc/kycom/scene.h"
-#include "kywc/kycom/target.h"
-#include "kywc/kycom/rect.h"
-#include "kywc/kycom/texture.h"
+
+#include <kywc/kycom/scene.h>
+#include <kywc/kycom/target.h>
+#include <kywc/kycom/rect.h>
+#include <kywc/kycom/texture.h>
 
 #define ky_scene kywc_root
 #define ky_scene_node kywc_node
@@ -110,6 +111,7 @@ SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *s
 #define ky_scene_node_raise_to_top kywc_node_raise_to_top
 #define ky_scene_node_lower_to_bottom kywc_node_lower_to_bottom
 #define ky_scene_node_reparent kywc_node_reparent
+#define ky_scene_node_get_parent kywc_node_get_parent
 #define ky_scene_node_coords kywc_node_coords
 #define ky_scene_node_at kywc_node_at
 #define ky_scene_tree_create kywc_group_node_create
@@ -144,7 +146,6 @@ SCENE_API void ky_scene_node_get_position(struct ky_scene_node *node, int *x, in
 SCENE_API void ky_scene_node_add_destroy_listener(struct ky_scene_node *node, struct wl_listener *listener) { wl_signal_add(&node->events.destroy, listener); }
 SCENE_API struct wlr_addon_set *ky_scene_node_get_addon_set(struct ky_scene_node *node) { return &node->addons; }
 SCENE_API struct ky_scene_tree *ky_scene_create_tree(struct ky_scene *scene) { return ky_scene_tree_create(&scene->group); }
-SCENE_API struct ky_scene_tree *ky_scene_node_get_parent(struct ky_scene_node *node) { return node->parent; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_tree(struct ky_scene_tree *tree) { return &tree->node; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_buffer(struct ky_scene_buffer *buffer) { return &buffer->node; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_rect(struct ky_scene_rect *rect) { return &rect->node; }

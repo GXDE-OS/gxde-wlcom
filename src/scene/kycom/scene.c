@@ -491,6 +491,11 @@ void kywc_node_reparent(struct kywc_node *node, struct kywc_group_node *new_pare
     kywc_node_reparent_ex(node, new_parent);
 }
 
+struct kywc_group_node *kywc_node_get_parent(struct kywc_node *node)
+{
+    return node_get_proxy_node(node)->parent;
+}
+
 bool kywc_node_coords(struct kywc_node *node, int *lx, int *ly)
 {
     if (!node || !lx || !ly) {
