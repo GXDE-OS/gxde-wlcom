@@ -76,7 +76,8 @@ char *fscan_build_fullname(const char *dir, const char *subdir, const char *file
     return full;
 }
 
-static void fscan_foreach_files(const char *path, void (*load_callback)(FILE *, char *, void *),
+static void fscan_foreach_files(const char *path,
+                                void (*load_callback)(const char *, const char *, void *),
                                 void *user_data)
 {
     DIR *dir = opendir(path);
@@ -86,7 +87,6 @@ static void fscan_foreach_files(const char *path, void (*load_callback)(FILE *, 
 
     struct dirent *ent;
     char *full;
-    FILE *f;
 
     for (ent = readdir(dir); ent; ent = readdir(dir)) {
 #ifdef _DIRENT_HAVE_D_TYPE
@@ -99,15 +99,8 @@ static void fscan_foreach_files(const char *path, void (*load_callback)(FILE *, 
             continue;
         }
 
-        f = fopen(full, "r");
-        if (!f) {
-            free(full);
-            continue;
-        }
+        load_callback(full, ent->d_name, user_data);
 
-        load_callback(f, ent->d_name, user_data);
-
-        fclose(f);
         free(full);
     }
 
@@ -115,7 +108,7 @@ static void fscan_foreach_files(const char *path, void (*load_callback)(FILE *, 
 }
 
 void fscan_start(const char *scan_path, const char *subdir,
-                 void (*load_callback)(FILE *, char *, void *), void *user_data)
+                 void (*load_callback)(const char *, const char *, void *), void *user_data)
 {
     const char *path;
     char *dir;
@@ -128,4 +121,82 @@ void fscan_start(const char *scan_path, const char *subdir,
         fscan_foreach_files(dir, load_callback, user_data);
         free(dir);
     }
+}
+
+void fscan_file(const char *scan_path, const char *subdir, const char *file_name,
+                void (*load_callback)(const char *, void *), void *user_data)
+{
+    const char *path;
+    char *dir;
+    char *full;
+
+    for (path = scan_path; path; path = fscan_next_path(path)) {
+        dir = fscan_build_dir(path, subdir);
+        if (!dir) {
+            continue;
+        }
+
+        full = fscan_build_fullname(dir, "", file_name);
+        if (!full) {
+            continue;
+        }
+
+        load_callback(full, user_data);
+
+        free(dir);
+        free(full);
+    }
+}
+
+char *fscan_search_keyword(FILE *fp, const char *keyword)
+{
+    char *result = NULL;
+    char *line = NULL;
+    char *p;
+    size_t line_size = 0;
+
+    if (!keyword) {
+        return NULL;
+    }
+
+    size_t keyword_size = strlen(keyword);
+    while (getline(&line, &line_size, fp) >= 0) {
+        if (strncmp(line, keyword, keyword_size)) {
+            continue;
+        }
+
+        p = line + keyword_size;
+        while (*p == ' ') {
+            p++;
+        }
+        if (*p != '=') {
+            continue;
+        }
+
+        p++;
+        while (*p == ' ') {
+            p++;
+        }
+
+        if (*p == '/') {
+            continue;
+        }
+
+        result = malloc(strlen(p) + 1);
+        if (!result) {
+            free(line);
+            return NULL;
+        }
+
+        char *r = result;
+        while (*p && *p != '\r' && *p != '\t' && *p != '\n') {
+            *r++ = *p++;
+        }
+        *r++ = '\0';
+
+        break;
+    }
+
+    free(line);
+    return result;
 }

@@ -7,6 +7,8 @@
 
 #include "theme.h"
 
+#define DEFAULT_ICON_THEME_NAME "hicolor"
+
 enum {
     BUTTONS_BUFFER = 0,
     CORNER_TOP_LEFT_ACTIVE_BUFFER,
@@ -40,10 +42,17 @@ struct icon {
     char *svg;
 };
 
+struct icon_subdir {
+    struct wl_list link;
+    char *subdir;
+};
+
 struct icon_theme {
+    struct wl_list link;
+    struct wl_list parents_theme;
     char *name;
     struct wl_list icons;
-    struct icon *fallback;
+    struct wl_list icons_subdir;
 };
 
 struct theme_override {
@@ -62,6 +71,10 @@ struct theme_manager {
 
     /* current icon theme */
     struct icon_theme *icon_theme;
+    /* hicolor icon theme */
+    struct icon_theme *hicolor_theme;
+    /* fallback icon */
+    struct icon *fallback_icon;
 
     struct {
         struct wl_signal update;
@@ -83,8 +96,12 @@ void theme_manager_write_icon_config(struct theme_manager *manager, const char *
 
 struct icon_theme *icon_theme_load(const char *name);
 
+struct icon *icon_fallback_create(void);
+
+void icon_destroy(struct icon *icon);
+
 void icon_theme_destroy(struct icon_theme *theme);
 
-struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name);
+struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, bool search_parents);
 
 #endif /* _THEME_P_H */

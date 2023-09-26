@@ -161,7 +161,11 @@ const char *theme_manager_read_icon_config(struct theme_manager *manager)
 void theme_manager_write_icon_config(struct theme_manager *manager, const char *name)
 {
     if (name && name[0]) {
-        json_object_object_add(manager->config->json, "icon_theme_name",
-                               json_object_new_string(name));
+        if (strcmp(name, DEFAULT_ICON_THEME_NAME)) {
+            json_object_object_add(manager->config->json, "icon_theme_name",
+                                   json_object_new_string(name));
+        } else {
+            json_object_object_del(manager->config->json, "icon_theme_name");
+        }
     }
 }

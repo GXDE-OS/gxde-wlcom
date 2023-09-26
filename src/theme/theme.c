@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,7 +22,6 @@
 
 #define DEFAULT_THEME "builtin-light"
 #define DEFAULT_DARK_THEME "builtin-dark"
-#define DEFAULT_ICON_THEME_NAME "hicolor"
 
 static struct theme_manager *manager = NULL;
 
@@ -258,6 +258,8 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     }
 
     icon_theme_destroy(manager->icon_theme);
+    icon_theme_destroy(manager->hicolor_theme);
+    icon_destroy(manager->fallback_icon);
 
     free(manager->override.font_name);
     free(manager);
@@ -289,15 +291,19 @@ struct theme_manager *theme_manager_create(struct server *server)
         manager->current = theme_create(DEFAULT_THEME, 1.0);
     }
 
+    manager->hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
     const char *icon_theme = theme_manager_read_icon_config(manager);
-    manager->icon_theme = icon_theme_load(icon_theme ? icon_theme : DEFAULT_ICON_THEME_NAME);
-    /* icon theme load failed, fallback to default icon theme */
-    if (!manager->icon_theme) {
-        manager->icon_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
+    if (icon_theme) {
+        manager->icon_theme = icon_theme_load(icon_theme);
     }
+    manager->fallback_icon = icon_fallback_create();
+    assert(manager->fallback_icon);
 
     theme_manager_write_config(manager, manager->current->theme_name);
-    theme_manager_write_icon_config(manager, manager->icon_theme->name);
+    if (manager->icon_theme) {
+        theme_manager_write_icon_config(manager, manager->icon_theme->name);
+    }
+
     return manager;
 }
 
@@ -363,14 +369,22 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
 
     struct icon_theme *old = manager->icon_theme;
     /* current icon_theme is not changed */
-    if (old->name && !strcmp(icon_theme_name, old->name)) {
+    if (old && !strcmp(icon_theme_name, old->name)) {
+        return true;
+    }
+
+    /* old icon_theme is hicolor and current icon_theme is hicolor */
+    if (!old && !strcmp(icon_theme_name, DEFAULT_ICON_THEME_NAME)) {
         return true;
     }
 
     /* not found, keep current icon_theme */
-    struct icon_theme *new = icon_theme_load(icon_theme_name);
-    if (!new) {
-        return false;
+    struct icon_theme *new = NULL;
+    if (strcmp(icon_theme_name, DEFAULT_ICON_THEME_NAME)) {
+        new = icon_theme_load(icon_theme_name);
+        if (!new) {
+            return false;
+        }
     }
 
     /* apply the new icon_theme */
@@ -504,14 +518,17 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
 
 struct wlr_buffer *theme_icon_load(const char *name, float scale)
 {
-    struct icon_theme *theme = manager->icon_theme;
+    struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
     struct icon *icon = NULL;
 
-    if (name) {
-        icon = icon_theme_get_icon(theme, name);
+    if (theme && name) {
+        icon = icon_theme_get_icon(theme, name, true);
+        if (!icon && theme != manager->hicolor_theme) {
+            icon = icon_theme_get_icon(manager->hicolor_theme, name, true);
+        }
     }
     if (!icon) {
-        icon = theme->fallback;
+        icon = manager->fallback_icon;
     }
 
     struct icon_buffer *buf = icon_get_buffer(icon, scale);

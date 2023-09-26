@@ -18,16 +18,22 @@
 
 #define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
 #define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
+#define PIXMAPPATH "/usr/share/pixmaps"
 
 // TODO: PNG, XPM
 // /usr/share/pixmaps /usr/local/share/icons
 // hicolor
 // look at the mtime of the toplevel icon directories
 
-static void icon_create(struct icon_theme *theme, FILE *fp, char *name)
+static void icon_create(struct icon_theme *theme, const char *path, const char *full_name)
 {
-    size_t index = strlen(name) - 4;
-    if (strcasecmp(name + index, ".svg")) {
+    size_t index = strlen(full_name) - 4;
+    if (strcasecmp(full_name + index, ".svg")) {
+        return;
+    }
+
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
         return;
     }
 
@@ -42,8 +48,11 @@ static void icon_create(struct icon_theme *theme, FILE *fp, char *name)
         return;
     }
 
-    name[index] = '\0';
-    iname->name = strdup(name);
+    iname->name = strndup(full_name, index);
+    if (!iname->name) {
+        fclose(fp);
+        return;
+    }
     wl_list_init(&icon->names);
     wl_list_insert(&icon->names, &iname->link);
 
@@ -59,7 +68,7 @@ static void icon_create(struct icon_theme *theme, FILE *fp, char *name)
     wl_list_insert(&theme->icons, &icon->link);
 }
 
-static void icon_destroy(struct icon *icon)
+void icon_destroy(struct icon *icon)
 {
     struct icon_buffer *buf, *tmp;
     wl_list_for_each_safe(buf, tmp, &icon->buffers, link) {
@@ -80,7 +89,7 @@ static void icon_destroy(struct icon *icon)
     free(icon);
 }
 
-static struct icon *icon_fallback_create(struct icon_theme *theme)
+struct icon *icon_fallback_create(void)
 {
     struct icon *icon = calloc(1, sizeof(struct icon));
     if (!icon) {
@@ -99,81 +108,108 @@ static struct icon *icon_fallback_create(struct icon_theme *theme)
     icon->svg = strdup(unknown_svg_src);
 
     wl_list_init(&icon->buffers);
-    wl_list_insert(&theme->icons, &icon->link);
     return icon;
 }
 
-static void desktop_load(FILE *fp, char *name, void *data)
+static void desktop_load(const char *path, const char *name, void *data)
 {
+    struct icon_theme *theme = data;
     size_t size = strlen(name) - 8;
     if (strcasecmp(name + size, ".desktop")) {
         return;
     }
 
-    /* get Icon entry in desktop file */
-    char *line = NULL;
-    size_t line_size = 0;
-    char *result = NULL;
-    char *p;
-
-    while (getline(&line, &line_size, fp) >= 0) {
-        if (strncmp(line, "Icon", 4)) {
-            continue;
-        }
-
-        p = line + 4;
-        while (*p == ' ') {
-            p++;
-        }
-        if (*p != '=') {
-            continue;
-        }
-
-        p++;
-        while (*p == ' ') {
-            p++;
-        }
-
-        if (*p == '/') {
-            continue;
-        }
-
-        result = malloc(strlen(p) + 1);
-        if (!result) {
-            break;
-        }
-
-        char *r = result;
-        while (*p && *p != '\r' && *p != '\t' && *p != '\n') {
-            *r++ = *p++;
-        }
-        *r++ = '\0';
-
-        break;
-    }
-
-    free(line);
-
-    if (!result || strncmp(name, result, size) == 0) {
-        free(result);
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
         return;
     }
 
-    struct icon_theme *theme = data;
-    struct icon *icon = icon_theme_get_icon(theme, result);
-    free(result);
+    char *result = fscan_search_keyword(fp, "Icon");
+    if (!result) {
+        fclose(fp);
+        return;
+    }
+
+    if (strncmp(name, result, size) == 0) {
+        goto cleanup;
+    }
+
+    struct icon *icon = icon_theme_get_icon(theme, result, false);
     if (!icon) {
-        return;
+        goto cleanup;
     }
 
-    struct icon_name *iname = calloc(1, sizeof(struct icon_name));
-    if (!iname) {
+    struct icon_name *tmp_iname = calloc(1, sizeof(struct icon_name));
+    if (!tmp_iname) {
+        free(icon);
+        goto cleanup;
+    }
+    tmp_iname->name = strndup(name, size);
+    wl_list_insert(&icon->names, &tmp_iname->link);
+
+cleanup:
+    free(result);
+    fclose(fp);
+}
+
+static void parents_icon_theme_load(char *parents_name, struct icon_theme *theme)
+{
+    struct icon_theme *parent_theme = NULL;
+    char *s_ptr = NULL;
+    char *parent_name = strtok_r(parents_name, ",", &s_ptr);
+    while (parent_name) {
+        if (strcmp(parent_name, DEFAULT_ICON_THEME_NAME)) {
+            parent_theme = icon_theme_load(parent_name);
+            if (parent_theme) {
+                wl_list_insert(&theme->parents_theme, &parent_theme->link);
+            }
+        }
+        parent_name = strtok_r(NULL, ",", &s_ptr);
+    }
+}
+
+static void icon_theme_dir_load(char *dir_name, struct icon_theme *theme)
+{
+    struct icon_subdir *icon_subdir = NULL;
+    char *s_ptr = NULL;
+    char *subdir = strtok_r(dir_name, ",", &s_ptr);
+    while (subdir) {
+        size_t index = strlen(subdir) - 4;
+        const char *suffix = subdir + index;
+        if (strcasecmp(suffix, "apps") == 0) {
+            icon_subdir = malloc(sizeof(struct icon_subdir));
+            icon_subdir->subdir = fscan_build_fullname(theme->name, subdir, "");
+            wl_list_insert(&theme->icons_subdir, &icon_subdir->link);
+        }
+        subdir = strtok_r(NULL, ",", &s_ptr);
+    }
+}
+
+static void index_theme_file_load(const char *path, void *data)
+{
+    struct icon_theme *theme = data;
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
         return;
     }
+    char *result = fscan_search_keyword(fp, "Inherits");
+    if (result) {
+        parents_icon_theme_load(result, theme);
+        free(result);
+    }
+    rewind(fp);
+    result = fscan_search_keyword(fp, "Directories");
+    if (result) {
+        icon_theme_dir_load(result, theme);
+        free(result);
+    }
 
-    name[size] = '\0';
-    iname->name = strdup(name);
-    wl_list_insert(&icon->names, &iname->link);
+    fclose(fp);
+}
+
+static void icon_load_index_theme_file(struct icon_theme *theme)
+{
+    fscan_file(ICONPATH, theme->name, "index.theme", index_theme_file_load, theme);
 }
 
 static void icon_load_desktop(struct icon_theme *theme)
@@ -181,17 +217,20 @@ static void icon_load_desktop(struct icon_theme *theme)
     fscan_start(APPPATH, "", desktop_load, theme);
 }
 
-static void icon_load(FILE *fp, char *name, void *data)
+static void icon_load(const char *path, const char *full_name, void *data)
 {
     struct icon_theme *theme = data;
-    icon_create(theme, fp, name);
+    icon_create(theme, path, full_name);
 }
 
 static void icon_load_theme(struct icon_theme *theme)
 {
-    char *subdir = fscan_build_fullname(theme->name, "scalable", "apps");
-    fscan_start(ICONPATH, subdir, icon_load, theme);
-    free(subdir);
+    struct icon_subdir *icon_subdir;
+    wl_list_for_each(icon_subdir, &theme->icons_subdir, link) {
+        fscan_start(ICONPATH, icon_subdir->subdir, icon_load, theme);
+    }
+
+    fscan_start(PIXMAPPATH, "", icon_load, theme);
 }
 
 struct icon_theme *icon_theme_load(const char *name)
@@ -210,6 +249,9 @@ struct icon_theme *icon_theme_load(const char *name)
         return NULL;
     }
 
+    wl_list_init(&theme->parents_theme);
+    wl_list_init(&theme->icons_subdir);
+    icon_load_index_theme_file(theme);
     wl_list_init(&theme->icons);
     icon_load_theme(theme);
 
@@ -221,17 +263,29 @@ struct icon_theme *icon_theme_load(const char *name)
     /* load all desktop files and get icon name */
     icon_load_desktop(theme);
 
-    struct icon *fallback = icon_fallback_create(theme);
-    theme->fallback = fallback;
-
     return theme;
 }
 
 void icon_theme_destroy(struct icon_theme *theme)
 {
-    struct icon *icon, *tmp;
-    wl_list_for_each_safe(icon, tmp, &theme->icons, link) {
+    if (!theme) {
+        return;
+    }
+
+    struct icon_theme *parent_theme, *parent_tmp;
+    wl_list_for_each_safe(parent_theme, parent_tmp, &theme->parents_theme, link) {
+        icon_theme_destroy(parent_theme);
+    }
+
+    struct icon *icon, *icon_tmp;
+    wl_list_for_each_safe(icon, icon_tmp, &theme->icons, link) {
         icon_destroy(icon);
+    }
+
+    struct icon_subdir *subdir, *dir_tmp;
+    wl_list_for_each_safe(subdir, dir_tmp, &theme->icons_subdir, link) {
+        free(subdir->subdir);
+        free(subdir);
     }
 
     free(theme->name);
@@ -249,7 +303,7 @@ static bool icon_check_name(struct icon *icon, const char *name)
     return false;
 }
 
-struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name)
+struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, bool search_parents)
 {
     struct icon *icon;
     wl_list_for_each(icon, &theme->icons, link) {
@@ -257,5 +311,16 @@ struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name)
             return icon;
         }
     }
+
+    if (search_parents) {
+        struct icon_theme *parents_theme;
+        wl_list_for_each(parents_theme, &theme->parents_theme, link) {
+            icon = icon_theme_get_icon(parents_theme, name, true);
+            if (icon) {
+                return icon;
+            }
+        }
+    }
+
     return NULL;
 }
