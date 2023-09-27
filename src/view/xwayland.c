@@ -836,7 +836,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     if (size_hints &&
         size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION) &&
         !xwayland_view->view.base.maximized && !xwayland_view->view.base.fullscreen &&
-        !xwayland_view->view.base.tiled) {
+        !xwayland_view->view.base.tiled && !xwayland_view->view.base.has_initial_position) {
         xwayland_view->view.base.has_initial_position = true;
         struct kywc_box geo = {
             .x = size_hints->x,
