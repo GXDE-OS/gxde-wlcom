@@ -8,6 +8,7 @@
 
 #include <kywc/identifier.h>
 
+#include "input/seat.h"
 #include "plasma-window-management-protocol.h"
 #include "view_p.h"
 
@@ -78,6 +79,8 @@ static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum s
     case STATE_ACTIVE:
         assert(flag);
         kywc_view_activate(window->kywc_view);
+        seat_focus_surface(input_manager_get_default_seat(),
+                           view_from_kywc_view(window->kywc_view)->surface);
         break;
     case STATE_MINIMIZED:
         kywc_view_set_minimized(window->kywc_view, flag);
