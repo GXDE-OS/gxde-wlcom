@@ -31,6 +31,12 @@ add_project_arguments(cc.get_supported_arguments([
   '-Wno-unused-parameter',
 ]), language: 'c')
 
+if get_option('buildtype') == 'release'
+  add_project_arguments(cc.get_supported_arguments([
+    '-Wno-unused-variable', '-Wno-unused-but-set-variable'
+  ]), language: 'c')
+endif
+
 version='"@0@"'.format(meson.project_version())
 git = find_program('git', native: true, required: false)
 if git.found()
