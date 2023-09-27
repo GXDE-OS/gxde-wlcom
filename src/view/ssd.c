@@ -15,6 +15,7 @@
 #include "painter.h"
 #include "scene/scene.h"
 #include "theme.h"
+#include "view/action.h"
 #include "view_p.h"
 #include "widget/scaled_buffer.h"
 #include "widget/widget.h"
@@ -439,7 +440,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         return;
     case SSD_CORNER_TOP_LEFT ... SSD_BORDER_TOP:
         if (LEFT_BUTTON_PRESSED(button, pressed)) {
-            interactive_begin_move(view, seat);
+            window_begin_move(view, seat);
         } else if (RIGHT_BUTTON_PRESSED(button, pressed)) {
             /* show window menu, menu will grab seat to hide itself */
             view_show_window_menu(view, seat, seat->cursor->lx, seat->cursor->ly);
@@ -475,7 +476,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     }
 
     if (edges != KYWC_EDGE_NONE && pressed && button == BTN_LEFT && view_is_resizable(view)) {
-        interactive_begin_resize(view, edges, seat);
+        window_begin_resize(view, edges, seat);
     }
 
     /* active current view */

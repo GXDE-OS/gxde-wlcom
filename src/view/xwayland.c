@@ -14,6 +14,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
+#include "view/action.h"
 #include "view/xwayland.h"
 #include "view_p.h"
 
@@ -591,7 +592,7 @@ static void xwayland_view_handle_request_move(struct wl_listener *listener, void
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, request_move);
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
-    interactive_begin_move(&xwayland_view->view, seat);
+    window_begin_move(&xwayland_view->view, seat);
 }
 
 static void xwayland_view_handle_request_resize(struct wl_listener *listener, void *data)
@@ -600,7 +601,7 @@ static void xwayland_view_handle_request_resize(struct wl_listener *listener, vo
     struct wlr_xwayland_resize_event *event = data;
 
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
-    interactive_begin_resize(&xwayland_view->view, event->edges, seat);
+    window_begin_resize(&xwayland_view->view, event->edges, seat);
 }
 
 static void xwayland_view_handle_request_minimize(struct wl_listener *listener, void *data)

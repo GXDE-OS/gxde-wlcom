@@ -9,6 +9,7 @@
 #include "input/event.h"
 #include "output.h"
 #include "scene/xdg_shell.h"
+#include "view/action.h"
 #include "view_p.h"
 
 struct xdg_view {
@@ -288,7 +289,7 @@ static void xdg_view_handle_request_move(struct wl_listener *listener, void *dat
     struct wlr_xdg_toplevel_move_event *event = data;
     struct seat *seat = seat_from_wlr_seat(event->seat->seat);
 
-    interactive_begin_move(&xdg_view->view, seat);
+    window_begin_move(&xdg_view->view, seat);
 }
 
 static void xdg_view_handle_request_resize(struct wl_listener *listener, void *data)
@@ -297,7 +298,7 @@ static void xdg_view_handle_request_resize(struct wl_listener *listener, void *d
     struct wlr_xdg_toplevel_resize_event *event = data;
     struct seat *seat = seat_from_wlr_seat(event->seat->seat);
 
-    interactive_begin_resize(&xdg_view->view, event->edges, seat);
+    window_begin_resize(&xdg_view->view, event->edges, seat);
 }
 
 static void xdg_view_handle_request_minimize(struct wl_listener *listener, void *data)

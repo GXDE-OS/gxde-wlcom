@@ -39,12 +39,6 @@ struct view_show_window_menu_event {
     int x, y;
 };
 
-/* for interactive move and resize */
-struct seat;
-void interactive_begin_move(struct view *view, struct seat *seat);
-
-void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
-
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y);
 
 void view_close_popups(struct view *view);

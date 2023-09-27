@@ -28,4 +28,9 @@ enum window_action {
 
 void window_action(struct view *view, struct seat *seat, enum window_action action);
 
+/* for interactive move and resize */
+void window_begin_move(struct view *view, struct seat *seat);
+
+void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
+
 #endif

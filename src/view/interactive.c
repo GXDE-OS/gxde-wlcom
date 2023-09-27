@@ -11,7 +11,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "theme.h"
-#include "view_p.h"
+#include "view/action.h"
 
 #define VIEW_EDGE_GAP 20
 #define VIEW_TOP_GAP 5
@@ -424,7 +424,6 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
 static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
                               double value)
 {
-    kywc_log(KYWC_DEBUG, "grab %p axis(%d) %f", pointer_grab, vertical, value);
     return true;
 }
 
@@ -550,7 +549,7 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     grab->filter = wl_event_loop_add_timer(loop, handle_snap_box, grab);
 }
 
-void interactive_begin_move(struct view *view, struct seat *seat)
+void window_begin_move(struct view *view, struct seat *seat)
 {
     if (!view_is_moveable(view)) {
         return;
@@ -558,7 +557,7 @@ void interactive_begin_move(struct view *view, struct seat *seat)
     interactive_grab_add(view, INTERACTIVE_MODE_MOVE, 0, seat);
 }
 
-void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
+void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
 {
     if (!view_is_resizable(view)) {
         return;
