@@ -182,6 +182,16 @@ static void xdg_view_configure(struct view *view)
     view_configure(view, serial);
 }
 
+static void xdg_view_close_popups(struct view *view)
+{
+    struct xdg_view *xdg_view = xdg_view_from_view(view);
+
+    struct wlr_xdg_popup *popup, *tmp;
+    wl_list_for_each_safe(popup, tmp, &xdg_view->wlr_xdg_surface->popups, link) {
+        wlr_xdg_popup_destroy(popup);
+    }
+}
+
 static void xdg_view_destroy(struct view *view)
 {
     struct xdg_view *xdg_view = xdg_view_from_view(view);
@@ -190,6 +200,7 @@ static void xdg_view_destroy(struct view *view)
 
 static const struct view_impl xdg_surface_impl = {
     .configure = xdg_view_configure,
+    .close_popups = xdg_view_close_popups,
     .close = xdg_view_close,
     .destroy = xdg_view_destroy,
 };

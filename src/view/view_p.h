@@ -47,6 +47,8 @@ void interactive_begin_resize(struct view *view, uint32_t edges, struct seat *se
 
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y);
 
+void view_close_popups(struct view *view);
+
 bool xdg_shell_init(struct view_manager *view_manager);
 
 bool decoration_manager_create(struct view_manager *view_manager);

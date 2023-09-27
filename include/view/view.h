@@ -114,6 +114,7 @@ struct view {
 
 struct view_impl {
     void (*configure)(struct view *view);
+    void (*close_popups)(struct view *view);
     void (*close)(struct view *view);
     void (*destroy)(struct view *view);
 };

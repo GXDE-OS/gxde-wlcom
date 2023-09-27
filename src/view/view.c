@@ -926,6 +926,13 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
     }
 }
 
+void view_close_popups(struct view *view)
+{
+    if (view->impl->close_popups) {
+        view->impl->close_popups(view);
+    }
+}
+
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
 {
     struct view_show_window_menu_event event = { view, seat, x, y };
