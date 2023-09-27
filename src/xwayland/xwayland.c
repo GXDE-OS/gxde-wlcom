@@ -10,13 +10,15 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland.h>
 
+#include <kywc/log.h>
+
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
+#include "server.h"
 #include "view/action.h"
-#include "view/xwayland.h"
-#include "view_p.h"
+#include "xwayland.h"
 
 /**
  * window type that not added in wlroots

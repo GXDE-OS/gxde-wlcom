@@ -35,7 +35,7 @@
 #include "server.h"
 #include "theme.h"
 #include "view/view.h"
-#include "view/xwayland.h"
+#include "xwayland.h"
 
 static const char *dbus_logind_service = "org.freedesktop.login1";
 static const char *dbus_logind_path = "/org/freedesktop/login1";

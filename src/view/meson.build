@@ -12,12 +12,6 @@ wlcom_sources += files(
   'xdg_shell.c',
 )
 
-if have_xwayland
-  wlcom_sources += files(
-    'xwayland.c',
-  )
-endif
-
 if have_kde_virtual_desktop
   wlcom_sources += files(
     'kde_virtual_desktop.c',

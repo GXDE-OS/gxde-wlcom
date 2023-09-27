@@ -12,6 +12,10 @@ subdir('output')
 subdir('painter')
 subdir('scene')
 subdir('theme')
-subdir('view')
 subdir('util')
+subdir('view')
 subdir('widget')
+
+if have_xwayland
+  subdir('xwayland')
+endif
