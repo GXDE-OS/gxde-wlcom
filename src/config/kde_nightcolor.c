@@ -30,7 +30,7 @@ static const char *service_interface = "org.kde.kwin.ColorCorrect";
 #define CLAMP(val, min, max) ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
 
 #define QUICK_UPDATE_DURATION 2000
-#define COLORTEMPE_STEP 50
+#define COLORTEMP_STEP 50
 
 #define MINI_CHUNK_SIZE 256
 
@@ -44,12 +44,12 @@ static const char *service_interface = "org.kde.kwin.ColorCorrect";
 #define SOLAR_CIVIL_TWILIGHT_ELEV -6.0
 #define SOLAR_SUN_CIVIL_HIGH 2
 
-#define SOLOR_TIME_CIVIL_DAWN RAD(-90.0 + SOLAR_CIVIL_TWILIGHT_ELEV)
-//#define SOLOR_TIME_SUNRISE RAD(-90.0 + SOLAR_DAYTIME_ELEV)
-#define SOLOR_TIME_SUNRISE_CIVIL_HIGH RAD(-90.0 + SOLAR_SUN_CIVIL_HIGH)
-#define SOLOR_TIME_CIVIL_DUSK RAD(90.0 - SOLAR_CIVIL_TWILIGHT_ELEV)
-//#define SOLOR_TIME_SUNSET RAD(90.0 - SOLAR_DAYTIME_ELEV)
-#define SOLOR_TIME_SUNSET_CIVIL_HIGH RAD(90.0 - SOLAR_SUN_CIVIL_HIGH)
+#define SOLAR_TIME_CIVIL_DAWN RAD(-90.0 + SOLAR_CIVIL_TWILIGHT_ELEV)
+//#define SOLAR_TIME_SUNRISE RAD(-90.0 + SOLAR_DAYTIME_ELEV)
+#define SOLAR_TIME_SUNRISE_CIVIL_HIGH RAD(-90.0 + SOLAR_SUN_CIVIL_HIGH)
+#define SOLAR_TIME_CIVIL_DUSK RAD(90.0 - SOLAR_CIVIL_TWILIGHT_ELEV)
+//#define SOLAR_TIME_SUNSET RAD(90.0 - SOLAR_DAYTIME_ELEV)
+#define SOLAR_TIME_SUNSET_CIVIL_HIGH RAD(90.0 - SOLAR_SUN_CIVIL_HIGH)
 
 enum nightcolor_mode {
     /* Color temperature is computed based on the current position of the Sun.
@@ -76,8 +76,8 @@ enum change_property {
     PROP_ENABLE,
     PROP_RUNNING,
     PROP_MODE,
-    PROP_TARGET_COLORTEMPE,
-    PROP_CURRENT_COLORTEMPE,
+    PROP_TARGET_COLORTEMP,
+    PROP_CURRENT_COLORTEMP,
     PROP_PREV_TRANS_TIMING,
     PROP_SCHED_TRANS_TIMING,
 };
@@ -87,14 +87,14 @@ struct date_time {
     time_t end;
 };
 
-struct nigcolor_configs {
+struct nightcolor_configs {
     /* specifies whether night color is enabled */
     bool active;
 
     enum nightcolor_mode mode;
 
-    int32_t night_colortempe;
-    int32_t day_colortempe;
+    int32_t night_colortemp;
+    int32_t day_colortemp;
 
     /* auto location provided by work space */
     double latitude_auto;
@@ -127,7 +127,7 @@ static struct kde_nightcolor_manager {
 
     struct wl_list outputs;
 
-    struct nigcolor_configs configs;
+    struct nightcolor_configs configs;
     /* specifies whether night color is currently running */
     bool running;
     /* whether it is currently day or night */
@@ -144,8 +144,8 @@ static struct kde_nightcolor_manager {
 
     int inhibit_refer_count;
 
-    int current_colortempe;
-    int target_colortempe;
+    int current_colortemp;
+    int target_colortemp;
 
     /* the previous and next sunrise/sunset intervals - in utc time */
     struct date_time prev_dtime;
@@ -210,12 +210,12 @@ ret:
     return true;
 }
 
-static void configs_init(struct nigcolor_configs *configs)
+static void configs_init(struct nightcolor_configs *configs)
 {
     configs->active = false;
     configs->mode = NIGHTCOLOR_MODE_AUTOMATIC;
-    configs->day_colortempe = 6500;
-    configs->night_colortempe = 4500;
+    configs->day_colortemp = 6500;
+    configs->night_colortemp = 4500;
     configs->latitude_auto = 0.0;
     configs->longitude_auto = 0.0;
     configs->latitude_fixed = 0.0;
@@ -225,7 +225,7 @@ static void configs_init(struct nigcolor_configs *configs)
     configs->transition_time = 30;
 }
 
-static bool read_nightcolor_configs(struct nigcolor_configs *configs)
+static bool read_nightcolor_configs(struct nightcolor_configs *configs)
 {
     /* get config path */
     const char *home = getenv("HOME");
@@ -282,9 +282,9 @@ static bool read_nightcolor_configs(struct nigcolor_configs *configs)
                 configs->active = false;
             }
         } else if (strcmp(keyinfo->key, "DayTemperature") == 0) {
-            configs->day_colortempe = atoi(keyinfo->value);
+            configs->day_colortemp = atoi(keyinfo->value);
         } else if (strcmp(keyinfo->key, "NightTemperature") == 0) {
-            configs->night_colortempe = atoi(keyinfo->value);
+            configs->night_colortemp = atoi(keyinfo->value);
         } else if (strcmp(keyinfo->key, "LongitudeAuto") == 0) {
             configs->longitude_auto = atof(keyinfo->value);
         } else if (strcmp(keyinfo->key, "LatitudeAuto") == 0) {
@@ -335,13 +335,13 @@ static void send_change_property(enum change_property prop)
         sd_bus_emit_signal(bus, path, interface, member, "sa{sv}as", "org.kde.kwin.ColorCorrect", 1,
                            "mode", "u", manager->configs.mode, 1, "");
         break;
-    case PROP_TARGET_COLORTEMPE:
+    case PROP_TARGET_COLORTEMP:
         sd_bus_emit_signal(bus, path, interface, member, "sa{sv}as", "org.kde.kwin.ColorCorrect", 1,
-                           "targetTemperature", "u", manager->target_colortempe, 1, "");
+                           "targetTemperature", "u", manager->target_colortemp, 1, "");
         break;
-    case PROP_CURRENT_COLORTEMPE:
+    case PROP_CURRENT_COLORTEMP:
         sd_bus_emit_signal(bus, path, interface, member, "sa{sv}as", "org.kde.kwin.ColorCorrect", 1,
-                           "currentTemperature", "u", manager->current_colortempe, 1, "");
+                           "currentTemperature", "u", manager->current_colortemp, 1, "");
         break;
     case PROP_PREV_TRANS_TIMING:;
         uint32_t prev_duration = manager->prev_dtime.end - manager->prev_dtime.begin;
@@ -388,7 +388,7 @@ static double jd_from_jcent(double t)
  * t: Julian centuries since J2000.0
  * Return: Geometric mean logitude in radians.
  */
-static double sun_geom_mean_lon(double t)
+static double sun_geom_mean_longitude(double t)
 {
     /* FIXME returned value should always be positive */
     return RAD(fmod(280.46646 + t * (36000.76983 + t * 0.0003032), 360));
@@ -429,9 +429,9 @@ static double sun_equation_of_center(double t)
  * t: Julian centuries since J2000.0
  * Return: True longitude in radians
  */
-static double sun_true_lon(double t)
+static double sun_true_longitude(double t)
 {
-    double l_0 = sun_geom_mean_lon(t);
+    double l_0 = sun_geom_mean_longitude(t);
     double c = sun_equation_of_center(t);
     return l_0 + c;
 }
@@ -440,9 +440,9 @@ static double sun_true_lon(double t)
  * t: Julian centuries since J2000.0
  * Return: Apparent longitude in radians
  */
-static double sun_apparent_lon(double t)
+static double sun_apparent_longitude(double t)
 {
-    double o = sun_true_lon(t);
+    double o = sun_true_longitude(t);
     return RAD(DEG(o) - 0.00569 - 0.00478 * sin(RAD(125.04 - 1934.136 * t)));
 }
 
@@ -460,7 +460,7 @@ static double mean_ecliptic_obliquity(double t)
  * t: Julian centuries since J2000.0
  * Return: Currected obliquity in radians
  */
-static double obliquity_corr(double t)
+static double obliquity_current(double t)
 {
     double e_0 = mean_ecliptic_obliquity(t);
     double omega = 125.04 - t * 1934.136;
@@ -473,8 +473,8 @@ static double obliquity_corr(double t)
  */
 static double solar_declination(double t)
 {
-    double e = obliquity_corr(t);
-    double lambda = sun_apparent_lon(t);
+    double e = obliquity_current(t);
+    double lambda = sun_apparent_longitude(t);
     return asin(sin(e) * sin(lambda));
 }
 
@@ -484,8 +484,8 @@ static double solar_declination(double t)
  */
 static double equation_of_time(double t)
 {
-    double epsilon = obliquity_corr(t);
-    double l_0 = sun_geom_mean_lon(t);
+    double epsilon = obliquity_current(t);
+    double l_0 = sun_geom_mean_longitude(t);
     double e = earth_orbit_eccentricity(t);
     double m = sun_geom_mean_anomaly(t);
     double y = pow(tan(epsilon / 2.0), 2.0);
@@ -518,15 +518,15 @@ static double time_of_solar_noon(double t, double lon)
     /* First pass uses approximate solar noon to calculate equation of time. */
     double t_noon = jcent_from_jd(jd_from_jcent(t) - lon / 360.0);
     double eq_time = equation_of_time(t_noon);
-    double sol_noon = 720 - 4 * lon - eq_time;
+    double solar_noon = 720 - 4 * lon - eq_time;
 
     /* Recalculate using new solar noon. */
-    t_noon = jcent_from_jd(jd_from_jcent(t) - 0.5 + sol_noon / 1440.0);
+    t_noon = jcent_from_jd(jd_from_jcent(t) - 0.5 + solar_noon / 1440.0);
     eq_time = equation_of_time(t_noon);
-    sol_noon = 720 - 4 * lon - eq_time;
+    solar_noon = 720 - 4 * lon - eq_time;
 
     /* No need to do more iterations */
-    return sol_noon;
+    return solar_noon;
 }
 
 /* Time of given apparent solar angular elevation of location on earth.
@@ -541,19 +541,19 @@ static double time_of_solar_elevation(double t, double t_noon, double lat, doubl
 {
     /* First pass uses approximate sunrise to calculate equation of time. */
     double eq_time = equation_of_time(t_noon);
-    double sol_decl = solar_declination(t_noon);
-    double ha = hour_angle_from_elevation(lat, sol_decl, elev);
-    double sol_offset = 720 - 4 * (lon + DEG(ha)) - eq_time;
+    double solar_decl = solar_declination(t_noon);
+    double ha = hour_angle_from_elevation(lat, solar_decl, elev);
+    double solar_offset = 720 - 4 * (lon + DEG(ha)) - eq_time;
 
     /* Recalculate using new sunrise. */
-    double t_rise = jcent_from_jd(jd_from_jcent(t) + sol_offset / 1440.0);
+    double t_rise = jcent_from_jd(jd_from_jcent(t) + solar_offset / 1440.0);
     eq_time = equation_of_time(t_rise);
-    sol_decl = solar_declination(t_rise);
-    ha = hour_angle_from_elevation(lat, sol_decl, elev);
-    sol_offset = 720 - 4 * (lon + DEG(ha)) - eq_time;
+    solar_decl = solar_declination(t_rise);
+    ha = hour_angle_from_elevation(lat, solar_decl, elev);
+    solar_offset = 720 - 4 * (lon + DEG(ha)) - eq_time;
 
     /* No need to do more iterations */
-    return sol_offset;
+    return solar_offset;
 }
 
 static void utc_to_localtime_show(const char *title, struct date_time dtime)
@@ -580,16 +580,16 @@ static struct date_time get_sun_timings(time_t time_now, double lat, double lon,
     double t = jcent_from_jd(jdn);
 
     /* Calculate apparent solar noon */
-    double sol_noon = time_of_solar_noon(t, lon);
-    double j_noon = jdn - 0.5 + sol_noon / 1440.0;
+    double solar_noon = time_of_solar_noon(t, lon);
+    double j_noon = jdn - 0.5 + solar_noon / 1440.0;
     double t_noon = jcent_from_jd(j_noon);
 
     /* angle of civil_drawn or sunset civil_dusk high */
-    double angle = morning ? SOLOR_TIME_CIVIL_DAWN : SOLOR_TIME_SUNSET_CIVIL_HIGH;
+    double angle = morning ? SOLAR_TIME_CIVIL_DAWN : SOLAR_TIME_SUNSET_CIVIL_HIGH;
     double offset = time_of_solar_elevation(t, t_noon, lat, lon, angle);
     double time_begin = epoch_from_jd(jdn - 0.5 + offset / 1440.0);
     /* sunrise civil_drawn high or sunset high */
-    angle = morning ? SOLOR_TIME_SUNRISE_CIVIL_HIGH : SOLOR_TIME_CIVIL_DUSK;
+    angle = morning ? SOLAR_TIME_SUNRISE_CIVIL_HIGH : SOLAR_TIME_CIVIL_DUSK;
     offset = time_of_solar_elevation(t, t_noon, lat, lon, angle);
     double time_end = epoch_from_jd(jdn - 0.5 + offset / 1440.0);
 
@@ -642,13 +642,13 @@ static void update_transition_timings(bool force)
             manager->prev_dtime = prev_time;
         }
     } else { /* Automatic or location */
-        double lat, lng;
+        double lat, lon;
         if (manager->configs.mode == NIGHTCOLOR_MODE_AUTOMATIC) {
             lat = manager->configs.latitude_auto;
-            lng = manager->configs.longitude_auto;
+            lon = manager->configs.longitude_auto;
         } else {
             lat = manager->configs.latitude_fixed;
-            lng = manager->configs.latitude_fixed;
+            lon = manager->configs.latitude_fixed;
         }
         if (!force) {
             /* first try by only switching the timings */
@@ -656,24 +656,24 @@ static void update_transition_timings(bool force)
                 /* next is evening */
                 manager->daylight = true;
                 manager->prev_dtime = manager->next_dtime;
-                manager->next_dtime = get_sun_timings(now, lat, lng, false);
+                manager->next_dtime = get_sun_timings(now, lat, lon, false);
             } else {
                 /* next is moring */
                 manager->daylight = false;
                 manager->prev_dtime = manager->next_dtime;
-                manager->next_dtime = get_sun_timings(now, lat, lng, true);
+                manager->next_dtime = get_sun_timings(now, lat, lon, true);
             }
         }
 
         if (force || !(manager->prev_dtime.begin <= now && now < manager->next_dtime.begin &&
                        manager->next_dtime.begin - manager->next_dtime.begin < 86400 * 23. / 24)) {
-            struct date_time dt_morning = get_sun_timings(now, lat, lng, true);
+            struct date_time dt_morning = get_sun_timings(now, lat, lon, true);
             if (now < dt_morning.begin) {
                 manager->daylight = false;
-                manager->prev_dtime = get_sun_timings(now - 86400, lat, lng, false);
+                manager->prev_dtime = get_sun_timings(now - 86400, lat, lon, false);
                 manager->next_dtime = dt_morning;
             } else {
-                struct date_time dt_evening = get_sun_timings(now, lat, lng, false);
+                struct date_time dt_evening = get_sun_timings(now, lat, lon, false);
                 if (now < dt_evening.begin) {
                     manager->daylight = true;
                     manager->prev_dtime = dt_morning;
@@ -681,7 +681,7 @@ static void update_transition_timings(bool force)
                 } else {
                     manager->daylight = false;
                     manager->prev_dtime = dt_evening;
-                    manager->next_dtime = get_sun_timings(now + 86400, lat, lng, true);
+                    manager->next_dtime = get_sun_timings(now + 86400, lat, lon, true);
                 }
             }
         }
@@ -702,17 +702,17 @@ static void update_transition_timings(bool force)
 
 static void update_target_color_temperature(void)
 {
-    int32_t target_colortempe =
+    int32_t target_colortemp =
         manager->configs.mode != NIGHTCOLOR_MODE_CONSTANT && manager->daylight
-            ? manager->configs.day_colortempe
-            : manager->configs.night_colortempe;
+            ? manager->configs.day_colortemp
+            : manager->configs.night_colortemp;
 
-    if (manager->target_colortempe != target_colortempe) {
-        manager->target_colortempe = target_colortempe;
-        send_change_property(PROP_TARGET_COLORTEMPE);
+    if (manager->target_colortemp != target_colortemp) {
+        manager->target_colortemp = target_colortemp;
+        send_change_property(PROP_TARGET_COLORTEMP);
     }
 
-    kywc_log(KYWC_DEBUG, "nightcolor target colortemperature :%d", manager->target_colortempe);
+    kywc_log(KYWC_DEBUG, "nightcolor target colortemperature :%d", manager->target_colortemp);
 }
 
 static void update_running(bool running)
@@ -727,7 +727,7 @@ static void update_running(bool running)
 
 static int handle_slow_update_start_timer(void *data);
 
-static int32_t caculate_target_color_temperature(int target1, int target2)
+static int32_t caculate_target_color_temperature(int target, int res_target)
 {
     time_t time_now = time(NULL);
 
@@ -735,50 +735,49 @@ static int32_t caculate_target_color_temperature(int target1, int target2)
         int dt = manager->prev_dtime.end - time_now;
         int long_time = manager->prev_dtime.end - manager->prev_dtime.begin;
         double res_quota = (double)dt / long_time;
-        double ret = (int)((1. - res_quota) * (double)target2 + res_quota * (double)target1);
+        double ret = (int)((1. - res_quota) * (double)res_target + res_quota * (double)target);
         /* remove single digits */
         ret = ((int32_t)(0.1 * ret)) * 10;
         return (int32_t)ret;
     }
 
-    return target2;
+    return res_target;
 }
 
-static int get_current_target_colortemperature(void)
+static int get_current_target_color_temperature(void)
 {
     if (!manager->running) {
         return 6500;
     }
 
     if (manager->configs.mode == NIGHTCOLOR_MODE_CONSTANT) {
-        return manager->target_colortempe;
+        return manager->target_colortemp;
     }
 
     if (manager->daylight) {
-        return caculate_target_color_temperature(manager->configs.night_colortempe,
-                                                 manager->configs.day_colortempe);
+        return caculate_target_color_temperature(manager->configs.night_colortemp,
+                                                 manager->configs.day_colortemp);
     }
 
-    return caculate_target_color_temperature(manager->configs.day_colortempe,
-                                             manager->configs.night_colortempe);
+    return caculate_target_color_temperature(manager->configs.day_colortemp,
+                                             manager->configs.night_colortemp);
 }
 
-static void colortemperature_commit(int colortempe, bool force)
+static void color_temperature_commit(int colortemp, bool force)
 {
     struct kde_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
         struct kywc_output *kywc_output = output->kywc_output;
-        output_set_colortemp(kywc_output, colortempe);
+        output_set_colortemp(kywc_output, colortemp);
     }
 
-    if (manager->current_colortempe != colortempe) {
-        send_change_property(PROP_CURRENT_COLORTEMPE);
+    if (manager->current_colortemp != colortemp) {
+        send_change_property(PROP_CURRENT_COLORTEMP);
     }
-
-    manager->current_colortempe = colortempe;
+    manager->current_colortemp = colortemp;
 }
 
-static void handle_colortemperature(bool force)
+static void handle_color_temperature(bool force)
 {
     if (!manager->initial) {
         return;
@@ -794,15 +793,15 @@ static void handle_colortemperature(bool force)
     update_transition_timings(force);
     update_target_color_temperature();
 
-    int target_colortempe = get_current_target_colortemperature();
+    int target_colortemp = get_current_target_color_temperature();
 
     if (force && manager->running) {
-        colortemperature_commit(target_colortempe, force);
+        color_temperature_commit(target_colortemp, force);
     }
 
-    int delta_tempe = abs(target_colortempe - manager->current_colortempe);
-    if (delta_tempe > COLORTEMPE_STEP) {
-        int interval = QUICK_UPDATE_DURATION / (delta_tempe / COLORTEMPE_STEP);
+    int delta_temp = abs(target_colortemp - manager->current_colortemp);
+    if (delta_temp > COLORTEMP_STEP) {
+        int interval = QUICK_UPDATE_DURATION / (delta_temp / COLORTEMP_STEP);
         manager->adjust_timeout = interval;
         wl_event_source_timer_update(manager->adjust_timer, manager->adjust_timeout);
     } else {
@@ -810,9 +809,9 @@ static void handle_colortemperature(bool force)
     }
 }
 
-static bool check_location_is_valid(double lat, double lng)
+static bool check_location_is_valid(double lat, double lon)
 {
-    return -90.0 <= lat && lat <= 90.0 && -180.0 <= lng && lng < 180.0;
+    return -90.0 <= lat && lat <= 90.0 && -180.0 <= lon && lon < 180.0;
 }
 
 static void nightcolor_update_auto_location(double latitude, double longitude)
@@ -830,7 +829,7 @@ static void nightcolor_update_auto_location(double latitude, double longitude)
     manager->configs.latitude_auto = latitude;
     manager->configs.longitude_auto = longitude;
 
-    handle_colortemperature(false);
+    handle_color_temperature(false);
 }
 
 static bool is_available(void)
@@ -849,7 +848,7 @@ static int inhibit(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
     struct kde_nightcolor_manager *manager = userdata;
     manager->inhibit_refer_count++;
     if (manager->inhibit_refer_count) {
-        handle_colortemperature(false);
+        handle_color_temperature(false);
         send_change_property(PROP_INHIBIT);
     }
     return sd_bus_reply_method_return(msg, "u", manager->inhibit_refer_count);
@@ -862,7 +861,7 @@ static int uninhibit(sd_bus_message *msg, void *userdata, sd_bus_error *ret_erro
     CK(sd_bus_message_read(msg, "u", &count));
     manager->inhibit_refer_count = count;
     if (!manager->inhibit_refer_count) {
-        handle_colortemperature(false);
+        handle_color_temperature(false);
         send_change_property(PROP_INHIBIT);
     }
 
@@ -919,7 +918,7 @@ static int current_temperature(sd_bus *bus, const char *path, const char *interf
                                sd_bus_error *ret_error)
 {
     struct kde_nightcolor_manager *manager = userdata;
-    return sd_bus_message_append_basic(reply, 'u', &manager->current_colortempe);
+    return sd_bus_message_append_basic(reply, 'u', &manager->current_colortemp);
 }
 
 static int target_temperature(sd_bus *bus, const char *path, const char *interface,
@@ -927,7 +926,7 @@ static int target_temperature(sd_bus *bus, const char *path, const char *interfa
                               sd_bus_error *ret_error)
 {
     struct kde_nightcolor_manager *manager = userdata;
-    return sd_bus_message_append_basic(reply, 'u', &manager->target_colortempe);
+    return sd_bus_message_append_basic(reply, 'u', &manager->target_colortemp);
 }
 
 static int previous_transition_datetime(sd_bus *bus, const char *path, const char *interface,
@@ -984,28 +983,28 @@ static const sd_bus_vtable nightcolor_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
-static int handle_colortempe_adjust_timer(void *data)
+static int handle_colortemp_adjust_timer(void *data)
 {
-    int next_colortempe, target_colortempe;
+    int next_colortemp, target_colortemp;
 
     if (manager->slow_adjusting) {
-        target_colortempe =
-            manager->daylight ? manager->configs.day_colortempe : manager->configs.night_colortempe;
+        target_colortemp =
+            manager->daylight ? manager->configs.day_colortemp : manager->configs.night_colortemp;
     } else {
-        target_colortempe = get_current_target_colortemperature();
+        target_colortemp = get_current_target_color_temperature();
     }
 
-    if (manager->current_colortempe < target_colortempe) {
-        next_colortempe = MIN(manager->current_colortempe + COLORTEMPE_STEP, target_colortempe);
+    if (manager->current_colortemp < target_colortemp) {
+        next_colortemp = MIN(manager->current_colortemp + COLORTEMP_STEP, target_colortemp);
     } else {
-        next_colortempe = MAX(manager->current_colortempe - COLORTEMPE_STEP, target_colortempe);
+        next_colortemp = MAX(manager->current_colortemp - COLORTEMP_STEP, target_colortemp);
     }
 
-    kywc_log(KYWC_DEBUG, "nexttempe :%d,targettempe :%d", next_colortempe, target_colortempe);
+    kywc_log(KYWC_DEBUG, "nexttemp :%d,targettemp :%d", next_colortemp, target_colortemp);
 
-    colortemperature_commit(next_colortempe, false);
+    color_temperature_commit(next_colortemp, false);
 
-    if (next_colortempe != target_colortempe) {
+    if (next_colortemp != target_colortemp) {
         wl_event_source_timer_update(manager->adjust_timer, manager->adjust_timeout);
     } else if (!manager->slow_update_starting) {
         handle_slow_update_start_timer(NULL);
@@ -1038,17 +1037,17 @@ static int handle_slow_update_start_timer(void *data)
 
     // We've reached the target color temperature or the transition time is zero.
     if (manager->prev_dtime.begin == manager->prev_dtime.end ||
-        manager->current_colortempe == manager->target_colortempe) {
-        colortemperature_commit(manager->target_colortempe, false);
+        manager->current_colortemp == manager->target_colortemp) {
+        color_temperature_commit(manager->target_colortemp, false);
         return 0;
     }
 
     if (manager->prev_dtime.begin <= now && now <= manager->prev_dtime.end) {
-        int target_colortempe =
-            manager->daylight ? manager->configs.day_colortempe : manager->configs.night_colortempe;
+        int target_colortemp =
+            manager->daylight ? manager->configs.day_colortemp : manager->configs.night_colortemp;
         int avail_time = (manager->prev_dtime.end - now) * 1000;
         int interval =
-            avail_time * COLORTEMPE_STEP / abs(target_colortempe - manager->current_colortempe);
+            avail_time * COLORTEMP_STEP / abs(target_colortemp - manager->current_colortemp);
 
         // calculate interval such as temperature is changed by TEMPERATURE_STEP K per timer timeout
         manager->adjust_timeout = interval == 0 ? 1 : interval;
@@ -1082,7 +1081,7 @@ static void update_mode(enum nightcolor_mode mode)
 
 static void load_manager_configs(void)
 {
-    struct nigcolor_configs configs;
+    struct nightcolor_configs configs;
     if (read_nightcolor_configs(&configs)) {
         // automatic
         if (!(check_location_is_valid(configs.latitude_auto, configs.longitude_auto))) {
@@ -1115,13 +1114,13 @@ static void load_manager_configs(void)
         }
 
         configs.transition_time = MAX(trs_tm, 1);
-        configs.night_colortempe = CLAMP(configs.night_colortempe, 1000, 6500);
-        configs.day_colortempe = CLAMP(configs.day_colortempe, 1000, 6500);
+        configs.night_colortemp = CLAMP(configs.night_colortemp, 1000, 6500);
+        configs.day_colortemp = CLAMP(configs.day_colortemp, 1000, 6500);
 
         kywc_log(KYWC_INFO,
-                 "configs mode:%d, active:%d, nighttempe:%d, daytempe%d, morn_begin:%d, "
-                 "even_begin:%d, lat:%f, lng:%f",
-                 configs.mode, configs.active, configs.night_colortempe, configs.day_colortempe,
+                 "configs mode:%d, active:%d, nighttemp:%d, daytemp%d, morn_begin:%d, "
+                 "even_begin:%d, lat:%f, lon:%f",
+                 configs.mode, configs.active, configs.night_colortemp, configs.day_colortemp,
                  configs.morning_begin_fixed, configs.evening_begin_fixed, configs.latitude_auto,
                  configs.longitude_auto);
 
@@ -1156,9 +1155,9 @@ static int config_changed(sd_bus_message *msg, void *userdata, sd_bus_error *ret
                 load_manager_configs();
                 if (!manager->initial) {
                     manager->initial = true;
-                    handle_colortemperature(true);
+                    handle_color_temperature(true);
                 } else {
-                    handle_colortemperature(false);
+                    handle_color_temperature(false);
                 }
             }
             free(mode);
@@ -1173,8 +1172,8 @@ static void nightcolor_manager_init(struct kde_nightcolor_manager *manager)
     manager->running = false;
     manager->daylight = true;
     manager->inhibit_refer_count = 0;
-    manager->current_colortempe = 6500;
-    manager->target_colortempe = 6500;
+    manager->current_colortemp = 6500;
+    manager->target_colortemp = 6500;
 }
 
 static void kde_output_destroy(struct kde_output *output)
@@ -1197,7 +1196,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
     struct kde_output *output = wl_container_of(listener, output, on);
     struct kywc_output *kywc_output = output->kywc_output;
 
-    output_set_colortemp(kywc_output, manager->current_colortempe);
+    output_set_colortemp(kywc_output, manager->current_colortemp);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
@@ -1223,7 +1222,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->destroy.notify = handle_output_destroy;
     wl_signal_add(&kywc_output->events.destroy, &output->destroy);
 
-    handle_colortemperature(true);
+    handle_color_temperature(true);
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data)
@@ -1268,7 +1267,7 @@ static void handle_server_resume(struct wl_listener *listener, void *data)
         wl_event_source_fd_update(manager->clockskew, WL_EVENT_READABLE);
     }
 
-    handle_colortemperature(true);
+    handle_color_temperature(true);
 }
 
 static void handle_session_active(struct wl_listener *listener, void *data)
@@ -1281,7 +1280,7 @@ static void handle_session_active(struct wl_listener *listener, void *data)
         wl_event_source_fd_update(manager->clockskew, WL_EVENT_HANGUP);
     } else {
         wl_event_source_fd_update(manager->clockskew, WL_EVENT_READABLE);
-        handle_colortemperature(true);
+        handle_color_temperature(true);
     }
 }
 
@@ -1297,7 +1296,7 @@ static int time_change_event(int fd, uint32_t mask, void *data)
     struct kde_nightcolor_manager *manager = data;
     if (manager->configs.active) {
         kywc_log(KYWC_INFO, "nightcolor handle time change");
-        handle_colortemperature(true);
+        handle_color_temperature(true);
     }
 
     return 0;
@@ -1344,7 +1343,7 @@ bool kde_nightcolor_manager_create(struct config_manager *config_manager)
     struct wl_display *display = config_manager->server->display;
     struct wl_event_loop *loop = wl_display_get_event_loop(display);
 
-    manager->adjust_timer = wl_event_loop_add_timer(loop, handle_colortempe_adjust_timer, manager);
+    manager->adjust_timer = wl_event_loop_add_timer(loop, handle_colortemp_adjust_timer, manager);
     if (!manager->adjust_timer) {
         free(manager);
         return false;

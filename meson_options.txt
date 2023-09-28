@@ -10,7 +10,7 @@ option('wlr_foreign_toplevel', type: 'boolean', value: true, description: 'Enabl
 option('wlr_layer_shell', type: 'boolean', value: true, description: 'Enable wlroots layer shell protocol support')
 option('kde_global_accel', type: 'boolean', value: true, description: 'Enable kde global accel dbus server support')
 option('kde_input', type: 'boolean', value: true, description: 'Enable kde input dbus server support')
-option('kde_nightcolor', type: 'boolean', value: true, description: 'Enable kde clolorcorrect dbus server support')
+option('kde_nightcolor', type: 'boolean', value: true, description: 'Enable kde colorcorrect dbus server support')
 option('kde_plasma_shell', type: 'boolean', value: true, description: 'Enable kde plasma shell protocol support')
 option('kde_plasma_window_management', type: 'boolean', value: true, description: 'Enable kde plasma window management protocol support')
 option('kde_blur', type: 'boolean', value: true, description: 'Enable kde blur protocol support')
