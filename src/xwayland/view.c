@@ -459,9 +459,6 @@ static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, s
         return;
     }
 
-    /* update ssd and make sure ssd is visible */
-    xwayland_view_handle_set_decorations(&xwayland_view->set_decorations, NULL);
-
     if (kywc_view->maximized) {
         view_get_tiled_geometry(&xwayland_view->view, geo, kywc_output, KYWC_TILE_ALL);
     } else if (kywc_view->tiled) {
@@ -536,19 +533,28 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         }
     }
 
-    /* apply the position in size_hints */
-    xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
-    if (size_hints &&
-        size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION) &&
-        !xwayland_view->view.base.maximized && !xwayland_view->view.base.fullscreen &&
-        !xwayland_view->view.base.tiled && !xwayland_view->view.base.has_initial_position) {
-        xwayland_view->view.base.has_initial_position = true;
-        struct kywc_box geo = {
-            .x = size_hints->x,
-            .y = size_hints->y,
-        };
-        xwayland_view_adjust_geometry(xwayland_view, &geo);
-        kywc_view_move(&xwayland_view->view.base, geo.x, geo.y);
+    /* fix postion if not special state */
+    if (!xwayland_view->view.base.maximized && !xwayland_view->view.base.fullscreen &&
+        !xwayland_view->view.base.tiled) {
+        struct kywc_box geo = { 0 };
+
+        if (xwayland_view->view.base.has_initial_position) {
+            geo.x = xwayland_view->view.pending.geometry.x;
+            geo.y = xwayland_view->view.pending.geometry.y;
+        } else {
+            /* apply the position in size_hints */
+            xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
+            if (size_hints && size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION |
+                                                   XCB_ICCCM_SIZE_HINT_P_POSITION)) {
+                geo.x = size_hints->x;
+                geo.y = size_hints->y;
+                xwayland_view->view.base.has_initial_position = true;
+            }
+        }
+        if (xwayland_view->view.base.has_initial_position) {
+            xwayland_view_adjust_geometry(xwayland_view, &geo);
+            kywc_view_move(&xwayland_view->view.base, geo.x, geo.y);
+        }
     }
 
     view_map(&xwayland_view->view);
@@ -662,13 +668,16 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
     struct kywc_box geo = { event->x, event->y, event->width, event->height };
-    xwayland_view_adjust_geometry(xwayland_view, &geo);
-    kywc_view_resize(kywc_view, &geo);
 
     if (!kywc_view->mapped) {
-        wlr_xwayland_surface_configure(wlr_xwayland_surface, geo.x, geo.y, geo.width, geo.height);
+        wlr_xwayland_surface_configure(wlr_xwayland_surface, event->x, event->y, event->width,
+                                       event->height);
         kywc_view->has_initial_position = true;
+    } else {
+        xwayland_view_adjust_geometry(xwayland_view, &geo);
     }
+
+    kywc_view_resize(kywc_view, &geo);
 }
 
 void xwayland_view_create(struct xwayland_server *xwayland,
