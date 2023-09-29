@@ -53,6 +53,8 @@ void output_set_brightness(struct kywc_output *kywc_output, int32_t brightness);
 void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
                           struct wlr_output_state *wlr_state, uint32_t color_temp);
 
+void output_set_pending_primary(struct output *output);
+
 void output_add_common_modes(struct output *output);
 
 void output_uuid_generate(struct kywc_output *kywc_output);

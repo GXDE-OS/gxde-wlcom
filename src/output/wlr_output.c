@@ -118,34 +118,34 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
 
     struct wlr_output_configuration_head_v1 *head_v1;
     wl_list_for_each(head_v1, &config->heads, link) {
-        struct kywc_output_state pending;
-        pending.enabled = pending.power = head_v1->state.enabled;
-        if (head_v1->state.mode) {
-            pending.width = head_v1->state.mode->width;
-            pending.height = head_v1->state.mode->height;
-            pending.refresh = head_v1->state.mode->refresh;
-        } else {
-            pending.width = head_v1->state.custom_mode.width;
-            pending.height = head_v1->state.custom_mode.height;
-            pending.refresh = head_v1->state.custom_mode.refresh;
-        }
-        pending.scale = head_v1->state.scale;
-        pending.transform = head_v1->state.transform;
-        pending.lx = head_v1->state.x;
-        pending.ly = head_v1->state.y;
-        pending.vrr_policy = head_v1->state.adaptive_sync_enabled;
+        struct kywc_output_state pending = {
+            .enabled = head_v1->state.enabled,
+            .power = head_v1->state.enabled,
+            .width =
+                head_v1->state.mode ? head_v1->state.mode->width : head_v1->state.custom_mode.width,
+            .height = head_v1->state.mode ? head_v1->state.mode->height
+                                          : head_v1->state.custom_mode.height,
+            .refresh = head_v1->state.mode ? head_v1->state.mode->refresh
+                                           : head_v1->state.custom_mode.refresh,
+            .scale = head_v1->state.scale,
+            .transform = head_v1->state.transform,
+            .lx = head_v1->state.x,
+            .ly = head_v1->state.y,
+            .vrr_policy = head_v1->state.adaptive_sync_enabled,
+        };
 
         struct output *output = output_from_wlr_output(head_v1->state.output);
-        output_manager_add_output_pending_state(output, pending);
+        output_manager_add_output_pending_state(output, &pending);
     }
 
-    kywc_output_set_pending_primary(primary_output);
+    output_set_pending_primary(output_from_kywc_output(primary_output));
 
     if (!output_manager_configure_outputs()) {
         wlr_output_configuration_v1_send_failed(config);
         wlr_output_configuration_v1_destroy(config);
         return;
     }
+
     wlr_output_configuration_v1_send_succeeded(config);
     wlr_output_configuration_v1_destroy(config);
 }

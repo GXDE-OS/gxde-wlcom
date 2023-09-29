@@ -58,7 +58,8 @@ void output_manager_power_outputs(bool power);
 
 void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp);
 
-void output_manager_add_output_pending_state(struct output *output, struct kywc_output_state state);
+void output_manager_add_output_pending_state(struct output *output,
+                                             struct kywc_output_state *state);
 
 struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
 

@@ -219,10 +219,10 @@ static void output_configure_handle_apply(struct wl_client *client, struct wl_re
     struct kde_output_config *config;
     wl_list_for_each(config, &configs->configs, link) {
         struct output *output = output_from_kywc_output(config->device->kywc_output);
-        output_manager_add_output_pending_state(output, config->pending);
+        output_manager_add_output_pending_state(output, &config->pending);
     }
 
-    kywc_output_set_pending_primary(configs->pending_primary);
+    output_set_pending_primary(output_from_kywc_output(configs->pending_primary));
 
     if (!output_manager_configure_outputs()) {
         kde_output_configuration_v2_send_failed(resource);

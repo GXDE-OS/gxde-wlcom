@@ -89,9 +89,8 @@ static bool output_read_layout_config(struct output *output, struct kywc_output_
     }
 
     if (json_object_object_get_ex(config, "primary", &data)) {
-        bool primary = json_object_get_boolean(data);
-        if (primary) {
-            kywc_output_set_pending_primary(&output->base);
+        if (json_object_get_boolean(data)) {
+            output_set_pending_primary(output);
         }
     }
     if (json_object_object_get_ex(config, "width", &data)) {
@@ -218,7 +217,7 @@ void output_manager_get_layout_configs(struct output_manager *output_manager)
     wl_list_for_each(output, &output_manager->outputs, link) {
         struct kywc_output_state pending = { 0 };
         if (output_read_layout_config(output, &pending, active_layout)) {
-            output_manager_add_output_pending_state(output, pending);
+            output_manager_add_output_pending_state(output, &pending);
             continue;
         }
         struct kywc_output *kywc_output = &output->base;
@@ -230,7 +229,7 @@ void output_manager_get_layout_configs(struct output_manager *output_manager)
         pending.height = mode->height;
         pending.refresh = mode->refresh;
         pending.scale = kywc_output_preferred_scale(kywc_output, pending.width, pending.height);
-        output_manager_add_output_pending_state(output, pending);
+        output_manager_add_output_pending_state(output, &pending);
     }
 }
 

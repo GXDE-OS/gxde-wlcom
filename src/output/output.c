@@ -438,7 +438,7 @@ bool output_manager_configure_outputs(void)
         if (have_enabled_output && need_fix_primary_output) {
             kywc_log(KYWC_WARN, "Fixup primary output to %s", output->base.name);
             need_fix_primary_output = false;
-            kywc_output_set_pending_primary(&output->base);
+            output_set_pending_primary(output);
         }
 
         if (have_enabled_output && have_zero_coord) {
@@ -511,12 +511,12 @@ failed:
     return ret;
 }
 
-void output_manager_add_output_pending_state(struct output *output, struct kywc_output_state state)
+void output_manager_add_output_pending_state(struct output *output, struct kywc_output_state *state)
 {
     struct output_pending_config *pending_config = NULL;
     wl_list_for_each(pending_config, &output_manager->output_configs, link) {
         if (pending_config->output == output) {
-            pending_config->state = state;
+            pending_config->state = *state;
             return;
         }
     }
@@ -527,14 +527,15 @@ void output_manager_add_output_pending_state(struct output *output, struct kywc_
     }
     pending_config->output = output;
 
+    pending_config->state = *state;
     /* copy colortemp and brightness to pending */
-    state.color_temp = output->base.state.color_temp;
-    state.brightness = output->base.state.brightness;
-    pending_config->state = state;
+    pending_config->state.color_temp = output->base.state.color_temp;
+    pending_config->state.brightness = output->base.state.brightness;
+
     kywc_log(KYWC_DEBUG,
              "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
-             output->base.name, state.width, state.height, state.refresh, state.scale, state.lx,
-             state.ly, state.transform, state.enabled ? "enabled" : "disabled",
+             output->base.name, state->width, state->height, state->refresh, state->scale,
+             state->lx, state->ly, state->transform, state->enabled ? "enabled" : "disabled",
              output_manager->pending_primary == &output->base ? "primary" : "");
     wl_list_insert(&output_manager->output_configs, &pending_config->link);
 }
@@ -578,8 +579,9 @@ struct output_manager *output_manager_create(struct server *server)
     return output_manager;
 }
 
-void kywc_output_set_pending_primary(struct kywc_output *kywc_output)
+void output_set_pending_primary(struct output *output)
 {
+    struct kywc_output *kywc_output = &output->base;
     if (output_manager->pending_primary == kywc_output) {
         return;
     }
