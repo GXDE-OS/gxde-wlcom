@@ -8,7 +8,7 @@
 #include <wlr/backend.h>
 #include <wlr/backend/headless.h>
 #include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_xdg_output_v1.h>
+#include <wlr/types/wlr_output_layout.h>
 
 #include <kywc/log.h>
 
@@ -563,7 +563,7 @@ struct output_manager *output_manager_create(struct server *server)
     output_manager->server_resume.notify = handle_server_resume;
     wl_signal_add(&server->events.resume, &output_manager->server_resume);
 
-    wlr_xdg_output_manager_v1_create(server->display, server->layout);
+    xdg_output_manager_v1_create(server);
     output_manager->new_output.notify = handle_new_output;
     wl_signal_add(&server->backend->events.new_output, &output_manager->new_output);
 

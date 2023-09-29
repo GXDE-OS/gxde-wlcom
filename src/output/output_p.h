@@ -63,6 +63,8 @@ bool output_manager_layout_init(struct output_manager *output_manager);
 
 void output_manager_get_layout_configs(struct output_manager *output_manager);
 
+bool xdg_output_manager_v1_create(struct server *server);
+
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);
 #else
