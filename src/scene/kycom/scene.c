@@ -10,9 +10,9 @@
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
 
-#include "scene/kycom/effects_impl.h"
 #include "kywc/kycom/scene.h"
 #include "kywc/kycom/texture.h"
+#include "scene/kycom/effects_impl.h"
 #include "scene/kycom/opengl_p.h"
 
 #include "server.h"
@@ -216,8 +216,12 @@ struct kywc_node *kywc_node_at(struct kywc_node *node, double lx, double ly, dou
     node->travel(node, &finding_visitor.base);
 
     if (finding_visitor.base.bypass && finding_visitor.finded_node) {
-        *nx = finding_visitor.nx;
-        *ny = finding_visitor.ny;
+        if (nx) {
+            *nx = finding_visitor.nx;
+        }
+        if (ny) {
+            *ny = finding_visitor.ny;
+        }
         return finding_visitor.finded_node;
     }
     return NULL;
@@ -1236,7 +1240,7 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
 
     _kywc_effects_run(OUTPUT_EFFECT_OVERLAY);
     _kywc_effects_run_post(effect_output);
-    struct wlr_render_pass *pass = 
+    struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(renderer, output->back_buffer, NULL);
     wlr_output_add_software_cursors_to_render_pass(output, pass, &damage);
     wlr_render_pass_submit(pass);
