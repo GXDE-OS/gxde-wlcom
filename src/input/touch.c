@@ -17,6 +17,7 @@
 #include "scene/surface.h"
 #include "server.h"
 #include "view/view.h"
+#include "xwayland.h"
 
 #define TOUCH_HOLD_TIMEOUT (100)
 #define TOUCH_FILTER_TIMEOUT (200)
@@ -458,6 +459,11 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     point->surface = surface;
     wl_signal_add(&surface->events.destroy, &point->surface_destroy);
 
+    if (xwayland_check_client(wl_resource_get_client(point->surface->resource))) {
+        sx = xwayland_scale(sx);
+        sy = xwayland_scale(sy);
+    }
+
     wlr_seat_touch_notify_down(seat->wlr_seat, surface, event->time_msec, event->touch_id, sx, sy);
 
     /* activate and focus the toplevel surface */
@@ -636,6 +642,11 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
         ky_scene_node_coords(ky_scene_node_from_buffer(scene_buffer), &lx, &ly);
         sx = seat->cursor->lx - lx;
         sy = seat->cursor->ly - ly;
+    }
+
+    if (xwayland_check_client(wl_resource_get_client(point->surface->resource))) {
+        sx = xwayland_scale(sx);
+        sy = xwayland_scale(sy);
     }
 
     selection_handle_cursor_move(seat, seat->cursor->lx, seat->cursor->ly);

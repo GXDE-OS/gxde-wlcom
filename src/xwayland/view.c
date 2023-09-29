@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/util/region.h>
 
 #include "input/event.h"
 #include "input/seat.h"
@@ -21,6 +22,7 @@ struct xwayland_view {
     struct ky_scene_node *surface_node;
     struct wl_listener node_destroy;
 
+    struct wl_listener precommit;
     struct wl_listener commit;
 
     struct wl_listener associate;
@@ -66,13 +68,13 @@ static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, d
     }
 
     if (!hold) {
-        seat_notify_motion(seat, surface, time, x, y, first);
+        seat_notify_motion(seat, surface, time, xwayland_scale(x), xwayland_scale(y), first);
         return false;
     }
 
     double sx = x - xwayland_view->view.base.geometry.x;
     double sy = y - xwayland_view->view.base.geometry.y;
-    seat_notify_motion(seat, surface, time, sx, sy, first);
+    seat_notify_motion(seat, surface, time, xwayland_scale(sx), xwayland_scale(sy), first);
     return true;
 }
 
@@ -148,8 +150,8 @@ static void xwayland_view_move(struct xwayland_view *xwayland_view, int x, int y
     struct view *view = &xwayland_view->view;
 
     /* xwayland views need always sync position */
-    wlr_xwayland_surface_configure(wlr_xwayland_surface, x, y, wlr_xwayland_surface->width,
-                                   wlr_xwayland_surface->height);
+    wlr_xwayland_surface_configure(wlr_xwayland_surface, xwayland_scale(x), xwayland_scale(y),
+                                   wlr_xwayland_surface->width, wlr_xwayland_surface->height);
     view_helper_move(view, x, y);
 }
 
@@ -216,8 +218,9 @@ static void xwayland_view_configure(struct view *view)
         view_helper_move(view, pending->x, pending->y);
     }
 
-    wlr_xwayland_surface_configure(wlr_xwayland_surface, pending->x, pending->y, pending->width,
-                                   pending->height);
+    wlr_xwayland_surface_configure(wlr_xwayland_surface, xwayland_scale(pending->x),
+                                   xwayland_scale(pending->y), xwayland_scale(pending->width),
+                                   xwayland_scale(pending->height));
 }
 
 static const struct view_impl xwl_surface_impl = {
@@ -236,10 +239,10 @@ static void xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
     } else {
         /* convert -1 to zero followed by xdg-shell */
         view_update_size(&xwayland_view->view, state->width, state->height,
-                         size_hints->min_width < 0 ? 0 : size_hints->min_width,
-                         size_hints->min_height < 0 ? 0 : size_hints->min_height,
-                         size_hints->max_width < 0 ? 0 : size_hints->max_width,
-                         size_hints->max_height < 0 ? 0 : size_hints->max_height);
+                         size_hints->min_width < 0 ? 0 : xwayland_unscale(size_hints->min_width),
+                         size_hints->min_height < 0 ? 0 : xwayland_unscale(size_hints->min_height),
+                         size_hints->max_width < 0 ? 0 : xwayland_unscale(size_hints->max_width),
+                         size_hints->max_height < 0 ? 0 : xwayland_unscale(size_hints->max_height));
     }
 }
 
@@ -551,8 +554,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
             xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
             if (size_hints && size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION |
                                                    XCB_ICCCM_SIZE_HINT_P_POSITION)) {
-                geo.x = size_hints->x;
-                geo.y = size_hints->y;
+                geo.x = xwayland_unscale(size_hints->x);
+                geo.y = xwayland_unscale(size_hints->y);
                 xwayland_view->view.base.has_initial_position = true;
             }
         }
@@ -595,6 +598,30 @@ static void xwayalnd_view_handle_node_destroy(struct wl_listener *listener, void
     xwayland_view->surface_node = NULL;
 }
 
+static void xwayland_view_handle_precommit(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, precommit);
+    struct wlr_surface_state *pending = data;
+
+    pending->width = xwayland_unscale(pending->width);
+    pending->height = xwayland_unscale(pending->height);
+
+    float scale = 1.0 / xwayland_get_scale();
+    if (pending->committed & WLR_SURFACE_STATE_SURFACE_DAMAGE) {
+        wlr_region_scale(&pending->surface_damage, &pending->surface_damage, scale);
+    }
+    if (pending->committed & WLR_SURFACE_STATE_OPAQUE_REGION) {
+        wlr_region_scale(&pending->opaque, &pending->opaque, scale);
+    }
+    if (pending->committed & WLR_SURFACE_STATE_INPUT_REGION) {
+        wlr_region_scale(&pending->input, &pending->input, scale);
+    }
+    if (pending->committed & WLR_SURFACE_STATE_OFFSET) {
+        pending->dx = xwayland_unscale(pending->dx);
+        pending->dy = xwayland_unscale(pending->dy);
+    }
+}
+
 static void xwayland_view_handle_associate(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, associate);
@@ -611,6 +638,8 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     input_event_node_create(xwayland_view->surface_node, &xwayland_view_event_node_impl,
                             xwayland_view_get_root, xwayland_view_get_toplevel, xwayland_view);
 
+    xwayland_view->precommit.notify = xwayland_view_handle_precommit;
+    wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
     xwayland_view->map.notify = xwayland_view_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &xwayland_view->map);
     xwayland_view->unmap.notify = xwayland_view_handle_unmap;
@@ -629,6 +658,7 @@ static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *
         ky_scene_node_destroy(xwayland_view->surface_node);
     }
 
+    wl_list_remove(&xwayland_view->precommit.link);
     wl_list_remove(&xwayland_view->map.link);
     wl_list_remove(&xwayland_view->unmap.link);
 }
@@ -672,7 +702,8 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     struct kywc_view *kywc_view = &xwayland_view->view.base;
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
-    struct kywc_box geo = { event->x, event->y, event->width, event->height };
+    struct kywc_box geo = { xwayland_unscale(event->x), xwayland_unscale(event->y),
+                            xwayland_unscale(event->width), xwayland_unscale(event->height) };
 
     if (!kywc_view->mapped) {
         wlr_xwayland_surface_configure(wlr_xwayland_surface, event->x, event->y, event->width,

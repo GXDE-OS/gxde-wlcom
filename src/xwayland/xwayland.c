@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_xcursor_manager.h>
@@ -10,7 +11,6 @@
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "server.h"
-#include "xwayland.h"
 #include "xwayland_p.h"
 
 static const char *const atom_map[ATOM_LAST] = {
@@ -99,6 +99,7 @@ bool xwayland_server_create(struct server *server)
         return false;
     }
 
+    xwayland->scale = 1.0;
     wl_list_init(&xwayland->unmanaged_surfaces);
 
     xwayland->new_xwayland_surface.notify = handle_new_xwayland_surface;
@@ -130,4 +131,34 @@ void xwayland_server_destroy(void)
     if (xwayland) {
         wlr_xwayland_destroy(xwayland->wlr_xwayland);
     }
+}
+
+bool xwayland_check_client(struct wl_client *client)
+{
+    return xwayland && xwayland->wlr_xwayland->server &&
+           xwayland->wlr_xwayland->server->client == client;
+}
+
+float xwayland_get_scale(void)
+{
+    return xwayland ? xwayland->scale : 1.0;
+}
+
+void xwayland_set_scale(float scale)
+{
+    if (!xwayland || xwayland->scale == scale) {
+        return;
+    }
+
+    xwayland->scale = scale;
+}
+
+float xwayland_unscale(int value)
+{
+    return xwayland ? roundf(value / xwayland->scale) : value;
+}
+
+float xwayland_scale(int value)
+{
+    return xwayland ? value * xwayland->scale : value;
 }

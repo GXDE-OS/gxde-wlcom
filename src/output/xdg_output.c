@@ -12,6 +12,7 @@
 
 #include "output_p.h"
 #include "xdg-output-unstable-v1-protocol.h"
+#include "xwayland.h"
 
 #define OUTPUT_MANAGER_VERSION 3
 #define OUTPUT_DONE_DEPRECATED_SINCE_VERSION 3
@@ -63,8 +64,18 @@ static void output_handle_resource_destroy(struct wl_resource *resource)
 
 static void output_send_details(struct xdg_output_v1 *xdg_output, struct wl_resource *resource)
 {
-    zxdg_output_v1_send_logical_position(resource, xdg_output->x, xdg_output->y);
-    zxdg_output_v1_send_logical_size(resource, xdg_output->width, xdg_output->height);
+    int32_t x = xdg_output->x, y = xdg_output->y;
+    int32_t width = xdg_output->width, height = xdg_output->height;
+
+    if (xwayland_check_client(wl_resource_get_client(resource))) {
+        x = xwayland_scale(x);
+        y = xwayland_scale(y);
+        width = xwayland_scale(width);
+        height = xwayland_scale(height);
+    }
+
+    zxdg_output_v1_send_logical_position(resource, x, y);
+    zxdg_output_v1_send_logical_size(resource, width, height);
     if (wl_resource_get_version(resource) < OUTPUT_DONE_DEPRECATED_SINCE_VERSION) {
         zxdg_output_v1_send_done(resource);
     }

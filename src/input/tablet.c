@@ -18,6 +18,7 @@
 #include "scene/surface.h"
 #include "server.h"
 #include "view/view.h"
+#include "xwayland.h"
 
 struct tablet_manager {
     struct wlr_tablet_manager_v2 *manager;
@@ -400,6 +401,10 @@ static bool tablet_handle_tool_position(struct tablet_tool *tablet_tool)
         if (surface) {
             wlr_tablet_v2_tablet_tool_notify_proximity_in(tablet_tool->tablet_tool,
                                                           tablet_tool->tablet->tablet, surface);
+            if (xwayland_check_client(wl_resource_get_client(surface->resource))) {
+                sx = xwayland_scale(sx);
+                sy = xwayland_scale(sy);
+            }
             wlr_tablet_v2_tablet_tool_notify_motion(tablet_tool->tablet_tool, sx, sy);
         } else {
             wlr_tablet_v2_tablet_tool_notify_proximity_out(tablet_tool->tablet_tool);
@@ -485,8 +490,7 @@ bool tablet_handle_tool_tip(struct wlr_tablet_tool_tip_event *event)
     }
 
     struct wlr_surface *toplevel = NULL;
-    double sx, sy;
-    struct wlr_surface *surface = tablet_get_surface(tablet_tool->tablet, &sx, &sy, &toplevel);
+    struct wlr_surface *surface = tablet_get_surface(tablet_tool->tablet, NULL, NULL, &toplevel);
     if (!surface || !wlr_surface_accepts_tablet_v2(tablet_tool->tablet->tablet, surface)) {
         if (event->state == WLR_TABLET_TOOL_TIP_UP) {
             wlr_tablet_v2_tablet_tool_notify_up(tablet_tool->tablet_tool);

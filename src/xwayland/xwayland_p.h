@@ -9,6 +9,8 @@
 
 #include <kywc/log.h>
 
+#include "xwayland.h"
+
 /**
  * window type that not added in wlroots
  * https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html
@@ -30,6 +32,8 @@ struct xwayland_server {
     struct wl_listener server_destroy;
 
     xcb_atom_t atoms[ATOM_LAST];
+
+    float scale;
 };
 
 void xwayland_view_create(struct xwayland_server *xwayland,
