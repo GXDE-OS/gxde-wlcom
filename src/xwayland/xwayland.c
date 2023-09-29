@@ -36,27 +36,32 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
     xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
-static void xwayland_apply_scale(xcb_connection_t *conn)
+static void xwayland_apply_scale(bool force);
+
+static void handle_output_configured(struct wl_listener *listener, void *data)
 {
-    xwayland->scale = output_manager_get_scale();
-
-    char dpi_str[16];
-    snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
-
-    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, XCB_ATOM_RESOURCE_MANAGER,
-                        XCB_ATOM_STRING, 8, strlen(dpi_str), dpi_str);
-    xcb_flush(conn);
-
-    output_manager_update_scale(xwayland->scale);
-    kywc_log(KYWC_INFO, "xwayland set scale to %f", xwayland->scale);
+    xwayland_apply_scale(false);
 }
 
-static void handle_xwayland_ready(struct wl_listener *listener, void *data)
+static void xwayland_apply_scale(bool force)
 {
-    kywc_log(KYWC_INFO, "xwayland is ready");
-    struct seat *seat = input_manager_get_default_seat();
-    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+    if (wl_list_empty(&xwayland->output_configured.link)) {
+        output_manager_add_configured_listener(&xwayland->output_configured);
+    }
+
+    float scale = output_manager_get_scale();
+    if (!force && xwayland->scale == scale) {
+        return;
+    }
+
+    xwayland->scale = scale;
+    output_manager_update_scale(xwayland->scale);
+    kywc_log(KYWC_INFO, "xwayland set scale to %f", xwayland->scale);
+
+    /* xwayland server is destroyed */
+    if (!xwayland->wlr_xwayland) {
+        return;
+    }
 
     xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
     int err = xcb_connection_has_error(xcb_conn);
@@ -65,7 +70,28 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
         return;
     }
 
-    xwayland_apply_scale(xcb_conn);
+    char dpi_str[16];
+    snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
+    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root, XCB_ATOM_RESOURCE_MANAGER,
+                        XCB_ATOM_STRING, 8, strlen(dpi_str), dpi_str);
+    xcb_flush(xcb_conn);
+}
+
+static void handle_xwayland_ready(struct wl_listener *listener, void *data)
+{
+    kywc_log(KYWC_INFO, "xwayland is ready");
+    struct seat *seat = input_manager_get_default_seat();
+    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+
+    xwayland_apply_scale(true);
+
+    xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
+    int err = xcb_connection_has_error(xcb_conn);
+    if (err) {
+        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
+        return;
+    }
 
     xcb_intern_atom_cookie_t cookies[ATOM_LAST];
     for (size_t i = 0; i < ATOM_LAST; i++) {
@@ -93,6 +119,7 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&xwayland->server_destroy.link);
+    wl_list_remove(&xwayland->output_configured.link);
     free(xwayland);
     xwayland = NULL;
 }
@@ -127,6 +154,8 @@ bool xwayland_server_create(struct server *server)
     wl_signal_add(&xwayland->wlr_xwayland->events.ready, &xwayland->xwayland_ready);
     xwayland->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &xwayland->server_destroy);
+    xwayland->output_configured.notify = handle_output_configured;
+    wl_list_init(&xwayland->output_configured.link);
 
     setenv("DISPLAY", xwayland->wlr_xwayland->display_name, true);
     kywc_log(KYWC_INFO, "xwayland is running on display %s", xwayland->wlr_xwayland->display_name);
@@ -149,6 +178,7 @@ void xwayland_server_destroy(void)
 {
     if (xwayland) {
         wlr_xwayland_destroy(xwayland->wlr_xwayland);
+        xwayland->wlr_xwayland = NULL;
     }
 }
 
