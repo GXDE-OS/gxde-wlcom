@@ -19,7 +19,6 @@
 #define OUTPUT_DESCRIPTION_MUTABLE_SINCE_VERSION 3
 
 struct xdg_output_v1 {
-    struct xdg_output_manager_v1 *manager;
     struct wl_list resources;
     struct wl_list link;
 
@@ -47,6 +46,8 @@ struct xdg_output_manager_v1 {
     struct wl_listener layout_change;
     struct wl_listener layout_destroy;
 };
+
+struct xdg_output_manager_v1 *manager = NULL;
 
 static void output_handle_destroy(struct wl_client *client, struct wl_resource *resource)
 {
@@ -137,7 +138,6 @@ static void output_manager_handle_get_xdg_output(struct wl_client *client,
     assert(wl_resource_instance_of(resource, &zxdg_output_manager_v1_interface,
                                    &output_manager_implementation));
 
-    struct xdg_output_manager_v1 *manager = wl_resource_get_user_data(resource);
     struct wlr_output_layout *layout = manager->layout;
     struct wlr_output *output = wlr_output_from_resource(output_resource);
 
@@ -237,7 +237,6 @@ static void add_output(struct xdg_output_manager_v1 *manager,
         return;
     }
     wl_list_init(&output->resources);
-    output->manager = manager;
     output->layout_output = layout_output;
     output->destroy.notify = handle_output_destroy;
     wl_signal_add(&layout_output->events.destroy, &output->destroy);
@@ -257,14 +256,12 @@ static void output_manager_send_details(struct xdg_output_manager_v1 *manager)
 
 static void handle_layout_add(struct wl_listener *listener, void *data)
 {
-    struct xdg_output_manager_v1 *manager = wl_container_of(listener, manager, layout_add);
     struct wlr_output_layout_output *layout_output = data;
     add_output(manager, layout_output);
 }
 
 static void handle_layout_change(struct wl_listener *listener, void *data)
 {
-    struct xdg_output_manager_v1 *manager = wl_container_of(listener, manager, layout_change);
     output_manager_send_details(manager);
 }
 
@@ -280,23 +277,22 @@ static void manager_destroy(struct xdg_output_manager_v1 *manager)
     wl_list_remove(&manager->layout_change.link);
     wl_list_remove(&manager->layout_destroy.link);
     free(manager);
+    manager = NULL;
 }
 
 static void handle_layout_destroy(struct wl_listener *listener, void *data)
 {
-    struct xdg_output_manager_v1 *manager = wl_container_of(listener, manager, layout_destroy);
     manager_destroy(manager);
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
-    struct xdg_output_manager_v1 *manager = wl_container_of(listener, manager, display_destroy);
     manager_destroy(manager);
 }
 
 bool xdg_output_manager_v1_create(struct server *server)
 {
-    struct xdg_output_manager_v1 *manager = calloc(1, sizeof(struct xdg_output_manager_v1));
+    manager = calloc(1, sizeof(struct xdg_output_manager_v1));
     if (manager == NULL) {
         return false;
     }
@@ -305,6 +301,7 @@ bool xdg_output_manager_v1_create(struct server *server)
                                        OUTPUT_MANAGER_VERSION, manager, output_manager_bind);
     if (!manager->global) {
         free(manager);
+        manager = NULL;
         return false;
     }
 
@@ -327,4 +324,23 @@ bool xdg_output_manager_v1_create(struct server *server)
     wl_display_add_destroy_listener(server->display, &manager->display_destroy);
 
     return true;
+}
+
+void xdg_output_update_scale(float scale)
+{
+    if (!manager) {
+        return;
+    }
+
+    struct xdg_output_v1 *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        struct wl_resource *resource;
+        wl_resource_for_each(resource, &output->resources) {
+            /* found xwayland client */
+            if (xwayland_check_client(wl_resource_get_client(resource))) {
+                output_send_details(output, resource);
+                break;
+            }
+        }
+    }
 }

@@ -65,6 +65,8 @@ void output_manager_get_layout_configs(struct output_manager *output_manager);
 
 bool xdg_output_manager_v1_create(struct server *server);
 
+void xdg_output_update_scale(float scale);
+
 #if HAVE_KDE_OUTPUT
 bool kde_output_management_create(struct server *server);
 #else

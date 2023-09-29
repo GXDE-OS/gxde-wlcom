@@ -10,6 +10,7 @@
 
 #include "input/cursor.h"
 #include "input/seat.h"
+#include "output.h"
 #include "server.h"
 #include "xwayland_p.h"
 
@@ -35,6 +36,22 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
     xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
+static void xwayland_apply_scale(xcb_connection_t *conn)
+{
+    xwayland->scale = output_manager_get_scale();
+
+    char dpi_str[16];
+    snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
+
+    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, XCB_ATOM_RESOURCE_MANAGER,
+                        XCB_ATOM_STRING, 8, strlen(dpi_str), dpi_str);
+    xcb_flush(conn);
+
+    output_manager_update_scale(xwayland->scale);
+    kywc_log(KYWC_INFO, "xwayland set scale to %f", xwayland->scale);
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
@@ -47,6 +64,8 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
         kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
         return;
     }
+
+    xwayland_apply_scale(xcb_conn);
 
     xcb_intern_atom_cookie_t cookies[ATOM_LAST];
     for (size_t i = 0; i < ATOM_LAST; i++) {

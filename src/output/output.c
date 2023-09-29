@@ -14,6 +14,7 @@
 
 #include "output_p.h"
 #include "server.h"
+#include "xwayland.h"
 
 static struct output_manager *output_manager = NULL;
 static char *unknown = "unknown";
@@ -358,6 +359,44 @@ void output_manager_power_outputs(bool power)
         struct kywc_output_state state = output->base.state;
         state.power = power;
         kywc_output_set_state(&output->base, &state);
+    }
+}
+
+float output_manager_get_scale(void)
+{
+    float scale = 1.0;
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (!output->base.state.enabled) {
+            continue;
+        }
+        if (output->base.state.scale > scale) {
+            scale = output->base.state.scale;
+        }
+    }
+    return scale;
+}
+
+void output_manager_update_scale(float scale)
+{
+    /* update xdg_output pos and size */
+    xdg_output_update_scale(scale);
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (!output->base.state.enabled) {
+            continue;
+        }
+
+        struct wl_resource *resource;
+        wl_resource_for_each(resource, &output->wlr_output->resources) {
+            if (xwayland_check_client(wl_resource_get_client(resource))) {
+                if (wl_resource_get_version(resource) >= WL_OUTPUT_DONE_SINCE_VERSION) {
+                    wl_output_send_done(resource);
+                }
+                break;
+            }
+        }
     }
 }
 

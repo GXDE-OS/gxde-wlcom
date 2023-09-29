@@ -56,6 +56,11 @@ bool output_manager_configure_outputs(void);
 
 void output_manager_power_outputs(bool power);
 
+float output_manager_get_scale(void);
+
+/* update scale to xwayland */
+void output_manager_update_scale(float scale);
+
 void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp);
 
 void output_manager_add_output_pending_state(struct output *output,
