@@ -488,7 +488,6 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     xwayland_view_handle_set_decorations(&xwayland_view->set_decorations, NULL);
     // TODO: set shadow to all xwayland view ?
     view_set_shadow(&xwayland_view->view, true);
-    kywc_view_set_minimized(&xwayland_view->view.base, wlr_xwayland_surface->minimized);
     xwayland_view_handle_request_maximize(&xwayland_view->request_maximize, NULL);
     xwayland_view_handle_request_fullscreen(&xwayland_view->request_fullscreen, NULL);
 
@@ -498,6 +497,31 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     xwayland_view->set_strut_partial.notify = xwayland_view_handle_set_strut_partial;
     wl_signal_add(&wlr_xwayland_surface->events.set_strut_partial,
                   &xwayland_view->set_strut_partial);
+
+    xwayland_view->request_move.notify = xwayland_view_handle_request_move;
+    wl_signal_add(&wlr_xwayland_surface->events.request_move, &xwayland_view->request_move);
+    xwayland_view->request_resize.notify = xwayland_view_handle_request_resize;
+    wl_signal_add(&wlr_xwayland_surface->events.request_resize, &xwayland_view->request_resize);
+
+    xwayland_view->request_maximize.notify = xwayland_view_handle_request_maximize;
+    wl_signal_add(&wlr_xwayland_surface->events.request_maximize, &xwayland_view->request_maximize);
+    xwayland_view->request_fullscreen.notify = xwayland_view_handle_request_fullscreen;
+    wl_signal_add(&wlr_xwayland_surface->events.request_fullscreen,
+                  &xwayland_view->request_fullscreen);
+    xwayland_view->request_activate.notify = xwayland_view_handle_request_activate;
+    wl_signal_add(&wlr_xwayland_surface->events.request_activate, &xwayland_view->request_activate);
+
+    xwayland_view->set_title.notify = xwayland_view_handle_set_title;
+    wl_signal_add(&wlr_xwayland_surface->events.set_title, &xwayland_view->set_title);
+    xwayland_view->set_class.notify = xwayland_view_handle_set_class;
+    wl_signal_add(&wlr_xwayland_surface->events.set_class, &xwayland_view->set_class);
+    xwayland_view->set_parent.notify = xwayland_view_handle_set_parent;
+    wl_signal_add(&wlr_xwayland_surface->events.set_parent, &xwayland_view->set_parent);
+
+    xwayland_view->set_hints.notify = xwayland_view_handle_set_hints;
+    wl_signal_add(&wlr_xwayland_surface->events.set_hints, &xwayland_view->set_hints);
+    xwayland_view->set_decorations.notify = xwayland_view_handle_set_decorations;
+    wl_signal_add(&wlr_xwayland_surface->events.set_decorations, &xwayland_view->set_decorations);
 
     for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
@@ -538,6 +562,17 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
 
     wl_list_remove(&xwayland_view->commit.link);
     wl_list_remove(&xwayland_view->set_strut_partial.link);
+    wl_list_remove(&xwayland_view->request_move.link);
+    wl_list_remove(&xwayland_view->request_resize.link);
+    wl_list_remove(&xwayland_view->request_maximize.link);
+    wl_list_remove(&xwayland_view->request_fullscreen.link);
+    wl_list_remove(&xwayland_view->request_activate.link);
+    wl_list_remove(&xwayland_view->set_title.link);
+    wl_list_remove(&xwayland_view->set_class.link);
+    wl_list_remove(&xwayland_view->set_parent.link);
+    wl_list_remove(&xwayland_view->set_hints.link);
+    wl_list_remove(&xwayland_view->set_decorations.link);
+
     /* surface_tree is destroyed by scene subsurface */
     view_unmap(&xwayland_view->view);
 }
@@ -594,20 +629,8 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
     wl_list_remove(&xwayland_view->destroy.link);
     wl_list_remove(&xwayland_view->associate.link);
     wl_list_remove(&xwayland_view->dissociate.link);
-
     wl_list_remove(&xwayland_view->request_configure.link);
-    wl_list_remove(&xwayland_view->request_move.link);
-    wl_list_remove(&xwayland_view->request_resize.link);
     wl_list_remove(&xwayland_view->request_minimize.link);
-    wl_list_remove(&xwayland_view->request_maximize.link);
-    wl_list_remove(&xwayland_view->request_fullscreen.link);
-    wl_list_remove(&xwayland_view->request_activate.link);
-
-    wl_list_remove(&xwayland_view->set_title.link);
-    wl_list_remove(&xwayland_view->set_class.link);
-    wl_list_remove(&xwayland_view->set_parent.link);
-    wl_list_remove(&xwayland_view->set_hints.link);
-    wl_list_remove(&xwayland_view->set_decorations.link);
     wl_list_remove(&xwayland_view->set_override_redirect.link);
     wl_list_remove(&xwayland_view->output_update_usable_area.link);
 
@@ -673,34 +696,8 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     xwayland_view->request_configure.notify = xwayland_view_handle_request_configure;
     wl_signal_add(&wlr_xwayland_surface->events.request_configure,
                   &xwayland_view->request_configure);
-
-    xwayland_view->request_move.notify = xwayland_view_handle_request_move;
-    wl_signal_add(&wlr_xwayland_surface->events.request_move, &xwayland_view->request_move);
-    xwayland_view->request_resize.notify = xwayland_view_handle_request_resize;
-    wl_signal_add(&wlr_xwayland_surface->events.request_resize, &xwayland_view->request_resize);
-
     xwayland_view->request_minimize.notify = xwayland_view_handle_request_minimize;
     wl_signal_add(&wlr_xwayland_surface->events.request_minimize, &xwayland_view->request_minimize);
-    xwayland_view->request_maximize.notify = xwayland_view_handle_request_maximize;
-    wl_signal_add(&wlr_xwayland_surface->events.request_maximize, &xwayland_view->request_maximize);
-    xwayland_view->request_fullscreen.notify = xwayland_view_handle_request_fullscreen;
-    wl_signal_add(&wlr_xwayland_surface->events.request_fullscreen,
-                  &xwayland_view->request_fullscreen);
-    xwayland_view->request_activate.notify = xwayland_view_handle_request_activate;
-    wl_signal_add(&wlr_xwayland_surface->events.request_activate, &xwayland_view->request_activate);
-
-    xwayland_view->set_title.notify = xwayland_view_handle_set_title;
-    wl_signal_add(&wlr_xwayland_surface->events.set_title, &xwayland_view->set_title);
-    xwayland_view->set_class.notify = xwayland_view_handle_set_class;
-    wl_signal_add(&wlr_xwayland_surface->events.set_class, &xwayland_view->set_class);
-    xwayland_view->set_parent.notify = xwayland_view_handle_set_parent;
-    wl_signal_add(&wlr_xwayland_surface->events.set_parent, &xwayland_view->set_parent);
-
-    xwayland_view->set_hints.notify = xwayland_view_handle_set_hints;
-    wl_signal_add(&wlr_xwayland_surface->events.set_hints, &xwayland_view->set_hints);
-    xwayland_view->set_decorations.notify = xwayland_view_handle_set_decorations;
-    wl_signal_add(&wlr_xwayland_surface->events.set_decorations, &xwayland_view->set_decorations);
-
     xwayland_view->set_override_redirect.notify = xwayland_view_handle_set_override_redirect;
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &xwayland_view->set_override_redirect);
