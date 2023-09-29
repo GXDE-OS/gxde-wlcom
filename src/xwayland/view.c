@@ -211,6 +211,11 @@ static void xwayland_view_configure(struct view *view)
         return;
     }
 
+    /* there is no commit after map */
+    if (view->base.has_initial_position) {
+        view_helper_move(view, pending->x, pending->y);
+    }
+
     wlr_xwayland_surface_configure(wlr_xwayland_surface, pending->x, pending->y, pending->width,
                                    pending->height);
 }

@@ -236,7 +236,6 @@ void view_map(struct view *view)
     struct ky_scene_node *node = ky_scene_node_from_tree(view->tree);
     ky_scene_node_set_enabled(node, !kywc_view->minimized);
 
-    kywc_view->has_initial_position = false;
     kywc_view->mapped = true;
 
     if (view->pending.action) {
@@ -249,6 +248,7 @@ void view_map(struct view *view)
         }
     }
 
+    kywc_view->has_initial_position = false;
     kywc_view_activate(kywc_view);
     seat_focus_surface(input_manager_get_default_seat(), view->surface);
 
