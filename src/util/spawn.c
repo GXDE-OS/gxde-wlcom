@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -42,8 +43,21 @@ bool spawn_invoke(const char *command)
         sigprocmask(SIG_SETMASK, &set, NULL);
         grandchild = fork();
         if (grandchild == 0) {
+            /* close stdout/stderr */
+            int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0666);
+            if (devnull < 0) {
+                kywc_log_errno(KYWC_ERROR, "failed to open /dev/null");
+                _exit(1);
+            }
+            if (kywc_log_get_level() < KYWC_DEBUG) {
+                dup2(devnull, STDOUT_FILENO);
+                dup2(devnull, STDERR_FILENO);
+            }
+
             execvp(argv[0], argv);
+
             kywc_log_errno(KYWC_ERROR, "execvp failed");
+            close(devnull);
             _exit(1);
         } else if (grandchild < 0) {
             kywc_log(KYWC_ERROR, "unable to fork()");
