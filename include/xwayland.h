@@ -20,8 +20,6 @@ bool xwayland_check_client(struct wl_client *client);
 
 float xwayland_get_scale(void);
 
-void xwayland_set_scale(float scale);
-
 float xwayland_unscale(int value);
 
 float xwayland_scale(int value);
@@ -44,8 +42,6 @@ static __attribute__((unused)) float xwayland_get_scale(void)
 {
     return 1.0;
 }
-
-static __attribute__((unused)) void xwayland_set_scale(float scale) {}
 
 static __attribute__((unused)) float xwayland_unscale(int value)
 {

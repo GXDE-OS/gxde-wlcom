@@ -36,33 +36,8 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
     xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
-static void xwayland_apply_scale(bool force);
-
-static void handle_output_configured(struct wl_listener *listener, void *data)
+static void xwayland_update_dpi(void)
 {
-    xwayland_apply_scale(false);
-}
-
-static void xwayland_apply_scale(bool force)
-{
-    if (wl_list_empty(&xwayland->output_configured.link)) {
-        output_manager_add_configured_listener(&xwayland->output_configured);
-    }
-
-    float scale = output_manager_get_scale();
-    if (!force && xwayland->scale == scale) {
-        return;
-    }
-
-    xwayland->scale = scale;
-    output_manager_update_scale(xwayland->scale);
-    kywc_log(KYWC_INFO, "xwayland set scale to %f", xwayland->scale);
-
-    /* xwayland server is destroyed */
-    if (!xwayland->wlr_xwayland) {
-        return;
-    }
-
     xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
     int err = xcb_connection_has_error(xcb_conn);
     if (err) {
@@ -78,13 +53,32 @@ static void xwayland_apply_scale(bool force)
     xcb_flush(xcb_conn);
 }
 
+static void handle_output_configured(struct wl_listener *listener, void *data)
+{
+    float scale = output_manager_get_scale();
+    if (xwayland->scale == scale) {
+        return;
+    }
+
+    xwayland->scale = scale;
+    kywc_log(KYWC_INFO, "xwayland set scale to %f", xwayland->scale);
+
+    /* xwayland server is destroyed or not ready */
+    if (!xwayland->wlr_xwayland || !xwayland->wlr_xwayland->xwm) {
+        return;
+    }
+
+    output_manager_update_scale(xwayland->scale);
+    xwayland_update_dpi();
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
     struct seat *seat = input_manager_get_default_seat();
     wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
-
-    xwayland_apply_scale(true);
+    /* set xft.dpi */
+    xwayland_update_dpi();
 
     xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
     int err = xcb_connection_has_error(xcb_conn);
@@ -155,7 +149,7 @@ bool xwayland_server_create(struct server *server)
     xwayland->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &xwayland->server_destroy);
     xwayland->output_configured.notify = handle_output_configured;
-    wl_list_init(&xwayland->output_configured.link);
+    output_manager_add_configured_listener(&xwayland->output_configured);
 
     setenv("DISPLAY", xwayland->wlr_xwayland->display_name, true);
     kywc_log(KYWC_INFO, "xwayland is running on display %s", xwayland->wlr_xwayland->display_name);
@@ -191,15 +185,6 @@ bool xwayland_check_client(struct wl_client *client)
 float xwayland_get_scale(void)
 {
     return xwayland ? xwayland->scale : 1.0;
-}
-
-void xwayland_set_scale(float scale)
-{
-    if (!xwayland || xwayland->scale == scale) {
-        return;
-    }
-
-    xwayland->scale = scale;
 }
 
 float xwayland_unscale(int value)
