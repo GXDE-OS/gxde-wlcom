@@ -9,6 +9,7 @@
 
 struct server;
 struct wl_client;
+struct wl_global;
 
 #if HAVE_XWAYLAND
 
@@ -16,7 +17,9 @@ bool xwayland_server_create(struct server *server);
 
 void xwayland_server_destroy(void);
 
-bool xwayland_check_client(struct wl_client *client);
+bool xwayland_check_client(const struct wl_client *client);
+
+bool xwayland_filter_global(const struct wl_client *client, const struct wl_global *global);
 
 float xwayland_get_scale(void);
 
@@ -26,32 +29,27 @@ float xwayland_scale(int value);
 
 #else
 
-static __attribute__((unused)) inline bool xwayland_server_create(struct server *server)
-{
-    return false;
-}
+// clang-format off
 
-static __attribute__((unused)) inline void xwayland_server_destroy(void) {}
+#define INLINE static __attribute__((unused)) inline
 
-static __attribute__((unused)) inline bool xwayland_client(struct wl_client *client)
-{
-    return false;
-}
+INLINE bool xwayland_server_create(struct server *server) { return false; }
 
-static __attribute__((unused)) float xwayland_get_scale(void)
-{
-    return 1.0;
-}
+INLINE void xwayland_server_destroy(void) {}
 
-static __attribute__((unused)) float xwayland_unscale(int value)
-{
-    return value;
-}
+INLINE bool xwayland_check_client(const struct wl_client *client) { return false; }
 
-static __attribute__((unused)) float xwayland_scale(int value)
-{
-    return value;
-}
+INLINE bool xwayland_filter_global(const struct wl_client *client, const struct wl_global *global) { return true; }
+
+INLINE float xwayland_get_scale(void) { return 1.0; }
+
+INLINE float xwayland_unscale(int value) { return value; }
+
+INLINE float xwayland_scale(int value) { return value; }
+
+// clang-format on
+
+#undef INLINE
 
 #endif
 

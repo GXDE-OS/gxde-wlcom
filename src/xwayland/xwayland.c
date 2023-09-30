@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/xwayland/shell.h>
 
 #include "input/cursor.h"
 #include "input/seat.h"
@@ -176,10 +177,24 @@ void xwayland_server_destroy(void)
     }
 }
 
-bool xwayland_check_client(struct wl_client *client)
+bool xwayland_check_client(const struct wl_client *client)
 {
     return xwayland && xwayland->wlr_xwayland->server &&
            xwayland->wlr_xwayland->server->client == client;
+}
+
+bool xwayland_filter_global(const struct wl_client *client, const struct wl_global *global)
+{
+    /* no xwayland shell */
+    if (!xwayland || !xwayland->wlr_xwayland) {
+        return true;
+    }
+    /* not the xwayland shell global */
+    if (global != xwayland->wlr_xwayland->shell_v1->global) {
+        return true;
+    }
+    /* only expose this global to Xwayland clients */
+    return xwayland_check_client(client);
 }
 
 float xwayland_get_scale(void)
