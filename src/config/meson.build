@@ -35,3 +35,9 @@ if have_kde_nightcolor
     'kde_nightcolor.c',
   )
 endif
+
+if have_ukui_screenshot
+  wlcom_sources += files(
+    'ukui_screenshot.c',
+  )
+endif

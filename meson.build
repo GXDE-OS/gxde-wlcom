@@ -113,6 +113,7 @@ have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
 have_kycom_scene = get_option('ky_scene')
 have_kde_global_settings = get_option('kde_global_settings')
+have_ukui_screenshot = get_option('ukui_screenshot')
 
 if not have_kycom_scene and not have_wlr_scene
   message('currently in beta')
@@ -137,6 +138,7 @@ add_project_arguments([
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
   '-DHAVE_KYCOM_SCENE=@0@'.format(have_kycom_scene.to_int()),
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
+  '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
 ], language: 'c')
 
 if have_kycom_scene and not have_wlr_scene
