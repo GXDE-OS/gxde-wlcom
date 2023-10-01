@@ -319,3 +319,13 @@ void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name)
     }
     cairo_surface_write_to_png(buf->surface, name);
 }
+
+struct wlr_buffer *painter_create_buffer(int width, int height, float scale)
+{
+    struct cairo_buffer *buffer = cairo_buffer_create(width, height, scale);
+    if (!buffer) {
+        return NULL;
+    }
+
+    return &buffer->base;
+}

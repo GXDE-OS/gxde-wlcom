@@ -33,10 +33,6 @@ static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer, ui
 {
     struct cairo_buffer *buffer = cairo_buffer_from_wlr_buffer(wlr_buffer);
 
-    if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE) {
-        return false;
-    }
-
     *format = DRM_FORMAT_ARGB8888;
     *data = cairo_image_surface_get_data(buffer->surface);
     *stride = cairo_image_surface_get_stride(buffer->surface);
