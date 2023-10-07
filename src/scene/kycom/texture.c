@@ -164,14 +164,14 @@ static void texture_node_destroy(struct kywc_node *node)
 
 static void texture_node_travel(struct kywc_node *node, struct kywc_node_visitor *visitor)
 {
-    if (!node || !node->enabled) {
+    if (!node) {
         return;
     }
 
     struct kywc_texture_node *texture_node = kywc_texture_node_from_node(node);
 
     if (!visitor || !visitor->impl || !visitor->impl->visit_texture || !texture_node ||
-        visitor->bypass) {
+        visitor->travel_break) {
         return;
     }
     visitor->flag = VISITOR_LEAF;
@@ -179,6 +179,7 @@ static void texture_node_travel(struct kywc_node *node, struct kywc_node_visitor
     visitor->ly += node->y;
 
     visitor->impl->visit_texture(visitor, texture_node);
+    visitor->skip_current_node = false;
 
     visitor->lx -= node->x;
     visitor->ly -= node->y;

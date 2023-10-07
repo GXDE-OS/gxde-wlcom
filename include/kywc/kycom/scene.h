@@ -192,12 +192,15 @@ struct kywc_node_visitor_interface {
 };
 
 struct kywc_node_visitor {
-    bool bypass;
+    /* abort travel */
+    bool travel_break; 
     enum kywc_visitor_flag flag;
     /* Current node ly, ly in scene. */
     int lx, ly;
 
     const struct kywc_node_visitor_interface *impl;
+    /* skip child node */
+    bool skip_current_node;
 };
 
 struct kywc_root *kywc_root_create_with_server(struct server *kywc_server);

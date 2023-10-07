@@ -150,12 +150,12 @@ final:
 /******************************************************************************/
 static void rect_node_travel(struct kywc_node *node, struct kywc_node_visitor *visitor)
 {
-    if (!node || !node->enabled) {
+    if (!node) {
         return;
     }
 
     struct kywc_rect_node *rect_node = rect_from_node(node);
-    if (!visitor || !visitor->impl || !visitor->impl->visit_rect || !rect_node || visitor->bypass) {
+    if (!visitor || !visitor->impl || !visitor->impl->visit_rect || !rect_node || visitor->travel_break) {
         return;
     }
     visitor->flag = VISITOR_LEAF;
@@ -163,6 +163,7 @@ static void rect_node_travel(struct kywc_node *node, struct kywc_node_visitor *v
     visitor->ly += node->y;
 
     visitor->impl->visit_rect(visitor, rect_node);
+    visitor->skip_current_node = false;
 
     visitor->lx -= node->x;
     visitor->ly -= node->y;
