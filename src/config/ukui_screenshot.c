@@ -112,7 +112,7 @@ static void screenshot_handle_output_commit(struct wl_listener *listener, void *
     struct wlr_output_event_commit *event = data;
     struct wlr_output *output = s_output->l_output->output;
 
-    if (!(event->committed & WLR_OUTPUT_STATE_BUFFER)) {
+    if (!(event->state->committed & WLR_OUTPUT_STATE_BUFFER)) {
         return;
     }
 
@@ -121,7 +121,7 @@ static void screenshot_handle_output_commit(struct wl_listener *listener, void *
     int width, height;
     wlr_output_effective_resolution(output, &width, &height);
 
-    struct wlr_texture *src_tex = wlr_texture_from_buffer(output->renderer, event->buffer);
+    struct wlr_texture *src_tex = wlr_texture_from_buffer(output->renderer, event->state->buffer);
     struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(output->renderer, manager->buffer, NULL);
 

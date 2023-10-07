@@ -995,8 +995,8 @@ static void scene_output_handle_commit(struct wl_listener *listener, void *data)
     struct kywc_scene_output *scene_output = wl_container_of(listener, scene_output, output_commit);
     struct wlr_output_event_commit *event = data;
 
-    if (event->committed & (WLR_OUTPUT_STATE_MODE | WLR_OUTPUT_STATE_TRANSFORM |
-                            WLR_OUTPUT_STATE_SCALE | WLR_OUTPUT_STATE_ENABLED)) {
+    if (event->state->committed & (WLR_OUTPUT_STATE_MODE | WLR_OUTPUT_STATE_TRANSFORM |
+                                   WLR_OUTPUT_STATE_SCALE | WLR_OUTPUT_STATE_ENABLED)) {
         scene_output_update_geometry(scene_output);
     }
 }
