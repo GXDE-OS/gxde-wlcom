@@ -385,6 +385,7 @@ static void shadow_parts_create(struct shadow *shadow)
     shadow->tree = ky_scene_tree_create(view->tree);
     shadow->node = ky_scene_node_from_tree(shadow->tree);
     ky_scene_node_lower_to_bottom(shadow->node);
+    ky_scene_node_set_bypassed(shadow->node, true);
 
     shadow_create_parts(shadow);
     shadow_update_parts(shadow, SHADOW_UPDATE_CAUSE_ALL);
