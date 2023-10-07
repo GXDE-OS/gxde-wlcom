@@ -197,11 +197,6 @@ bool xwayland_filter_global(const struct wl_client *client, const struct wl_glob
     return xwayland_check_client(client);
 }
 
-float xwayland_get_scale(void)
-{
-    return xwayland ? xwayland->scale : 1.0;
-}
-
 float xwayland_unscale(int value)
 {
     return xwayland ? roundf(value / xwayland->scale) : value;

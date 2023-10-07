@@ -206,12 +206,15 @@ static void unmanaged_handle_node_destroy(struct wl_listener *listener, void *da
 static void unmanaged_handle_precommit(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, precommit);
-    struct wlr_surface_state *pending = data;
+    if (unmanaged->xwayland->scale == 1.0) {
+        return;
+    }
 
+    struct wlr_surface_state *pending = data;
     pending->width = xwayland_unscale(pending->width);
     pending->height = xwayland_unscale(pending->height);
 
-    float scale = 1.0 / xwayland_get_scale();
+    float scale = 1.0 / unmanaged->xwayland->scale;
     if (pending->committed & WLR_SURFACE_STATE_SURFACE_DAMAGE) {
         wlr_region_scale(&pending->surface_damage, &pending->surface_damage, scale);
     }

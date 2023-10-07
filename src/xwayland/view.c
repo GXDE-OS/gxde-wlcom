@@ -601,12 +601,15 @@ static void xwayalnd_view_handle_node_destroy(struct wl_listener *listener, void
 static void xwayland_view_handle_precommit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, precommit);
-    struct wlr_surface_state *pending = data;
+    if (xwayland_view->xwayland->scale == 1.0) {
+        return;
+    }
 
+    struct wlr_surface_state *pending = data;
     pending->width = xwayland_unscale(pending->width);
     pending->height = xwayland_unscale(pending->height);
 
-    float scale = 1.0 / xwayland_get_scale();
+    float scale = 1.0 / xwayland_view->xwayland->scale;
     if (pending->committed & WLR_SURFACE_STATE_SURFACE_DAMAGE) {
         wlr_region_scale(&pending->surface_damage, &pending->surface_damage, scale);
     }
