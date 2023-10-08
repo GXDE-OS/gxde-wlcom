@@ -56,6 +56,7 @@
 #define ky_scene_output_create wlr_scene_output_create
 #define ky_scene_output_layout_add_output wlr_scene_output_layout_add_output
 #define ky_scene_node_set_bypassed wlr_scene_node_set_bypassed
+#define ky_scene_output_destroy wlr_scene_output_destroy
 
 struct server;
 
@@ -137,6 +138,7 @@ SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *s
 #define ky_scene_output_layout_add_output kywc_scene_output_layout_add_output
 #define ky_scene_from_node kywc_node_get_root
 #define ky_scene_node_set_bypassed kywc_node_set_bypassed
+#define ky_scene_output_destroy kywc_scene_output_destroy
 
 SCENE_API struct ky_scene *ky_scene_create(struct server *kywc_server){ return kywc_root_create_with_server(kywc_server); };
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return scene->presentation; }
@@ -249,6 +251,7 @@ SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *sc
 SCENE_API struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wlr_output *output) { return NULL; }
 SCENE_API void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol, struct wlr_output_layout_output *lo, struct ky_scene_output *so) {}
 SCENE_API void ky_scene_node_set_bypassed(struct ky_scene_node *node, bool bypassed) {};
+SCENE_API void ky_scene_output_destroy(struct ky_scene_output *scene_output) {};
 
 #endif
 

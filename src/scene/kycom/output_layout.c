@@ -34,7 +34,6 @@ static void scene_output_layout_output_destroy(struct kywc_scene_output_layout_o
     wl_list_remove(&solo->layout_output_destroy.link);
     wl_list_remove(&solo->scene_output_destroy.link);
     wl_list_remove(&solo->link);
-    kywc_scene_output_destroy(solo->scene_output);
     free(solo);
 }
 
@@ -51,7 +50,6 @@ static void scene_output_layout_output_handle_scene_output_destroy(struct wl_lis
 {
     struct kywc_scene_output_layout_output *solo =
         wl_container_of(listener, solo, scene_output_destroy);
-    solo->scene_output = NULL;
     scene_output_layout_output_destroy(solo);
 }
 

@@ -7,7 +7,7 @@
 
 #include <kywc/output.h>
 
-struct server;
+#include "server.h"
 
 struct output_pending_config {
     struct output *output;
@@ -18,6 +18,7 @@ struct output_pending_config {
 struct output {
     struct kywc_output base;
     struct wlr_output *wlr_output;
+    struct ky_scene_output *scene_output;
 
     struct wl_list link;
     struct output_manager *manager;

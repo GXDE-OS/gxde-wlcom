@@ -13,7 +13,6 @@
 #include <kywc/log.h>
 
 #include "output_p.h"
-#include "server.h"
 #include "xwayland.h"
 
 static struct output_manager *output_manager = NULL;
@@ -229,19 +228,16 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
     struct kywc_output *kywc_output = &output->base;
-    struct wlr_output *wlr_output = output->wlr_output;
 
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
 #if HAVE_WLR_SCENE | HAVE_KYCOM_SCENE
-    struct ky_scene_output *scene_output =
-        ky_scene_get_scene_output(output_manager->server->scene, wlr_output);
-    ky_scene_output_commit(scene_output, NULL);
+    ky_scene_output_commit(output->scene_output, NULL);
 
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);
-    ky_scene_output_send_frame_done(scene_output, &now);
+    ky_scene_output_send_frame_done(output->scene_output, &now);
 #else
     if (!wlr_output->needs_frame) {
         kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
@@ -314,6 +310,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output->needs_frame.link);
 
     struct wlr_output *wlr_output = output->wlr_output;
+    ky_scene_output_destroy(output->scene_output);
     wlr_output_layout_remove(output_manager->server->layout, wlr_output);
 
     output_destroy(output);
@@ -831,7 +828,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     } else if (going_on) {
         loutput = wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
     } else if (going_off) {
-        /* layout output will destroyed */
+        ky_scene_output_destroy(output->scene_output);
         wlr_output_layout_remove(server->layout, wlr_output);
     } else if (need_layout && have_layout && (loutput->x != state->lx || loutput->y != state->ly)) {
         /* if output logical size changed, layout_change alreay is emited in
@@ -841,8 +838,8 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     }
 
     if (going_on && loutput) {
-        struct ky_scene_output *scene_output = ky_scene_output_create(server->scene, wlr_output);
-        ky_scene_output_layout_add_output(server->scene_layout, loutput, scene_output);
+        output->scene_output = ky_scene_output_create(server->scene, wlr_output);
+        ky_scene_output_layout_add_output(server->scene_layout, loutput, output->scene_output);
     }
 
     return true;
