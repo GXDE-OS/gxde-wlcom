@@ -543,6 +543,38 @@ bool kywc_node_coords(struct kywc_node *node, int *lx, int *ly)
     return enabled;
 }
 
+struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node, 
+                                                   struct kywc_render_target *target, float scale)
+{
+    if (!source_node) {
+        return NULL;
+    }
+    int old_state = source_node->enabled;
+    source_node->enabled = true;
+    
+    struct wlr_box bound_box;
+    source_node->get_bounding_box(source_node, &bound_box);
+    int width = bound_box.width * scale;
+    int height = bound_box.height * scale;
+
+    kywc_target_update(target, bound_box.x, bound_box.y, width, height);
+
+    kywc_target_render_begin(target);
+    vec4 color = { 0.f, 0.f, 0.f, 0.f };
+    kywc_gl_clear(color);
+    kywc_target_render_end(target);
+
+    pixman_region32_t damage;
+    pixman_region32_init(&damage);
+    pixman_region32_init_rect(&damage, bound_box.x, bound_box.y, width, height);
+
+    kywc_scene_node_render(source_node, target, &damage);
+
+    pixman_region32_fini(&damage);
+    source_node->enabled = old_state;
+    return target->buffer.fb_tex;
+}
+
 struct kywc_root *kywc_node_get_root(struct kywc_node *node)
 {
     struct kywc_group_node *group_node = node->parent;

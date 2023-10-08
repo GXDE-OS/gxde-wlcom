@@ -86,6 +86,30 @@ void kywc_target_update_ofb(struct kywc_render_target *target)
     }
 }
 
+void kywc_target_update(struct kywc_render_target *target, int x, int y,
+                        int width, int height)
+{
+    if (!target) {
+        return;
+    }
+
+    kywc_gl_begin();
+    int ofb = kywc_gl_get_current_framebuffer();
+    struct kywc_gl_buffer *buffer = &target->buffer;
+    kywc_gl_buffer_allocate(buffer, ofb, width, height);
+    kywc_gl_end();
+
+    target->lx = 0;
+    target->ly = 0;
+    target->scale = 1.0;
+    target->current_ofb = ofb;
+    target->wl_transform = 0;
+    target->view_box.x = x;
+    target->view_box.y = y;
+    target->view_box.width = width;
+    target->view_box.height = height;
+}
+
 static void get_output_mat4_from_transform(enum wl_output_transform transform,
                                            mat4 transform_matrix)
 {

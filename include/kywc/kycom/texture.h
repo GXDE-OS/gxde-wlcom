@@ -12,6 +12,8 @@ struct kywc_texture_node *kywc_texture_node_from_node(struct kywc_node *node);
 struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *parent,
                                                    struct kywc_gl_texture *texture);
 
+void kywc_texture_node_init(struct kywc_texture_node *texture_node);
+
 struct kywc_texture_node *kywc_texture_node_create_from_buffer(struct kywc_group_node *parent,
                                                                struct wlr_buffer *buffer);
 

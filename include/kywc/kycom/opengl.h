@@ -150,6 +150,8 @@ void kywc_gl_render_rectangle(struct wlr_box *geometry, vec4 color, mat4 matrix,
 
 void kywc_gl_render_clear_cached(void);
 
+void kywc_gl_clear(vec4 color);
+
 struct kywc_gl_texture *kywc_gl_texture_create(void);
 
 struct kywc_gl_texture *kywc_gl_texture_from_buffer(struct wlr_buffer *buffer);

@@ -211,12 +211,10 @@ struct kywc_texture_node *kywc_texture_node_from_node(struct kywc_node *node)
     return texture_node;
 }
 
-struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *parent,
-                                                   struct kywc_gl_texture *texture)
+void kywc_texture_node_init(struct kywc_texture_node *texture_node)
 {
-    struct kywc_texture_node *texture_node = malloc(sizeof(*texture_node));
     if (!texture_node) {
-        return NULL;
+        return;
     }
     memset(texture_node, 0, sizeof(*texture_node));
 
@@ -230,10 +228,10 @@ struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *paren
     pixman_region32_init(&texture_node->opaque_region);
     pixman_region32_init(&texture_node->corner_region);
 
-    texture_node->texture = texture;
+    texture_node->texture = NULL;
     texture_node->buffer = NULL;
+    texture_node->primary_output = NULL;
     kywc_node_init(&texture_node->node);
-    kywc_node_add(&texture_node->node, parent);
 
     texture_node->node.generate_render_task = kywc_texture_node_generate_render_task;
     texture_node->node.get_bounding_box = texture_node_get_bounding_box;
@@ -245,6 +243,18 @@ struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *paren
     texture_node->node.node_name = texture_node_name;
     /* Update damage region. */
     texture_node->node.push_damage(&texture_node->node, NULL);
+}
+
+struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *parent,
+                                                   struct kywc_gl_texture *texture)
+{
+    struct kywc_texture_node *texture_node = malloc(sizeof(*texture_node));
+    if (!texture_node) {
+        return NULL;
+    }
+    kywc_texture_node_init(texture_node);
+    texture_node->texture = texture;
+    kywc_node_add(&texture_node->node, parent);
     return texture_node;
 }
 

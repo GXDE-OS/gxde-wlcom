@@ -812,6 +812,12 @@ void kywc_gl_render_clear_cached(void)
     pop_opengl_debug();
 }
 
+void kywc_gl_clear(vec4 color)
+{
+    glClearColor(color[0], color[1], color[2], color[3]);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
 void kywc_gl_render_rectangle(struct wlr_box *geometry, vec4 color, mat4 matrix,
                               uint32_t cache_flag)
 {

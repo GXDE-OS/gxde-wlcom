@@ -46,10 +46,6 @@ struct kywc_effect_view {
     } events;
 };
 
-void kywc_effect_view_generate_snapshot(struct kywc_effect_view *effects_view);
-
-void kywc_effect_view_release_snapshot(struct kywc_effect_view *effects_view);
-
 struct kywc_group_node *kywc_effect_view_get_transform(struct kywc_effect_view *effects_view,
                                                        const char *name);
 
@@ -62,7 +58,7 @@ struct kywc_group_node *kywc_effect_view_remove_transform(struct kywc_effect_vie
 
 struct kywc_texture_node *kywc_effect_view_get_texture_node(struct kywc_effect_view *view);
 
-struct kywc_gl_texture *kywc_effect_view_generate_texture(struct kywc_effect_view *view, int scale);
+struct kywc_render_target *kywc_effect_view_get_target(struct kywc_effect_view *view);
 
 /*************************************************************************/
 void kywc_theme_manager_add_update_listener(struct wl_listener *listener);

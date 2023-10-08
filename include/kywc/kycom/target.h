@@ -47,6 +47,9 @@ void kywc_target_render_end(struct kywc_render_target *target);
 
 void kywc_target_update_ofb(struct kywc_render_target *target);
 
+void kywc_target_update(struct kywc_render_target *target, int x, int y,
+                        int width, int height);
+
 bool kywc_target_get_transform_mat4(struct kywc_render_target *target, mat4 transform_matrix);
 
 void kywc_target_get_framebuffer_box(struct kywc_render_target *target,

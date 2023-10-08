@@ -232,6 +232,9 @@ struct kywc_group_node *kywc_node_get_parent(struct kywc_node *node);
 
 bool kywc_node_coords(struct kywc_node *node, int *lx, int *ly);
 
+struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node, 
+                                                   struct kywc_render_target *target, float scale);
+
 /**
  * No buffer node.
  * Buffer nodes in the kylin's scene are replaced by texture node.

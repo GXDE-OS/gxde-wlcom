@@ -137,7 +137,10 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
 
     struct kywc_effect_view *view = render->node->kywc_transform_data->view;
     if (kywc_transform_data.view->kywc_view->need_ssd) {
-        struct kywc_gl_texture *gl_texture = kywc_effect_view_generate_texture(view, 1.0);
+        struct kywc_render_target *snap_target = kywc_effect_view_get_target(view);
+        struct kywc_node *source_node = &view->view_node->node;
+        kywc_transform_data.view->view_snap_buffer = &snap_target->buffer;
+        struct kywc_gl_texture *gl_texture = kywc_node_generate_texture(source_node, snap_target, 1.0);
         if (!gl_texture) {
             kywc_log(KYWC_INFO, "texture is null");
         }
@@ -201,7 +204,7 @@ static const char *transform_geometry_node_name(void)
 }
 
 static void transform_geometry_node_init(struct kywc_transform_geometry_node *tg_node,
-                                              struct kywc_transform_data *kywc_transform_data)
+                                         struct kywc_transform_data *kywc_transform_data)
 {
     if (!tg_node || !kywc_transform_data) {
         return;

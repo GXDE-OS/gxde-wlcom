@@ -216,61 +216,10 @@ struct kywc_effect_view *_kywc_effect_view_create(struct view *view)
     return &effects_view->base;
 }
 
-/* Release in effect_veiw destroy. */
-static void effect_view_update_target(struct kywc_render_target *target, int x, int y, int width,
-                                      int height)
-{
-    if (!target) {
-        return;
-    }
-
-    kywc_gl_begin();
-    int ofb = kywc_gl_get_current_framebuffer();
-    struct kywc_gl_buffer *buffer = &target->buffer;
-    kywc_gl_buffer_allocate(buffer, ofb, width, height);
-    kywc_gl_end();
-
-    target->lx = 0;
-    target->ly = 0;
-    target->scale = 1.0;
-    target->current_ofb = ofb;
-    target->wl_transform = 0;
-    target->view_box.x = x;
-    target->view_box.y = y;
-    target->view_box.width = width;
-    target->view_box.height = height;
-}
-
-/* Don't destroy the texture. Will be destroy with effect view destroy. */
-struct kywc_gl_texture *kywc_effect_view_generate_texture(struct kywc_effect_view *view, int scale)
+struct kywc_render_target *kywc_effect_view_get_target(struct kywc_effect_view *view)
 {
     struct effect_view *_view = _kywc_get_effect_view(view);
-    if (!_view) {
-        return NULL;
-    }
-    struct kywc_node *node = &view->view_node->node;
-    struct wlr_box bound_box;
-    node->get_bounding_box(node, &bound_box);
-    int width = bound_box.width * scale;
-    int height = bound_box.height * scale;
-
-    effect_view_update_target(&_view->snap_target, bound_box.x, bound_box.y, width, height);
-
-    kywc_target_render_begin(&_view->snap_target);
-    glClearColor(0.0f, 0.f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    kywc_target_render_end(&_view->snap_target);
-
-    pixman_region32_t damage;
-    pixman_region32_init(&damage);
-    pixman_region32_init_rect(&damage, bound_box.x, bound_box.y, width, height);
-
-    kywc_scene_node_render(&view->view_node->node, &_view->snap_target, &damage);
-
-    pixman_region32_fini(&damage);
-
-    view->view_snap_buffer = &_view->snap_target.buffer;
-    return _view->snap_target.buffer.fb_tex;
+    return &_view->snap_target;
 }
 
 bool kywc_effect_view_is_minimized(struct kywc_effect_view *view)
