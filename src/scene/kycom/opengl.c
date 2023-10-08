@@ -5,6 +5,9 @@
 #include <cglm/affine.h>
 #include <cglm/cam.h>
 #include <epoxy/egl.h>
+#include <epoxy/gl.h>
+
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -36,6 +39,11 @@ static struct opengl_render {
         const char *external_frag_src;
         const char *external_require;
     } shaders_text;
+    struct gl_extension_check {
+        bool has_GL_KHR_robustness;
+        bool has_GL_KHR_debug;
+        bool has_GL_OES_EGL_image_external;
+    } gl_extensions;
 } _renderer;
 
 static struct opengl_context {
@@ -147,6 +155,7 @@ static void gl_texture_init_from_buffer(struct kywc_gl_texture *tex, struct wlr_
         tex->type = attribs.has_alpha ? TEXTURE_TYPE_RGBA : TEXTURE_TYPE_RGBX;
         break;
     case GL_TEXTURE_EXTERNAL_OES:
+        assert(_renderer.gl_extensions.has_GL_OES_EGL_image_external);
         tex->type = TEXTURE_TYPE_EXTERNAL;
         break;
     default:
@@ -203,6 +212,11 @@ static void opengl_init(struct wlr_renderer *renderer)
 
     wlr_log(WLR_DEBUG, "opengl init start.");
     egl_make_current(_renderer.egl);
+
+    _renderer.gl_extensions.has_GL_KHR_robustness = epoxy_has_gl_extension("GL_KHR_robustness");
+    _renderer.gl_extensions.has_GL_KHR_debug = epoxy_has_gl_extension("GL_KHR_debug");
+    _renderer.gl_extensions.has_GL_OES_EGL_image_external =
+        epoxy_has_gl_extension("GL_OES_EGL_image_external");
     GLuint id = kywc_gl_generate_program(default_common_vert_src, quad_frag_src);
 
     kywc_gl_program_set(&color_program, id, TEXTURE_TYPE_RGBA);
@@ -231,6 +245,9 @@ static bool egl_make_current(struct wlr_egl *egl)
 
 static void push_opengl_debug(void)
 {
+    if (!_renderer.gl_extensions.has_GL_KHR_debug) {
+        return;
+    }
     const char *file = __FILE__;
     const char *func = __func__;
     int len = snprintf(NULL, 0, "%s:%s", file, func) + 1;
@@ -241,6 +258,9 @@ static void push_opengl_debug(void)
 
 static void pop_opengl_debug(void)
 {
+    if (!_renderer.gl_extensions.has_GL_KHR_debug) {
+        return;
+    }
     glPopDebugGroupKHR();
 }
 
@@ -248,10 +268,12 @@ static bool opengl_begin(uint32_t width, uint32_t height, uint32_t fb)
 {
     egl_make_current(_renderer.egl);
     push_opengl_debug();
-    GLenum status = glGetGraphicsResetStatusKHR();
-    if (status != GL_NO_ERROR) {
-        wlr_log(WLR_ERROR, "GPU reset (%d)", status);
-        return false;
+    if (_renderer.gl_extensions.has_GL_KHR_robustness) {
+        GLenum status = glGetGraphicsResetStatusKHR();
+        if (status != GL_NO_ERROR) {
+            wlr_log(WLR_ERROR, "GPU reset (%d)", status);
+            return false;
+        }
     }
 
     if (fb != 0 && fb != (uint32_t)(-1)) {
