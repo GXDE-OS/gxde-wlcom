@@ -246,15 +246,17 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
     if (info->auto_resize && info->text && *info->text) {
         int width, height;
         text_extents(info->font, info->font_size, info->text, &width, &height);
-        height += height / 2;
-        width += height / 2;
+        if (info->auto_resize == AUTO_RESIZE_EXTEND) {
+            height += height / 2;
+            width += height / 2;
+            info->align = TEXT_ALIGN_CENTER;
+        }
         if (width < info->width) {
             info->width = width;
         }
         if (height < info->height) {
             info->height = height;
         }
-        info->align = TEXT_ALIGN_CENTER;
         info->submenu = false;
     }
 

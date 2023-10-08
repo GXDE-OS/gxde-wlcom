@@ -67,7 +67,7 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
     int left = box->width - lx - (info->submenu ? width * 2 : 0);
     pango_layout_set_width(layout, left * PANGO_SCALE);
     pango_layout_set_text(layout, info->text, -1);
-    pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
+    pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
     pango_layout_set_alignment(layout, (PangoAlignment)info->align);
 
     PangoFontDescription *desc = pango_font_description_new();

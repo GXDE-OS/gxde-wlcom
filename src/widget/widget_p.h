@@ -51,11 +51,11 @@ struct widget {
 
     uint32_t pending_cause;
 
-    bool enabled, hovered, submenu;
     /* auto resize to content, clamp to max size */
-    bool auto_resize;
+    int auto_resize;
     /* widget support hover state */
     bool hoverable;
+    bool enabled, hovered, submenu;
 };
 
 #endif /* _WIDGET_P_H_ */

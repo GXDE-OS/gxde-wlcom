@@ -34,6 +34,12 @@ enum text_align {
     TEXT_ALIGN_RIGHT,
 };
 
+enum auto_resize {
+    AUTO_RESIZE_NONE = 0,
+    AUTO_RESIZE_ONLY,
+    AUTO_RESIZE_EXTEND,
+};
+
 struct draw_info {
     /* unscaled size */
     int width, height;
@@ -56,8 +62,8 @@ struct draw_info {
     float *font_rgba;
     int font_size;
     enum text_align align;
+    enum auto_resize auto_resize;
     bool submenu; // ">"
-    bool auto_resize;
 
     /* blur support */
     int blur_margin;

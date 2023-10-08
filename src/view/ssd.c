@@ -236,7 +236,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_text(widget, text, TEXT_ALIGN_CENTER, false);
     widget_set_font(widget, theme->font_name, theme->font_size);
     widget_set_max_size(widget, 1024, 1024);
-    widget_set_auto_resize(widget, true);
+    widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
     widget_set_backgrond_color(widget, theme->inactive_bg_color);
     widget_set_front_color(widget, theme->active_text_color);
     widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, 1);
@@ -601,7 +601,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int max_width = view->geometry.width - 4 * theme->button_width;
+    int max_width = view->geometry.width - 4.5 * theme->button_width;
     /* no space left for title text */
     if (max_width <= 0) {
         widget_set_enabled(ssd->title_text, false);
@@ -616,7 +616,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     }
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
         widget_set_max_size(ssd->title_text, max_width, theme->title_height);
-        widget_set_auto_resize(ssd->title_text, true);
+        widget_set_auto_resize(ssd->title_text, AUTO_RESIZE_ONLY);
     }
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
         widget_set_front_color(ssd->title_text, view->activated ? theme->active_text_color
@@ -638,7 +638,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     int x, y;
     y = theme->border_width + (theme->title_height - text_height) / 2;
     if (theme->text_justify == JUSTIFY_LEFT) {
-        x = theme->button_width + theme->border_width;
+        x = theme->button_width + theme->border_width + y;
     } else if (theme->text_justify == JUSTIFY_CENTER) {
         x = (theme->border_width * 2 + view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
@@ -646,7 +646,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
             x -= theme->button_width;
         }
     } else {
-        x = theme->border_width + theme->button_width + max_width - text_width;
+        x = theme->border_width + theme->button_width + max_width - text_width + y;
     }
     /* setting position directly is better */
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_TEXT].node, x, y);

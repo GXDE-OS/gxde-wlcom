@@ -244,7 +244,7 @@ void widget_set_hovered_color(struct widget *widget, const float color[static 4]
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
-void widget_set_auto_resize(struct widget *widget, bool auto_resize)
+void widget_set_auto_resize(struct widget *widget, int auto_resize)
 {
     if (widget->auto_resize == auto_resize) {
         return;

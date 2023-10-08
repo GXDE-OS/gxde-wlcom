@@ -32,7 +32,7 @@ void widget_set_size(struct widget *widget, int width, int height);
 
 void widget_set_max_size(struct widget *widget, int width, int height);
 
-void widget_set_auto_resize(struct widget *widget, bool auto_resize);
+void widget_set_auto_resize(struct widget *widget, int auto_resize);
 
 void widget_set_backgrond_color(struct widget *widget, const float color[static 4]);
 
