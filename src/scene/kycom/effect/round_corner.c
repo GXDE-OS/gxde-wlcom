@@ -38,6 +38,7 @@ struct round_corner_data {
     float border_color[4];
 
     struct wlr_addon data_addon;
+    struct wl_listener handle_view_premap;
     struct wl_listener handle_view_map;
     struct wl_listener handle_view_unmap;
     struct wl_listener handle_view_destroy;
@@ -563,7 +564,8 @@ static bool children_generate_render_task(const struct kywc_group_node *node,
                                           struct round_corner_data *data)
 {
     kywc_node_generate_render_task_interface default_func = main_surface->node.generate_render_task;
-    if (data->view && (data->view->kywc_view->fullscreen || data->view->kywc_view->maximized)) {
+    struct kywc_view *kywc_view = data->view->kywc_view;
+    if (data->view && (kywc_view->fullscreen || kywc_view->maximized || kywc_view->tiled)) {
         kywc_group_node_children_generate_render(node, damage, target, render_tasks);
         return false;
     }
@@ -676,6 +678,7 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 
     wl_list_remove(&conf->handle_view_activate.link);
     wl_list_remove(&conf->handle_view_decoration.link);
+    wl_list_remove(&conf->handle_view_premap.link);
     wl_list_remove(&conf->handle_view_map.link);
     wl_list_remove(&conf->handle_view_unmap.link);
     wl_list_remove(&conf->handle_view_destroy.link);
@@ -689,6 +692,7 @@ static void handle_view_unmap(struct wl_listener *listener, void *data)
 
     struct kywc_effect_view *view = _data->view;
 
+    view->kywc_view->has_round_corner = false;
     struct kywc_group_node *transform_node =
         kywc_effect_view_remove_transform(view, effect_round_corner_class);
     struct kywc_texture_node *transformed_node = NULL;
@@ -707,12 +711,13 @@ static void handle_view_map(struct wl_listener *listener, void *data)
 
     struct kywc_effect_view *view = _data->view;
     if (kywc_effect_view_get_transform(view, effect_round_corner_class)) {
-        return;
+        kywc_log(KYWC_INFO, "Get transform failed");
+        goto final;
     }
     struct kywc_texture_node *view_texture_node = kywc_effect_view_get_texture_node(view);
     if (!view_texture_node) {
         kywc_log(KYWC_INFO, "Get view texture node is NULL.");
-        return;
+        goto final;
     }
     if (_data != node_get_cound_corner_data(view_texture_node)) {
         round_corner_data_addon_init(view_texture_node, &_data->data_addon);
@@ -721,7 +726,8 @@ static void handle_view_map(struct wl_listener *listener, void *data)
     struct effect_round_corner_node *transform_node =
         effect_round_corner_node_create(_data, view->view_node, view_texture_node);
     if (!transform_node) {
-        return;
+        kywc_log(KYWC_INFO, "Create transform node failed");
+        goto final;
     }
 
     bool ret = kywc_effect_view_add_transform(
@@ -729,8 +735,20 @@ static void handle_view_map(struct wl_listener *listener, void *data)
     if (!ret) {
         kywc_log(KYWC_INFO, "Add round corner transform failed.");
         effect_round_corner_node_destroy(transform_node);
-        return;
+        goto final;
     }
+    return;
+
+final:
+    view->kywc_view->has_round_corner = false;
+    return;
+}
+
+static void handle_view_premap(struct wl_listener *listener, void *data)
+{
+    struct round_corner_data *_data = wl_container_of(listener, _data, handle_view_premap);
+    struct kywc_effect_view *view = _data->view;
+    view->kywc_view->has_round_corner = true;
 }
 
 static void handle_view_activate(struct wl_listener *listener, void *data)
@@ -764,6 +782,10 @@ static void handle_view_create(struct wl_listener *listener, void *data)
     struct kywc_view *view = effect_view->kywc_view;
 
     struct round_corner_data *rc_data = round_corner_data_create(effect_view);
+
+    rc_data->handle_view_premap.notify = handle_view_premap;
+    wl_signal_add(&view->events.premap, &rc_data->handle_view_premap);
+
     rc_data->handle_view_map.notify = handle_view_map;
     wl_signal_add(&view->events.map, &rc_data->handle_view_map);
 

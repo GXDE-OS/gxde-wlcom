@@ -59,6 +59,7 @@ struct kywc_view {
     bool need_ssd;
     bool need_shadow;
     bool has_initial_position;
+    bool has_round_corner;
 
     /* have a buffer attached and can shown in screen */
     bool mapped;
