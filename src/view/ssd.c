@@ -731,37 +731,12 @@ static void ssd_update_border(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
+    int corner_radius = theme->corner_radius;
     int border_w = theme->border_width;
     int button_w = theme->button_width;
     int title_h = theme->title_height;
     int view_w = view->geometry.width;
     int view_h = view->geometry.height;
-
-    if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        UPDATE_PART_POSITION(SSD_BORDER_LEFT, -border_w, 0);
-    }
-
-    if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE | SSD_UPDATE_CAUSE_SIZE)) {
-        if (view->tiled || view->maximized) {
-            UPDATE_PART_POSITION(SSD_BORDER_TOP, -border_w, -(title_h + border_w));
-            UPDATE_PART_SIZE(SSD_BORDER_TOP, view_w + 2 * border_w, border_w);
-        } else {
-            UPDATE_PART_POSITION(SSD_BORDER_TOP, button_w, -(title_h + border_w));
-            UPDATE_PART_SIZE(SSD_BORDER_TOP, WRAP(view_w - 2 * button_w), border_w);
-        }
-    }
-
-    if (cause & SSD_UPDATE_CAUSE_SIZE) {
-        if (ssd->view_width != view_w) {
-            UPDATE_PART_POSITION(SSD_BORDER_RIGHT, view_w, 0);
-            UPDATE_PART_SIZE(SSD_BORDER_BOTTOM, view_w + 2 * border_w, border_w);
-        }
-        if (ssd->view_height != view_h) {
-            UPDATE_PART_POSITION(SSD_BORDER_BOTTOM, -border_w, view_h);
-            UPDATE_PART_SIZE(SSD_BORDER_LEFT, border_w, view_h);
-            UPDATE_PART_SIZE(SSD_BORDER_RIGHT, border_w, view_h);
-        }
-    }
 
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
         float *color = view->activated ? theme->active_border_color : theme->inactive_border_color;
@@ -769,6 +744,60 @@ static void ssd_update_border(struct ssd *ssd, uint32_t cause)
         UPDATE_PART_COLOR(SSD_BORDER_LEFT, color);
         UPDATE_PART_COLOR(SSD_BORDER_BOTTOM, color);
         UPDATE_PART_COLOR(SSD_BORDER_RIGHT, color);
+    }
+
+    if (cause & SSD_UPDATE_CAUSE_CREATE) {
+        UPDATE_PART_POSITION(SSD_BORDER_LEFT, -border_w, 0);
+    }
+
+    if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
+        if (view->tiled || view->maximized) {
+            UPDATE_PART_POSITION(SSD_BORDER_TOP, -border_w, -(title_h + border_w));
+            UPDATE_PART_POSITION(SSD_BORDER_RIGHT, view_w, 0);
+            UPDATE_PART_POSITION(SSD_BORDER_BOTTOM, -border_w, view_h);
+            UPDATE_PART_SIZE(SSD_BORDER_TOP, view_w + 2 * border_w, border_w);
+            UPDATE_PART_SIZE(SSD_BORDER_BOTTOM, view_w + 2 * border_w, border_w);
+            UPDATE_PART_SIZE(SSD_BORDER_LEFT, border_w, view_h);
+            UPDATE_PART_SIZE(SSD_BORDER_RIGHT, border_w, view_h);
+            /* restore */
+        } else {
+            UPDATE_PART_POSITION(SSD_BORDER_TOP, button_w, -(title_h + border_w));
+            UPDATE_PART_POSITION(SSD_BORDER_RIGHT, view_w, 0);
+            int bottom_x = view->has_round_corner ? border_w + corner_radius : -border_w;
+            UPDATE_PART_POSITION(SSD_BORDER_BOTTOM, bottom_x, view_h);
+
+            UPDATE_PART_SIZE(SSD_BORDER_TOP, WRAP(view_w - 2 * button_w), border_w);
+            int bottom_w =
+                view->has_round_corner ? view_w - 2 * corner_radius : view_w + 2 * border_w;
+            UPDATE_PART_SIZE(SSD_BORDER_BOTTOM, bottom_w, border_w);
+            int h = view->has_round_corner ? view_h - corner_radius : view_h;
+            UPDATE_PART_SIZE(SSD_BORDER_LEFT, border_w, h);
+            UPDATE_PART_SIZE(SSD_BORDER_RIGHT, border_w, h);
+        }
+
+        return;
+    }
+
+    if (cause & SSD_UPDATE_CAUSE_SIZE) {
+        if (view->maximized) {
+            return;
+        }
+
+        if (ssd->view_width != view_w) {
+            UPDATE_PART_POSITION(SSD_BORDER_RIGHT, view_w, 0);
+            UPDATE_PART_SIZE(SSD_BORDER_TOP, WRAP(view_w - 2 * button_w), border_w);
+            int bottom_w =
+                view->has_round_corner ? view_w - 2 * corner_radius : view_w + 2 * border_w;
+            UPDATE_PART_SIZE(SSD_BORDER_BOTTOM, bottom_w, border_w);
+        }
+
+        if (ssd->view_height != view_h) {
+            int bottom_x = view->has_round_corner ? border_w + corner_radius : -border_w;
+            UPDATE_PART_POSITION(SSD_BORDER_BOTTOM, bottom_x, view_h);
+            int h = view->has_round_corner ? view_h - corner_radius : view_h;
+            UPDATE_PART_SIZE(SSD_BORDER_LEFT, border_w, h);
+            UPDATE_PART_SIZE(SSD_BORDER_RIGHT, border_w, h);
+        }
     }
 }
 
