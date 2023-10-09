@@ -56,6 +56,7 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 ```
     meson setup build -Dbuildtype=debugoptimized
     ninja -C build
+    meson install -C build --skip-subprojects
 ```
 
 程序参数如下：
