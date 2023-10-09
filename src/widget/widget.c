@@ -269,7 +269,7 @@ void widget_set_size(struct widget *widget, int width, int height)
         height = widget->max_height;
     }
 
-    if (widget->width == width || widget->height == height) {
+    if (widget->width == width && widget->height == height) {
         return;
     }
 
