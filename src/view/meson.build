@@ -10,6 +10,7 @@ wlcom_sources += files(
   'workspace.c',
   'xdg_popup.c',
   'xdg_shell.c',
+  'maximize_switcher.c',
 )
 
 if have_kde_virtual_desktop
