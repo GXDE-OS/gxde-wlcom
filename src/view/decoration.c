@@ -43,9 +43,11 @@ static void decoration_handle_surface_map(struct wl_listener *listener, void *da
 
     wl_list_remove(&deco->surface_map.link);
     wl_list_init(&deco->surface_map.link);
-    deco->view = view_try_from_wlr_surface(deco->surface);
 
-    view_set_decoration(deco->view, deco->should_use_ssd);
+    deco->view = view_try_from_wlr_surface(deco->surface);
+    if (deco->view) {
+        view_set_decoration(deco->view, deco->should_use_ssd);
+    }
 }
 
 static struct decoration *decoration_from_surface(struct wlr_surface *surface)
@@ -118,20 +120,25 @@ static void handle_xdg_deco_request_mode(struct wl_listener *listener, void *dat
     enum wlr_xdg_toplevel_decoration_v1_mode mode = wlr_xdg_decoration->requested_mode;
 
     if (mode == WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_NONE) {
-        mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+        mode = ((deco->server_deco || deco->xdg_deco) && !deco->should_use_ssd)
+                   ? WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE
+                   : WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
     }
 
     kywc_log(KYWC_DEBUG, "surface %p xdg-decoration mode is %d", deco->surface, mode);
     wlr_xdg_toplevel_decoration_v1_set_mode(wlr_xdg_decoration, mode);
+    deco->should_use_ssd = mode == WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
 
     if (deco->server_deco) {
-        uint32_t server_mode = mode;
-        deco->server_deco->mode = server_mode;
-        /* org_kde_kwin_server_decoration_send_mode */
-        wl_resource_post_event(deco->server_deco->resource, 0, server_mode);
+        uint32_t server_mode = deco->should_use_ssd ? WLR_SERVER_DECORATION_MANAGER_MODE_SERVER
+                                                    : WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT;
+        if (deco->server_deco->mode != server_mode) {
+            deco->server_deco->mode = server_mode;
+            /* org_kde_kwin_server_decoration_send_mode */
+            wl_resource_post_event(deco->server_deco->resource, 0, server_mode);
+        }
     }
 
-    deco->should_use_ssd = mode == WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
     if (deco->view) {
         view_set_decoration(deco->view, deco->should_use_ssd);
     }
@@ -147,13 +154,14 @@ static void xdg_toplevel_decoration(struct wl_listener *listener, void *data)
         return;
     }
 
-    deco->xdg_deco = wlr_xdg_decoration;
     deco->xdg_deco_destroy.notify = handle_xdg_deco_destroy;
     wl_signal_add(&wlr_xdg_decoration->events.destroy, &deco->xdg_deco_destroy);
     deco->xdg_deco_request_mode.notify = handle_xdg_deco_request_mode;
     wl_signal_add(&wlr_xdg_decoration->events.request_mode, &deco->xdg_deco_request_mode);
 
     handle_xdg_deco_request_mode(&deco->xdg_deco_request_mode, wlr_xdg_decoration);
+
+    deco->xdg_deco = wlr_xdg_decoration;
 }
 
 static void handle_server_deco_apply_mode(struct wl_listener *listener, void *data)
@@ -163,12 +171,15 @@ static void handle_server_deco_apply_mode(struct wl_listener *listener, void *da
     uint32_t mode = wlr_server_decoration->mode;
 
     kywc_log(KYWC_DEBUG, "surface %p server decoration mode is %d", deco->surface, mode);
+    deco->should_use_ssd = mode == WLR_SERVER_DECORATION_MANAGER_MODE_SERVER;
+
     if (deco->xdg_deco) {
-        enum wlr_xdg_toplevel_decoration_v1_mode xdg_mode = mode;
+        enum wlr_xdg_toplevel_decoration_v1_mode xdg_mode =
+            deco->should_use_ssd ? WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE
+                                 : WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
         wlr_xdg_toplevel_decoration_v1_set_mode(deco->xdg_deco, xdg_mode);
     }
 
-    deco->should_use_ssd = mode == WLR_SERVER_DECORATION_MANAGER_MODE_SERVER;
     if (deco->view) {
         view_set_decoration(deco->view, deco->should_use_ssd);
     }
@@ -184,13 +195,23 @@ static void server_decoration(struct wl_listener *listener, void *data)
         return;
     }
 
-    deco->server_deco = wlr_server_decoration;
+    /* multi decoration for one surface, use the last one */
+    if (deco->server_deco) {
+        wl_list_remove(&deco->server_deco_destroy.link);
+        wl_list_remove(&deco->server_deco_apply_mode.link);
+    }
+
     deco->server_deco_destroy.notify = handle_server_deco_destroy;
     wl_signal_add(&wlr_server_decoration->events.destroy, &deco->server_deco_destroy);
     deco->server_deco_apply_mode.notify = handle_server_deco_apply_mode;
     wl_signal_add(&wlr_server_decoration->events.mode, &deco->server_deco_apply_mode);
-    /* apply current deco type */
-    handle_server_deco_apply_mode(&deco->server_deco_apply_mode, wlr_server_decoration);
+
+    /* apply current deco type only when first time, may no mode signal */
+    if (!deco->xdg_deco && !deco->server_deco) {
+        handle_server_deco_apply_mode(&deco->server_deco_apply_mode, wlr_server_decoration);
+    }
+
+    deco->server_deco = wlr_server_decoration;
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
