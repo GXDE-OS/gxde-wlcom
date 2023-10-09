@@ -41,12 +41,16 @@ enum direction { DIRECTION_LEFT, DIRECTION_RIGHT, DIRECTION_UP, DIRECTION_DOWN }
 static struct shortcut {
     char *keybind;
     char *desc;
-    enum direction direction;
+    int switch_workspace;
 } shortcuts[] = {
     { "Ctrl+Alt+Left:no", "switch to left workspace", DIRECTION_LEFT },
     { "Ctrl+Alt+Right:no", "switch to right workspace", DIRECTION_RIGHT },
     { "Ctrl+Alt+Up:no", "switch to up workspace", DIRECTION_UP },
     { "Ctrl+Alt+Down:no", "switch to down workspace", DIRECTION_DOWN },
+    { "Ctrl+F1", "switch to workspace 0", 4 },
+    { "Ctrl+F2", "switch to workspace 1", 5 },
+    { "Ctrl+F3", "switch to workspace 2", 6 },
+    { "Ctrl+F4", "switch to workspace 3", 7 },
 };
 
 static struct gesture {
@@ -64,7 +68,7 @@ static struct gesture {
       GESTURE_DIRECTION_RIGHT, GESTURE_EDGE_NONE, "switch to right workspace", DIRECTION_RIGHT },
 };
 
-static void workspace_switch_to(enum direction direction)
+static void workspace_switch_to(int switch_workspace)
 {
     if (workspace_manager->count == 1) {
         kywc_log(KYWC_INFO, "only one workspace, no need to switch");
@@ -77,20 +81,26 @@ static void workspace_switch_to(enum direction direction)
     int32_t last = workspace_manager->count - 1;
     int32_t pending = current;
 
-    if (direction == DIRECTION_LEFT) {
+    if (switch_workspace == DIRECTION_LEFT) {
         pending = current - 1;
         pending = pending < 0 ? last : pending;
-    } else if (direction == DIRECTION_RIGHT) {
+    } else if (switch_workspace == DIRECTION_RIGHT) {
         pending = current + 1;
         pending = pending > last ? 0 : pending;
-    } else if (direction == DIRECTION_UP) {
+    } else if (switch_workspace == DIRECTION_UP) {
         pending = current - column;
         pending = pending < 0 ? current + row * column : pending;
         pending = pending > last ? pending - column : pending;
-    } else {
+    } else if (switch_workspace == DIRECTION_DOWN) {
         pending = current + column;
         pending = pending > last ? current - row * column : pending;
         pending = pending < 0 ? pending + column : pending;
+        /* add ctrl+f1...f4 to workspace */
+    } else {
+        pending = switch_workspace - 4;
+        if (pending == current || pending > last) {
+            return;
+        }
     }
 
     workspace_activate(workspace_manager->workspaces[pending]);
@@ -99,7 +109,7 @@ static void workspace_switch_to(enum direction direction)
 static void shortcut_action(struct key_binding *binding, void *data)
 {
     struct shortcut *shortcut = data;
-    workspace_switch_to(shortcut->direction);
+    workspace_switch_to(shortcut->switch_workspace);
 }
 
 static void gesture_action(struct gesture_binding *binding, void *data)
