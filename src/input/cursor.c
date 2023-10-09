@@ -167,6 +167,11 @@ static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pres
     struct ky_scene_node *old_focus = cursor->focus.node;
     bool changed = cursor_update_node(cursor, true);
 
+    if (wlr_seat_pointer_has_grab(seat->wlr_seat)) {
+        seat_notify_button(seat, time, button, pressed);
+        return;
+    }
+
     /* old focus node and view */
     struct input_event_node *old_inode = input_event_node_from_node(old_focus);
     struct input_event_node *inode = input_event_node_from_node(cursor->focus.node);
