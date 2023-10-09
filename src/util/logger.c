@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 
 static FILE *log_fp = NULL;
 static enum kywc_log_level log_level = KYWC_WARN;
+static bool log_in_realtime = true;
 
 static const char *level_colors[] = {
     [KYWC_SILENT] = "",         [KYWC_FATAL] = "\x1B[7;31m", [KYWC_ERROR] = "\x1B[1;31m",
@@ -31,11 +33,20 @@ static void log_file(enum kywc_log_level level, const char *fmt, va_list args)
     }
 
     // FIXME: thread-safe
-    time_t time_log = time(NULL);
-    struct tm *tm_log = localtime(&time_log);
-    fprintf(log_fp, "[%04d-%02d-%02d %02d:%02d:%02d] %s: ", tm_log->tm_year + 1900,
-            tm_log->tm_mon + 1, tm_log->tm_mday, tm_log->tm_hour, tm_log->tm_min, tm_log->tm_sec,
-            log_fp == stdout ? level_colors[level] : level_headers[level]);
+    if (log_in_realtime) {
+        time_t time_log = time(NULL);
+        struct tm *tm_log = localtime(&time_log);
+        fprintf(log_fp, "[%04d-%02d-%02d %02d:%02d:%02d] %s: ", tm_log->tm_year + 1900,
+                tm_log->tm_mon + 1, tm_log->tm_mday, tm_log->tm_hour, tm_log->tm_min,
+                tm_log->tm_sec, log_fp == stdout ? level_colors[level] : level_headers[level]);
+    } else {
+        struct timespec ts = { 0 };
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        fprintf(log_fp, "[%02d:%02d:%02d.%03ld] %s: ", (int)(ts.tv_sec / 60 / 60),
+                (int)(ts.tv_sec / 60 % 60), (int)(ts.tv_sec % 60), ts.tv_nsec / 1000000,
+                log_fp == stdout ? level_colors[level] : level_headers[level]);
+    }
+
     vfprintf(log_fp, fmt, args);
     if (log_fp == stdout) {
         fprintf(log_fp, "\x1B[0m");
@@ -84,8 +95,9 @@ static enum kywc_log_level detect_log_level(enum kywc_log_level level)
     }
 }
 
-void logger_init(enum kywc_log_level level, bool log_to_file)
+void logger_init(enum kywc_log_level level, bool log_to_file, bool realtime)
 {
+    log_in_realtime = realtime;
     log_level = detect_log_level(level);
     fprintf(stdout, "logger: current log level is %s\n", level_headers[log_level]);
 

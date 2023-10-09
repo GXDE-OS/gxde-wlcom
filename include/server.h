@@ -20,6 +20,7 @@ struct server {
     struct {
         bool enable_xwayland;
         bool log_to_file;
+        bool log_in_realtime;
     } options;
 
     struct {

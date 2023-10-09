@@ -17,6 +17,7 @@
 static struct server server = {
     .options.enable_xwayland = true,
     .options.log_to_file = true,
+    .options.log_in_realtime = true,
 };
 static int exit_value = 0;
 
@@ -56,6 +57,8 @@ static void enable_debug_flag(struct server *server, const char *flag)
         server->options.enable_xwayland = false;
     } else if (strcmp(flag, "logtostdout") == 0) {
         server->options.log_to_file = false;
+    } else if (strcmp(flag, "loginmtime") == 0) {
+        server->options.log_in_realtime = false;
     } else {
         printf("Unknown debug flag: %s", flag);
     }
@@ -133,7 +136,7 @@ int main(int argc, char *argv[])
     } else if (enable_verbose) {
         level = KYWC_INFO;
     }
-    logger_init(level, server.options.log_to_file);
+    logger_init(level, server.options.log_to_file, server.options.log_in_realtime);
 
     /* ignore SIGPIPE */
     signal(SIGPIPE, SIG_IGN);
