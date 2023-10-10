@@ -2,14 +2,15 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <cglm/affine.h>
 #include <cglm/cam.h>
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
-
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
 
 #include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
@@ -688,16 +689,14 @@ const char *kywc_gl_generate_fragment_shader(const char *frag_source, enum kywc_
         return NULL;
     }
 
-    int frag_len = strlen(frag_source);
-
-    char *new_frag_source = NULL;
-    char *frag_source_copy = malloc(frag_len + 1);
+    size_t frag_len = strlen(frag_source) + 1;
+    char *frag_source_copy = malloc(frag_len);
     if (!frag_source_copy) {
         return NULL;
     }
-    strncpy(frag_source_copy, frag_source, frag_len);
-    frag_source_copy[frag_len] = '\0';
+    memcpy(frag_source_copy, frag_source, frag_len);
 
+    char *new_frag_source = NULL;
     char *temp = NULL;
     switch (type) {
     case TEXTURE_TYPE_RGBA:
@@ -801,9 +800,8 @@ void kywc_gl_program_deactive(struct kywc_gl_program *program)
 /**********************render opengl function**********************************/
 void kywc_gl_framebuffer_to_rgb(const char *path, int frame_num, int width, int height)
 {
-    char filepath[1024] = { 0 };
-    strncpy(filepath, path, 1024);
-    snprintf(filepath + strlen(filepath), 1024, "wlcom_frame_%d.rgb", frame_num);
+    char filepath[PATH_MAX];
+    snprintf(filepath, PATH_MAX, "%s/wlcom_frame_%d.rgb", path, frame_num);
     save_framebuffer_to_rgb(filepath, width, height);
 }
 

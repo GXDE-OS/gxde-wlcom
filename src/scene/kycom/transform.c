@@ -88,7 +88,7 @@ static struct transform_item *transform_manager_node_add(struct transform_manage
     }
     /* Max z-order in the list head. */
     bool finded = false;
-    struct transform_item *pos_item, *temp_item, *last_item;
+    struct transform_item *pos_item, *temp_item, *last_item = NULL;
     wl_list_for_each_safe(pos_item, temp_item, &tmn->transforms, link) {
         if (pos_item->z_order < item->z_order) {
             finded = true;

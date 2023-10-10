@@ -1045,7 +1045,7 @@ static void output_edge_position(struct output *output, enum layout_edge edge, i
 
 bool output_at_layout_edge(struct output *output, enum layout_edge edge)
 {
-    int lx, ly;
+    int lx = 0, ly = 0;
     output_edge_position(output, edge, &lx, &ly);
 
     struct wlr_output_layout *layout = output->manager->server->layout;
@@ -1055,7 +1055,7 @@ bool output_at_layout_edge(struct output *output, enum layout_edge edge)
 struct output *output_adjacent_output(struct output *output, enum layout_edge edge)
 {
 #if 1
-    int lx, ly;
+    int lx = 0, ly = 0;
     output_edge_position(output, edge, &lx, &ly);
 
     struct wlr_output_layout *layout = output_manager->server->layout;

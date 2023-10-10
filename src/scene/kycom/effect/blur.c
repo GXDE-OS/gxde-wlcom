@@ -482,7 +482,7 @@ static void blur_render(struct kywc_render_instance *instance, struct kywc_rende
     struct blur_conf *configure = render->conf;
     struct kywc_gl_buffer *background = &configure->fb[0];
     /* Translucent pos in frame_buffer. */
-    struct wlr_box cpy_framebufer_box;
+    struct wlr_box cpy_framebufer_box = { 0 };
     copy_blur_region_backgroud(background, target, &render->blur_region, &cpy_framebufer_box);
     /* Blur region pos in buffer, logic coord. */
     pixman_box32_t *cpy_box = pixman_region32_extents(&render->blur_region);
@@ -516,8 +516,8 @@ static void blur_render(struct kywc_render_instance *instance, struct kywc_rende
     };
     vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     kywc_target_render_begin(target);
-    kywc_target_render_texture_with_transform(tex, target->wl_transform, target, &geometry, color,
-                                              RENDER_FLAG_CACHED);
+    kywc_target_render_texture_with_transform(tex, (enum kywc_gl_transform)target->wl_transform,
+                                              target, &geometry, color, RENDER_FLAG_CACHED);
 
     pixman_region32_subtract(damage, damage, &render->corner_region);
 
@@ -555,7 +555,7 @@ static void effect_blur_generate_render_task(const struct kywc_node *node,
     }
 
     /**
-     * Calc child node damage, only blur damage region. 
+     * Calc child node damage, only blur damage region.
      * Maybe child node sub the opaque region from damage,
      * so calc child first.
      */

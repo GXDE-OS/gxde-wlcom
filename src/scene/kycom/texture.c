@@ -51,8 +51,9 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     kywc_gl_texture_update_src_box(tex, &src_box);
     kywc_target_render_begin(target);
     vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    kywc_target_render_texture_with_transform(tex, render->texture->transform, target, &geometry,
-                                              color, RENDER_FLAG_CACHED);
+    kywc_target_render_texture_with_transform(tex,
+                                              (enum kywc_gl_transform)render->texture->transform,
+                                              target, &geometry, color, RENDER_FLAG_CACHED);
 
     kywc_target_draw_damage(target, tex, damage);
 
