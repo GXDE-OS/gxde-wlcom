@@ -1,0 +1,4 @@
+usr/bin/kylin-wlcom
+usr/share/locale/
+usr/lib/udev/rules.d/
+usr/share/wayland-sessions/

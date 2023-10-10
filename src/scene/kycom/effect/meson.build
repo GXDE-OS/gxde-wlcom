@@ -11,14 +11,11 @@ effects_ld_args = ['-Wl,--version-script',
 
 effects_link_depends = files('effects.sym')
 
-wlr_inc = include_directories('../../../../subprojects/wlroots/include')
-
 shared_module(
     'kywc_round_corner_effect',
     ['round_corner.c'],
     include_directories : [wlcom_inc,
                          '/usr/include/pixman-1',
-                         wlr_inc
                          ],
     c_args: '-fvisibility=default',
     link_args : effects_ld_args,
@@ -32,7 +29,6 @@ shared_module(
     ['blur.c'],
     include_directories : [wlcom_inc,
                          '/usr/include/pixman-1',
-                         wlr_inc
                          ],
     c_args: '-fvisibility=default',
     link_args : effects_ld_args,
@@ -46,7 +42,6 @@ shared_module(
      ['scale.c'],
     include_directories : [wlcom_inc,
                           '/usr/include/pixman-1',
-                          wlr_inc
                           ],
      c_args: '-fvisibility=default',
      link_args : effects_ld_args,

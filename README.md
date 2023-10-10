@@ -76,9 +76,13 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 ## openKylin使用
 
 增加ppa，安装kylin-wayland-compositor即可。
+如需要特效，则还需安装kylin-wayland-compositor-effects。
 
-TODO: 增加ppa
-
+ppa地址如下：
+```
+    deb http://ppa.build.openkylin.top/kylinsoft/wayland-next/openkylin yangtze main
+    deb-src http://ppa.build.openkylin.top/kylinsoft/wayland-next/openkylin yangtze main
+```
 安装结束后，注销系统，在登陆界面，选择`Kylin Wlcom`。
 
 ## 已知问题

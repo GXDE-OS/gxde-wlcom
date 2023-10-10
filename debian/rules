@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+SUPPORT = https://www.debian.org/support
+
+%:
+	dh $@ --buildsystem=meson --with quilt
+
+override_dh_auto_configure:
+	dh_auto_configure -- -Dexamples=false --buildtype=debugoptimized
+
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/tmp
+
+override_dh_clean:
+	dh_clean
+	rm -rf debian/build
+	rm -rf build-source

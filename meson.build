@@ -2,7 +2,7 @@ project(
   'kylin-wayland-compositor',
   'c',
   # license: 'GPL-2.0-only',
-  version: '0.2.0',
+  version: '1.0.0',
   default_options: [
     'b_ndebug=if-release',
     'c_std=c11',
@@ -27,7 +27,6 @@ add_project_arguments(cc.get_supported_arguments([
   '-Wmissing-prototypes',
   '-Walloca',
   '-Wunused-macros',
-
   '-Wno-unused-parameter',
 ]), language: 'c')
 
@@ -169,6 +168,7 @@ wlcom_deps = [
   pixman, math, jsonc,
   sdbus, util, dl,
   cairo, pango, pangocairo, rsvg,
+  xcb,
 ]
 
 if have_kycom_scene
