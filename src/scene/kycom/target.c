@@ -252,8 +252,8 @@ void kywc_target_logic_damage_clear(struct kywc_render_target *target,
         scissor_box.width = rects[i].x2 - rects[i].x1;
         scissor_box.height = rects[i].y2 - rects[i].y1;
         target_logic_scissor(target, &scissor_box);
-        glClearColor(0.0f, 0.f, 0.f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        vec4 color = { 0.f, 0.f, 0.f, 0.f };
+        kywc_gl_clear(color);
     }
     target_logic_scissor(target, NULL);
 }

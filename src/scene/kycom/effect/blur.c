@@ -342,8 +342,8 @@ static void render_iteration(pixman_region32_t *blur_damage, struct kywc_gl_buff
     kywc_gl_buffer_allocate(out, ofb, width, height);
     kywc_gl_buffer_bind(out);
     glDisable(GL_BLEND);
-    glClearColor(0.f, 0.f, 0.f, 0.f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    vec4 color = { 0.f, 0.f, 0.f, 0.f };
+    kywc_gl_clear(color);
     kywc_gl_buffer_draw_region(in, blur_damage);
 }
 
