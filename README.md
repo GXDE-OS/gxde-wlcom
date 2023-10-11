@@ -69,7 +69,12 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
     "  -v, --version            Show the version number and quit.\n"
     "  -V, --verbose            Enables more verbose logging.\n"
 
-通过入参改变debug打印等级，见 [参数说明](#参数说明) 。
+通过-D参数可以方便运行时调试, 支持参数如下：
+```
+    -Dnoxwayland    关闭xwayland支持
+    -Dlogtostdout   将日志打印到stdout
+    -Dloginmtime    使用monotonic time输出日志
+```
 
 默认情况下，日志打印到文件`$HOME/.log/kylin-wlcom.log`。
 
