@@ -9,7 +9,7 @@
 #include "theme.h"
 #include "view_p.h"
 
-enum SHADOW_PART {
+enum shadow_part {
     SHADOW_PART_TOP_LEFT = 0,
     SHADOW_PART_TOP,
     SHADOW_PART_TOP_RIGHT,
@@ -21,7 +21,7 @@ enum SHADOW_PART {
     SHADOW_PART_COUNT,
 };
 
-enum SHADOW_PART_MASK {
+enum shadow_mask {
     SHADOW_MASK_TOP_LEFT = 1 << 0,
     SHADOW_MASK_TOP = 1 << 1,
     SHADOW_MASK_TOP_RIGHT = 1 << 2,
@@ -50,10 +50,6 @@ struct shadow_manager {
     struct wl_listener server_destroy;
 };
 
-struct shadow_part {
-    struct ky_scene_node *node;
-};
-
 struct shadow {
     struct wl_list link;
 
@@ -70,7 +66,9 @@ struct shadow {
 
     struct wl_listener theme_update;
 
-    struct shadow_part parts[SHADOW_PART_COUNT];
+    struct {
+        struct ky_scene_node *node;
+    } parts[SHADOW_PART_COUNT];
 
     struct ky_scene_tree *tree;
     struct ky_scene_node *node;
@@ -80,7 +78,7 @@ struct shadow {
     int view_width, view_height;
 };
 
-static struct ky_scene_node *shadow_part_create(struct ky_scene_tree *parent, enum SHADOW_PART part)
+static struct ky_scene_node *shadow_part_create(struct ky_scene_tree *parent, enum shadow_part part)
 {
     struct theme *theme = theme_manager_get_current();
     struct wlr_buffer *shadow = theme->shadow;
@@ -294,9 +292,8 @@ static void shadow_update_parts(struct shadow *shadow, uint32_t cause)
     }
 
     if (cause & SHADOW_UPDATE_CAUSE_SIZE) {
-
         if (view->tiled) {
-            /* When the zoom ratio changes, recalculate the shading when tiled */
+            /* When the scale changes, recalculate the shading when tiled */
             shadow_update_parts_tiled(shadow, view->tiled);
             return;
         }
