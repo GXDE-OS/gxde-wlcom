@@ -43,8 +43,8 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     struct kywc_gl_geometry geometry = {
         .x1 = 0,
         .y1 = 0,
-        .x2 = render->texture->geometry_width,
-        .y2 = render->texture->geometry_height,
+        .x2 = render->texture->geometry_width ? render->texture->geometry_width : tex->width,
+        .y2 = render->texture->geometry_height ? render->texture->geometry_height : tex->height,
     };
 
     struct wlr_fbox src_box = render->texture->src_box;
@@ -92,8 +92,20 @@ void kywc_texture_node_generate_render_task(const struct kywc_node *node, pixman
     pixman_region32_t node_damage, node_damage_opaque;
     pixman_region32_init(&node_damage_opaque);
     pixman_region32_init(&node_damage);
-    pixman_region32_intersect_rect(&node_damage, damage, 0, 0, texture_node->geometry_width,
-                                   texture_node->geometry_height);
+
+    struct kywc_gl_texture *tex = texture_node->texture;
+    if (!tex) {
+        return;
+    }
+    int width, height;
+    if (texture_node->geometry_width || texture_node->geometry_height) {
+        width = texture_node->geometry_width;
+        height = texture_node->geometry_height;
+    } else {
+        width = tex->width;
+        height = tex->height;
+    }
+    pixman_region32_intersect_rect(&node_damage, damage, 0, 0, width, height);
 
     if (!pixman_region32_not_empty(&node_damage)) {
         goto final;
@@ -128,10 +140,18 @@ static void texture_node_get_bounding_box(const struct kywc_node *node, struct w
         return;
     }
 
+    int width, height;
+    if (texture_node->geometry_width || texture_node->geometry_height || !texture_node->texture) {
+        width = texture_node->geometry_width;
+        height = texture_node->geometry_height;
+    } else {
+        width = texture_node->texture->width;
+        height = texture_node->texture->height;
+    }
     box->x = 0;
     box->y = 0;
-    box->width = texture_node->geometry_width;
-    box->height = texture_node->geometry_height;
+    box->width = width;
+    box->height = height;
 }
 
 static void texture_node_destroy(struct kywc_node *node)
@@ -255,6 +275,11 @@ struct kywc_texture_node *kywc_texture_node_create(struct kywc_group_node *paren
     kywc_texture_node_init(texture_node);
     texture_node->texture = texture;
     kywc_node_add(&texture_node->node, parent);
+
+    if (texture) {
+        texture_node->node.push_damage(&texture_node->node, NULL);
+        node_output_update(&texture_node->node);
+    }
     return texture_node;
 }
 
@@ -347,8 +372,8 @@ void kywc_texture_node_set_texture_with_damage(struct kywc_texture_node *tex_nod
         struct wlr_box geometry_box = {
             .x = lx,
             .y = ly,
-            .width = tex_node->geometry_width,
-            .height = tex_node->geometry_height,
+            .width = tex_node->geometry_width ? tex_node->geometry_width : texture->width,
+            .height = tex_node->geometry_height ? tex_node->geometry_height : texture->height,
         };
         kywc_texture_node_update_outputs(tex_node, &geometry_box, &scene->outputs, NULL);
     }
@@ -367,8 +392,8 @@ void kywc_texture_node_set_texture_with_damage(struct kywc_texture_node *tex_nod
     if (wlr_fbox_empty(&tex_node->src_box)) {
         box.x = 0;
         box.y = 0;
-        box.width = tex_node->geometry_width;
-        box.height = tex_node->geometry_height;
+        box.width = tex_node->geometry_width ? tex_node->geometry_width : texture->width;
+        box.height = tex_node->geometry_height ? tex_node->geometry_height : texture->height;
     } else {
         memcpy(&box, &tex_node->src_box, sizeof(tex_node->src_box));
     }
@@ -592,7 +617,6 @@ void kywc_texture_node_update_outputs(struct kywc_texture_node *tex_node,
     if (old_active == active_outputs) {
         return;
     }
-
     struct wl_array active_outputs_array;
     wl_array_init(&active_outputs_array);
 
