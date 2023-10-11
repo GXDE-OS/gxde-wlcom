@@ -30,7 +30,7 @@
 
 设置debug信息输出到屏幕: 
 
-    ./kylin-wlcom -d -Dlogtostdout.
+    ./kylin-wlcom -d -Dlogtostdout
 
 不开启xwayland: 
 
