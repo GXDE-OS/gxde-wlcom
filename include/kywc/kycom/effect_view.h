@@ -20,9 +20,7 @@ struct padding {
 
 enum kywc_effects_state {
     EFFECTS_END = 0,
-    EFFECTS_MAXIMIZING = 0x01,
-    EFFECTS_MINIMIZING = 0x10,
-    EFFECTS_ZOOMING = 0x20,
+    EFFECTS_ZOOMING = 1 << 0,
 };
 
 struct kywc_effect_view_impl {

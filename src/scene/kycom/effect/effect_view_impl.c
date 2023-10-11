@@ -99,7 +99,7 @@ void kywc_get_bound_box(struct kywc_effect_view *view, struct kywc_effect_box *b
 static void effect_handle_view_size_changed(struct wl_listener *listener, void *data)
 {
     struct effect_view *_view = wl_container_of(listener, _view, view_handle_size_changed);
-    if (_view->base.effects_state == EFFECTS_MAXIMIZING) {
+    if (_view->base.effects_state == EFFECTS_ZOOMING) {
         memcpy(&_view->base.dst_box, &_view->view->base.geometry, sizeof(_view->base.dst_box));
     }
 }
@@ -107,7 +107,7 @@ static void effect_handle_view_size_changed(struct wl_listener *listener, void *
 static void effect_handle_view_pos_changed(struct wl_listener *listener, void *data)
 {
     struct effect_view *_view = wl_container_of(listener, _view, view_handle_pos_changed);
-    if (_view->base.effects_state == EFFECTS_MAXIMIZING) {
+    if (_view->base.effects_state == EFFECTS_ZOOMING) {
         memcpy(&_view->base.dst_box, &_view->view->base.geometry, sizeof(_view->base.dst_box));
     }
 }
