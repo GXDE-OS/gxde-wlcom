@@ -181,10 +181,11 @@ static void xwayland_view_configure(struct view *view)
     /* direct move when not changed size */
     if (view->pending.action & VIEW_ACTION_MOVE) {
         view->pending.action &= ~VIEW_ACTION_MOVE;
-        if (!view_action_change_size(view->pending.action)) {
+        if (!view_action_change_size(view->pending.configure_action)) {
             xwayland_view_move(xwayland_view, view->pending.geometry.x, view->pending.geometry.y);
         } else {
-            kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
+            kywc_log(KYWC_DEBUG, "skip move when pending configure action 0x%x",
+                     view->pending.configure_action);
         }
     }
 
@@ -208,7 +209,9 @@ static void xwayland_view_configure(struct view *view)
 
     /* If no need to resizing, process the move immediately */
     if (current->width == pending->width && current->height == pending->height) {
+        view->pending.action &= ~VIEW_ACTION_RESIZE;
         xwayland_view_move(xwayland_view, pending->x, pending->y);
+        view_configure(&xwayland_view->view, 0);
         view_configured(&xwayland_view->view);
         return;
     }
@@ -221,6 +224,8 @@ static void xwayland_view_configure(struct view *view)
     wlr_xwayland_surface_configure(wlr_xwayland_surface, xwayland_scale(pending->x),
                                    xwayland_scale(pending->y), xwayland_scale(pending->width),
                                    xwayland_scale(pending->height));
+
+    view_configure(&xwayland_view->view, 0);
 }
 
 static const struct view_impl xwl_surface_impl = {
@@ -252,7 +257,7 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
 
     xwayland_view_update_geometry(xwayland_view);
 
-    enum view_action pending_action = xwayland_view->view.pending.action;
+    enum view_action pending_action = xwayland_view->view.pending.configure_action;
     if (pending_action == VIEW_ACTION_NOP) {
         return;
     }
@@ -260,7 +265,7 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
     assert(view_action_change_size(pending_action));
 
     struct kywc_box *current = &xwayland_view->view.base.geometry;
-    struct kywc_box *pending = &xwayland_view->view.pending.geometry;
+    struct kywc_box *pending = &xwayland_view->view.pending.configure_geometry;
     int x = pending->x, y = pending->y;
 
     if (pending_action & VIEW_ACTION_RESIZE) {

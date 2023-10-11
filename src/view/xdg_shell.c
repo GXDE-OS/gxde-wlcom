@@ -136,10 +136,11 @@ static void xdg_view_configure(struct view *view)
     /* direct move when not changed size */
     if (view->pending.action & VIEW_ACTION_MOVE) {
         view->pending.action &= ~VIEW_ACTION_MOVE;
-        if (!view_action_change_size(view->pending.action)) {
+        if (!view_action_change_size(view->pending.configure_action)) {
             view_helper_move(view, view->pending.geometry.x, view->pending.geometry.y);
         } else {
-            kywc_log(KYWC_DEBUG, "skip move when pending action 0x%x", view->pending.action);
+            kywc_log(KYWC_DEBUG, "skip move when pending configure action 0x%x",
+                     view->pending.configure_action);
         }
     }
 
@@ -169,6 +170,7 @@ static void xdg_view_configure(struct view *view)
     /* If no need to resizing, process the move immediately */
     if (view->pending.configure_serial == 0 && current->width == pending->width &&
         current->height == pending->height) {
+        view->pending.action &= ~VIEW_ACTION_RESIZE;
         view_helper_move(view, pending->x, pending->y);
         view_configure(view, serial);
         return;
@@ -240,7 +242,7 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
 
     xdg_view_update_geometry(xdg_view);
 
-    enum view_action pending_action = view->pending.action;
+    enum view_action pending_action = view->pending.configure_action;
     uint32_t pending_serial = view->pending.configure_serial;
     if (pending_action == VIEW_ACTION_NOP && pending_serial == 0) {
         return;
@@ -249,7 +251,7 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
     assert(view_action_change_size(pending_action));
 
     struct kywc_box *current = &view->base.geometry;
-    struct kywc_box *pending = &view->pending.geometry;
+    struct kywc_box *pending = &view->pending.configure_geometry;
     int x = pending->x, y = pending->y;
 
     uint32_t current_serial = xdg_view->wlr_xdg_surface->current.configure_serial;

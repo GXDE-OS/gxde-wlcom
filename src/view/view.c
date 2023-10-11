@@ -287,16 +287,16 @@ static int view_handle_configure_timeout(void *data)
 {
     struct view *view = data;
 
-    kywc_log(KYWC_INFO, "client (%s) did not respond to configure request in %d ms",
-             view->base.app_id, CONFIGURE_TIMEOUT_MS);
+    kywc_log(KYWC_INFO, "client (%s) did not respond to configure request %d in %d ms",
+             view->base.app_id, view->pending.configure_serial, CONFIGURE_TIMEOUT_MS);
 
     /* fallback for pending actions */
-    if (view_action_change_size(view->pending.action)) {
+    if (view_action_change_size(view->pending.configure_action)) {
         struct kywc_box *current = &view->base.geometry;
-        struct kywc_box *pending = &view->pending.geometry;
+        struct kywc_box *pending = &view->pending.configure_geometry;
         int x = pending->x, y = pending->y;
         /* fix wobbling when resize */
-        if (view->pending.action & VIEW_ACTION_RESIZE) {
+        if (view->pending.configure_action & VIEW_ACTION_RESIZE) {
             if (current->x != pending->x) {
                 x += pending->width - current->width;
             }
@@ -315,6 +315,15 @@ static int view_handle_configure_timeout(void *data)
 void view_configure(struct view *view, uint32_t serial)
 {
     view->pending.configure_serial = serial;
+    view->pending.configure_action |= view->pending.action;
+    view->pending.configure_geometry = view->pending.geometry;
+
+    view->pending.action = VIEW_ACTION_NOP;
+    view->pending.geometry = (struct kywc_box){ 0 };
+
+    if (serial == 0) {
+        return;
+    }
 
     if (!view->pending.configure_timeout) {
         view->pending.configure_timeout = wl_event_loop_add_timer(
@@ -328,15 +337,15 @@ void view_configured(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    if (view->pending.action & VIEW_ACTION_FULLSCREEN) {
+    if (view->pending.configure_action & VIEW_ACTION_FULLSCREEN) {
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
     }
 
-    if (view->pending.action & VIEW_ACTION_MAXIMIZE) {
+    if (view->pending.configure_action & VIEW_ACTION_MAXIMIZE) {
         wl_signal_emit_mutable(&kywc_view->events.maximize, NULL);
     }
 
-    if (view->pending.action & VIEW_ACTION_TILE) {
+    if (view->pending.configure_action & VIEW_ACTION_TILE) {
         wl_signal_emit_mutable(&kywc_view->events.tile, NULL);
     }
 
@@ -346,7 +355,8 @@ void view_configured(struct view *view)
     }
 
     view->pending.configure_serial = 0;
-    view->pending.action = VIEW_ACTION_NOP;
+    view->pending.configure_action = VIEW_ACTION_NOP;
+    view->pending.configure_geometry = (struct kywc_box){ 0 };
 }
 
 void view_destroy(struct view *view)

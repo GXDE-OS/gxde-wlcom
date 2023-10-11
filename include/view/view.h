@@ -64,6 +64,8 @@ struct view_configure_state {
 
     /* check serial to ensure configure is finished (0) */
     uint32_t configure_serial;
+    enum view_action configure_action;
+    struct kywc_box configure_geometry;
     struct wl_event_source *configure_timeout;
 };
 
