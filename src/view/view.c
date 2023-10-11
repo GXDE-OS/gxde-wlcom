@@ -336,10 +336,6 @@ void view_configured(struct view *view)
         wl_signal_emit_mutable(&kywc_view->events.maximize, NULL);
     }
 
-    if (view->pending.action & VIEW_ACTION_RESIZE) {
-        kywc_view->resizing = false;
-    }
-
     if (view->pending.action & VIEW_ACTION_TILE) {
         wl_signal_emit_mutable(&kywc_view->events.tile, NULL);
     }
@@ -524,7 +520,6 @@ void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
-    kywc_view->resizing = true;
     view->pending.action |= VIEW_ACTION_RESIZE;
     view->pending.geometry = *geometry;
 

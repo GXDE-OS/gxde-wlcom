@@ -159,10 +159,6 @@ static void xdg_view_configure(struct view *view)
         serial = wlr_xdg_toplevel_set_maximized(wlr_xdg_toplevel, kywc_view->maximized);
     }
 
-    if (view->pending.action & VIEW_ACTION_RESIZE) {
-        serial = wlr_xdg_toplevel_set_resizing(wlr_xdg_toplevel, kywc_view->resizing);
-    }
-
     if (view->pending.action & VIEW_ACTION_TILE) {
         serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled ? 0xf : 0);
     }
