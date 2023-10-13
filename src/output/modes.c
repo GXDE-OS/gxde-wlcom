@@ -93,10 +93,15 @@ void output_add_common_modes(struct output *output)
     int vdisplay = 0;
 
     struct wlr_output_mode *mode;
+    /* only one same resolution continue to add common modes */
     wl_list_for_each(mode, &wlr_output->modes, link) {
-        if (hdisplay <= mode->width && vdisplay <= mode->height) {
+        if (hdisplay == 0 && vdisplay == 0) {
             hdisplay = mode->width;
             vdisplay = mode->height;
+            continue;
+        }
+        if (hdisplay != mode->width && vdisplay != mode->height) {
+            return;
         }
     }
 
