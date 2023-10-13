@@ -266,8 +266,13 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
 
     struct kywc_box *current = &xwayland_view->view.base.geometry;
     struct kywc_box *pending = &xwayland_view->view.pending.configure_geometry;
-    int x = pending->x, y = pending->y;
+    /* workaround: force check the size when maximize */
+    if (pending_action == VIEW_ACTION_MAXIMIZE && current->width != pending->width &&
+        current->height != pending->height) {
+        return;
+    }
 
+    int x = pending->x, y = pending->y;
     if (pending_action & VIEW_ACTION_RESIZE) {
         if (current->x != pending->x) {
             x = pending->x + pending->width - current->width;
