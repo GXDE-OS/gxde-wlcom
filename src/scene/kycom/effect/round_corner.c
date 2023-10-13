@@ -518,9 +518,7 @@ static void tex_round_corner_render(struct kywc_render_instance *instance,
 
     kywc_target_draw_damage(target, tex, damage);
 
-    glDisable(GL_BLEND);
-    kywc_gl_program_deactive(tex_round_corner_program);
-    kywc_gl_pop_debug();
+    kywc_gl_render_clear_cached(tex_round_corner_program);
     kywc_target_render_end(target);
 }
 

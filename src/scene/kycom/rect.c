@@ -42,7 +42,7 @@ static void rect_render(struct kywc_render_instance *instance, struct kywc_rende
     kywc_target_render_begin(target);
     kywc_target_render_rectangle(target, &geometry, color, RENDER_FLAG_CACHED);
     kywc_target_draw_damage(target, NULL, damage);
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_rect_clear_cached();
     kywc_target_render_end(target);
 }
 

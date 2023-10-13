@@ -147,7 +147,11 @@ void kywc_gl_render_transformed_texture(struct kywc_gl_texture *tex, GLfloat pos
 void kywc_gl_render_rectangle(struct wlr_box *geometry, vec4 color, mat4 matrix,
                               uint32_t cache_flag);
 
-void kywc_gl_render_clear_cached(void);
+void kywc_gl_render_clear_cached(struct kywc_gl_program *program);
+
+void kywc_gl_render_texture_clear_cached(void);
+
+void kywc_gl_render_rect_clear_cached(void);
 
 void kywc_gl_clear(vec4 color);
 

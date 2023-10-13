@@ -805,10 +805,11 @@ void kywc_gl_framebuffer_to_rgb(const char *path, int frame_num, int width, int 
     save_framebuffer_to_rgb(filepath, width, height);
 }
 
-void kywc_gl_render_clear_cached(void)
+void kywc_gl_render_clear_cached(struct kywc_gl_program *program)
 {
+    glFlush();
     glDisable(GL_BLEND);
-    kywc_gl_program_deactive(&tex_program);
+    kywc_gl_program_deactive(program);
     pop_opengl_debug();
 }
 
@@ -816,6 +817,16 @@ void kywc_gl_clear(vec4 color)
 {
     glClearColor(color[0], color[1], color[2], color[3]);
     glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void kywc_gl_render_texture_clear_cached(void)
+{
+    kywc_gl_render_clear_cached(&tex_program);
+}
+
+void kywc_gl_render_rect_clear_cached(void)
+{
+    kywc_gl_render_clear_cached(&color_program);
 }
 
 void kywc_gl_render_rectangle(struct wlr_box *geometry, vec4 color, mat4 matrix,
@@ -843,7 +854,7 @@ void kywc_gl_render_rectangle(struct wlr_box *geometry, vec4 color, mat4 matrix,
         return;
     }
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_rect_clear_cached();
 }
 
 void kywc_gl_render_texture(struct kywc_gl_texture *tex, const struct kywc_gl_geometry *vertex,
@@ -876,7 +887,7 @@ void kywc_gl_render_texture(struct kywc_gl_texture *tex, const struct kywc_gl_ge
         return;
     }
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_texture_clear_cached();
 }
 
 void kywc_gl_render_transformed_texture(struct kywc_gl_texture *tex, GLfloat pos_vertex[8],
@@ -904,7 +915,7 @@ void kywc_gl_render_transformed_texture(struct kywc_gl_texture *tex, GLfloat pos
         return;
     }
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_clear_cached(&tex_program);
 }
 
 /***************************kywc_gl_buffer function***********************************/

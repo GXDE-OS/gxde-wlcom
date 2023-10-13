@@ -57,7 +57,7 @@ static void gl_texture_render(struct kywc_render_instance *instance,
 
     kywc_target_draw_damage(target, tex, damage);
 
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_texture_clear_cached();
 
     kywc_target_render_end(target);
 }

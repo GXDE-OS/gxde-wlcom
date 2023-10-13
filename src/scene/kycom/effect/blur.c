@@ -522,7 +522,7 @@ static void blur_render(struct kywc_render_instance *instance, struct kywc_rende
     pixman_region32_subtract(damage, damage, &render->corner_region);
 
     kywc_target_draw_damage(target, tex, damage);
-    kywc_gl_render_clear_cached();
+    kywc_gl_render_texture_clear_cached();
     kywc_target_render_end(target);
 
     if (render->save_fb.fb == 0 || render->save_fb.fb == (GLuint)(-1)) {
