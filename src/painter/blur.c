@@ -12,19 +12,11 @@
 #define ARRAY_LENGTH(a) (sizeof(a) / sizeof(a)[0])
 #endif
 
-static bool point_in_circle(int width, int height, int x, int y, double radius)
-{
-    double cx = (double)width / 2;
-    double cy = (double)height / 2;
-    double dis = sqrt(pow((x - cx), 2) + pow(y - cy, 2));
-    return dis <= radius;
-}
-
 /*
  * functions 'blur_surface' from weston project:
  * https://gitlab.freedesktop.org/wayland/weston/raw/master/shared/cairo-util.c
  */
-static bool blur_surface(cairo_surface_t *surface, int margin, bool circle)
+static bool blur_surface(cairo_surface_t *surface, int margin)
 {
     int32_t width, height, stride, x, y, z, w;
     uint8_t *src, *dst;
@@ -56,8 +48,7 @@ static bool blur_surface(cairo_surface_t *surface, int margin, bool circle)
         s = (uint32_t *)(src + i * stride);
         d = (uint32_t *)(dst + i * stride);
         for (j = 0; j < width; j++) {
-            if (circle ? point_in_circle(width, height, j, i, margin)
-                       : margin < j && j < width - margin) {
+            if (margin < j && j < width - margin) {
                 d[j] = s[j];
                 continue;
             }
@@ -82,8 +73,7 @@ static bool blur_surface(cairo_surface_t *surface, int margin, bool circle)
         s = (uint32_t *)(dst + i * stride);
         d = (uint32_t *)(src + i * stride);
         for (j = 0; j < width; j++) {
-            if (circle ? point_in_circle(width, height, j, i, margin)
-                       : margin <= i && i < height - margin) {
+            if (margin <= i && i < height - margin) {
                 d[j] = s[j];
                 continue;
             }
@@ -111,10 +101,10 @@ static bool blur_surface(cairo_surface_t *surface, int margin, bool circle)
     return true;
 }
 
-bool cairo_buffer_draw_blur(struct cairo_buffer *buffer, int margin, bool circle)
+bool cairo_buffer_draw_blur(struct cairo_buffer *buffer, int margin)
 {
     cairo_surface_t *surface = buffer->surface;
-    if (blur_surface(surface, margin, circle)) {
+    if (blur_surface(surface, margin)) {
         cairo_surface_flush(surface);
         return true;
     }

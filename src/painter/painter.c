@@ -185,6 +185,20 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     cairo_surface_flush(surf);
 }
 
+static void painter_clear_circle(struct cairo_buffer *buffer, struct kywc_box *box, float radius)
+{
+    cairo_t *cairo = buffer->cairo;
+    double width = box->width;
+    double height = box->height;
+
+    cairo_arc(buffer->cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
+    cairo_close_path(cairo);
+
+    cairo_set_source_rgba(cairo, 0, 0, 0, 0);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_fill(cairo);
+}
+
 static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bool clear)
 {
     /* clear the surface */
@@ -233,8 +247,21 @@ static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bo
     }
 
     /* blur */
-    if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin, info->circle)) {
+    if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin)) {
         return false;
+    }
+
+    if (info->circle == CIRCLE_TYPE_CLEAR) {
+        if (info->hover_rgba) {
+            int height = info->height / 2;
+            painter_clear_circle(buffer, &(struct kywc_box){ 0, 0, info->width, height },
+                                 info->corner_radius);
+            painter_clear_circle(buffer, &(struct kywc_box){ 0, height, info->width, height },
+                                 info->corner_radius);
+        } else {
+            painter_clear_circle(buffer, &(struct kywc_box){ 0, 0, info->width, info->height },
+                                 info->corner_radius);
+        }
     }
 
     return true;

@@ -40,6 +40,12 @@ enum auto_resize {
     AUTO_RESIZE_EXTEND,
 };
 
+enum circle_type {
+    CIRCLE_TYPE_NONE = 0,
+    CIRCLE_TYPE_SIMPLE,
+    CIRCLE_TYPE_CLEAR,
+};
+
 struct draw_info {
     /* unscaled size */
     int width, height;
@@ -55,7 +61,7 @@ struct draw_info {
     /* rounded rect or circle */
     enum corner_mask corner_mask;
     float corner_radius;
-    bool circle;
+    enum circle_type circle;
 
     const char *text;
     const char *font;

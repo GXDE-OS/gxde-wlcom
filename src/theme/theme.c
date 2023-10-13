@@ -150,21 +150,18 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
 
 static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
 {
-    int size = (theme->shadow_border + theme->corner_radius) * 2;
-    float border_color[4] = { 0.0, 0.0, 0.0, 1.0 };
-    float fill_color[4] = { 0.0, 0.0, 0.0, 0.0 };
+    int half = theme->shadow_border + theme->corner_radius + theme->border_width;
+    float fill_color[4] = { 0.0, 0.0, 0.0, 1.0 };
 
     /* a blured circle */
     struct draw_info info = {
-        .width = size,
-        .height = size,
+        .width = half * 2,
+        .height = half * 2,
         .scale = 1.0,
         .solid_rgba = fill_color,
-        .border_rgba = border_color,
-        .border_width = 3,
-        .circle = true,
-        .corner_radius = theme->corner_radius,
-        .blur_margin = theme->corner_radius,
+        .circle = CIRCLE_TYPE_CLEAR,
+        .corner_radius = theme->corner_radius + theme->border_width,
+        .blur_margin = half,
     };
 
     return painter_draw_buffer(&info);

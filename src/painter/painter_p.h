@@ -31,7 +31,7 @@ bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct
 bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
                             struct kywc_box *box);
 
-bool cairo_buffer_draw_blur(struct cairo_buffer *buffer, int margin, bool circle);
+bool cairo_buffer_draw_blur(struct cairo_buffer *buffer, int margin);
 
 void text_extents(const char *font, int font_size, const char *text, int *width, int *height);
 
