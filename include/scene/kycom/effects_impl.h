@@ -5,8 +5,8 @@
 #ifndef _EFFECTS_IMPL_H_
 #define _EFFECTS_IMPL_H_
 
-#include "kywc/kycom/opengl.h"
 #include "kywc/kycom/effects.h"
+#include "kywc/kycom/opengl.h"
 
 struct kywc_effect_view;
 struct kywc_scene_output;
@@ -23,8 +23,6 @@ struct effect_container {
 void _kywc_effect_init(struct server *s);
 
 void _kywc_effects_run(enum kywc_effect_types type);
-
-bool _kywc_effects_run_view(struct wlr_renderer *target_renderer, struct kywc_effect_view *ky_view);
 
 struct kywc_effect_output *_kywc_effect_output_create(const struct kywc_scene_output *output);
 

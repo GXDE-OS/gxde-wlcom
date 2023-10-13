@@ -9,7 +9,6 @@
 #include <epoxy/gl.h>
 #include <pixman.h>
 
-#include <wlr/render/gles2.h>
 #include <wlr/util/box.h>
 
 #define RENDER_FLAG_CACHED 1

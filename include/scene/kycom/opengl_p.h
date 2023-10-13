@@ -5,6 +5,8 @@
 #ifndef _KYCOM_OPENGL_P_H_
 #define _KYCOM_OPENGL_P_H_
 
+#include <wlr/render/wlr_renderer.h>
+
 #include "kywc/kycom/opengl.h"
 
 void _kywc_gl_init(struct wlr_renderer *renderer);
