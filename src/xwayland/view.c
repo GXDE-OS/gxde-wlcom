@@ -407,18 +407,20 @@ static void xwayland_view_handle_output_update_usable_area(struct wl_listener *l
 
     xcb_ewmh_wm_strut_partial_t *strut = wlr_xwayland_surface->strut_partial;
     if (strut->left_start_y != strut->left_end_y) {
-        geo.x += strut->left;
-        geo.width -= strut->left;
+        int scaled_left = xwayland_unscale(strut->left);
+        geo.x += scaled_left;
+        geo.width -= scaled_left;
     }
     if (strut->right_start_y != strut->right_end_y) {
-        geo.width = strut->right;
+        geo.width -= xwayland_unscale(strut->right);
     }
     if (strut->top_start_x != strut->top_end_x) {
-        geo.y += strut->top;
-        geo.height -= strut->top;
+        int scaled_top = xwayland_unscale(strut->top);
+        geo.y += scaled_top;
+        geo.height -= scaled_top;
     }
     if (strut->bottom_start_x != strut->bottom_end_x) {
-        geo.height = strut->bottom;
+        geo.height -= xwayland_unscale(strut->bottom);
     }
 
     /* intersect usable_area and geo */
