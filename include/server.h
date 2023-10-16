@@ -8,6 +8,7 @@
 #include <wayland-server-core.h>
 
 #include "scene/scene.h"
+#include "util/queue.h"
 
 struct server {
     struct wl_display *display;
@@ -45,6 +46,8 @@ struct server {
     struct ky_scene *scene;
     struct ky_scene_output_layout *scene_layout;
     struct wlr_output_layout *layout;
+
+    struct queue queue;
 };
 
 bool server_init(struct server *server);

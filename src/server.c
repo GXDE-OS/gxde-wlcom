@@ -228,6 +228,8 @@ bool server_init(struct server *server)
 
     plugin_manager_create(server);
 
+    queue_init(&server->queue, 256, 4, server);
+
     wl_signal_emit_mutable(&server->events.ready, NULL);
 
     return true;
@@ -266,6 +268,7 @@ void server_run(struct server *server)
 
 void server_finish(struct server *server)
 {
+    queue_destroy(&server->queue);
     wl_event_source_remove(server->dbus);
 
     /* make sure all xwayland-shells are destroyed */

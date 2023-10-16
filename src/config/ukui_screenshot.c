@@ -33,18 +33,42 @@ struct screenshot_output {
 };
 
 static struct screenshot_manager {
+    struct server *server;
+
     struct wl_list outputs;
-    struct wlr_output_layout *layout;
     struct wl_listener destroy;
 
-    struct wlr_allocator *allocator;
-    struct wlr_renderer *renderer;
     struct wlr_buffer *buffer;
     struct wlr_box geo;
 
     sd_bus_message *msg;
     bool taking_screenshot;
 } *manager = NULL;
+
+static void screenshot_write_image(struct wlr_buffer *buffer)
+{
+    char path[PATH_MAX];
+    snprintf(path, PATH_MAX, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
+    mkstemps(path, 4);
+
+    painter_buffer_to_file(buffer, path);
+    // kywc_log(KYWC_INFO, "screenshot write to png");
+    wlr_buffer_drop(buffer);
+
+    sd_bus_reply_method_return(manager->msg, "s", path);
+    sd_bus_message_unref(manager->msg);
+    manager->msg = NULL;
+
+    manager->taking_screenshot = false;
+    // kywc_log(KYWC_INFO, "screenshot done, send reply %s", path);
+}
+
+static void write_image(void *job, void *gdata, int index)
+{
+    struct wlr_buffer *buffer = job;
+    // kywc_log(KYWC_INFO, "%s: in thread %d", __func__, index);
+    screenshot_write_image(buffer);
+}
 
 static void screenshot_done(void)
 {
@@ -60,28 +84,17 @@ static void screenshot_done(void)
     wlr_buffer_begin_data_ptr_access(buffer, WLR_BUFFER_DATA_PTR_ACCESS_WRITE, &data, &format,
                                      &stride);
 
-    wlr_renderer_begin_with_buffer(manager->renderer, manager->buffer);
-    wlr_renderer_read_pixels(manager->renderer, format, stride, manager->geo.width,
+    wlr_renderer_begin_with_buffer(manager->server->renderer, manager->buffer);
+    wlr_renderer_read_pixels(manager->server->renderer, format, stride, manager->geo.width,
                              manager->geo.height, 0, 0, 0, 0, data);
-    wlr_renderer_end(manager->renderer);
+    wlr_renderer_end(manager->server->renderer);
 
     wlr_buffer_end_data_ptr_access(buffer);
     // kywc_log(KYWC_INFO, "screenshot copy buffer to memory");
 
-    char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
-    mkstemps(path, 4);
-
-    painter_buffer_to_file(buffer, path);
-    // kywc_log(KYWC_INFO, "screenshot write to png");
-    wlr_buffer_drop(buffer);
-
-    sd_bus_reply_method_return(manager->msg, "s", path);
-    sd_bus_message_unref(manager->msg);
-    manager->msg = NULL;
-
-    manager->taking_screenshot = false;
-    // kywc_log(KYWC_INFO, "screenshot done, send reply %s", path);
+    if (!queue_add_job(&manager->server->queue, buffer, write_image, NULL)) {
+        screenshot_write_image(buffer);
+    }
 }
 
 static void screenshot_output_destroy(struct screenshot_output *s_output)
@@ -179,7 +192,7 @@ static struct wlr_buffer *screenshot_create_buffer(int width, int height)
     uint64_t modifier[2] = { DRM_FORMAT_MOD_LINEAR, DRM_FORMAT_MOD_INVALID };
     struct wlr_drm_format format = { DRM_FORMAT_ARGB8888, 2, 2, modifier };
     struct wlr_buffer *wlr_buffer =
-        wlr_allocator_create_buffer(manager->allocator, width, height, &format);
+        wlr_allocator_create_buffer(manager->server->allocator, width, height, &format);
     if (!wlr_buffer) {
         return NULL;
     }
@@ -196,7 +209,7 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
     }
 
     /* if no layout output in layout */
-    if (wl_list_empty(&manager->layout->outputs)) {
+    if (wl_list_empty(&manager->server->layout->outputs)) {
         return 0;
     }
 
@@ -204,7 +217,7 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
     // CK(sd_bus_message_read(msg, "b", &overlay_cursor));
 
     struct wlr_box geo;
-    wlr_output_layout_get_box(manager->layout, NULL, &geo);
+    wlr_output_layout_get_box(manager->server->layout, NULL, &geo);
 
     struct wlr_buffer *buffer = screenshot_create_buffer(geo.width, geo.height);
     if (!buffer) {
@@ -224,16 +237,16 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
 
     uint32_t layout_output_count = 0;
     struct wlr_output_layout_output *l_output;
-    wl_list_for_each(l_output, &manager->layout->outputs, link) {
+    wl_list_for_each(l_output, &manager->server->layout->outputs, link) {
         screenshot_output_create(l_output, !!overlay_cursor);
         layout_output_count++;
     }
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        wlr_renderer_begin_with_buffer(manager->renderer, manager->buffer);
-        wlr_renderer_clear(manager->renderer, (float[4]){ 0.f, 0.f, 0.f, 0.f });
-        wlr_renderer_end(manager->renderer);
+        wlr_renderer_begin_with_buffer(manager->server->renderer, manager->buffer);
+        wlr_renderer_clear(manager->server->renderer, (float[4]){ 0.f, 0.f, 0.f, 0.f });
+        wlr_renderer_end(manager->server->renderer);
     }
 
     // kywc_log(KYWC_INFO, "screenshot fullscreen start: (%d, %d) %d x %d cursor %d", geo.x, geo.y,
@@ -274,9 +287,7 @@ bool ukui_screenshot_create(struct config_manager *config_manager)
     }
 
     wl_list_init(&manager->outputs);
-    manager->layout = config_manager->server->layout;
-    manager->allocator = config_manager->server->allocator;
-    manager->renderer = config_manager->server->renderer;
+    manager->server = config_manager->server;
 
     manager->destroy.notify = handle_config_destroy;
     wl_signal_add(&config->events.destroy, &manager->destroy);
