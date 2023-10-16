@@ -198,8 +198,7 @@ static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pres
     }
 
     /* update surface coord if surface size changed when click, like maximize */
-    // if (cursor->hover == cursor->focus && !seat->selection->draging) {
-    if (cursor->hover.node == cursor->focus.node) {
+    if (cursor->hover.node == cursor->focus.node && !selection_is_draging(seat)) {
         cursor_feed_fake_motion(cursor, false);
     }
 
@@ -210,12 +209,10 @@ static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pres
             old_inode->impl->click(seat, old_focus, last_button, false, time, false,
                                    old_inode->data);
         }
-#if 0
         /* fix cursor image sometimes */
-        if (!seat->selection->draging) {
+        if (!selection_is_draging(seat)) {
             cursor_feed_fake_motion(cursor, false);
         }
-#endif
         return;
     }
 
