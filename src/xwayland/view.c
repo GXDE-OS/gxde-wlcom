@@ -386,7 +386,8 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
 
     for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
         xcb_atom_t type = wlr_xwayland_surface->window_type[i];
-        if (type == xwayland_view->xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK]) {
+        if (type == xwayland_view->xwayland->atoms[NET_WM_WINDOW_TYPE_DOCK] ||
+            type == xwayland_view->xwayland->atoms[NET_WM_WINDOW_TYPE_SPLASH]) {
             use_ssd = false;
             break;
         }
