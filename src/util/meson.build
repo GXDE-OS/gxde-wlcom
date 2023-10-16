@@ -5,6 +5,7 @@ util_sources = files(
   'global.c',
   'identifier.c',
   'logger.c',
+  'queue.c',
   'spawn.c',
   'sysfs.c',
 )
