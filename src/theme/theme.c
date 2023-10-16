@@ -502,8 +502,31 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
         .width = 24,
         .height = 24,
         .scale = scale,
-        .svg = icon->svg,
+        .svg = NULL,
+        .png_path = NULL,
     };
+
+    if (icon->svg) {
+        info.svg = icon->svg;
+    } else if (!wl_list_empty(&icon->pngs)) {
+        float scale_width = info.width * info.scale;
+        float min_abs = 256.0;
+        float tmp_abs;
+        struct icon_png *icon_png_similar = NULL;
+        struct icon_png *icon_png;
+        wl_list_for_each(icon_png, &icon->pngs, link) {
+            if (icon_png->scale == 1) {
+                tmp_abs = fabs(icon_png->width - scale_width);
+                if (tmp_abs < min_abs) {
+                    min_abs = tmp_abs;
+                    icon_png_similar = icon_png;
+                }
+            }
+        }
+        if (icon_png_similar) {
+            info.png_path = icon_png_similar->path;
+        }
+    }
 
     buf->buffer = painter_draw_buffer(&info);
     if (!buf->buffer) {

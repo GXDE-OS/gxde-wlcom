@@ -68,11 +68,26 @@ char *fscan_build_fullname(const char *dir, const char *subdir, const char *file
     if (!dir || !subdir || !file)
         return NULL;
 
-    full_size = strlen(dir) + 1 + strlen(subdir) + 1 + strlen(file) + 1;
-    full = malloc(full_size);
-    if (!full)
-        return NULL;
-    snprintf(full, full_size, "%s/%s/%s", dir, subdir, file);
+    if (strcmp(subdir, "") == 0) {
+        full_size = strlen(dir) + 1 + strlen(file) + 1;
+        full = malloc(full_size);
+        if (!full)
+            return NULL;
+        snprintf(full, full_size, "%s/%s", dir, file);
+    } else if (strcmp(file, "") == 0) {
+        full_size = strlen(dir) + 1 + strlen(subdir) + 1;
+        full = malloc(full_size);
+        if (!full)
+            return NULL;
+        snprintf(full, full_size, "%s/%s", dir, subdir);
+    } else {
+        full_size = strlen(dir) + 1 + strlen(subdir) + 1 + strlen(file) + 1;
+        full = malloc(full_size);
+        if (!full)
+            return NULL;
+        snprintf(full, full_size, "%s/%s/%s", dir, subdir, file);
+    }
+
     return full;
 }
 

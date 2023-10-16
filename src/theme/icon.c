@@ -20,10 +20,56 @@
 #define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
 #define PIXMAPPATH "/usr/share/pixmaps"
 
-// TODO: PNG, XPM
-// /usr/share/pixmaps /usr/local/share/icons
-// hicolor
+// TODO: XPM
 // look at the mtime of the toplevel icon directories
+
+static void get_icon_png_size(const char *path, struct icon_png *icon_png)
+{
+    uint32_t scale = 1;
+    uint32_t width = 0, height = 0;
+    char *str = strdup(path);
+
+    char *p = strrchr(str, '/');
+    if (!p) {
+        goto exit;
+    }
+    for (int i = 0; i < 2; i++) {
+        *p = '\0';
+        p = strrchr(str, '/');
+        if (!p) {
+            goto exit;
+        }
+    }
+
+    /* get width height */
+    char *size_str = p + 1;
+    p = strchr(size_str, 'x');
+    if (!p) {
+        goto exit;
+    }
+    *p = '\0';
+    width = height = atoi(size_str);
+
+    /* get scale */
+    char *scale_str = p + 1;
+    p = strchr(scale_str, '@');
+    if (!p) {
+        goto exit;
+    }
+    scale_str = p + 1;
+    p = strchr(scale_str, 'x');
+    if (!p) {
+        goto exit;
+    }
+    *p = '\0';
+    scale = atoi(scale_str);
+
+exit:
+    free(str);
+    icon_png->scale = scale;
+    icon_png->width = width;
+    icon_png->height = height;
+}
 
 static void icon_create(struct icon_theme *theme, const char *path, const char *full_name)
 {
@@ -62,6 +108,7 @@ static void icon_create(struct icon_theme *theme, const char *path, const char *
         }
         wl_list_init(&icon->names);
         wl_list_init(&icon->buffers);
+        wl_list_init(&icon->pngs);
         wl_list_insert(&icon->names, &iname->link);
         wl_list_insert(&theme->icons, &icon->link);
         iname->name = name;
@@ -80,9 +127,10 @@ static void icon_create(struct icon_theme *theme, const char *path, const char *
             icon->svg[size] = '\0';
         }
     } else if (strcasecmp(suffix, ".png") == 0) {
-        if (!icon->png_path) {
-            icon->png_path = strdup(path);
-        }
+        struct icon_png *icon_png = malloc(sizeof(struct icon_png));
+        get_icon_png_size(path, icon_png);
+        icon_png->path = strdup(path);
+        wl_list_insert(&icon->pngs, &icon_png->link);
     } else if (strcasecmp(suffix, ".xpm") == 0) {
         if (!icon->xpm_path) {
             icon->xpm_path = strdup(path);
@@ -105,6 +153,13 @@ void icon_destroy(struct icon *icon)
         wl_list_remove(&iname->link);
         free(iname->name);
         free(iname);
+    }
+
+    struct icon_png *icon_png, *ptmp;
+    wl_list_for_each_safe(icon_png, ptmp, &icon->pngs, link) {
+        wl_list_remove(&icon_png->link);
+        free(icon_png->path);
+        free(icon_png);
     }
 
     wl_list_remove(&icon->link);

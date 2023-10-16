@@ -35,12 +35,20 @@ struct icon_name {
     char *name;
 };
 
+struct icon_png {
+    struct wl_list link;
+    char *path;
+    uint32_t width;
+    uint32_t height;
+    uint32_t scale;
+};
+
 struct icon {
     struct wl_list link;
     struct wl_list buffers; // struct icon_buffer
     struct wl_list names;   // struct icon_name
     char *svg;
-    char *png_path;
+    struct wl_list pngs; // struct icon_png
     char *xpm_path;
 };
 

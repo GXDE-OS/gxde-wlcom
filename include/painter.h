@@ -74,8 +74,9 @@ struct draw_info {
     /* blur support */
     int blur_margin;
 
-    /* image: svg only */
+    /* image: svg and png */
     const char *svg, *hover_svg;
+    const char *png_path;
 };
 
 struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
