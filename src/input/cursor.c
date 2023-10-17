@@ -216,11 +216,10 @@ static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pres
         return;
     }
 
-    // TODO: double click time in seat config
     bool double_click = false;
     if (pressed) {
         if (!changed && button == cursor->last_click_button &&
-            time - cursor->last_click_time < 500) {
+            time - cursor->last_click_time < seat->state.double_click_time) {
             double_click = true;
         }
         /* reset after a double click */

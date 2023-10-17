@@ -55,6 +55,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->state.cursor_theme = NULL;
     seat->state.cursor_size = 24;
     seat->state.scroll_factor = 1.0;
+    seat->state.double_click_time = 500;
     if (!seat_read_config(seat)) {
         kywc_log(KYWC_ERROR, "seat(%s) read config error!", seat->name);
     }

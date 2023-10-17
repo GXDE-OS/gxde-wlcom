@@ -479,6 +479,26 @@ static int set_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *re
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *seat_name;
+    uint32_t double_click_time;
+    CK(sd_bus_message_read(m, "su", &seat_name, &double_click_time));
+
+    struct seat *seat = seat_by_name(seat_name);
+    if (!seat) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    seat->state.double_click_time = double_click_time;
+
+    seat_write_config(seat);
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllInputs", "", "a(ss)", list_inputs, 0),
@@ -501,6 +521,7 @@ static const sd_bus_vtable service_seat_vtable[] = {
     SD_BUS_METHOD("ListAllSeats", "", "a(ss)", list_seats, 0),
     SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
     SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
+    SD_BUS_METHOD("SetDoubleClickTime", "su", "", set_double_click_time, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -768,6 +789,9 @@ bool seat_read_config(struct seat *seat)
     if (json_object_object_get_ex(config, "scroll_factor", &data)) {
         seat->state.scroll_factor = json_object_get_double(data);
     }
+    if (json_object_object_get_ex(config, "double_click_time", &data)) {
+        seat->state.double_click_time = json_object_get_double(data);
+    }
 
     return true;
 }
@@ -802,5 +826,12 @@ void seat_write_config(struct seat *seat)
                                json_object_new_double(seat->state.scroll_factor));
     } else {
         json_object_object_del(config, "scroll_factor");
+    }
+
+    if (seat->state.double_click_time != 500) {
+        json_object_object_add(config, "double_click_time",
+                               json_object_new_double(seat->state.double_click_time));
+    } else {
+        json_object_object_del(config, "double_click_time");
     }
 }

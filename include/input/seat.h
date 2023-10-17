@@ -85,6 +85,7 @@ struct seat {
         const char *cursor_theme;
         uint32_t cursor_size;
         double scroll_factor;
+        uint32_t double_click_time;
     } state;
 
     struct wl_listener destroy;
