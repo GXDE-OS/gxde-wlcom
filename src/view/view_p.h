@@ -60,6 +60,8 @@ bool shadow_manager_create(struct view_manager *view_manager);
 
 bool window_actions_create(struct view_manager *view_manager);
 
+bool view_manager_actions_create(struct view_manager *view_manager);
+
 bool window_menu_manager_create(struct view_manager *view_manager);
 
 struct wlr_xdg_popup;

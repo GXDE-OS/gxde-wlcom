@@ -1038,6 +1038,7 @@ struct view_manager *view_manager_create(struct server *server)
     shadow_manager_create(view_manager);
     window_actions_create(view_manager);
     window_menu_manager_create(view_manager);
+    view_manager_actions_create(view_manager);
 
     xdg_shell_init(view_manager);
 

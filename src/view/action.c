@@ -10,11 +10,11 @@
 #include "view/action.h"
 #include "view_p.h"
 
-static struct shortcut {
+static struct window_shortcut {
     char *keybind;
     char *desc;
     enum window_action action;
-} shortcuts[] = {
+} window_shortcuts[] = {
     { "Alt+F10", "window maximized", WINDOW_ACTION_MAXIMIZE },
     { "Alt+F9", "window minimized", WINDOW_ACTION_MINIMIZE },
     { "Alt+F4", "window closed", WINDOW_ACTION_CLOSE },
@@ -163,11 +163,56 @@ static void view_shortcuts(struct key_binding *binding, void *data)
         return;
     }
 
-    struct shortcut *shortcut = data;
+    struct window_shortcut *shortcut = data;
     window_action(view, input_manager_get_default_seat(), shortcut->action);
 }
 
 bool window_actions_create(struct view_manager *view_manager)
+{
+    for (size_t i = 0; i < sizeof(window_shortcuts) / sizeof(struct window_shortcut); i++) {
+        struct window_shortcut *shortcut = &window_shortcuts[i];
+        struct key_binding *binding = kywc_key_binding_create(shortcut->keybind, shortcut->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_key_binding_register(binding, view_shortcuts, shortcut)) {
+            kywc_key_binding_destroy(binding);
+            continue;
+        }
+    }
+    return true;
+}
+
+enum {
+    TOGGLE_SHOW_DESKTOP = 0,
+    DO_SHOW_DESKTOP,
+};
+
+static struct shortcut {
+    char *keybind;
+    char *desc;
+    uint32_t action;
+} shortcuts[] = {
+    { "win+d", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
+    { "win+h", "do show desktop", DO_SHOW_DESKTOP },
+};
+
+static void shortcuts_action(struct key_binding *binding, void *data)
+{
+    struct shortcut *shortcut = data;
+
+    switch (shortcut->action) {
+    case TOGGLE_SHOW_DESKTOP:
+        view_manager_show_desktop(!view_manager_get_show_desktop(), true);
+        break;
+    case DO_SHOW_DESKTOP:
+        view_manager_show_desktop(true, true);
+        break;
+    }
+}
+
+bool view_manager_actions_create(struct view_manager *view_manager)
 {
     for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
         struct shortcut *shortcut = &shortcuts[i];
@@ -176,7 +221,7 @@ bool window_actions_create(struct view_manager *view_manager)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, view_shortcuts, shortcut)) {
+        if (!kywc_key_binding_register(binding, shortcuts_action, shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }
