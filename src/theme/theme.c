@@ -167,6 +167,8 @@ static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
     return painter_draw_buffer(&info);
 }
 
+static int32_t get_color_int(float *rgba);
+
 static void theme_override_config(struct theme *theme)
 {
     struct theme_override *override = &manager->override;
@@ -182,6 +184,14 @@ static void theme_override_config(struct theme *theme)
 
     if (override->font_size > 0 && override->font_size != theme->font_size) {
         theme->font_size = override->font_size;
+    }
+
+    int color = get_color_int(theme->accent_color);
+    if (override->accent_color != color) {
+        theme->accent_color[0] = ((override->accent_color >> 16) & 0xff) / 255;
+        theme->accent_color[1] = ((override->accent_color >> 8) & 0xff) / 255;
+        theme->accent_color[2] = (override->accent_color & 0xff) / 255;
+        theme->accent_color[3] = 1.0;
     }
 }
 
@@ -383,6 +393,32 @@ bool theme_manager_set_font(const char *name, int size)
         return false;
     }
 
+    theme_override_config(current);
+    wl_signal_emit_mutable(&manager->events.update, current);
+
+    theme_manager_write_config(manager, NULL);
+    return true;
+}
+
+static int32_t get_color_int(float *rgba)
+{
+    int32_t color = (int)(rgba[0] * 255) << 16;
+    color |= (int)(rgba[1] * 255) << 8;
+    color |= (int)(rgba[2] * 255);
+    return color;
+}
+
+bool theme_manager_set_accent_color(int32_t color)
+{
+    struct theme_override *override = &manager->override;
+    struct theme *current = manager->current;
+
+    int32_t current_color = get_color_int(current->accent_color);
+    if (color == current_color) {
+        return true;
+    }
+
+    override->accent_color = color;
     theme_override_config(current);
     wl_signal_emit_mutable(&manager->events.update, current);
 

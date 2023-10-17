@@ -45,11 +45,38 @@ static int set_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_erro
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
+static int current_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct theme_manager *manager = userdata;
+    return sd_bus_reply_method_return(msg, "si", manager->current->font_name,
+                                      manager->current->font_size);
+}
+
+static int set_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    char *font_name = NULL;
+    int32_t size;
+    CK(sd_bus_message_read(msg, "si", &font_name, &size));
+    int32_t ret = theme_manager_set_font(font_name, size);
+    return sd_bus_reply_method_return(msg, "b", &ret);
+}
+
+static int set_accent_color(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    int32_t accent_color;
+    CK(sd_bus_message_read(msg, "i", &accent_color));
+    int32_t ret = theme_manager_set_accent_color(accent_color);
+    return sd_bus_reply_method_return(msg, "b", &ret);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllThemes", "", "as", list_themes, 0),
     SD_BUS_METHOD("currentTheme", "", "s", current_theme, 0),
     SD_BUS_METHOD("SetTheme", "s", "b", set_theme, 0),
+    SD_BUS_METHOD("currentFont", "", "si", current_font, 0),
+    SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
+    SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -75,6 +102,9 @@ const char *theme_manager_read_config(struct theme_manager *manager)
     if (json_object_object_get_ex(manager->config->json, "font_size", &data)) {
         manager->override.font_size = json_object_get_int(data);
     }
+    if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
+        manager->override.accent_color = json_object_get_int(data);
+    }
 
     if (json_object_object_get_ex(manager->config->json, "name", &data)) {
         return json_object_get_string(data);
@@ -97,5 +127,10 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
     if (manager->override.font_size > 0) {
         json_object_object_add(manager->config->json, "font_size",
                                json_object_new_int(manager->override.font_size));
+    }
+
+    if (manager->override.accent_color) {
+        json_object_object_add(manager->config->json, "accent_color",
+                               json_object_new_int(manager->override.accent_color));
     }
 }

@@ -50,6 +50,8 @@ struct theme_override {
     /* font config override by dbus */
     char *font_name;
     int32_t font_size;
+
+    int32_t accent_color;
 };
 
 struct theme_manager {
