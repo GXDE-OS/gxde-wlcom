@@ -257,6 +257,9 @@ void view_map(struct view *view)
 
     if (view->workspace) {
         wl_signal_emit_mutable(&view->workspace->events.view_enter, view);
+        if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
+            view_manager_show_desktop(false, false);
+        }
     }
 }
 
@@ -713,6 +716,10 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
 
     /* if view is the activated view, process it in activated.minimize listener */
     wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
+
+    if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
+        view_manager_show_desktop(false, false);
+    }
 }
 
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
@@ -948,6 +955,50 @@ void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
     wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
 }
 
+void view_manager_show_desktop(bool enabled, bool apply)
+{
+    if (view_manager->show_desktop_enabled == enabled) {
+        return;
+    }
+    view_manager->show_desktop_enabled = enabled;
+
+    /* minimize all view in current workspace */
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view *view;
+    wl_list_for_each_reverse(view, &workspace->views, link) {
+        /* skip views not mapped */
+        if (!view->base.mapped) {
+            continue;
+        }
+        /* skip restoring views not minimized by show desktop */
+        if (!enabled && !view->minimized_when_show_desktop) {
+            continue;
+        }
+        /* true only the view is not minimized when going show desktop */
+        view->minimized_when_show_desktop = enabled && !view->base.minimized;
+        /* don't restoring views if the state is breaked */
+        if (apply) {
+            kywc_view_set_minimized(&view->base, enabled);
+        }
+    }
+
+    if (apply && !enabled) {
+        view_topmost_activate(workspace);
+    }
+
+    wl_signal_emit_mutable(&view_manager->events.show_desktop, NULL);
+}
+
+void view_manager_add_show_desktop_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&view_manager->events.show_desktop, listener);
+}
+
+bool view_manager_get_show_desktop(void)
+{
+    return view_manager->show_desktop_enabled;
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
@@ -966,6 +1017,7 @@ struct view_manager *view_manager_create(struct server *server)
     view_manager->server = server;
     wl_signal_init(&view_manager->events.new_view);
     wl_signal_init(&view_manager->events.window_menu);
+    wl_signal_init(&view_manager->events.show_desktop);
 
     view_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &view_manager->server_destroy);

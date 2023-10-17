@@ -20,6 +20,7 @@ struct kde_plasma_window_management {
     struct wl_list windows;
 
     struct wl_listener new_view;
+    struct wl_listener show_desktop;
     struct wl_listener display_destroy;
     struct wl_listener server_destroy;
 
@@ -488,7 +489,7 @@ static void handle_get_window_by_uuid(struct wl_client *client,
 static void handle_show_desktop(struct wl_client *client, struct wl_resource *resource,
                                 uint32_t state)
 {
-    // TODO: support show_desktop in view_manager
+    view_manager_show_desktop(state == ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED, true);
 }
 
 static const struct org_kde_plasma_window_management_interface kde_plasma_window_management_impl = {
@@ -519,7 +520,9 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
                                    management_handle_resource_destroy);
 
     org_kde_plasma_window_management_send_show_desktop_changed(
-        resource, ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_DISABLED);
+        resource, view_manager_get_show_desktop()
+                      ? ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED
+                      : ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_DISABLED);
 
     struct kde_plasma_window *window;
     wl_list_for_each(window, &management->windows, link) {
@@ -608,12 +611,27 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.fullscreen, &window->view_fullscreen);
 }
 
+static void handle_shown_desktop(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_window_management *management =
+        wl_container_of(listener, management, show_desktop);
+    bool enabled = view_manager_get_show_desktop();
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &management->resources) {
+        org_kde_plasma_window_management_send_show_desktop_changed(
+            resource, enabled ? ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED
+                              : ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_DISABLED);
+    }
+}
+
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window_management *management =
         wl_container_of(listener, management, display_destroy);
     wl_list_remove(&management->display_destroy.link);
     wl_list_remove(&management->new_view.link);
+    wl_list_remove(&management->show_desktop.link);
     wl_global_destroy(management->global);
 }
 
@@ -653,6 +671,8 @@ bool kde_plasma_window_management_create(struct server *server)
 
     management->new_view.notify = handle_new_view;
     kywc_view_add_new_listener(&management->new_view);
+    management->show_desktop.notify = handle_shown_desktop;
+    view_manager_add_show_desktop_listener(&management->show_desktop);
 
     return true;
 }

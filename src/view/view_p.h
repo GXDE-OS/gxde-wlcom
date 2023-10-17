@@ -17,6 +17,7 @@ struct view_manager {
     struct {
         struct wl_signal new_view;
         struct wl_signal window_menu;
+        struct wl_signal show_desktop;
     } events;
 
     struct view_layer layers[LAYER_NUMBER];
@@ -31,6 +32,8 @@ struct view_manager {
 
     struct wl_listener new_xdg_surface;
     struct wl_listener server_destroy;
+
+    bool show_desktop_enabled;
 };
 
 struct view_show_window_menu_event {

@@ -373,6 +373,9 @@ void workspace_activate(struct workspace *workspace)
         workspace_set_activated(old, false);
     }
 
+    /* disable show desktop when switching between workspaces */
+    view_manager_show_desktop(false, true);
+
     workspace_manager->current = workspace;
     workspace_set_activated(workspace, true);
 
