@@ -16,11 +16,9 @@ static struct shortcut {
     enum window_action action;
 } shortcuts[] = {
     { "Alt+F10", "window maximized", WINDOW_ACTION_MAXIMIZE },
-    { "Win+h", "window minimized", WINDOW_ACTION_MINIMIZE },
+    { "Alt+F9", "window minimized", WINDOW_ACTION_MINIMIZE },
     { "Alt+F4", "window closed", WINDOW_ACTION_CLOSE },
-    { "Alt+F7", "window move", WINDOW_ACTION_MOVE },
-    { "Alt+F8", "window resize", WINDOW_ACTION_RESIZE },
-    { "Alt+space", "window menu", WINDOW_ACTION_MENU },
+    { "Alt+F3", "window menu", WINDOW_ACTION_MENU },
     { "win+up", "window snap edge up", WINDOW_ACTION_SNAP_TOP },
     { "win+down", "window snap edge down", WINDOW_ACTION_SNAP_BOTTOM },
     { "win+left", "window snap edge left", WINDOW_ACTION_SNAP_LEFT },
