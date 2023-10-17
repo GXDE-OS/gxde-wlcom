@@ -37,9 +37,11 @@ struct icon_name {
 
 struct icon {
     struct wl_list link;
-    struct wl_list buffers;
-    struct wl_list names;
+    struct wl_list buffers; // struct icon_buffer
+    struct wl_list names;   // struct icon_name
     char *svg;
+    char *png_path;
+    char *xpm_path;
 };
 
 struct icon_subdir {
@@ -49,10 +51,10 @@ struct icon_subdir {
 
 struct icon_theme {
     struct wl_list link;
-    struct wl_list parents_theme;
+    struct wl_list parents_theme; // struct icon_theme
     char *name;
-    struct wl_list icons;
-    struct wl_list icons_subdir;
+    struct wl_list icons;        // struct icon
+    struct wl_list icons_subdir; // struct icon_subdir
 };
 
 struct theme_override {

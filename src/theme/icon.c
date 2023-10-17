@@ -28,7 +28,9 @@
 static void icon_create(struct icon_theme *theme, const char *path, const char *full_name)
 {
     size_t index = strlen(full_name) - 4;
-    if (strcasecmp(full_name + index, ".svg")) {
+    const char *suffix = full_name + index;
+    if (strcasecmp(suffix, ".svg") != 0 && strcasecmp(suffix, ".png") != 0 &&
+        strcasecmp(suffix, ".xpm") != 0) {
         return;
     }
 
@@ -37,35 +39,56 @@ static void icon_create(struct icon_theme *theme, const char *path, const char *
         return;
     }
 
-    struct icon *icon = calloc(1, sizeof(struct icon));
-    if (!icon) {
-        return;
-    }
-
-    struct icon_name *iname = calloc(1, sizeof(struct icon_name));
-    if (!iname) {
-        free(icon);
-        return;
-    }
-
-    iname->name = strndup(full_name, index);
-    if (!iname->name) {
+    char *name = strndup(full_name, index);
+    if (!name) {
         fclose(fp);
         return;
     }
-    wl_list_init(&icon->names);
-    wl_list_insert(&icon->names, &iname->link);
 
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    rewind(fp);
+    struct icon *icon = icon_theme_get_icon(theme, name, false);
+    if (!icon) {
+        icon = calloc(1, sizeof(struct icon));
+        if (!icon) {
+            fclose(fp);
+            free(name);
+            return;
+        }
+        struct icon_name *iname = calloc(1, sizeof(struct icon_name));
+        if (!iname) {
+            fclose(fp);
+            free(icon);
+            free(name);
+            return;
+        }
+        wl_list_init(&icon->names);
+        wl_list_init(&icon->buffers);
+        wl_list_insert(&icon->names, &iname->link);
+        wl_list_insert(&theme->icons, &icon->link);
+        iname->name = name;
+    } else {
+        free(name);
+    }
 
-    icon->svg = malloc(size + 1);
-    fread(icon->svg, 1, size, fp);
-    icon->svg[size] = '\0';
+    if (strcasecmp(suffix, ".svg") == 0) {
+        if (!icon->svg) {
+            fseek(fp, 0, SEEK_END);
+            long size = ftell(fp);
+            rewind(fp);
 
-    wl_list_init(&icon->buffers);
-    wl_list_insert(&theme->icons, &icon->link);
+            icon->svg = malloc(size + 1);
+            fread(icon->svg, 1, size, fp);
+            icon->svg[size] = '\0';
+        }
+    } else if (strcasecmp(suffix, ".png") == 0) {
+        if (!icon->png_path) {
+            icon->png_path = strdup(path);
+        }
+    } else if (strcasecmp(suffix, ".xpm") == 0) {
+        if (!icon->xpm_path) {
+            icon->xpm_path = strdup(path);
+        }
+    }
+    fclose(fp);
 }
 
 void icon_destroy(struct icon *icon)
