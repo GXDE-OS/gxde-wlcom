@@ -940,6 +940,10 @@ void view_close_popups(struct view *view)
 
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
 {
+    /* still show window menu even if no ssd used */
+    if (!view->workspace) {
+        return;
+    }
     struct view_show_window_menu_event event = { view, seat, x, y };
     wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
 }
