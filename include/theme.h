@@ -84,6 +84,8 @@ struct theme_manager *theme_manager_create(struct server *server);
 
 void theme_manager_add_update_listener(struct wl_listener *listener);
 
+void theme_manager_add_icon_update_listener(struct wl_listener *listener);
+
 struct theme *theme_manager_get_current(void);
 
 bool theme_manager_set_theme(const char *name);
@@ -91,6 +93,8 @@ bool theme_manager_set_theme(const char *name);
 bool theme_manager_set_font(const char *name, int size);
 
 bool theme_manager_set_accent_color(int32_t color);
+
+bool theme_manager_set_icon_theme(const char *icon_theme_name);
 
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);

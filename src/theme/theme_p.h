@@ -65,6 +65,7 @@ struct theme_manager {
 
     struct {
         struct wl_signal update;
+        struct wl_signal icon_update;
     } events;
 
     struct wl_listener server_destroy;
@@ -75,6 +76,10 @@ bool theme_manager_config_init(struct theme_manager *manager);
 const char *theme_manager_read_config(struct theme_manager *manager);
 
 void theme_manager_write_config(struct theme_manager *manager, const char *name);
+
+const char *theme_manager_read_icon_config(struct theme_manager *manager);
+
+void theme_manager_write_icon_config(struct theme_manager *manager, const char *name);
 
 struct icon_theme *icon_theme_load(const char *name);
 

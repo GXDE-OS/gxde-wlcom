@@ -21,6 +21,7 @@
 
 #define DEFAULT_THEME "builtin-light"
 #define DEFAULT_DARK_THEME "builtin-dark"
+#define DEFAULT_ICON_THEME_NAME "hicolor"
 
 static struct theme_manager *manager = NULL;
 
@@ -272,6 +273,7 @@ struct theme_manager *theme_manager_create(struct server *server)
 
     wl_list_init(&manager->themes);
     wl_signal_init(&manager->events.update);
+    wl_signal_init(&manager->events.icon_update);
 
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &manager->server_destroy);
@@ -287,15 +289,26 @@ struct theme_manager *theme_manager_create(struct server *server)
         manager->current = theme_create(DEFAULT_THEME, 1.0);
     }
 
-    manager->icon_theme = icon_theme_load("ukui-icon-theme-default");
+    const char *icon_theme = theme_manager_read_icon_config(manager);
+    manager->icon_theme = icon_theme_load(icon_theme ? icon_theme : DEFAULT_ICON_THEME_NAME);
+    /* icon theme load failed, fallback to default icon theme */
+    if (!manager->icon_theme) {
+        manager->icon_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
+    }
 
     theme_manager_write_config(manager, manager->current->theme_name);
+    theme_manager_write_icon_config(manager, manager->icon_theme->name);
     return manager;
 }
 
 void theme_manager_add_update_listener(struct wl_listener *listener)
 {
     wl_signal_add(&manager->events.update, listener);
+}
+
+void theme_manager_add_icon_update_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&manager->events.icon_update, listener);
 }
 
 struct theme *theme_manager_get_current(void)
@@ -339,6 +352,37 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
     }
 
     return bufs->buf[buffer_index];
+}
+
+bool theme_manager_set_icon_theme(const char *icon_theme_name)
+{
+    /* invaild or empty name */
+    if (!icon_theme_name || !*icon_theme_name) {
+        return false;
+    }
+
+    struct icon_theme *old = manager->icon_theme;
+    /* current icon_theme is not changed */
+    if (old->name && !strcmp(icon_theme_name, old->name)) {
+        return true;
+    }
+
+    /* not found, keep current icon_theme */
+    struct icon_theme *new = icon_theme_load(icon_theme_name);
+    if (!new) {
+        return false;
+    }
+
+    /* apply the new icon_theme */
+    manager->icon_theme = new;
+    wl_signal_emit_mutable(&manager->events.icon_update, new);
+
+    if (old) {
+        icon_theme_destroy(old);
+    }
+
+    theme_manager_write_icon_config(manager, icon_theme_name);
+    return true;
 }
 
 bool theme_manager_set_theme(const char *name)

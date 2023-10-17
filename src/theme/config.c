@@ -69,6 +69,14 @@ static int set_accent_color(sd_bus_message *msg, void *userdata, sd_bus_error *r
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
+static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    char *icon_theme_name = NULL;
+    CK(sd_bus_message_read(msg, "s", &icon_theme_name));
+    int32_t ret = theme_manager_set_icon_theme(icon_theme_name);
+    return sd_bus_reply_method_return(msg, "b", &ret);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllThemes", "", "as", list_themes, 0),
@@ -77,6 +85,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("currentFont", "", "si", current_font, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
+    SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -132,5 +141,27 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
     if (manager->override.accent_color) {
         json_object_object_add(manager->config->json, "accent_color",
                                json_object_new_int(manager->override.accent_color));
+    }
+}
+
+const char *theme_manager_read_icon_config(struct theme_manager *manager)
+{
+    if (!manager->config || !manager->config->json) {
+        return NULL;
+    }
+
+    json_object *data;
+    if (json_object_object_get_ex(manager->config->json, "icon_theme_name", &data)) {
+        return json_object_get_string(data);
+    }
+
+    return NULL;
+}
+
+void theme_manager_write_icon_config(struct theme_manager *manager, const char *name)
+{
+    if (name && name[0]) {
+        json_object_object_add(manager->config->json, "icon_theme_name",
+                               json_object_new_string(name));
     }
 }
