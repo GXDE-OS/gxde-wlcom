@@ -278,6 +278,73 @@ static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *re
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t accel_profile;
+    CK(sd_bus_message_read(m, "su", &input_name, &accel_profile));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.has_pointer_accel && input->prop.accel_profiles &&
+        input->state.accel_profile != accel_profile) {
+        struct input_state state = input->state;
+        state.accel_profile = accel_profile;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int set_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t scroll_method;
+    CK(sd_bus_message_read(m, "su", &input_name, &scroll_method));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.scroll_methods && input->state.scroll_method != scroll_method) {
+        struct input_state state = input->state;
+        state.scroll_method = scroll_method;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int set_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t dwt;
+    CK(sd_bus_message_read(m, "sb", &input_name, &dwt));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.has_dwt && input->state.dwt != dwt) {
+        struct input_state state = input->state;
+        state.dwt = dwt;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int enable_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -420,6 +487,9 @@ static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
     SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
     SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
+    SD_BUS_METHOD("SetAccelProfile", "su", "", set_accel_profile, 0),
+    SD_BUS_METHOD("SetScrollMethod", "su", "", set_scroll_method, 0),
+    SD_BUS_METHOD("SetDisableWhileTyping", "sb", "", set_disable_while_typing, 0),
     SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
