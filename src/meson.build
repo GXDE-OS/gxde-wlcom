@@ -1,4 +1,4 @@
-wlcom_sources = files(
+wlcom_sources += files(
   'main.c',
   'server.c',
 

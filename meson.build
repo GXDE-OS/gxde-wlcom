@@ -95,6 +95,16 @@ if plugindir == ''
 endif
 add_project_arguments('-DPLUGIN_DIR="@0@"'.format(plugindir), language: 'c')
 
+wlcom_sources = []
+
+wlcom_deps = [
+  wayland_server, wayland_protos,
+  wlroots, xkbcommon, drm, input,
+  pixman, math, jsonc,
+  sdbus, dl, xcb,
+  cairo, pango, pangocairo, rsvg,
+]
+
 wlcom_inc = include_directories('include')
 
 have_examples = get_option('examples')
@@ -115,8 +125,9 @@ have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 
 if not have_kycom_scene and not have_wlr_scene
-  message('currently in beta')
+  warning('No scene enabled, just for scene api check')
 endif
+have_kycom_scene = have_kycom_scene and not have_wlr_scene
 
 if not have_kde_output and not have_wlr_output
   error('Must enable one output protocol support at least')
@@ -140,12 +151,6 @@ add_project_arguments([
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
 ], language: 'c')
 
-if have_kycom_scene and not have_wlr_scene
-  have_kycom_scene = true
-else
-  have_kycom_scene = false
-endif
-
 msgfmt = find_program('msgfmt', required: get_option('nls'))
 add_project_arguments('-DHAVE_NLS=@0@'.format(msgfmt.found().to_int()), language: 'c')
 if msgfmt.found()
@@ -160,19 +165,6 @@ subdir('data')
 if have_examples
   subdir('clients')
   subdir('examples')
-endif
-
-wlcom_deps = [
-  wayland_server, wayland_protos, server_protos,
-  wlroots, xkbcommon, drm, input,
-  pixman, math, jsonc,
-  sdbus, util, dl,
-  cairo, pango, pangocairo, rsvg,
-  xcb,
-]
-
-if have_kycom_scene
-wlcom_deps += [kycom_scene_deps]
 endif
 
 symbols_file = 'wlcom.syms'

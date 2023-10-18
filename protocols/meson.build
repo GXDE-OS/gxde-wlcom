@@ -55,8 +55,6 @@ if have_kde_blur
   }
 endif
 
-protos_src = []
-
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}
@@ -67,7 +65,7 @@ foreach name, path : protocols
     output: '@BASENAME@-protocol.c',
     command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
   )
-  protos_src += code
+  wlcom_sources += code
 
   server_header = custom_target(
     name.underscorify() + '_server_h',
@@ -75,7 +73,7 @@ foreach name, path : protocols
     output: '@BASENAME@-protocol.h',
     command: [wayland_scanner, 'server-header', '@INPUT@', '@OUTPUT@'],
   )
-  protos_src += server_header
+  wlcom_sources += server_header
 
   client_header = custom_target(
     name.underscorify() + '_client_h',
@@ -89,14 +87,3 @@ foreach name, path : protocols
   protocols_server_header += { name: server_header }
   protocols_client_header += { name: client_header }
 endforeach
-
-lib_server_protos = static_library(
-  'server_protos',
-  protos_src,
-  dependencies: [wayland_server]
-)
-
-server_protos = declare_dependency(
-  link_with: lib_server_protos,
-  sources: protos_src,
-)

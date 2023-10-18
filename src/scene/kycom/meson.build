@@ -11,9 +11,7 @@ wlcom_sources += files(
 epoxy = dependency('epoxy')
 cglm = dependency('cglm')
 
-kycom_scene_deps = [
-  epoxy, cglm,
-]
+wlcom_deps += [ epoxy, cglm ]
 
 subdir('shaders')
 subdir('effect')
