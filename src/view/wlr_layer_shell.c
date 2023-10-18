@@ -288,14 +288,9 @@ static void layer_shell_handle_unmap(struct wl_listener *listener, void *data)
     struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
 
     ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree), false);
-
-    if (!layer_surface->output) {
-        return;
-    }
-
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
 
-    if (layer_surface->current.exclusive_zone > 0) {
+    if (layer_surface->output && layer_surface->current.exclusive_zone > 0) {
         kywc_output_update_usable_area(&output_from_wlr_output(layer_surface->output)->base);
     }
 }
