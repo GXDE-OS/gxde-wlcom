@@ -11,6 +11,7 @@
 
 #include <kywc/log.h>
 
+#include "util/limit.h"
 #include "util/spawn.h"
 
 bool spawn_invoke(const char *command)
@@ -41,6 +42,7 @@ bool spawn_invoke(const char *command)
         sigset_t set;
         sigemptyset(&set);
         sigprocmask(SIG_SETMASK, &set, NULL);
+        limit_unset_nofile();
         grandchild = fork();
         if (grandchild == 0) {
             /* close stdout/stderr */

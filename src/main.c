@@ -11,6 +11,7 @@
 
 #include "nls.h"
 #include "server.h"
+#include "util/limit.h"
 #include "util/logger.h"
 #include "util/spawn.h"
 
@@ -137,6 +138,9 @@ int main(int argc, char *argv[])
         level = KYWC_INFO;
     }
     logger_init(level, server.options.log_to_file, server.options.log_in_realtime);
+
+    /* set Number of open files to max */
+    limit_set_nofile();
 
     /* ignore SIGPIPE */
     signal(SIGPIPE, SIG_IGN);
