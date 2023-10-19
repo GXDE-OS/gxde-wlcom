@@ -35,7 +35,9 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     if (!render->texture) {
         return;
     }
-    struct kywc_gl_texture *tex = render->texture->texture;
+    struct kywc_texture_node *tex_node = render->texture;
+    struct kywc_gl_texture *tex = tex_node->texture;
+
     if (!tex) {
         return;
     }
@@ -43,11 +45,10 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     struct kywc_gl_geometry geometry = {
         .x1 = 0,
         .y1 = 0,
-        .x2 = render->texture->geometry_width ? render->texture->geometry_width : tex->width,
-        .y2 = render->texture->geometry_height ? render->texture->geometry_height : tex->height,
+        .x2 = tex_node->geometry_width ? tex_node->geometry_width : tex->width,
+        .y2 = tex_node->geometry_height ? tex_node->geometry_height : tex->height,
     };
-
-    struct wlr_fbox src_box = render->texture->src_box;
+    struct wlr_fbox src_box = tex_node->src_box;
     kywc_gl_texture_update_src_box(tex, &src_box);
     kywc_target_render_begin(target);
     vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };

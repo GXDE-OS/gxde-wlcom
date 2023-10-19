@@ -27,7 +27,11 @@ void kywc_target_init_output_target(struct kywc_render_target *target,
     target->view_box.y = scene_output->y;
     target->lx = 0;
     target->ly = 0;
-    wlr_output_effective_resolution(output, &target->view_box.width, &target->view_box.height);
+
+    int width, height;
+    wlr_output_transformed_resolution(output, &width, &height);
+    target->view_box.width = width / output->scale;
+    target->view_box.height = height / output->scale;
 }
 
 void kywc_target_cpy(struct kywc_render_target *dst, const struct kywc_render_target *src)

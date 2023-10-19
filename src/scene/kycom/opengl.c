@@ -794,6 +794,9 @@ void kywc_gl_program_deactive(struct kywc_gl_program *program)
         program->active.attrib_pointer_id = 0;
     }
 
+    memset(program->pos_vertex, 0, sizeof(program->pos_vertex));
+    memset(program->texture_vertex, 0, sizeof(program->texture_vertex));
+
     glUseProgram(0);
 }
 

@@ -20,13 +20,11 @@ struct kywc_render_target {
     /* Need scale in framebuffer, output->scale. */
     float scale;
     /* Logic coord, view box in current ofb. */
-    struct wlr_box view_box;
+    struct wlr_fbox view_box;
     /* Output transform. */
     enum wl_output_transform wl_transform;
     /* Logic coord,target start pos(lx,ly) in scene. */
     int lx, ly;
-
-    mat4 output_transform_mat;
 };
 
 void kywc_target_init_output_target(struct kywc_render_target *target,
