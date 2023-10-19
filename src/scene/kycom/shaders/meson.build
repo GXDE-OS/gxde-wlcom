@@ -1,5 +1,3 @@
-embed = find_program('./embed.sh', native: true)
-
 shaders = [
 	'default_common.vert',
 	'default_tex.frag',

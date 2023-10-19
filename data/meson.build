@@ -3,3 +3,5 @@ install_data(udev_backlight, install_dir: '/usr/lib/udev/rules.d')
 
 session = files('kylin-wlcom.desktop')
 install_data(session, install_dir: '/usr/share/wayland-sessions')
+
+embed = find_program('./embed.sh', native: true)

@@ -1,5 +1,3 @@
-embed = find_program('./embed.sh', native: true)
-
 svgs = [
   'button_light.svg',
   'button_dark.svg',

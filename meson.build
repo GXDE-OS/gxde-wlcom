@@ -158,9 +158,9 @@ if msgfmt.found()
   subdir('po')
 endif
 
+subdir('data')
 subdir('src')
 subdir('protocols')
-subdir('data')
 
 if have_examples
   subdir('clients')
