@@ -47,8 +47,8 @@ struct icon {
     struct wl_list link;
     struct wl_list buffers; // struct icon_buffer
     struct wl_list names;   // struct icon_name
+    struct wl_list pngs;    // struct icon_png
     char *svg;
-    struct wl_list pngs; // struct icon_png
     char *xpm_path;
 };
 

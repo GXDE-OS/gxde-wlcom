@@ -163,6 +163,7 @@ void icon_destroy(struct icon *icon)
     }
 
     wl_list_remove(&icon->link);
+    free(icon->xpm_path);
     free(icon->svg);
     free(icon);
 }
@@ -180,12 +181,15 @@ struct icon *icon_fallback_create(void)
         return NULL;
     }
 
-    iname->name = strdup("fallback");
+    wl_list_init(&icon->link);
+    wl_list_init(&icon->pngs);
     wl_list_init(&icon->names);
+    wl_list_init(&icon->buffers);
     wl_list_insert(&icon->names, &iname->link);
+
+    iname->name = strdup("fallback");
     icon->svg = strdup(unknown_svg_src);
 
-    wl_list_init(&icon->buffers);
     return icon;
 }
 
