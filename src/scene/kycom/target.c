@@ -261,15 +261,6 @@ void kywc_target_logic_damage_clear(struct kywc_render_target *target,
 void kywc_target_draw_damage(struct kywc_render_target *target, struct kywc_gl_texture *tex,
                              pixman_region32_t *damage)
 {
-    /**
-     * use GL_NEAREST for integer scale.
-     * GL_NEAREST makes scaled text blocky instead of blurry, which looks better
-     * but only for integer scale.
-     */
-    if (target->scale - floor(target->scale) < 0.001 && tex) {
-        kywc_gl_texture_nearest(tex);
-    }
-
     if (!damage) {
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         return;
