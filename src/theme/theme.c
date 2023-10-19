@@ -187,11 +187,10 @@ static void theme_override_config(struct theme *theme)
         theme->font_size = override->font_size;
     }
 
-    int color = get_color_int(theme->accent_color);
-    if (override->accent_color != color) {
-        theme->accent_color[0] = ((override->accent_color >> 16) & 0xff) / 255;
-        theme->accent_color[1] = ((override->accent_color >> 8) & 0xff) / 255;
-        theme->accent_color[2] = (override->accent_color & 0xff) / 255;
+    if (override->accent_color >= 0) {
+        theme->accent_color[0] = (float)((override->accent_color >> 16) & 0xff) / 255;
+        theme->accent_color[1] = (float)((override->accent_color >> 8) & 0xff) / 255;
+        theme->accent_color[2] = (float)(override->accent_color & 0xff) / 255;
         theme->accent_color[3] = 1.0;
     }
 }

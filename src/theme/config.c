@@ -113,6 +113,8 @@ const char *theme_manager_read_config(struct theme_manager *manager)
     }
     if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
         manager->override.accent_color = json_object_get_int(data);
+    } else {
+        manager->override.accent_color = -1;
     }
 
     if (json_object_object_get_ex(manager->config->json, "name", &data)) {
@@ -138,7 +140,7 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
                                json_object_new_int(manager->override.font_size));
     }
 
-    if (manager->override.accent_color) {
+    if (manager->override.accent_color >= 0) {
         json_object_object_add(manager->config->json, "accent_color",
                                json_object_new_int(manager->override.accent_color));
     }
