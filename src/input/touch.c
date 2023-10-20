@@ -235,7 +235,7 @@ static void handle_new_input(struct wl_listener *listener, void *data)
     struct touch_manager *manager = wl_container_of(listener, manager, new_input);
     struct input *input = data;
 
-    /* input has been configured, only care about tablet_tool and tablet_pad */
+    /* input has been configured, only care about touch */
     if (input->prop.type != WLR_INPUT_DEVICE_TOUCH) {
         return;
     }

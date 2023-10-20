@@ -20,7 +20,7 @@
 #include "text_input_v1.h"
 #include "view/view.h"
 
-/* most codes are copyed from sway text_input.c */
+/* most codes are copied from sway text_input.c */
 
 struct input_method_manager {
     struct wlr_input_method_manager_v2 *input_method;
