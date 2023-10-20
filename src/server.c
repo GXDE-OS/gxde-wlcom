@@ -32,6 +32,7 @@
 #include "input/input.h"
 #include "output.h"
 #include "plugin.h"
+#include "scene/animation.h"
 #include "server.h"
 #include "theme.h"
 #include "view/view.h"
@@ -226,6 +227,7 @@ bool server_init(struct server *server)
     view_manager_create(server);
     xwayland_server_create(server);
 
+    animation_manager_create(server);
     plugin_manager_create(server);
 
     queue_init(&server->queue, 256, 4, server);

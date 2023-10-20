@@ -10,6 +10,7 @@
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
+#include "scene/animation.h"
 #include "theme.h"
 #include "view/action.h"
 
@@ -110,6 +111,7 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
     }
 
     struct view *view = grab->view;
+    bool need_source_box = grab->snap_mode == KYWC_TILE_NONE;
 
     if (!grab->snap_rect) {
         struct theme *theme = theme_manager_get_current();
@@ -118,6 +120,7 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
         grab->snap_rect = ky_scene_rect_create(parent, 0, 0, theme->selected_color);
         grab->snap_node = ky_scene_node_from_rect(grab->snap_rect);
         ky_scene_node_place_below(grab->snap_node, sibling);
+        need_source_box = true;
     }
 
     grab->snap_mode = mode;
@@ -133,8 +136,22 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
     geo.y -= view->base.margin.off_y;
     geo.width += view->base.margin.off_width;
     geo.height += view->base.margin.off_height;
-    ky_scene_rect_set_size(grab->snap_rect, geo.width, geo.height);
-    ky_scene_node_set_position(grab->snap_node, geo.x, geo.y);
+
+    if (need_source_box) {
+        struct wlr_box output_box = { geo.x, geo.y, geo.width, geo.height };
+        struct wlr_box view_box = { view->base.geometry.x - view->base.margin.off_x,
+                                    view->base.geometry.y - view->base.margin.off_y,
+                                    view->base.geometry.width + view->base.margin.off_x,
+                                    view->base.geometry.height + view->base.margin.off_y };
+        struct wlr_box rect_box;
+        wlr_box_intersection(&rect_box, &output_box, &view_box);
+        ky_scene_rect_set_size(grab->snap_rect, rect_box.width, rect_box.height);
+        ky_scene_node_set_position(grab->snap_node, rect_box.x, rect_box.y);
+    }
+
+    struct animation *animation = animation_manager_get_default(ANIMATION_TYPE_EASE_OUT);
+    ky_scene_rect_set_size_with_animation(grab->snap_rect, geo.width, geo.height, animation, 200);
+    ky_scene_node_set_position_with_animation(grab->snap_node, geo.x, geo.y, animation, 200);
 }
 
 static void snap_box_enable_filter(struct interactive_grab *grab, bool enabled)
