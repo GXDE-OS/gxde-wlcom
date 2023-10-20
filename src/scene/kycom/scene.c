@@ -82,7 +82,7 @@ void kywc_render_task_init(struct kywc_render_task *task, struct kywc_render_ins
     pixman_region32_init(&task->damage);
     pixman_region32_copy(&task->damage, damage);
 
-    task->target = calloc(sizeof(*task->target), 1);
+    task->target = calloc(1, sizeof(*task->target));
     if (task->target) {
         kywc_target_cpy(task->target, target);
     }
@@ -99,7 +99,7 @@ struct kywc_render_task *kywc_render_task_create(struct kywc_render_instance *in
                                                  const pixman_region32_t *damage,
                                                  const struct kywc_render_target *target)
 {
-    struct kywc_render_task *task = calloc(sizeof(*task), 1);
+    struct kywc_render_task *task = calloc(1, sizeof(*task));
     if (!task) {
         return NULL;
     }

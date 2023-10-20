@@ -83,7 +83,7 @@ static struct rect_render_instance *create_rect_render_instance(struct kywc_rect
         return NULL;
     }
     struct rect_render_instance *renderer = NULL;
-    renderer = calloc(sizeof(*renderer), 1);
+    renderer = calloc(1, sizeof(*renderer));
 
     if (!renderer) {
         return NULL;
