@@ -99,6 +99,6 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name);
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);
 
-struct wlr_buffer *theme_icon_load(const char *name, float scale);
+struct wlr_buffer *theme_icon_load(const char *app_id, float scale);
 
 #endif /* _THEME_H_ */

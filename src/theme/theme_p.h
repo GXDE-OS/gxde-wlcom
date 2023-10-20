@@ -30,11 +30,6 @@ struct icon_buffer {
     float scale;
 };
 
-struct icon_name {
-    struct wl_list link;
-    char *name;
-};
-
 struct icon_png {
     struct wl_list link;
     char *path;
@@ -46,8 +41,8 @@ struct icon_png {
 struct icon {
     struct wl_list link;
     struct wl_list buffers; // struct icon_buffer
-    struct wl_list names;   // struct icon_name
     struct wl_list pngs;    // struct icon_png
+    char *name;
     char *svg;
     char *xpm_path;
 };
@@ -73,12 +68,20 @@ struct theme_override {
     int32_t accent_color;
 };
 
+struct desktop_info {
+    struct wl_list link;
+    char *app_id;
+    char *icon_name;
+};
+
 struct theme_manager {
     struct wl_list themes;
     struct theme *current;
     struct theme_override override;
     struct config *config;
 
+    /* desktop infos*/
+    struct wl_list desktop_infos; // struct desktop_info
     /* current icon theme */
     struct icon_theme *icon_theme;
     /* hicolor icon theme */
@@ -109,6 +112,10 @@ struct icon_theme *icon_theme_load(const char *name);
 struct icon *icon_fallback_create(void);
 
 void icon_destroy(struct icon *icon);
+
+void icon_load_desktop(struct wl_list *desktop_infos);
+
+void desktop_infos_destroy(struct wl_list *desktop_infos);
 
 void icon_theme_destroy(struct icon_theme *theme);
 

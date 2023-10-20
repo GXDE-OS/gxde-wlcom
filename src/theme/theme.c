@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/util/box.h>
@@ -256,6 +257,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         theme_destroy(theme);
     }
 
+    desktop_infos_destroy(&manager->desktop_infos);
     icon_theme_destroy(manager->icon_theme);
     icon_theme_destroy(manager->hicolor_theme);
     icon_destroy(manager->fallback_icon);
@@ -281,6 +283,10 @@ struct theme_manager *theme_manager_create(struct server *server)
 
     /* config support */
     theme_manager_config_init(manager);
+
+    /* load all desktop files and get icon name */
+    wl_list_init(&manager->desktop_infos);
+    icon_load_desktop(&manager->desktop_infos);
 
     /* load theme from config */
     const char *theme = theme_manager_read_config(manager);
@@ -538,17 +544,38 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
     return buf;
 }
 
-struct wlr_buffer *theme_icon_load(const char *name, float scale)
+struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
 {
     struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
     struct icon *icon = NULL;
+    char *icon_name = NULL;
 
-    if (theme && name) {
-        icon = icon_theme_get_icon(theme, name, true);
-        if (!icon && theme != manager->hicolor_theme) {
-            icon = icon_theme_get_icon(manager->hicolor_theme, name, true);
+    if (!theme) {
+        goto fallback;
+    }
+
+    struct desktop_info *desktop_info;
+    wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
+        if (strcasecmp(desktop_info->app_id, app_id) == 0) {
+            icon_name = desktop_info->icon_name;
         }
     }
+
+    if (icon_name) {
+        icon = icon_theme_get_icon(theme, icon_name, true);
+        if (!icon && theme != manager->hicolor_theme) {
+            icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
+        }
+    }
+
+    if (!icon) {
+        icon = icon_theme_get_icon(theme, app_id, true);
+        if (!icon && theme != manager->hicolor_theme) {
+            icon = icon_theme_get_icon(manager->hicolor_theme, app_id, true);
+        }
+    }
+
+fallback:
     if (!icon) {
         icon = manager->fallback_icon;
     }
