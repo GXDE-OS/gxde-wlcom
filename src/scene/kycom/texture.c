@@ -51,7 +51,7 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     struct wlr_fbox src_box = tex_node->src_box;
     kywc_gl_texture_update_src_box(tex, &src_box);
     kywc_target_render_begin(target);
-    vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    vec4 color = { 1.0f, 1.0f, 1.0f, tex_node->opacity };
     kywc_target_render_texture_with_transform(tex,
                                               (enum kywc_gl_transform)render->texture->transform,
                                               target, &geometry, color, RENDER_FLAG_CACHED);
@@ -252,6 +252,7 @@ void kywc_texture_node_init(struct kywc_texture_node *texture_node)
     texture_node->texture = NULL;
     texture_node->buffer = NULL;
     texture_node->primary_output = NULL;
+    texture_node->opacity = 1.0;
     kywc_node_init(&texture_node->node);
 
     texture_node->node.generate_render_task = kywc_texture_node_generate_render_task;
@@ -439,6 +440,17 @@ void kywc_texture_node_set_texture(struct kywc_texture_node *tex_node,
                                    struct kywc_gl_texture *texture)
 {
     kywc_texture_node_set_texture_with_damage(tex_node, texture, NULL);
+}
+
+void kywc_texture_node_set_opacity(struct kywc_texture_node *tex_node,
+                                   float opacity)
+{
+	if (tex_node->opacity == opacity) {
+		return;
+	}
+
+	tex_node->opacity = opacity;
+	tex_node->node.push_damage(&tex_node->node, NULL);
 }
 
 void kywc_texture_node_set_opaque_region(struct kywc_texture_node *tex_node,

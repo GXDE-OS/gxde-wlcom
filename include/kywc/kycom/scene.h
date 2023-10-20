@@ -182,6 +182,7 @@ struct kywc_texture_node {
     pixman_region32_t opaque_region;
     /* Maybe be empty*/
     pixman_region32_t corner_region;
+    float opacity;
 };
 
 struct kywc_node_visitor_interface {

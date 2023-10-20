@@ -30,6 +30,9 @@ void kywc_texture_node_set_buffer(struct kywc_texture_node *tex_node, struct wlr
 void kywc_texture_node_set_texture(struct kywc_texture_node *tex_node,
                                    struct kywc_gl_texture *texture);
 
+void kywc_texture_node_set_opacity(struct kywc_texture_node *tex_node,
+                                   float opacity);
+
 void kywc_texture_node_set_opaque_region(struct kywc_texture_node *tex_node,
                                          const pixman_region32_t *region);
 
