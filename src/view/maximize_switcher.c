@@ -8,6 +8,7 @@
 
 #include <kywc/binding.h>
 
+#include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
 #include "painter.h"
@@ -59,7 +60,9 @@ static struct maximize_switcher {
 
     struct item_view **item_views;
 
+    struct seat_pointer_grab pointer_grab;
     struct seat_keyboard_grab keyboard_grab;
+    struct seat_touch_grab touch_grab;
 
     int pending, current;
     int width, height;
@@ -110,6 +113,109 @@ static void ensure_thumbnails_size(int num)
 
     switcher->num_windows = alloc;
 }
+
+static bool item_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
+                       uint32_t time, bool first, bool hold, void *data)
+{
+    return false;
+}
+
+static void item_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data) {}
+
+static void item_click(struct seat *seat, struct ky_scene_node *node, uint32_t button, bool pressed,
+                       uint32_t time, bool dual, void *data)
+{
+    /* do actions when released */
+    if (pressed || button != BTN_LEFT) {
+        return;
+    }
+
+    struct item_view *item = data;
+    struct item_view *item_view;
+    for (int i = 0; i < switcher->num_view; i++) {
+        item_view = switcher->item_views[i];
+        if (item == item_view) {
+            switcher->pending = i;
+            switcher->dir = NONE;
+        }
+    }
+    wlr_output_schedule_frame(switcher->output);
+}
+
+static const struct input_event_node_impl item_impl = {
+    .hover = item_hover,
+    .leave = item_leave,
+    .click = item_click,
+};
+
+static void pointer_grab_cancel(struct seat_pointer_grab *pointer_grab)
+{
+    maximize_switcher_set_enable(false);
+}
+
+static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
+                                uint32_t button, bool pressed)
+{
+    struct maximize_switcher *window_menu = pointer_grab->data;
+    struct seat *seat = pointer_grab->seat;
+
+    /* check current hover node in the window menu tree */
+    struct ky_scene_node *root_node = ky_scene_node_from_tree(window_menu->tree);
+    struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
+    struct ky_scene_node *node = input_event_node_root(inode);
+    if (node == root_node) {
+        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, false,
+                           inode->data);
+        return false;
+    }
+    if (pressed) {
+        maximize_switcher_set_enable(false);
+    }
+    return true;
+}
+
+static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
+                                double ly)
+{
+    return false;
+}
+
+static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
+                              double value)
+{
+    return true;
+}
+
+static const struct seat_pointer_grab_interface pointer_grab_impl = {
+    .motion = pointer_grab_motion,
+    .button = pointer_grab_button,
+    .axis = pointer_grab_axis,
+    .cancel = pointer_grab_cancel,
+};
+
+static bool touch_grab_touch(struct seat_touch_grab *touch_grab, uint32_t time, bool down)
+{
+    // FIXME: interactive grab end
+    struct maximize_switcher *maximize_switcher = touch_grab->data;
+    return pointer_grab_button(&maximize_switcher->pointer_grab, time, BTN_LEFT, down);
+}
+
+static bool touch_grab_motion(struct seat_touch_grab *touch_grab, uint32_t time, double lx,
+                              double ly)
+{
+    return false;
+}
+
+static void touch_grab_cancel(struct seat_touch_grab *touch_grab)
+{
+    maximize_switcher_set_enable(false);
+}
+
+static const struct seat_touch_grab_interface touch_grab_impl = {
+    .touch = touch_grab_touch,
+    .motion = touch_grab_motion,
+    .cancel = touch_grab_cancel,
+};
 
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
                               bool pressed, uint32_t modifiers)
@@ -223,6 +329,11 @@ static void destroy_buffer(struct ky_scene_buffer *buffer, void *data)
     /* buffers are destroyed in theme */
 }
 
+static struct ky_scene_node *item_get_root(void *data)
+{
+    return ky_scene_node_from_tree(switcher->tree);
+}
+
 static void handle_view_destroy(struct wl_listener *listener, void *data)
 {
     struct item_view *item_view = wl_container_of(listener, item_view, view_destroy);
@@ -253,6 +364,8 @@ static void get_maximize_views(int *num_views)
         item_view->view_destroy.notify = handle_view_destroy;
         wl_signal_add(&view->base.events.destroy, &item_view->view_destroy);
         item_view->tree = ky_scene_tree_create(switcher->tree);
+        input_event_node_create(ky_scene_node_from_tree(item_view->tree), &item_impl, item_get_root,
+                                NULL, item_view);
         /* create background */
         item_view->background = ky_scene_rect_create(item_view->tree, 0, 0, color);
         /* create icon */
@@ -471,7 +584,9 @@ static void maximize_switcher_set_enable(bool enable)
 
     if (!enable) {
         hide_maximize_switcher();
+        seat_end_pointer_grab(seat, &switcher->pointer_grab);
         seat_end_keyboard_grab(seat, &switcher->keyboard_grab);
+        seat_end_touch_grab(seat, &switcher->touch_grab);
         return;
     }
 
@@ -480,7 +595,9 @@ static void maximize_switcher_set_enable(bool enable)
         return;
     }
 
+    seat_start_pointer_grab(seat, &switcher->pointer_grab);
     seat_start_keyboard_grab(seat, &switcher->keyboard_grab);
+    seat_start_touch_grab(seat, &switcher->touch_grab);
 }
 
 static void shortcut_action(struct key_binding *binding, void *data)
@@ -558,8 +675,12 @@ bool maximize_switcher_create(struct view_manager *view_manager)
     manager->select.right = ky_scene_rect_create(manager->tree, 0, 0, color);
     manager->select.bottom = ky_scene_rect_create(manager->tree, 0, 0, color);
 
+    manager->pointer_grab.data = manager;
+    manager->pointer_grab.interface = &pointer_grab_impl;
     manager->keyboard_grab.data = manager;
     manager->keyboard_grab.interface = &keyboard_grab_impl;
+    manager->touch_grab.data = manager;
+    manager->touch_grab.interface = &touch_grab_impl;
 
     manager->theme_update.notify = handle_theme_update;
     theme_manager_add_update_listener(&manager->theme_update);
