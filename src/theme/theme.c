@@ -260,6 +260,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     desktop_infos_destroy(&manager->desktop_infos);
     icon_theme_destroy(manager->icon_theme);
     icon_theme_destroy(manager->hicolor_theme);
+    pixmaps_icon_destroy(&manager->pixmaps_icons);
     icon_destroy(manager->fallback_icon);
 
     free(manager->override.font_name);
@@ -301,6 +302,11 @@ struct theme_manager *theme_manager_create(struct server *server)
     if (icon_theme) {
         manager->icon_theme = icon_theme_load(icon_theme);
     }
+
+    /* load pixmaps path icons */
+    wl_list_init(&manager->pixmaps_icons);
+    icon_load_pixmaps_path(&manager->pixmaps_icons);
+
     manager->fallback_icon = icon_fallback_create();
     assert(manager->fallback_icon);
 
@@ -566,12 +572,30 @@ struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
         if (!icon && theme != manager->hicolor_theme) {
             icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
         }
+        if (!icon) {
+            struct icon *icon_tmp;
+            wl_list_for_each(icon_tmp, &manager->pixmaps_icons, link) {
+                if (strcmp(icon_name, icon_tmp->name) == 0) {
+                    icon = icon_tmp;
+                    break;
+                }
+            }
+        }
     }
 
     if (!icon) {
         icon = icon_theme_get_icon(theme, app_id, true);
         if (!icon && theme != manager->hicolor_theme) {
             icon = icon_theme_get_icon(manager->hicolor_theme, app_id, true);
+        }
+        if (!icon) {
+            struct icon *icon_tmp;
+            wl_list_for_each(icon_tmp, &manager->pixmaps_icons, link) {
+                if (strcmp(app_id, icon_tmp->name) == 0) {
+                    icon = icon_tmp;
+                    break;
+                }
+            }
         }
     }
 

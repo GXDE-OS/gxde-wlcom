@@ -86,6 +86,8 @@ struct theme_manager {
     struct icon_theme *icon_theme;
     /* hicolor icon theme */
     struct icon_theme *hicolor_theme;
+    /* pixmaps icons */
+    struct wl_list pixmaps_icons; // struct icon
     /* fallback icon */
     struct icon *fallback_icon;
 
@@ -116,6 +118,10 @@ void icon_destroy(struct icon *icon);
 void icon_load_desktop(struct wl_list *desktop_infos);
 
 void desktop_infos_destroy(struct wl_list *desktop_infos);
+
+void icon_load_pixmaps_path(struct wl_list *pixmap_icons);
+
+void pixmaps_icon_destroy(struct wl_list *pixmap_icons);
 
 void icon_theme_destroy(struct icon_theme *theme);
 

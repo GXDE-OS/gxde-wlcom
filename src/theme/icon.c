@@ -328,6 +328,77 @@ void desktop_infos_destroy(struct wl_list *desktop_infos)
     }
 }
 
+void pixmaps_icon_destroy(struct wl_list *pixmap_icons)
+{
+    struct icon *icon, *tmp;
+    wl_list_for_each_safe(icon, tmp, pixmap_icons, link) {
+        icon_destroy(icon);
+    }
+}
+
+static void pixmaps_path_load(const char *path, const char *name, void *data)
+{
+    struct wl_list *pixmap_icons = data;
+    size_t index = strlen(name) - 4;
+    const char *suffix = name + index;
+    if (strcasecmp(suffix, ".svg") != 0 && strcasecmp(suffix, ".png") != 0 &&
+        strcasecmp(suffix, ".xpm") != 0) {
+        return;
+    }
+
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        return;
+    }
+
+    struct icon *icon_tmp = NULL, *icon = NULL;
+    wl_list_for_each(icon_tmp, pixmap_icons, link) {
+        if (strncmp(icon_tmp->name, name, index) == 0) {
+            icon = icon_tmp;
+            break;
+        }
+    }
+    if (!icon) {
+        icon = calloc(1, sizeof(struct icon));
+        if (!icon) {
+            fclose(fp);
+            return;
+        }
+        icon->name = strndup(name, index);
+        wl_list_init(&icon->link);
+        wl_list_init(&icon->buffers);
+        wl_list_init(&icon->pngs);
+        wl_list_insert(pixmap_icons, &icon->link);
+    }
+
+    if (strcasecmp(suffix, ".svg") == 0) {
+        if (!icon->svg) {
+            fseek(fp, 0, SEEK_END);
+            long size = ftell(fp);
+            rewind(fp);
+
+            icon->svg = malloc(size + 1);
+            fread(icon->svg, 1, size, fp);
+            icon->svg[size] = '\0';
+        }
+    } else if (strcasecmp(suffix, ".png") == 0) {
+        struct icon_png *icon_png = malloc(sizeof(struct icon_png));
+        get_icon_png_size(path, icon_png);
+        icon_png->path = strdup(path);
+        wl_list_insert(&icon->pngs, &icon_png->link);
+    } else if (strcasecmp(suffix, ".xpm") == 0) {
+        if (!icon->xpm_path) {
+            icon->xpm_path = strdup(path);
+        }
+    }
+    fclose(fp);
+}
+
+void icon_load_pixmaps_path(struct wl_list *pixmap_icons)
+{
+    fscan_start(PIXMAPPATH, "", pixmaps_path_load, pixmap_icons);
+}
+
 static void icon_load(const char *path, const char *full_name, void *data)
 {
     struct icon_theme *theme = data;
@@ -340,8 +411,6 @@ static void icon_load_theme(struct icon_theme *theme)
     wl_list_for_each(icon_subdir, &theme->icons_subdir, link) {
         fscan_start(ICONPATH, icon_subdir->subdir, icon_load, theme);
     }
-
-    fscan_start(PIXMAPPATH, "", icon_load, theme);
 }
 
 struct icon_theme *icon_theme_load(const char *name)
