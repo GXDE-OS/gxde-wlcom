@@ -4,6 +4,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,49 +24,97 @@
 // TODO: XPM
 // look at the mtime of the toplevel icon directories
 
-static void get_icon_png_size(const char *path, struct icon_png *icon_png)
+static char *search_digit_from_str(const char *str)
 {
-    uint32_t scale = 1;
-    uint32_t width = 0, height = 0;
-    char *str = strdup(path);
+    size_t i;
+    int len;
+    const char *digit_str = NULL;
+    char *r;
 
-    char *p = strrchr(str, '/');
-    if (!p) {
-        goto exit;
+    for (i = 0; i < strlen(str) + 1; i++) {
+        if (isdigit(str[i])) {
+            digit_str = &str[i];
+            break;
+        }
     }
-    for (int i = 0; i < 2; i++) {
-        *p = '\0';
-        p = strrchr(str, '/');
-        if (!p) {
-            goto exit;
+    if (!digit_str) {
+        return NULL;
+    }
+
+    for (i = 0; i < strlen(digit_str); i++) {
+        if (!isdigit(digit_str[i])) {
+            len = i;
+            break;
         }
     }
 
-    /* get width height */
-    char *size_str = p + 1;
-    p = strchr(size_str, 'x');
-    if (!p) {
-        goto exit;
-    }
-    *p = '\0';
-    width = height = atoi(size_str);
+    r = strndup(digit_str, len);
+    return r;
+}
 
-    /* get scale */
-    char *scale_str = p + 1;
-    p = strchr(scale_str, '@');
-    if (!p) {
+static void get_icon_png_size(const char *path, struct icon_png *icon_png)
+{
+    size_t i = 0;
+    uint32_t scale = 1;
+    uint32_t width = 0, height = 0;
+    char *width_str = NULL;
+    char *scale_str = NULL;
+    const char *str_type1 = NULL;
+    const char *str_type2 = NULL;
+    const char *p = NULL;
+
+    for (i = 0; i < strlen(path); i++) {
+        if (path[i] == '@') {
+            str_type1 = &path[i];
+            break;
+        } else if (isdigit(path[i])) {
+            str_type2 = &path[i];
+            break;
+        }
+    }
+
+    if (str_type1) {
+        scale_str = search_digit_from_str(str_type1);
+        if (!scale_str) {
+            goto exit;
+        }
+        scale = atoi(scale_str);
+
+        p = str_type1 + strlen(scale_str);
+        free(scale_str);
+        width_str = search_digit_from_str(p);
+        if (!width_str) {
+            goto exit;
+        }
+        width = height = atoi(width_str);
+        free(width_str);
+    } else if (str_type2) {
+        width_str = search_digit_from_str(str_type2);
+        if (!width_str) {
+            goto exit;
+        }
+        width = height = atoi(width_str);
+
+        for (i = strlen(width_str); i < strlen(str_type2); i++) {
+            if (str_type2[i] == '@') {
+                p = &str_type2[i];
+                break;
+            }
+        }
+        free(width_str);
+        if (p) {
+            scale_str = search_digit_from_str(p);
+            if (!scale_str) {
+                goto exit;
+            }
+            scale = atoi(scale_str);
+            free(scale_str);
+        }
+    } else {
         goto exit;
     }
-    scale_str = p + 1;
-    p = strchr(scale_str, 'x');
-    if (!p) {
-        goto exit;
-    }
-    *p = '\0';
-    scale = atoi(scale_str);
 
 exit:
-    free(str);
     icon_png->scale = scale;
     icon_png->width = width;
     icon_png->height = height;
@@ -221,9 +270,7 @@ static void icon_theme_dir_load(char *dir_name, struct icon_theme *theme)
     char *s_ptr = NULL;
     char *subdir = strtok_r(dir_name, ",", &s_ptr);
     while (subdir) {
-        size_t index = strlen(subdir) - 4;
-        const char *suffix = subdir + index;
-        if (strcasecmp(suffix, "apps") == 0) {
+        if (strstr(subdir, "apps")) {
             icon_subdir = malloc(sizeof(struct icon_subdir));
             icon_subdir->subdir = fscan_build_fullname(theme->name, subdir, "");
             wl_list_insert(&theme->icons_subdir, &icon_subdir->link);
