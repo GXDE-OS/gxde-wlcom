@@ -32,6 +32,7 @@
 #include "input/input.h"
 #include "output.h"
 #include "plugin.h"
+#include "render/renderer.h"
 #include "scene/animation.h"
 #include "server.h"
 #include "theme.h"
@@ -159,7 +160,7 @@ static bool wlroots_server_init(struct server *server)
     }
     wlr_multi_backend_add(server->backend, server->headless_backend);
 
-    server->renderer = wlr_renderer_autocreate(server->backend);
+    server->renderer = ky_renderer_autocreate(server->backend);
     if (!server->renderer) {
         kywc_log(KYWC_FATAL, "unable to create renderer");
         return false;

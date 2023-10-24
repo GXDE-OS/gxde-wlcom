@@ -49,7 +49,7 @@ add_project_arguments('-DKYWC_VERSION=@0@'.format(version), language: 'c')
 wlroots_version = ['>=0.17.0']
 wlroots_proj = subproject(
   'wlroots',
-  default_options: ['default_library=static', 'examples=false'],
+  default_options: ['default_library=static', 'examples=false', 'renderers=[]'],
   required: false,
   version: wlroots_version,
 )

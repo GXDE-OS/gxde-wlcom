@@ -12,8 +12,6 @@
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
 
-#include <wlr/render/egl.h>
-#include <wlr/render/gles2.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/util/log.h>
 
@@ -24,10 +22,11 @@
 #include "tex_rgba_frag_src.h"
 #include "tex_rgbx_frag_src.h"
 
+#include "render/opengl.h"
 #include "scene/kycom/opengl_p.h"
 
 static struct opengl_render {
-    struct wlr_egl *egl;
+    struct ky_egl *egl;
     struct wlr_renderer *wlr_renderer;
     struct shader_text {
         const char *builtin;
@@ -140,7 +139,7 @@ static void gl_texture_init_from_buffer(struct kywc_gl_texture *tex, struct wlr_
         tex->wlr_tex = texture_from;
     }
 
-    if (!texture || !wlr_texture_is_gles2(texture)) {
+    if (!texture || !wlr_texture_is_opengl(texture)) {
         wlr_log(WLR_ERROR, "wlr_texture_from_buffer erro! ptr = %p", texture);
         tex->tex_id = 0;
         return;
@@ -148,8 +147,8 @@ static void gl_texture_init_from_buffer(struct kywc_gl_texture *tex, struct wlr_
     tex->height = texture->height;
     tex->width = texture->width;
 
-    struct wlr_gles2_texture_attribs attribs;
-    wlr_gles2_texture_get_attribs(texture, &attribs);
+    struct ky_opengl_texture_attribs attribs;
+    ky_opengl_texture_get_attribs(texture, &attribs);
 
     switch (attribs.target) {
     case GL_TEXTURE_2D:
@@ -193,11 +192,11 @@ void kywc_gl_texture_nearest(struct kywc_gl_texture *tex)
 /***************************opengl function***********************************/
 static struct kywc_gl_program color_program, tex_program;
 
-static bool egl_make_current(struct wlr_egl *egl);
+static bool egl_make_current(struct ky_egl *egl);
 
 static void opengl_init(struct wlr_renderer *renderer)
 {
-    _renderer.egl = wlr_gles2_renderer_get_egl(renderer);
+    _renderer.egl = ky_opengl_renderer_get_egl(renderer);
     _renderer.wlr_renderer = renderer;
     _renderer.shaders_text.builtin = "@builtin@";
     _renderer.shaders_text.buildin_ext = "@builtin_ext@";
@@ -225,18 +224,17 @@ static void opengl_init(struct wlr_renderer *renderer)
     kywc_gl_program_compile(&tex_program, default_common_vert_src, default_tex_frag_src);
 }
 
-static bool egl_is_current(struct wlr_egl *egl)
+static bool egl_is_current(struct ky_egl *egl)
 {
-    return eglGetCurrentContext() == wlr_egl_get_context(egl);
+    return eglGetCurrentContext() == egl->context;
 }
 
-static bool egl_make_current(struct wlr_egl *egl)
+static bool egl_make_current(struct ky_egl *egl)
 {
     if (egl_is_current(egl)) {
         return true;
     }
-    if (!eglMakeCurrent(wlr_egl_get_display(egl), EGL_NO_SURFACE, EGL_NO_SURFACE,
-                        wlr_egl_get_context(egl))) {
+    if (!eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl->context)) {
         wlr_log(WLR_ERROR, "eglMakeCurrent failed");
         return false;
     }
