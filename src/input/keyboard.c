@@ -138,6 +138,10 @@ static void handle_keyboard_state(struct keyboard_state *keyboard_state, uint32_
 {
 
     bool last_key_is_modifiers = modifiers != keyboard_state->last_modifiers;
+
+    keyboard_state->only_one_modifier = modifiers && keyboard_state->last_modifiers == 0 &&
+                                        !pressed && keyboard_state->npressed == 1;
+
     keyboard_state->last_modifiers = modifiers;
 
     if (last_key_is_modifiers && keyboard_state->last_keysym) {
@@ -170,7 +174,7 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     }
 
     if (!pressed) {
-        return false;
+        return keyboard->is_virtual ? false : bindings_handle_key_binding(keyboard_state, repeat);
     }
 
     for (size_t i = 0; i < len; ++i) {

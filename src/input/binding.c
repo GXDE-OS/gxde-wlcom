@@ -267,6 +267,15 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
         if (keyboard_state->last_modifiers ^ binding->modifiers) {
             continue;
         }
+
+        if (keyboard_state->only_one_modifier && !binding->keysym) {
+            if (binding->action) {
+                binding->action(binding, binding->data);
+            }
+            *repeat = false;
+            return true;
+        }
+
         if (keyboard_state->npressed < 1) {
             continue;
         }

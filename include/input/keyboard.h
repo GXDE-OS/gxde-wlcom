@@ -14,6 +14,7 @@ struct keyboard_state {
     uint32_t last_keysym;
     uint32_t last_modifiers;
     size_t npressed;
+    bool only_one_modifier;
 };
 
 struct keyboard {
