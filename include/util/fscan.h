@@ -17,4 +17,6 @@ void fscan_file(const char *scan_path, const char *subdir, const char *file_name
 
 char *fscan_search_keyword(FILE *fp, const char *keyword);
 
+time_t fscan_get_latest_mtime(const char *scan_path, const char *subdir);
+
 #endif /* _UTIL_FSCAN_H_ */

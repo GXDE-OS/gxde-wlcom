@@ -82,6 +82,82 @@ static struct theme dark = {
     .button_svg = button_dark_svg_src,
 };
 
+static int handle_manager_timer(void *data)
+{
+    time_t current_time, threshold;
+    struct icon_theme *current_theme = manager->icon_theme;
+    struct icon_theme *hicolor_theme = manager->hicolor_theme;
+    bool reload_desktop_file = false, reload_pixmaps_file = false,
+         reload_current_theme_file = false, reload_hicolor_theme_file = false;
+
+    current_time = time(NULL);
+    threshold = current_time - 6;
+    reload_desktop_file = icon_need_reload(APPPATH, NULL, threshold);
+    reload_pixmaps_file = icon_need_reload(PIXMAPPATH, NULL, threshold);
+    if (current_theme) {
+        reload_current_theme_file = icon_need_reload(ICONPATH, current_theme, threshold);
+    }
+    if (hicolor_theme) {
+        reload_hicolor_theme_file = icon_need_reload(ICONPATH, hicolor_theme, threshold);
+    }
+
+    if (reload_desktop_file || reload_pixmaps_file || reload_current_theme_file ||
+        reload_hicolor_theme_file) {
+        struct wl_list new_desktop_infos, old_desktop_infos, new_pixmaps_icons, old_pixmaps_icons;
+        struct icon_theme *new_icon_theme, *old_icon_theme, *new_hicolor_theme, *old_hicolor_theme;
+
+        if (reload_desktop_file) {
+            wl_list_init(&new_desktop_infos);
+            icon_load_desktop(&new_desktop_infos);
+            wl_list_init(&old_desktop_infos);
+            wl_list_insert_list(&old_desktop_infos, &manager->desktop_infos);
+            wl_list_init(&manager->desktop_infos);
+            wl_list_insert_list(&manager->desktop_infos, &new_desktop_infos);
+        }
+        if (reload_pixmaps_file) {
+            wl_list_init(&new_pixmaps_icons);
+            icon_load_pixmaps_path(&new_pixmaps_icons);
+            wl_list_init(&old_pixmaps_icons);
+            wl_list_insert_list(&old_pixmaps_icons, &manager->pixmaps_icons);
+            wl_list_init(&manager->pixmaps_icons);
+            wl_list_insert_list(&manager->pixmaps_icons, &new_pixmaps_icons);
+        }
+        if (reload_current_theme_file) {
+            old_icon_theme = manager->icon_theme;
+            new_icon_theme = icon_theme_load(old_icon_theme->name);
+            manager->icon_theme = new_icon_theme;
+        }
+        if (reload_hicolor_theme_file) {
+            old_hicolor_theme = manager->hicolor_theme;
+            new_hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
+            manager->hicolor_theme = new_hicolor_theme;
+        }
+
+        struct icon_theme *theme =
+            manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
+        if (theme) {
+            wl_signal_emit_mutable(&manager->events.icon_update, theme);
+        }
+
+        if (reload_desktop_file) {
+            desktop_infos_destroy(&old_desktop_infos);
+        }
+        if (reload_pixmaps_file) {
+            pixmaps_icon_destroy(&old_pixmaps_icons);
+        }
+        if (reload_current_theme_file) {
+            icon_theme_destroy(old_icon_theme);
+        }
+        if (reload_hicolor_theme_file) {
+            icon_theme_destroy(old_hicolor_theme);
+        }
+    }
+
+    wl_event_source_timer_update(manager->timer, 5000);
+
+    return 0;
+}
+
 static void destroy_theme_buffers(struct theme_buffer *bufs)
 {
     for (int i = 0; i < THEME_BUFFER_COUNT; i++) {
@@ -248,6 +324,14 @@ static void theme_destroy(struct theme *theme)
     wlr_buffer_drop(theme->shadow);
 }
 
+static void handle_display_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&manager->display_destroy.link);
+    if (manager->timer) {
+        wl_event_source_remove(manager->timer);
+    }
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
@@ -279,6 +363,8 @@ struct theme_manager *theme_manager_create(struct server *server)
     wl_signal_init(&manager->events.update);
     wl_signal_init(&manager->events.icon_update);
 
+    manager->display_destroy.notify = handle_display_destroy;
+    wl_display_add_destroy_listener(server->display, &manager->display_destroy);
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &manager->server_destroy);
 
@@ -313,6 +399,13 @@ struct theme_manager *theme_manager_create(struct server *server)
     theme_manager_write_config(manager, manager->current->theme_name);
     if (manager->icon_theme) {
         theme_manager_write_icon_config(manager, manager->icon_theme->name);
+    }
+
+    manager->timer = wl_event_loop_add_timer(server->event_loop, handle_manager_timer, NULL);
+    if (manager->timer) {
+        wl_event_source_timer_update(manager->timer, 5000);
+    } else {
+        kywc_log(KYWC_ERROR, "failed to add theme manager timer!");
     }
 
     return manager;

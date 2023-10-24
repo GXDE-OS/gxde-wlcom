@@ -7,6 +7,10 @@
 
 #include "theme.h"
 
+#define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
+#define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
+#define PIXMAPPATH "/usr/share/pixmaps"
+
 #define DEFAULT_ICON_THEME_NAME "hicolor"
 
 enum {
@@ -75,6 +79,7 @@ struct desktop_info {
 };
 
 struct theme_manager {
+    struct wl_event_source *timer;
     struct wl_list themes;
     struct theme *current;
     struct theme_override override;
@@ -96,6 +101,7 @@ struct theme_manager {
         struct wl_signal icon_update;
     } events;
 
+    struct wl_listener display_destroy;
     struct wl_listener server_destroy;
 };
 
@@ -126,5 +132,7 @@ void pixmaps_icon_destroy(struct wl_list *pixmap_icons);
 void icon_theme_destroy(struct icon_theme *theme);
 
 struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, bool search_parents);
+
+bool icon_need_reload(const char *path, struct icon_theme *theme, time_t threshold);
 
 #endif /* _THEME_P_H */

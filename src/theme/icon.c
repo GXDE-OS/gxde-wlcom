@@ -17,12 +17,7 @@
 
 // https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
 
-#define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
-#define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
-#define PIXMAPPATH "/usr/share/pixmaps"
-
 // TODO: XPM
-// look at the mtime of the toplevel icon directories
 
 static char *search_digit_from_str(const char *str)
 {
@@ -487,4 +482,45 @@ struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, boo
     }
 
     return NULL;
+}
+
+bool icon_need_reload(const char *path, struct icon_theme *theme, time_t threshold)
+{
+    time_t mtime = 0;
+    bool ret = false;
+
+    if (!theme) {
+        mtime = fscan_get_latest_mtime(path, "");
+        ret = mtime > threshold ? true : false;
+        return ret;
+    }
+
+    mtime = fscan_get_latest_mtime(path, theme->name);
+    ret = mtime > threshold ? true : false;
+    if (ret) {
+        return ret;
+    }
+    struct icon_subdir *tmp_subdir;
+    wl_list_for_each(tmp_subdir, &theme->icons_subdir, link) {
+        mtime = fscan_get_latest_mtime(path, tmp_subdir->subdir);
+        ret = mtime > threshold ? true : false;
+        if (ret) {
+            return ret;
+        }
+    }
+
+    struct icon_theme *tmp_theme;
+    wl_list_for_each(tmp_theme, &theme->parents_theme, link) {
+        mtime = fscan_get_latest_mtime(path, tmp_theme->name);
+        ret = mtime > threshold ? true : false;
+        if (ret) {
+            return ret;
+        }
+        ret = icon_need_reload(path, tmp_theme, threshold);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    return ret;
 }

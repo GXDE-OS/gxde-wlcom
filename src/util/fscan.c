@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "util/fscan.h"
 
@@ -215,4 +216,29 @@ char *fscan_search_keyword(FILE *fp, const char *keyword)
 
     free(line);
     return result;
+}
+
+time_t fscan_get_latest_mtime(const char *scan_path, const char *subdir)
+{
+    const char *path;
+    char *dir;
+    time_t latest_time = 0;
+
+    for (path = scan_path; path; path = fscan_next_path(path)) {
+        dir = fscan_build_dir(path, subdir);
+        if (!dir) {
+            continue;
+        }
+        struct stat sta;
+        if (stat(dir, &sta)) {
+            free(dir);
+            continue;
+        }
+        if (sta.st_mtime > latest_time) {
+            latest_time = sta.st_mtime;
+        }
+        free(dir);
+    }
+
+    return latest_time;
 }
