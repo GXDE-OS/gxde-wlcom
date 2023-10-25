@@ -388,6 +388,15 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     bool need_shadow = xdg_view->view.base.need_ssd;
     view_set_shadow(&xdg_view->view, need_shadow);
 
+    // HACK: workaround to remove ssd for ukui apps
+    if (xdg_view->view.base.need_ssd) {
+        const char *app_id = xdg_view->view.base.app_id;
+        if (app_id && (!strncmp(app_id, "kylin", 5) || !strncmp(app_id, "ukui", 4) ||
+                       !strncmp(app_id, "org.ukui", 8) || !strncmp(app_id, "peony", 5))) {
+            view_set_decoration(&xdg_view->view, false);
+        }
+    }
+
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
     xdg_view_handle_request_maximize(&xdg_view->request_maximize, NULL);
     xdg_view_handle_request_fullscreen(&xdg_view->request_fullscreen, NULL);
