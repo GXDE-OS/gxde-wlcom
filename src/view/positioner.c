@@ -533,7 +533,7 @@ static void place_insert_free_slot(struct place *place, int slot)
     int cur = -1;
     int next = place->free_list;
 
-#if 1 // 0 if just insert to head
+#if 0 // 0 if just insert to head
     while (next < slot && next >= 0) {
         cur = next;
         next = place->slots[cur].next;
