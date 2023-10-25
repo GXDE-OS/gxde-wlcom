@@ -161,6 +161,11 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
 struct wlr_texture *ky_opengl_texture_from_buffer(struct wlr_renderer *wlr_renderer,
                                                   struct wlr_buffer *buffer);
 
+bool wlr_buffer_is_wayland_buffer(struct wlr_buffer *buffer);
+
+struct wlr_texture *wlr_texture_from_wayland_buffer(struct ky_opengl_renderer *renderer,
+                                                    struct wlr_buffer *buffer);
+
 struct ky_opengl_texture *ky_opengl_texture_create(struct ky_opengl_renderer *renderer,
                                                    uint32_t width, uint32_t height);
 

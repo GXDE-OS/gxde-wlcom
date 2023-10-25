@@ -411,6 +411,9 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     egl->exts.IMG_context_priority =
         epoxy_extension_in_string(display_exts_str, "EGL_IMG_context_priority");
 
+    egl->exts.WL_bind_wayland_display =
+        epoxy_extension_in_string(display_exts_str, "EGL_WL_bind_wayland_display");
+
     kywc_log(KYWC_INFO, "Using EGL %d.%d", (int)major, (int)minor);
     kywc_log(KYWC_INFO, "Supported EGL display extensions: %s", display_exts_str);
     if (device_exts_str != NULL) {
@@ -868,6 +871,10 @@ static char *get_render_name(const char *name)
 
 int ky_egl_dup_drm_fd(struct ky_egl *egl)
 {
+    if (egl->gbm_device) {
+        return gbm_device_get_fd(egl->gbm_device);
+    }
+
     if (egl->device == EGL_NO_DEVICE_EXT ||
         (!egl->exts.EXT_device_drm && !egl->exts.EXT_device_drm_render_node)) {
         return -1;

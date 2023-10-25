@@ -27,6 +27,7 @@ struct ky_egl {
         bool EXT_image_dma_buf_import_modifiers;
         bool IMG_context_priority;
         bool EXT_create_context_robustness;
+        bool WL_bind_wayland_display;
 
         // Device extensions
         bool EXT_device_drm;

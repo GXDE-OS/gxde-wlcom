@@ -348,6 +348,8 @@ struct wlr_texture *ky_opengl_texture_from_buffer(struct wlr_renderer *wlr_rende
     struct wlr_dmabuf_attributes dmabuf;
     if (wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
         return gl_texture_from_dmabuf_buffer(renderer, buffer, &dmabuf);
+    } else if (wlr_buffer_is_wayland_buffer(buffer)) {
+        return wlr_texture_from_wayland_buffer(renderer, buffer);
     } else if (wlr_buffer_begin_data_ptr_access(buffer, WLR_BUFFER_DATA_PTR_ACCESS_READ, &data,
                                                 &format, &stride)) {
         struct wlr_texture *tex = gl_texture_from_pixels(wlr_renderer, format, stride,

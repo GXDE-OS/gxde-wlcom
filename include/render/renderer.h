@@ -5,8 +5,13 @@
 #ifndef _RENDERER_H_
 #define _RENDERER_H_
 
+#include <stdbool.h>
+#include <wayland-server-core.h>
+
 struct wlr_backend;
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend);
+
+bool ky_wayland_buffer_create(struct wl_display *wl_display, struct wlr_renderer *wlr_renderer);
 
 #endif /* _RENDER_H_ */

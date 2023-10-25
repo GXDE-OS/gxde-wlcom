@@ -880,7 +880,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         free(renderer);
         return NULL;
     }
-    if (!epoxy_extension_in_string(exts_str, "GL_EXT_unpack_subimage")) {
+    if (epoxy_gl_version() < 30 && !epoxy_extension_in_string(exts_str, "GL_EXT_unpack_subimage")) {
         kywc_log(KYWC_ERROR, "GL_EXT_unpack_subimage not supported");
         free(renderer);
         return NULL;
