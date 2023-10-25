@@ -679,6 +679,8 @@ void input_write_config(struct input *input)
         json_object_object_add(manager->config->json, input->name, config);
     }
 
+    json_object_object_add(config, "type", json_object_new_int(input->prop.type));
+
     if (state->mapped_to_output) {
         json_object_object_add(config, "mapped_to_output",
                                json_object_new_string(state->mapped_to_output));
