@@ -95,9 +95,9 @@ static const GLfloat verts[] = {
 static const struct wlr_renderer_impl renderer_impl;
 static const struct wlr_render_timer_impl render_timer_impl;
 
-static int64_t timespec_to_nsec(const struct timespec *a)
+bool wlr_renderer_is_opengl(struct wlr_renderer *wlr_renderer)
 {
-    return (int64_t)a->tv_sec * 1000000000 + a->tv_nsec;
+    return wlr_renderer->impl == &renderer_impl;
 }
 
 struct ky_opengl_renderer *ky_opengl_renderer_from_wlr_renderer(struct wlr_renderer *wlr_renderer)
@@ -644,6 +644,11 @@ static struct wlr_render_timer *gl_render_timer_create(struct wlr_renderer *wlr_
     ky_egl_restore_context(&prev_ctx);
 
     return &timer->base;
+}
+
+static int64_t timespec_to_nsec(const struct timespec *a)
+{
+    return (int64_t)a->tv_sec * 1000000000 + a->tv_nsec;
 }
 
 static int gl_get_render_time(struct wlr_render_timer *wlr_timer)

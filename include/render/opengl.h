@@ -143,6 +143,8 @@ void ky_opengl_matrix_projection(float mat[static 9], int width, int height,
 
 struct wlr_renderer *ky_opengl_renderer_create_with_drm_fd(int drm_fd);
 
+bool wlr_renderer_is_opengl(struct wlr_renderer *wlr_renderer);
+
 struct ky_opengl_renderer *ky_opengl_renderer_from_wlr_renderer(struct wlr_renderer *wlr_renderer);
 
 struct ky_egl *ky_opengl_renderer_get_egl(struct wlr_renderer *wlr_renderer);
@@ -158,6 +160,11 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
 
 struct wlr_texture *ky_opengl_texture_from_buffer(struct wlr_renderer *wlr_renderer,
                                                   struct wlr_buffer *buffer);
+
+struct ky_opengl_texture *ky_opengl_texture_create(struct ky_opengl_renderer *renderer,
+                                                   uint32_t width, uint32_t height);
+
+bool ky_opengl_texture_invalidate(struct ky_opengl_texture *texture);
 
 void ky_opengl_texture_destroy(struct ky_opengl_texture *texture);
 

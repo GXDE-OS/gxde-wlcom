@@ -103,7 +103,7 @@ static bool gl_texture_update_from_buffer(struct wlr_texture *wlr_texture,
     return true;
 }
 
-static bool gl_texture_invalidate(struct ky_opengl_texture *texture)
+bool ky_opengl_texture_invalidate(struct ky_opengl_texture *texture)
 {
     if (texture->image == EGL_NO_IMAGE_KHR) {
         return false;
@@ -170,7 +170,7 @@ static const struct wlr_texture_impl texture_impl = {
     .destroy = gl_texture_unref,
 };
 
-static struct ky_opengl_texture *gl_texture_create(struct ky_opengl_renderer *renderer,
+struct ky_opengl_texture *ky_opengl_texture_create(struct ky_opengl_renderer *renderer,
                                                    uint32_t width, uint32_t height)
 {
     struct ky_opengl_texture *texture = calloc(1, sizeof(*texture));
@@ -205,7 +205,7 @@ static struct wlr_texture *gl_texture_from_pixels(struct wlr_renderer *wlr_rende
         return NULL;
     }
 
-    struct ky_opengl_texture *texture = gl_texture_create(renderer, width, height);
+    struct ky_opengl_texture *texture = ky_opengl_texture_create(renderer, width, height);
     if (texture == NULL) {
         return NULL;
     }
@@ -253,7 +253,7 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
     }
 
     struct ky_opengl_texture *texture =
-        gl_texture_create(renderer, attribs->width, attribs->height);
+        ky_opengl_texture_create(renderer, attribs->width, attribs->height);
     if (texture == NULL) {
         return NULL;
     }
@@ -317,7 +317,7 @@ static struct wlr_texture *gl_texture_from_dmabuf_buffer(struct ky_opengl_render
     struct wlr_addon *addon = wlr_addon_find(&buffer->addons, renderer, &texture_addon_impl);
     if (addon != NULL) {
         struct ky_opengl_texture *texture = wl_container_of(addon, texture, buffer_addon);
-        if (!gl_texture_invalidate(texture)) {
+        if (!ky_opengl_texture_invalidate(texture)) {
             kywc_log(KYWC_ERROR, "Failed to invalidate texture");
             return false;
         }
