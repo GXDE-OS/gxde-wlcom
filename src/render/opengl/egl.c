@@ -575,8 +575,49 @@ static EGLDeviceEXT get_egl_device_from_drm_fd(struct ky_egl *egl, int drm_fd)
     return egl_device;
 }
 
+static bool preferred_drm_fd(int drm_fd)
+{
+    EGLDisplay display = EGL_NO_DISPLAY;
+    bool use_drm_fd = false;
+
+    struct gbm_device *gbm_device = gbm_create_device(drm_fd);
+    if (!gbm_device) {
+        kywc_log(KYWC_ERROR, "Failed to create GBM device");
+        goto out;
+    }
+
+    display = eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_KHR, gbm_device, NULL);
+    if (display == EGL_NO_DISPLAY) {
+        kywc_log(KYWC_ERROR, "Failed to create EGL display on GBM platform");
+        goto out;
+    }
+
+    if (!eglInitialize(display, NULL, NULL)) {
+        kywc_log(KYWC_ERROR, "Failed to initialize EGL on GBM platform");
+        goto out;
+    }
+
+    const char *vendor = eglQueryString(display, EGL_VENDOR);
+    use_drm_fd = vendor && strcmp(vendor, "ARM") == 0;
+
+out:
+    if (display != EGL_NO_DISPLAY) {
+        eglTerminate(display);
+    }
+    if (gbm_device) {
+        gbm_device_destroy(gbm_device);
+    }
+
+    return use_drm_fd;
+}
+
 static int open_render_node(int drm_fd)
 {
+    if (preferred_drm_fd(drm_fd)) {
+        kywc_log(KYWC_INFO, "Preferred using drm fd to create GBM");
+        return fcntl(drm_fd, F_DUPFD_CLOEXEC, 0);
+    }
+
     char *render_name = drmGetRenderDeviceNameFromFd(drm_fd);
     if (render_name == NULL) {
         // This can happen on split render/display platforms, fallback to primary node
