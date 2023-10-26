@@ -470,11 +470,6 @@ static void tex_round_corner_render(struct kywc_render_instance *instance,
         pad[2] = data->view->kywc_view->padding.right;
         pad[3] = data->view->kywc_view->padding.bottom;
     }
-    int border_width = 0;
-    int pad_t = pad[0] + border_width;
-    int pad_r = pad[1] + border_width;
-    int pad_l = pad[2] + border_width;
-    int pad_b = pad[3] + border_width;
 
     struct kywc_gl_texture *tex = render->main_surface_node->texture;
     struct kywc_gl_program *tex_round_corner_program = render->gl_program;
@@ -499,8 +494,8 @@ static void tex_round_corner_render(struct kywc_render_instance *instance,
                                    GL_FLOAT);
     kywc_gl_program_uniform_matrix4f(tex_round_corner_program, "matrix", ortho_proj_mat4);
 
-    kywc_gl_program_uniform2f(tex_round_corner_program, "top_left", x1 + pad_l, y1 + pad_t);
-    kywc_gl_program_uniform2f(tex_round_corner_program, "bottom_right", x2 - pad_r, y2 - pad_b);
+    kywc_gl_program_uniform2f(tex_round_corner_program, "top_left", x1 + pad[2], y1 + pad[0]);
+    kywc_gl_program_uniform2f(tex_round_corner_program, "bottom_right", x2 - pad[1], y2 - pad[3]);
 
     kywc_gl_program_uniform2f(tex_round_corner_program, "full_top_left", x1, y1);
     kywc_gl_program_uniform2f(tex_round_corner_program, "full_bottom_right", x2, y2);
@@ -509,6 +504,7 @@ static void tex_round_corner_render(struct kywc_render_instance *instance,
 
     kywc_gl_program_uniform1i(tex_round_corner_program, "corner_type", data->type);
 
+    int border_width = data->border_width > -1 ? data->border_width : data->conf->border_width;
     kywc_gl_program_uniform1f(tex_round_corner_program, "border_width",
                               border_width / target->scale);
 
