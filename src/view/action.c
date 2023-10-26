@@ -8,6 +8,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "view/action.h"
+#include "view/workspace.h"
 #include "view_p.h"
 
 static struct window_shortcut {
@@ -187,6 +188,8 @@ bool window_actions_create(struct view_manager *view_manager)
 enum {
     TOGGLE_SHOW_DESKTOP = 0,
     DO_SHOW_DESKTOP,
+    DO_RESTORE_DESKTOP,
+    MINIMIZE_ALL_VIEW,
 };
 
 static struct shortcut {
@@ -196,7 +199,24 @@ static struct shortcut {
 } shortcuts[] = {
     { "win+d", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
     { "win+h", "do show desktop", DO_SHOW_DESKTOP },
+    { "win+g", "do restore desktop", DO_RESTORE_DESKTOP },
+    { "win+m", "minimize all view", MINIMIZE_ALL_VIEW },
 };
+
+static void view_manager_minimize_all_view(void)
+{
+    /* minimize all view in current workspace */
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view *view;
+    wl_list_for_each_reverse(view, &workspace->views, link) {
+        /* skip views not mapped */
+        if (!view->base.mapped) {
+            continue;
+        }
+
+        kywc_view_set_minimized(&view->base, true);
+    }
+}
 
 static void shortcuts_action(struct key_binding *binding, void *data)
 {
@@ -208,6 +228,12 @@ static void shortcuts_action(struct key_binding *binding, void *data)
         break;
     case DO_SHOW_DESKTOP:
         view_manager_show_desktop(true, true);
+        break;
+    case DO_RESTORE_DESKTOP:
+        view_manager_show_desktop(false, true);
+        break;
+    case MINIMIZE_ALL_VIEW:
+        view_manager_minimize_all_view();
         break;
     }
 }
