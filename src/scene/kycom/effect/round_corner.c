@@ -470,7 +470,7 @@ static void tex_round_corner_render(struct kywc_render_instance *instance,
         pad[2] = data->view->kywc_view->padding.right;
         pad[3] = data->view->kywc_view->padding.bottom;
     }
-    int border_width = data->border_width > -1 ? data->border_width : data->conf->border_width;
+    int border_width = 0;
     int pad_t = pad[0] + border_width;
     int pad_r = pad[1] + border_width;
     int pad_l = pad[2] + border_width;
