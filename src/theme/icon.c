@@ -26,10 +26,9 @@
 
 static char *search_digit_from_str(const char *str)
 {
-    size_t i;
-    int len;
     const char *digit_str = NULL;
-    char *r;
+    int len = 0;
+    size_t i;
 
     for (i = 0; i < strlen(str) + 1; i++) {
         if (isdigit(str[i])) {
@@ -48,8 +47,7 @@ static char *search_digit_from_str(const char *str)
         }
     }
 
-    r = strndup(digit_str, len);
-    return r;
+    return strndup(digit_str, len);
 }
 
 static void get_icon_png_size(const char *path, struct icon_png *icon_png)
