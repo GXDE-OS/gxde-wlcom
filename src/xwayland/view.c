@@ -508,6 +508,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     view_set_shadow(&xwayland_view->view, true);
     xwayland_view_handle_request_maximize(&xwayland_view->request_maximize, NULL);
     xwayland_view_handle_request_fullscreen(&xwayland_view->request_fullscreen, NULL);
+    xwayland_view_handle_set_hints(&xwayland_view->set_hints, NULL);
 
     assert(wlr_xwayland_surface->surface == xwayland_view->view.surface);
     xwayland_view->commit.notify = xwayland_view_handle_commit;
