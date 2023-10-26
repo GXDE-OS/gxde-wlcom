@@ -1,8 +1,8 @@
 project(
   'kylin-wayland-compositor',
   'c',
-  # license: 'GPL-2.0-only',
-  version: '1.0.0',
+  license: 'MulanPSL-2.0',
+  version: '1.1.0',
   default_options: [
     'b_ndebug=if-release',
     'c_std=c11',
