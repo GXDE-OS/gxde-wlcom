@@ -406,15 +406,15 @@ void view_set_app_id(struct view *view, const char *app_id)
     wl_signal_emit_mutable(&kywc_view->events.app_id, NULL);
 }
 
-void view_set_decoration(struct view *view, bool need_ssd)
+void view_set_decoration(struct view *view, enum kywc_ssd ssd)
 {
     struct kywc_view *kywc_view = &view->base;
-    if (kywc_view->need_ssd == need_ssd) {
+    if (kywc_view->ssd == ssd) {
         return;
     }
 
-    kywc_view->need_ssd = need_ssd;
-    kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, need_ssd);
+    kywc_view->ssd = ssd;
+    kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, ssd);
 
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
 }

@@ -37,6 +37,15 @@ struct decoration {
 
 static struct decoration_manager *manager = NULL;
 
+static void decoration_apply(struct decoration *deco)
+{
+    if (!deco->view) {
+        return;
+    }
+
+    view_set_decoration(deco->view, deco->should_use_ssd ? KYWC_SSD_ALL : KYWC_SSD_NONE);
+}
+
 static void decoration_handle_surface_map(struct wl_listener *listener, void *data)
 {
     struct decoration *deco = wl_container_of(listener, deco, surface_map);
@@ -45,9 +54,7 @@ static void decoration_handle_surface_map(struct wl_listener *listener, void *da
     wl_list_init(&deco->surface_map.link);
 
     deco->view = view_try_from_wlr_surface(deco->surface);
-    if (deco->view) {
-        view_set_decoration(deco->view, deco->should_use_ssd);
-    }
+    decoration_apply(deco);
 }
 
 static struct decoration *decoration_from_surface(struct wlr_surface *surface)
@@ -139,9 +146,7 @@ static void handle_xdg_deco_request_mode(struct wl_listener *listener, void *dat
         }
     }
 
-    if (deco->view) {
-        view_set_decoration(deco->view, deco->should_use_ssd);
-    }
+    decoration_apply(deco);
 }
 
 static void xdg_toplevel_decoration(struct wl_listener *listener, void *data)
@@ -180,9 +185,7 @@ static void handle_server_deco_apply_mode(struct wl_listener *listener, void *da
         wlr_xdg_toplevel_decoration_v1_set_mode(deco->xdg_deco, xdg_mode);
     }
 
-    if (deco->view) {
-        view_set_decoration(deco->view, deco->should_use_ssd);
-    }
+    decoration_apply(deco);
 }
 
 static void server_decoration(struct wl_listener *listener, void *data)

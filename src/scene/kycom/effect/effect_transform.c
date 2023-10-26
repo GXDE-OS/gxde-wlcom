@@ -136,11 +136,12 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
     struct kywc_transform_node_render_instance *render = wl_container_of(instance, render, base);
 
     struct kywc_effect_view *view = render->node->kywc_transform_data->view;
-    if (kywc_transform_data.view->kywc_view->need_ssd) {
+    if (kywc_transform_data.view->kywc_view->ssd == KYWC_SSD_ALL) {
         struct kywc_render_target *snap_target = kywc_effect_view_get_target(view);
         struct kywc_node *source_node = &view->view_node->node;
         kywc_transform_data.view->view_snap_buffer = &snap_target->buffer;
-        struct kywc_gl_texture *gl_texture = kywc_node_generate_texture(source_node, snap_target, 1.0);
+        struct kywc_gl_texture *gl_texture =
+            kywc_node_generate_texture(source_node, snap_target, 1.0);
         if (!gl_texture) {
             kywc_log(KYWC_INFO, "texture is null");
         }
@@ -164,7 +165,7 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
         color[3] = transform_get_alpha(kywc_transform_data.time_factor);
     }
     kywc_target_render_begin(target);
-    if (kywc_transform_data.view->kywc_view->need_ssd) {
+    if (kywc_transform_data.view->kywc_view->ssd == KYWC_SSD_ALL) {
         struct kywc_gl_texture *gl_texture = kywc_transform_data.view->view_snap_buffer->fb_tex;
         kywc_target_render_texture(gl_texture, target, &geometry, color, RENDER_FLAG_CACHED);
     } else {
@@ -190,8 +191,7 @@ static void node_get_bounding_box(const struct kywc_node *node, struct wlr_box *
                   kywc_transform_data.padding.right;
 }
 
-static void node_get_opaque_region(const struct kywc_node *node,
-                                   pixman_region32_t *opaque_region)
+static void node_get_opaque_region(const struct kywc_node *node, pixman_region32_t *opaque_region)
 {
     struct kywc_transform_geometry_node *tg_node = wl_container_of(node, tg_node, node);
 

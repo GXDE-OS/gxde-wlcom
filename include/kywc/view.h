@@ -36,6 +36,12 @@ enum kywc_tile {
     KYWC_TILE_ALL,
 };
 
+enum kywc_ssd {
+    KYWC_SSD_NONE = 0,
+    KYWC_SSD_EXTEND_ONLY,
+    KYWC_SSD_ALL,
+};
+
 struct kywc_view {
     // TODO: hint mask for dock, desktop and others
 
@@ -56,7 +62,7 @@ struct kywc_view {
     int32_t min_width, min_height;
     int32_t max_width, max_height;
 
-    bool need_ssd;
+    enum kywc_ssd ssd;
     bool need_shadow;
     bool has_initial_position;
     bool has_round_corner;

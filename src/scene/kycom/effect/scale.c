@@ -124,8 +124,8 @@ static void handle_add_effect(struct kywc_effect_view *view)
         kywc_transform_geometry_node_create(&kywc_transform_data);
     current_transform_node = transform_node;
 
-    bool ret = kywc_node_transform_add(&kywc_transform_data.view_node->node, &transform_node->node, 1,
-                        kywc_transform_name);
+    bool ret = kywc_node_transform_add(&kywc_transform_data.view_node->node, &transform_node->node,
+                                       1, kywc_transform_name);
     if (!ret) {
         kywc_transform_geometry_node_destroy(transform_node);
     }
@@ -158,7 +158,7 @@ static void maximize_update_box(struct kywc_effect_view *view)
 
     scale_get_view_geometry_box(view, &dst_box);
     kywc_effect_view_get_geometry_box(view, &last_box);
-    if (kywc_view->need_ssd) {
+    if (kywc_view->ssd == KYWC_SSD_ALL) {
         if (kywc_view->maximized) {
             scale_update_ssd_box(&dst_box, &view->dst_box, view);
             scale_update_ssd_box(&last_box, &view->last_box, view);
@@ -215,7 +215,7 @@ static void minimize_update_box(struct kywc_effect_view *view)
     dst_box.height = 10;
     dst_box.width = 10;
     scale_get_view_geometry_box(view, &last_box);
-    if (kywc_view->need_ssd) {
+    if (kywc_view->ssd == KYWC_SSD_ALL) {
         if (kywc_view->minimized) {
             scale_update_ssd_box(&dst_box, &kywc_transform_data.view->dst_box, view);
             scale_update_ssd_box(&last_box, &kywc_transform_data.view->last_box, view);

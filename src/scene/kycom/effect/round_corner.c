@@ -765,7 +765,7 @@ static void handle_view_activate(struct wl_listener *listener, void *data)
 static void handle_view_decoration(struct wl_listener *listener, void *data)
 {
     struct round_corner_data *rc_data = wl_container_of(listener, rc_data, handle_view_decoration);
-    if (!rc_data->view->kywc_view->need_ssd) {
+    if (rc_data->view->kywc_view->ssd != KYWC_SSD_ALL) {
         rc_data->type = ALL_ROUND_CORNER;
         rc_data->border_width = 0;
     } else {

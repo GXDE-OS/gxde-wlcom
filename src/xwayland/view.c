@@ -393,7 +393,7 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
         }
     }
 
-    view_set_decoration(&xwayland_view->view, use_ssd);
+    view_set_decoration(&xwayland_view->view, use_ssd ? KYWC_SSD_ALL : KYWC_SSD_NONE);
 }
 
 static void xwayland_view_handle_output_update_usable_area(struct wl_listener *listener, void *data)

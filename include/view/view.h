@@ -151,7 +151,7 @@ void view_set_title(struct view *view, const char *title);
 
 void view_set_app_id(struct view *view, const char *app_id);
 
-void view_set_decoration(struct view *view, bool need_ssd);
+void view_set_decoration(struct view *view, enum kywc_ssd ssd);
 
 void view_set_shadow(struct view *view, bool need_shadow);
 
