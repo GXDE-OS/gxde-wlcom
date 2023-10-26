@@ -153,6 +153,7 @@ void fscan_file(const char *scan_path, const char *subdir, const char *file_name
 
         full = fscan_build_fullname(dir, "", file_name);
         if (!full) {
+            free(dir);
             continue;
         }
 
