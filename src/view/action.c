@@ -208,7 +208,9 @@ static void view_manager_minimize_all_view(void)
     /* minimize all view in current workspace */
     struct workspace *workspace = workspace_manager_get_current();
     struct view *view;
-    wl_list_for_each_reverse(view, &workspace->views, link) {
+    struct view_proxy *view_proxy;
+    wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
+        view = view_proxy->view;
         /* skip views not mapped */
         if (!view->base.mapped) {
             continue;

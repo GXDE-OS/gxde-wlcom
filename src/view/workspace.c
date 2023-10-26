@@ -276,7 +276,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace->position = position;
     workspace->name = name ? strdup(name) : kywc_identifier_generate("Desktop %d", position + 1);
 
-    wl_list_init(&workspace->views);
+    wl_list_init(&workspace->view_proxies);
     wl_signal_init(&workspace->events.activate);
     wl_signal_init(&workspace->events.destroy);
     wl_signal_init(&workspace->events.view_enter);
@@ -327,10 +327,14 @@ static void fix_workspace(struct workspace *workspace)
     /* move all views to current activated workspace */
     struct workspace *current = workspace_manager_get_current();
 
-    struct view *view, *tmp;
-    wl_list_for_each_safe(view, tmp, &workspace->views, link) {
+    struct view_proxy *view_proxy, *tmp;
+    wl_list_for_each_safe(view_proxy, tmp, &workspace->view_proxies, workspace_link) {
+        if (view_proxy->view->current_proxy != view_proxy) {
+            view_proxy_destroy(view_proxy);
+            continue;
+        }
         // TODO: fullscreen views
-        view_set_workspace(view, current);
+        view_set_workspace(view_proxy->view, current);
     }
 }
 

@@ -99,13 +99,13 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         break;
     }
 
+    /* reparent view tree first, workspace may turn null */
+    ky_scene_node_reparent(node, layer->tree);
     view_set_workspace(surface->view, surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL
                                           ? workspace_manager_get_current()
                                           : NULL);
     surface->view->base.activatable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL;
     surface->view->base.focusable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL;
-
-    ky_scene_node_reparent(node, layer->tree);
 }
 
 static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surface, bool enabled);

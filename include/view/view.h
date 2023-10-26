@@ -73,13 +73,14 @@ struct view {
     struct kywc_view base;
     struct wlr_surface *surface;
 
-    /* insert to workspace */
-    struct wl_list link;
-
     /* parent and children */
     struct view *parent;
     struct wl_list parent_link;
     struct wl_list children;
+
+    /* view in workspace */
+    struct view_proxy *current_proxy;
+    struct wl_list view_proxies;
 
     struct ky_scene_tree *tree;
     struct ky_scene_tree *content;
@@ -144,6 +145,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data);
 void view_map(struct view *view);
 
 void view_unmap(struct view *view);
+
+void view_proxy_destroy(struct view_proxy *view_proxy);
 
 void view_destroy(struct view *view);
 

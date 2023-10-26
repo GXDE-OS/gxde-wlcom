@@ -13,7 +13,7 @@ struct workspace {
     /* layers in workspacec, below, nornal and above */
     struct view_layer layers[3];
 
-    struct wl_list views;
+    struct wl_list view_proxies;
 
     uint32_t position;
     bool activated;
@@ -27,6 +27,18 @@ struct workspace {
         struct wl_signal activate;
         struct wl_signal destroy;
     } events;
+};
+
+struct view_proxy {
+    /* insert to view view_proxies */
+    struct wl_list view_link;
+    /* insert to workspace view_proxies */
+    struct wl_list workspace_link;
+
+    struct view *view;
+    struct workspace *workspace;
+    /* use to mount view tree */
+    struct ky_scene_tree *tree;
 };
 
 bool workspace_manager_create(struct view_manager *view_manager);

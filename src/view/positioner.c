@@ -821,7 +821,7 @@ static void entry_handle_view_workspace(struct wl_listener *listener, void *data
         return;
     }
 
-    /* add to worksapce again */
+    /* add to workspace again */
     if (!entry->place) {
         wl_signal_add(&kywc_view->events.premap, &entry->view_premap);
         wl_signal_add(&kywc_view->events.position, &entry->view_position);
