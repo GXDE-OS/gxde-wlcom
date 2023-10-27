@@ -845,12 +845,6 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         return NULL;
     }
 
-    const char *exts_str = (const char *)glGetString(GL_EXTENSIONS);
-    if (exts_str == NULL) {
-        kywc_log(KYWC_ERROR, "Failed to get GL_EXTENSIONS");
-        return NULL;
-    }
-
     struct ky_opengl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (renderer == NULL) {
         return NULL;
@@ -861,49 +855,46 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     wl_list_init(&renderer->textures);
 
     renderer->egl = egl;
-    renderer->exts_str = exts_str;
     renderer->drm_fd = -1;
 
     kywc_log(KYWC_INFO, "Creating OpenGL renderer");
     kywc_log(KYWC_INFO, "Using %s", glGetString(GL_VERSION));
     kywc_log(KYWC_INFO, "GL vendor: %s", glGetString(GL_VENDOR));
     kywc_log(KYWC_INFO, "GL renderer: %s", glGetString(GL_RENDERER));
-    kywc_log(KYWC_INFO, "Supported OpenGL extensions: %s", exts_str);
 
     if (!renderer->egl->exts.EXT_image_dma_buf_import) {
         kywc_log(KYWC_ERROR, "EGL_EXT_image_dma_buf_import not supported");
         free(renderer);
         return NULL;
     }
-    if (!epoxy_extension_in_string(exts_str, "GL_EXT_texture_format_BGRA8888")) {
-        kywc_log(KYWC_ERROR, "BGRA8888 format not supported by GL");
+    if (egl->is_gles && !epoxy_has_gl_extension("GL_EXT_texture_format_BGRA8888")) {
+        kywc_log(KYWC_ERROR, "BGRA8888 format not supported by GLES");
         free(renderer);
         return NULL;
     }
-    if (epoxy_gl_version() < 30 && !epoxy_extension_in_string(exts_str, "GL_EXT_unpack_subimage")) {
+    if (egl->is_gles && epoxy_gl_version() < 30 &&
+        !epoxy_has_gl_extension("GL_EXT_unpack_subimage")) {
         kywc_log(KYWC_ERROR, "GL_EXT_unpack_subimage not supported");
         free(renderer);
         return NULL;
     }
 
     renderer->exts.EXT_read_format_bgra =
-        epoxy_extension_in_string(exts_str, "GL_EXT_read_format_bgra");
+        !egl->is_gles || epoxy_has_gl_extension("GL_EXT_read_format_bgra");
 
     renderer->exts.EXT_texture_type_2_10_10_10_REV =
-        epoxy_extension_in_string(exts_str, "GL_EXT_texture_type_2_10_10_10_REV");
+        epoxy_has_gl_extension("GL_EXT_texture_type_2_10_10_10_REV");
 
     renderer->exts.OES_texture_half_float_linear =
-        epoxy_extension_in_string(exts_str, "GL_OES_texture_half_float_linear");
+        epoxy_has_gl_extension("GL_OES_texture_half_float_linear");
 
-    renderer->exts.EXT_texture_norm16 =
-        epoxy_extension_in_string(exts_str, "GL_EXT_texture_norm16");
+    renderer->exts.EXT_texture_norm16 = epoxy_has_gl_extension("GL_EXT_texture_norm16");
 
-    renderer->exts.OES_egl_image_external =
-        epoxy_extension_in_string(exts_str, "GL_OES_EGL_image_external");
+    renderer->exts.OES_egl_image_external = epoxy_has_gl_extension("GL_OES_EGL_image_external");
 
-    renderer->exts.OES_egl_image = epoxy_extension_in_string(exts_str, "GL_OES_EGL_image");
+    renderer->exts.OES_egl_image = epoxy_has_gl_extension("GL_OES_EGL_image");
 
-    renderer->exts.KHR_robustness = epoxy_extension_in_string(exts_str, "GL_KHR_robustness");
+    renderer->exts.KHR_robustness = epoxy_has_gl_extension("GL_KHR_robustness");
     if (renderer->exts.KHR_robustness) {
         GLint notif_strategy = 0;
         glGetIntegerv(GL_RESET_NOTIFICATION_STRATEGY_KHR, &notif_strategy);
@@ -917,10 +908,9 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         }
     }
 
-    renderer->exts.EXT_disjoint_timer_query =
-        epoxy_extension_in_string(exts_str, "GL_EXT_disjoint_timer_query");
+    renderer->exts.EXT_disjoint_timer_query = epoxy_has_gl_extension("GL_EXT_disjoint_timer_query");
 
-    renderer->exts.KHR_debug = epoxy_extension_in_string(exts_str, "GL_KHR_debug");
+    renderer->exts.KHR_debug = epoxy_has_gl_extension("GL_KHR_debug");
     if (renderer->exts.KHR_debug) {
         glEnable(GL_DEBUG_OUTPUT_KHR);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);

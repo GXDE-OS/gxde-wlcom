@@ -17,7 +17,8 @@ struct ky_egl {
     EGLDeviceEXT device; // may be EGL_NO_DEVICE_EXT
     struct gbm_device *gbm_device;
 
-    EGLenum api; // EGL_OPENGL_API or EGL_OPENGL_ES_API
+    // opengl or opengles
+    bool is_gles;
 
     // https://registry.khronos.org/EGL/extensions/
     struct {

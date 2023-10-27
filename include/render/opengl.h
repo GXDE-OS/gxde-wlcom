@@ -49,7 +49,6 @@ struct ky_opengl_renderer {
     struct ky_egl *egl;
     int drm_fd;
 
-    const char *exts_str;
     struct {
         bool EXT_read_format_bgra;
         bool KHR_debug;

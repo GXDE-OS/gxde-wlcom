@@ -327,13 +327,6 @@ static struct ky_egl *egl_create(void)
         eglDebugMessageControlKHR(egl_log, debug_attribs);
     }
 
-    // TODO: check current gpu and choose api
-    if (eglBindAPI(EGL_OPENGL_ES_API) == EGL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to bind to the OpenGL API");
-        free(egl);
-        return NULL;
-    }
-
     return egl;
 }
 
@@ -427,6 +420,121 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     return true;
 }
 
+static void maybe_destroy_context(struct ky_egl *egl)
+{
+    if (egl->context == EGL_NO_CONTEXT) {
+        return;
+    }
+
+    ky_egl_unset_current(egl);
+    eglDestroyContext(egl->display, egl->context);
+    egl->context = EGL_NO_CONTEXT;
+}
+
+static bool try_opengl_api(struct ky_egl *egl)
+{
+    if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE) {
+        return false;
+    }
+
+    size_t atti = 0;
+    EGLint attribs[11];
+
+    /* not EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR
+     * otherwise we need create VAO and VBO in core profile
+     */
+    attribs[atti++] = EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR;
+    attribs[atti++] = EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT_KHR;
+    attribs[atti++] = EGL_CONTEXT_MAJOR_VERSION_KHR;
+    attribs[atti++] = 3;
+    attribs[atti++] = EGL_CONTEXT_MINOR_VERSION_KHR;
+    attribs[atti++] = 2;
+
+    // Request a high priority context if possible
+    if (egl->exts.IMG_context_priority) {
+        attribs[atti++] = EGL_CONTEXT_PRIORITY_LEVEL_IMG;
+        attribs[atti++] = EGL_CONTEXT_PRIORITY_HIGH_IMG;
+    }
+
+    if (egl->exts.EXT_create_context_robustness) {
+        // not EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT
+        attribs[atti++] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_KHR;
+        attribs[atti++] = EGL_LOSE_CONTEXT_ON_RESET_EXT;
+    }
+
+    attribs[atti++] = EGL_NONE;
+    assert(atti <= sizeof(attribs) / sizeof(attribs[0]));
+
+    egl->context = eglCreateContext(egl->display, EGL_NO_CONFIG_KHR, EGL_NO_CONTEXT, attribs);
+    if (egl->context == EGL_NO_CONTEXT) {
+        egl->context = eglCreateContext(egl->display, EGL_NO_CONFIG_KHR, EGL_NO_CONTEXT, NULL);
+    }
+    if (egl->context == EGL_NO_CONTEXT) {
+        return false;
+    }
+
+    if (!ky_egl_make_current(egl)) {
+        kywc_log(KYWC_ERROR, "Failed to make EGL context current with GL\n");
+        maybe_destroy_context(egl);
+        return false;
+    }
+
+    /* needs at least GL 2.1, if the GL version is less than 2.1,
+     * drop the context we created, it's useless.
+     */
+    int gl_version = epoxy_gl_version();
+    if (gl_version < 21) {
+        kywc_log(KYWC_ERROR, "GL version is not sufficient (required 21, found %i)", gl_version);
+        maybe_destroy_context(egl);
+        return false;
+    }
+
+    return true;
+}
+
+static bool try_gles_api(struct ky_egl *egl)
+{
+    if (eglBindAPI(EGL_OPENGL_ES_API) == EGL_FALSE) {
+        return false;
+    }
+
+    size_t atti = 0;
+    EGLint attribs[7];
+
+    attribs[atti++] = EGL_CONTEXT_CLIENT_VERSION;
+    attribs[atti++] = 2; // opengles 2
+
+    // Request a high priority context if possible
+    // Try to reschedule all of our rendering to be completed first. If it
+    // fails, it will fallback to the default priority (MEDIUM).
+    if (egl->exts.IMG_context_priority) {
+        attribs[atti++] = EGL_CONTEXT_PRIORITY_LEVEL_IMG;
+        attribs[atti++] = EGL_CONTEXT_PRIORITY_HIGH_IMG;
+    }
+
+    if (egl->exts.EXT_create_context_robustness) {
+        attribs[atti++] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT;
+        attribs[atti++] = EGL_LOSE_CONTEXT_ON_RESET_EXT;
+    }
+
+    attribs[atti++] = EGL_NONE;
+    assert(atti <= sizeof(attribs) / sizeof(attribs[0]));
+
+    egl->context = eglCreateContext(egl->display, EGL_NO_CONFIG_KHR, EGL_NO_CONTEXT, attribs);
+    if (egl->context == EGL_NO_CONTEXT) {
+        kywc_log(KYWC_ERROR, "Failed to create EGL context");
+        return false;
+    }
+
+    if (!ky_egl_make_current(egl)) {
+        kywc_log(KYWC_ERROR, "Failed to make EGL context current with GLES2");
+        maybe_destroy_context(egl);
+        return false;
+    }
+
+    return true;
+}
+
 static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
 {
     EGLint display_attribs[3] = { 0 };
@@ -453,40 +561,14 @@ static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
         return false;
     }
 
-    size_t atti = 0;
-    EGLint attribs[7];
-    /*
-     * token EGL_CONTEXT_CLIENT_VERSION is an alias for EGL_CONTEXT_MAJOR_VERSION
-     */
-    attribs[atti++] = EGL_CONTEXT_CLIENT_VERSION;
-    attribs[atti++] = 2; // opengles 2
-
-    // Request a high priority context if possible
-    // TODO: only do this if we're running as the DRM master
-    bool request_high_priority = egl->exts.IMG_context_priority;
-
-    // Try to reschedule all of our rendering to be completed first. If it
-    // fails, it will fallback to the default priority (MEDIUM).
-    if (request_high_priority) {
-        attribs[atti++] = EGL_CONTEXT_PRIORITY_LEVEL_IMG;
-        attribs[atti++] = EGL_CONTEXT_PRIORITY_HIGH_IMG;
-    }
-
-    if (egl->exts.EXT_create_context_robustness) {
-        attribs[atti++] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT;
-        attribs[atti++] = EGL_LOSE_CONTEXT_ON_RESET_EXT;
-    }
-
-    attribs[atti++] = EGL_NONE;
-    assert(atti <= sizeof(attribs) / sizeof(attribs[0]));
-
-    egl->context = eglCreateContext(egl->display, EGL_NO_CONFIG_KHR, EGL_NO_CONTEXT, attribs);
-    if (egl->context == EGL_NO_CONTEXT) {
-        kywc_log(KYWC_ERROR, "Failed to create EGL context");
+    // try opengl first
+    if (!try_opengl_api(egl) && !try_gles_api(egl)) {
+        kywc_log(KYWC_ERROR, "Cannot use neither GL nor GLES2\n");
         return false;
     }
+    egl->is_gles = !epoxy_is_desktop_gl();
 
-    if (request_high_priority) {
+    if (egl->exts.IMG_context_priority) {
         EGLint priority = EGL_CONTEXT_PRIORITY_MEDIUM_IMG;
         eglQueryContext(egl->display, egl->context, EGL_CONTEXT_PRIORITY_LEVEL_IMG, &priority);
         if (priority != EGL_CONTEXT_PRIORITY_HIGH_IMG) {
@@ -496,14 +578,7 @@ static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
         }
     }
 
-    /*
-     * epoxy_has_egl_extension need eglGetCurrentDisplay to get display
-     * eglMakeCurrent is needed to set context display
-     */
-    if (ky_egl_make_current(egl)) {
-        init_dmabuf_formats(egl);
-        ky_egl_unset_current(egl);
-    }
+    init_dmabuf_formats(egl);
 
     return true;
 }

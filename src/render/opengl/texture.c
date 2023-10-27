@@ -215,7 +215,16 @@ static struct wlr_texture *gl_texture_from_pixels(struct wlr_renderer *wlr_rende
 
     GLint internal_format = fmt->gl_internalformat;
     if (!internal_format) {
+        /* on OpenGL ES there is a requirement that internalFormat == format */
         internal_format = fmt->gl_format;
+    }
+    /* fix the internal_format in OpenGL */
+    if (!renderer->egl->is_gles) {
+        if (internal_format == GL_BGRA_EXT || internal_format == GL_ABGR_EXT) {
+            internal_format = GL_RGBA;
+        } else if (internal_format == GL_BGR) {
+            internal_format = GL_RGB;
+        }
     }
 
     struct ky_egl_context prev_ctx;
