@@ -5,5 +5,5 @@ shared_module(
 
   include_directories : wlcom_inc,
   install_dir: plugindir,
-  install: true
+  install: false 
 )
