@@ -620,7 +620,6 @@ static void effect_blur_generate_render_task(const struct kywc_node *node,
     pixman_region32_intersect(&node_blur_region, &node_blur_region, &extern_damage);
     if (!pixman_region32_not_empty(&node_blur_region)) {
         pixman_region32_fini(&extern_damage);
-        kywc_log(KYWC_INFO, "Node translucent region don't have damage.");
         goto final;
     }
 

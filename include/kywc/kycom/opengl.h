@@ -85,7 +85,10 @@ struct kywc_gl_buffer {
     GLuint fb;
     int32_t width, height;
     struct kywc_gl_texture *fb_tex;
+    struct wlr_buffer *wlr_buffer;
 };
+
+struct wlr_renderer *kywc_gl_get_wlr_renderer(void);
 
 void kywc_gl_push_debug(void);
 
