@@ -4,6 +4,8 @@
 
 #include <stdlib.h>
 
+#include <wlr/render/pixman.h>
+
 #include "painter.h"
 #include "scene/scene.h"
 #include "theme.h"
@@ -487,6 +489,11 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 bool shadow_manager_create(struct view_manager *view_manager)
 {
+    struct wlr_renderer *renderer = view_manager->server->renderer;
+    if (wlr_renderer_is_pixman(renderer)) {
+        return false;
+    }
+
     struct shadow_manager *manager = calloc(1, sizeof(struct shadow_manager));
     if (!manager) {
         return false;
