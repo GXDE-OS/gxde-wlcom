@@ -2,9 +2,11 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#include <linux/input-event-codes.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <linux/input-event-codes.h>
+#include <wlr/types/wlr_output.h>
 
 #include <kywc/binding.h>
 
@@ -38,7 +40,7 @@ struct item_view {
     struct ky_scene_node *icon_node;
     struct ky_scene_node *text_node;
 
-    int text_witdh, text_height;
+    int text_width, text_height;
     float scale;
 
     struct wl_listener view_destroy;
@@ -291,7 +293,7 @@ static void update_title_text(struct item_view *item_view)
         switcher->width = text_width + DEFAULT_ICON_AREA_WIDTH;
     }
 
-    item_view->text_witdh = text_width;
+    item_view->text_width = text_width;
     item_view->text_height = text_height;
 }
 
@@ -451,7 +453,7 @@ static void show_current_page_items(int index)
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
         /* set text position */
         int text_x = DEFAULT_ICON_AREA_WIDTH +
-                     (switcher->width - DEFAULT_ICON_AREA_WIDTH - item_view->text_witdh) / 2;
+                     (switcher->width - DEFAULT_ICON_AREA_WIDTH - item_view->text_width) / 2;
         int text_y = (ITEM_HEIGHT - item_view->text_height) / 2;
         ky_scene_node_set_position(item_view->text_node, text_x, text_y);
 
@@ -560,7 +562,7 @@ static bool show_maximize_switcher(void)
     int y = usable_area->y + usable_area->height / 2 - height / 2;
     ky_scene_rect_set_size(switcher->background, width, height);
     ky_scene_node_set_position(node, x, y);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(switcher->tree), true);
+    ky_scene_node_set_enabled(node, true);
     switcher->output_frame.notify = handle_output_frame;
     wl_signal_add(&kywc_output->events.frame, &switcher->output_frame);
 
