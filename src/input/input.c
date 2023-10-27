@@ -220,8 +220,8 @@ static void handle_new_input(struct wl_listener *listener, void *data)
 {
     struct wlr_input_device *wlr_input = data;
 
-    const char *name = kywc_identifier_generate("%d:%d:%s", wlr_input->vendor, wlr_input->product,
-                                                wlr_input->name);
+    const char *name = kywc_identifier_generate("%d:%d:%d:%s", wlr_input->type, wlr_input->vendor,
+                                                wlr_input->product, wlr_input->name);
 
     struct input *input = input_create(name, wlr_input);
     if (!input) {
