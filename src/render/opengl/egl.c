@@ -192,10 +192,10 @@ static int get_egl_dmabuf_modifiers(struct ky_egl *egl, EGLint format, uint64_t 
 
 static void init_dmabuf_formats(struct ky_egl *egl)
 {
-    char *env = getenv("ky_egl_NO_MODIFIERS");
+    char *env = getenv("KYWC_EGL_NO_MODIFIERS");
     bool no_modifiers = env && strcmp(env, "1") == 0;
     if (no_modifiers) {
-        kywc_log(KYWC_INFO, "ky_egl_NO_MODIFIERS set, disabling modifiers for EGL");
+        kywc_log(KYWC_INFO, "KYWC_EGL_NO_MODIFIERS set, disabling modifiers for EGL");
     }
 
     EGLint *formats;
@@ -373,12 +373,12 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
         }
 
         if (epoxy_extension_in_string(device_exts_str, "EGL_MESA_device_software")) {
-            char *env = getenv("WLR_RENDERER_ALLOW_SOFTWARE");
+            char *env = getenv("KYWC_RENDERER_ALLOW_SOFTWARE");
             if (env && strcmp(env, "1") == 0) {
                 kywc_log(KYWC_INFO, "Using software rendering");
             } else {
                 kywc_log(KYWC_ERROR, "Software rendering detected, please use "
-                                     "the WLR_RENDERER_ALLOW_SOFTWARE environment variable "
+                                     "the KYWC_RENDERER_ALLOW_SOFTWARE environment variable "
                                      "to proceed");
                 return false;
             }
@@ -561,11 +561,25 @@ static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
         return false;
     }
 
-    // try opengl first
-    if (!try_opengl_api(egl) && !try_gles_api(egl)) {
-        kywc_log(KYWC_ERROR, "Cannot use neither GL nor GLES2\n");
-        return false;
+    const char *api = getenv("KYWC_RENDERER");
+    if (api && strcmp(api, "gl") == 0) {
+        if (!try_opengl_api(egl)) {
+            kywc_log(KYWC_ERROR, "Cannot use GL by env\n");
+            return false;
+        }
+    } else if (api && strcmp(api, "gles2") == 0) {
+        if (!try_gles_api(egl)) {
+            kywc_log(KYWC_ERROR, "Cannot use GLES2 by env\n");
+            return false;
+        }
+    } else {
+        // try gles2 first
+        if (!try_gles_api(egl) && !try_opengl_api(egl)) {
+            kywc_log(KYWC_ERROR, "Cannot use neither GL nor GLES2\n");
+            return false;
+        }
     }
+
     egl->is_gles = !epoxy_is_desktop_gl();
 
     if (egl->exts.IMG_context_priority) {

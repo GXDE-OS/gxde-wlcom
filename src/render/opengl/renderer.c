@@ -826,7 +826,7 @@ static GLuint link_program(struct ky_opengl_renderer *renderer, const GLchar *ve
     GLint ok;
     glGetProgramiv(prog, GL_LINK_STATUS, &ok);
     if (ok == GL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to link shader");
+        kywc_log(KYWC_ERROR, "Failed to link shader: \n%s\n%s", vert_src, frag_src);
         glDeleteProgram(prog);
         goto error;
     }
@@ -856,6 +856,8 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 
     renderer->egl = egl;
     renderer->drm_fd = -1;
+    renderer->is_core_profile =
+        epoxy_gl_version() >= 31 && !epoxy_has_gl_extension("GL_ARB_compatibility");
 
     kywc_log(KYWC_INFO, "Creating OpenGL renderer");
     kywc_log(KYWC_INFO, "Using %s", glGetString(GL_VERSION));

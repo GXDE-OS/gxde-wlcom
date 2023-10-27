@@ -44,6 +44,7 @@ struct ky_opengl_tex_shader {
 
 struct ky_opengl_renderer {
     struct wlr_renderer wlr_renderer;
+    bool is_core_profile;
 
     float projection[9];
     struct ky_egl *egl;
