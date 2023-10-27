@@ -26,7 +26,7 @@ struct finding_node_visitor {
     int nx, ny;
 };
 
-void node_visitor_init(struct kywc_node_visitor *visitor, 
+void node_visitor_init(struct kywc_node_visitor *visitor,
                        const struct kywc_node_visitor_interface *impl);
 
 struct finding_node_visitor *finding_visitor_from_node_visitor(struct kywc_node_visitor *visitor);
@@ -66,9 +66,7 @@ static void render_task_destroy(struct kywc_render_task *task)
     }
 
     pixman_region32_fini(&task->damage);
-    if (task->target) {
-        free(task->target);
-    }
+    free(task->target);
     free(task);
 }
 
@@ -126,7 +124,7 @@ static void finding_visitor_rect_node(struct kywc_node_visitor *visitor,
 static void finding_visitor_texture_node(struct kywc_node_visitor *visitor,
                                          struct kywc_texture_node *node);
 
-static void finding_visitor_group_node(struct kywc_node_visitor *visitor, 
+static void finding_visitor_group_node(struct kywc_node_visitor *visitor,
                                        struct kywc_group_node *node);
 
 const struct kywc_node_visitor_interface finding_visitor_impl = {
@@ -138,13 +136,13 @@ const struct kywc_node_visitor_interface finding_visitor_impl = {
 
 static struct finding_node_visitor finding_visitor;
 
-void node_visitor_init(struct kywc_node_visitor *visitor, 
+void node_visitor_init(struct kywc_node_visitor *visitor,
                        const struct kywc_node_visitor_interface *impl)
 {
     visitor->skip_current_node = false;
     visitor->lx = 0;
     visitor->ly = 0;
-    visitor->travel_break = false; 
+    visitor->travel_break = false;
     visitor->flag = VISITOR_LEAF;
     visitor->impl = impl;
 }
@@ -168,7 +166,7 @@ struct finding_node_visitor *finding_visitor_from_node_visitor(struct kywc_node_
     return find_visitor;
 }
 
-static void finding_visitor_group_node(struct kywc_node_visitor *visitor, 
+static void finding_visitor_group_node(struct kywc_node_visitor *visitor,
                                        struct kywc_group_node *node)
 {
     struct kywc_node *kywc_node = &node->node;
@@ -187,7 +185,7 @@ static void finding_visitor_node(struct kywc_node_visitor *visitor, struct kywc_
     if (visitor->skip_current_node) {
         visitor->skip_current_node = false;
         return;
-     }
+    }
 
     struct finding_node_visitor *find_visitor = finding_visitor_from_node_visitor(visitor);
 
@@ -216,8 +214,9 @@ static void finding_visitor_texture_node(struct kywc_node_visitor *visitor,
                                          struct kywc_texture_node *node)
 {
     finding_visitor_node(visitor, &node->node);
-    /* If travel break is true, the node has been found */
-    /* Contrary no node is found,it is not necessary to judge whether the point is in the input area */
+    /* If travel break is true, the node has been found. Contrary no node is found,
+     * it is not necessary to judge whether the point is in the input area.
+     */
     if (!visitor->travel_break) {
         return;
     }
@@ -543,7 +542,7 @@ bool kywc_node_coords(struct kywc_node *node, int *lx, int *ly)
     return enabled;
 }
 
-struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node, 
+struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node,
                                                    struct kywc_render_target *target, float scale)
 {
     if (!source_node) {
@@ -551,7 +550,7 @@ struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node
     }
     int old_state = source_node->enabled;
     source_node->enabled = true;
-    
+
     struct wlr_box bound_box;
     source_node->get_bounding_box(source_node, &bound_box);
     int width = bound_box.width * scale;

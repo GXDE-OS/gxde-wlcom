@@ -2,7 +2,6 @@ shaders = [
 	'default_common.vert',
 	'default_tex.frag',
 	'quad.frag',
-	'tex_external_require.frag',
 	'tex_external.frag',
 	'tex_rgba.frag',
 	'tex_rgbx.frag',

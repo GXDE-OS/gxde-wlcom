@@ -570,13 +570,14 @@ bool kywc_gl_program_compile(struct kywc_gl_program *program, const char *vertex
     GLuint program_id;
     for (int i = 0; i < TEXTURE_TYPES_ALL; i++) {
         new_frag_source = kywc_gl_generate_fragment_shader(frag_source, i);
+        if (!new_frag_source) {
+            continue;
+        }
         program_id = kywc_gl_generate_program(vertex_source, new_frag_source);
         if (program_id > 0) {
             program->program_id[i] = program_id;
         }
-        if (new_frag_source) {
-            free((char *)new_frag_source);
-        }
+        free((char *)new_frag_source);
     }
 
     return true;
@@ -587,7 +588,9 @@ bool kywc_gl_program_is_compiled(struct kywc_gl_program *program)
     if (!program) {
         return false;
     }
-    for (int i = 0; i < TEXTURE_TYPES_ALL; i++) {
+
+    bool no_external = !_renderer.gl_extensions.has_GL_OES_EGL_image_external;
+    for (int i = 0; i < (no_external ? TEXTURE_TYPE_EXTERNAL : TEXTURE_TYPES_ALL); i++) {
         if (program->program_id[i] <= 0) {
             return false;
         }
@@ -708,17 +711,17 @@ const char *kywc_gl_generate_fragment_shader(const char *frag_source, enum kywc_
             str_replace(temp, _renderer.shaders_text.builtin, _renderer.shaders_text.rgbx_frag_src);
         break;
     case TEXTURE_TYPE_EXTERNAL:
-        temp = str_replace(frag_source_copy, _renderer.shaders_text.builtin,
-                           _renderer.shaders_text.external_frag_src);
-        new_frag_source = str_replace(temp, _renderer.shaders_text.buildin_ext,
-                                      _renderer.shaders_text.external_require);
+        if (_renderer.gl_extensions.has_GL_OES_EGL_image_external) {
+            temp = str_replace(frag_source_copy, _renderer.shaders_text.builtin,
+                               _renderer.shaders_text.external_frag_src);
+            new_frag_source = str_replace(temp, _renderer.shaders_text.buildin_ext,
+                                          _renderer.shaders_text.external_require);
+        }
         break;
     default:
         break;
     }
-    if (temp) {
-        free(temp);
-    }
+    free(temp);
     free(frag_source_copy);
     return new_frag_source;
 }
