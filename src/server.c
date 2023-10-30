@@ -34,6 +34,7 @@
 #include "plugin.h"
 #include "render/renderer.h"
 #include "scene/animation.h"
+#include "security.h"
 #include "server.h"
 #include "theme.h"
 #include "view/view.h"
@@ -219,6 +220,7 @@ bool server_init(struct server *server)
     listen_logind_manager_signal(server);
 
     config_manager_create(server);
+    security_manager_create(server);
 
     if (!wlroots_server_init(server)) {
         return false;
