@@ -12,6 +12,7 @@
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
+#include "security.h"
 #include "server.h"
 #include "xwayland_p.h"
 
@@ -120,6 +121,12 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     xwayland = NULL;
 }
 
+static bool xwayland_filter_global(const struct security_client *client, void *data)
+{
+    /* only expose this global to Xwayland clients */
+    return xwayland_check_client(client->client);
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -153,6 +160,9 @@ bool xwayland_server_create(struct server *server)
     xwayland->output_configured.notify = handle_output_configured;
     output_manager_add_configured_listener(&xwayland->output_configured);
 
+    security_add_global_filter(xwayland->wlr_xwayland->shell_v1->global, xwayland_filter_global,
+                               xwayland->wlr_xwayland);
+
     setenv("DISPLAY", xwayland->wlr_xwayland->display_name, true);
     kywc_log(KYWC_INFO, "xwayland is running on display %s", xwayland->wlr_xwayland->display_name);
 
@@ -182,20 +192,6 @@ bool xwayland_check_client(const struct wl_client *client)
 {
     return xwayland && xwayland->wlr_xwayland->server &&
            xwayland->wlr_xwayland->server->client == client;
-}
-
-bool xwayland_filter_global(const struct wl_client *client, const struct wl_global *global)
-{
-    /* no xwayland shell */
-    if (!xwayland || !xwayland->wlr_xwayland) {
-        return true;
-    }
-    /* not the xwayland shell global */
-    if (global != xwayland->wlr_xwayland->shell_v1->global) {
-        return true;
-    }
-    /* only expose this global to Xwayland clients */
-    return xwayland_check_client(client);
 }
 
 float xwayland_unscale(int value)

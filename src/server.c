@@ -198,18 +198,10 @@ static bool wlroots_server_init(struct server *server)
     return true;
 }
 
-static bool filter_global(const struct wl_client *client, const struct wl_global *global,
-                          void *data)
-{
-    return xwayland_filter_global(client, global);
-}
-
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
     server->event_loop = wl_display_get_event_loop(server->display);
-
-    wl_display_set_global_filter(server->display, filter_global, NULL);
 
     wl_signal_init(&server->events.ready);
     wl_signal_init(&server->events.destroy);
