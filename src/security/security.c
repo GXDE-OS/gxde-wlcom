@@ -162,6 +162,15 @@ bool security_add_global_filter(struct wl_global *global, security_global_filter
     return true;
 }
 
+void security_remove_global_filter(struct wl_global *global)
+{
+    struct security_global_filter *filter = global_filter_from_global(global);
+    if (filter) {
+        wl_list_remove(&filter->link);
+        free(filter);
+    }
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     assert(wl_list_empty(&manager->clients));

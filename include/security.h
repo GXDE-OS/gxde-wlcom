@@ -29,6 +29,8 @@ typedef bool (*security_global_filter_func_t)(const struct security_client *clie
 bool security_add_global_filter(struct wl_global *global, security_global_filter_func_t filter,
                                 void *data);
 
+void security_remove_global_filter(struct wl_global *global);
+
 bool security_manager_create(struct server *server);
 
 #endif /* _SECURITY_H_ */
