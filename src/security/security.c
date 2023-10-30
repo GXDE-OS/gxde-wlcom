@@ -51,13 +51,13 @@ static char *get_path_from_pid(const pid_t pid)
 
         read_len = readlink(link_file, link_target, link_len);
         if (read_len < 0) {
-            kywc_log(KYWC_ERROR, "could not read link");
+            kywc_log_errno(KYWC_ERROR, "pid(%d) could not read link", pid);
             free(link_target);
             return NULL;
         }
     }
 
-    // readlink does not null-terminate the string
+    /* should not assume that the returned contents are null-terminated */
     link_target[read_len] = '\0';
 
     return link_target;
