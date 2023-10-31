@@ -43,6 +43,10 @@ void input_prop_and_state_debug(struct input *input);
 
 void input_manager_switch_vt(unsigned vt);
 
+void input_notify_destroy(struct input *input);
+
+void input_notify_create(struct input *input);
+
 struct seat *seat_by_name(const char *seat_name);
 
 void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size,

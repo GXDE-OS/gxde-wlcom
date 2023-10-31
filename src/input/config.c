@@ -525,6 +525,38 @@ static const sd_bus_vtable service_seat_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
+void input_notify_destroy(struct input *input)
+{
+    if (!input->device) {
+        return;
+    }
+
+    struct input_manager *manager = input->manager;
+    if (!manager->config) {
+        return;
+    }
+
+    sd_bus *bus = sd_bus_slot_get_bus(manager->config->slot);
+    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_destroy", "s",
+                       input->name);
+}
+
+void input_notify_create(struct input *input)
+{
+    if (!input->device) {
+        return;
+    }
+
+    struct input_manager *manager = input->manager;
+    if (!manager->config) {
+        return;
+    }
+
+    sd_bus *bus = sd_bus_slot_get_bus(manager->config->slot);
+    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_create", "s",
+                       input->name);
+}
+
 bool input_manager_config_init(struct input_manager *input_manager)
 {
     input_manager->config =

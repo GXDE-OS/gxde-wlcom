@@ -98,6 +98,9 @@ static void handle_mapped_output_destroy(struct wl_listener *listener, void *dat
 
 static void input_destroy(struct input *input)
 {
+    /* Tell the user the name of the removed device. */
+    input_notify_destroy(input);
+
     wl_signal_emit_mutable(&input->events.destroy, NULL);
 
     wl_list_remove(&input->link);
@@ -218,6 +221,9 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
         kywc_log(KYWC_DEBUG, "input device %s create", input->name);
         input_prop_and_state_debug(input);
     }
+
+    /* Tell the user the name of the added device. */
+    input_notify_create(input);
 
     return input;
 }
