@@ -259,7 +259,7 @@ static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *
     ssd_tooltip_draw_widgets(tooltip);
 }
 
-static int handle_snap_box(void *data)
+static int handle_tooltip(void *data)
 {
     struct ssd_tooltip *tooltip = data;
     tooltip->timer_triggerd = true;
@@ -298,7 +298,7 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
     theme_manager_add_update_listener(&tooltip->theme_update);
 
     struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
-    tooltip->timer = wl_event_loop_add_timer(loop, handle_snap_box, tooltip);
+    tooltip->timer = wl_event_loop_add_timer(loop, handle_tooltip, tooltip);
 
     /* create widgets in popup layer */
     struct view_layer *layer = view_manager_get_layer(LAYER_POPUP, false);
