@@ -15,6 +15,8 @@
 #include "scene/surface.h"
 #include "theme.h"
 #include "view/view.h"
+#include "render/opengl.h"
+#include "server.h"
 
 extern struct kywc_effect_view_impl impl;
 
@@ -311,4 +313,10 @@ void *kywc_theme_manager_get_current(const char *name)
         return th->inactive_border_color;
     }
     return NULL;
+}
+
+bool kywc_renderer_is_opengl(struct kywc_effect_server *server)
+{
+    struct wlr_renderer *renderer = server->kywc_server->renderer;
+    return wlr_renderer_is_opengl(renderer);
 }

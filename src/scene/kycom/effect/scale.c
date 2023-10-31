@@ -9,6 +9,7 @@
 #include "kywc/kycom/opengl.h"
 #include "kywc/kycom/scene.h"
 #include "kywc/kycom/transform.h"
+#include "kywc/log.h"
 #include "kywc/plugin.h"
 #include "scene/kycom/effect_view_impl.h"
 
@@ -257,7 +258,8 @@ static void handle_view_minimize(struct wl_listener *listener, void *data)
 static bool scale_plugin_init(void *plugin, void **teardown_data)
 {
     struct kywc_effect_server *s = kywc_effect_server();
-    if (!s) {
+    if (!s || !kywc_renderer_is_opengl(s)) {
+        kywc_log(KYWC_ERROR, "Scale_plugin_init failed");
         return false;
     }
     scale_data.state = END_STATE;

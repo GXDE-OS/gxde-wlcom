@@ -776,8 +776,8 @@ static void handle_kde_blur_destroy(struct wl_listener *listener, void *data)
 static bool blur_plugin_init(void *plugin, void **teardown_data)
 {
     struct kywc_effect_server *server = kywc_effect_server();
-    if (!server) {
-        kywc_log(KYWC_INFO, "blur_plugin_init failed");
+    if (!server || !kywc_renderer_is_opengl(server)) {
+        kywc_log(KYWC_ERROR, "Blur_plugin_init failed");
         return false;
     }
     if (!blur.is_listening) {

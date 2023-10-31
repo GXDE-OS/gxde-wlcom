@@ -94,4 +94,6 @@ void kywc_effect_view_get_shadow_box(struct kywc_effect_box *box, struct kywc_ef
 
 void kywc_get_bound_box(struct kywc_effect_view *view, struct kywc_effect_box *box);
 
+bool kywc_renderer_is_opengl(struct kywc_effect_server *server);
+
 #endif

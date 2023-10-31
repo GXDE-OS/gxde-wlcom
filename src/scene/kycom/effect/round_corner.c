@@ -816,7 +816,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
 static bool round_corner_plugin_init(void *plugin, void **teardown_data)
 {
     struct kywc_effect_server *server = kywc_effect_server();
-    if (!server) {
+    if (!server || !kywc_renderer_is_opengl(server)) {
         kywc_log(KYWC_ERROR, "Round_corner_plugin_init failed");
         return false;
     }
