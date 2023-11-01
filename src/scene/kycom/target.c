@@ -27,7 +27,6 @@ void kywc_target_init_output_target(struct kywc_render_target *target,
     target->view_box.y = scene_output->y;
     target->lx = 0;
     target->ly = 0;
-    target->buffer.wlr_buffer = output->back_buffer;
 
     int width, height;
     wlr_output_transformed_resolution(output, &width, &height);
@@ -49,7 +48,6 @@ void kywc_target_cpy(struct kywc_render_target *dst, const struct kywc_render_ta
     dst->buffer.width = src->buffer.width;
     dst->lx = src->lx;
     dst->ly = src->ly;
-    dst->buffer.wlr_buffer = src->buffer.wlr_buffer;
 
     memcpy(&dst->view_box, &src->view_box, sizeof(dst->view_box));
 }

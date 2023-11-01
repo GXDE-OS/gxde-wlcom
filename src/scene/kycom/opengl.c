@@ -53,15 +53,13 @@ static struct opengl_context {
 /***************************kywc_gl_texture**************************************/
 static void gl_texture_init_from_buffer(struct kywc_gl_texture *tex, struct wlr_buffer *buffer);
 
-struct wlr_renderer *kywc_gl_get_wlr_renderer(void)
-{
-    return _renderer.wlr_renderer;
-}
-
 void kywc_gl_texture_destroy(struct kywc_gl_texture *tex)
 {
     if (!tex) {
         return;
+    }
+    if (!tex->wlr_tex) {
+        wlr_texture_destroy(tex->wlr_tex);
     }
     /*
      * tex->tex_id isn't generate by kywc_gl_texture_create,
@@ -127,15 +125,20 @@ static void gl_texture_init_from_buffer(struct kywc_gl_texture *tex, struct wlr_
         gl_texture_init(tex);
         return;
     }
-
     /* Texture destroyed by wlr_client_buffer. */
-    struct wlr_texture *texture = buffer_get_texture(buffer, _renderer.wlr_renderer);
-    if (!texture) {
-        /* Texture destroyed by texture unref */
-        texture = wlr_texture_from_buffer(_renderer.wlr_renderer, buffer);
+    struct wlr_texture *texture_get = buffer_get_texture(buffer, _renderer.wlr_renderer);
+
+    tex->wlr_tex = NULL;
+    struct wlr_texture *texture_from = NULL, *texture;
+    if (texture_get) {
+        texture = texture_get;
+    } else {
+        /* wlr_texture_destroy must be called when texture unused. */
+        texture_from = wlr_texture_from_buffer(_renderer.wlr_renderer, buffer);
+        texture = texture_from;
+        tex->wlr_tex = texture_from;
     }
 
-    tex->wlr_tex = texture;
     if (!texture || !wlr_texture_is_opengl(texture)) {
         wlr_log(WLR_ERROR, "wlr_texture_from_buffer erro! ptr = %p", texture);
         tex->tex_id = 0;

@@ -37,27 +37,30 @@ static void gl_texture_render(struct kywc_render_instance *instance,
     }
     struct kywc_texture_node *tex_node = render->texture;
     struct kywc_gl_texture *tex = tex_node->texture;
-    int width = tex_node->geometry_width ? tex_node->geometry_width : tex->width;
-    int height = tex_node->geometry_height ? tex_node->geometry_height : tex->height;
 
-    pixman_region32_t frame_damage;
-    pixman_region32_init(&frame_damage);
-    kywc_target_get_frame_region(target, damage, &frame_damage);
-    struct wlr_renderer *renderer = kywc_gl_get_wlr_renderer();
-    struct wlr_render_pass *pass =
-        wlr_renderer_begin_buffer_pass(renderer, target->buffer.wlr_buffer, NULL);
-    struct wlr_render_texture_options options = {
-        .texture = tex->wlr_tex,
-        .src_box = tex_node->src_box,
-        .dst_box = { target->lx, target->ly, width, height },
-        .clip = &frame_damage,
-        .transform = wlr_output_transform_invert(target->wl_transform),
-        .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
+    if (!tex) {
+        return;
+    }
+
+    struct kywc_gl_geometry geometry = {
+        .x1 = 0,
+        .y1 = 0,
+        .x2 = tex_node->geometry_width ? tex_node->geometry_width : tex->width,
+        .y2 = tex_node->geometry_height ? tex_node->geometry_height : tex->height,
     };
+    struct wlr_fbox src_box = tex_node->src_box;
+    kywc_gl_texture_update_src_box(tex, &src_box);
+    kywc_target_render_begin(target);
+    vec4 color = { 1.0f, 1.0f, 1.0f, tex_node->opacity };
+    kywc_target_render_texture_with_transform(tex,
+                                              (enum kywc_gl_transform)render->texture->transform,
+                                              target, &geometry, color, RENDER_FLAG_CACHED);
 
-    wlr_render_pass_add_texture(pass, &options);
-    wlr_render_pass_submit(pass);
-    pixman_region32_fini(&frame_damage);
+    kywc_target_draw_damage(target, tex, damage);
+
+    kywc_gl_render_texture_clear_cached();
+
+    kywc_target_render_end(target);
 }
 
 static struct texture_node_render_instance *
@@ -439,14 +442,15 @@ void kywc_texture_node_set_texture(struct kywc_texture_node *tex_node,
     kywc_texture_node_set_texture_with_damage(tex_node, texture, NULL);
 }
 
-void kywc_texture_node_set_opacity(struct kywc_texture_node *tex_node, float opacity)
+void kywc_texture_node_set_opacity(struct kywc_texture_node *tex_node,
+                                   float opacity)
 {
-    if (tex_node->opacity == opacity) {
-        return;
-    }
+	if (tex_node->opacity == opacity) {
+		return;
+	}
 
-    tex_node->opacity = opacity;
-    tex_node->node.push_damage(&tex_node->node, NULL);
+	tex_node->opacity = opacity;
+	tex_node->node.push_damage(&tex_node->node, NULL);
 }
 
 void kywc_texture_node_set_opaque_region(struct kywc_texture_node *tex_node,

@@ -26,26 +26,24 @@ static void rect_render(struct kywc_render_instance *instance, struct kywc_rende
         return;
     }
     struct kywc_rect_node *rect = rect_render->rect;
+
+    /* Rect x,y offset is plused in target. */
+    struct wlr_box geometry = {
+        .x = 0,
+        .y = 0,
+        .width = rect->width,
+        .height = rect->height,
+    };
+
     vec4 color;
     for (int i = 0; i < 4; i++) {
         color[i] = rect->color[i];
     }
-    pixman_region32_t frame_damage;
-    pixman_region32_init(&frame_damage);
-    kywc_target_get_frame_region(target, damage, &frame_damage);
-    struct wlr_renderer *renderer = kywc_gl_get_wlr_renderer();
-    struct wlr_render_pass *pass =
-        wlr_renderer_begin_buffer_pass(renderer, target->buffer.wlr_buffer, NULL);
-
-    struct wlr_render_rect_options options = {
-        .box = { target->lx, target->ly, rect->width, rect->height },
-        .color = { color[0], color[1], color[2], color[3] },
-        .clip = &frame_damage,
-        .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
-    };
-    wlr_render_pass_add_rect(pass, &options);
-    wlr_render_pass_submit(pass);
-    pixman_region32_fini(&frame_damage);
+    kywc_target_render_begin(target);
+    kywc_target_render_rectangle(target, &geometry, color, RENDER_FLAG_CACHED);
+    kywc_target_draw_damage(target, NULL, damage);
+    kywc_gl_render_rect_clear_cached();
+    kywc_target_render_end(target);
 }
 
 static void rect_compute_visible(struct kywc_render_instance *instance) {}
@@ -157,8 +155,7 @@ static void rect_node_travel(struct kywc_node *node, struct kywc_node_visitor *v
     }
 
     struct kywc_rect_node *rect_node = rect_from_node(node);
-    if (!visitor || !visitor->impl || !visitor->impl->visit_rect || !rect_node ||
-        visitor->travel_break) {
+    if (!visitor || !visitor->impl || !visitor->impl->visit_rect || !rect_node || visitor->travel_break) {
         return;
     }
     visitor->flag = VISITOR_LEAF;
