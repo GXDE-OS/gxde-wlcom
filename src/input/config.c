@@ -250,6 +250,28 @@ static int enable_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int enable_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    int32_t enabled = 0;
+    CK(sd_bus_message_read(m, "sb", &input_name, &enabled));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->prop.tap_finger_count && input->state.tap_and_drag != enabled) {
+        struct input_state state = input->state;
+        state.tap_and_drag = enabled;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -506,6 +528,7 @@ static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
     SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
     SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
+    SD_BUS_METHOD("EnableTapAndDrag", "sb", "", enable_tap_and_drag, 0),
     SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
     SD_BUS_METHOD("SetAccelProfile", "su", "", set_accel_profile, 0),
     SD_BUS_METHOD("SetScrollMethod", "su", "", set_scroll_method, 0),
