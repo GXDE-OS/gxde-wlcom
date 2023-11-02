@@ -334,3 +334,45 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
     input_method_set_focus(seat, surface);
     tablet_set_focus(seat, surface);
 }
+
+void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolute)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    cursor_move(seat->cursor, NULL, x, y, !absolute, false);
+    cursor_feed_motion(seat->cursor, time);
+    wlr_seat_pointer_notify_frame(seat->wlr_seat);
+}
+
+void seat_feed_pointer_button(struct seat *seat, uint32_t button, bool pressed)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    cursor_feed_button(seat->cursor, button, pressed, time);
+    wlr_seat_pointer_notify_frame(seat->wlr_seat);
+}
+
+void seat_feed_pointer_axis(struct seat *seat, uint32_t axis, double step)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    cursor_feed_axis(seat->cursor, axis, WL_POINTER_AXIS_SOURCE_WHEEL, step, 0, time);
+    wlr_seat_pointer_notify_frame(seat->wlr_seat);
+}
+
+void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    struct keyboard *keyboard = seat->keyboard;
+    uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
+    keyboard_feed_key(keyboard, key, pressed, time, modifiers);
+}

@@ -121,4 +121,9 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface);
 
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface);
 
+void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolute);
+void seat_feed_pointer_button(struct seat *seat, uint32_t button, bool pressed);
+void seat_feed_pointer_axis(struct seat *seat, uint32_t axis, double step);
+void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed);
+
 #endif /* _SEAT_H_ */
