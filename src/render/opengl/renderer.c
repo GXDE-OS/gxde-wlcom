@@ -518,7 +518,6 @@ static bool gl_read_pixels(struct wlr_renderer *wlr_renderer, uint32_t drm_forma
     if (pack_stride == stride && dst_x == 0) {
         // Under these particular conditions, we can read the pixels with only
         // one glReadPixels call
-
         glReadPixels(src_x, src_y, width, height, fmt->gl_format, fmt->gl_type, p);
     } else {
         // Unfortunately GLES2 doesn't support GL_PACK_ROW_LENGTH, so we have to read

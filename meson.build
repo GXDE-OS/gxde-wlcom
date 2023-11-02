@@ -160,8 +160,8 @@ if msgfmt.found()
 endif
 
 subdir('data')
-subdir('src')
 subdir('protocols')
+subdir('src')
 
 if have_examples
   subdir('clients')

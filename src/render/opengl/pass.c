@@ -294,7 +294,6 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
     glViewport(0, 0, wlr_buffer->width, wlr_buffer->height);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_SCISSOR_TEST);
-    glDisable(GL_DEPTH_TEST);
     ky_opengl_pop_debug(renderer);
 
     return pass;

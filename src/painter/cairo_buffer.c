@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 
-#include <libdrm/drm_fourcc.h>
+#include <drm_fourcc.h>
 #include <wlr/interfaces/wlr_buffer.h>
 
 #include "painter_p.h"
