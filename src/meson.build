@@ -7,6 +7,7 @@ wlcom_sources += files(
 )
 
 subdir('config')
+subdir('effect')
 subdir('input')
 subdir('output')
 subdir('painter')
