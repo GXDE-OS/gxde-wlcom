@@ -121,7 +121,7 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     }
 }
 
-static void cursor_feed_motion(struct cursor *cursor, uint32_t time)
+void cursor_feed_motion(struct cursor *cursor, uint32_t time)
 {
     struct seat *seat = cursor->seat;
     if (seat->pointer_grab && seat->pointer_grab->interface->motion &&
@@ -151,7 +151,7 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
     _cursor_feed_motion(cursor, time);
 }
 
-static void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
+void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
 {
     struct seat *seat = cursor->seat;
     if (seat->pointer_grab && seat->pointer_grab->interface->button &&
@@ -267,26 +267,30 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
     cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec);
 }
 
-static void cursor_handle_axis(struct wl_listener *listener, void *data)
+void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
+                      int32_t delta_discrete, uint32_t time)
 {
-    struct cursor *cursor = wl_container_of(listener, cursor, axis);
-    struct wlr_pointer_axis_event *event = data;
     struct seat *seat = cursor->seat;
-    idle_manager_notify_activity(seat);
-
     if (seat->pointer_grab && seat->pointer_grab->interface->axis &&
-        seat->pointer_grab->interface->axis(seat->pointer_grab, event->time_msec,
-                                            event->orientation == WLR_AXIS_ORIENTATION_VERTICAL,
-                                            event->delta)) {
+        seat->pointer_grab->interface->axis(seat->pointer_grab, time,
+                                            orientation == WLR_AXIS_ORIENTATION_VERTICAL, delta)) {
         return;
     }
 
     double scroll_factor = (seat->state.scroll_factor <= 0) ? 1.0 : seat->state.scroll_factor;
     /* Notify the client with pointer focus of the axis event. */
-    struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;
-    wlr_seat_pointer_notify_axis(wlr_seat, event->time_msec, event->orientation,
-                                 scroll_factor * event->delta,
-                                 roundf(scroll_factor * event->delta_discrete), event->source);
+    wlr_seat_pointer_notify_axis(seat->wlr_seat, time, orientation, scroll_factor * delta,
+                                 roundf(scroll_factor * delta_discrete), source);
+}
+
+static void cursor_handle_axis(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, axis);
+    struct wlr_pointer_axis_event *event = data;
+    idle_manager_notify_activity(cursor->seat);
+
+    cursor_feed_axis(cursor, event->orientation, event->source, event->delta, event->delta_discrete,
+                     event->time_msec);
 }
 
 static void cursor_handle_frame(struct wl_listener *listener, void *data)

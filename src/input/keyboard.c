@@ -226,13 +226,13 @@ static void keybaord_repeat_start(struct keyboard *keyboard, uint32_t key, bool 
     }
 }
 
-static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key,
-                              enum wl_keyboard_key_state state, uint32_t time, uint32_t modifiers)
+void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
+                       uint32_t modifiers)
 {
     modifiers_mask_debug(modifiers, "modifiers");
 
     struct seat *seat = keyboard->seat;
-    bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+    uint32_t state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED;
 
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
@@ -309,7 +309,7 @@ static void keyboard_feed_fake_key(struct keyboard *keyboard, uint32_t key)
 
     uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
     uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
-    keyboard_feed_key(keyboard, key, WL_KEYBOARD_KEY_STATE_PRESSED, time, modifiers);
+    keyboard_feed_key(keyboard, key, true, time, modifiers);
 }
 
 static int keyboard_handle_repeat(void *data)

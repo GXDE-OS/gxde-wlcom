@@ -167,4 +167,18 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
 
 bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
 
+/**
+ * seat pointer and keyboard feed event
+ */
+
+void cursor_feed_motion(struct cursor *cursor, uint32_t time);
+
+void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time);
+
+void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
+                      int32_t delta_discrete, uint32_t time);
+
+void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
+                       uint32_t modifiers);
+
 #endif /* _INPUT_P_H_ */
