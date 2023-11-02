@@ -34,6 +34,8 @@ struct keyboard {
     } repeat;
 };
 
+struct keyboard *keyboard_create(struct seat *seat, struct wlr_keyboard *wlr_keyboard);
+
 void keyboard_destroy(struct keyboard *keyboard);
 
 void keyboard_add_input(struct seat *seat, struct input *input);

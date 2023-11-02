@@ -328,76 +328,96 @@ static int keyboard_handle_repeat(void *data)
     return 0;
 }
 
+struct keyboard *keyboard_create(struct seat *seat, struct wlr_keyboard *wlr_keyboard)
+{
+    struct keyboard *keyboard = calloc(1, sizeof(struct keyboard));
+    if (!keyboard) {
+        return NULL;
+    }
+
+    if (!wlr_keyboard) {
+        struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_create();
+        keyboard->wlr_keyboard = &wlr_group->keyboard;
+    } else {
+        keyboard->wlr_keyboard = wlr_keyboard;
+    }
+
+    keyboard->is_virtual = !!wlr_keyboard;
+    keyboard->wlr_keyboard->data = keyboard;
+
+    /* insert new keyboard to seat keyboard list */
+    keyboard->seat = seat;
+    wl_list_insert(&seat->keyboards, &keyboard->link);
+    wlr_seat_set_keyboard(seat->wlr_seat, keyboard->wlr_keyboard);
+
+    /* create timer for internal key repeat */
+    if (!keyboard->is_virtual) {
+        struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
+        keyboard->repeat.timer = wl_event_loop_add_timer(loop, keyboard_handle_repeat, keyboard);
+    }
+
+    keyboard->key.notify = keyboard_handle_key;
+    wl_signal_add(&keyboard->wlr_keyboard->events.key, &keyboard->key);
+    keyboard->modifiers.notify = keyboard_handle_modifiers;
+    wl_signal_add(&keyboard->wlr_keyboard->events.modifiers, &keyboard->modifiers);
+
+    return keyboard;
+}
+
 void keyboard_add_input(struct seat *seat, struct input *input)
 {
     struct wlr_input_device *wlr_input = input->wlr_input;
     struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
-    struct wlr_keyboard *dst_keyboard = wlr_keyboard;
-    struct keyboard *keyboard;
 
     /* virtual keyboard is not managed by group */
     if (input->prop.is_virtual) {
-        goto create;
+        keyboard_create(seat, wlr_keyboard);
+        return;
     }
 
     /* find a suitable group */
+    struct keyboard *keyboard;
     wl_list_for_each(keyboard, &seat->keyboards, link) {
         if (keyboard->is_virtual) {
             continue;
         }
 
-        dst_keyboard = keyboard->wlr_keyboard;
+        struct wlr_keyboard *dst_keyboard = keyboard->wlr_keyboard;
         struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_from_wlr_keyboard(dst_keyboard);
+        bool empty_group = wl_list_empty(&wlr_group->devices);
 
-        if (wlr_keyboard_keymaps_match(wlr_keyboard->keymap, dst_keyboard->keymap) &&
-            wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
-            wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay) {
+        if (empty_group ||
+            (wlr_keyboard_keymaps_match(wlr_keyboard->keymap, dst_keyboard->keymap) &&
+             wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
+             wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay)) {
             kywc_log(KYWC_DEBUG, "Adding keyboard %s to group %p", input->name, wlr_group);
+
+            if (empty_group) {
+                wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
+                wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
+                                             wlr_keyboard->repeat_info.delay);
+            }
+
             wlr_keyboard_group_add_keyboard(wlr_group, wlr_keyboard);
             wlr_keyboard->data = wlr_group;
             return;
         }
     }
 
-create:
-    /* create a new keyboard with keyboard configuration */
-    keyboard = calloc(1, sizeof(struct keyboard));
+    /* create a new keyboard group with keyboard configuration */
+    keyboard = keyboard_create(seat, NULL);
     if (!keyboard) {
         return;
     }
 
-    /* create a new keyboard group */
-    if (!input->prop.is_virtual) {
-        struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_create();
-        dst_keyboard = &wlr_group->keyboard;
-        wlr_keyboard->data = wlr_group;
-        wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
-        wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
-                                     wlr_keyboard->repeat_info.delay);
-        wlr_keyboard_group_add_keyboard(wlr_group, wlr_keyboard);
-    }
+    struct wlr_keyboard_group *wlr_group =
+        wlr_keyboard_group_from_wlr_keyboard(keyboard->wlr_keyboard);
+    wlr_keyboard->data = wlr_group;
 
-    keyboard->wlr_keyboard = dst_keyboard;
-    dst_keyboard->data = keyboard;
-    keyboard->is_virtual = input->prop.is_virtual;
-
-    /* insert new keyboard to seat keyboard list */
-    keyboard->seat = seat;
-    wl_list_insert(&seat->keyboards, &keyboard->link);
-
-    struct wlr_seat *wlr_seat = seat->wlr_seat;
-    wlr_seat_set_keyboard(wlr_seat, dst_keyboard);
-
-    /* create timer for internal key repeat */
-    if (!input->prop.is_virtual) {
-        struct wl_event_loop *loop = wl_display_get_event_loop(wlr_seat->display);
-        keyboard->repeat.timer = wl_event_loop_add_timer(loop, keyboard_handle_repeat, keyboard);
-    }
-
-    keyboard->key.notify = keyboard_handle_key;
-    wl_signal_add(&dst_keyboard->events.key, &keyboard->key);
-    keyboard->modifiers.notify = keyboard_handle_modifiers;
-    wl_signal_add(&dst_keyboard->events.modifiers, &keyboard->modifiers);
+    wlr_keyboard_set_keymap(keyboard->wlr_keyboard, wlr_keyboard->keymap);
+    wlr_keyboard_set_repeat_info(keyboard->wlr_keyboard, wlr_keyboard->repeat_info.rate,
+                                 wlr_keyboard->repeat_info.delay);
+    wlr_keyboard_group_add_keyboard(wlr_group, wlr_keyboard);
 }
 
 void keyboard_destroy(struct keyboard *keyboard)
@@ -420,6 +440,10 @@ void keyboard_destroy(struct keyboard *keyboard)
 
     if (keyboard->repeat.timer) {
         wl_event_source_remove(keyboard->repeat.timer);
+    }
+
+    if (keyboard->seat->keyboard == keyboard) {
+        keyboard->seat->keyboard = NULL;
     }
     free(keyboard);
 }
@@ -447,6 +471,8 @@ void keyboard_remove_input(struct input *input)
     /* destroy keyboard group if empty */
     if (wl_list_empty(&wlr_group->devices)) {
         keyboard = wlr_group->keyboard.data;
-        keyboard_destroy(keyboard);
+        if (keyboard != keyboard->seat->keyboard) {
+            keyboard_destroy(keyboard);
+        }
     }
 }

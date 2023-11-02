@@ -63,6 +63,7 @@ struct seat {
 
     // TODO: timer to hide cursor
     struct cursor *cursor;
+    struct keyboard *keyboard;
     struct wl_list keyboards;
 
     /* internal grabs */
