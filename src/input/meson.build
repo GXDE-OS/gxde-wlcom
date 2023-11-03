@@ -7,6 +7,7 @@ wlcom_sources += files(
   'idle.c',
   'idle_inhibit.c',
   'input.c',
+  'input_action.c',
   'text_input.c',
   'keyboard.c',
   'libinput.c',

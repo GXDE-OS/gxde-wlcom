@@ -185,4 +185,10 @@ void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t sour
 void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
                        uint32_t modifiers);
 
+/**
+ * input action for keyshort, gesture binding
+ */
+
+bool input_action_manager_create(struct input_manager *input_manager);
+
 #endif /* _INPUT_P_H_ */

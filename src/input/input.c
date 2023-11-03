@@ -340,6 +340,8 @@ struct input_manager *input_manager_create(struct server *server)
     touch_manager_create(input_manager);
     tablet_manager_create(input_manager);
 
+    input_action_manager_create(input_manager);
+
     idle_manager_create(server);
     idle_inhibit_manager_create(server);
     input_manager_get_seat("seat0", true);

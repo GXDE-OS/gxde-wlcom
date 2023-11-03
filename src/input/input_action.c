@@ -1,0 +1,1009 @@
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
+#define _POSIX_C_SOURCE 200809L
+
+#include <linux/input-event-codes.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+
+#include <wlr/interfaces/wlr_keyboard.h>
+#include <wlr/types/wlr_seat.h>
+
+#include <kywc/binding.h>
+#include <kywc/log.h>
+
+#include "config.h"
+#include "input/seat.h"
+#include "input_p.h"
+#include "server.h"
+#include "util/spawn.h"
+
+enum action_type {
+    ACTION_TYPE_NONE = 0,
+    ACTION_TYPE_DBUS_ACTION,
+    ACTION_TYPE_RUN_COMMAND,
+    ACTION_TYPE_SEND_BUTTON,
+    ACTION_TYPE_SEND_KEY,
+};
+
+enum input_type { INPUT_TYPE_NONE = 0, INPUT_TYPE_KEYBOARD, INPUT_TYPE_GESTURE };
+
+enum dbus_type { DBUS_TYPE_NONE = 0, DBUS_TYPE_SESSION, DBUS_TYPE_SYSTEM };
+
+enum control_type { CONTROL_TYPE_DELETE, CONTROL_TYPE_ENABLE, CONTROL_TYPE_DISABLE };
+
+struct action_dbus_data {
+    enum dbus_type type;
+    char *service;
+    char *path;
+    char *interface;
+    char *method;
+};
+
+struct action_command_data {
+    char *cmd;
+};
+
+struct action_button_data {
+    uint32_t val;
+};
+
+struct keycodes {
+    uint32_t *code;
+    uint32_t len;
+};
+
+struct action_key_data {
+    struct keycodes *modifiers;
+    struct keycodes *keys;
+};
+
+struct action_data {
+    enum action_type type;
+    bool enable;
+    union {
+        struct action_dbus_data dbus;
+        struct action_button_data button;
+        struct action_key_data key;
+        struct action_command_data command;
+    } data;
+    const char *desc;
+};
+
+struct input_action {
+    enum input_type type;
+    char *bindings;
+    struct action_data *action;
+
+    void *data; /* key or gesture binding */
+
+    struct wl_list link;
+};
+
+static struct input_action_manager {
+    struct config *config;
+    struct input_manager *input_manager;
+
+    struct wl_listener server_destroy;
+
+    struct wl_list actions;
+} *manager = NULL;
+
+static struct keycode_map {
+    const char *key;
+    uint32_t code;
+} keycode_maps[] = {
+    { "a", KEY_A },
+    { "b", KEY_B },
+    { "c", KEY_C },
+    { "d", KEY_D },
+    { "e", KEY_E },
+    { "f", KEY_F },
+    { "g", KEY_G },
+    { "h", KEY_H },
+    { "i", KEY_I },
+    { "g", KEY_G },
+    { "k", KEY_K },
+    { "l", KEY_L },
+    { "m", KEY_M },
+    { "n", KEY_N },
+    { "o", KEY_O },
+    { "p", KEY_P },
+    { "q", KEY_Q },
+    { "r", KEY_R },
+    { "s", KEY_S },
+    { "t", KEY_T },
+    { "u", KEY_U },
+    { "v", KEY_V },
+    { "w", KEY_W },
+    { "x", KEY_X },
+    { "y", KEY_Y },
+    { "z", KEY_Z },
+    { "Tab", KEY_TAB },
+    { "Super_L", KEY_LEFTMETA },
+    { "Alt_L", KEY_LEFTALT },
+    { "Left", KEY_LEFT },
+    { "Right", KEY_RIGHT },
+    { "Down", KEY_DOWN },
+    { "Up", KEY_UP },
+    { "Shift_L", KEY_LEFTSHIFT },
+    { "Control_R", KEY_RIGHTCTRL },
+    { "Control_L", KEY_LEFTCTRL },
+    { "Alt_R", KEY_RIGHTALT },
+    { "Super_R", KEY_RIGHTMETA },
+    { "Shift_R", KEY_RIGHTSHIFT },
+};
+
+static struct btncode_map {
+    const char *btn;
+    uint32_t code;
+} btncode_maps[] = {
+    { "left", BTN_LEFT }, { "right", BTN_RIGHT },     { "middle", BTN_MIDDLE },
+    { "back", BTN_BACK }, { "forward", BTN_FORWARD },
+};
+
+static const char *service_path = "/com/kylin/Wlcom/InputAction";
+static const char *service_interface = "com.kylin.Wlcom.InputAction";
+
+static char **split_string(const char *str, const char *delims, size_t *len)
+{
+    char **split_str = malloc(sizeof(void *) * 10);
+    char *copy = strdup(str);
+    size_t length = 0;
+
+    char *token = strtok(copy, delims);
+    while (token) {
+        split_str[length++] = strdup(token);
+        token = strtok(NULL, delims);
+    }
+    free(copy);
+
+    *len = length;
+    return split_str;
+}
+
+static void free_split_string(char ***item, int count)
+{
+    if (item == NULL || *item == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        free((*item)[i]);
+    }
+
+    free(*item);
+}
+
+static uint32_t keycode_map(const char *keystr)
+{
+    for (size_t i = 0; i < sizeof(keycode_maps) / sizeof(struct keycode_map); i++) {
+        if (strcasecmp(keystr, keycode_maps[i].key) == 0) {
+            return keycode_maps[i].code;
+        }
+    }
+    return 0;
+}
+
+static const char *keycode_to_str(uint32_t code)
+{
+    for (size_t i = 0; i < sizeof(keycode_maps) / sizeof(struct keycode_map); i++) {
+        if (keycode_maps[i].code == code) {
+            return keycode_maps[i].key;
+        }
+    }
+    return NULL;
+}
+
+static char *keycodes_to_str(struct keycodes *keycodes)
+{
+    char *str = NULL;
+    for (uint32_t i = 0; i < keycodes->len; ++i) {
+        const char *keystr = keycode_to_str(keycodes->code[i]);
+        if (!keystr) {
+            continue;
+        }
+        if (!str) {
+            str = calloc(1, strlen(keystr) + 1);
+            strcpy(str, keystr);
+        } else {
+            int new_size = strlen(str) + strlen(keystr) + 2;
+            char *new_str = calloc(new_size, sizeof(char));
+            snprintf(new_str, new_size, "%s+%s", str, keystr);
+            free(str);
+            str = new_str;
+        }
+    }
+    return str;
+}
+
+static uint32_t btncode_map(const char *btnstr)
+{
+    for (size_t i = 0; i < sizeof(btncode_maps) / sizeof(struct btncode_map); i++) {
+        if (strcasecmp(btnstr, btncode_maps[i].btn) == 0) {
+            return btncode_maps[i].code;
+        }
+    }
+    return 0;
+}
+
+static const char *btncode_to_str(uint32_t code)
+{
+    for (size_t i = 0; i < sizeof(btncode_maps) / sizeof(struct btncode_map); i++) {
+        if (code == btncode_maps[i].code) {
+            return btncode_maps[i].btn;
+        }
+    }
+    return NULL;
+}
+
+static struct keycodes *keycodes_create(const char *str)
+{
+    struct keycodes *keycodes = calloc(1, sizeof(*keycodes));
+    if (!keycodes) {
+        return NULL;
+    }
+
+    size_t len = 0;
+    char **split_str = split_string(str, "+", &len);
+    for (size_t i = 0; i < len; i++) {
+        if (!keycode_map(split_str[i])) {
+            continue;
+        }
+        keycodes->code = realloc(keycodes->code, sizeof(uint32_t));
+        keycodes->code[i] = keycode_map(split_str[i]);
+        keycodes->len++;
+    }
+    free_split_string(&split_str, len);
+
+    return keycodes;
+}
+
+static int list_input_actions(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct input_action_manager *manager = userdata;
+
+    sd_bus_message *reply = NULL;
+    CK(sd_bus_message_new_method_return(m, &reply));
+    CK(sd_bus_message_open_container(reply, 'a', "(ss)"));
+
+    struct input_action *action;
+    wl_list_for_each(action, &manager->actions, link) {
+        json_object *itype_obj = json_object_object_get(
+            manager->config->json, action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture");
+        json_object *config = json_object_object_get(itype_obj, action->bindings);
+        const char *cfg = json_object_to_json_string(config);
+        sd_bus_message_append(reply, "(ss)", action->bindings, cfg);
+    }
+    CK(sd_bus_message_close_container(reply));
+    CK(sd_bus_send(NULL, reply, NULL));
+    sd_bus_message_unref(reply);
+    return 1;
+}
+
+static struct action_data *action_data_create_from_busstring(const char *bus_str)
+{
+    struct action_data *action_data = NULL;
+    size_t len = 0;
+    char **split_str = split_string(bus_str, ",", &len);
+    if (len < 2) {
+        goto err;
+    }
+
+    action_data = calloc(1, sizeof(*action_data));
+    if (!action_data) {
+        goto err;
+    }
+
+    if (strcmp(split_str[0], "dbus") == 0) {
+        action_data->type = ACTION_TYPE_DBUS_ACTION;
+    } else if (strcmp(split_str[0], "command") == 0) {
+        action_data->type = ACTION_TYPE_RUN_COMMAND;
+    } else if (strcmp(split_str[0], "button") == 0) {
+        action_data->type = ACTION_TYPE_SEND_BUTTON;
+    } else if (strcmp(split_str[0], "key") == 0) {
+        action_data->type = ACTION_TYPE_SEND_KEY;
+    } else {
+        action_data->type = ACTION_TYPE_NONE;
+    }
+
+    kywc_log(KYWC_DEBUG, "action type: %s, len: %ld", split_str[0], len);
+    if (action_data->type == ACTION_TYPE_DBUS_ACTION && len == 6) {
+        if (strcmp(split_str[1], "session") == 0) {
+            action_data->data.dbus.type = DBUS_TYPE_SESSION;
+        } else if (strcmp(split_str[1], "system") == 0) {
+            action_data->data.dbus.type = DBUS_TYPE_SYSTEM;
+        } else {
+            action_data->data.dbus.type = DBUS_TYPE_NONE;
+        }
+
+        action_data->data.dbus.service = strdup(split_str[2]);
+        action_data->data.dbus.path = strdup(split_str[3]);
+        action_data->data.dbus.interface = strdup(split_str[4]);
+        action_data->data.dbus.method = strdup(split_str[5]);
+    } else if (action_data->type == ACTION_TYPE_RUN_COMMAND && len == 2) {
+        action_data->data.command.cmd = strdup(split_str[1]);
+    } else if (action_data->type == ACTION_TYPE_SEND_BUTTON && len == 2) {
+        action_data->data.button.val = btncode_map(split_str[1]);
+    } else if (action_data->type == ACTION_TYPE_SEND_KEY && len == 3) {
+        action_data->data.key.modifiers = keycodes_create(split_str[1]);
+        action_data->data.key.keys = keycodes_create(split_str[2]);
+    } else {
+        free(action_data);
+        action_data = NULL;
+        goto err;
+    }
+
+    action_data->enable = true;
+
+err:
+    free_split_string(&split_str, len);
+
+    return action_data;
+}
+
+static void action_call_sdbus_method(struct action_dbus_data *dbus_data)
+{
+    sd_bus *bus = NULL;
+
+    if (dbus_data->type == DBUS_TYPE_SESSION) {
+        bus = sd_bus_slot_get_bus(manager->config->slot);
+    } else if (dbus_data->type == DBUS_TYPE_SYSTEM) {
+        struct input_manager *input_manager = manager->input_manager;
+        bus = input_manager->server->sys_bus;
+    }
+
+    if (!bus) {
+        kywc_log(KYWC_WARN, "sd bus is null!");
+        return;
+    }
+
+    sd_bus_error error = SD_BUS_ERROR_NULL;
+    sd_bus_message *reply = NULL;
+    if (sd_bus_call_method(bus, dbus_data->service, dbus_data->path, dbus_data->interface,
+                           dbus_data->method, &error, &reply, "") < 0) {
+        kywc_log(KYWC_ERROR, "sd bus call failed: %s %s %s %s %s", error.message,
+                 dbus_data->service, dbus_data->path, dbus_data->interface, dbus_data->method);
+    }
+
+    sd_bus_error_free(&error);
+    sd_bus_message_unref(reply);
+}
+
+static struct keyboard *get_keyboard_form_seat(struct input_action_manager *manager)
+{
+    struct input_manager *input_manager = manager->input_manager;
+
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        struct wlr_keyboard *wlr_keyboard = wlr_seat_get_keyboard(seat->wlr_seat);
+        if (wlr_keyboard) {
+            struct keyboard *keyboard = wlr_keyboard->data;
+            return keyboard;
+        }
+    }
+    return NULL;
+}
+
+static struct cursor *get_cursor_form_seat(struct input_action_manager *manager)
+{
+    struct input_manager *input_manager = manager->input_manager;
+
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        struct cursor *cursor = seat->cursor;
+        if (cursor) {
+            return cursor;
+        }
+    }
+    return NULL;
+}
+
+static void action_call_send_button(struct action_button_data *data)
+{
+    struct cursor *cursor = get_cursor_form_seat(manager);
+    if (!cursor) {
+        return;
+    }
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+
+    cursor_feed_button(cursor, data->val, true, time);
+    cursor_feed_button(cursor, data->val, false, time);
+}
+
+static void action_call_send_key(struct action_key_data *data)
+{
+    struct keyboard *keyboard = get_keyboard_form_seat(manager);
+    if (!keyboard) {
+        return;
+    }
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
+    struct wlr_keyboard_key_event wlr_event = {
+        .time_msec = time,
+        .update_state = true,
+    };
+
+    for (uint32_t i = 0; i < data->modifiers->len; ++i) {
+        wlr_event.keycode = data->modifiers->code[i];
+        wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
+        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+    }
+    for (uint32_t i = 0; i < data->keys->len; ++i) {
+        wlr_event.keycode = data->keys->code[i];
+        wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
+        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+    }
+    for (uint32_t i = 0; i < data->modifiers->len; ++i) {
+        wlr_event.keycode = data->modifiers->code[i];
+        wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
+        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+    }
+    for (uint32_t i = 0; i < data->keys->len; ++i) {
+        wlr_event.keycode = data->keys->code[i];
+        wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
+        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+    }
+}
+
+static void handle_input_action(struct input_action *input_action)
+{
+    if (!input_action) {
+        return;
+    }
+
+    struct action_data *action_data = input_action->action;
+    switch (action_data->type) {
+    case ACTION_TYPE_DBUS_ACTION:
+        action_call_sdbus_method(&action_data->data.dbus);
+        break;
+    case ACTION_TYPE_RUN_COMMAND:
+        spawn_invoke(action_data->data.command.cmd);
+        break;
+    case ACTION_TYPE_SEND_BUTTON:
+        action_call_send_button(&action_data->data.button);
+        break;
+    case ACTION_TYPE_SEND_KEY:
+        action_call_send_key(&action_data->data.key);
+        break;
+    default:
+        break;
+    }
+
+    kywc_log(KYWC_DEBUG, "input_action: %s, type: %d", input_action->bindings, action_data->type);
+}
+
+static void input_manager_keybinding_action(struct key_binding *binding, void *data)
+{
+    handle_input_action(data);
+}
+
+static void input_manager_gesturebinding_action(struct gesture_binding *binding, void *data)
+{
+    handle_input_action(data);
+}
+
+static void input_action_destroy(struct input_action *input_action)
+{
+    if (input_action->action->type == ACTION_TYPE_DBUS_ACTION) {
+        free(input_action->action->data.dbus.service);
+        free(input_action->action->data.dbus.path);
+        free(input_action->action->data.dbus.interface);
+        free(input_action->action->data.dbus.method);
+    } else if (input_action->action->type == ACTION_TYPE_RUN_COMMAND) {
+        free(input_action->action->data.command.cmd);
+    } else if (input_action->action->type == ACTION_TYPE_SEND_KEY) {
+        if (input_action->action->data.key.modifiers->code) {
+            free(input_action->action->data.key.modifiers->code);
+        }
+        if (input_action->action->data.key.keys->code) {
+            free(input_action->action->data.key.keys->code);
+        }
+        free(input_action->action->data.key.modifiers);
+        free(input_action->action->data.key.keys);
+    }
+
+    wl_list_remove(&input_action->link);
+    free(input_action->bindings);
+    free(input_action->action);
+    free(input_action);
+}
+
+static bool input_action_manager_del_config(struct input_action_manager *manager,
+                                            struct input_action *input_action)
+{
+    if (!manager->config || !manager->config->json || !input_action) {
+        return false;
+    }
+
+    char *input_type = input_action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture";
+    json_object *config = json_object_object_get(manager->config->json, input_type);
+    if (!config) {
+        return false;
+    }
+
+    json_object_object_del(config, input_action->bindings);
+
+    return true;
+}
+
+static bool input_action_manager_write_config(struct input_action_manager *manager,
+                                              struct input_action *input_action)
+{
+    if (!manager->config || !manager->config->json || !input_action) {
+        return false;
+    }
+
+    char *input_type = input_action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture";
+    json_object *config = json_object_object_get(manager->config->json, input_type);
+    if (!config) {
+        config = json_object_new_object();
+        json_object_object_add(manager->config->json, input_type, config);
+    }
+
+    json_object *action_config = json_object_object_get(config, input_action->bindings);
+    if (!action_config) {
+        action_config = json_object_new_object();
+        json_object_object_add(config, input_action->bindings, action_config);
+    }
+
+    struct action_data *action_data = input_action->action;
+    json_object_object_add(action_config, "enable", json_object_new_boolean(action_data->enable));
+
+    switch (action_data->type) {
+    case ACTION_TYPE_DBUS_ACTION:
+        json_object_object_add(action_config, "actiontype", json_object_new_string("dbus"));
+        const char *bustype =
+            action_data->data.dbus.type == DBUS_TYPE_SESSION ? "session" : "system";
+        json_object_object_add(action_config, "bustype", json_object_new_string(bustype));
+        json_object_object_add(action_config, "service",
+                               json_object_new_string(action_data->data.dbus.service));
+        json_object_object_add(action_config, "path",
+                               json_object_new_string(action_data->data.dbus.path));
+        json_object_object_add(action_config, "interface",
+                               json_object_new_string(action_data->data.dbus.interface));
+        json_object_object_add(action_config, "method",
+                               json_object_new_string(action_data->data.dbus.method));
+        break;
+    case ACTION_TYPE_RUN_COMMAND:
+        json_object_object_add(action_config, "actiontype", json_object_new_string("command"));
+        json_object_object_add(action_config, "command",
+                               json_object_new_string(action_data->data.command.cmd));
+        break;
+    case ACTION_TYPE_SEND_BUTTON:
+        json_object_object_add(action_config, "actiontype", json_object_new_string("button"));
+
+        const char *btnstr = btncode_to_str(action_data->data.button.val);
+        if (btnstr) {
+            json_object_object_add(action_config, "button", json_object_new_string(btnstr));
+        }
+        break;
+    case ACTION_TYPE_SEND_KEY:
+        json_object_object_add(action_config, "actiontype", json_object_new_string("key"));
+
+        char *keystr = keycodes_to_str(action_data->data.key.modifiers);
+        if (keystr) {
+            json_object_object_add(action_config, "modifiers", json_object_new_string(keystr));
+            free(keystr);
+        }
+        keystr = keycodes_to_str(action_data->data.key.keys);
+        if (keystr) {
+            json_object_object_add(action_config, "keys", json_object_new_string(keystr));
+            free(keystr);
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (action_data->desc) {
+        json_object_object_add(action_config, "desc", json_object_new_string(action_data->desc));
+    }
+
+    return true;
+}
+
+static struct action_data *action_data_create_from_config(json_object *action_config)
+{
+    struct action_data *action_data = calloc(1, sizeof(*action_data));
+    if (!action_data) {
+        return NULL;
+    }
+
+    json_object *data;
+
+    if (json_object_object_get_ex(action_config, "desc", &data)) {
+        action_data->desc = json_object_get_string(data);
+    }
+
+    enum action_type type = ACTION_TYPE_NONE;
+    if (json_object_object_get_ex(action_config, "actiontype", &data)) {
+        const char *type_str = json_object_get_string(data);
+        if (strcmp(type_str, "dbus") == 0) {
+            type = ACTION_TYPE_DBUS_ACTION;
+        } else if (strcmp(type_str, "command") == 0) {
+            type = ACTION_TYPE_RUN_COMMAND;
+        } else if (strcmp(type_str, "button") == 0) {
+            type = ACTION_TYPE_SEND_BUTTON;
+        } else if (strcmp(type_str, "key") == 0) {
+            type = ACTION_TYPE_SEND_KEY;
+        }
+        action_data->type = type;
+    }
+
+    switch (type) {
+    case ACTION_TYPE_DBUS_ACTION:
+        if (json_object_object_get_ex(action_config, "bustype", &data)) {
+            const char *bustype = json_object_get_string(data);
+            if (strcmp(bustype, "session") == 0) {
+                action_data->data.dbus.type = DBUS_TYPE_SESSION;
+            } else {
+                action_data->data.dbus.type = DBUS_TYPE_SYSTEM;
+            }
+        }
+        if (json_object_object_get_ex(action_config, "service", &data)) {
+            action_data->data.dbus.service = strdup(json_object_get_string(data));
+        }
+        if (json_object_object_get_ex(action_config, "path", &data)) {
+            action_data->data.dbus.path = strdup(json_object_get_string(data));
+        }
+        if (json_object_object_get_ex(action_config, "interface", &data)) {
+            action_data->data.dbus.interface = strdup(json_object_get_string(data));
+        }
+        if (json_object_object_get_ex(action_config, "method", &data)) {
+            action_data->data.dbus.method = strdup(json_object_get_string(data));
+        }
+        break;
+    case ACTION_TYPE_RUN_COMMAND:
+        if (json_object_object_get_ex(action_config, "command", &data)) {
+            action_data->data.command.cmd = strdup(json_object_get_string(data));
+        }
+        break;
+    case ACTION_TYPE_SEND_BUTTON:
+        if (json_object_object_get_ex(action_config, "button", &data)) {
+            const char *button = json_object_get_string(data);
+            action_data->data.button.val = btncode_map(button);
+        }
+        break;
+    case ACTION_TYPE_SEND_KEY:
+        if (json_object_object_get_ex(action_config, "modifiers", &data)) {
+            const char *modifiers = json_object_get_string(data);
+            action_data->data.key.modifiers = keycodes_create(modifiers);
+        }
+        if (json_object_object_get_ex(action_config, "keys", &data)) {
+            const char *keys = json_object_get_string(data);
+            action_data->data.key.keys = keycodes_create(keys);
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (json_object_object_get_ex(action_config, "enable", &data)) {
+        action_data->enable = json_object_get_boolean(data);
+    }
+
+    return action_data;
+}
+
+static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct input_action_manager *manager = userdata;
+
+    const char *input_type, *input_bindings = NULL;
+    const char *action_desc = NULL, *action_dat = NULL;
+    CK(sd_bus_message_read(m, "ssss", &input_type, &input_bindings, &action_desc, &action_dat));
+
+    enum input_type itype;
+    if (strcmp(input_type, "keyboard") == 0) {
+        itype = INPUT_TYPE_KEYBOARD;
+    } else if (strcmp(input_type, "gesture") == 0) {
+        itype = INPUT_TYPE_GESTURE;
+    } else {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_type.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    void *binding =
+        itype == INPUT_TYPE_KEYBOARD
+            ? (void *)kywc_key_binding_create(input_bindings, action_desc)
+            : (void *)kywc_gesture_binding_create_by_string(input_bindings, action_desc);
+    if (!binding) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_bindings.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    struct action_data *action_data = action_data_create_from_busstring(action_dat);
+    if (!action_data) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild action_data.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    struct input_action *input_action = calloc(1, sizeof(*input_action));
+    input_action->type = itype;
+    input_action->bindings = strdup(input_bindings);
+    input_action->action = action_data;
+    action_data->desc = strdup(action_desc);
+
+    if (action_data->enable) {
+        bool ret =
+            itype == INPUT_TYPE_KEYBOARD
+                ? kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)
+                : kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
+                                                input_action);
+        if (!ret) {
+            itype == INPUT_TYPE_KEYBOARD ? kywc_key_binding_destroy(binding)
+                                         : kywc_gesture_binding_destroy(binding);
+
+            wl_list_init(&input_action->link);
+            input_action_destroy(input_action);
+            const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS,
+                                                               "Failed register input_bindings.");
+            return sd_bus_reply_method_error(m, &error);
+        }
+    }
+
+    input_action->data = binding;
+
+    struct input_action *old, *temp;
+    wl_list_for_each_safe(old, temp, &manager->actions, link) {
+        if (strcmp(old->bindings, input_action->bindings) == 0) {
+            input_action_destroy(old);
+        }
+    }
+
+    input_action_manager_write_config(manager, input_action);
+
+    wl_list_insert(&manager->actions, &input_action->link);
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct input_action_manager *manager = userdata;
+
+    const char *control_type = NULL, *input_bindings = NULL;
+    CK(sd_bus_message_read(m, "ss", &control_type, &input_bindings));
+    enum control_type ctype;
+    if (strcmp(control_type, "delete") == 0) {
+        ctype = CONTROL_TYPE_DELETE;
+    } else if (strcmp(control_type, "disable") == 0) {
+        ctype = CONTROL_TYPE_DISABLE;
+    } else if (strcmp(control_type, "enable") == 0) {
+        ctype = CONTROL_TYPE_ENABLE;
+    } else {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild control_type.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    bool found = false;
+    struct input_action *input_action = NULL;
+    wl_list_for_each(input_action, &manager->actions, link) {
+        if (strcmp(input_bindings, input_action->bindings)) {
+            continue;
+        }
+        found = true;
+        break;
+    }
+
+    if (!found) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_bindings.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    switch (ctype) {
+    case CONTROL_TYPE_DELETE:
+        if (input_action->type == INPUT_TYPE_KEYBOARD && input_action->data) {
+            kywc_key_binding_destroy(input_action->data);
+        } else if (input_action->type == INPUT_TYPE_GESTURE && input_action->data) {
+            kywc_gesture_binding_destroy(input_action->data);
+        }
+
+        input_action_manager_del_config(manager, input_action);
+        input_action_destroy(input_action);
+        break;
+    case CONTROL_TYPE_DISABLE:
+        if (!input_action->action->enable) {
+            break;
+        }
+        if (input_action->type == INPUT_TYPE_KEYBOARD && input_action->data) {
+            kywc_key_binding_destroy(input_action->data);
+        } else if (input_action->type == INPUT_TYPE_GESTURE && input_action->data) {
+            kywc_gesture_binding_destroy(input_action->data);
+        }
+
+        input_action->data = NULL;
+        input_action->action->enable = false;
+        input_action_manager_write_config(manager, input_action);
+        break;
+    case CONTROL_TYPE_ENABLE:
+        if (input_action->action->enable) {
+            break;
+        }
+        if (input_action->type == INPUT_TYPE_KEYBOARD) {
+            if (!input_action->data) {
+                input_action->data =
+                    kywc_key_binding_create(input_action->bindings, input_action->action->desc);
+            }
+            if (input_action->data) {
+                if (!kywc_key_binding_register(input_action->data, input_manager_keybinding_action,
+                                               input_action)) {
+                    kywc_key_binding_destroy(input_action->data);
+                    input_action->data = NULL;
+                }
+            }
+        } else if (input_action->type == INPUT_TYPE_GESTURE) {
+            if (!input_action->data) {
+                input_action->data = kywc_gesture_binding_create_by_string(
+                    input_action->bindings, input_action->action->desc);
+            }
+            if (input_action->data) {
+                if (!kywc_gesture_binding_register(
+                        input_action->data, input_manager_gesturebinding_action, input_action)) {
+                    kywc_key_binding_destroy(input_action->data);
+                    input_action->data = NULL;
+                }
+            }
+        }
+
+        input_action->action->enable = true;
+        input_action_manager_write_config(manager, input_action);
+        break;
+    default:
+        break;
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static const sd_bus_vtable service_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("ListAllAction", "", "a(ss)", list_input_actions, 0),
+    SD_BUS_METHOD("AddAction", "ssss", "", add_input_action, 0),
+    SD_BUS_METHOD("ControlAction", "ss", "", control_input_action, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static void handle_server_destroy(struct wl_listener *listener, void *data)
+{
+    struct input_action_manager *manager = wl_container_of(listener, manager, server_destroy);
+
+    struct input_action *action, *temp;
+    wl_list_for_each_safe(action, temp, &manager->actions, link) {
+        input_action_destroy(action);
+    }
+
+    wl_list_remove(&manager->server_destroy.link);
+    wl_list_remove(&manager->actions);
+    free(manager);
+}
+
+static void intput_action_create_with_keyboard(struct input_action_manager *manager,
+                                               json_object *keyboard_obj)
+{
+    json_object_object_foreach(keyboard_obj, keybind, action_config) {
+        struct action_data *action_data = action_data_create_from_config(action_config);
+        if (!action_data) {
+            continue;
+        }
+
+        struct input_action *input_action = calloc(1, sizeof(*input_action));
+        input_action->bindings = strdup(keybind);
+        input_action->type = INPUT_TYPE_KEYBOARD;
+        input_action->action = action_data;
+
+        kywc_log(KYWC_DEBUG, "input_action keybind: %s", keybind);
+
+        wl_list_insert(&manager->actions, &input_action->link);
+
+        if (!action_data->enable) {
+            continue;
+        }
+
+        struct key_binding *binding = kywc_key_binding_create(keybind, action_data->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)) {
+            kywc_key_binding_destroy(binding);
+            binding = NULL;
+        }
+        input_action->data = binding;
+    }
+}
+
+static void intput_action_create_with_gesture(struct input_action_manager *manager,
+                                              json_object *gesture_obj)
+{
+    json_object_object_foreach(gesture_obj, gesture, action_config) {
+        struct action_data *action_data = action_data_create_from_config(action_config);
+        if (!action_data) {
+            continue;
+        }
+
+        struct input_action *input_action = calloc(1, sizeof(*input_action));
+        input_action->bindings = strdup(gesture);
+        input_action->type = INPUT_TYPE_GESTURE;
+        input_action->action = action_data;
+
+        kywc_log(KYWC_DEBUG, "input_action gesture bind: %s", gesture);
+
+        wl_list_insert(&manager->actions, &input_action->link);
+
+        if (!action_data->enable) {
+            continue;
+        }
+
+        struct gesture_binding *binding =
+            kywc_gesture_binding_create_by_string(gesture, action_data->desc);
+        if (!binding) {
+            free(action_data);
+            continue;
+        }
+
+        if (!kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
+                                           input_action)) {
+            kywc_gesture_binding_destroy(binding);
+        }
+        input_action->data = binding;
+    }
+}
+
+static bool input_action_manager_read_config(struct input_action_manager *manager)
+{
+    if (!manager->config || !manager->config->json) {
+        return false;
+    }
+
+    json_object *data;
+    if (json_object_object_get_ex(manager->config->json, "keyboard", &data)) {
+        intput_action_create_with_keyboard(manager, data);
+    }
+
+    if (json_object_object_get_ex(manager->config->json, "gesture", &data)) {
+        intput_action_create_with_gesture(manager, data);
+    }
+    return true;
+}
+
+static bool input_action_manager_config_init(struct input_action_manager *manager)
+{
+    manager->config = config_manager_add_config("InputAction", NULL, service_path,
+                                                service_interface, service_vtable, manager);
+    return !!manager->config;
+}
+
+bool input_action_manager_create(struct input_manager *input_manager)
+{
+    manager = calloc(1, sizeof(struct input_action_manager));
+    if (!manager) {
+        return false;
+    }
+
+    manager->input_manager = input_manager;
+
+    wl_list_init(&manager->actions);
+
+    input_action_manager_config_init(manager);
+    input_action_manager_read_config(manager);
+
+    manager->server_destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(input_manager->server, &manager->server_destroy);
+
+    return true;
+}
