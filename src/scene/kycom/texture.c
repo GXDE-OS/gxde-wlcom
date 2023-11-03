@@ -445,12 +445,12 @@ void kywc_texture_node_set_texture(struct kywc_texture_node *tex_node,
 void kywc_texture_node_set_opacity(struct kywc_texture_node *tex_node,
                                    float opacity)
 {
-	if (tex_node->opacity == opacity) {
-		return;
-	}
+    if (tex_node->opacity == opacity) {
+        return;
+    }
 
-	tex_node->opacity = opacity;
-	tex_node->node.push_damage(&tex_node->node, NULL);
+    tex_node->opacity = opacity;
+    tex_node->node.push_damage(&tex_node->node, NULL);
 }
 
 void kywc_texture_node_set_opaque_region(struct kywc_texture_node *tex_node,
