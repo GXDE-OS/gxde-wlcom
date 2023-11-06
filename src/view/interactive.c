@@ -15,6 +15,7 @@
 #include "scene/animation.h"
 #include "theme.h"
 #include "view/action.h"
+#include "view/workspace.h"
 
 #define VIEW_EDGE_GAP 20
 #define VIEW_TOP_GAP 5
@@ -27,6 +28,7 @@
 #define VIEW_RESIZE_STEP 10
 #define SNAP_BOX_FILTER 200
 #define SNAP_BORDER_CORNER_RATIO 0.25
+#define EDGE_OFFSET 10
 
 enum interactive_mode {
     INTERACTIVE_MODE_NONE = 0,
@@ -272,6 +274,123 @@ static void interactive_done(struct interactive_grab *grab)
     interactive_grab_destroy(grab);
 }
 
+static void window_adsorption_top_or_bottom(struct kywc_box *s_box, const struct kywc_box *l_box,
+                                            uint32_t *offset, enum interactive_mode mode)
+{
+    int sx1 = s_box->x, sy1 = s_box->y, sx2 = s_box->x + s_box->width,
+        sy2 = s_box->y + s_box->height;
+    int lx1 = l_box->x, ly1 = l_box->y, lx2 = l_box->x + l_box->width,
+        ly2 = l_box->y + l_box->height;
+
+    if (sx1 > lx2 || sx2 < lx1) {
+        return;
+    }
+
+    /* top adsorb bottom */
+    uint32_t temp = abs(ly2 - sy1);
+    if (temp < *offset) {
+        *offset = temp;
+        s_box->y = ly2;
+        if (mode == INTERACTIVE_MODE_RESIZE) {
+            s_box->height = sy2 - ly2;
+        }
+        return;
+    }
+
+    /* bottom adsorb top */
+    temp = abs(ly1 - sy2);
+    if (temp < *offset) {
+        *offset = temp;
+        if (mode == INTERACTIVE_MODE_MOVE) {
+            s_box->y = ly1 - (sy2 - sy1);
+        } else if (mode == INTERACTIVE_MODE_RESIZE) {
+            s_box->height += temp;
+        }
+    }
+}
+
+static void window_adsorption_left_or_right(struct kywc_box *s_box, const struct kywc_box *l_box,
+                                            uint32_t *offset, enum interactive_mode mode)
+{
+    int sx1 = s_box->x, sy1 = s_box->y, sx2 = s_box->x + s_box->width,
+        sy2 = s_box->y + s_box->height;
+    int lx1 = l_box->x, ly1 = l_box->y, lx2 = l_box->x + l_box->width,
+        ly2 = l_box->y + l_box->height;
+
+    if (sy1 > ly2 || sy2 < ly1) {
+        return;
+    }
+
+    /* left adsorb right */
+    uint32_t temp = abs(lx2 - sx1);
+    if (temp < *offset) {
+        *offset = temp;
+        s_box->x = lx2;
+        if (mode == INTERACTIVE_MODE_RESIZE) {
+            s_box->width = sx2 - lx2;
+        }
+        return;
+    }
+
+    /* right adsorb left */
+    temp = abs(lx1 - sx2);
+    if (temp < *offset) {
+        *offset = temp;
+        if (mode == INTERACTIVE_MODE_MOVE) {
+            s_box->x = lx1 - (sx2 - sx1);
+        } else if (mode == INTERACTIVE_MODE_RESIZE) {
+            s_box->width += temp;
+        }
+    }
+}
+
+static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct kywc_box *pending,
+                                             uint32_t *gap_x, uint32_t *gap_y,
+                                             enum kywc_edges edges, enum interactive_mode mode)
+{
+    /* actual window box */
+    struct kywc_box s_box = {
+        .x = pending->x - kywc_view->margin.off_x,
+        .y = pending->y - kywc_view->margin.off_y,
+        .width = pending->width + kywc_view->margin.off_width,
+        .height = pending->height + kywc_view->margin.off_height,
+    };
+
+    struct view_proxy *view_proxy;
+    struct workspace *workspace = workspace_manager_get_current();
+    wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
+        if (!view_proxy->view->base.mapped || view_proxy->view == view_from_kywc_view(kywc_view) ||
+            view_proxy->view->base.minimized || view_proxy->view->base.maximized ||
+            view_proxy->view->base.fullscreen) {
+            continue;
+        }
+
+        /* be adsorbed window box */
+        struct kywc_box l_box = {
+            .x = view_proxy->view->base.geometry.x - view_proxy->view->base.margin.off_x,
+            .y = view_proxy->view->base.geometry.y - view_proxy->view->base.margin.off_y,
+            .width =
+                view_proxy->view->base.geometry.width + view_proxy->view->base.margin.off_width,
+            .height =
+                view_proxy->view->base.geometry.height + view_proxy->view->base.margin.off_height,
+        };
+
+        if (edges & KYWC_EDGE_LEFT || edges & KYWC_EDGE_RIGHT) {
+            window_adsorption_left_or_right(&s_box, &l_box, gap_x, mode);
+        }
+        if (edges & KYWC_EDGE_TOP || edges & KYWC_EDGE_BOTTOM) {
+            window_adsorption_top_or_bottom(&s_box, &l_box, gap_y, mode);
+        }
+    }
+
+    pending->x = s_box.x + kywc_view->margin.off_x;
+    pending->y = s_box.y + kywc_view->margin.off_y;
+    if (mode == INTERACTIVE_MODE_RESIZE) {
+        pending->width = s_box.width - kywc_view->margin.off_width;
+        pending->height = s_box.height - kywc_view->margin.off_height;
+    }
+}
+
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y)
 {
     /* get current seat constraints output */
@@ -283,6 +402,23 @@ void window_move_constraints(struct kywc_view *kywc_view, struct output *output,
     int y1 = *y - kywc_view->margin.off_y;
     int x2 = x1 + current->width + kywc_view->margin.off_width;
     int y2 = y1 + current->height + kywc_view->margin.off_height;
+
+    struct kywc_box pending = {
+        .x = *x,
+        .y = *y,
+        .width = kywc_view->geometry.width,
+        .height = kywc_view->geometry.height,
+    };
+    uint32_t gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
+    uint32_t edges = KYWC_EDGE_NONE;
+    /* window edge adsorption in left, right */
+    edges |= *x != kywc_view->geometry.x ? KYWC_EDGE_LEFT | KYWC_EDGE_RIGHT : KYWC_EDGE_NONE;
+    /* top and bottom */
+    edges |= *y != kywc_view->geometry.y ? KYWC_EDGE_TOP | KYWC_EDGE_BOTTOM : KYWC_EDGE_NONE;
+    window_adsorb_window_constraints(kywc_view, &pending, &gap_x, &gap_y, edges,
+                                     INTERACTIVE_MODE_MOVE);
+    *x = pending.x;
+    *y = pending.y;
 
     int ux2 = usable->x + usable->width;
     int uy2 = usable->y + usable->height;
@@ -369,6 +505,10 @@ static void interactive_resize_constraints(struct interactive_grab *grab, struct
     int y1 = box->y - kywc_view->margin.off_y;
     int x2 = x1 + box->width + kywc_view->margin.off_width;
     int y2 = y1 + box->height + kywc_view->margin.off_height;
+
+    uint32_t gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
+    window_adsorb_window_constraints(kywc_view, box, &gap_x, &gap_y, grab->resize_edges,
+                                     INTERACTIVE_MODE_RESIZE);
 
     if (x1 > usable->x + usable->width || x2 < usable->x || y1 > usable->y + usable->height ||
         y2 < usable->y) {
