@@ -35,6 +35,8 @@ struct xwayland_server {
 
     xcb_atom_t atoms[ATOM_LAST];
 
+    xcb_connection_t *xcb_conn;
+
     float scale;
 };
 

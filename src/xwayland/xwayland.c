@@ -39,15 +39,8 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
     xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
-static void xwayland_update_dpi(void)
+static void xwayland_update_dpi(xcb_connection_t *xcb_conn)
 {
-    xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
-    int err = xcb_connection_has_error(xcb_conn);
-    if (err) {
-        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
-        return;
-    }
-
     char dpi_str[16];
     snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
     xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
@@ -72,24 +65,11 @@ static void handle_output_configured(struct wl_listener *listener, void *data)
     }
 
     output_manager_update_scale(xwayland->scale);
-    xwayland_update_dpi();
+    xwayland_update_dpi(xwayland->xcb_conn);
 }
 
-static void handle_xwayland_ready(struct wl_listener *listener, void *data)
+static void xwayland_get_atoms(xcb_connection_t *xcb_conn)
 {
-    kywc_log(KYWC_INFO, "xwayland is ready");
-    struct seat *seat = input_manager_get_default_seat();
-    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
-    /* set xft.dpi */
-    xwayland_update_dpi();
-
-    xcb_connection_t *xcb_conn = xcb_connect(NULL, NULL);
-    int err = xcb_connection_has_error(xcb_conn);
-    if (err) {
-        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
-        return;
-    }
-
     xcb_intern_atom_cookie_t cookies[ATOM_LAST];
     for (size_t i = 0; i < ATOM_LAST; i++) {
         cookies[i] = xcb_intern_atom(xcb_conn, 0, strlen(atom_map[i]), atom_map[i]);
@@ -109,8 +89,25 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
             break;
         }
     }
+}
 
-    xcb_disconnect(xcb_conn);
+static void handle_xwayland_ready(struct wl_listener *listener, void *data)
+{
+    kywc_log(KYWC_INFO, "xwayland is ready");
+
+    xwayland->xcb_conn = xcb_connect(NULL, NULL);
+    int err = xcb_connection_has_error(xwayland->xcb_conn);
+    if (err) {
+        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
+        return;
+    }
+
+    struct seat *seat = input_manager_get_default_seat();
+    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+    /* set xft.dpi */
+    xwayland_update_dpi(xwayland->xcb_conn);
+
+    xwayland_get_atoms(xwayland->xcb_conn);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
