@@ -47,8 +47,6 @@ struct output {
 
 struct output_manager *output_manager_create(struct server *server);
 
-struct kywc_output *output_manager_get_primary(void);
-
 void output_manager_add_configured_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);

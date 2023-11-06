@@ -107,7 +107,7 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_DEBUG, "wlr output manager apply");
     struct wlr_output_configuration_v1 *config = data;
-    struct kywc_output *primary_output = output_manager_get_primary();
+    struct kywc_output *primary_output = kywc_output_get_primary();
 
     if (wl_list_empty(&management->heads) || !primary_output) {
         kywc_log(KYWC_WARN, "configuration cannot be applied");

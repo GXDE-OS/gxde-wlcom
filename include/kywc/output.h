@@ -85,6 +85,8 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
 void kywc_output_set_primary(struct kywc_output *kywc_output);
 
+struct kywc_output *kywc_output_get_primary(void);
+
 struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_output);
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height);

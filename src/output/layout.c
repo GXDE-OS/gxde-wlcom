@@ -135,7 +135,7 @@ static void output_write_layout_config(struct output *output, const char *active
 
     struct kywc_output *kywc_output = &output->base;
     struct kywc_output_state *state = &kywc_output->state;
-    bool primary = output_manager_get_primary() == kywc_output;
+    bool primary = kywc_output_get_primary() == kywc_output;
 
     json_object_object_add(config, "enabled", json_object_new_boolean(state->enabled));
     if (!state->enabled) {
@@ -255,7 +255,7 @@ static void output_manager_save_layouts(struct output_manager *manager)
         wl_list_for_each(output, &manager->outputs, link) {
             struct kywc_output *kywc_output = &output->base;
             struct kywc_output_state *state = &kywc_output->state;
-            bool primary = output_manager_get_primary() == kywc_output;
+            bool primary = kywc_output_get_primary() == kywc_output;
             kywc_log(KYWC_INFO,
                      "\t output %s: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
                      kywc_output->name, state->width, state->height, state->refresh, state->scale,

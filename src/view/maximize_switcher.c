@@ -345,7 +345,7 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 static void get_maximize_views(int *num_views)
 {
     struct workspace *workspace = workspace_manager_get_current();
-    struct kywc_output *kywc_output = output_manager_get_primary();
+    struct kywc_output *kywc_output = kywc_output_get_primary();
     float color[4] = { 0 };
     struct view *view;
     wl_list_for_each(view, &workspace->views, link) {
@@ -522,7 +522,7 @@ static void hide_maximize_switcher(void)
 
 static bool show_maximize_switcher(void)
 {
-    struct kywc_output *kywc_output = output_manager_get_primary();
+    struct kywc_output *kywc_output = kywc_output_get_primary();
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *usable_area = &output->usable_area;
 

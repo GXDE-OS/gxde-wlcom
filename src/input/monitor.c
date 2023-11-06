@@ -74,7 +74,7 @@ static void seat_rebase_cursor(struct seat *seat)
 {
     /* prefer to move cursor to mapped output */
     struct kywc_output *output = seat_pick_mapped_output(seat);
-    output = output ? output : output_manager_get_primary();
+    output = output ? output : kywc_output_get_primary();
     if (output && !output->destroying) {
         cursor_move_to_output_center(seat->cursor, output);
     }
