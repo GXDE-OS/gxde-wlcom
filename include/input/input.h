@@ -137,4 +137,6 @@ struct input *input_by_name(const char *name);
 
 void input_set_seat(struct input *input, const char *seat);
 
+void input_rebase_all_cursor(void);
+
 #endif /* _INPUT_H_ */

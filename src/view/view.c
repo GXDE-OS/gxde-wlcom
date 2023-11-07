@@ -277,6 +277,7 @@ void view_unmap(struct view *view)
     }
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
+    input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
     if (view->workspace) {
@@ -339,6 +340,10 @@ void view_configure(struct view *view, uint32_t serial)
 void view_configured(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
+
+    if ((view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
+        input_rebase_all_cursor();
+    }
 
     if (view->pending.configure_action & VIEW_ACTION_FULLSCREEN) {
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
@@ -715,6 +720,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     }
 
     /* if view is the activated view, process it in activated.minimize listener */
+    input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
 
     if (!kywc_view->minimized && view_manager->show_desktop_enabled) {

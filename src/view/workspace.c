@@ -10,6 +10,7 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
+#include "input/input.h"
 #include "server.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -382,6 +383,7 @@ void workspace_activate(struct workspace *workspace)
     /* auto activate topmost enabled view */
     view_topmost_activate(workspace);
 
+    input_rebase_all_cursor();
     kywc_log(KYWC_INFO, "workspace %s(%d) is activated", workspace->name, workspace->position);
 }
 

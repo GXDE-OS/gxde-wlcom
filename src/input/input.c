@@ -28,6 +28,14 @@
 
 static struct input_manager *input_manager = NULL;
 
+void input_rebase_all_cursor(void)
+{
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        cursor_rebase(seat->cursor);
+    }
+}
+
 void input_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&input_manager->events.new_input, listener);
