@@ -113,9 +113,7 @@ static void input_destroy(struct input *input)
     struct seat *seat = input->seat;
     if (seat) {
         seat_remove_input(input);
-        if (wl_list_empty(&seat->inputs)) {
-            seat_destroy(seat);
-        }
+        seat_consider_destroy(seat);
     }
 
     free((void *)input->name);
@@ -353,9 +351,7 @@ void input_set_seat(struct input *input, const char *seat)
             /* remove from prev seat */
             struct seat *prev = input->seat;
             seat_remove_input(input);
-            if (wl_list_empty(&prev->inputs)) {
-                seat_destroy(prev);
-            }
+            seat_consider_destroy(prev);
         }
     }
 

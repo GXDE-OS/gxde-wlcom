@@ -119,6 +119,18 @@ void seat_destroy(struct seat *seat)
     free(seat);
 }
 
+void seat_consider_destroy(struct seat *seat)
+{
+    struct input *input;
+    wl_list_for_each(input, &seat->inputs, seat_link) {
+        if (!input->prop.is_virtual) {
+            return;
+        }
+    }
+
+    seat_destroy(seat);
+}
+
 static void seat_update_capabilities(struct seat *seat)
 {
     struct input *input;
