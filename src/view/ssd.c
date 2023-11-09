@@ -234,7 +234,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 {
     struct theme *theme = theme_manager_get_current();
 
-    widget_set_text(widget, text, TEXT_ALIGN_CENTER, false);
+    widget_set_text(widget, text, TEXT_ALIGN_CENTER, false, false);
     widget_set_font(widget, theme->font_name, theme->font_size);
     widget_set_max_size(widget, 1024, 1024);
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
@@ -612,7 +612,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 
     /* redraw title buffer */
     if (cause & SSD_UPDATE_CAUSE_TITLE) {
-        widget_set_text(ssd->title_text, view->title, TEXT_ALIGN_LEFT, false);
+        widget_set_text(ssd->title_text, view->title, TEXT_ALIGN_LEFT, false, false);
         widget_set_font(ssd->title_text, theme->font_name, theme->font_size);
     }
     if (cause & SSD_UPDATE_CAUSE_SIZE) {

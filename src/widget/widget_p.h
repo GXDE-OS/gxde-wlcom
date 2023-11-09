@@ -55,7 +55,7 @@ struct widget {
     int auto_resize;
     /* widget support hover state */
     bool hoverable;
-    bool enabled, hovered, submenu;
+    bool enabled, hovered, submenu, checked;
 };
 
 #endif /* _WIDGET_P_H_ */

@@ -33,7 +33,7 @@ struct menu_item {
     struct menu *submenu; // may be NULL
 
     char *text;
-    bool first, last;
+    bool first, last, checked;
 
     uint32_t key;
     enum window_action action;
@@ -478,7 +478,7 @@ static void menu_draw_item(struct menu_item *item)
         corner_mask |= CORNER_MASK_BOTTOM_LEFT | CORNER_MASK_BOTTOM_RIGHT;
     }
 
-    widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, !!item->submenu);
+    widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, !!item->submenu, item->checked);
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, ITEM_WIDTH, ITEM_HEIGHT);
 

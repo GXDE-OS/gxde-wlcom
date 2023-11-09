@@ -70,6 +70,7 @@ struct draw_info {
     enum text_align align;
     enum auto_resize auto_resize;
     bool submenu; // ">"
+    bool checked; // "✓"
 
     /* blur support */
     int blur_margin;

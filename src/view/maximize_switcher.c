@@ -272,7 +272,7 @@ static void update_title_text(struct item_view *item_view)
     struct kywc_view *view = item_view->kywc_view;
 
     int max_width = switcher->max_width - DEFAULT_ICON_AREA_WIDTH;
-    widget_set_text(item_view->title_text, view->title, JUSTIFY_CENTER, false);
+    widget_set_text(item_view->title_text, view->title, JUSTIFY_CENTER, false, false);
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
 
     widget_set_front_color(item_view->title_text, theme->active_text_color);

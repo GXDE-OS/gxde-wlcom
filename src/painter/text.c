@@ -89,6 +89,16 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
         pango_cairo_show_layout(cairo, layout);
         g_object_unref(layout);
     }
+    if (info->checked) {
+        cairo_move_to(cairo, box->x + lx / 2, box->y + ly);
+        PangoLayout *layout = pango_cairo_create_layout(cairo);
+        pango_layout_set_width(layout, -1);
+        pango_layout_set_text(layout, "✓", -1);
+        pango_layout_set_font_description(layout, desc);
+        pango_cairo_update_layout(cairo, layout);
+        pango_cairo_show_layout(cairo, layout);
+        g_object_unref(layout);
+    }
 
     pango_font_description_free(desc);
     cairo_surface_flush(surf);
