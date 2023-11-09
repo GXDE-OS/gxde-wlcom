@@ -269,7 +269,6 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
     manager->taking_screencopy = true;
 
     return true;
-    return true;
 }
 
 bool screencopy_output(const char *name, bool unscaled, bool cursor, screencopy_done_func_t done,
