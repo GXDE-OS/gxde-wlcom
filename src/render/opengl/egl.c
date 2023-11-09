@@ -404,9 +404,7 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     egl->exts.IMG_context_priority =
         epoxy_extension_in_string(display_exts_str, "EGL_IMG_context_priority");
 
-    const char *vendor = eglQueryString(egl->display, EGL_VENDOR);
-    egl->exts.WL_bind_wayland_display = // only check when ARM mali
-        vendor && strcmp(vendor, "ARM") == 0 &&
+    egl->exts.WL_bind_wayland_display =
         epoxy_extension_in_string(display_exts_str, "EGL_WL_bind_wayland_display");
 
     kywc_log(KYWC_INFO, "Using EGL %d.%d", (int)major, (int)minor);
@@ -414,7 +412,7 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     if (device_exts_str != NULL) {
         kywc_log(KYWC_INFO, "Supported EGL device extensions: %s", device_exts_str);
     }
-    kywc_log(KYWC_INFO, "EGL vendor: %s", vendor);
+    kywc_log(KYWC_INFO, "EGL vendor: %s", eglQueryString(egl->display, EGL_VENDOR));
     if (driver_name != NULL) {
         kywc_log(KYWC_INFO, "EGL driver name: %s", driver_name);
     }

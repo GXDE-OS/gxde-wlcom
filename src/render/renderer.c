@@ -6,6 +6,7 @@
 
 #include <wlr/backend.h>
 #include <wlr/render/pixman.h>
+#include <wlr/types/wlr_linux_dmabuf_v1.h>
 
 #include <kywc/log.h>
 
@@ -36,4 +37,20 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
     }
 
     return renderer;
+}
+
+bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wl_display *wl_display)
+{
+    if (!wlr_renderer_init_wl_shm(renderer, wl_display)) {
+        return false;
+    }
+
+    if (wlr_renderer_get_dmabuf_texture_formats(renderer) &&
+        !wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer)) {
+        return false;
+    }
+
+    ky_wayland_buffer_create(wl_display, renderer);
+
+    return true;
 }
