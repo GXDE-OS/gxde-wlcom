@@ -2,6 +2,7 @@ wl_protocol_dir = wayland_protos.get_variable('pkgdatadir')
 wayland_scanner = find_program('wayland-scanner')
 
 protocols = {
+  'wl-drm': 'drm.xml',
   'ext-idle-notifier-v1': wl_protocol_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
   'xdg-shell': wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
   'xdg-output-unstable-v1': wl_protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',

@@ -204,8 +204,6 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         return;
     }
 
-    kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
-
     bool has_modifiers = false;
     for (int i = 0; i < formats_len; i++) {
         EGLint fmt = formats[i];
@@ -246,6 +244,7 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         }
 
         if (kywc_log_get_level() >= KYWC_DEBUG) {
+            kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
             char *fmt_name = drmGetFormatName(fmt);
             kywc_log(KYWC_DEBUG, "  %s (0x%08" PRIX32 ")", fmt_name ? fmt_name : "<unknown>", fmt);
             free(fmt_name);
@@ -404,7 +403,9 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     egl->exts.IMG_context_priority =
         epoxy_extension_in_string(display_exts_str, "EGL_IMG_context_priority");
 
-    egl->exts.WL_bind_wayland_display =
+    const char *vendor = eglQueryString(egl->display, EGL_VENDOR);
+    egl->exts.WL_bind_wayland_display = // only check when ARM mali
+        vendor && strcmp(vendor, "ARM") == 0 &&
         epoxy_extension_in_string(display_exts_str, "EGL_WL_bind_wayland_display");
 
     kywc_log(KYWC_INFO, "Using EGL %d.%d", (int)major, (int)minor);
@@ -412,7 +413,7 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     if (device_exts_str != NULL) {
         kywc_log(KYWC_INFO, "Supported EGL device extensions: %s", device_exts_str);
     }
-    kywc_log(KYWC_INFO, "EGL vendor: %s", eglQueryString(egl->display, EGL_VENDOR));
+    kywc_log(KYWC_INFO, "EGL vendor: %s", vendor);
     if (driver_name != NULL) {
         kywc_log(KYWC_INFO, "EGL driver name: %s", driver_name);
     }

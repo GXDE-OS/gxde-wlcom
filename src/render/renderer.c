@@ -12,6 +12,7 @@
 
 #include "render/opengl.h"
 #include "render/renderer.h"
+#include "renderer_p.h"
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
 {
@@ -39,18 +40,30 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
     return renderer;
 }
 
-bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wl_display *wl_display)
+bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backend *backend,
+                                 struct wl_display *wl_display)
 {
     if (!wlr_renderer_init_wl_shm(renderer, wl_display)) {
         return false;
     }
 
-    if (wlr_renderer_get_dmabuf_texture_formats(renderer) &&
-        !wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer)) {
+    if (!wlr_renderer_get_dmabuf_texture_formats(renderer)) {
+        return true;
+    }
+
+    if (!wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer)) {
         return false;
     }
 
-    ky_wayland_buffer_create(wl_display, renderer);
+    if (!ky_wayland_buffer_create(wl_display, renderer)) {
+        /* create wl_drm if not created in driver */
+        int master_fd = wlr_backend_get_drm_fd(backend);
+        if (master_fd >= 0) {
+            wayland_drm_create(wl_display, renderer, master_fd);
+        } else {
+            kywc_log(KYWC_WARN, "Cannot get renderer DRM FD, disabling wl_drm");
+        }
+    }
 
     return true;
 }

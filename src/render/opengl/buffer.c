@@ -189,7 +189,7 @@ bool ky_wayland_buffer_create(struct wl_display *wl_display, struct wlr_renderer
 
     manager = calloc(1, sizeof(*manager));
     if (!manager) {
-        return NULL;
+        return false;
     }
 
     manager->procs.eglBindWaylandDisplayWL = (void *)eglGetProcAddress("eglBindWaylandDisplayWL");
