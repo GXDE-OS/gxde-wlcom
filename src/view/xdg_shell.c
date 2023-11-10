@@ -221,7 +221,6 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     view_update_size(&xdg_view->view, width, height, current->min_width, current->min_height,
                      current->max_width, current->max_height);
 
-#if 0
     struct kywc_view *kywc_view = &xdg_view->view.base;
     /* padding if used CSD with drop-shadow */
     kywc_view->padding.left = geo->x;
@@ -232,7 +231,6 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
              kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
              kywc_view->padding.bottom);
-#endif
 }
 
 static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
