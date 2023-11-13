@@ -504,8 +504,6 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     view_set_title(&xwayland_view->view, wlr_xwayland_surface->title);
     xwayland_view_handle_set_parent(&xwayland_view->set_parent, NULL);
     xwayland_view_handle_set_decorations(&xwayland_view->set_decorations, NULL);
-    // TODO: set shadow to all xwayland view ?
-    view_set_shadow(&xwayland_view->view, true);
     xwayland_view_handle_request_maximize(&xwayland_view->request_maximize, NULL);
     xwayland_view_handle_request_fullscreen(&xwayland_view->request_fullscreen, NULL);
     xwayland_view_handle_set_hints(&xwayland_view->set_hints, NULL);
@@ -553,6 +551,13 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
             view_set_workspace(&xwayland_view->view, NULL);
             break;
         }
+    }
+
+    view_set_shadow(&xwayland_view->view, xwayland_view->view.base.focusable);
+    /* we should stack above the new window always */
+    if (!xwayland_view->view.base.activatable) {
+        wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
+        xwayland_restack_unmanaged(xwayland_view->xwayland);
     }
 
     /* fix postion if not special state */
