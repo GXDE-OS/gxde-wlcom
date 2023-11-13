@@ -39,16 +39,16 @@ static const char *service_interface = "org.kde.kwin.ColorCorrect";
 #define DEG(x) ((x) * (180 / M_PI))
 
 /* Model of atmospheric refraction near horizon (in degrees). */
-//#define SOLAR_ATM_REFRAC 0.833
-//#define SOLAR_DAYTIME_ELEV (0.0 - SOLAR_ATM_REFRAC)
+// #define SOLAR_ATM_REFRAC 0.833
+// #define SOLAR_DAYTIME_ELEV (0.0 - SOLAR_ATM_REFRAC)
 #define SOLAR_CIVIL_TWILIGHT_ELEV -6.0
 #define SOLAR_SUN_CIVIL_HIGH 2
 
 #define SOLAR_TIME_CIVIL_DAWN RAD(-90.0 + SOLAR_CIVIL_TWILIGHT_ELEV)
-//#define SOLAR_TIME_SUNRISE RAD(-90.0 + SOLAR_DAYTIME_ELEV)
+// #define SOLAR_TIME_SUNRISE RAD(-90.0 + SOLAR_DAYTIME_ELEV)
 #define SOLAR_TIME_SUNRISE_CIVIL_HIGH RAD(-90.0 + SOLAR_SUN_CIVIL_HIGH)
 #define SOLAR_TIME_CIVIL_DUSK RAD(90.0 - SOLAR_CIVIL_TWILIGHT_ELEV)
-//#define SOLAR_TIME_SUNSET RAD(90.0 - SOLAR_DAYTIME_ELEV)
+// #define SOLAR_TIME_SUNSET RAD(90.0 - SOLAR_DAYTIME_ELEV)
 #define SOLAR_TIME_SUNSET_CIVIL_HIGH RAD(90.0 - SOLAR_SUN_CIVIL_HIGH)
 
 enum nightcolor_mode {
@@ -171,7 +171,7 @@ static bool get_group_configs(struct wl_list *configs_list, const char *group, c
     char strline[MINI_CHUNK_SIZE];
 
     if ((fp = fopen(filename, "r")) == NULL) {
-        kywc_log(KYWC_WARN, "have no such file:%s", filename);
+        kywc_log_errno(KYWC_WARN, "open file %s failed", filename);
         return false;
     }
 
@@ -712,7 +712,7 @@ static void update_target_color_temperature(void)
         send_change_property(PROP_TARGET_COLORTEMP);
     }
 
-    kywc_log(KYWC_DEBUG, "nightcolor target colortemperature :%d", manager->target_colortemp);
+    kywc_log(KYWC_DEBUG, "nightcolor target colortemperature: %d", manager->target_colortemp);
 }
 
 static void update_running(bool running)
@@ -1000,7 +1000,7 @@ static int handle_colortemp_adjust_timer(void *data)
         next_colortemp = MAX(manager->current_colortemp - COLORTEMP_STEP, target_colortemp);
     }
 
-    kywc_log(KYWC_DEBUG, "nexttemp :%d,targettemp :%d", next_colortemp, target_colortemp);
+    kywc_log(KYWC_DEBUG, "next temp: %d, target temp: %d", next_colortemp, target_colortemp);
 
     color_temperature_commit(next_colortemp, false);
 
@@ -1027,13 +1027,13 @@ static int handle_slow_update_start_timer(void *data)
     int time_out = (manager->next_dtime.begin - now) * 1000;
     if (time_out <= 0) {
         manager->slow_update_starting = false;
-        kywc_log(KYWC_WARN, "error in time calculation,deactivating nightcolor");
+        kywc_log(KYWC_WARN, "error in time calculation, deactivating nightcolor");
         return 0;
     }
 
     manager->slow_update_starting = true;
     wl_event_source_timer_update(manager->slow_update_start_timer, time_out);
-    kywc_log(KYWC_INFO, "nightcolor slow update timer start:%d", time_out);
+    kywc_log(KYWC_INFO, "nightcolor slow update timer start: %d", time_out);
 
     // We've reached the target color temperature or the transition time is zero.
     if (manager->prev_dtime.begin == manager->prev_dtime.end ||
@@ -1053,7 +1053,7 @@ static int handle_slow_update_start_timer(void *data)
         manager->adjust_timeout = interval == 0 ? 1 : interval;
         manager->slow_adjusting = true;
         wl_event_source_timer_update(manager->adjust_timer, manager->adjust_timeout);
-        kywc_log(KYWC_INFO, "nightcolor slow adjust timer start :%d", manager->adjust_timeout);
+        kywc_log(KYWC_INFO, "nightcolor slow adjust timer start: %d", manager->adjust_timeout);
     }
 
     return 0;
@@ -1117,9 +1117,9 @@ static void load_manager_configs(void)
         configs.night_colortemp = CLAMP(configs.night_colortemp, 1000, 6500);
         configs.day_colortemp = CLAMP(configs.day_colortemp, 1000, 6500);
 
-        kywc_log(KYWC_INFO,
-                 "configs mode:%d, active:%d, nighttemp:%d, daytemp%d, morn_begin:%d, "
-                 "even_begin:%d, lat:%f, lon:%f",
+        kywc_log(KYWC_DEBUG,
+                 "nightcolor mode: %d, active: %d, nighttemp: %d, daytemp: %d, morn_begin: %d, "
+                 "even_begin: %d, lat: %f, lon: %f",
                  configs.mode, configs.active, configs.night_colortemp, configs.day_colortemp,
                  configs.morning_begin_fixed, configs.evening_begin_fixed, configs.latitude_auto,
                  configs.longitude_auto);
@@ -1295,7 +1295,7 @@ static int time_change_event(int fd, uint32_t mask, void *data)
 
     struct kde_nightcolor_manager *manager = data;
     if (manager->configs.active) {
-        kywc_log(KYWC_INFO, "nightcolor handle time change");
+        kywc_log(KYWC_INFO, "nightcolor handle time changed");
         handle_color_temperature(true);
     }
 
@@ -1313,11 +1313,11 @@ static int time_change_fd(void)
      */
     int fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
     if (fd < 0) {
-        kywc_log(KYWC_ERROR, "timerfd for clockskew create failed");
+        kywc_log_errno(KYWC_ERROR, "timerfd for clockskew create failed");
         return -1;
     }
     if (timerfd_settime(fd, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &its, NULL) < 0) {
-        kywc_log(KYWC_ERROR, "timerfd for clockskew settime  failed");
+        kywc_log_errno(KYWC_ERROR, "timerfd for clockskew settime failed");
         return -1;
     }
 
