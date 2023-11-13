@@ -216,7 +216,11 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
     }
 
     if (path && interface && vtable) {
-        sd_bus_add_object_vtable(config_manager->bus, &config->slot, path, interface, vtable, data);
+        int r = sd_bus_add_object_vtable(config_manager->bus, &config->slot, path, interface,
+                                         vtable, data);
+        if (r < 0) {
+            kywc_log(KYWC_ERROR, "interface %s vtable add failed: %d", interface, r);
+        }
     }
 
     wl_signal_init(&config->events.destroy);

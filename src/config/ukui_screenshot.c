@@ -88,6 +88,27 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
     return 1;
 }
 
+static int screenshot2_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    if (manager->taking_screenshot) {
+        const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            "org.kde.kwin.Screenshot.Error.AlreadyTaking", "A screenshot is already been taken");
+        return sd_bus_reply_method_error(msg, &error);
+    }
+
+    uint32_t cursor = 0;
+    CK(sd_bus_message_read(msg, "b", &cursor));
+
+    if (!screencopy_full(false, cursor, screenshot_done, NULL)) {
+        return 0;
+    }
+
+    manager->msg = sd_bus_message_ref(msg);
+    manager->taking_screenshot = true;
+
+    return 1;
+}
+
 static int screenshot_full(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     if (manager->taking_screenshot) {
@@ -154,12 +175,23 @@ static int screenshot_area(sd_bus_message *msg, void *userdata, sd_bus_error *re
     return 1;
 }
 
+/**
+ * sd-bus not support method overloaded, https://github.com/systemd/systemd/issues/578
+ * Add org.ukui.KWin screenshotFullscreen with a bool arg for linuxqq,
+ * keep org.ukui.KWin screenshotFullscreen without args for kylin-screenshot.
+ */
 static const sd_bus_vtable screenshot_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("screenshotFullscreen", "", "s", screenshot_fullscreen, 0),
     SD_BUS_METHOD("screenshotFull", "bb", "s", screenshot_full, 0),
     SD_BUS_METHOD("screenshotOutput", "sbb", "s", screenshot_output, 0),
     SD_BUS_METHOD("screenshotArea", "iiiibb", "s", screenshot_area, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable screenshot2_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("screenshotFullscreen", "b", "s", screenshot2_fullscreen, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -184,6 +216,9 @@ bool ukui_screenshot_create(struct config_manager *config_manager)
         manager = NULL;
         return false;
     }
+
+    config_manager_add_config(NULL, "org.kde.KWin", registry_path, "org.kde.kwin.Screenshot",
+                              screenshot2_vtable, NULL);
 
     manager->server = config_manager->server;
     manager->destroy.notify = handle_config_destroy;
