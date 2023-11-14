@@ -565,9 +565,10 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         !xwayland_view->view.base.tiled) {
         struct kywc_box geo = { 0 };
 
-        if (xwayland_view->view.base.has_initial_position) {
-            geo.x = xwayland_view->view.pending.geometry.x;
-            geo.y = xwayland_view->view.pending.geometry.y;
+        if (wlr_xwayland_surface->x != 0 || wlr_xwayland_surface->y != 0) {
+            geo.x = xwayland_unscale(wlr_xwayland_surface->x);
+            geo.y = xwayland_unscale(wlr_xwayland_surface->y);
+            xwayland_view->view.base.has_initial_position = true;
         } else {
             /* apply the position in size_hints */
             xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
@@ -730,7 +731,6 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
     if (!kywc_view->mapped) {
         wlr_xwayland_surface_configure(wlr_xwayland_surface, event->x, event->y, event->width,
                                        event->height);
-        kywc_view->has_initial_position = true;
     } else {
         xwayland_view_adjust_geometry(xwayland_view, &geo);
     }
