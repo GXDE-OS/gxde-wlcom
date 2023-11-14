@@ -80,7 +80,7 @@ struct ssd_tooltip {
 
     struct wl_event_source *timer;
     int hovered_part;
-    bool timer_triggerd, timer_for_hidden;
+    bool timer_triggered, timer_for_hidden;
 };
 
 struct ssd_manager {
@@ -190,14 +190,14 @@ static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
 
     if (!enabled) {
         wl_event_source_timer_update(tooltip->timer, 0);
-        tooltip->timer_triggerd = false;
+        tooltip->timer_triggered = false;
         tooltip->timer_for_hidden = false;
         widget_set_enabled(widget, false);
         widget_update(widget, true);
         return;
     }
 
-    if (!tooltip->timer_triggerd) {
+    if (!tooltip->timer_triggered) {
         wl_event_source_timer_update(tooltip->timer, 500);
         tooltip->hovered_part = part;
         tooltip->timer_for_hidden = false;
@@ -262,7 +262,7 @@ static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *
 static int handle_tooltip(void *data)
 {
     struct ssd_tooltip *tooltip = data;
-    tooltip->timer_triggerd = true;
+    tooltip->timer_triggered = true;
     ssd_tooltip_show(tooltip->seat, tooltip->hovered_part, !tooltip->timer_for_hidden);
     return 0;
 }
@@ -590,7 +590,7 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 
 #define WRAP(w) (w > 0 ? w : 0)
 
-static void ssd_update_title_icon(struct ssd *ssd, uint32_t cause)
+static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
     int y = theme->border_width + (theme->title_height - 24) / 2;
@@ -667,7 +667,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         ky_scene_node_set_position(ky_scene_node_from_tree(ssd->titlebar_tree), -border_w,
                                    -(title_h + border_w));
-        ssd_update_title_icon(ssd, cause);
+        ssd_update_title_icon(ssd);
     }
 
     /* only set button tree position when view w changed */
