@@ -12,15 +12,18 @@
 #include "xwayland.h"
 
 /**
- * window type that not added in wlroots
+ * window type that for windows not OR
  * https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html
  */
 enum atom_name {
     NET_WM_WINDOW_TYPE_DESKTOP,
     NET_WM_WINDOW_TYPE_DOCK,
     NET_WM_WINDOW_TYPE_TOOLBAR,
-    NET_WM_WINDOW_TYPE_DIALOG,
+    NET_WM_WINDOW_TYPE_MENU,
+    NET_WM_WINDOW_TYPE_UTILITY,
     NET_WM_WINDOW_TYPE_SPLASH,
+    NET_WM_WINDOW_TYPE_DIALOG,
+    NET_WM_WINDOW_TYPE_NORMAL,
     ATOM_LAST,
 };
 
