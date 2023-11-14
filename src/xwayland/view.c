@@ -378,27 +378,14 @@ static void xwayland_view_handle_set_hints(struct wl_listener *listener, void *d
     }
 }
 
-static bool is_window_type(struct xwayland_view *xwayland_view, int type)
-{
-    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
-
-    for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
-        xcb_atom_t atom = wlr_xwayland_surface->window_type[i];
-        if (atom == xwayland_view->xwayland->atoms[type]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static void xwayland_view_handle_set_decorations(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_decorations);
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
     bool use_ssd = wlr_xwayland_surface->decorations == WLR_XWAYLAND_SURFACE_DECORATIONS_ALL;
 
-    if (is_window_type(xwayland_view, NET_WM_WINDOW_TYPE_DOCK) ||
-        is_window_type(xwayland_view, NET_WM_WINDOW_TYPE_SPLASH)) {
+    if (xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_DOCK) ||
+        xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_SPLASH)) {
         use_ssd = false;
     }
 
@@ -504,13 +491,14 @@ static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, s
 
 static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
 {
+    struct wlr_xwayland_surface *surface = xwayland_view->wlr_xwayland_surface;
     struct view_layer *layer = NULL;
     bool removed_from_workspace = false;
 
-    if (is_window_type(xwayland_view, NET_WM_WINDOW_TYPE_DESKTOP)) {
+    if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DESKTOP)) {
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
         removed_from_workspace = true;
-    } else if (is_window_type(xwayland_view, NET_WM_WINDOW_TYPE_DOCK)) {
+    } else if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DOCK)) {
         layer = view_manager_get_layer(LAYER_DOCK, false);
         removed_from_workspace = true;
     }

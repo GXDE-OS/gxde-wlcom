@@ -23,6 +23,10 @@ enum atom_name {
     NET_WM_WINDOW_TYPE_UTILITY,
     NET_WM_WINDOW_TYPE_SPLASH,
     NET_WM_WINDOW_TYPE_DIALOG,
+    NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
+    NET_WM_WINDOW_TYPE_POPUP_MENU,
+    NET_WM_WINDOW_TYPE_TOOLTIP,
+    NET_WM_WINDOW_TYPE_NOTIFICATION,
     NET_WM_WINDOW_TYPE_NORMAL,
     ATOM_LAST,
 };
@@ -50,5 +54,7 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
                                struct wlr_xwayland_surface *wlr_xwayland_surface);
 
 void xwayland_restack_unmanaged(struct xwayland_server *xwayland);
+
+bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type);
 
 #endif /* _XWAYLAND_P_H_ */

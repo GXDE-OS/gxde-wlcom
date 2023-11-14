@@ -24,6 +24,10 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_WINDOW_TYPE_UTILITY] = "_NET_WM_WINDOW_TYPE_UTILITY",
     [NET_WM_WINDOW_TYPE_SPLASH] = "_NET_WM_WINDOW_TYPE_SPLASH",
     [NET_WM_WINDOW_TYPE_DIALOG] = "_NET_WM_WINDOW_TYPE_DIALOG",
+    [NET_WM_WINDOW_TYPE_DROPDOWN_MENU] = "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+    [NET_WM_WINDOW_TYPE_POPUP_MENU] = "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+    [NET_WM_WINDOW_TYPE_TOOLTIP] = "_NET_WM_WINDOW_TYPE_TOOLTIP",
+    [NET_WM_WINDOW_TYPE_NOTIFICATION] = "_NET_WM_WINDOW_TYPE_NOTIFICATION",
     [NET_WM_WINDOW_TYPE_NORMAL] = "_NET_WM_WINDOW_TYPE_NORMAL",
 };
 
@@ -202,4 +206,15 @@ float xwayland_unscale(int value)
 float xwayland_scale(int value)
 {
     return xwayland ? value * xwayland->scale : value;
+}
+
+bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type)
+{
+    for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
+        xcb_atom_t atom = wlr_xwayland_surface->window_type[i];
+        if (atom == xwayland->atoms[type]) {
+            return true;
+        }
+    }
+    return false;
 }
