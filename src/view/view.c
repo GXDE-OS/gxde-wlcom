@@ -276,6 +276,17 @@ void view_unmap(struct view *view)
         view->pending.configure_timeout = NULL;
     }
 
+    wl_list_remove(&view->parent_link);
+    wl_list_init(&view->parent_link);
+    view->parent = NULL;
+
+    struct view *child, *tmp;
+    wl_list_for_each_safe(child, tmp, &view->children, parent_link) {
+        wl_list_remove(&child->parent_link);
+        wl_list_init(&child->parent_link);
+        child->parent = NULL;
+    }
+
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
@@ -376,16 +387,7 @@ void view_destroy(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.destroy, NULL);
 
     wl_list_remove(&view->link);
-    wl_list_remove(&view->parent_link);
     wl_list_remove(&view->output_destroy.link);
-
-    /* there should be no children views when destroy */
-    struct view *child, *tmp;
-    wl_list_for_each_safe(child, tmp, &view->children, parent_link) {
-        wl_list_remove(&child->parent_link);
-        wl_list_init(&child->parent_link);
-        child->parent = NULL;
-    }
 
     ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
     view->impl->destroy(view);
