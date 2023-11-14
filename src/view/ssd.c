@@ -20,6 +20,8 @@
 #include "widget/scaled_buffer.h"
 #include "widget/widget.h"
 
+#define ICON_SIZE 24
+
 enum {
     /* buttons */
     SSD_BUTTON_MINIMIZE = 0,
@@ -208,7 +210,7 @@ static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
     widget_update(widget, true);
 
     int x = seat->cursor->lx;
-    int y = seat->cursor->ly + 24;
+    int y = seat->cursor->ly + ICON_SIZE;
     int w, h;
     widget_get_size(widget, &w, &h);
 
@@ -219,7 +221,7 @@ static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
         x = max_x - w;
     }
     if (y + h > max_y) {
-        y = seat->cursor->ly - h - 24;
+        y = seat->cursor->ly - h;
     }
 
     struct ky_scene_node *node = ky_scene_node_from_widget(widget);
@@ -593,7 +595,7 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
-    int y = theme->border_width + (theme->title_height - 24) / 2;
+    int y = theme->border_width + (theme->title_height - ICON_SIZE) / 2;
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node, y, y);
 }
 
