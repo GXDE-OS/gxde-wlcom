@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_seat.h>
 #include <wlr/util/region.h>
 
 #include "input/event.h"
@@ -33,6 +34,8 @@ struct xwayland_unmanaged {
 
     struct wl_listener set_geometry;
     struct wl_listener set_override_redirect;
+
+    struct wlr_seat_pointer_grab pointer_grab;
 };
 
 static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *node, double x,
@@ -167,6 +170,113 @@ static void unmanaged_handle_set_geometry(struct wl_listener *listener, void *da
     }
 }
 
+static bool surface_is_enterable(struct xwayland_unmanaged *unmanaged, struct wlr_surface *surface)
+{
+    struct wlr_xwayland_surface *xsurface = unmanaged->wlr_xwayland_surface;
+    if (xsurface->surface == surface) {
+        return true;
+    }
+    while (xsurface->parent) {
+        if (xsurface->parent->surface == surface) {
+            return true;
+        }
+        xsurface = xsurface->parent;
+    }
+    return false;
+}
+
+static struct wlr_xwayland_surface *topmost_parent(struct wlr_xwayland_surface *xsurface)
+{
+    struct wlr_xwayland_surface *parent = xsurface;
+    while (parent->parent) {
+        parent = parent->parent;
+    }
+    return parent;
+}
+
+static void unmanaged_pointer_grab_enter(struct wlr_seat_pointer_grab *grab,
+                                         struct wlr_surface *surface, double sx, double sy)
+{
+    struct xwayland_unmanaged *unmanaged = grab->data;
+    if (surface_is_enterable(unmanaged, surface)) {
+        wlr_seat_pointer_enter(grab->seat, surface, sx, sy);
+    } else {
+        wlr_seat_pointer_clear_focus(grab->seat);
+    }
+}
+
+static void unmanaged_pointer_grab_clear_focus(struct wlr_seat_pointer_grab *grab)
+{
+    wlr_seat_pointer_clear_focus(grab->seat);
+}
+
+static void unmanaged_pointer_grab_motion(struct wlr_seat_pointer_grab *grab, uint32_t time,
+                                          double sx, double sy)
+{
+    wlr_seat_pointer_send_motion(grab->seat, time, sx, sy);
+}
+
+static uint32_t unmanaged_pointer_grab_button(struct wlr_seat_pointer_grab *grab, uint32_t time,
+                                              uint32_t button, uint32_t state)
+{
+    uint32_t serial = wlr_seat_pointer_send_button(grab->seat, time, button, state);
+    if (serial) {
+        return serial;
+    }
+
+    struct xwayland_unmanaged *unmanaged = grab->data;
+    struct wlr_xwayland_surface *parent = topmost_parent(unmanaged->wlr_xwayland_surface);
+
+    wlr_seat_pointer_enter(grab->seat, parent->surface, 0, 0);
+    wlr_seat_pointer_send_button(grab->seat, time, button, state);
+    /* clear focus to eat the release button event */
+    wlr_seat_pointer_clear_focus(grab->seat);
+
+    return 0;
+}
+
+static void unmanaged_pointer_grab_axis(struct wlr_seat_pointer_grab *grab, uint32_t time,
+                                        enum wlr_axis_orientation orientation, double value,
+                                        int32_t value_discrete, enum wlr_axis_source source)
+{
+    wlr_seat_pointer_send_axis(grab->seat, time, orientation, value, value_discrete, source);
+}
+
+static void unmanaged_pointer_grab_frame(struct wlr_seat_pointer_grab *grab)
+{
+    wlr_seat_pointer_send_frame(grab->seat);
+}
+
+static void unmanaged_pointer_grab_cancel(struct wlr_seat_pointer_grab *grab)
+{
+    kywc_log(KYWC_DEBUG, "unmanaged popup menu pointer grab cancel");
+    grab->seat = NULL;
+}
+
+static const struct wlr_pointer_grab_interface unmanaged_pointer_grab_impl = {
+    .enter = unmanaged_pointer_grab_enter,
+    .clear_focus = unmanaged_pointer_grab_clear_focus,
+    .motion = unmanaged_pointer_grab_motion,
+    .button = unmanaged_pointer_grab_button,
+    .cancel = unmanaged_pointer_grab_cancel,
+    .axis = unmanaged_pointer_grab_axis,
+    .frame = unmanaged_pointer_grab_frame,
+};
+
+static void xwayland_unmanaged_grab_pointer(struct xwayland_unmanaged *unmanaged)
+{
+    struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
+
+    if (wlr_xwayland_surface->parent &&
+        xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_POPUP_MENU)) {
+        unmanaged->pointer_grab.interface = &unmanaged_pointer_grab_impl;
+        unmanaged->pointer_grab.data = unmanaged;
+        wlr_seat_pointer_start_grab(unmanaged->xwayland->wlr_xwayland->seat,
+                                    &unmanaged->pointer_grab);
+        kywc_log(KYWC_DEBUG, "unmanaged popup menu start grab pointer");
+    }
+}
+
 static void unmanaged_handle_map(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, map);
@@ -175,7 +285,9 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     wl_list_insert(&unmanaged->xwayland->unmanaged_surfaces, &unmanaged->link);
     /* Stack new surface on top */
     wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
+
     xwayland_unmanaged_focus(unmanaged);
+    xwayland_unmanaged_grab_pointer(unmanaged);
 
     unmanaged->set_geometry.notify = unmanaged_handle_set_geometry;
     wl_signal_add(&wlr_xwayland_surface->events.set_geometry, &unmanaged->set_geometry);
@@ -188,6 +300,11 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, unmap);
+
+    struct wlr_seat *wlr_seat = unmanaged->pointer_grab.seat;
+    if (wlr_seat && wlr_seat->pointer_state.grab == &unmanaged->pointer_grab) {
+        wlr_seat_pointer_end_grab(unmanaged->pointer_grab.seat);
+    }
 
     wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->set_geometry.link);
