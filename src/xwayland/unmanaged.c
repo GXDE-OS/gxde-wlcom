@@ -420,7 +420,7 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
     }
 
     unmanaged->xwayland = xwayland;
-    wl_list_insert(&unmanaged->xwayland->unmanaged_surfaces, &unmanaged->link);
+    wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     unmanaged->wlr_xwayland_surface = wlr_xwayland_surface;
 
     unmanaged->associate.notify = unmanaged_handle_associate;

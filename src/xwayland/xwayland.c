@@ -135,7 +135,7 @@ static bool xwayland_filter_global(const struct security_client *client, void *d
     return xwayland_check_client(client->client);
 }
 
-/* return 0 as we only handle little events */
+/* return 0 as we only handle few things */
 static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
 {
     if ((event->response_type & 0x7f) != XCB_PROPERTY_NOTIFY) {

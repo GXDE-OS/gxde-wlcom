@@ -530,14 +530,14 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
         removed_from_workspace = true;
     }
 
+    if (layer) {
+        struct ky_scene_node *node = ky_scene_node_from_tree(xwayland_view->view.tree);
+        ky_scene_node_reparent(node, layer->tree);
+    }
     if (removed_from_workspace) {
         view_set_workspace(&xwayland_view->view, NULL);
         xwayland_view->view.base.focusable = false;
         xwayland_view->view.base.activatable = false;
-    }
-    if (layer) {
-        struct ky_scene_node *node = ky_scene_node_from_tree(xwayland_view->view.tree);
-        ky_scene_node_reparent(node, layer->tree);
     }
 }
 
