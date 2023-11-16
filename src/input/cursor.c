@@ -197,6 +197,12 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
         return;
     }
 
+    /* no pointer motion or hover node was destroyed */
+    if (!cursor->hover.node && cursor->focus.node && inode) {
+        inode->impl->hover(seat, cursor->focus.node, cursor->sx, cursor->sy, time, true, false,
+                           inode->data);
+    }
+
     /* update surface coord if surface size changed when click, like maximize */
     if (cursor->hover.node == cursor->focus.node && !selection_is_draging(seat)) {
         cursor_feed_fake_motion(cursor, false);
