@@ -352,7 +352,8 @@ void view_configured(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    if ((view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
+    if (view->pending.configure_action != VIEW_ACTION_NOP &&
+        (view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
         input_rebase_all_cursor();
     }
 
