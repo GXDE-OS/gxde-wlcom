@@ -17,6 +17,7 @@
 
 struct xwayland_view {
     struct view view;
+    struct wl_list link;
     struct xwayland_server *xwayland;
     struct wlr_xwayland_surface *wlr_xwayland_surface;
     struct ky_scene_node *surface_node;
@@ -43,7 +44,6 @@ struct xwayland_view {
     struct wl_listener set_class;
     // struct wl_listener set_role;
     struct wl_listener set_parent;
-    // struct wl_listener set_pid;
     // struct wl_listener set_startup_id;
     // struct wl_listener set_window_type;
     struct wl_listener set_hints;
@@ -700,6 +700,7 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, destroy);
 
+    wl_list_remove(&xwayland_view->link);
     wl_list_remove(&xwayland_view->destroy.link);
     wl_list_remove(&xwayland_view->associate.link);
     wl_list_remove(&xwayland_view->dissociate.link);
@@ -757,6 +758,7 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     }
 
     xwayland_view->xwayland = xwayland;
+    wl_list_insert(&xwayland->surfaces, &xwayland_view->link);
     view_init(&xwayland_view->view, &xwl_surface_impl, xwayland_view);
 
     xwayland_view->wlr_xwayland_surface = wlr_xwayland_surface;

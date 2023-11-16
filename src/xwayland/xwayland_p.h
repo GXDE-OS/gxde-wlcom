@@ -33,6 +33,7 @@ enum atom_name {
 
 struct xwayland_server {
     struct wlr_xwayland *wlr_xwayland;
+    struct wl_list surfaces;
     struct wl_list unmanaged_surfaces;
 
     struct wl_listener xwayland_ready;

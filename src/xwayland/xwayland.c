@@ -153,6 +153,7 @@ bool xwayland_server_create(struct server *server)
     }
 
     xwayland->scale = 1.0;
+    wl_list_init(&xwayland->surfaces);
     wl_list_init(&xwayland->unmanaged_surfaces);
 
     xwayland->new_xwayland_surface.notify = handle_new_xwayland_surface;

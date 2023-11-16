@@ -282,7 +282,6 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, map);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
 
-    wl_list_insert(&unmanaged->xwayland->unmanaged_surfaces, &unmanaged->link);
     /* Stack new surface on top */
     wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
 
@@ -306,7 +305,6 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
         wlr_seat_pointer_end_grab(unmanaged->pointer_grab.seat);
     }
 
-    wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->set_geometry.link);
     if (unmanaged->surface_node) {
         ky_scene_node_set_enabled(unmanaged->surface_node, false);
@@ -387,6 +385,7 @@ static void unmanaged_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, destroy);
 
+    wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->request_configure.link);
     wl_list_remove(&unmanaged->set_override_redirect.link);
     wl_list_remove(&unmanaged->request_activate.link);
@@ -421,6 +420,7 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
     }
 
     unmanaged->xwayland = xwayland;
+    wl_list_insert(&unmanaged->xwayland->unmanaged_surfaces, &unmanaged->link);
     unmanaged->wlr_xwayland_surface = wlr_xwayland_surface;
 
     unmanaged->associate.notify = unmanaged_handle_associate;
