@@ -28,6 +28,11 @@ enum atom_name {
     NET_WM_WINDOW_TYPE_TOOLTIP,
     NET_WM_WINDOW_TYPE_NOTIFICATION,
     NET_WM_WINDOW_TYPE_NORMAL,
+
+    NET_WM_STATE,
+    NET_WM_STATE_ABOVE,
+    NET_WM_STATE_BELOW,
+
     ATOM_LAST,
 };
 
@@ -57,5 +62,10 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
 void xwayland_restack_unmanaged(struct xwayland_server *xwayland);
 
 bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type);
+
+void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below);
+
+struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
+                                                        xcb_window_t window_id);
 
 #endif /* _XWAYLAND_P_H_ */

@@ -54,6 +54,8 @@ struct xwayland_view {
 
     // TODO: output changed
     struct wl_listener output_update_usable_area;
+
+    bool keep_above, keep_below;
 };
 
 static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
@@ -155,6 +157,32 @@ static void xwayland_view_move(struct xwayland_view *xwayland_view, int x, int y
     view_helper_move(view, x, y);
 }
 
+static void xwayland_restack_view(struct xwayland_view *xwayland_view)
+{
+    struct wlr_xwayland_surface *surface = xwayland_view->wlr_xwayland_surface;
+
+    if (xwayland_view->view.base.kept_below) {
+        wlr_xwayland_surface_restack(surface, NULL, XCB_STACK_MODE_BELOW);
+        return;
+    } else if (xwayland_view->view.base.kept_above) {
+        wlr_xwayland_surface_restack(surface, NULL, XCB_STACK_MODE_ABOVE);
+        xwayland_restack_unmanaged(xwayland_view->xwayland);
+        return;
+    }
+
+    wlr_xwayland_surface_restack(surface, NULL, XCB_STACK_MODE_ABOVE);
+
+    struct xwayland_view *view;
+    wl_list_for_each(view, &xwayland_view->xwayland->surfaces, link) {
+        surface = view->wlr_xwayland_surface;
+        if (xwayland_view->view.base.kept_above) {
+            wlr_xwayland_surface_restack(surface, NULL, XCB_STACK_MODE_ABOVE);
+        }
+    }
+
+    xwayland_restack_unmanaged(xwayland_view->xwayland);
+}
+
 static void xwayland_view_configure(struct view *view)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
@@ -173,8 +201,7 @@ static void xwayland_view_configure(struct view *view)
         }
         wlr_xwayland_surface_activate(wlr_xwayland_surface, kywc_view->activated);
         if (kywc_view->activated) {
-            wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
-            xwayland_restack_unmanaged(xwayland_view->xwayland);
+            xwayland_restack_view(xwayland_view);
         }
     }
 
@@ -514,6 +541,23 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
     }
 }
 
+void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below)
+{
+    struct xwayland_view *xwayland_view = surface->data;
+    if (!xwayland_view) {
+        return;
+    }
+
+    xwayland_view->keep_above = above;
+    xwayland_view->keep_below = below;
+
+    if (xwayland_view->keep_above) {
+        kywc_view_set_kept_above(&xwayland_view->view.base, true);
+    } else if (xwayland_view->keep_below) {
+        kywc_view_set_kept_below(&xwayland_view->view.base, true);
+    }
+}
+
 static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, map);
@@ -563,11 +607,13 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 
     xwayland_view_apply_type(xwayland_view);
 
+    xwayland_view_set_above_or_below(wlr_xwayland_surface, xwayland_view->keep_above,
+                                     xwayland_view->keep_below);
+
     view_set_shadow(&xwayland_view->view, xwayland_view->view.base.focusable);
     /* we should stack above the new window always */
     if (!xwayland_view->view.base.activatable) {
-        wlr_xwayland_surface_restack(wlr_xwayland_surface, NULL, XCB_STACK_MODE_ABOVE);
-        xwayland_restack_unmanaged(xwayland_view->xwayland);
+        xwayland_restack_view(xwayland_view);
     }
 
     /* fix postion if not special state */
@@ -785,4 +831,16 @@ void xwayland_view_create(struct xwayland_server *xwayland,
         xwayland_view_handle_associate(&xwayland_view->associate, NULL);
         xwayland_view_handle_map(&xwayland_view->map, NULL);
     }
+}
+
+struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
+                                                        xcb_window_t window_id)
+{
+    struct xwayland_view *xwayland_view;
+    wl_list_for_each(xwayland_view, &xwayland->surfaces, link) {
+        if (xwayland_view->wlr_xwayland_surface->window_id == window_id) {
+            return xwayland_view->wlr_xwayland_surface;
+        }
+    }
+    return NULL;
 }

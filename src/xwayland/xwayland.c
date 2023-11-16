@@ -29,6 +29,10 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_WINDOW_TYPE_TOOLTIP] = "_NET_WM_WINDOW_TYPE_TOOLTIP",
     [NET_WM_WINDOW_TYPE_NOTIFICATION] = "_NET_WM_WINDOW_TYPE_NOTIFICATION",
     [NET_WM_WINDOW_TYPE_NORMAL] = "_NET_WM_WINDOW_TYPE_NORMAL",
+
+    [NET_WM_STATE] = "_NET_WM_STATE",
+    [NET_WM_STATE_ABOVE] = "_NET_WM_STATE_ABOVE",
+    [NET_WM_STATE_BELOW] = "_NET_WM_STATE_BELOW",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -131,6 +135,47 @@ static bool xwayland_filter_global(const struct security_client *client, void *d
     return xwayland_check_client(client->client);
 }
 
+/* return 0 as we only handle little events */
+static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
+{
+    if ((event->response_type & 0x7f) != XCB_PROPERTY_NOTIFY) {
+        return 0;
+    }
+
+    xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
+    if (ev->atom != xwayland->atoms[NET_WM_STATE]) {
+        return 0;
+    }
+
+    xcb_get_property_cookie_t cookie =
+        xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_ANY, 0, 2048);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
+    if (reply == NULL) {
+        kywc_log(KYWC_ERROR, "Failed to get window property");
+        return 0;
+    }
+
+    xcb_atom_t *atom = xcb_get_property_value(reply);
+    bool keep_above, keep_below;
+
+    for (uint32_t i = 0; i < reply->value_len; i++) {
+        keep_above = atom[i] == xwayland->atoms[NET_WM_STATE_ABOVE];
+        keep_below = atom[i] == xwayland->atoms[NET_WM_STATE_BELOW];
+        if (!keep_above && !keep_below) {
+            continue;
+        }
+
+        struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
+        if (surface) {
+            xwayland_view_set_above_or_below(surface, keep_above, keep_below);
+        }
+        break;
+    }
+
+    free(reply);
+    return 0;
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -155,6 +200,7 @@ bool xwayland_server_create(struct server *server)
     xwayland->scale = 1.0;
     wl_list_init(&xwayland->surfaces);
     wl_list_init(&xwayland->unmanaged_surfaces);
+    xwayland->wlr_xwayland->user_event_handler = xwayland_handle_event;
 
     xwayland->new_xwayland_surface.notify = handle_new_xwayland_surface;
     wl_signal_add(&xwayland->wlr_xwayland->events.new_surface, &xwayland->new_xwayland_surface);
