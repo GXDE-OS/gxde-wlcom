@@ -100,20 +100,24 @@ static const struct wlr_keyboard_grab_interface layer_shell_keyboard_grab = {
 static void layer_shell_keyboard_interactivity(struct layer_shell *layer_shell, struct seat *seat)
 {
     struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
+    struct wlr_seat *wlr_seat = layer_shell->keyboard_grab.seat;
 
     if (layer_surface->surface->mapped) {
         if (layer_surface->current.keyboard_interactive) {
             seat_focus_surface(seat, layer_surface->surface);
+
+            if (wlr_seat && wlr_seat != seat->wlr_seat) {
+                wlr_seat_keyboard_end_grab(wlr_seat);
+            }
             /* start a seat keyboard grab */
-            if (layer_surface->current.layer >= ZWLR_LAYER_SHELL_V1_LAYER_TOP) {
+            wlr_seat = layer_shell->keyboard_grab.seat;
+            if (!wlr_seat && layer_surface->current.layer >= ZWLR_LAYER_SHELL_V1_LAYER_TOP) {
                 layer_shell->keyboard_grab.interface = &layer_shell_keyboard_grab;
-                layer_shell->keyboard_grab.seat = seat->wlr_seat;
                 layer_shell->keyboard_grab.data = layer_shell;
                 wlr_seat_keyboard_start_grab(seat->wlr_seat, &layer_shell->keyboard_grab);
             }
         }
     } else {
-        struct wlr_seat *wlr_seat = layer_shell->keyboard_grab.seat;
         if (wlr_seat && wlr_seat->keyboard_state.grab == &layer_shell->keyboard_grab) {
             wlr_seat_keyboard_end_grab(wlr_seat);
         }
