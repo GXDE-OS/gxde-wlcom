@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
 // SPDX-License-Identifier: MulanPSL-2.0
-
+#include <assert.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
@@ -255,8 +255,11 @@ void view_map(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
 
-    if (view->workspace) {
-        wl_signal_emit_mutable(&view->workspace->events.view_enter, view);
+    if (view->current_proxy) {
+        struct view_proxy *proxy;
+        wl_list_for_each(proxy, &view->view_proxies, view_link) {
+            wl_signal_emit_mutable(&proxy->workspace->events.view_enter, view);
+        }
         if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
             view_manager_show_desktop(false, false);
         }
@@ -291,8 +294,11 @@ void view_unmap(struct view *view)
     input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
-    if (view->workspace) {
-        wl_signal_emit_mutable(&view->workspace->events.view_leave, view);
+    if (view->current_proxy) {
+        struct view_proxy *proxy;
+        wl_list_for_each(proxy, &view->view_proxies, view_link) {
+            wl_signal_emit_mutable(&proxy->workspace->events.view_leave, view);
+        }
     }
 }
 
@@ -384,11 +390,28 @@ void view_proxy_destroy(struct view_proxy *view_proxy)
     if (!view_proxy) {
         return;
     }
-
+    if (view_proxy->view->base.mapped) {
+        wl_signal_emit_mutable(&view_proxy->workspace->events.view_leave, view_proxy->view);
+    }
     wl_list_remove(&view_proxy->view_link);
     wl_list_remove(&view_proxy->workspace_link);
     ky_scene_node_destroy(ky_scene_node_from_tree(view_proxy->tree));
     free(view_proxy);
+}
+
+void view_set_current_proxy(struct view *view, struct view_proxy *view_proxy)
+{
+    if (view->current_proxy == view_proxy) {
+        return;
+    }
+    if (!view_proxy) {
+        assert(wl_list_empty(&view->view_proxies));
+    }
+    if (view_proxy) {
+        ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_proxy->tree);
+    }
+    view->current_proxy = view_proxy;
+    wl_signal_emit_mutable(&view->events.workspace, NULL);
 }
 
 static void view_proxies_destroy(struct view *view)
@@ -397,7 +420,7 @@ static void view_proxies_destroy(struct view *view)
     wl_list_for_each_safe(proxy, tmp, &view->view_proxies, view_link) {
         view_proxy_destroy(proxy);
     }
-    view->current_proxy = NULL;
+    view_set_current_proxy(view, NULL);
 }
 
 void view_destroy(struct view *view)
@@ -462,6 +485,17 @@ void view_set_shadow(struct view *view, bool need_shadow)
     wl_signal_emit_mutable(&kywc_view->events.shadow, NULL);
 }
 
+struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *workspace)
+{
+    struct view_proxy *view_proxy;
+    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
+        if (view_proxy->workspace == workspace) {
+            return view_proxy;
+        }
+    }
+    return NULL;
+}
+
 static struct view_proxy *view_proxy_create(struct view *view, struct workspace *workspace)
 {
     struct view_proxy *proxy = calloc(1, sizeof(struct view_proxy));
@@ -479,66 +513,69 @@ static struct view_proxy *view_proxy_create(struct view *view, struct workspace 
         view->base.kept_above ? LAYER_ABOVE : (view->base.kept_below ? LAYER_BELOW : LAYER_NORMAL);
     struct view_layer *view_layer = workspace_layer(workspace, layer);
     proxy->tree = ky_scene_tree_create(view_layer->tree);
-
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), proxy->tree);
+    if (view->base.mapped) {
+        wl_signal_emit_mutable(&workspace->events.view_enter, view);
+    }
     return proxy;
-}
-
-static void view_set_view_proxy(struct view *view, struct workspace *workspace)
-{
-    if (!view || !workspace) {
-        return;
-    }
-    /* reparent view tree to destination workspace view_proxy */
-    view->current_proxy = NULL;
-    struct view_proxy *view_proxy, *tmp;
-    wl_list_for_each_safe(view_proxy, tmp, &workspace->view_proxies, workspace_link) {
-        if (view_proxy->view == view) {
-            ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_proxy->tree);
-            view->current_proxy = view_proxy;
-            break;
-        }
-    }
-
-    if (!view->current_proxy) {
-        view_proxy = view_proxy_create(view, workspace);
-        view->current_proxy = view_proxy;
-    }
-
-    wl_list_for_each_safe(view_proxy, tmp, &view->view_proxies, view_link) {
-        if (view_proxy->workspace != workspace) {
-            view_proxy_destroy(view_proxy);
-        }
-    }
 }
 
 void view_set_workspace(struct view *view, struct workspace *workspace)
 {
-    if (view->workspace == workspace) {
+    if (!workspace && !view->current_proxy) {
         return;
     }
-
-    if (workspace) {
-        view_set_view_proxy(view, workspace);
-    } else {
+    if (!workspace) {
         /* set workspace to null must reparent view tree first */
         view_proxies_destroy(view);
         wl_list_init(&view->view_proxies);
+        return;
+    }
+    struct view_proxy *proxy = view_proxy_by_workspace(view, workspace);
+    if (!proxy) {
+        proxy = view_proxy_create(view, workspace);
+        if (!proxy) {
+            return;
+        }
     }
 
-    kywc_log(KYWC_DEBUG, "kywc_view %p worskpace: %s", &view->base,
-             workspace ? workspace->name : "none");
-
-    if (view->workspace && view->base.mapped) {
-        wl_signal_emit_mutable(&view->workspace->events.view_leave, view);
+    if (proxy->tree != ky_scene_node_get_parent(ky_scene_node_from_tree(view->tree))) {
+        view_set_current_proxy(view, proxy);
     }
 
-    view->workspace = workspace;
-    wl_signal_emit_mutable(&view->events.workspace, NULL);
-
-    if (view->workspace && view->base.mapped) {
-        wl_signal_emit_mutable(&view->workspace->events.view_enter, view);
+    // destroy all proxies except the new worskpace
+    struct view_proxy *view_proxy, *tmp;
+    wl_list_for_each_safe(view_proxy, tmp, &view->view_proxies, view_link) {
+        if (view_proxy != proxy) {
+            view_proxy_destroy(view_proxy);
+        }
     }
+    view->base.show_in_all_workspaces = false;
+}
+
+struct view_proxy *view_add_workspace(struct view *view, struct workspace *workspace)
+{
+    if (!view || !workspace) {
+        return NULL;
+    }
+    struct view_proxy *view_proxy = view_proxy_by_workspace(view, workspace);
+    if (view_proxy) {
+        return NULL;
+    }
+    return view_proxy_create(view, workspace);
+}
+
+void view_add_all_workspace(struct view *view)
+{
+    if (!view) {
+        return;
+    }
+    int workspace_num = workspace_manager_get_count();
+    struct workspace *workspace = NULL;
+    for (int i = 0; i < workspace_num; i++) {
+        workspace = workspace_by_position(i);
+        view_add_workspace(view, workspace);
+    }
+    view->base.show_in_all_workspaces = true;
 }
 
 void view_set_parent(struct view *view, struct view *parent)
@@ -677,76 +714,8 @@ static void view_set_activated(struct view *view, bool activated)
     wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
 }
 
-void view_topmost_activate(struct workspace *workspace)
+static void view_activate(struct view *view)
 {
-    struct view *view;
-    struct view_proxy *view_proxy;
-    /* find topmost enabled(mapped and not minimized) view and activate it */
-    wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
-        view = view_proxy->view;
-        if (!view->base.activatable || !view->base.mapped || view->base.minimized) {
-            continue;
-        }
-        kywc_view_activate(&view->base);
-        seat_focus_surface(input_manager_get_default_seat(), view->surface);
-        if (view->base.fullscreen) {
-            view_reparent_fullscreen(view, true);
-        }
-        return;
-    }
-
-    /* workaround to hide fullscreen view when no view in workspace */
-    view = view_manager->activated.view;
-    if (view && view->base.fullscreen && !view->workspace->activated) {
-        view_reparent_fullscreen(view, false);
-        view_set_activated(view, false);
-    }
-
-    /* no view can be activated, clear keyboard focus */
-    seat_focus_surface(input_manager_get_default_seat(), NULL);
-}
-
-static void view_in_workspace_activate(struct view *view)
-{
-    if (!view) {
-        return;
-    }
-    struct view_proxy *view_proxy;
-    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
-        wl_list_remove(&view_proxy->workspace_link);
-        wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
-        struct view *view_tmp = view_proxy->view;
-        if (view_tmp->parent) {
-            view_in_workspace_activate(view_tmp->parent);
-        }
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view_proxy->tree));
-        /* raise children if any */
-        struct view *child;
-        wl_list_for_each(child, &view_tmp->children, parent_link) {
-            view_in_workspace_activate(child);
-        }
-    }
-}
-
-static void view_not_in_workspace_activate(struct view *view)
-{
-    if (!view) {
-        return;
-    }
-    if (view->parent) {
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->parent->tree));
-    }
-    ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
-    /* raise children if any */
-    struct view *child;
-    wl_list_for_each(child, &view->children, parent_link) {
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(child->tree));
-    }
-}
-
-void kywc_view_activate(struct kywc_view *kywc_view)
-{
-    struct view *view = view_from_kywc_view(kywc_view);
     struct view *last = view_manager->activated.view;
     if (!view->base.activatable || last == view) {
         return;
@@ -757,12 +726,88 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 
     view_set_activated(view, true);
+}
+
+void view_topmost_activate(struct workspace *workspace)
+{
+    struct view *view;
+    struct view_proxy *view_proxy;
+    /* find topmost enabled(mapped and not minimized) view and activate it */
+    wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
+        view = view_proxy->view;
+        if (!view->base.activatable || !view->base.mapped || view->base.minimized) {
+            continue;
+        }
+        view_activate(view);
+        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        if (view->base.fullscreen) {
+            view_reparent_fullscreen(view, true);
+        }
+        return;
+    }
+
+    /* workaround to hide fullscreen view when no view in workspace */
+    view = view_manager->activated.view;
+    if (view && view->base.fullscreen) {
+        view_proxy = view_proxy_by_workspace(view, workspace);
+        if (!view_proxy) {
+            view_reparent_fullscreen(view, false);
+            view_set_activated(view, false);
+        }
+    }
+
+    /* no view can be activated, clear keyboard focus */
+    seat_focus_surface(input_manager_get_default_seat(), NULL);
+}
+
+static void view_with_workspace_activated(struct view *view)
+{
+    if (!view) {
+        return;
+    }
+    struct view_proxy *view_proxy;
+    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
+        wl_list_remove(&view_proxy->workspace_link);
+        wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
+        struct view *view_tmp = view_proxy->view;
+        if (view_tmp->parent) {
+            view_with_workspace_activated(view_tmp->parent);
+        }
+        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view_proxy->tree));
+        /* raise children if any */
+        struct view *child;
+        wl_list_for_each(child, &view_tmp->children, parent_link) {
+            view_with_workspace_activated(child);
+        }
+    }
+}
+
+static void view_without_workspace_activated(struct view *view)
+{
+    if (!view) {
+        return;
+    }
+    if (view->parent) {
+        view_without_workspace_activated(view->parent);
+    }
+    ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
+    /* raise children if any */
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        view_without_workspace_activated(child);
+    }
+}
+
+void kywc_view_activate(struct kywc_view *kywc_view)
+{
+    struct view *view = view_from_kywc_view(kywc_view);
+    view_activate(view);
 
     /* insert view proxy in workspace topmost */
-    if (view->workspace) {
-        view_in_workspace_activate(view);
+    if (view->current_proxy) {
+        view_with_workspace_activated(view);
     } else {
-        view_not_in_workspace_activate(view);
+        view_without_workspace_activated(view);
     }
 }
 
@@ -880,19 +925,22 @@ void kywc_view_toggle_maximized(struct kywc_view *kywc_view)
 static void view_reparent_fullscreen(struct view *view, bool active)
 {
     struct kywc_view *kywc_view = &view->base;
-
+    struct view_proxy *view_proxy = NULL;
+    struct view_layer *layer = NULL;
     if (active) {
         view->saved.layer = kywc_view->kept_above
                                 ? LAYER_ABOVE
                                 : (kywc_view->kept_below ? LAYER_BELOW : LAYER_NORMAL);
-        struct view_layer *layer = view_manager_get_layer(LAYER_ACTIVE, false);
-        ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
-        return;
+        layer = view_manager_get_layer(LAYER_ACTIVE, false);
     }
 
-    /* restore fullscreen view to workspace */
-    struct view_layer *layer = workspace_layer(view->workspace, view->saved.layer);
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
+        if (!active) {
+            /* restore fullscreen view to workspace */
+            layer = workspace_layer(view_proxy->workspace, view->saved.layer);
+        }
+        ky_scene_node_reparent(ky_scene_node_from_tree(view_proxy->tree), layer->tree);
+    }
 }
 
 void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
@@ -948,8 +996,11 @@ void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above)
     kywc_view->kept_below = false;
 
     enum layer layer = kept_above ? LAYER_ABOVE : LAYER_NORMAL;
-    struct view_layer *view_layer = workspace_layer(workspace_manager_get_current(), layer);
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_layer->tree);
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
+        ky_scene_node_reparent(ky_scene_node_from_tree(proxy->tree), view_layer->tree);
+    }
 }
 
 void kywc_view_toggle_kept_above(struct kywc_view *kywc_view)
@@ -969,8 +1020,11 @@ void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below)
     kywc_view->kept_above = false;
 
     enum layer layer = kept_below ? LAYER_BELOW : LAYER_NORMAL;
-    struct view_layer *view_layer = workspace_layer(workspace_manager_get_current(), layer);
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_layer->tree);
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
+        ky_scene_node_reparent(ky_scene_node_from_tree(proxy->tree), view_layer->tree);
+    }
 }
 
 void kywc_view_toggle_kept_below(struct kywc_view *kywc_view)
@@ -1055,7 +1109,7 @@ void view_close_popups(struct view *view)
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
 {
     /* still show window menu even if no ssd used */
-    if (!view->workspace) {
+    if (!view->current_proxy) {
         return;
     }
     struct view_show_window_menu_event event = { view, seat, x, y };

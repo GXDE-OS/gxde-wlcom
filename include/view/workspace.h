@@ -7,6 +7,8 @@
 
 #include "view.h"
 
+#define MAX_WORKSPACES 16
+
 struct workspace {
     /* user readable descriptive name */
     const char *name;

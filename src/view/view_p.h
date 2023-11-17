@@ -52,6 +52,12 @@ bool decoration_manager_create(struct view_manager *view_manager);
 
 void view_topmost_activate(struct workspace *workspace);
 
+void view_proxy_destroy(struct view_proxy *view_proxy);
+
+void view_set_current_proxy(struct view *view, struct view_proxy *view_proxy);
+
+struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *workspace);
+
 bool positioner_manager_create(struct view_manager *view_manager);
 
 bool server_decoration_manager_create(struct view_manager *view_manager);

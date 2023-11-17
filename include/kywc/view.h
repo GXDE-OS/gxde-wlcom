@@ -80,6 +80,7 @@ struct kywc_view {
     bool closeable, movable, resizable;
     bool activatable, focusable;
     bool skip_taskbar, skip_switcher;
+    bool show_in_all_workspaces;
 
     /* app_id: class when xwayland shell */
     const char *title, *app_id;

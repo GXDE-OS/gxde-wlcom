@@ -10,6 +10,7 @@
 #include "scene/scene.h"
 
 struct server;
+struct workspace;
 
 /* taken from kwin layer */
 enum layer {
@@ -85,8 +86,6 @@ struct view {
     struct ky_scene_tree *tree;
     struct ky_scene_tree *content;
 
-    /* view will be moved when workspace destroy */
-    struct workspace *workspace;
     // TODO: we may need update output when current output geometry/off/destroy changed
     // but something is done by positioner
     struct kywc_output *output;
@@ -146,8 +145,6 @@ void view_map(struct view *view);
 
 void view_unmap(struct view *view);
 
-void view_proxy_destroy(struct view_proxy *view_proxy);
-
 void view_destroy(struct view *view);
 
 void view_set_title(struct view *view, const char *title);
@@ -161,6 +158,10 @@ void view_set_shadow(struct view *view, bool need_shadow);
 void view_set_output(struct view *view, struct kywc_output *output);
 
 void view_set_workspace(struct view *view, struct workspace *workspace);
+
+void view_add_all_workspace(struct view *view);
+
+struct view_proxy *view_add_workspace(struct view *view, struct workspace *workspace);
 
 void view_set_parent(struct view *view, struct view *parent);
 

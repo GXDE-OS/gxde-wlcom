@@ -486,11 +486,12 @@ static void place_handle_workspace_destroy(struct wl_listener *listener, void *d
     free(place);
 }
 
-static struct place *positioner_get_place(struct positioner *pos, struct workspace *workspace)
+static struct place *positioner_get_place(struct positioner *pos, struct view *view)
 {
-    if (!pos || !workspace) {
+    if (!pos || !view->current_proxy) {
         return NULL;
     }
+    struct workspace *workspace = view->current_proxy->workspace;
 
     struct place *place;
     wl_list_for_each(place, &pos->places, link) {
@@ -659,7 +660,7 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
 
     struct view *view = view_from_kywc_view(kywc_view);
     struct positioner *pos = positioner_from_output(view->output);
-    struct place *place = positioner_get_place(pos, view->workspace);
+    struct place *place = positioner_get_place(pos, view);
     /* no output or workspace */
     if (!place) {
         return;
@@ -748,7 +749,7 @@ static void entry_handle_view_position(struct wl_listener *listener, void *data)
     }
 
     struct positioner *pos = positioner_from_output(kywc_output);
-    struct place *place = positioner_get_place(pos, view->workspace);
+    struct place *place = positioner_get_place(pos, view);
 
     /* calc the new slot in the new positioner */
     int slot = -1;
@@ -801,7 +802,7 @@ static void entry_handle_view_workspace(struct wl_listener *listener, void *data
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* view no longer in workspace */
-    if (!view->workspace) {
+    if (!view->current_proxy) {
         wl_list_remove(&entry->view_unmap.link);
         wl_list_remove(&entry->view_minimize.link);
         wl_list_remove(&entry->view_position.link);
@@ -829,13 +830,13 @@ static void entry_handle_view_workspace(struct wl_listener *listener, void *data
         wl_signal_add(&kywc_view->events.unmap, &entry->view_unmap);
 
         struct positioner *pos = positioner_from_output(view->output);
-        struct place *place = positioner_get_place(pos, view->workspace);
+        struct place *place = positioner_get_place(pos, view);
         place_insert_entry(place, entry, -1);
     }
 
     /* we assume that the position of view is not changed */
     struct positioner *pos = entry->place->positioner;
-    struct place *new = positioner_get_place(pos, view->workspace);
+    struct place *new = positioner_get_place(pos, view);
 
     place_update_entry(new, entry, entry->slot);
 }

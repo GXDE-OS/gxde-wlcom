@@ -15,8 +15,6 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
-#define MAX_WORKSPACES 16
-
 struct workspace_manager {
     struct view_manager *view_manager;
 
@@ -257,6 +255,21 @@ static void workspace_set_enabled(struct workspace *workspace, bool enabled)
     }
 }
 
+static void auto_add_all_workspaces_view(struct workspace *workspace)
+{
+    if (!workspace_manager->view_manager->server->ready) {
+        return;
+    }
+    struct workspace *first_workspace = workspace_manager->workspaces[0];
+    struct view_proxy *view_proxy;
+    wl_list_for_each(view_proxy, &first_workspace->view_proxies, workspace_link) {
+        struct view *view = view_proxy->view;
+        if (view->base.show_in_all_workspaces) {
+            view_add_workspace(view, workspace);
+        }
+    }
+}
+
 struct workspace *workspace_create(const char *name, uint32_t position)
 {
     /* too many workspaces, reject it */
@@ -300,6 +313,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace_manager->workspaces[position] = workspace;
     workspace_manager_update_count(workspace_manager->count + 1);
 
+    auto_add_all_workspaces_view(workspace);
     wl_signal_emit_mutable(&workspace_manager->events.new_workspace, workspace);
 
     return workspace;
@@ -326,15 +340,14 @@ static void fix_workspace(struct workspace *workspace)
 
     /* move all views to current activated workspace */
     struct workspace *current = workspace_manager_get_current();
-
     struct view_proxy *view_proxy, *tmp;
     wl_list_for_each_safe(view_proxy, tmp, &workspace->view_proxies, workspace_link) {
-        if (view_proxy->view->current_proxy != view_proxy) {
-            view_proxy_destroy(view_proxy);
-            continue;
-        }
         // TODO: fullscreen views
-        view_set_workspace(view_proxy->view, current);
+        struct view_proxy *new_proxy = view_add_workspace(view_proxy->view, current);
+        if (new_proxy) {
+            view_set_current_proxy(view_proxy->view, new_proxy);
+        }
+        view_proxy_destroy(view_proxy);
     }
 }
 
@@ -362,6 +375,14 @@ static void workspace_set_activated(struct workspace *workspace, bool activated)
     }
 
     workspace_set_enabled(workspace, activated);
+
+    /* reparent view_tree which in multi workspace */
+    struct view_proxy *view_proxy;
+    wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
+        if (view_proxy->view->current_proxy != view_proxy) {
+            view_set_current_proxy(view_proxy->view, view_proxy);
+        }
+    }
 
     workspace->activated = activated;
     wl_signal_emit_mutable(&workspace->events.activate, NULL);
