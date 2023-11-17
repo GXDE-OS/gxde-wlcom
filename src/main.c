@@ -69,7 +69,7 @@ static void terminate(int exit_code)
 {
     if (!server.display) {
         exit(exit_code);
-    } else {
+    } else if (!server.terminate) {
         exit_value = exit_code;
         wl_display_terminate(server.display);
     }
@@ -78,6 +78,19 @@ static void terminate(int exit_code)
 static void sig_handler(int signal)
 {
     terminate(EXIT_SUCCESS);
+}
+
+static void set_signal(int sig, void (*handler)(int))
+{
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    if (handler != SIG_IGN) {
+        sigaddset(&act.sa_mask, sig);
+    }
+
+    act.sa_flags = 0;
+    act.sa_handler = handler;
+    sigaction(sig, &act, NULL);
 }
 
 int main(int argc, char *argv[])
@@ -143,10 +156,10 @@ int main(int argc, char *argv[])
     limit_set_nofile();
 
     /* ignore SIGPIPE */
-    signal(SIGPIPE, SIG_IGN);
+    set_signal(SIGPIPE, SIG_IGN);
     /* handle SIGTERM signals */
-    signal(SIGTERM, sig_handler);
-    signal(SIGINT, sig_handler);
+    set_signal(SIGTERM, sig_handler);
+    set_signal(SIGINT, sig_handler);
 
     if (!server_init(&server)) {
         terminate(EXIT_FAILURE);

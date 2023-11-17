@@ -268,6 +268,8 @@ void server_run(struct server *server)
 
 void server_finish(struct server *server)
 {
+    server->terminate = true;
+
     queue_destroy(&server->queue);
     wl_event_source_remove(server->dbus);
 
