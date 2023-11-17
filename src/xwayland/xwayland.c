@@ -155,6 +155,12 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
         return 0;
     }
 
+    /* nothing to be handled */
+    if (reply->value_len == 0) {
+        free(reply);
+        return 1;
+    }
+
     xcb_atom_t *atom = xcb_get_property_value(reply);
     bool keep_above, keep_below;
 
@@ -169,6 +175,13 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
         if (surface) {
             xwayland_view_set_above_or_below(surface, keep_above, keep_below);
         }
+
+        /* return 1 if we handle all things in the event */
+        if (reply->value_len == 1) {
+            free(reply);
+            return 1;
+        }
+
         break;
     }
 
