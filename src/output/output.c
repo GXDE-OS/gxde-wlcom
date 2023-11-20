@@ -309,9 +309,11 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->needs_frame.link);
 
-    struct wlr_output *wlr_output = output->wlr_output;
-    ky_scene_output_destroy(output->scene_output);
-    wlr_output_layout_remove(output_manager->server->layout, wlr_output);
+    /* output may be disabled before */
+    if (output->scene_output) {
+        ky_scene_output_destroy(output->scene_output);
+        wlr_output_layout_remove(output_manager->server->layout, output->wlr_output);
+    }
 
     output_destroy(output);
 }
@@ -830,6 +832,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     } else if (going_off) {
         ky_scene_output_destroy(output->scene_output);
         wlr_output_layout_remove(server->layout, wlr_output);
+        output->scene_output = NULL;
     } else if (need_layout && have_layout && (loutput->x != state->lx || loutput->y != state->ly)) {
         /* if output logical size changed, layout_change alreay is emited in
          * output_commit. only need move when (x, y) of output is different.
