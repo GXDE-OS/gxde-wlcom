@@ -910,11 +910,20 @@ static void root_push_damage(struct kywc_node *node, const struct wlr_box *damag
 static struct _kywc_scene_data {
     struct kywc_root *scene;
     struct wl_listener server_ready_listener;
+    struct wl_listener server_resume_listener;
 } scene_data;
 
 static void scene_handle_server_ready_listener(struct wl_listener *listener, void *data)
 {
     _kywc_effect_add_new_view_listener();
+}
+
+static void scene_handle_server_resume_listener(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output *output;
+    wl_list_for_each(output, &scene_data.scene->outputs, link) {
+        wlr_damage_ring_add_whole(&output->damage_ring);
+    }
 }
 
 static struct kywc_root *root_create(void)
@@ -944,6 +953,8 @@ struct kywc_root *kywc_root_create_with_server(struct server *kywc_server)
 
     scene_data.server_ready_listener.notify = scene_handle_server_ready_listener;
     wl_signal_add(&kywc_server->events.ready, &scene_data.server_ready_listener);
+    scene_data.server_resume_listener.notify = scene_handle_server_resume_listener;
+    wl_signal_add(&kywc_server->events.resume, &scene_data.server_resume_listener);
 
     scene_data.scene = root_create();
     return scene_data.scene;
