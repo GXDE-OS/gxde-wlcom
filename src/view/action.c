@@ -197,7 +197,7 @@ static struct shortcut {
     char *desc;
     uint32_t action;
 } shortcuts[] = {
-    { "win+d", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
+    { "win+d:no", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
     { "win+h", "do show desktop", DO_SHOW_DESKTOP },
     { "win+g", "do restore desktop", DO_RESTORE_DESKTOP },
     { "win+m", "minimize all view", MINIMIZE_ALL_VIEW },
