@@ -193,7 +193,7 @@ struct ky_scene_output_layout;
 
 struct server;
 
-typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer, int sx, int sy);
+typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer, double *sx, double *sy);
 
 SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return NULL; } 
 SCENE_API void ky_scene_destroy(struct ky_scene *scene) {}

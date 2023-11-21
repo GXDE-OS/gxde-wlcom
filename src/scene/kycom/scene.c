@@ -220,16 +220,20 @@ static void finding_visitor_texture_node(struct kywc_node_visitor *visitor,
     if (!visitor->travel_break) {
         return;
     }
-    /* Point in texture_node */
-    struct finding_node_visitor *find_visitor = wl_container_of(visitor, find_visitor, base);
 
-    /* Point in input region */
-    if (node->point_accepts_input &&
-        !node->point_accepts_input(node, find_visitor->nx, find_visitor->ny)) {
-        visitor->travel_break = false;
-        find_visitor->finded_node = NULL;
-        find_visitor->nx = 0;
-        find_visitor->ny = 0;
+    if (node->point_accepts_input) {
+        /* Point in texture_node */
+        struct finding_node_visitor *find_visitor = wl_container_of(visitor, find_visitor, base);
+        double sx = find_visitor->nx;
+        double sy = find_visitor->ny;
+
+        /* Point in input region */
+        if (!node->point_accepts_input(node, &sx, &sy)) {
+            visitor->travel_break = false;
+            find_visitor->finded_node = NULL;
+            find_visitor->nx = 0;
+            find_visitor->ny = 0;
+        }
     }
 }
 

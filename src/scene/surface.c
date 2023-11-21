@@ -153,11 +153,12 @@ static void handle_scene_surface_surface_commit(struct wl_listener *listener, vo
     }
 }
 
-static bool scene_buffer_point_accepts_input(struct ky_scene_buffer *scene_buffer, int sx, int sy)
+static bool scene_buffer_point_accepts_input(struct ky_scene_buffer *scene_buffer, double *sx,
+                                             double *sy)
 {
     struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_buffer(scene_buffer);
 
-    return wlr_surface_point_accepts_input(scene_surface->surface, sx, sy);
+    return wlr_surface_point_accepts_input(scene_surface->surface, *sx, *sy);
 }
 
 static void surface_addon_destroy(struct wlr_addon *addon)

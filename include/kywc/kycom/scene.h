@@ -52,8 +52,8 @@ typedef void (*kywc_node_get_opaque_region)(const struct kywc_node *node,
 
 typedef const char *(*kywc_node_name)(void);
 
-typedef bool (*kywc_texture_node_point_accepts_input_func)(struct kywc_texture_node *buffer, int sx,
-                                                           int sy);
+typedef bool (*kywc_texture_node_point_accepts_input_func)(struct kywc_texture_node *buffer,
+                                                           double *sx, double *sy);
 
 struct kywc_node {
     bool enabled;
@@ -194,7 +194,7 @@ struct kywc_node_visitor_interface {
 
 struct kywc_node_visitor {
     /* abort travel */
-    bool travel_break; 
+    bool travel_break;
     enum kywc_visitor_flag flag;
     /* Current node ly, ly in scene. */
     int lx, ly;
@@ -233,7 +233,7 @@ struct kywc_group_node *kywc_node_get_parent(struct kywc_node *node);
 
 bool kywc_node_coords(struct kywc_node *node, int *lx, int *ly);
 
-struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node, 
+struct kywc_gl_texture *kywc_node_generate_texture(struct kywc_node *source_node,
                                                    struct kywc_render_target *target, float scale);
 
 /**
