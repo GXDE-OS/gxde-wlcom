@@ -630,7 +630,9 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&relay->seat_destroy.link);
     wl_list_remove(&relay->new_text_input.link);
     wl_list_remove(&relay->new_input_method.link);
-    // TODO: do something: if (relay->wlr_input_mehold) ...
+    if (relay->wlr_input_method) {
+        handle_input_method_destroy(&relay->input_method_destroy, relay->wlr_input_method);
+    }
     free(relay);
 }
 
