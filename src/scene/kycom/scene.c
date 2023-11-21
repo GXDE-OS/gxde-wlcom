@@ -1039,6 +1039,7 @@ static void scene_output_update_geometry(struct kywc_scene_output *scene_output)
     int width, height;
     wlr_output_transformed_resolution(scene_output->output, &width, &height);
     wlr_damage_ring_set_bounds(&scene_output->damage_ring, width, height);
+    wlr_damage_ring_add_whole(&scene_output->damage_ring);
     wlr_output_schedule_frame(scene_output->output);
 
     scene_node_output_update(&scene_output->scene->group.node, &scene_output->scene->outputs, NULL);
