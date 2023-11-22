@@ -252,6 +252,11 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
         box.x -= area->x;
         box.y -= area->y;
 
+        /* translate to buffer coord, otherwise assert failed in wlr_render_pass_add_texture */
+        wlr_output_transformed_resolution(l_output->output, &width, &height);
+        wlr_fbox_transform(&fbox, &fbox, wlr_output_transform_invert(l_output->output->transform),
+                           width, height);
+
         screencopy_output_create(l_output, &fbox, &box, cursor);
 
         layout_output_count++;
