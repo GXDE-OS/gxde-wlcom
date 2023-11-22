@@ -1297,9 +1297,14 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
     wlr_render_pass_submit(pass);
     pixman_region32_fini(&damage);
 
+    int tr_width, tr_height;
+    wlr_output_transformed_resolution(output, &tr_width, &tr_height);
+    enum wl_output_transform transform = wlr_output_transform_invert(output->transform);
+
     pixman_region32_t frame_damage;
     pixman_region32_init(&frame_damage);
-    kywc_target_get_frame_region(&target, &damage_ring->current, &frame_damage);
+    wlr_region_transform(&frame_damage, &damage_ring->current, transform, tr_width, tr_height);
+    wlr_region_scale(&frame_damage, &frame_damage, output->scale);
     wlr_output_set_damage(output, &frame_damage);
     pixman_region32_fini(&frame_damage);
 
