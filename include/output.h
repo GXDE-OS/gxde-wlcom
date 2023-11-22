@@ -43,8 +43,11 @@ struct output {
     } events;
 
     struct wl_listener frame;
+    struct wl_listener precommit;
     struct wl_listener destroy;
 
+    /* output damage in layout coord */
+    pixman_region32_t damage_region;
     bool modeset;
 };
 
@@ -55,6 +58,8 @@ uint32_t output_manager_for_each_output(output_iterator_func_t iterator, bool en
 struct output_manager *output_manager_create(struct server *server);
 
 void output_manager_add_configured_listener(struct wl_listener *listener);
+
+void output_manager_add_damage_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);
 

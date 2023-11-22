@@ -12,6 +12,7 @@
 #include <wlr/backend/headless.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/util/region.h>
 
 #include <kywc/log.h>
 
@@ -342,6 +343,77 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     ky_scene_output_send_frame_done(output->scene_output, &now);
 }
 
+static void output_damage_set_enabled(bool enabled)
+{
+    if (output_manager->damage_enabled == enabled) {
+        return;
+    }
+    output_manager->damage_enabled = enabled;
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (enabled) {
+            if (wl_list_empty(&output->precommit.link)) {
+                wl_signal_add(&output->wlr_output->events.precommit, &output->precommit);
+            }
+            pixman_region32_init_rect(&output->damage_region, output->geometry.x,
+                                      output->geometry.y, output->geometry.width,
+                                      output->geometry.height);
+            wl_signal_emit_mutable(&output_manager->events.damage, output);
+        } else {
+            wl_list_remove(&output->precommit.link);
+            wl_list_init(&output->precommit.link);
+        }
+    }
+}
+
+static void handle_output_precommit(struct wl_listener *listener, void *data)
+{
+    struct output *output = wl_container_of(listener, output, precommit);
+    const struct wlr_output_event_precommit *event = data;
+    struct pixman_region32 *region = &output->damage_region;
+
+    if (wl_list_empty(&output_manager->events.damage.listener_list)) {
+        output_damage_set_enabled(false);
+        return;
+    }
+
+    if (event->state->committed & WLR_OUTPUT_STATE_DAMAGE) {
+        if (!pixman_region32_not_empty(&event->state->damage)) {
+            return;
+        }
+
+        // If the compositor submitted damage, copy it over
+        pixman_region32_t damage;
+        pixman_region32_init(&damage);
+        pixman_region32_copy(&damage, &event->state->damage);
+
+        // translate to layout coord
+        struct wlr_output *wlr_output = output->wlr_output;
+        wlr_region_transform(&damage, &damage, wlr_output->transform, wlr_output->width,
+                             wlr_output->height);
+        wlr_region_scale(&damage, &damage, 1 / wlr_output->scale);
+        pixman_region32_translate(&damage, output->geometry.x, output->geometry.y);
+
+        pixman_region32_union(region, region, &damage);
+        pixman_region32_intersect_rect(region, region, output->geometry.x, output->geometry.y,
+                                       output->geometry.width, output->geometry.height);
+        pixman_region32_fini(&damage);
+    } else if (event->state->committed & WLR_OUTPUT_STATE_BUFFER) {
+        // If the compositor did not submit damage but did submit a buffer damage everything
+        pixman_region32_union_rect(region, region, output->geometry.x, output->geometry.y,
+                                   output->geometry.width, output->geometry.height);
+    }
+
+    if (!pixman_region32_not_empty(region)) {
+        return;
+    }
+
+    wl_signal_emit_mutable(&output_manager->events.damage, output);
+
+    pixman_region32_clear(region);
+}
+
 static void output_destroy(struct output *output)
 {
     struct kywc_output *kywc_output = &output->base;
@@ -391,6 +463,8 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
         wlr_output_layout_remove(output_manager->server->layout, output->wlr_output);
     }
 
+    pixman_region32_fini(&output->damage_region);
+
     output_destroy(output);
 }
 
@@ -413,6 +487,16 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->destroy.notify = handle_output_destroy;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+
+    pixman_region32_init_rect(&output->damage_region, output->geometry.x, output->geometry.y,
+                              output->geometry.width, output->geometry.height);
+
+    output->precommit.notify = handle_output_precommit;
+    if (output_manager->damage_enabled) {
+        wl_signal_add(&output->wlr_output->events.precommit, &output->precommit);
+    } else {
+        wl_list_init(&output->precommit.link);
+    }
 }
 
 void output_manager_power_outputs(bool power)
@@ -672,6 +756,7 @@ struct output_manager *output_manager_create(struct server *server)
     wl_signal_init(&output_manager->events.new_output);
     wl_signal_init(&output_manager->events.primary_output);
     wl_signal_init(&output_manager->events.configured);
+    wl_signal_init(&output_manager->events.damage);
 
     output_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &output_manager->server_destroy);
@@ -757,6 +842,13 @@ void output_manager_add_configured_listener(struct wl_listener *listener)
 void output_manager_emit_configured(void)
 {
     wl_signal_emit_mutable(&output_manager->events.configured, NULL);
+}
+
+void output_manager_add_damage_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&output_manager->events.damage, listener);
+
+    output_damage_set_enabled(true);
 }
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)

@@ -25,6 +25,7 @@ struct output_manager {
         struct wl_signal new_output;
         struct wl_signal primary_output;
         struct wl_signal configured;
+        struct wl_signal damage;
     } events;
 
     struct config *config;
@@ -37,8 +38,8 @@ struct output_manager {
     struct wl_listener server_resume;
 
     char outputs_layout[UUID_SIZE];
-
     bool has_layout_manager;
+    bool damage_enabled;
 };
 
 bool output_manager_config_init(struct output_manager *output_manager);
