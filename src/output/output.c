@@ -339,7 +339,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->needs_frame.notify = handle_output_needs_frame;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
-#if HAVE_WLR_SCENE
+#if HAVE_WLR_SCENE | HAVE_KYCOM_SCENE
     wl_list_init(&output->damage.link);
     wl_list_init(&output->needs_frame.link);
 #else
