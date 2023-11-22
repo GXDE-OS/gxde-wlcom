@@ -649,7 +649,7 @@ struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
     struct icon *icon = NULL;
     char *icon_name = NULL;
 
-    if (!theme) {
+    if (!theme || !app_id) {
         goto fallback;
     }
 
