@@ -85,13 +85,6 @@ void ky_opengl_matrix_projection(float mat[static 9], int width, int height,
     mat[8] = 1.0f;
 }
 
-static const GLfloat verts[] = {
-    1, 0, // top right
-    0, 0, // top left
-    1, 1, // bottom right
-    0, 1, // bottom left
-};
-
 static const struct wlr_renderer_impl renderer_impl;
 static const struct wlr_render_timer_impl render_timer_impl;
 
@@ -308,135 +301,6 @@ static void gl_end(struct wlr_renderer *wlr_renderer)
 {
     gl_get_renderer_in_context(wlr_renderer);
     // no-op
-}
-
-static void gl_clear(struct wlr_renderer *wlr_renderer, const float color[static 4])
-{
-    struct ky_opengl_renderer *renderer = gl_get_renderer_in_context(wlr_renderer);
-
-    ky_opengl_push_debug(renderer);
-    glClearColor(color[0], color[1], color[2], color[3]);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ky_opengl_pop_debug(renderer);
-}
-
-static void gl_scissor(struct wlr_renderer *wlr_renderer, struct wlr_box *box)
-{
-    struct ky_opengl_renderer *renderer = gl_get_renderer_in_context(wlr_renderer);
-
-    ky_opengl_push_debug(renderer);
-    if (box != NULL) {
-        glScissor(box->x, box->y, box->width, box->height);
-        glEnable(GL_SCISSOR_TEST);
-    } else {
-        glDisable(GL_SCISSOR_TEST);
-    }
-    ky_opengl_pop_debug(renderer);
-}
-
-static bool gl_render_subtexture_with_matrix(struct wlr_renderer *wlr_renderer,
-                                             struct wlr_texture *wlr_texture,
-                                             const struct wlr_fbox *box,
-                                             const float matrix[static 9], float alpha)
-{
-    struct ky_opengl_renderer *renderer = gl_get_renderer_in_context(wlr_renderer);
-    struct ky_opengl_texture *texture = ky_opengl_texture_from_wlr_texture(wlr_texture);
-    assert(texture->renderer == renderer);
-
-    struct ky_opengl_tex_shader *shader = NULL;
-
-    switch (texture->target) {
-    case GL_TEXTURE_2D:
-        if (texture->has_alpha) {
-            shader = &renderer->shaders.tex_rgba;
-        } else {
-            shader = &renderer->shaders.tex_rgbx;
-        }
-        break;
-    case GL_TEXTURE_EXTERNAL_OES:
-        // EGL_EXT_image_dma_buf_import_modifiers requires
-        // GL_OES_EGL_image_external
-        assert(renderer->exts.OES_egl_image_external);
-        shader = &renderer->shaders.tex_ext;
-        break;
-    default:
-        abort();
-    }
-
-    float gl_matrix[9];
-    wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
-
-    ky_opengl_push_debug(renderer);
-
-    if (!texture->has_alpha && alpha == 1.0) {
-        glDisable(GL_BLEND);
-    } else {
-        glEnable(GL_BLEND);
-    }
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(texture->target, texture->tex);
-
-    glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    glUseProgram(shader->program);
-
-    glUniformMatrix3fv(shader->proj, 1, GL_FALSE, gl_matrix);
-    glUniform1i(shader->tex, 0);
-    glUniform1f(shader->alpha, alpha);
-
-    float tex_matrix[9];
-    wlr_matrix_identity(tex_matrix);
-    wlr_matrix_translate(tex_matrix, box->x / texture->wlr_texture.width,
-                         box->y / texture->wlr_texture.height);
-    wlr_matrix_scale(tex_matrix, box->width / texture->wlr_texture.width,
-                     box->height / texture->wlr_texture.height);
-    glUniformMatrix3fv(shader->tex_proj, 1, GL_FALSE, tex_matrix);
-
-    glVertexAttribPointer(shader->pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
-
-    glEnableVertexAttribArray(shader->pos_attrib);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDisableVertexAttribArray(shader->pos_attrib);
-
-    glBindTexture(texture->target, 0);
-
-    ky_opengl_pop_debug(renderer);
-    return true;
-}
-
-static void gl_render_quad_with_matrix(struct wlr_renderer *wlr_renderer,
-                                       const float color[static 4], const float matrix[static 9])
-{
-    struct ky_opengl_renderer *renderer = gl_get_renderer_in_context(wlr_renderer);
-
-    float gl_matrix[9];
-    wlr_matrix_multiply(gl_matrix, renderer->projection, matrix);
-
-    ky_opengl_push_debug(renderer);
-
-    if (color[3] == 1.0) {
-        glDisable(GL_BLEND);
-    } else {
-        glEnable(GL_BLEND);
-    }
-
-    glUseProgram(renderer->shaders.quad.program);
-
-    glUniformMatrix3fv(renderer->shaders.quad.proj, 1, GL_FALSE, gl_matrix);
-    glUniform4f(renderer->shaders.quad.color, color[0], color[1], color[2], color[3]);
-
-    glVertexAttribPointer(renderer->shaders.quad.pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
-
-    glEnableVertexAttribArray(renderer->shaders.quad.pos_attrib);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDisableVertexAttribArray(renderer->shaders.quad.pos_attrib);
-
-    ky_opengl_pop_debug(renderer);
 }
 
 static const uint32_t *gl_get_shm_texture_formats(struct wlr_renderer *wlr_renderer, size_t *len)
@@ -703,10 +567,6 @@ static const struct wlr_renderer_impl renderer_impl = {
     .bind_buffer = gl_bind_buffer,
     .begin = gl_begin,
     .end = gl_end,
-    .clear = gl_clear,
-    .scissor = gl_scissor,
-    .render_subtexture_with_matrix = gl_render_subtexture_with_matrix,
-    .render_quad_with_matrix = gl_render_quad_with_matrix,
     .get_shm_texture_formats = gl_get_shm_texture_formats,
     .get_dmabuf_texture_formats = gl_get_dmabuf_texture_formats,
     .get_render_formats = gl_get_render_formats,
