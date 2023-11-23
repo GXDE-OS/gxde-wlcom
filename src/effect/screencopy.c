@@ -264,9 +264,13 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        wlr_renderer_begin_with_buffer(manager->server->renderer, manager->buffer);
-        wlr_renderer_clear(manager->server->renderer, (float[4]){ 0.f, 0.f, 0.f, 0.f });
-        wlr_renderer_end(manager->server->renderer);
+        struct wlr_render_pass *pass =
+            wlr_renderer_begin_buffer_pass(manager->server->renderer, manager->buffer, NULL);
+        wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+                                           .color = { 0, 0, 0, 0 },
+                                           .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                       });
+        wlr_render_pass_submit(pass);
     }
 
     manager->done = done;
@@ -376,9 +380,13 @@ bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, vo
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        wlr_renderer_begin_with_buffer(manager->server->renderer, manager->buffer);
-        wlr_renderer_clear(manager->server->renderer, (float[4]){ 0.f, 0.f, 0.f, 0.f });
-        wlr_renderer_end(manager->server->renderer);
+        struct wlr_render_pass *pass =
+            wlr_renderer_begin_buffer_pass(manager->server->renderer, manager->buffer, NULL);
+        wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+                                           .color = { 0, 0, 0, 0 },
+                                           .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                       });
+        wlr_render_pass_submit(pass);
     }
 
     manager->done = done;
