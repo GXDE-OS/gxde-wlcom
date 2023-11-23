@@ -296,6 +296,10 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     ky_scene_node_set_enabled(unmanaged->surface_node, true);
     ky_scene_node_set_position(unmanaged->surface_node, xwayland_unscale(wlr_xwayland_surface->x),
                                xwayland_unscale(wlr_xwayland_surface->y));
+
+    if (!xwayland_surface_has_input(wlr_xwayland_surface)) {
+        ky_scene_node_set_bypassed(unmanaged->surface_node, true);
+    }
 }
 
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)

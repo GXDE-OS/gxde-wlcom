@@ -363,3 +363,23 @@ bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface
     }
     return false;
 }
+
+bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surface)
+{
+    xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(
+        xwayland->xcb_conn,
+        xcb_get_window_attributes_unchecked(xwayland->xcb_conn, wlr_xwayland_surface->window_id),
+        NULL);
+    if (!reply) {
+        return true;
+    }
+
+    uint32_t input_mask = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+                          XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+                          XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_ENTER_WINDOW |
+                          XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION;
+    bool has_input = reply->all_event_masks & input_mask;
+    free(reply);
+
+    return has_input;
+}

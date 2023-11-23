@@ -66,6 +66,8 @@ void xwayland_restack_unmanaged(struct xwayland_server *xwayland);
 
 bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type);
 
+bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surface);
+
 void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                          const xcb_rectangle_t *rects, int count);
 
