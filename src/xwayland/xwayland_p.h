@@ -37,6 +37,7 @@ enum atom_name {
 };
 
 struct xwayland_server {
+    struct server *server;
     struct wlr_xwayland *wlr_xwayland;
     struct wl_list surfaces;
     struct wl_list unmanaged_surfaces;
@@ -49,6 +50,8 @@ struct xwayland_server {
     xcb_atom_t atoms[ATOM_LAST];
 
     xcb_connection_t *xcb_conn;
+    struct wl_event_source *event_source;
+    const xcb_query_extension_reply_t *shape;
 
     float scale;
 };
@@ -62,6 +65,9 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
 void xwayland_restack_unmanaged(struct xwayland_server *xwayland);
 
 bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type);
+
+void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
+                                         const xcb_rectangle_t *rects, int count);
 
 void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below);
 

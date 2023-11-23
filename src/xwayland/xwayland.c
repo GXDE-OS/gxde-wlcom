@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <xcb/shape.h>
 
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland/shell.h>
@@ -41,6 +42,11 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = data;
     wlr_xwayland_surface_ping(wlr_xwayland_surface);
+
+    if (xwayland->shape) {
+        xcb_shape_select_input(xwayland->xcb_conn, wlr_xwayland_surface->window_id, true);
+        xcb_flush(xwayland->xcb_conn);
+    }
 
     if (wlr_xwayland_surface->override_redirect) {
         xwayland_unmanaged_create(xwayland, wlr_xwayland_surface);
@@ -102,6 +108,78 @@ static void xwayland_get_atoms(xcb_connection_t *xcb_conn)
     }
 }
 
+static void xwayland_get_resources(xcb_connection_t *xcb_conn)
+{
+    xcb_prefetch_extension_data(xcb_conn, &xcb_shape_id);
+
+    xwayland_get_atoms(xcb_conn);
+
+    xwayland->shape = xcb_get_extension_data(xcb_conn, &xcb_shape_id);
+    if (!xwayland->shape || !xwayland->shape->present) {
+        kywc_log(KYWC_WARN, "shape not available");
+        return;
+    }
+
+    xcb_shape_query_version_cookie_t shape_cookie;
+    xcb_shape_query_version_reply_t *shape_reply;
+    shape_cookie = xcb_shape_query_version(xcb_conn);
+    shape_reply = xcb_shape_query_version_reply(xcb_conn, shape_cookie, NULL);
+
+    kywc_log(KYWC_DEBUG, "shape version: %" PRIu32 ".%" PRIu32, shape_reply->major_version,
+             shape_reply->minor_version);
+    free(shape_reply);
+}
+
+static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
+{
+    if (notify->shape_kind != XCB_SHAPE_SK_BOUNDING) {
+        return;
+    }
+
+    xcb_shape_get_rectangles_reply_t *reply = xcb_shape_get_rectangles_reply(
+        xwayland->xcb_conn,
+        xcb_shape_get_rectangles_unchecked(xwayland->xcb_conn, notify->affected_window,
+                                           notify->shape_kind),
+        NULL);
+    if (!reply) {
+        return;
+    }
+
+    const xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
+    const int count = xcb_shape_get_rectangles_rectangles_length(reply);
+    xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, rects, count);
+    free(reply);
+}
+
+static int xwayland_event_handler(int fd, uint32_t mask, void *data)
+{
+    int count = 0;
+    xcb_generic_event_t *event;
+
+    if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR)) {
+        kywc_log(KYWC_ERROR, "xwayland is crashed");
+        wl_event_source_remove(xwayland->event_source);
+        return 0;
+    }
+
+    while ((event = xcb_poll_for_event(xwayland->xcb_conn))) {
+        count++;
+
+        const uint8_t response_type = event->response_type & 0x7f;
+        if (response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
+            xwayland_handle_shape_notify((xcb_shape_notify_event_t *)event);
+        }
+
+        free(event);
+    }
+
+    if (count) {
+        xcb_flush(xwayland->xcb_conn);
+    }
+
+    return count;
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
@@ -113,12 +191,18 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
         return;
     }
 
+    xwayland->event_source =
+        wl_event_loop_add_fd(wl_display_get_event_loop(xwayland->server->display),
+                             xcb_get_file_descriptor(xwayland->xcb_conn), WL_EVENT_READABLE,
+                             xwayland_event_handler, NULL);
+    wl_event_source_check(xwayland->event_source);
+
     struct seat *seat = input_manager_get_default_seat();
     wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
     /* set xft.dpi */
     xwayland_update_dpi(xwayland->xcb_conn);
 
-    xwayland_get_atoms(xwayland->xcb_conn);
+    xwayland_get_resources(xwayland->xcb_conn);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -211,6 +295,7 @@ bool xwayland_server_create(struct server *server)
     }
 
     xwayland->scale = 1.0;
+    xwayland->server = server;
     wl_list_init(&xwayland->surfaces);
     wl_list_init(&xwayland->unmanaged_surfaces);
     xwayland->wlr_xwayland->user_event_handler = xwayland_handle_event;
