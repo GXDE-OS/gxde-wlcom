@@ -401,6 +401,7 @@ static void unmanaged_handle_set_override_redirect(struct wl_listener *listener,
     struct xwayland_unmanaged *unmanaged =
         wl_container_of(listener, unmanaged, set_override_redirect);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
+    struct xwayland_server *xwayland = unmanaged->xwayland;
 
     if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
         unmanaged_handle_unmap(&unmanaged->unmap, NULL);
@@ -408,7 +409,7 @@ static void unmanaged_handle_set_override_redirect(struct wl_listener *listener,
     }
     unmanaged_handle_destroy(&unmanaged->destroy, NULL);
 
-    xwayland_view_create(unmanaged->xwayland, wlr_xwayland_surface);
+    xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
 void xwayland_unmanaged_create(struct xwayland_server *xwayland,
