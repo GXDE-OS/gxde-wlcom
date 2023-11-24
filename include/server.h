@@ -13,7 +13,7 @@
 struct server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
-    bool terminate;
+    bool ready, terminate;
 
     /* system bus */
     struct sd_bus *sys_bus;
@@ -27,6 +27,7 @@ struct server {
 
     struct {
         struct wl_signal ready;
+        struct wl_signal terminate;
         /* must use server_add_destroy_listener */
         struct wl_signal destroy;
         struct wl_signal suspend;

@@ -204,6 +204,7 @@ bool server_init(struct server *server)
     server->event_loop = wl_display_get_event_loop(server->display);
 
     wl_signal_init(&server->events.ready);
+    wl_signal_init(&server->events.terminate);
     wl_signal_init(&server->events.destroy);
     wl_signal_init(&server->events.suspend);
     wl_signal_init(&server->events.resume);
@@ -230,6 +231,7 @@ bool server_init(struct server *server)
 
     queue_init(&server->queue, 256, 4, server);
 
+    server->ready = true;
     wl_signal_emit_mutable(&server->events.ready, NULL);
 
     return true;
@@ -269,6 +271,7 @@ void server_run(struct server *server)
 void server_finish(struct server *server)
 {
     server->terminate = true;
+    wl_signal_emit_mutable(&server->events.terminate, NULL);
 
     queue_destroy(&server->queue);
     wl_event_source_remove(server->dbus);
