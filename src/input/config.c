@@ -122,16 +122,14 @@ static int list_inputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
 
     sd_bus_message *reply = NULL;
     CK(sd_bus_message_new_method_return(m, &reply));
-    CK(sd_bus_message_open_container(reply, 'a', "(ss)"));
+    CK(sd_bus_message_open_container(reply, 'a', "(su)"));
 
     struct input *input;
     wl_list_for_each(input, &manager->inputs, link) {
         if (input->prop.is_virtual) {
             continue;
         }
-        json_object *config = json_object_object_get(manager->config->json, input->name);
-        const char *cfg = json_object_to_json_string(config);
-        sd_bus_message_append(reply, "(ss)", input->name, cfg);
+        sd_bus_message_append(reply, "(su)", input->name, input->prop.prop);
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -523,7 +521,7 @@ static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error
 
 static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllInputs", "", "a(ss)", list_inputs, 0),
+    SD_BUS_METHOD("ListAllInputs", "", "a(su)", list_inputs, 0),
     SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
     SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
     SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
@@ -576,8 +574,8 @@ void input_notify_create(struct input *input)
     }
 
     sd_bus *bus = sd_bus_slot_get_bus(manager->config->slot);
-    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_create", "s",
-                       input->name);
+    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_create", "su",
+                       input->name, input->prop.prop);
 }
 
 bool input_manager_config_init(struct input_manager *input_manager)
