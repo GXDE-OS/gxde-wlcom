@@ -198,6 +198,22 @@ static int change_seat(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "uu", input->state.send_events_mode,
+                                      input->default_state.send_events_mode);
+}
+
 static int set_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -226,6 +242,22 @@ static int set_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "bb", input->state.tap_to_click,
+                                      input->default_state.tap_to_click);
+}
+
 static int enable_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -248,6 +280,22 @@ static int enable_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "bb", input->state.tap_and_drag,
+                                      input->default_state.tap_and_drag);
+}
+
 static int enable_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -268,6 +316,22 @@ static int enable_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *
     }
 
     return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "dd", input->state.pointer_accel_speed,
+                                      input->default_state.pointer_accel_speed);
 }
 
 static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -298,6 +362,22 @@ static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *re
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "uu", input->state.accel_profile,
+                                      input->default_state.accel_profile);
+}
+
 static int set_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -319,6 +399,22 @@ static int set_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *re
     }
 
     return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "uu", input->state.scroll_method,
+                                      input->default_state.scroll_method);
 }
 
 static int set_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -343,6 +439,21 @@ static int set_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *re
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "bb", input->state.dwt, input->default_state.dwt);
+}
+
 static int set_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -363,6 +474,22 @@ static int set_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_er
     }
 
     return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "bb", input->state.natural_scroll,
+                                      input->default_state.natural_scroll);
 }
 
 static int enable_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -387,6 +514,22 @@ static int enable_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "bb", input->state.left_handed,
+                                      input->default_state.left_handed);
+}
+
 static int enable_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     const char *input_name = NULL;
@@ -407,6 +550,23 @@ static int enable_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *r
     }
 
     return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "iiii", input->state.repeat_rate,
+                                      input->state.repeat_delay, input->default_state.repeat_rate,
+                                      input->default_state.repeat_delay);
 }
 
 static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
@@ -524,15 +684,25 @@ static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_METHOD("ListAllInputs", "", "a(su)", list_inputs, 0),
     SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
     SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
+    SD_BUS_METHOD("GetSendEventsMode", "s", "uu", get_send_events, 0),
     SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
+    SD_BUS_METHOD("GetTapToClick", "s", "bb", get_tap_to_click, 0),
     SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
+    SD_BUS_METHOD("GetTapAndDrag", "s", "bb", get_tap_and_drag, 0),
     SD_BUS_METHOD("EnableTapAndDrag", "sb", "", enable_tap_and_drag, 0),
+    SD_BUS_METHOD("GetPointerSpeed", "s", "dd", get_pointer_speed, 0),
     SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
+    SD_BUS_METHOD("GetAccelProfile", "s", "uu", get_accel_profile, 0),
     SD_BUS_METHOD("SetAccelProfile", "su", "", set_accel_profile, 0),
+    SD_BUS_METHOD("GetScrollMethod", "s", "uu", get_scroll_method, 0),
     SD_BUS_METHOD("SetScrollMethod", "su", "", set_scroll_method, 0),
+    SD_BUS_METHOD("GetDisableWhileTyping", "s", "bb", get_disable_while_typing, 0),
     SD_BUS_METHOD("SetDisableWhileTyping", "sb", "", set_disable_while_typing, 0),
+    SD_BUS_METHOD("GetNaturalScroll", "s", "bb", get_natural_scroll, 0),
     SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
+    SD_BUS_METHOD("GetLeftHand", "s", "bb", get_left_handed, 0),
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
+    SD_BUS_METHOD("GetRepeatInfo", "s", "iiii", get_repeat_info, 0),
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
     SD_BUS_VTABLE_END,
 };
