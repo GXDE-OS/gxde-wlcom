@@ -159,6 +159,8 @@ void view_set_output(struct view *view, struct kywc_output *output);
 
 void view_set_workspace(struct view *view, struct workspace *workspace);
 
+void view_unset_workspace(struct view *view, struct view_layer *layer);
+
 void view_add_all_workspace(struct view *view);
 
 struct view_proxy *view_add_workspace(struct view *view, struct workspace *workspace);

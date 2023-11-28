@@ -519,7 +519,7 @@ static struct view_proxy *view_proxy_create(struct view *view, struct workspace 
     return proxy;
 }
 
-void view_set_workspace(struct view *view, struct workspace *workspace)
+static void view_do_set_workspace(struct view *view, struct workspace *workspace)
 {
     if (!workspace && !view->current_proxy) {
         return;
@@ -550,6 +550,22 @@ void view_set_workspace(struct view *view, struct workspace *workspace)
         }
     }
     view->base.show_in_all_workspaces = false;
+}
+
+void view_set_workspace(struct view *view, struct workspace *workspace)
+{
+    assert(workspace);
+
+    view_do_set_workspace(view, workspace);
+}
+
+void view_unset_workspace(struct view *view, struct view_layer *layer)
+{
+    assert(layer->layer != LAYER_BELOW && layer->layer != LAYER_NORMAL &&
+           layer->layer != LAYER_ABOVE);
+
+    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+    view_do_set_workspace(view, NULL);
 }
 
 struct view_proxy *view_add_workspace(struct view *view, struct workspace *workspace)
@@ -760,41 +776,40 @@ void view_topmost_activate(struct workspace *workspace)
     seat_focus_surface(input_manager_get_default_seat(), NULL);
 }
 
-static void view_with_workspace_activated(struct view *view)
+static void view_activate_with_workspace(struct view *view, bool find_parent)
 {
     if (!view) {
         return;
+    }
+    if (view->parent && find_parent) {
+        view_activate_with_workspace(view->parent, true);
     }
     struct view_proxy *view_proxy;
     wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
         wl_list_remove(&view_proxy->workspace_link);
         wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
-        struct view *view_tmp = view_proxy->view;
-        if (view_tmp->parent) {
-            view_with_workspace_activated(view_tmp->parent);
-        }
         ky_scene_node_raise_to_top(ky_scene_node_from_tree(view_proxy->tree));
-        /* raise children if any */
-        struct view *child;
-        wl_list_for_each(child, &view_tmp->children, parent_link) {
-            view_with_workspace_activated(child);
-        }
+    }
+    /* raise children if any */
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        view_activate_with_workspace(child, false);
     }
 }
 
-static void view_without_workspace_activated(struct view *view)
+static void view_activate_without_workspace(struct view *view, bool find_parent)
 {
     if (!view) {
         return;
     }
-    if (view->parent) {
-        view_without_workspace_activated(view->parent);
+    if (view->parent && find_parent) {
+        view_activate_without_workspace(view->parent, true);
     }
     ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
     /* raise children if any */
     struct view *child;
     wl_list_for_each(child, &view->children, parent_link) {
-        view_without_workspace_activated(child);
+        view_activate_without_workspace(child, false);
     }
 }
 
@@ -805,9 +820,9 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 
     /* insert view proxy in workspace topmost */
     if (view->current_proxy) {
-        view_with_workspace_activated(view);
+        view_activate_with_workspace(view, true);
     } else {
-        view_without_workspace_activated(view);
+        view_activate_without_workspace(view, true);
     }
 }
 
@@ -986,11 +1001,12 @@ void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view)
 
 void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above)
 {
+    struct view *view = view_from_kywc_view(kywc_view);
+    assert(view->current_proxy);
+
     if (kywc_view->kept_above == kept_above) {
         return;
     }
-
-    struct view *view = view_from_kywc_view(kywc_view);
 
     kywc_view->kept_above = kept_above;
     kywc_view->kept_below = false;
@@ -1010,11 +1026,12 @@ void kywc_view_toggle_kept_above(struct kywc_view *kywc_view)
 
 void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below)
 {
+    struct view *view = view_from_kywc_view(kywc_view);
+    assert(view->current_proxy);
+
     if (kywc_view->kept_below == kept_below) {
         return;
     }
-
-    struct view *view = view_from_kywc_view(kywc_view);
 
     kywc_view->kept_below = kept_below;
     kywc_view->kept_above = false;

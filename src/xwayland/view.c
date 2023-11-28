@@ -524,20 +524,18 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
 
     if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DESKTOP)) {
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
+        xwayland_view->view.base.focusable = false;
+        xwayland_view->view.base.activatable = false;
         removed_from_workspace = true;
     } else if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DOCK)) {
         layer = view_manager_get_layer(LAYER_DOCK, false);
+        xwayland_view->view.base.focusable = false;
+        xwayland_view->view.base.activatable = false;
         removed_from_workspace = true;
     }
 
-    if (layer) {
-        struct ky_scene_node *node = ky_scene_node_from_tree(xwayland_view->view.tree);
-        ky_scene_node_reparent(node, layer->tree);
-    }
     if (removed_from_workspace) {
-        view_set_workspace(&xwayland_view->view, NULL);
-        xwayland_view->view.base.focusable = false;
-        xwayland_view->view.base.activatable = false;
+        view_unset_workspace(&xwayland_view->view, layer);
     }
 }
 
