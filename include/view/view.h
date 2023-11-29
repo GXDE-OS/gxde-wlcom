@@ -114,6 +114,7 @@ struct view {
     void *data;
 
     bool minimized_when_show_desktop;
+    bool show_in_all_workspaces;
 };
 
 struct view_impl {
@@ -153,7 +154,7 @@ void view_set_app_id(struct view *view, const char *app_id);
 
 void view_set_decoration(struct view *view, enum kywc_ssd ssd);
 
-void view_set_shadow(struct view *view, bool need_shadow);
+void view_set_shaded(struct view *view, bool shaded);
 
 void view_set_output(struct view *view, struct kywc_output *output);
 

@@ -383,9 +383,6 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     view_set_title(&xdg_view->view, toplevel->title);
     xdg_view_handle_set_parent(&xdg_view->set_parent, NULL);
 
-    bool need_shadow = xdg_view->view.base.ssd != KYWC_SSD_NONE;
-    view_set_shadow(&xdg_view->view, need_shadow);
-
     // HACK: workaround to remove ssd for ukui apps
     if (xdg_view->view.base.ssd == KYWC_SSD_ALL) {
         const char *app_id = xdg_view->view.base.app_id;
@@ -394,6 +391,8 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
             view_set_decoration(&xdg_view->view, KYWC_SSD_EXTEND_ONLY);
         }
     }
+
+    view_set_shaded(&xdg_view->view, xdg_view->view.base.ssd != KYWC_SSD_NONE);
 
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
     xdg_view_handle_request_maximize(&xdg_view->request_maximize, NULL);

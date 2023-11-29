@@ -524,14 +524,18 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
 
     if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DESKTOP)) {
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
-        xwayland_view->view.base.focusable = false;
-        xwayland_view->view.base.activatable = false;
+        xwayland_view->view.base.resizable = false;
+        xwayland_view->view.base.shadeable = false;
         removed_from_workspace = true;
     } else if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DOCK)) {
         layer = view_manager_get_layer(LAYER_DOCK, false);
         xwayland_view->view.base.focusable = false;
         xwayland_view->view.base.activatable = false;
+        xwayland_view->view.base.resizable = false;
+        xwayland_view->view.base.shadeable = false;
         removed_from_workspace = true;
+    } else if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_UTILITY)) {
+        xwayland_view->view.base.shadeable = false;
     }
 
     if (removed_from_workspace) {
@@ -607,8 +611,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 
     xwayland_view_set_above_or_below(wlr_xwayland_surface, xwayland_view->keep_above,
                                      xwayland_view->keep_below);
+    view_set_shaded(&xwayland_view->view, xwayland_view->view.base.shadeable);
 
-    view_set_shadow(&xwayland_view->view, xwayland_view->view.base.focusable);
     /* we should stack above the new window always */
     if (!xwayland_view->view.base.activatable) {
         xwayland_restack_view(xwayland_view);

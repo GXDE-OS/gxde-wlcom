@@ -113,6 +113,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->resizable = true;
     kywc_view->activatable = true;
     kywc_view->focusable = true;
+    kywc_view->shadeable = true;
 
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
@@ -472,15 +473,16 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd)
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
 }
 
-void view_set_shadow(struct view *view, bool need_shadow)
+void view_set_shaded(struct view *view, bool shaded)
 {
     struct kywc_view *kywc_view = &view->base;
-    if (kywc_view->need_shadow == need_shadow) {
+    shaded = kywc_view->shadeable && shaded;
+    if (kywc_view->shaded == shaded) {
         return;
     }
 
-    kywc_view->need_shadow = need_shadow;
-    kywc_log(KYWC_DEBUG, "kywc_view %p need shadow %d", kywc_view, need_shadow);
+    kywc_view->shaded = shaded;
+    kywc_log(KYWC_DEBUG, "kywc_view %p need shadow %d", kywc_view, shaded);
 
     wl_signal_emit_mutable(&kywc_view->events.shadow, NULL);
 }
@@ -549,7 +551,7 @@ static void view_do_set_workspace(struct view *view, struct workspace *workspace
             view_proxy_destroy(view_proxy);
         }
     }
-    view->base.show_in_all_workspaces = false;
+    view->show_in_all_workspaces = false;
 }
 
 void view_set_workspace(struct view *view, struct workspace *workspace)
@@ -591,7 +593,7 @@ void view_add_all_workspace(struct view *view)
         workspace = workspace_by_position(i);
         view_add_workspace(view, workspace);
     }
-    view->base.show_in_all_workspaces = true;
+    view->show_in_all_workspaces = true;
 }
 
 void view_set_parent(struct view *view, struct view *parent)

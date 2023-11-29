@@ -264,7 +264,7 @@ static void auto_add_all_workspaces_view(struct workspace *workspace)
     struct view_proxy *view_proxy;
     wl_list_for_each(view_proxy, &first_workspace->view_proxies, workspace_link) {
         struct view *view = view_proxy->view;
-        if (view->base.show_in_all_workspaces) {
+        if (view->show_in_all_workspaces) {
             view_add_workspace(view, workspace);
         }
     }

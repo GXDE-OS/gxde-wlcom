@@ -417,7 +417,7 @@ static void shadow_parts_destroy(struct shadow *shadow)
 static void handle_view_shadow(struct wl_listener *listener, void *data)
 {
     struct shadow *shadow = wl_container_of(listener, shadow, view_shadow);
-    if (!shadow->kywc_view->need_shadow) {
+    if (!shadow->kywc_view->shaded) {
         shadow_parts_destroy(shadow);
     } else {
         shadow_parts_create(shadow);
@@ -433,7 +433,7 @@ static void handle_view_map(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.shadow, &shadow->view_shadow);
 
     /* skip if not need shadow */
-    if (!kywc_view->need_shadow) {
+    if (!kywc_view->shaded) {
         return;
     }
 

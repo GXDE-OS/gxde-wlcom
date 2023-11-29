@@ -63,7 +63,7 @@ struct kywc_view {
     int32_t max_width, max_height;
 
     enum kywc_ssd ssd;
-    bool need_shadow;
+    bool shaded;
     bool has_initial_position;
     bool has_round_corner;
 
@@ -78,9 +78,8 @@ struct kywc_view {
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
     bool closeable, movable, resizable;
-    bool activatable, focusable;
+    bool activatable, focusable, shadeable;
     bool skip_taskbar, skip_switcher;
-    bool show_in_all_workspaces;
 
     /* app_id: class when xwayland shell */
     const char *title, *app_id;
