@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <kywc/log.h>
+#include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "input/keyboard.h"
@@ -384,7 +385,12 @@ void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
     clock_gettime(CLOCK_MONOTONIC, &now);
     uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
 
-    struct keyboard *keyboard = seat->keyboard;
-    uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
-    keyboard_feed_key(keyboard, key, pressed, time, modifiers);
+    struct wlr_keyboard_key_event wlr_event = {
+        .time_msec = time,
+        .keycode = key,
+        .update_state = true,
+        .state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
+    };
+
+    wlr_keyboard_notify_key(seat->keyboard->wlr_keyboard, &wlr_event);
 }
