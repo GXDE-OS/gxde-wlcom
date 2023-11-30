@@ -383,3 +383,32 @@ bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surfac
 
     return has_input;
 }
+
+static char *xwayland_get_atom_name(xcb_atom_t atom)
+{
+    xcb_get_atom_name_cookie_t name_cookie = xcb_get_atom_name(xwayland->xcb_conn, atom);
+    xcb_get_atom_name_reply_t *name_reply =
+        xcb_get_atom_name_reply(xwayland->xcb_conn, name_cookie, NULL);
+    if (name_reply == NULL) {
+        return NULL;
+    }
+    size_t len = xcb_get_atom_name_name_length(name_reply);
+    char *buf = xcb_get_atom_name_name(name_reply); // not a C string
+    char *name = strndup(buf, len);
+    free(name_reply);
+    return name;
+}
+
+void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface)
+{
+    for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
+        xcb_atom_t atom = wlr_xwayland_surface->window_type[i];
+        char *atom_name = xwayland_get_atom_name(atom);
+        kywc_log(KYWC_INFO, "%s: type atom %s %ld(%ld)", wlr_xwayland_surface->class, atom_name, i,
+                 wlr_xwayland_surface->window_type_len);
+        free(atom_name);
+    }
+    kywc_log(KYWC_INFO, "%s: OR %d size %d x %d %d", wlr_xwayland_surface->class,
+             wlr_xwayland_surface->override_redirect, wlr_xwayland_surface->width,
+             wlr_xwayland_surface->height, wlr_xwayland_surface->fullscreen);
+}

@@ -71,6 +71,8 @@ bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surfac
 void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                          const xcb_rectangle_t *rects, int count);
 
+void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface);
+
 void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below);
 
 struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
