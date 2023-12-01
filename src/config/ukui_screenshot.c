@@ -177,7 +177,7 @@ static int screenshot_area(sd_bus_message *msg, void *userdata, sd_bus_error *re
 
 /**
  * sd-bus not support method overloaded, https://github.com/systemd/systemd/issues/578
- * Add org.ukui.KWin screenshotFullscreen with a bool arg for linuxqq,
+ * Add org.kde.KWin screenshotFullscreen with a bool arg for linuxqq,
  * keep org.ukui.KWin screenshotFullscreen without args for kylin-screenshot.
  */
 static const sd_bus_vtable screenshot_vtable[] = {

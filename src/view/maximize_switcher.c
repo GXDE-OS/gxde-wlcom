@@ -278,7 +278,7 @@ static void update_title_text(struct item_view *item_view)
     widget_set_front_color(item_view->title_text, theme->active_text_color);
 
     widget_set_max_size(item_view->title_text, max_width, ITEM_HEIGHT);
-    widget_set_auto_resize(item_view->title_text, true);
+    widget_set_auto_resize(item_view->title_text, AUTO_RESIZE_ONLY);
 
     widget_set_enabled(item_view->title_text, true);
     widget_update(item_view->title_text, true);
