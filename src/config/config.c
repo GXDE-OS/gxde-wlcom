@@ -165,6 +165,14 @@ struct config_manager *config_manager_create(struct server *server)
     if (config_manager->file) {
         config_manager->json = json_object_from_file(config_manager->file);
     }
+    /* get default config */
+    if (!config_manager->json) {
+        config_manager->json = json_object_from_file("/etc/kylin-wlcom/config.json");
+        kywc_log(KYWC_INFO, "get the default config from the etc directory");
+        if (!config_manager->json) {
+            kywc_log(KYWC_WARN, "the default config does not exist");
+        }
+    }
 
     /* create one if empty */
     if (!config_manager->json) {

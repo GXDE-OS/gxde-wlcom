@@ -1,0 +1,33 @@
+{
+    "theme": {
+        "name": "builltin-light",
+        "icon_theme_name": "ukui-icon-theme-default"
+    },
+    "outputs": {},
+    "layouts": {},
+    "Inputs": {},
+    "Seats": {},
+    "InputAction": {
+        "keyboard": {
+            "win:no": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "org.ukui.menu",
+                "path": "\/org\/ukui\/menu",
+                "interface": "org.ukui.menu",
+                "method": "WinKeyResponse",
+                "desc": "show ukui menu"
+            }
+        },
+        "gesture": {
+            "hold:any:1:none": {
+                "enable": true,
+                "actiontype": "button",
+                "button": "right",
+                "desc": "simulate right key"
+            }
+        }
+    },
+    "plugins": {}
+}
