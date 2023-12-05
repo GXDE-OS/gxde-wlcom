@@ -78,6 +78,19 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 
 默认情况下，日志打印到文件`$HOME/.log/kylin-wlcom.log`。
 
+## 多语言支持
+
+在`po`目录中，`LINGUAS`文件中加入支持的语言，`POTFILES.in`加入需要翻译的源文件。
+
+然后运行以下命令，更新`pot`文件：
+```
+    meson compile kylin-wayland-compositor-pot
+```
+
+将重新生成的`pot`文件复制成相应语言的`po`文件，如`zh_CN.po`，并进行翻译。
+
+> 保证："Content-Type: text/plain; charset=UTF-8\n"
+
 ## openKylin使用
 
 增加ppa，安装kylin-wayland-compositor即可。

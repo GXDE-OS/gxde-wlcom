@@ -93,7 +93,7 @@ wayland协议支持情况
 | 协议名称                                       | 支持情况 | 说明  |
 | :--------------------------------------------- | :------: | :---- |
 | org_kde_kwin_appmenu_manager                   |    no    | 1     |
-| org_kde_kwin_blur_manager                      |    1     | check |
+| org_kde_kwin_blur_manager                      |    1     | ukui  |
 | org_kde_kwin_contrast_manager                  |    no    | 2     |
 | org_kde_kwin_dpms_manager                      |    1     |       |
 | org_kde_kwin_fake_input                        |    no    | 4     |
@@ -108,7 +108,7 @@ wayland协议支持情况
 | org_kde_plasma_virtual_desktop_management      |    2     | check |
 | org_kde_kwin_outputmanagement                  |    -     | 4 v2  |
 | org_kde_kwin_outputdevice                      |    -     | 4 v2  |
-| org_kde_plasma_shell                           |    8     | check |
+| org_kde_plasma_shell                           |    6     | ukui  |
 | org_kde_plasma_window_management               |    16    | check |
 | org_kde_kwin_remote_access_manager             |    no    | 1     |
 | org_kde_kwin_server_decoration_palette_manager |    no    | 1     |
