@@ -168,9 +168,7 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     if (node == root_node) {
         inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, false,
                            inode->data);
-        return false;
-    }
-    if (pressed) {
+    } else if (pressed) {
         maximize_switcher_set_enable(false);
     }
     return true;
