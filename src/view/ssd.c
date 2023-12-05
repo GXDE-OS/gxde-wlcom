@@ -74,14 +74,14 @@ enum ssd_update_cause {
 
 struct ssd_tooltip {
     struct wl_list link;
-    struct widget *icon, *minimize, *maximize, *close;
+    struct widget *icon, *minimize, *maximize, *restore, *close;
     struct wl_listener theme_update;
 
     struct seat *seat;
     struct wl_listener seat_destroy;
 
     struct wl_event_source *timer;
-    int hovered_part;
+    struct ssd_part *hovered_part;
     bool timer_triggered, timer_for_hidden;
 };
 
@@ -165,7 +165,7 @@ static struct ssd_tooltip *ssd_tooltip_from_seat(struct seat *seat)
     return ssd_tooltip_create(seat);
 }
 
-static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
+static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enabled)
 {
     struct ssd_tooltip *tooltip = ssd_tooltip_from_seat(seat);
     if (!tooltip) {
@@ -173,12 +173,12 @@ static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
     }
 
     struct widget *widget;
-    switch (part) {
+    switch (part->type) {
     case SSD_BUTTON_MINIMIZE:
         widget = tooltip->minimize;
         break;
     case SSD_BUTTON_MAXIMIZE:
-        widget = tooltip->maximize;
+        widget = part->ssd->kywc_view->maximized ? tooltip->restore : tooltip->maximize;
         break;
     case SSD_BUTTON_CLOSE:
         widget = tooltip->close;
@@ -194,6 +194,7 @@ static void ssd_tooltip_show(struct seat *seat, int part, bool enabled)
         wl_event_source_timer_update(tooltip->timer, 0);
         tooltip->timer_triggered = false;
         tooltip->timer_for_hidden = false;
+        tooltip->hovered_part = NULL;
         widget_set_enabled(widget, false);
         widget_update(widget, true);
         return;
@@ -252,6 +253,7 @@ static void ssd_tooltip_draw_widgets(struct ssd_tooltip *tooltip)
     ssd_tooltip_draw_widget(tooltip->icon, tr("More actions for this window"));
     ssd_tooltip_draw_widget(tooltip->minimize, tr("Minimize"));
     ssd_tooltip_draw_widget(tooltip->maximize, tr("Maximize"));
+    ssd_tooltip_draw_widget(tooltip->restore, tr("Restore"));
     ssd_tooltip_draw_widget(tooltip->close, tr("Close"));
 }
 
@@ -278,6 +280,7 @@ static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *
     widget_destroy(tooltip->icon);
     widget_destroy(tooltip->minimize);
     widget_destroy(tooltip->maximize);
+    widget_destroy(tooltip->restore);
     widget_destroy(tooltip->close);
 
     wl_event_source_remove(tooltip->timer);
@@ -307,6 +310,7 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
     tooltip->icon = widget_create(layer->tree);
     tooltip->minimize = widget_create(layer->tree);
     tooltip->maximize = widget_create(layer->tree);
+    tooltip->restore = widget_create(layer->tree);
     tooltip->close = widget_create(layer->tree);
     ssd_tooltip_draw_widgets(tooltip);
 
@@ -355,7 +359,7 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
         ssd_part_update_theme_buffer(part, true);
         // fallthrough to icon
     case SSD_TITLE_ICON:
-        ssd_tooltip_show(seat, part->type, true);
+        ssd_tooltip_show(seat, part, true);
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
@@ -380,7 +384,7 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
         ssd_part_update_theme_buffer(part, false);
         // fallthrough to icon
     case SSD_TITLE_ICON:
-        ssd_tooltip_show(seat, part->type, false);
+        ssd_tooltip_show(seat, part, false);
         break;
     case SSD_EXTEND_TOP_LEFT ... SSD_EXTEND_LEFT:
         /* we have changed cursor image when hover */
@@ -400,7 +404,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     enum kywc_edges edges = KYWC_EDGE_NONE;
 
     if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_TITLE_ICON) {
-        ssd_tooltip_show(seat, part->type, false);
+        ssd_tooltip_show(seat, part, false);
     }
 
     if (dual) {
@@ -485,8 +489,6 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     /* active current view */
     kywc_view_activate(kywc_view);
     seat_focus_surface(seat, view->surface);
-
-    // TODO: rebase cursor
 }
 
 static struct ky_scene_node *ssd_get_root(void *data)

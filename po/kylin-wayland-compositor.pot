@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-05 14:51+0800\n"
+"POT-Creation-Date: 2023-12-05 15:28+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,19 +17,23 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/ssd.c:252
+#: src/view/ssd.c:253
 msgid "More actions for this window"
 msgstr ""
 
-#: src/view/ssd.c:253
+#: src/view/ssd.c:254
 msgid "Minimize"
 msgstr ""
 
-#: src/view/ssd.c:254
+#: src/view/ssd.c:255
 msgid "Maximize"
 msgstr ""
 
-#: src/view/ssd.c:255
+#: src/view/ssd.c:256
+msgid "Restore"
+msgstr ""
+
+#: src/view/ssd.c:257
 msgid "Close"
 msgstr ""
 

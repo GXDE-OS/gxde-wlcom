@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-05 11:51+0800\n"
-"PO-Revision-Date: 2023-12-05 11:51+0800\n"
+"POT-Creation-Date: 2023-12-05 15:28+0800\n"
+"PO-Revision-Date: 2023-12-05 15:30+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
@@ -17,19 +17,23 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/ssd.c:252
+#: src/view/ssd.c:253
 msgid "More actions for this window"
 msgstr "此窗口的更多操作"
 
-#: src/view/ssd.c:253
+#: src/view/ssd.c:254
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/view/ssd.c:254
+#: src/view/ssd.c:255
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/view/ssd.c:255
+#: src/view/ssd.c:256
+msgid "Restore"
+msgstr "还原"
+
+#: src/view/ssd.c:257
 msgid "Close"
 msgstr "关闭"
 
