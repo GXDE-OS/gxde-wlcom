@@ -12,8 +12,8 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
-#define PLASMA_SURFACE_VERSION 8
-#define PLASMA_SHELL_VERSION 8
+#define PLASMA_SURFACE_VERSION 6
+#define PLASMA_SHELL_VERSION 6
 
 struct kde_plasma_shell {
     struct wl_global *global;
@@ -81,7 +81,6 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_PANEL:
-    case ORG_KDE_PLASMA_SURFACE_ROLE_APPLETPOPUP:
         layer = view_manager_get_layer(LAYER_DOCK, false);
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_TOOLTIP:
@@ -95,6 +94,21 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_CRITICALNOTIFICATION:
         layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_SYSTEMWINDOW:
+        layer = view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_INPUTPANEL:
+        layer = view_manager_get_layer(LAYER_INPUT_PANEL, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_LOGOUT:
+        layer = view_manager_get_layer(LAYER_LOGOUT, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK:
+        layer = view_manager_get_layer(LAYER_SCREEN_LOCK, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCKNOTIFICATION:
+        layer = view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
         break;
     }
 
@@ -160,11 +174,6 @@ static void handle_set_skip_switcher(struct wl_client *client, struct wl_resourc
     // Not implemented yet
 }
 
-static void handle_open_under_cursor(struct wl_client *client, struct wl_resource *resource)
-{
-    // Not implemented yet
-}
-
 static const struct org_kde_plasma_surface_interface kde_plasma_surface_impl = {
     .destroy = handle_destroy,
     .set_output = handle_set_output,
@@ -176,7 +185,6 @@ static const struct org_kde_plasma_surface_interface kde_plasma_surface_impl = {
     .panel_auto_hide_show = handle_panel_auto_hide_show,
     .set_panel_takes_focus = handle_set_panel_takes_focus,
     .set_skip_switcher = handle_set_skip_switcher,
-    .open_under_cursor = handle_open_under_cursor,
 };
 
 static void surface_handle_output_update_usable_area(struct wl_listener *listener, void *data)

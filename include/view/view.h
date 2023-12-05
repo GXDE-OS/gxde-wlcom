@@ -29,14 +29,24 @@ enum layer {
     LAYER_NOTIFICATION,
     /* active fullscreen, or active dialog */
     LAYER_ACTIVE,
+    /* layer for system window, ukui-sidebar, ukui-menu */
+    LAYER_SYSTEM_WINDOW,
     /* tooltips, sub- and context menus, popups */
     LAYER_POPUP,
+    /* layer for input method */
+    LAYER_INPUT_PANEL,
     /* layer for notifications that should be shown even on top of fullscreen */
     LAYER_CRITICAL_NOTIFICATION,
-    /* layer for On Screen Display windows such as volume feedback, maybe dragicon */
-    LAYER_ON_SCREEN_DISPLAY,
+    /* layer for logout window */
+    LAYER_LOGOUT,
     /* layer for override redirect windows, layer-shell overlay */
     LAYER_UNMANAGED,
+    /* layer for lockscreen window */
+    LAYER_SCREEN_LOCK,
+    /* layer for notification windows on top of lockscreen */
+    LAYER_SCREEN_LOCK_NOTIFICATION,
+    /* layer for On Screen Display windows such as volume feedback, maybe dragicon */
+    LAYER_ON_SCREEN_DISPLAY,
     LAYER_NUMBER,
 };
 
