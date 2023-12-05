@@ -92,4 +92,6 @@ void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name);
 
 struct wlr_buffer *painter_create_buffer(int width, int height, float scale);
 
+void painter_text_size(const char *text, const char *font, int font_size, int *width, int *height);
+
 #endif /* _PAINTER_H_ */

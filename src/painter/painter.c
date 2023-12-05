@@ -363,3 +363,8 @@ struct wlr_buffer *painter_create_buffer(int width, int height, float scale)
 
     return &buffer->base;
 }
+
+void painter_text_size(const char *text, const char *font, int font_size, int *width, int *height)
+{
+    text_extents(font, font_size, text, width, height);
+}
