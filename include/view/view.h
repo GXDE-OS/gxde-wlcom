@@ -176,6 +176,8 @@ void view_add_all_workspace(struct view *view);
 
 struct view_proxy *view_add_workspace(struct view *view, struct workspace *workspace);
 
+void view_remove_workspace(struct view *view, struct workspace *workspace);
+
 void view_set_parent(struct view *view, struct view *parent);
 
 void view_configure(struct view *view, uint32_t serial);

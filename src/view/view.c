@@ -582,6 +582,35 @@ struct view_proxy *view_add_workspace(struct view *view, struct workspace *works
     return view_proxy_create(view, workspace);
 }
 
+void view_remove_workspace(struct view *view, struct workspace *workspace)
+{
+    if (!view || !workspace) {
+        return;
+    }
+    struct view_proxy *view_proxy = view_proxy_by_workspace(view, workspace);
+    if (!view_proxy) {
+        return;
+    }
+
+    struct view_proxy *proxy;
+    wl_list_for_each_reverse(proxy, &view->view_proxies, view_link) {
+        if (proxy != view_proxy) {
+            break;
+        }
+    }
+    /* add to all workspace if the view only exists in this workspace */
+    if (&proxy->view_link == &view->view_proxies) {
+        view_add_all_workspace(view);
+        return;
+    }
+    /* del the proxy if view exists in multi workspaces */
+    if (view->current_proxy == view_proxy) {
+        view_set_current_proxy(view, proxy);
+    }
+    view_proxy_destroy(view_proxy);
+    view->show_in_all_workspaces = false;
+}
+
 void view_add_all_workspace(struct view *view)
 {
     if (!view) {
