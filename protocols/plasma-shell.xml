@@ -87,11 +87,11 @@
       <entry name="notification" value="4"/>
       <entry name="tooltip" value="5"/>
       <entry name="criticalnotification" value="6" since="6"/>
-      <entry name="systemwindow" value="7"/>
-      <entry name="inputpanel" value="8"/>
-      <entry name="logout" value="9"/>
-      <entry name="screenlock" value="10"/>
-      <entry name="screenlocknotification" value="11"/>
+      <entry name="systemwindow" value="7" since="6"/>
+      <entry name="inputpanel" value="8" since="6"/>
+      <entry name="logout" value="9" since="6"/>
+      <entry name="screenlock" value="10" since="6"/>
+      <entry name="screenlocknotification" value="11" since="6"/>
     </enum>
 
     <request name="set_role">
