@@ -6,6 +6,8 @@
 
 #include "painter_p.h"
 
+#define FONT_WEIGHT (450)
+
 void text_extents(const char *font, int font_size, const char *text, int *width, int *height)
 {
     PangoRectangle rect;
@@ -20,6 +22,7 @@ void text_extents(const char *font, int font_size, const char *text, int *width,
     desc = pango_font_description_new();
     pango_font_description_set_family(desc, font);
     pango_font_description_set_size(desc, font_size * PANGO_SCALE);
+    pango_font_description_set_weight(desc, FONT_WEIGHT);
 
     pango_layout_set_font_description(layout, desc);
     pango_layout_set_text(layout, text, -1);
@@ -73,6 +76,7 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
     PangoFontDescription *desc = pango_font_description_new();
     pango_font_description_set_family(desc, info->font);
     pango_font_description_set_size(desc, info->font_size * PANGO_SCALE);
+    pango_font_description_set_weight(desc, FONT_WEIGHT);
 
     pango_layout_set_font_description(layout, desc);
     pango_cairo_update_layout(cairo, layout);
@@ -90,7 +94,7 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
         g_object_unref(layout);
     }
     if (info->checked) {
-        cairo_move_to(cairo, box->x + lx / 2, box->y + ly);
+        cairo_move_to(cairo, box->x + 2 * ly, box->y + ly);
         PangoLayout *layout = pango_cairo_create_layout(cairo);
         pango_layout_set_width(layout, -1);
         pango_layout_set_text(layout, "✓", -1);
