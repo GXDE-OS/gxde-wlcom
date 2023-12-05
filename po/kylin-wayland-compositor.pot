@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-11 11:04+0800\n"
+"POT-Creation-Date: 2023-12-05 14:51+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,54 +17,78 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/ssd.c:248
+#: src/view/ssd.c:252
 msgid "More actions for this window"
 msgstr ""
 
-#: src/view/ssd.c:249
+#: src/view/ssd.c:253
 msgid "Minimize"
 msgstr ""
 
-#: src/view/ssd.c:250
+#: src/view/ssd.c:254
 msgid "Maximize"
 msgstr ""
 
-#: src/view/ssd.c:251
+#: src/view/ssd.c:255
 msgid "Close"
 msgstr ""
 
-#: src/view/window_menu.c:630
-msgid "More(M)"
+#: src/view/window_menu.c:138
+msgid "Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:634
-msgid "Move(M)"
+#: src/view/window_menu.c:160
+msgid "Move To Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:635
-msgid "Resize(R)"
+#: src/view/window_menu.c:231
+msgid "Desktop(D)"
 msgstr ""
 
-#: src/view/window_menu.c:636
-msgid "Keep-Above(A)"
+#: src/view/window_menu.c:233
+msgid "All Desktop(A)"
 msgstr ""
 
-#: src/view/window_menu.c:637
-msgid "Keep-Below(B)"
+#: src/view/window_menu.c:235
+msgid "Add To New Desktop(N)"
 msgstr ""
 
-#: src/view/window_menu.c:664
-msgid "Minimize(N)"
+#: src/view/window_menu.c:238
+msgid "Move To New Desktop(M)"
 msgstr ""
 
-#: src/view/window_menu.c:665
+#: src/view/window_menu.c:241
 msgid "Maximize(X)"
 msgstr ""
 
-#: src/view/window_menu.c:666
+#: src/view/window_menu.c:242
+msgid "Minimize(N)"
+msgstr ""
+
+#: src/view/window_menu.c:245
+msgid "More(M)"
+msgstr ""
+
+#: src/view/window_menu.c:247
+msgid "Move(M)"
+msgstr ""
+
+#: src/view/window_menu.c:248
+msgid "Resize(R)"
+msgstr ""
+
+#: src/view/window_menu.c:249
+msgid "Keep-Above(A)"
+msgstr ""
+
+#: src/view/window_menu.c:250
+msgid "Keep-Below(B)"
+msgstr ""
+
+#: src/view/window_menu.c:251
 msgid "Fullscreen(F)"
 msgstr ""
 
-#: src/view/window_menu.c:667
+#: src/view/window_menu.c:253
 msgid "Close(C)"
 msgstr ""
