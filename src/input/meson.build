@@ -1,4 +1,5 @@
 wlcom_sources += files(
+  'action.c',
   'binding.c',
   'config.c',
   'cursor.c',
@@ -7,7 +8,6 @@ wlcom_sources += files(
   'idle.c',
   'idle_inhibit.c',
   'input.c',
-  'input_action.c',
   'text_input.c',
   'keyboard.c',
   'libinput.c',
