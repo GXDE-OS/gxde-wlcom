@@ -2,10 +2,8 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <strings.h>
-#include <time.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <wlr/types/wlr_keyboard_group.h>
@@ -16,6 +14,7 @@
 #include "input/keyboard.h"
 #include "input/seat.h"
 #include "input_p.h"
+#include "util/time.h"
 
 static struct modifier {
     char *name;
@@ -308,12 +307,8 @@ static void keyboard_handle_modifiers(struct wl_listener *listener, void *data)
 
 static void keyboard_feed_fake_key(struct keyboard *keyboard, uint32_t key)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
     uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
-    keyboard_feed_key(keyboard, key, true, time, modifiers);
+    keyboard_feed_key(keyboard, key, true, current_time_msec(), modifiers);
 }
 
 static int keyboard_handle_repeat(void *data)

@@ -2,9 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
-#include <time.h>
 
 #include <linux/input-event-codes.h>
 
@@ -20,6 +18,7 @@
 
 #include "input/cursor.h"
 #include "input_p.h"
+#include "util/time.h"
 
 /* cursor images used in compositor */
 static char *cursor_image[] = {
@@ -134,10 +133,6 @@ void cursor_feed_motion(struct cursor *cursor, uint32_t time)
 
 static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
     /* force leave current hover node, then re-hover it */
     if (leave && cursor->hover.node) {
         struct input_event_node *inode = input_event_node_from_node(cursor->hover.node);
@@ -148,7 +143,7 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
         wl_list_remove(&cursor->hover.destroy.link);
         cursor->hover.node = NULL;
     }
-    _cursor_feed_motion(cursor, time);
+    _cursor_feed_motion(cursor, current_time_msec());
 }
 
 void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)

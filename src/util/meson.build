@@ -10,4 +10,5 @@ wlcom_sources += files(
   'queue.c',
   'spawn.c',
   'sysfs.c',
+  'time.c',
 )

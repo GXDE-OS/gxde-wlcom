@@ -14,6 +14,7 @@
 #include "input/seat.h"
 #include "input_p.h"
 #include "server.h"
+#include "util/time.h"
 #include "view/view.h"
 
 static void handle_seat_destroy(struct wl_listener *listener, void *data)
@@ -350,43 +351,28 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 
 void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolute)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
     cursor_move(seat->cursor, NULL, x, y, !absolute, false);
-    cursor_feed_motion(seat->cursor, time);
+    cursor_feed_motion(seat->cursor, current_time_msec());
     wlr_seat_pointer_notify_frame(seat->wlr_seat);
 }
 
 void seat_feed_pointer_button(struct seat *seat, uint32_t button, bool pressed)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
-    cursor_feed_button(seat->cursor, button, pressed, time);
+    cursor_feed_button(seat->cursor, button, pressed, current_time_msec());
     wlr_seat_pointer_notify_frame(seat->wlr_seat);
 }
 
 void seat_feed_pointer_axis(struct seat *seat, uint32_t axis, double step)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
-    cursor_feed_axis(seat->cursor, axis, WL_POINTER_AXIS_SOURCE_WHEEL, step, 0, time);
+    cursor_feed_axis(seat->cursor, axis, WL_POINTER_AXIS_SOURCE_WHEEL, step, 0,
+                     current_time_msec());
     wlr_seat_pointer_notify_frame(seat->wlr_seat);
 }
 
 void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
     struct wlr_keyboard_key_event wlr_event = {
-        .time_msec = time,
+        .time_msec = current_time_msec(),
         .keycode = key,
         .update_state = true,
         .state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,

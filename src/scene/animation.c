@@ -10,6 +10,7 @@
 #include "output.h"
 #include "scene/animation.h"
 #include "server.h"
+#include "util/time.h"
 
 #define POINTS (255)
 
@@ -72,13 +73,6 @@ static const struct curve {
     { { 0, 0 }, { 0, 0 } },    { { 0, 0 }, { 1, 1 } },    { { 0.25, 0.1 }, { 0.25, 1 } },
     { { 0.42, 0 }, { 1, 1 } }, { { 0, 0 }, { 0.58, 1 } }, { { 0.42, 0 }, { 0.58, 1 } },
 };
-
-static uint32_t current_time_msec(void)
-{
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return now.tv_sec * 1000 + now.tv_nsec / 1000000;
-}
 
 /* copied from Hyprland */
 float animation_value(struct animation *animation, float x)

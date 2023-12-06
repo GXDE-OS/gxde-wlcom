@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
-
-#include <linux/input-event-codes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
+#include <linux/input-event-codes.h>
 #include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
@@ -20,6 +19,7 @@
 #include "input_p.h"
 #include "server.h"
 #include "util/spawn.h"
+#include "util/time.h"
 
 enum action_type {
     ACTION_TYPE_NONE = 0,
@@ -409,10 +409,7 @@ static void action_call_send_button(struct action_button_data *data)
         return;
     }
 
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-
+    uint32_t time = current_time_msec();
     cursor_feed_button(cursor, data->val, true, time);
     cursor_feed_button(cursor, data->val, false, time);
 }
@@ -424,11 +421,8 @@ static void action_call_send_key(struct action_key_data *data)
         return;
     }
 
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint32_t time = now.tv_sec * 1000 + now.tv_nsec / 1000000;
     struct wlr_keyboard_key_event wlr_event = {
-        .time_msec = time,
+        .time_msec = current_time_msec(),
         .update_state = true,
     };
 
