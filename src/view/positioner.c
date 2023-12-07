@@ -319,14 +319,14 @@ static void positioner_move_views(struct positioner *pos, struct kywc_box *src_b
             if (src_box->x == x) {
                 nx = dst_box->x + entry->view->margin.off_x;
             } else if (src_box->x + src_box->width == x + w) {
-                nx = dst_box->x + dst_box->width - w;
+                nx = dst_box->x + dst_box->width - w + entry->view->margin.off_x;
             } else {
                 nx = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + entry->view->margin.off_x;
             }
             if (src_box->y == y) {
                 ny = dst_box->y + entry->view->margin.off_y;
             } else if (src_box->y + src_box->height == y + h) {
-                ny = dst_box->y + dst_box->height - h;
+                ny = dst_box->y + dst_box->height - h + entry->view->margin.off_y;
             } else {
                 ny = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + entry->view->margin.off_y;
             }
