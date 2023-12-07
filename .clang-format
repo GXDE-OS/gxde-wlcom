@@ -16,3 +16,5 @@ ForEachMacros:
   - 'wl_resource_for_each'
   - 'wl_resource_for_each_safe'
   - 'json_object_object_foreach'
+  - 'xorg_list_for_each_entry'
+  - 'xorg_list_for_each_entry_safe'
