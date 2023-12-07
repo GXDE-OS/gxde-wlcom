@@ -75,6 +75,67 @@ static void view_handle_output_destroy(struct wl_listener *listener, void *data)
     view_update_output(view);
 }
 
+void view_move_to_output(struct view *view, struct kywc_output *kywc_output)
+{
+    if (view->output == kywc_output) {
+        return;
+    }
+
+    struct kywc_view *kywc_view = &view->base;
+    struct output *dst = output_from_kywc_output(kywc_output);
+    struct output *src = output_from_kywc_output(view->output);
+    struct kywc_box *dst_box = &dst->usable_area;
+    struct kywc_box *src_box = &src->usable_area;
+    double frac_x = (double)dst_box->width / src_box->width;
+    double frac_y = (double)dst_box->height / src_box->height;
+
+    if (kywc_view->fullscreen) {
+        kywc_view_resize(kywc_view, &dst->geometry);
+        return;
+    }
+
+    if (kywc_view->maximized) {
+        struct kywc_box geo;
+        view_get_tiled_geometry(view, &geo, kywc_output, KYWC_TILE_ALL);
+        kywc_view_resize(kywc_view, &geo);
+        return;
+    }
+
+    if (kywc_view->tiled) {
+        struct kywc_box geo;
+        view_get_tiled_geometry(view, &geo, kywc_output, kywc_view->tiled);
+        kywc_view_resize(kywc_view, &geo);
+        return;
+    }
+
+    /* actual view geomtry with margin */
+    int x = kywc_view->geometry.x - kywc_view->margin.off_x;
+    int y = kywc_view->geometry.y - kywc_view->margin.off_y;
+    int w = kywc_view->geometry.width + kywc_view->margin.off_width;
+    int h = kywc_view->geometry.height + kywc_view->margin.off_height;
+
+    int nx, ny;
+    /* keep align to edges */
+    if (src_box->x == x) {
+        nx = dst_box->x + kywc_view->margin.off_x;
+    } else if (src_box->x + src_box->width == x + w) {
+        nx = dst_box->x + dst_box->width - w + kywc_view->margin.off_x;
+    } else {
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+        nx = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + kywc_view->margin.off_x;
+    }
+    if (src_box->y == y) {
+        ny = dst_box->y + kywc_view->margin.off_y;
+    } else if (src_box->y + src_box->height == y + h) {
+        ny = dst_box->y + dst_box->height - h + kywc_view->margin.off_y;
+    } else {
+        ny = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + kywc_view->margin.off_y;
+    }
+#undef MAX
+    /* move to dst */
+    kywc_view_move(kywc_view, nx, ny);
+}
+
 void view_init(struct view *view, const struct view_impl *impl, void *data)
 {
     struct kywc_view *kywc_view = &view->base;
