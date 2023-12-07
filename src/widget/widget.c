@@ -257,16 +257,10 @@ void widget_set_auto_resize(struct widget *widget, int auto_resize)
 
 void widget_set_size(struct widget *widget, int width, int height)
 {
-    if (widget->max_width == 0) {
-        widget->max_width = width;
-    }
-    if (widget->max_height == 0) {
-        widget->max_height = height;
-    }
-    if (width > widget->max_width) {
+    if (widget->max_width != 0 && width > widget->max_width) {
         width = widget->max_width;
     }
-    if (height > widget->max_height) {
+    if (widget->max_height != 0 && height > widget->max_height) {
         height = widget->max_height;
     }
 
@@ -289,10 +283,10 @@ void widget_set_max_size(struct widget *widget, int width, int height)
     widget->max_height = height;
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_SIZE;
 
-    if (widget->width == 0) {
+    if (widget->width > widget->max_width) {
         widget->width = widget->max_width;
     }
-    if (widget->height == 0) {
+    if (widget->height > widget->max_height) {
         widget->height = widget->max_height;
     }
 }
