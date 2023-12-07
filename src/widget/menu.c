@@ -70,9 +70,6 @@ static void menu_render_items(struct menu *menu, bool force)
 
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (!item->enabled) {
-            continue;
-        }
         painter_text_size(item->text, theme->font_name, theme->font_size, &width, &height);
         if (width > max_width) {
             max_width = width;
@@ -80,7 +77,9 @@ static void menu_render_items(struct menu *menu, bool force)
         if (height > max_height) {
             max_height = height;
         }
-        item_count++;
+        if (item->enabled) {
+            item_count++;
+        }
     }
 
     width = max_width * 2;
@@ -124,6 +123,8 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
     ky_scene_node_set_enabled(ky_scene_node_from_tree(menu->tree), enabled);
 
     if (enabled) {
+        ky_scene_node_raise_to_top(
+            ky_scene_node_from_tree(menu->parent ? menu->parent->tree : menu->tree));
         menu_render_items(menu, false);
     }
 
@@ -188,7 +189,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
         y = 0;
 
         if (lx + parent->menu->width + menu->width > max_x) {
-            x = -parent->menu->width;
+            x = -menu->width + 4;
         }
         int off_y = ly + menu->height - max_y;
         if (off_y > 0) {
@@ -702,8 +703,8 @@ void menu_show_root(struct menu *menu, struct seat *seat, int x, int y)
     }
 
     menu->seat = seat;
-    menu_set_position(menu, x, y);
     menu_set_enabled(menu, true);
+    menu_set_position(menu, x, y);
 }
 
 void menu_hide_root(struct menu *menu)
