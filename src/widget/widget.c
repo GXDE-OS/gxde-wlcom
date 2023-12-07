@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -86,7 +87,10 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer, 
     struct ky_scene_buffer *scene_buffer = widget->content.buffer;
 
     if (!buffer) {
-        ky_scene_buffer_set_dest_size(scene_buffer, widget->width, widget->height);
+        int width = widget->width != 0 ? widget->width : widget->max_width;
+        int height = widget->height != 0 ? widget->height : widget->max_height;
+        assert(width != 0 && height != 0);
+        ky_scene_buffer_set_dest_size(scene_buffer, width, height);
         return;
     }
 

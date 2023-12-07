@@ -236,10 +236,12 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
 static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 {
     struct theme *theme = theme_manager_get_current();
+    int width = 0, height = 0;
+    painter_text_size(text, theme->font_name, theme->font_size, &width, &height);
 
     widget_set_text(widget, text, TEXT_ALIGN_CENTER, false, false);
     widget_set_font(widget, theme->font_name, theme->font_size);
-    widget_set_max_size(widget, 1024, 1024);
+    widget_set_max_size(widget, width * 2, height * 2);
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
     widget_set_backgrond_color(widget, theme->inactive_bg_color);
     widget_set_front_color(widget, theme->active_text_color);
