@@ -168,6 +168,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         } else {
             menu_item_update_text(desktop->item, name);
         }
+        menu_item_set_enabled(desktop->item, true);
         menu_item_set_checked(desktop->item, false);
         menu_item_set_separator(desktop->item, i == 0);
         menu_item_lower_to_bottom(desktop->item);
@@ -197,6 +198,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         } else {
             menu_item_update_text(desktop->item, name);
         }
+        menu_item_set_enabled(desktop->item, true);
         menu_item_set_separator(desktop->item, i == 0);
         menu_item_lower_to_bottom(desktop->item);
         desktop->window_menu = window_menu;
@@ -230,6 +232,7 @@ static void screen_update(struct kywc_output *output, int index, void *data)
     } else {
         menu_item_update_text(screen->item, name);
     }
+    menu_item_set_enabled(screen->item, true);
     menu_item_set_checked(screen->item, window_menu->view->output == output);
     screen->window_menu = window_menu;
     screen->output = output;
