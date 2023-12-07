@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-05 15:28+0800\n"
+"POT-Creation-Date: 2023-12-07 15:39+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -37,62 +37,70 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: src/view/window_menu.c:138
+#: src/view/window_menu.c:163
 msgid "Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:160
+#: src/view/window_menu.c:192
 msgid "Move To Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:231
+#: src/view/window_menu.c:226
+msgid "Screen"
+msgstr ""
+
+#: src/view/window_menu.c:307
 msgid "Desktop(D)"
 msgstr ""
 
-#: src/view/window_menu.c:233
+#: src/view/window_menu.c:309
 msgid "All Desktop(A)"
 msgstr ""
 
-#: src/view/window_menu.c:235
+#: src/view/window_menu.c:311
 msgid "Add To New Desktop(N)"
 msgstr ""
 
-#: src/view/window_menu.c:238
+#: src/view/window_menu.c:314
 msgid "Move To New Desktop(M)"
 msgstr ""
 
-#: src/view/window_menu.c:241
+#: src/view/window_menu.c:317
 msgid "Maximize(X)"
 msgstr ""
 
-#: src/view/window_menu.c:242
+#: src/view/window_menu.c:320
+msgid "Move To Screen(S)"
+msgstr ""
+
+#: src/view/window_menu.c:323
 msgid "Minimize(N)"
 msgstr ""
 
-#: src/view/window_menu.c:245
+#: src/view/window_menu.c:326
 msgid "More(M)"
 msgstr ""
 
-#: src/view/window_menu.c:247
+#: src/view/window_menu.c:328
 msgid "Move(M)"
 msgstr ""
 
-#: src/view/window_menu.c:248
+#: src/view/window_menu.c:329
 msgid "Resize(R)"
 msgstr ""
 
-#: src/view/window_menu.c:249
+#: src/view/window_menu.c:330
 msgid "Keep-Above(A)"
 msgstr ""
 
-#: src/view/window_menu.c:250
+#: src/view/window_menu.c:331
 msgid "Keep-Below(B)"
 msgstr ""
 
-#: src/view/window_menu.c:251
+#: src/view/window_menu.c:332
 msgid "Fullscreen(F)"
 msgstr ""
 
-#: src/view/window_menu.c:253
+#: src/view/window_menu.c:334
 msgid "Close(C)"
 msgstr ""

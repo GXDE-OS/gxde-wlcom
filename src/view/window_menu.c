@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -9,10 +10,13 @@
 
 #include "input/seat.h"
 #include "nls.h"
+#include "output.h"
 #include "view/action.h"
 #include "view/workspace.h"
 #include "view_p.h"
 #include "widget/menu.h"
+
+#define MAX_OUTPUTS (16)
 
 struct desktop_item {
     struct window_menu *window_menu;
@@ -20,12 +24,20 @@ struct desktop_item {
     struct workspace *workspace;
 };
 
+struct screen_item {
+    struct window_menu *window_menu;
+    struct menu_item *item;
+    struct kywc_output *output;
+};
+
 /* window menu per seat */
 struct window_menu {
     struct wl_list link;
     struct menu *root;
     struct menu *more;
-    struct menu *output;
+
+    struct menu *screen;
+    struct screen_item screen_items[MAX_OUTPUTS];
 
     struct menu *desktop;
     struct desktop_item add_items[MAX_WORKSPACES];
@@ -55,6 +67,7 @@ struct window_menu_manager {
     struct wl_list desktops;
     struct wl_listener window_menu;
     struct wl_listener new_workspace;
+    struct wl_listener output_configured;
     struct wl_listener server_destroy;
 };
 
@@ -193,6 +206,49 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
     menu_item_lower_to_bottom(window_menu->move_to);
 }
 
+static bool move_screen_action(struct menu_item *item, uint32_t key, void *data)
+{
+    struct screen_item *screen = data;
+    if (!item->checked) {
+        view_move_to_output(screen->window_menu->view, screen->output);
+    }
+    return true;
+}
+
+static void screen_update(struct kywc_output *output, int index, void *data)
+{
+    assert(index < MAX_OUTPUTS);
+
+    struct window_menu *window_menu = data;
+    char name[64] = { 0 };
+
+    struct screen_item *screen = &window_menu->screen_items[index];
+    snprintf(name, 64, "%s %d (%s)", tr("Screen"), index + 1, output->name);
+    if (!screen->item) {
+        screen->item = menu_add_item(window_menu->screen, name, 0, move_screen_action, screen);
+    } else {
+        menu_item_update_text(screen->item, name);
+    }
+    menu_item_set_checked(screen->item, window_menu->view->output == output);
+    screen->window_menu = window_menu;
+    screen->output = output;
+}
+
+static void window_menu_update_screen(struct window_menu *window_menu)
+{
+    uint32_t count = output_manager_for_each_output(screen_update, true, window_menu);
+    /* hide screen item when only one output */
+    menu_item_set_enabled(window_menu->screen->parent, count > 1);
+
+    struct screen_item *screen;
+    for (uint32_t i = count; i < MAX_OUTPUTS; i++) {
+        screen = &window_menu->screen_items[i];
+        if (screen->item) {
+            menu_item_set_enabled(screen->item, false);
+        }
+    }
+}
+
 static void window_menu_set_enabled(struct window_menu *window_menu, bool enabled)
 {
     if (window_menu->enabled == enabled) {
@@ -210,6 +266,7 @@ static void window_menu_set_enabled(struct window_menu *window_menu, bool enable
     ky_scene_node_raise_to_top(ky_scene_node_from_tree(manager->tree));
     wl_signal_add(&window_menu->view->base.events.destroy, &window_menu->view_destroy);
 
+    window_menu_update_screen(window_menu);
     window_menu_update_desktop(window_menu);
     menu_show_root(window_menu->root, window_menu->seat, window_menu->x, window_menu->y);
 }
@@ -258,6 +315,11 @@ static struct window_menu *window_menu_create(struct seat *seat)
                                          window_menu_action, window_menu);
 
     menu_add_item(window_menu->root, tr("Maximize(X)"), KEY_X, window_menu_action, window_menu);
+
+    struct menu_item *screen =
+        menu_add_item(window_menu->root, tr("Move To Screen(S)"), KEY_S, NULL, NULL);
+    window_menu->screen = menu_create(NULL, screen);
+
     menu_add_item(window_menu->root, tr("Minimize(N)"), KEY_N, window_menu_action, window_menu);
 
     /* create the more action submenu */
@@ -311,6 +373,15 @@ static void handle_window_menu(struct wl_listener *listener, void *data)
     window_menu->x = event->x;
     window_menu->y = event->y;
     window_menu_set_enabled(window_menu, true);
+}
+
+static void handle_output_configured(struct wl_listener *listener, void *data)
+{
+    /* disable all window menus when output configured */
+    struct window_menu *window_menu;
+    wl_list_for_each(window_menu, &manager->menus, link) {
+        window_menu_set_enabled(window_menu, false);
+    }
 }
 
 static void desktop_handle_workspace_destroy(struct wl_listener *listener, void *data)
@@ -386,6 +457,9 @@ bool window_menu_manager_create(struct view_manager *view_manager)
 
     wl_list_init(&manager->menus);
     manager->tree = ky_scene_tree_create(view_manager->layers[LAYER_POPUP].tree);
+
+    manager->output_configured.notify = handle_output_configured;
+    output_manager_add_configured_listener(&manager->output_configured);
 
     wl_list_init(&manager->desktops);
     manager->new_workspace.notify = handle_new_workspace;
