@@ -17,7 +17,7 @@
 struct desktop_item {
     struct window_menu *window_menu;
     struct menu_item *item;
-    uint32_t pos;
+    struct workspace *workspace;
 };
 
 /* window menu per seat */
@@ -43,10 +43,18 @@ struct window_menu {
     bool enabled;
 };
 
+struct desktop {
+    struct wl_list link;
+    struct workspace *workspace;
+    struct wl_listener workspace_destroy;
+};
+
 struct window_menu_manager {
     struct ky_scene_tree *tree;
     struct wl_list menus;
+    struct wl_list desktops;
     struct wl_listener window_menu;
+    struct wl_listener new_workspace;
     struct wl_listener server_destroy;
 };
 
@@ -106,13 +114,12 @@ static bool window_menu_action(struct menu_item *item, uint32_t key, void *data)
 static bool add_desktop_action(struct menu_item *item, uint32_t key, void *data)
 {
     struct desktop_item *desktop = data;
-    struct workspace *workspace = workspace_by_position(desktop->pos);
     struct view *view = desktop->window_menu->view;
 
     if (item->checked) {
-        view_remove_workspace(view, workspace);
+        view_remove_workspace(view, desktop->workspace);
     } else {
-        view_add_workspace(view, workspace);
+        view_add_workspace(view, desktop->workspace);
     }
 
     return true;
@@ -121,9 +128,7 @@ static bool add_desktop_action(struct menu_item *item, uint32_t key, void *data)
 static bool move_desktop_action(struct menu_item *item, uint32_t key, void *data)
 {
     struct desktop_item *desktop = data;
-    struct workspace *workspace = workspace_by_position(desktop->pos);
-
-    view_set_workspace(desktop->window_menu->view, workspace);
+    view_set_workspace(desktop->window_menu->view, desktop->workspace);
     return true;
 }
 
@@ -133,8 +138,15 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
     struct desktop_item *desktop;
     char name[64] = { 0 };
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < MAX_WORKSPACES; i++) {
         desktop = &window_menu->add_items[i];
+        if (i >= count) {
+            if (desktop->item) {
+                menu_item_set_enabled(desktop->item, false);
+            }
+            continue;
+        }
+
         snprintf(name, 64, "%s %d", tr("Desktop"), i + 1);
         if (!desktop->item) {
             desktop->item =
@@ -146,7 +158,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         menu_item_set_separator(desktop->item, i == 0);
         menu_item_lower_to_bottom(desktop->item);
         desktop->window_menu = window_menu;
-        desktop->pos = i;
+        desktop->workspace = workspace_by_position(i);
     }
 
     struct view_proxy *view_proxy;
@@ -155,8 +167,15 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         menu_item_set_checked(desktop->item, true);
     }
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < MAX_WORKSPACES; i++) {
         desktop = &window_menu->move_items[i];
+        if (i >= count) {
+            if (desktop->item) {
+                menu_item_set_enabled(desktop->item, false);
+            }
+            continue;
+        }
+
         snprintf(name, 64, "%s %d", tr("Move To Desktop"), i + 1);
         if (!desktop->item) {
             desktop->item =
@@ -167,7 +186,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         menu_item_set_separator(desktop->item, i == 0);
         menu_item_lower_to_bottom(desktop->item);
         desktop->window_menu = window_menu;
-        desktop->pos = i;
+        desktop->workspace = workspace_by_position(i);
     }
 
     menu_item_lower_to_bottom(window_menu->add_to);
@@ -294,6 +313,47 @@ static void handle_window_menu(struct wl_listener *listener, void *data)
     window_menu_set_enabled(window_menu, true);
 }
 
+static void desktop_handle_workspace_destroy(struct wl_listener *listener, void *data)
+{
+    struct desktop *desktop = wl_container_of(listener, desktop, workspace_destroy);
+    wl_list_remove(&desktop->workspace_destroy.link);
+    wl_list_remove(&desktop->link);
+    free(desktop);
+
+    struct window_menu *window_menu;
+    wl_list_for_each(window_menu, &manager->menus, link) {
+        if (window_menu->desktop->enabled) {
+            window_menu_set_enabled(window_menu, false);
+        } else if (window_menu->enabled) {
+            window_menu_update_desktop(window_menu);
+        }
+    }
+}
+
+static void handle_new_workspace(struct wl_listener *listener, void *data)
+{
+    struct window_menu *window_menu;
+    wl_list_for_each(window_menu, &manager->menus, link) {
+        if (window_menu->desktop->enabled) {
+            window_menu_set_enabled(window_menu, false);
+        } else if (window_menu->enabled) {
+            window_menu_update_desktop(window_menu);
+        }
+    }
+
+    struct desktop *desktop = calloc(1, sizeof(struct desktop));
+    if (!desktop) {
+        return;
+    }
+
+    struct workspace *workspace = data;
+    desktop->workspace = workspace;
+    wl_list_insert(&manager->desktops, &desktop->link);
+
+    desktop->workspace_destroy.notify = desktop_handle_workspace_destroy;
+    wl_signal_add(&workspace->events.destroy, &desktop->workspace_destroy);
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
@@ -326,6 +386,10 @@ bool window_menu_manager_create(struct view_manager *view_manager)
 
     wl_list_init(&manager->menus);
     manager->tree = ky_scene_tree_create(view_manager->layers[LAYER_POPUP].tree);
+
+    wl_list_init(&manager->desktops);
+    manager->new_workspace.notify = handle_new_workspace;
+    workspace_manager_add_new_listener(&manager->new_workspace);
 
     /* create the default seat one */
     window_menu_create(input_manager_get_default_seat());
