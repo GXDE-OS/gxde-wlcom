@@ -617,6 +617,18 @@ struct output_manager *output_manager_create(struct server *server)
     return output_manager;
 }
 
+uint32_t output_manager_for_each_output(output_iterator_func_t iterator, bool enabled, void *data)
+{
+    int index = 0;
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->base.state.enabled == enabled) {
+            iterator(&output->base, index++, data);
+        }
+    }
+    return index;
+}
+
 void output_set_pending_primary(struct output *output)
 {
     struct kywc_output *kywc_output = &output->base;

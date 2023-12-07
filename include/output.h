@@ -45,6 +45,10 @@ struct output {
     bool modeset;
 };
 
+typedef void (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);
+
+uint32_t output_manager_for_each_output(output_iterator_func_t iterator, bool enabled, void *data);
+
 struct output_manager *output_manager_create(struct server *server);
 
 void output_manager_add_configured_listener(struct wl_listener *listener);
