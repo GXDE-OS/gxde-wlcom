@@ -66,10 +66,10 @@ void *kywc_theme_manager_get_current(const char *name);
 /*************************************************************************/
 struct kde_blur {
     struct wl_list link;
-    struct wl_resource *resource;
-    struct kde_blur_manager *manager;
+    struct wl_list resources;
 
     struct wlr_surface *wlr_surface;
+    struct wl_listener surface_map;
     struct wl_listener surface_destroy;
 
     pixman_region32_t region, pending_region;
