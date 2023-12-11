@@ -17,13 +17,12 @@
 struct blur_conf {
     int iterations;
     float offset;
-    int strength;
     pixman_region32_t kde_blur_region;
 
     struct kywc_gl_buffer fb[2];
     struct kywc_gl_buffer *blur_fb_final;
 
-    /* Blur node*/
+    /* Blur node */
     struct kywc_texture_node *surface_node;
     struct kywc_transform_root_node *surface_transform_root;
     struct wl_listener handle_blur_commit;
@@ -134,7 +133,7 @@ static const char *effect_blur_class = "blur";
 static struct kywc_gl_program blur_porgram[2];
 static struct blur blur = {
     .default_conf.iterations = 2,
-    .default_conf.offset = 2.0,
+    .default_conf.offset = 4.0,
     .effect_z_order = 100,
     .is_listening = false,
 };
@@ -164,7 +163,6 @@ static struct blur_conf *blur_default_conf_create(void)
     struct blur_conf *def_conf = &blur.default_conf;
     conf->iterations = def_conf->iterations;
     conf->offset = def_conf->offset;
-    conf->strength = 1;
     pixman_region32_init(&conf->kde_blur_region);
 
     kywc_gl_buffer_init(&conf->fb[0]);
@@ -663,7 +661,7 @@ static void handle_kde_blur_commit(struct wl_listener *listener, void *data)
     struct kde_blur *blur = data;
 
     pixman_region32_copy(&conf->kde_blur_region, &blur->region);
-    conf->strength = blur->strength;
+    conf->offset = ((int32_t)blur->strength == -1) ? 4.0 : blur->strength * 1.0 / 1000;
 }
 
 static struct blur_conf *texture_node_remove_blur_node(struct kywc_texture_node *surface_node)
