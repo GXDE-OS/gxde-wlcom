@@ -50,7 +50,7 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 
 编译时需要使用的库或程序:
 
-- meson, ninja, gcc/clang
+- 编译依赖详见control文件
 
 编译选项见`meson_options.txt`，简单的编译指令:
 ```
@@ -91,16 +91,11 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 
 > 保证："Content-Type: text/plain; charset=UTF-8\n"
 
-## openKylin使用
+## openKylin 2.0使用说明
 
-增加ppa，安装kylin-wayland-compositor即可。
+使用apt命令安装kylin-wayland-compositor即可。
 如需要特效，则还需安装kylin-wayland-compositor-effects。
 
-ppa地址如下：
-```
-    deb http://ppa.build.openkylin.top/kylinsoft/wayland-next/openkylin yangtze main
-    deb-src http://ppa.build.openkylin.top/kylinsoft/wayland-next/openkylin yangtze main
-```
 安装结束后，注销系统，在登陆界面，选择`Kylin Wlcom`。
 
 ## 已知问题
