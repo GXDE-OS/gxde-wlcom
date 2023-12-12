@@ -20,34 +20,39 @@ struct kywc_transform_data {
     float time_factor;
     struct kywc_group_node *view_node;
     struct kywc_effect_view *view;
-    struct kywc_effect_box geometry_box;
+    struct kywc_box geometry_box;
     struct padding padding;
+    struct padding shadow_box;
+    int32_t time;
+    int32_t start_time;
 };
 
 struct kywc_transform_geometry_node {
-    struct kywc_transform_data *kywc_transform_data;
+    struct kywc_transform_data *data;
     struct kywc_group_node node;
-    const char *name;
     // texture-local(surface-local) coordinates
     pixman_region32_t opaque_region;
 };
 
 extern const char *kywc_transform_name;
 
-extern struct kywc_transform_data kywc_transform_data;
+float kywc_calc_time_factor(int32_t start_time, int32_t current_time);
 
-float kywc_current_time_factor(int32_t start_time, int32_t end_time);
+int64_t kywc_get_time_msec(void);
 
-int64_t kywc_current_time_msec(void);
+void kywc_transform_data_calc_geometry(struct kywc_transform_data *data);
 
-void kywc_geometry_current_box(struct kywc_transform_data *kywc_transform_data);
+void kywc_transform_data_calc_padding_region(struct kywc_transform_data *data,
+                                             struct kywc_effect_view *view);
 
-void kywc_transform_local_damage(struct wlr_box *box,
-                                 struct kywc_transform_data *kywc_transform_data);
+void kywc_transform_data_calc_local_damage(struct kywc_transform_data *data,
+                                           struct wlr_box *local_damage);
+
+void kywc_transform_data_calc_shadow(struct kywc_transform_data *data, struct kywc_box *bound_box);
 
 void kywc_transform_geometry_node_destroy(struct kywc_transform_geometry_node *node);
 
 struct kywc_transform_geometry_node *
-kywc_transform_geometry_node_create(struct kywc_transform_data *kywc_transform_data);
+kywc_transform_geometry_node_create(struct kywc_transform_data *data);
 
 #endif
