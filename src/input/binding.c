@@ -264,23 +264,19 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
 {
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
+        if (keyboard_state->only_one_modifier && binding->keysym) {
+            continue;
+        }
+
         if (keyboard_state->last_modifiers ^ binding->modifiers) {
             continue;
         }
 
-        if (keyboard_state->only_one_modifier && !binding->keysym) {
-            if (binding->action) {
-                binding->action(binding, binding->data);
-            }
-            *repeat = false;
-            return true;
-        }
-
-        if (keyboard_state->npressed < 1) {
+        if (keyboard_state->npressed < 1 && binding->keysym) {
             continue;
         }
 
-        if (match_key_binding(keyboard_state, binding)) {
+        if (!binding->keysym || match_key_binding(keyboard_state, binding)) {
             kywc_log(KYWC_DEBUG, "start key binding: %s", binding->desc);
             if (binding->action) {
                 binding->action(binding, binding->data);

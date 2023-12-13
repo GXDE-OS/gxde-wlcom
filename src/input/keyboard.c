@@ -173,7 +173,9 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     }
 
     if (!pressed) {
-        return keyboard->is_virtual ? false : bindings_handle_key_binding(keyboard_state, repeat);
+        return !keyboard->state.only_one_modifier
+                   ? false
+                   : bindings_handle_key_binding(keyboard_state, repeat);
     }
 
     for (size_t i = 0; i < len; ++i) {
