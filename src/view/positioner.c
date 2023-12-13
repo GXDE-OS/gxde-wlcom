@@ -653,6 +653,52 @@ static void place_update_entry(struct place *place, struct entry *entry, int slo
     place_update_slot(place, slot);
 }
 
+static void child_view_fix_geometry(struct view *view, int *lx, int *ly)
+{
+    struct kywc_view *kywc_view = &view->base;
+    struct output *output = output_from_kywc_output(view->parent->output);
+    struct kywc_box *usable_area = &output->usable_area;
+    bool need_resize = false;
+
+    struct kywc_box geo = {
+        .x = *lx - kywc_view->margin.off_x,
+        .y = *ly - kywc_view->margin.off_y,
+        .width = kywc_view->geometry.width + kywc_view->margin.off_width,
+        .height = kywc_view->geometry.height + kywc_view->margin.off_height,
+    };
+
+    if (geo.width > usable_area->width) {
+        geo.x = usable_area->x;
+        geo.width = usable_area->width;
+        need_resize = true;
+    } else if (geo.x < usable_area->x) {
+        geo.x = usable_area->x;
+    } else if (geo.x + geo.width > usable_area->x + usable_area->width) {
+        geo.x = usable_area->x + usable_area->width - geo.width;
+    }
+
+    if (geo.height > usable_area->height) {
+        geo.y = usable_area->y;
+        geo.height = usable_area->height;
+        need_resize = true;
+    } else if (geo.y < usable_area->y) {
+        geo.y = usable_area->y;
+    } else if (geo.y + geo.height > usable_area->y + usable_area->height) {
+        geo.y = usable_area->y + usable_area->height - geo.height;
+    }
+
+    geo.x += kywc_view->margin.off_x;
+    geo.y += kywc_view->margin.off_y;
+    *lx = geo.x;
+    *ly = geo.y;
+
+    if (need_resize) {
+        geo.width -= kywc_view->margin.off_width;
+        geo.height -= kywc_view->margin.off_height;
+        kywc_view_resize(kywc_view, &geo);
+    }
+}
+
 static void entry_handle_view_premap(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_premap);
@@ -684,6 +730,8 @@ static void entry_handle_view_premap(struct wl_listener *listener, void *data)
         int center_y = parent->geometry.y + parent->geometry.height / 2;
         lx = center_x - kywc_view->geometry.width / 2;
         ly = center_y - kywc_view->geometry.height / 2;
+        /* make sure the child view is in the usable area of parent view's output */
+        child_view_fix_geometry(view, &lx, &ly);
         goto done;
     }
 
