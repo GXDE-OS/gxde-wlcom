@@ -421,22 +421,22 @@ static void action_call_send_key(struct action_key_data *data)
         .update_state = true,
     };
 
-    for (uint32_t i = 0; i < data->modifiers->len; ++i) {
+    for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
         wlr_event.keycode = data->modifiers->code[i];
         wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
         wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
     }
-    for (uint32_t i = 0; i < data->keys->len; ++i) {
+    for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
         wlr_event.keycode = data->keys->code[i];
         wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
         wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
     }
-    for (uint32_t i = 0; i < data->modifiers->len; ++i) {
+    for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
         wlr_event.keycode = data->modifiers->code[i];
         wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
         wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
     }
-    for (uint32_t i = 0; i < data->keys->len; ++i) {
+    for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
         wlr_event.keycode = data->keys->code[i];
         wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
         wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
@@ -490,14 +490,17 @@ static void input_action_destroy(struct input_action *input_action)
     } else if (input_action->action->type == ACTION_TYPE_RUN_COMMAND) {
         free(input_action->action->data.command.cmd);
     } else if (input_action->action->type == ACTION_TYPE_SEND_KEY) {
-        if (input_action->action->data.key.modifiers->code) {
-            free(input_action->action->data.key.modifiers->code);
+        struct keycodes *modifiers = input_action->action->data.key.modifiers;
+        struct keycodes *keys = input_action->action->data.key.keys;
+
+        if (modifiers && modifiers->code) {
+            free(modifiers->code);
         }
-        if (input_action->action->data.key.keys->code) {
-            free(input_action->action->data.key.keys->code);
+        if (keys && keys->code) {
+            free(keys->code);
         }
-        free(input_action->action->data.key.modifiers);
-        free(input_action->action->data.key.keys);
+        free(modifiers);
+        free(keys);
     }
 
     wl_list_remove(&input_action->link);
