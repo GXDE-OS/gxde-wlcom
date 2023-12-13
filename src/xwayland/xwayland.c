@@ -66,12 +66,53 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
 
 static void xwayland_update_dpi(xcb_connection_t *xcb_conn)
 {
+    /* get current props */
+    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
+    xcb_get_property_cookie_t cookie = xcb_get_property(
+        xcb_conn, 0, screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 0, 8192);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(xcb_conn, cookie, NULL);
+
+    char *props = xcb_get_property_value(reply);
+    size_t len = xcb_get_property_value_length(reply);
+    len = strnlen(props, len);
+
     char dpi_str[16];
     snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
-    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
-    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root, XCB_ATOM_RESOURCE_MANAGER,
-                        XCB_ATOM_STRING, 8, strlen(dpi_str), dpi_str);
+    size_t dpi_str_len = strlen(dpi_str);
+
+    char *prop_str = NULL, *p = NULL;
+    /* if no dpi prop found, we can just append it */
+    bool has_dpi = len > 0 && (p = strstr(props, "Xft.dpi:"));
+
+    /* replace the dpi prop with new value */
+    if (has_dpi && (prop_str = malloc(len + 8))) {
+        size_t left = p - props;
+        size_t offset = 0;
+        memcpy(prop_str, props, left);
+        offset += left;
+        memcpy(prop_str + offset, dpi_str, dpi_str_len);
+        offset += dpi_str_len;
+        while (*p != '\n') {
+            p++;
+        }
+        left = len - (++p - props);
+        memcpy(prop_str + offset, p, left);
+        offset += left;
+        prop_str[offset] = '\0';
+    } else {
+        prop_str = dpi_str;
+        has_dpi = false;
+    }
+
+    free(reply);
+    xcb_change_property(xcb_conn, has_dpi ? XCB_PROP_MODE_REPLACE : XCB_PROP_MODE_APPEND,
+                        screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 8,
+                        strlen(prop_str), prop_str);
     xcb_flush(xcb_conn);
+
+    if (has_dpi) {
+        free(prop_str);
+    }
 }
 
 static void handle_output_configured(struct wl_listener *listener, void *data)
