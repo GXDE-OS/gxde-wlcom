@@ -361,16 +361,11 @@ static void action_call_sdbus_method(struct action_dbus_data *dbus_data)
         return;
     }
 
-    sd_bus_error error = SD_BUS_ERROR_NULL;
-    sd_bus_message *reply = NULL;
-    if (sd_bus_call_method(bus, dbus_data->service, dbus_data->path, dbus_data->interface,
-                           dbus_data->method, &error, &reply, "") < 0) {
-        kywc_log(KYWC_ERROR, "sd bus call failed: %s %s %s %s %s", error.message,
-                 dbus_data->service, dbus_data->path, dbus_data->interface, dbus_data->method);
+    if (sd_bus_call_method_async(bus, NULL, dbus_data->service, dbus_data->path,
+                                 dbus_data->interface, dbus_data->method, NULL, NULL, NULL) < 0) {
+        kywc_log(KYWC_ERROR, "sd bus call failed: %s %s %s %s", dbus_data->service, dbus_data->path,
+                 dbus_data->interface, dbus_data->method);
     }
-
-    sd_bus_error_free(&error);
-    sd_bus_message_unref(reply);
 }
 
 static struct keyboard *get_keyboard_form_seat(struct input_action_manager *manager)
