@@ -18,6 +18,8 @@ enum layer {
     LAYER_FIRST = 0,
     /* layer-shell background */
     LAYER_DESKTOP = LAYER_FIRST,
+    /* layer for a watermark window */
+    LAYER_WATERMARK,
     /* layer-shell bottom */
     LAYER_BELOW,
     LAYER_NORMAL,

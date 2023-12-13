@@ -12,8 +12,8 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
-#define PLASMA_SURFACE_VERSION 6
-#define PLASMA_SHELL_VERSION 6
+#define PLASMA_SURFACE_VERSION 7
+#define PLASMA_SHELL_VERSION 7
 
 struct kde_plasma_shell {
     struct wl_global *global;
@@ -109,6 +109,9 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCKNOTIFICATION:
         layer = view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
+        break;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_WATERMARK:
+        layer = view_manager_get_layer(LAYER_WATERMARK, false);
         break;
     }
 
