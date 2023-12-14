@@ -1,6 +1,0 @@
-Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Contact: chenlinxiang@kylinos.cn
-
-Files: *
-Copyright: 2023, KylinSoft Co., Ltd.
-License: MulanPSL-2.0
