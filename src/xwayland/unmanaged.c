@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#include <float.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
@@ -172,35 +173,10 @@ static void unmanaged_handle_set_geometry(struct wl_listener *listener, void *da
     }
 }
 
-static bool surface_is_enterable(struct xwayland_unmanaged *unmanaged, struct wlr_surface *surface)
-{
-    struct wlr_xwayland_surface *xsurface = unmanaged->wlr_xwayland_surface;
-    if (xsurface->surface == surface) {
-        return true;
-    }
-    while (xsurface->parent) {
-        if (xsurface->parent->surface == surface) {
-            return true;
-        }
-        xsurface = xsurface->parent;
-    }
-    return false;
-}
-
-static struct wlr_xwayland_surface *topmost_parent(struct wlr_xwayland_surface *xsurface)
-{
-    struct wlr_xwayland_surface *parent = xsurface;
-    while (parent->parent) {
-        parent = parent->parent;
-    }
-    return parent;
-}
-
 static void unmanaged_pointer_grab_enter(struct wlr_seat_pointer_grab *grab,
                                          struct wlr_surface *surface, double sx, double sy)
 {
-    struct xwayland_unmanaged *unmanaged = grab->data;
-    if (surface_is_enterable(unmanaged, surface)) {
+    if (wlr_xwayland_surface_try_from_wlr_surface(surface)) {
         wlr_seat_pointer_enter(grab->seat, surface, sx, sy);
     } else {
         wlr_seat_pointer_clear_focus(grab->seat);
@@ -227,9 +203,8 @@ static uint32_t unmanaged_pointer_grab_button(struct wlr_seat_pointer_grab *grab
     }
 
     struct xwayland_unmanaged *unmanaged = grab->data;
-    struct wlr_xwayland_surface *parent = topmost_parent(unmanaged->wlr_xwayland_surface);
-
-    wlr_seat_pointer_enter(grab->seat, parent->surface, 0, 0);
+    struct wlr_surface *surface = unmanaged->wlr_xwayland_surface->surface;
+    wlr_seat_pointer_enter(grab->seat, surface, FLT_MAX, FLT_MAX);
     wlr_seat_pointer_send_button(grab->seat, time, button, state);
     /* clear focus to eat the release button event */
     wlr_seat_pointer_clear_focus(grab->seat);
@@ -297,7 +272,8 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     ky_scene_node_set_position(unmanaged->surface_node, xwayland_unscale(wlr_xwayland_surface->x),
                                xwayland_unscale(wlr_xwayland_surface->y));
 
-    if (!xwayland_surface_has_input(wlr_xwayland_surface)) {
+    /* skip if has a pointer grab */
+    if (!unmanaged->pointer_grab.seat && !xwayland_surface_has_input(wlr_xwayland_surface)) {
         ky_scene_node_set_bypassed(unmanaged->surface_node, true);
     }
 }
