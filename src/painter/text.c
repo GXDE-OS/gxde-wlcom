@@ -6,7 +6,7 @@
 
 #include "painter_p.h"
 
-#define FONT_WEIGHT (450)
+#define FONT_WEIGHT (400)
 
 void text_extents(const char *font, int font_size, const char *text, int *width, int *height)
 {
