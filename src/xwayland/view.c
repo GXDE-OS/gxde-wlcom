@@ -281,18 +281,25 @@ static void xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
 static void xwayland_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, commit);
+    struct kywc_box geo = xwayland_view->view.base.geometry;
+    struct kywc_box *current = &xwayland_view->view.base.geometry;
     uint32_t resize_edges = xwayland_view->view.current_resize_edges;
 
     xwayland_view_update_geometry(xwayland_view);
 
     enum view_action pending_action = xwayland_view->view.pending.configure_action;
     if (pending_action == VIEW_ACTION_NOP) {
+        /* fix postion when resizing by left or top edges */
+        int x = resize_edges & KYWC_EDGE_LEFT ? geo.x + geo.width - current->width : geo.x;
+        int y = resize_edges & KYWC_EDGE_TOP ? geo.y + geo.height - current->height : geo.y;
+        if (x != geo.x || y != geo.y) {
+            xwayland_view_move(xwayland_view, x, y);
+        }
         return;
     }
 
     assert(view_action_change_size(pending_action));
 
-    struct kywc_box *current = &xwayland_view->view.base.geometry;
     struct kywc_box *pending = &xwayland_view->view.pending.configure_geometry;
     /* workaround: force check the size when maximize */
     if (pending_action == VIEW_ACTION_MAXIMIZE && current->width != pending->width &&
