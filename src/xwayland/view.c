@@ -281,6 +281,7 @@ static void xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
 static void xwayland_view_handle_commit(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, commit);
+    uint32_t resize_edges = xwayland_view->view.current_resize_edges;
 
     xwayland_view_update_geometry(xwayland_view);
 
@@ -301,11 +302,11 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
 
     int x = pending->x, y = pending->y;
     if (pending_action & VIEW_ACTION_RESIZE) {
-        if (current->x != pending->x) {
-            x = pending->x + pending->width - current->width;
+        if (resize_edges & KYWC_EDGE_LEFT) {
+            x += pending->width - current->width;
         }
-        if (current->y != pending->y) {
-            y = pending->y + pending->height - current->height;
+        if (resize_edges & KYWC_EDGE_TOP) {
+            y += pending->height - current->height;
         }
     }
 
@@ -781,16 +782,21 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
 {
     struct xwayland_view *xwayland_view =
         wl_container_of(listener, xwayland_view, request_configure);
-    struct wlr_xwayland_surface_configure_event *event = data;
     struct kywc_view *kywc_view = &xwayland_view->view.base;
-    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
+    /* skip configure when resizing by left or top edges */
+    if (kywc_view->mapped &&
+        xwayland_view->view.current_resize_edges & (KYWC_EDGE_LEFT | KYWC_EDGE_TOP)) {
+        return;
+    }
+
+    struct wlr_xwayland_surface_configure_event *event = data;
     struct kywc_box geo = { xwayland_unscale(event->x), xwayland_unscale(event->y),
                             xwayland_unscale(event->width), xwayland_unscale(event->height) };
 
     if (!kywc_view->mapped) {
-        wlr_xwayland_surface_configure(wlr_xwayland_surface, event->x, event->y, event->width,
-                                       event->height);
+        wlr_xwayland_surface_configure(xwayland_view->wlr_xwayland_surface, event->x, event->y,
+                                       event->width, event->height);
     } else {
         xwayland_view_adjust_geometry(xwayland_view, &geo);
     }

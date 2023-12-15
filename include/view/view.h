@@ -127,6 +127,7 @@ struct view {
 
     bool minimized_when_show_desktop;
     bool show_in_all_workspaces;
+    uint32_t current_resize_edges;
 };
 
 struct view_impl {

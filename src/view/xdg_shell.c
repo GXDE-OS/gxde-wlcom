@@ -255,10 +255,11 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
     uint32_t current_serial = xdg_view->wlr_xdg_surface->current.configure_serial;
     /* pending configure has not been acked yet, fix wobbling when resize */
     if (pending_serial >= current_serial && pending_action & VIEW_ACTION_RESIZE) {
-        if (current->x != pending->x) {
+        uint32_t resize_edges = xdg_view->view.current_resize_edges;
+        if (resize_edges & KYWC_EDGE_LEFT) {
             x += pending->width - current->width;
         }
-        if (current->y != pending->y) {
+        if (resize_edges & KYWC_EDGE_TOP) {
             y += pending->height - current->height;
         }
         view_helper_move(view, x, y);

@@ -220,6 +220,9 @@ static void interactive_move_show_snap_box(struct interactive_grab *grab, int cu
 
 static void interactive_grab_destroy(struct interactive_grab *grab)
 {
+    if (grab->view) {
+        grab->view->current_resize_edges = KYWC_EDGE_NONE;
+    }
     wl_list_remove(&grab->view_unmap.link);
     seat_end_pointer_grab(grab->seat, &grab->pointer_grab);
     seat_end_keyboard_grab(grab->seat, &grab->keyboard_grab);
@@ -403,6 +406,7 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     }
 
     interactive_resize_constraints(grab, &pending);
+    grab->view->current_resize_edges = grab->resize_edges;
     kywc_view_resize(kywc_view, &pending);
 }
 
