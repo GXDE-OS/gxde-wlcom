@@ -264,7 +264,8 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
 {
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
-        if (keyboard_state->only_one_modifier && binding->keysym) {
+        if ((keyboard_state->only_one_modifier && binding->keysym) ||
+            (!keyboard_state->only_one_modifier && !binding->keysym)) {
             continue;
         }
 
