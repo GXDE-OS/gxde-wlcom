@@ -54,7 +54,7 @@ wayland协议支持情况
 | zwp_idle_inhibit_manager_v1               |    1     |             |
 | zwp_input_method_context_v1               |    no    |             |
 | zwp_input_timestamps_manager_v1           |    1     |             |
-| zwp_keyboard_shortcuts_inhibit_manager_v1 |    no    | 1           |
+| zwp_keyboard_shortcuts_inhibit_manager_v1 |    1     |             |
 | zwp_linux_dmabuf_v1                       |    4     | check       |
 | zwp_linux_explicit_synchronization_v1     |    no    | 2           |
 | zwp_pointer_constraints_v1                |    no    | 1           |

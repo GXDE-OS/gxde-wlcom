@@ -9,6 +9,7 @@
 #include <wlr/backend/libinput.h>
 #include <wlr/backend/session.h>
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/types/wlr_relative_pointer_v1.h>
 #include <wlr/types/wlr_seat.h>
@@ -294,6 +295,36 @@ uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data)
     return index;
 }
 
+static void handle_keyboard_shortcuts_inhibitor_destroy(struct wl_listener *listener, void *data)
+{
+    struct seat_keyboard_shortcuts_inhibitor *shortcuts_inhibitor =
+        wl_container_of(listener, shortcuts_inhibitor, destroy);
+
+    wl_list_remove(&shortcuts_inhibitor->link);
+    wl_list_remove(&shortcuts_inhibitor->destroy.link);
+    free(shortcuts_inhibitor);
+}
+
+static void handle_new_shortcuts_inhibitor(struct wl_listener *listener, void *data)
+{
+    struct wlr_keyboard_shortcuts_inhibitor_v1 *inhibitor = data;
+
+    struct seat_keyboard_shortcuts_inhibitor *shortcuts_inhibitor =
+        calloc(1, sizeof(struct seat_keyboard_shortcuts_inhibitor));
+    if (!shortcuts_inhibitor) {
+        return;
+    }
+
+    shortcuts_inhibitor->inhibitor = inhibitor;
+    shortcuts_inhibitor->destroy.notify = handle_keyboard_shortcuts_inhibitor_destroy;
+    wl_signal_add(&inhibitor->events.destroy, &shortcuts_inhibitor->destroy);
+
+    struct seat *seat = seat_from_wlr_seat(inhibitor->seat);
+    wl_list_insert(&seat->keyboard_shortcuts_inhibitors, &shortcuts_inhibitor->link);
+
+    wlr_keyboard_shortcuts_inhibitor_v1_activate(inhibitor);
+}
+
 struct input_manager *input_manager_create(struct server *server)
 {
     input_manager = calloc(1, sizeof(struct input_manager));
@@ -325,6 +356,10 @@ struct input_manager *input_manager_create(struct server *server)
 
     input_manager->pointer_gestures = wlr_pointer_gestures_v1_create(server->display);
     input_manager->relative_pointer = wlr_relative_pointer_manager_v1_create(server->display);
+    input_manager->shortcuts_inhibit = wlr_keyboard_shortcuts_inhibit_v1_create(server->display);
+    input_manager->new_shortcuts_inhibit.notify = handle_new_shortcuts_inhibitor;
+    wl_signal_add(&input_manager->shortcuts_inhibit->events.new_inhibitor,
+                  &input_manager->new_shortcuts_inhibit);
 
     input_manager_config_init(input_manager);
     selection_manager_create(input_manager);

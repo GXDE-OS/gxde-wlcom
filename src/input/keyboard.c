@@ -175,18 +175,21 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
         handle_keyboard_state(keyboard_state, modifiers, keysyms[i], pressed);
     }
 
-    if (!pressed) {
-        return !keyboard->state.only_one_modifier
-                   ? false
-                   : bindings_handle_key_binding(keyboard_state, repeat);
-    }
-
     for (size_t i = 0; i < len; ++i) {
         xkb_keysym_t keysym = keysyms[i];
         if (keysym >= XKB_KEY_XF86Switch_VT_1 && keysym <= XKB_KEY_XF86Switch_VT_12) {
             input_manager_switch_vt(keysym - XKB_KEY_XF86Switch_VT_1 + 1);
             return true;
         }
+    }
+
+    struct seat *seat = keyboard->seat;
+    if (seat_is_keyboard_shortcuts_inhibited(seat)) {
+        return false;
+    }
+
+    if (!pressed && !keyboard->state.only_one_modifier) {
+        return false;
     }
 
     return bindings_handle_key_binding(keyboard_state, repeat);

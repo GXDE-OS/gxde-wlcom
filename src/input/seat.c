@@ -8,8 +8,10 @@
 
 #include <linux/input-event-codes.h>
 
-#include <kywc/log.h>
+#include <wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h>
 #include <wlr/types/wlr_seat.h>
+
+#include <kywc/log.h>
 
 #include "input/keyboard.h"
 #include "input/seat.h"
@@ -121,6 +123,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->name = strdup(name);
     wl_list_init(&seat->inputs);
     wl_list_init(&seat->keyboards);
+    wl_list_init(&seat->keyboard_shortcuts_inhibitors);
     wl_signal_init(&seat->events.destroy);
 
     seat->state.cursor_theme = NULL;
@@ -388,13 +391,25 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
     }
 
     struct wlr_seat *wlr_seat = seat->wlr_seat;
+    struct wlr_surface *last_surface = wlr_seat->keyboard_state.focused_surface;
+    if (last_surface != surface) {
+        struct seat_keyboard_shortcuts_inhibitor *shortcuts_inhibitor = NULL;
+        wl_list_for_each(shortcuts_inhibitor, &seat->keyboard_shortcuts_inhibitors, link) {
+            if (shortcuts_inhibitor->inhibitor->surface == last_surface) {
+                wlr_keyboard_shortcuts_inhibitor_v1_deactivate(shortcuts_inhibitor->inhibitor);
+            } else if (shortcuts_inhibitor->inhibitor->surface == surface) {
+                wlr_keyboard_shortcuts_inhibitor_v1_activate(shortcuts_inhibitor->inhibitor);
+            }
+        }
+    }
+
     if (surface) {
         struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(wlr_seat);
         if (keyboard) {
             wlr_seat_keyboard_notify_enter(wlr_seat, surface, keyboard->keycodes,
                                            keyboard->num_keycodes, &keyboard->modifiers);
         } else {
-            wlr_seat_keyboard_notify_enter(seat->wlr_seat, surface, NULL, 0, NULL);
+            wlr_seat_keyboard_notify_enter(wlr_seat, surface, NULL, 0, NULL);
         }
     } else {
         wlr_seat_keyboard_notify_clear_focus(wlr_seat);
@@ -440,4 +455,18 @@ void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
         }
     }
     keyboard_send_key(keyboard, key, pressed);
+}
+
+bool seat_is_keyboard_shortcuts_inhibited(struct seat *seat)
+{
+    struct wlr_surface *wlr_surface = seat->wlr_seat->keyboard_state.focused_surface;
+
+    struct seat_keyboard_shortcuts_inhibitor *shortcuts_inhibitor;
+    wl_list_for_each(shortcuts_inhibitor, &seat->keyboard_shortcuts_inhibitors, link) {
+        if (shortcuts_inhibitor->inhibitor->surface == wlr_surface) {
+            return shortcuts_inhibitor->inhibitor->active;
+        }
+    }
+
+    return false;
 }

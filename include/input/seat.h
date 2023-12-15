@@ -49,6 +49,13 @@ struct seat_touch_grab {
     void *data;
 };
 
+struct seat_keyboard_shortcuts_inhibitor {
+    struct wl_list link;
+
+    struct wlr_keyboard_shortcuts_inhibitor_v1 *inhibitor;
+    struct wl_listener destroy;
+};
+
 struct seat {
     struct wlr_seat *wlr_seat;
     char *name;
@@ -70,6 +77,9 @@ struct seat {
     struct seat_pointer_grab *pointer_grab;
     struct seat_keyboard_grab *keyboard_grab;
     struct seat_touch_grab *touch_grab;
+
+    /* shortcuts inhibitors */
+    struct wl_list keyboard_shortcuts_inhibitors; // struct keyboard_shortcuts_inhibitor.link
 
     struct ky_scene *scene;
     struct wlr_output_layout *layout;
@@ -131,5 +141,7 @@ void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolu
 void seat_feed_pointer_button(struct seat *seat, uint32_t button, bool pressed);
 void seat_feed_pointer_axis(struct seat *seat, uint32_t axis, double step);
 void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed);
+
+bool seat_is_keyboard_shortcuts_inhibited(struct seat *seat);
 
 #endif /* _SEAT_H_ */

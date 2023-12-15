@@ -27,6 +27,7 @@ struct input_manager {
     struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
     struct wlr_pointer_gestures_v1 *pointer_gestures;
     struct wlr_relative_pointer_manager_v1 *relative_pointer;
+    struct wlr_keyboard_shortcuts_inhibit_manager_v1 *shortcuts_inhibit;
 
     struct {
         struct wl_signal new_input;
@@ -39,6 +40,7 @@ struct input_manager {
     struct wl_listener new_input;
     struct wl_listener new_virtual_pointer;
     struct wl_listener new_virtual_keyboard;
+    struct wl_listener new_shortcuts_inhibit;
     struct wl_listener server_destroy;
 };
 
