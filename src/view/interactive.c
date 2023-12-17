@@ -220,9 +220,7 @@ static void interactive_move_show_snap_box(struct interactive_grab *grab, int cu
 
 static void interactive_grab_destroy(struct interactive_grab *grab)
 {
-    if (grab->view) {
-        grab->view->current_resize_edges = KYWC_EDGE_NONE;
-    }
+    grab->view->current_resize_edges = KYWC_EDGE_NONE;
     wl_list_remove(&grab->view_unmap.link);
     seat_end_pointer_grab(grab->seat, &grab->pointer_grab);
     seat_end_keyboard_grab(grab->seat, &grab->keyboard_grab);
@@ -253,7 +251,7 @@ static void interactivate_done_move(struct interactive_grab *grab)
 static void interactive_done(struct interactive_grab *grab)
 {
     /* for snap to edge */
-    if (grab->view && grab->ongoing && grab->mode == INTERACTIVE_MODE_MOVE) {
+    if (grab->view->base.mapped && grab->ongoing && grab->mode == INTERACTIVE_MODE_MOVE) {
         interactivate_done_move(grab);
     }
 
@@ -535,7 +533,6 @@ static const struct seat_touch_grab_interface touch_grab_impl = {
 static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct interactive_grab *grab = wl_container_of(listener, grab, view_unmap);
-    grab->view = NULL;
     interactive_done(grab);
 }
 
