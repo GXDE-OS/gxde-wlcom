@@ -371,6 +371,19 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
 
     int min_width = MAX(kywc_view->min_width, VIEW_MIN_WIDTH);
     int min_height = MAX(kywc_view->min_height, VIEW_MIN_HEIGHT);
+    int max_width = kywc_view->max_width;
+    int max_height = kywc_view->max_height;
+    struct wlr_box box = { 0 };
+
+    wlr_output_layout_get_box(grab->seat->layout, NULL, &box);
+
+    if (!max_width || max_width + kywc_view->margin.off_width > box.width) {
+        max_width = box.width - kywc_view->margin.off_width;
+    }
+    if (!max_height || max_height + kywc_view->margin.off_height > box.height) {
+        max_height = box.height - kywc_view->margin.off_height;
+    }
+
     double dx = x - grab->cursor_x;
     double dy = y - grab->cursor_y;
 
@@ -383,6 +396,8 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     }
     if (pending.height < min_height) {
         pending.height = min_height;
+    } else if (pending.height > max_height) {
+        pending.height = max_height;
     }
 
     if (grab->resize_edges & KYWC_EDGE_LEFT) {
@@ -392,6 +407,8 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     }
     if (pending.width < min_width) {
         pending.width = min_width;
+    } else if (pending.width > max_width) {
+        pending.width = max_width;
     }
 
     if (grab->resize_edges & KYWC_EDGE_TOP) {
