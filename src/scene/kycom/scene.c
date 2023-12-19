@@ -1064,9 +1064,18 @@ static void scene_output_handle_damage(struct wl_listener *listener, void *data)
 {
     struct kywc_scene_output *scene_output = wl_container_of(listener, scene_output, output_damage);
     struct wlr_output_event_damage *event = data;
-    if (wlr_damage_ring_add(&scene_output->damage_ring, event->damage)) {
+    struct wlr_output *output = event->output;
+
+    pixman_region32_t damage;
+    pixman_region32_init(&damage);
+    pixman_region32_copy(&damage, event->damage);
+    wlr_region_scale(&damage, &damage, 1 / output->scale);
+
+    if (wlr_damage_ring_add(&scene_output->damage_ring, &damage)) {
         wlr_output_schedule_frame(scene_output->output);
     }
+
+    pixman_region32_fini(&damage);
 }
 
 static void scene_output_handle_needs_frame(struct wl_listener *listener, void *data)
@@ -1291,6 +1300,8 @@ bool kywc_scene_output_commit(struct kywc_scene_output *scene_output,
 
     _kywc_effects_run(OUTPUT_EFFECT_OVERLAY);
     _kywc_effects_run_post(effect_output);
+
+    wlr_region_scale(&damage, &damage, output->scale);
     struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(renderer, output->back_buffer, NULL);
     wlr_output_add_software_cursors_to_render_pass(output, pass, &damage);
