@@ -340,27 +340,58 @@ static void interactive_resize_constraints(struct interactive_grab *grab, struct
     int x2 = x1 + box->width + kywc_view->margin.off_width;
     int y2 = y1 + box->height + kywc_view->margin.off_height;
 
+    if (x1 > usable->x + usable->width || x2 < usable->x || y1 > usable->y + usable->height ||
+        y2 < usable->y) {
+        usable = &output_from_kywc_output(grab->view->output)->usable_area;
+    }
+
     int ux2 = usable->x + usable->width;
     int uy2 = usable->y + usable->height;
 
     /* constraints when resize to top and bottom */
-    if (grab->resize_edges & KYWC_EDGE_TOP &&
-        output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
-        box->y = usable->y + kywc_view->margin.off_y;
-        box->height = current->height + current->y - box->y;
-    } else if (grab->resize_edges & KYWC_EDGE_BOTTOM &&
-               output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) && y2 > uy2) {
-        box->height = uy2 - y1 - kywc_view->margin.off_height;
+    if (grab->resize_edges & KYWC_EDGE_TOP) {
+        /* top */
+        if (output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
+            box->y = usable->y + kywc_view->margin.off_y;
+            box->height = current->height + current->y - box->y;
+            /* bottom */
+        } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) &&
+                   y1 > uy2 - kywc_view->margin.off_y - VIEW_EDGE_GAP) {
+            box->y = uy2 - VIEW_EDGE_GAP;
+            box->height = y2 - box->y - (kywc_view->margin.off_height - kywc_view->margin.off_y);
+        }
+    } else if (grab->resize_edges & KYWC_EDGE_BOTTOM) {
+        /* top */
+        if (output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) &&
+            y2 < usable->y + VIEW_EDGE_GAP) {
+            box->height = usable->y + VIEW_EDGE_GAP - y1 - kywc_view->margin.off_height;
+            /* bottom */
+        } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) && y2 > uy2) {
+            box->height = uy2 - y1 - kywc_view->margin.off_height;
+        }
     }
 
     /* constraints when resize to left and right */
-    if (grab->resize_edges & KYWC_EDGE_LEFT &&
-        output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) && x1 < usable->x) {
-        box->x = usable->x + kywc_view->margin.off_x;
-        box->width = current->width + current->x - box->x;
-    } else if (grab->resize_edges & KYWC_EDGE_RIGHT &&
-               output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) && x2 > ux2) {
-        box->width = ux2 - x1 - kywc_view->margin.off_width;
+    if (grab->resize_edges & KYWC_EDGE_LEFT) {
+        /* left */
+        if (output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) && x1 < usable->x) {
+            box->x = usable->x + kywc_view->margin.off_x;
+            box->width = current->width + current->x - box->x;
+            /* right */
+        } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) &&
+                   x1 > ux2 - VIEW_EDGE_GAP) {
+            box->x = ux2 - VIEW_EDGE_GAP + kywc_view->margin.off_x;
+            box->width = x2 - box->x - (kywc_view->margin.off_width - kywc_view->margin.off_x);
+        }
+    } else if (grab->resize_edges & KYWC_EDGE_RIGHT) {
+        /* left */
+        if (output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) &&
+            x2 < usable->x + VIEW_EDGE_GAP) {
+            box->width = usable->x + VIEW_EDGE_GAP - x1 - kywc_view->margin.off_width;
+            /* right */
+        } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) && x2 > ux2) {
+            box->width = ux2 - x1 - kywc_view->margin.off_width;
+        }
     }
 }
 
