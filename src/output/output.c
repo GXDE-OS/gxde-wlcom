@@ -4,8 +4,9 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <xf86drm.h>
 
-#include <wlr/backend.h>
+#include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_output_layout.h>
@@ -149,6 +150,21 @@ static void fallback_output_set_state(struct kywc_output *kywc_output, bool enab
     kywc_output_set_state(kywc_output, &state);
 }
 
+static void output_lock_software_cursors(struct output *output)
+{
+    if (!wlr_output_is_drm(output->wlr_output)) {
+        return;
+    }
+
+    int drm_fd = wlr_backend_get_drm_fd(output->wlr_output->backend);
+    drmVersion *version = drmGetVersion(drm_fd);
+    /* use software cursor, linear buffer is external only in nvidia driver */
+    if (version && strcmp(version->name, "nvidia-drm") == 0) {
+        wlr_output_lock_software_cursors(output->wlr_output, true);
+    }
+    drmFreeVersion(version);
+}
+
 static struct output *output_create(const char *name, struct wlr_output *wlr_output)
 {
     struct output *output = calloc(1, sizeof(struct output));
@@ -218,6 +234,8 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         output_manager_emit_configured();
     }
     output->modeset = true;
+
+    output_lock_software_cursors(output);
 
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 
