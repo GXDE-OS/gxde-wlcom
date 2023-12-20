@@ -205,7 +205,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
 
     /* send a button released event to old focus node */
     if (old_focus && changed && !pressed && last_is_pressed) {
-        kywc_log(KYWC_INFO, "release button %d in %p", last_button, old_focus);
+        kywc_log(KYWC_DEBUG, "release button %d in %p", last_button, old_focus);
         if (old_inode && old_inode->impl->click) {
             old_inode->impl->click(seat, old_focus, last_button, false, time, false,
                                    old_inode->data);
