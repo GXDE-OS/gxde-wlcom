@@ -67,3 +67,25 @@ bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backe
 
     return true;
 }
+
+const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *renderer,
+                                                           uint32_t fmt)
+{
+    if (!renderer->impl->get_render_formats) {
+        return NULL;
+    }
+
+    const struct wlr_drm_format_set *render_formats = renderer->impl->get_render_formats(renderer);
+    if (!render_formats) {
+        kywc_log(KYWC_ERROR, "Failed to get render formats");
+        return NULL;
+    }
+
+    const struct wlr_drm_format *render_format = wlr_drm_format_set_get(render_formats, fmt);
+    if (!render_format) {
+        kywc_log(KYWC_ERROR, "Renderer doesn't support format 0x%" PRIX32, fmt);
+        return NULL;
+    }
+
+    return render_format;
+}

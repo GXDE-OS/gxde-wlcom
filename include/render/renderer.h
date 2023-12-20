@@ -17,4 +17,7 @@ bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backe
 
 bool ky_wayland_buffer_create(struct wl_display *wl_display, struct wlr_renderer *wlr_renderer);
 
+const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *renderer,
+                                                           uint32_t fmt);
+
 #endif /* _RENDER_H_ */
