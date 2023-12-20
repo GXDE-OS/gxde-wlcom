@@ -14,6 +14,7 @@
 
 #include "effect/screencopy.h"
 #include "effect_p.h"
+#include "render/renderer.h"
 
 struct screencopy_output {
     struct wl_list link;
@@ -111,10 +112,16 @@ static void screencopy_handle_output_commit(struct wl_listener *listener, void *
         return;
     }
 
-    struct wlr_texture *src_tex = wlr_texture_from_buffer(output->renderer, event->state->buffer);
     struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(output->renderer, manager->buffer, NULL);
+    if (!pass) {
+        kywc_log(KYWC_ERROR, "screencopy pass create failed");
+        screencopy_output_destroy(s_output);
+        screencopy_done();
+        return;
+    }
 
+    struct wlr_texture *src_tex = wlr_texture_from_buffer(output->renderer, event->state->buffer);
     struct wlr_render_texture_options options = {
         .texture = src_tex,
         .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
@@ -178,10 +185,14 @@ static struct wlr_buffer *screencopy_create_buffer(int width, int height)
         return manager->buffer;
     }
 
-    uint64_t modifier[2] = { DRM_FORMAT_MOD_LINEAR, DRM_FORMAT_MOD_INVALID };
-    struct wlr_drm_format format = { DRM_FORMAT_ARGB8888, 2, 2, modifier };
+    const struct wlr_drm_format *format =
+        ky_renderer_get_render_format(manager->server->renderer, DRM_FORMAT_ARGB8888);
+    if (!format) {
+        return NULL;
+    }
+
     struct wlr_buffer *wlr_buffer =
-        wlr_allocator_create_buffer(manager->server->allocator, width, height, &format);
+        wlr_allocator_create_buffer(manager->server->allocator, width, height, format);
     if (!wlr_buffer) {
         return NULL;
     }
@@ -190,6 +201,22 @@ static struct wlr_buffer *screencopy_create_buffer(int width, int height)
     manager->buffer = wlr_buffer;
 
     return wlr_buffer;
+}
+
+static bool screencopy_clear_buffer(struct wlr_buffer *buffer)
+{
+    struct wlr_render_pass *pass =
+        wlr_renderer_begin_buffer_pass(manager->server->renderer, buffer, NULL);
+    if (!pass) {
+        return false;
+    }
+
+    wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+                                       .color = { 0, 0, 0, 0 },
+                                       .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                   });
+    wlr_render_pass_submit(pass);
+    return true;
 }
 
 bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencopy_done_func_t done,
@@ -264,13 +291,7 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        struct wlr_render_pass *pass =
-            wlr_renderer_begin_buffer_pass(manager->server->renderer, manager->buffer, NULL);
-        wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
-                                           .color = { 0, 0, 0, 0 },
-                                           .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
-                                       });
-        wlr_render_pass_submit(pass);
+        screencopy_clear_buffer(manager->buffer);
     }
 
     manager->done = done;
@@ -380,13 +401,7 @@ bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, vo
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        struct wlr_render_pass *pass =
-            wlr_renderer_begin_buffer_pass(manager->server->renderer, manager->buffer, NULL);
-        wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
-                                           .color = { 0, 0, 0, 0 },
-                                           .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
-                                       });
-        wlr_render_pass_submit(pass);
+        screencopy_clear_buffer(manager->buffer);
     }
 
     manager->done = done;
@@ -399,7 +414,9 @@ bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, vo
 void screencopy_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t stride,
                             struct wlr_box *box, void *data)
 {
-    wlr_renderer_begin_with_buffer(manager->server->renderer, buffer);
+    if (!wlr_renderer_begin_with_buffer(manager->server->renderer, buffer)) {
+        return;
+    }
     wlr_renderer_read_pixels(manager->server->renderer, format, stride, box->width, box->height, 0,
                              0, box->x, box->y, data);
     wlr_renderer_end(manager->server->renderer);
