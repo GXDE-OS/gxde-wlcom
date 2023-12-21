@@ -408,10 +408,10 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
 
     wlr_output_layout_get_box(grab->seat->layout, NULL, &box);
 
-    if (!max_width || max_width + kywc_view->margin.off_width > box.width) {
+    if (!max_width || max_width > box.width - kywc_view->margin.off_width) {
         max_width = box.width - kywc_view->margin.off_width;
     }
-    if (!max_height || max_height + kywc_view->margin.off_height > box.height) {
+    if (!max_height || max_height > box.height - kywc_view->margin.off_height) {
         max_height = box.height - kywc_view->margin.off_height;
     }
 

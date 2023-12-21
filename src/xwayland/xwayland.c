@@ -392,9 +392,11 @@ bool xwayland_check_client(const struct wl_client *client)
            xwayland->wlr_xwayland->server->client == client;
 }
 
-float xwayland_unscale(int value)
+int xwayland_unscale(int value)
 {
-    return xwayland ? roundf(value / xwayland->scale) : value;
+    float val = xwayland ? roundf(value / xwayland->scale) : value;
+    /* check overflow for int32_t */
+    return !(val > INT32_MIN && val < INT32_MAX) ? 0 : val;
 }
 
 float xwayland_scale(int value)

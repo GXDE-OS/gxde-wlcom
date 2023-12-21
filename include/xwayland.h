@@ -19,7 +19,7 @@ void xwayland_server_destroy(void);
 
 bool xwayland_check_client(const struct wl_client *client);
 
-float xwayland_unscale(int value);
+int xwayland_unscale(int value);
 
 float xwayland_scale(int value);
 
@@ -35,7 +35,7 @@ INLINE void xwayland_server_destroy(void) {}
 
 INLINE bool xwayland_check_client(const struct wl_client *client) { return false; }
 
-INLINE float xwayland_unscale(int value) { return value; }
+INLINE int xwayland_unscale(int value) { return value; }
 
 INLINE float xwayland_scale(int value) { return value; }
 
