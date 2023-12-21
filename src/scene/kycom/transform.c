@@ -375,6 +375,7 @@ struct kywc_group_node *kywc_node_transform_remove(struct kywc_node *transformed
             kywc_node_reparent_ex(child_node, node->node.parent);
         }
         wl_list_remove(&node->node.link);
+        wl_list_init(&node->node.link);
         node->node.parent = NULL;
     }
     return node;

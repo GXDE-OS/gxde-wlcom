@@ -9,58 +9,133 @@
 #include "kywc/kycom/effect_view.h"
 #include "kywc/log.h"
 
-const char *kywc_transform_name = "transform";
+static void geometry_transform_node_render(struct kywc_render_instance *instance,
+                                           struct kywc_render_target *target,
+                                           pixman_region32_t *damage);
 
-static void texture_render(struct kywc_render_instance *instance, struct kywc_render_target *target,
-                           pixman_region32_t *damage);
-
-static struct kywc_transform_node_render_instance *
-transform_node_render_instance_create(struct kywc_transform_geometry_node *transform_node);
+static struct kywc_geometry_transform_render_instance *
+geometry_transform_node_render_instance_create(struct kywc_geometry_transform_node *transform_node);
 
 const struct kywc_render_instance_interface transform_node_render_instance_impl = {
-    .render = texture_render,
+    .render = geometry_transform_node_render,
     .compute_visible = NULL,
     .try_direct_scanout = NULL,
 };
 
-float kywc_calc_time_factor(int32_t start_time, int32_t current_time)
-{
-    float time_factor = (current_time - start_time) / TRANSFORM_TIME;
-
-    if (time_factor > 1.0) {
-        time_factor = 1.0;
-    } else if (time_factor < 0.0) {
-        time_factor = 0.0;
-    }
-    return time_factor;
-}
-
-static float transform_get_alpha(float time_factor)
-{
-    float current_alpha = 1 - time_factor;
-    return current_alpha;
-}
-
-int64_t kywc_get_time_msec(void)
+int64_t kywc_get_current_time_msec(void)
 {
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
 }
 
+static void xy_linear_func_init(struct xy_linear_func *func, float start_factor, float start_value,
+                                float end_factor, float end_value)
+{
+    if (!func) {
+        return;
+    }
+    func->start_point[0] = start_factor;
+    func->start_point[1] = start_value;
+    func->end_point[0] = end_factor;
+    func->end_point[1] = end_value;
+
+    if (func->end_point[0] - func->start_point[0] == 0) {
+        func->k = 0;
+    } else {
+        func->k = (func->end_point[1] - func->start_point[1]) /
+                  (func->end_point[0] - func->start_point[0]);
+    }
+
+    func->b = func->start_point[1] - func->k * func->start_point[0];
+}
+
+static float xy_linear_func_get_value(struct xy_linear_func *func, float time_factor)
+{
+    if (!func) {
+        return 0;
+    }
+
+    return time_factor * func->k + func->b;
+}
+
+static void transform_data_init(struct kywc_transform_data *data)
+{
+    data->start_time = 0;
+    data->time = -1;
+    data->time_factor = -1;
+    data->alpha = -1;
+    data->max_time_factor = 1;
+    data->view = NULL;
+    data->view_node = NULL;
+    memset(&data->padding, 0, sizeof(data->padding));
+    memset(&data->geometry_box, 0, sizeof(data->geometry_box));
+    memset(&data->shadow, 0, sizeof(data->shadow));
+}
+
+float kywc_transform_data_calc_time_factor(struct kywc_transform_data *data)
+{
+    float time_factor = (data->time - data->start_time) / TRANSFORM_TIME;
+
+    if (time_factor > data->max_time_factor) {
+        time_factor = data->max_time_factor;
+    } else if (time_factor < 0.0) {
+        time_factor = 0.0;
+    }
+    data->time_factor = time_factor;
+    return time_factor;
+}
+
+void kywc_transform_data_alpha_func_init(struct kywc_transform_data *data, float end_alpha)
+{
+    xy_linear_func_init(&data->alpha_func, data->time_factor, data->alpha, data->max_time_factor,
+                        end_alpha);
+}
+
+void kywc_transform_data_geometry_func_init(struct kywc_transform_data *data)
+{
+    struct kywc_effect_view *view = data->view;
+    float factor = data->time_factor;
+    float max_factor = data->max_time_factor;
+    float start_value[4];
+    float end_value[4];
+
+    if (data->time == -1) {
+        // start transform
+        data->geometry_box = view->last_box;
+    }
+
+    start_value[0] = data->geometry_box.x;
+    start_value[1] = data->geometry_box.y;
+    start_value[2] = data->geometry_box.width;
+    start_value[3] = data->geometry_box.height;
+
+    end_value[0] = view->dst_box.x;
+    end_value[1] = view->dst_box.y;
+    end_value[2] = view->dst_box.width;
+    end_value[3] = view->dst_box.height;
+    for (int i = 0; i < 4; i++) {
+        xy_linear_func_init(data->geometry_func + i, factor, start_value[i], max_factor,
+                            end_value[i]);
+    }
+}
+
+void kywc_transform_data_calc_alpha(struct kywc_transform_data *data)
+{
+    data->alpha = xy_linear_func_get_value(&data->alpha_func, data->time_factor);
+}
+
 void kywc_transform_data_calc_geometry(struct kywc_transform_data *data)
 {
-    struct kywc_box last_box = data->view->last_box;
-    struct kywc_box dst_box = data->view->dst_box;
     float factor = data->time_factor;
 
-    data->geometry_box.x = last_box.x - (last_box.x - dst_box.x) * factor;
+    data->geometry_box.x = xy_linear_func_get_value(data->geometry_func, factor);
 
-    data->geometry_box.y = last_box.y - (last_box.y - dst_box.y) * factor;
+    data->geometry_box.y = xy_linear_func_get_value(data->geometry_func + 1, factor);
 
-    data->geometry_box.width = last_box.width - (last_box.width - dst_box.width) * factor;
+    data->geometry_box.width = xy_linear_func_get_value(data->geometry_func + 2, factor);
 
-    data->geometry_box.height = last_box.height - (last_box.height - dst_box.height) * factor;
+    data->geometry_box.height = xy_linear_func_get_value(data->geometry_func + 3, factor);
 }
 
 void kywc_transform_data_calc_local_damage(struct kywc_transform_data *data,
@@ -75,10 +150,62 @@ void kywc_transform_data_calc_local_damage(struct kywc_transform_data *data,
     local_damage->height = geometry_box.height + padding.bottom + padding.right;
 }
 
-static struct kywc_transform_node_render_instance *
-transform_node_render_instance_create(struct kywc_transform_geometry_node *transform_node)
+void kywc_transform_data_calc_padding_region(struct kywc_transform_data *data,
+                                             struct kywc_effect_view *view)
 {
-    struct kywc_transform_node_render_instance *render = malloc(sizeof(*render));
+    struct kywc_view *ky_view = view->kywc_view;
+    if (!ky_view) {
+        return;
+    }
+    struct kywc_box *geometry_box = &data->geometry_box;
+    struct padding *shadow = &data->shadow;
+    struct padding *transform_padding = &data->padding;
+
+    float width_scale, height_scale;
+    if (ky_view->ssd == KYWC_SSD_ALL ) {
+        width_scale =
+            1.0 * geometry_box->width / (ky_view->geometry.width + ky_view->margin.off_width);
+        height_scale =
+            1.0 * geometry_box->height / (ky_view->geometry.height + ky_view->margin.off_height);
+    } else {
+        width_scale = 1.0 * geometry_box->width / ky_view->geometry.width;
+        height_scale = 1.0 * geometry_box->height / ky_view->geometry.height;
+    }
+
+    transform_padding->left = width_scale * shadow->left;
+    transform_padding->right = width_scale * shadow->right;
+    transform_padding->top = ceil(width_scale * shadow->top);
+    transform_padding->bottom = ceil(height_scale * shadow->bottom);
+}
+
+void kywc_transform_data_calc_shadow(struct kywc_transform_data *data, struct kywc_box *bound_box)
+{
+    struct kywc_effect_view *view = data->view;
+    if (!view) {
+        return;
+    }
+
+    struct padding *shadow = &data->shadow;
+    struct kywc_view *_view = view->kywc_view;
+    if (view->kywc_view->shaded) {
+        shadow->top = (bound_box->width - _view->geometry.width - _view->margin.off_width) / 2;
+        shadow->bottom =
+            (bound_box->height - _view->geometry.height - _view->margin.off_height) / 2;
+        shadow->left = shadow->top;
+        shadow->right = shadow->bottom;
+    } else {
+        shadow->top = _view->padding.top;
+        shadow->bottom = _view->padding.bottom;
+        shadow->left = _view->padding.left;
+        shadow->right = _view->padding.right;
+    }
+}
+
+/********************generate_render_task*******************************/
+static struct kywc_geometry_transform_render_instance *
+geometry_transform_node_render_instance_create(struct kywc_geometry_transform_node *transform_node)
+{
+    struct kywc_geometry_transform_render_instance *render = malloc(sizeof(*render));
     if (!render) {
         return NULL;
     }
@@ -91,12 +218,12 @@ transform_node_render_instance_create(struct kywc_transform_geometry_node *trans
     return render;
 }
 
-/********************generate_render_task*******************************/
-static void transform_generate_render_task(const struct kywc_node *node, pixman_region32_t *damage,
-                                           struct kywc_render_target *target,
-                                           struct wl_list *render_tasks)
+static void geometry_transform_node_generate_render_task(const struct kywc_node *node,
+                                                         pixman_region32_t *damage,
+                                                         struct kywc_render_target *target,
+                                                         struct wl_list *render_tasks)
 {
-    struct kywc_transform_geometry_node *transform_node =
+    struct kywc_geometry_transform_node *transform_node =
         wl_container_of(node, transform_node, node);
     if (!render_tasks || !damage || !node->enabled) {
         return;
@@ -115,8 +242,8 @@ static void transform_generate_render_task(const struct kywc_node *node, pixman_
     }
     node->get_opaque_region(node, &transform_node->opaque_region);
 
-    struct kywc_transform_node_render_instance *node_render =
-        transform_node_render_instance_create(transform_node);
+    struct kywc_geometry_transform_render_instance *node_render =
+        geometry_transform_node_render_instance_create(transform_node);
 
     struct kywc_render_task *task =
         kywc_render_task_create(&node_render->base, &node_damage, target);
@@ -127,17 +254,19 @@ final:
     pixman_region32_fini(&node_opaque);
 }
 
-static void texture_render(struct kywc_render_instance *instance, struct kywc_render_target *target,
-                           pixman_region32_t *damage)
+static void geometry_transform_node_render(struct kywc_render_instance *instance,
+                                           struct kywc_render_target *target,
+                                           pixman_region32_t *damage)
 {
-    struct kywc_transform_node_render_instance *render = wl_container_of(instance, render, base);
+    struct kywc_geometry_transform_render_instance *render = wl_container_of(instance, render, base);
 
-    struct kywc_transform_data *data = render->node->data;
+    struct kywc_transform_data *data = &render->node->data;
     struct kywc_effect_view *view = data->view;
     struct padding padding = data->padding;
     struct kywc_box geometry_box = data->geometry_box;
     struct kywc_gl_texture *gl_texture;
-    if (view->kywc_view->ssd == KYWC_SSD_ALL) {
+    if (view->kywc_view->ssd == KYWC_SSD_ALL ||
+        view->kywc_view->shaded) {
         struct kywc_render_target *snap_target = kywc_effect_view_get_target(view);
         struct kywc_node *source_node = &view->view_node->node;
         gl_texture = kywc_node_generate_texture(source_node, snap_target, 1.0);
@@ -148,7 +277,6 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
         struct kywc_texture_node *tex_node = kywc_effect_view_get_texture_node(view);
         gl_texture = tex_node->texture;
     }
-    // struct kywc_texture_node *tex_node = kywc_effect_view_get_texture_node(view);
     //  x1 is the position of the upper left corner,x2 is the position
     //  of the lower right corne ,x2 needs to add the position of x1
     struct kywc_gl_geometry geometry = {
@@ -158,10 +286,8 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
         .y2 = geometry_box.height + padding.bottom + geometry_box.y,
     };
 
-    vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    if (view->kywc_view->minimized) {
-        color[3] = transform_get_alpha(data->time_factor);
-    }
+    vec4 color = { 1.0f, 1.0f, 1.0f, data->alpha };
+
     kywc_target_render_begin(target);
 
     kywc_target_render_texture(gl_texture, target, &geometry, color, RENDER_FLAG_CACHED);
@@ -173,32 +299,46 @@ static void texture_render(struct kywc_render_instance *instance, struct kywc_re
     kywc_target_render_end(target);
 }
 
-static void node_get_bounding_box(const struct kywc_node *node, struct wlr_box *box)
+/********************kywc_geometry_transform_node*******************************/
+static void geometry_transform_node_get_bounding_box(const struct kywc_node *node,
+                                                     struct wlr_box *box)
 {
     if (!box || !node) {
         return;
     }
-    struct kywc_transform_geometry_node *tg_node = wl_container_of(node, tg_node, node);
-    struct padding padding = tg_node->data->padding;
-    struct kywc_box geometry_box = tg_node->data->geometry_box;
+    struct kywc_geometry_transform_node *tg_node = wl_container_of(node, tg_node, node);
+    struct padding *padding = &tg_node->data.padding;
+    struct kywc_box *geometry_box = &tg_node->data.geometry_box;
 
-    box->x = geometry_box.x - padding.left;
-    box->y = geometry_box.y - padding.right;
-    box->width = geometry_box.width + padding.top + padding.left;
-    box->height = geometry_box.height + padding.bottom + padding.right;
+    box->x = geometry_box->x - padding->left;
+    box->y = geometry_box->y - padding->right;
+    box->width = geometry_box->width + padding->top + padding->left;
+    box->height = geometry_box->height + padding->bottom + padding->right;
 }
 
-static void node_get_opaque_region(const struct kywc_node *node, pixman_region32_t *opaque_region)
+static void geometry_transform_node_get_opaque_region(const struct kywc_node *node,
+                                                      pixman_region32_t *opaque_region)
 {
     pixman_region32_clear(opaque_region);
 }
 
-static const char *transform_geometry_node_name(void)
+static const char *geometry_transform_node_name(void)
 {
-    return "kywc_transform_geometry_node";
+    return "kywc_geometry_transform_node";
 }
 
-static void transform_geometry_node_init(struct kywc_transform_geometry_node *tg_node,
+static void geometry_transform_node_destroy(struct kywc_node *node)
+{
+    if (!node) {
+        return;
+    }
+    struct kywc_geometry_transform_node *tg_node = wl_container_of(node, tg_node, node);
+
+    pixman_region32_fini(&tg_node->opaque_region);
+    tg_node->group_destroy(node);
+}
+
+static void transform_geometry_node_init(struct kywc_geometry_transform_node *tg_node,
                                          struct kywc_transform_data *data)
 {
     if (!tg_node || !data) {
@@ -206,82 +346,28 @@ static void transform_geometry_node_init(struct kywc_transform_geometry_node *tg
     }
     struct kywc_node *node = &tg_node->node.node;
     kywc_group_node_init(&tg_node->node);
-    kywc_group_node_set_generate_func(&tg_node->node, transform_generate_render_task);
-    node->node_name = transform_geometry_node_name;
+    kywc_group_node_set_generate_func(&tg_node->node, geometry_transform_node_generate_render_task);
+    node->node_name = geometry_transform_node_name;
+    tg_node->group_destroy = node->destroy;
+    node->destroy = geometry_transform_node_destroy;
+    node->get_opaque_region = geometry_transform_node_get_opaque_region;
+    node->get_bounding_box = geometry_transform_node_get_bounding_box;
 
-    node->get_opaque_region = node_get_opaque_region;
-    node->get_bounding_box = node_get_bounding_box;
-
-    tg_node->data = data;
     pixman_region32_init(&tg_node->opaque_region);
 }
 
-void kywc_transform_data_calc_padding_region(struct kywc_transform_data *data,
-                                             struct kywc_effect_view *view)
+struct kywc_geometry_transform_node *
+kywc_transform_geometry_node_create(struct kywc_effect_view *view)
 {
-    struct kywc_view *ky_view = view->kywc_view;
-    if (!ky_view) {
-        return;
-    }
-    struct kywc_box *geometry_box = &data->geometry_box;
-    struct padding *shadow_box = &data->shadow_box;
-    struct padding *padding_box = &data->padding;
-
-    if (ky_view->ssd == KYWC_SSD_ALL) {
-        float width_scale =
-            1.0 * geometry_box->width / (ky_view->geometry.width + ky_view->margin.off_width);
-        float height_scale =
-            1.0 * geometry_box->height / (ky_view->geometry.height + ky_view->margin.off_height);
-        if (ky_view->maximized) {
-            memset(padding_box, 0, sizeof(*padding_box));
-        } else {
-            padding_box->left = width_scale * shadow_box->left;
-            padding_box->right = width_scale * shadow_box->right;
-            padding_box->top = ceil(width_scale * shadow_box->top);
-            padding_box->bottom = ceil(height_scale * shadow_box->bottom);
-        }
-    } else {
-        float width_scale = 1.0 * geometry_box->width / ky_view->geometry.width;
-        float height_scale = 1.0 * geometry_box->height / ky_view->geometry.height;
-        padding_box->left = width_scale * ky_view->padding.left;
-        padding_box->right = width_scale * ky_view->padding.right;
-        padding_box->top = ceil(width_scale * ky_view->padding.top);
-        padding_box->bottom = ceil(height_scale * ky_view->padding.bottom);
-    }
-}
-
-void kywc_transform_data_calc_shadow(struct kywc_transform_data *data, struct kywc_box *bound_box)
-{
-    struct kywc_effect_view *view = data->view;
-    if (!view || view->kywc_view->ssd != KYWC_SSD_ALL) {
-        return;
-    }
-    struct padding *shadow_box = &data->shadow_box;
-    struct kywc_view *_view = view->kywc_view;
-    shadow_box->top = (bound_box->width - _view->geometry.width - _view->margin.off_width) / 2;
-    shadow_box->bottom =
-        (bound_box->height - _view->geometry.height - _view->margin.off_height) / 2;
-    shadow_box->left = shadow_box->top;
-    shadow_box->right = shadow_box->top;
-}
-
-void kywc_transform_geometry_node_destroy(struct kywc_transform_geometry_node *node)
-{
-    if (!node) {
-        return;
-    }
-    node->data = NULL;
-    pixman_region32_fini(&node->opaque_region);
-    free(node);
-}
-
-struct kywc_transform_geometry_node *
-kywc_transform_geometry_node_create(struct kywc_transform_data *data)
-{
-    struct kywc_transform_geometry_node *tg_node = malloc(sizeof(*tg_node));
+    struct kywc_geometry_transform_node *tg_node = malloc(sizeof(*tg_node));
     if (!tg_node) {
         return NULL;
     }
+    struct kywc_transform_data *data = &tg_node->data;
+    transform_data_init(data);
+    data->view = view;
+    data->view_node = view->view_node;
+    data->start_time = kywc_get_current_time_msec();
 
     transform_geometry_node_init(tg_node, data);
 

@@ -45,7 +45,7 @@ void kywc_effect_view_get_save_geometry(struct kywc_effect_view *view,
 
 void kywc_effect_view_get_bound_box(struct kywc_effect_view *view, struct kywc_box *bound_box)
 {
-    if (!view || view->kywc_view->ssd != KYWC_SSD_ALL) {
+    if (!view) {
         return;
     }
     struct kywc_node *node = &view->view_node->node;
@@ -87,10 +87,10 @@ static void effect_veiw_release_buffer(struct effect_view *_view)
 static void effect_handle_view_destroy(struct wl_listener *listener, void *data)
 {
     struct effect_view *view = wl_container_of(listener, view, view_handle_destroy);
+    wl_list_remove(&view->view_handle_destroy.link);
 
     wl_signal_emit_mutable(&view->base.events.destroy, &view->base);
 
-    wl_list_remove(&view->view_handle_destroy.link);
     wl_list_remove(&view->view_handle_maximized.link);
     wl_list_remove(&view->view_handle_minimized.link);
     wl_list_remove(&view->view_handle_size_changed.link);
