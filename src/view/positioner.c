@@ -10,7 +10,6 @@
 #include "view_p.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /* default grid gap and offset */
 #define GRID_GAP_ROW (50)
@@ -271,68 +270,14 @@ static bool slot_is_suitable(struct positioner *pos, struct kywc_view *view, int
 static void positioner_move_views(struct positioner *pos, struct kywc_box *src_box,
                                   struct positioner *dst_pos, bool skip_update)
 {
-    struct kywc_box *dst_box = &dst_pos->usable_area;
-    double frac_x = (double)dst_box->width / src_box->width;
-    double frac_y = (double)dst_box->height / src_box->height;
-    int x, y, w, h, nx, ny;
-
     struct place *place;
     wl_list_for_each(place, &pos->places, link) {
         struct entry *entry, *tmp;
         wl_list_for_each_safe(entry, tmp, &place->entries, link) {
             /* keep entry's place, so we can store when output re-enabled or plugin */
             entry->skip_update = skip_update;
-
-            if (entry->view->fullscreen) {
-                struct kywc_box geo;
-                kywc_output_effective_geometry(dst_pos->kywc_output, &geo);
-                kywc_view_resize(entry->view, &geo);
-                continue;
-            }
-
-            if (entry->view->maximized) {
-                struct kywc_box geo = {
-                    .x = dst_box->x + entry->view->margin.off_x,
-                    .y = dst_box->y + entry->view->margin.off_y,
-                    .width = dst_box->width - entry->view->margin.off_width,
-                    .height = dst_box->height - entry->view->margin.off_height,
-                };
-                kywc_view_resize(entry->view, &geo);
-                continue;
-            }
-
-            if (entry->view->tiled) {
-                struct kywc_box geo;
-                view_get_tiled_geometry(view_from_kywc_view(entry->view), &geo,
-                                        dst_pos->kywc_output, entry->view->tiled);
-                kywc_view_resize(entry->view, &geo);
-                continue;
-            }
-
-            /* actual view geomtry with margin */
-            x = entry->view->geometry.x - entry->view->margin.off_x;
-            y = entry->view->geometry.y - entry->view->margin.off_y;
-            w = entry->view->geometry.width + entry->view->margin.off_width;
-            h = entry->view->geometry.height + entry->view->margin.off_height;
-
-            /* keep align to edges */
-            if (src_box->x == x) {
-                nx = dst_box->x + entry->view->margin.off_x;
-            } else if (src_box->x + src_box->width == x + w) {
-                nx = dst_box->x + dst_box->width - w + entry->view->margin.off_x;
-            } else {
-                nx = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + entry->view->margin.off_x;
-            }
-            if (src_box->y == y) {
-                ny = dst_box->y + entry->view->margin.off_y;
-            } else if (src_box->y + src_box->height == y + h) {
-                ny = dst_box->y + dst_box->height - h + entry->view->margin.off_y;
-            } else {
-                ny = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + entry->view->margin.off_y;
-            }
-
             /* move to dst */
-            kywc_view_move(entry->view, nx, ny);
+            view_move_to_output(view_from_kywc_view(entry->view), src_box, dst_pos->kywc_output);
         }
     }
 }

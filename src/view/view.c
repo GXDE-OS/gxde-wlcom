@@ -75,21 +75,51 @@ static void view_handle_output_destroy(struct wl_listener *listener, void *data)
     view_update_output(view);
 }
 
-void view_move_to_output(struct view *view, struct kywc_output *kywc_output)
+static void view_fix_geometry_position(struct view *view, struct kywc_box *geo,
+                                       struct kywc_box *src_box, struct kywc_box *dst_box)
 {
-    if (view->output == kywc_output) {
-        return;
-    }
+    struct kywc_view *kywc_view = &view->base;
+    /* actual view geomtry with margin */
+    int x = geo->x - kywc_view->margin.off_x;
+    int y = geo->y - kywc_view->margin.off_y;
+    int w = geo->width + kywc_view->margin.off_width;
+    int h = geo->height + kywc_view->margin.off_height;
 
+    /* keep align to edges */
+    if (src_box->x == x) {
+        geo->x = dst_box->x + kywc_view->margin.off_x;
+    } else if (src_box->x + src_box->width == x + w) {
+        geo->x = dst_box->x + dst_box->width - w + kywc_view->margin.off_x;
+    } else {
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+        double frac_x = (double)dst_box->width / src_box->width;
+        geo->x = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + kywc_view->margin.off_x;
+    }
+    if (src_box->y == y) {
+        geo->y = dst_box->y + kywc_view->margin.off_y;
+    } else if (src_box->y + src_box->height == y + h) {
+        geo->y = dst_box->y + dst_box->height - h + kywc_view->margin.off_y;
+    } else {
+        double frac_y = (double)dst_box->height / src_box->height;
+        geo->y = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + kywc_view->margin.off_y;
+    }
+#undef MAX
+}
+
+void view_move_to_output(struct view *view, struct kywc_box *src_box,
+                         struct kywc_output *kywc_output)
+{
     struct kywc_view *kywc_view = &view->base;
     struct output *dst = output_from_kywc_output(kywc_output);
-    struct output *src = output_from_kywc_output(view->output);
     struct kywc_box *dst_box = &dst->usable_area;
-    struct kywc_box *src_box = &src->usable_area;
-    double frac_x = (double)dst_box->width / src_box->width;
-    double frac_y = (double)dst_box->height / src_box->height;
+
+    /* default to view output usable area */
+    if (src_box == NULL) {
+        src_box = &output_from_kywc_output(view->output)->usable_area;
+    }
 
     if (kywc_view->fullscreen) {
+        view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
         kywc_view_resize(kywc_view, &dst->geometry);
         return;
     }
@@ -97,6 +127,7 @@ void view_move_to_output(struct view *view, struct kywc_output *kywc_output)
     if (kywc_view->maximized) {
         struct kywc_box geo;
         view_get_tiled_geometry(view, &geo, kywc_output, KYWC_TILE_ALL);
+        view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
         kywc_view_resize(kywc_view, &geo);
         return;
     }
@@ -104,36 +135,15 @@ void view_move_to_output(struct view *view, struct kywc_output *kywc_output)
     if (kywc_view->tiled) {
         struct kywc_box geo;
         view_get_tiled_geometry(view, &geo, kywc_output, kywc_view->tiled);
+        view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
         kywc_view_resize(kywc_view, &geo);
         return;
     }
 
-    /* actual view geomtry with margin */
-    int x = kywc_view->geometry.x - kywc_view->margin.off_x;
-    int y = kywc_view->geometry.y - kywc_view->margin.off_y;
-    int w = kywc_view->geometry.width + kywc_view->margin.off_width;
-    int h = kywc_view->geometry.height + kywc_view->margin.off_height;
-
-    int nx, ny;
-    /* keep align to edges */
-    if (src_box->x == x) {
-        nx = dst_box->x + kywc_view->margin.off_x;
-    } else if (src_box->x + src_box->width == x + w) {
-        nx = dst_box->x + dst_box->width - w + kywc_view->margin.off_x;
-    } else {
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-        nx = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + kywc_view->margin.off_x;
-    }
-    if (src_box->y == y) {
-        ny = dst_box->y + kywc_view->margin.off_y;
-    } else if (src_box->y + src_box->height == y + h) {
-        ny = dst_box->y + dst_box->height - h + kywc_view->margin.off_y;
-    } else {
-        ny = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + kywc_view->margin.off_y;
-    }
-#undef MAX
+    struct kywc_box geo = kywc_view->geometry;
+    view_fix_geometry_position(view, &geo, src_box, dst_box);
     /* move to dst */
-    kywc_view_move(kywc_view, nx, ny);
+    kywc_view_move(kywc_view, geo.x, geo.y);
 }
 
 void view_init(struct view *view, const struct view_impl *impl, void *data)

@@ -213,7 +213,7 @@ static bool move_screen_action(struct menu_item *item, uint32_t key, void *data)
 {
     struct screen_item *screen = data;
     if (!item->checked) {
-        view_move_to_output(screen->window_menu->view, screen->output);
+        view_move_to_output(screen->window_menu->view, NULL, screen->output);
     }
     return true;
 }

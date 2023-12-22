@@ -169,7 +169,8 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd);
 
 void view_set_shaded(struct view *view, bool shaded);
 
-void view_move_to_output(struct view *view, struct kywc_output *kywc_output);
+void view_move_to_output(struct view *view, struct kywc_box *src_box,
+                         struct kywc_output *kywc_output);
 
 void view_set_workspace(struct view *view, struct workspace *workspace);
 
