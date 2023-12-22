@@ -29,15 +29,6 @@ static struct theme_manager *manager = NULL;
 /* default light theme from ukui-white */
 static struct theme light = {
     .builtin = true,
-    .border_width = 1,
-    .padding_height = 3,
-    .menu_overlap_x = 0,
-    .menu_overlap_y = 0,
-    .button_width = 30,
-    .corner_radius = 12,
-    .title_height = 38,
-    .resize_border = 13,
-    .shadow_border = 30,
     .font_name = "sans",
     .font_size = 11,
     .active_border_color = { 1.0, 1.0, 1.0, 1.0 },
@@ -47,25 +38,52 @@ static struct theme light = {
     .active_text_color = { 0.0, 0.0, 0.0, 1.0 },
     .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
     .text_justify = JUSTIFY_LEFT,
-    .selected_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
     .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
 
     .theme_name = DEFAULT_THEME,
-    .button_svg = button_light_svg_src,
+
+    .ssd = {
+        .border_width = 1,
+        .corner_radius = 12,
+        .title_height = 38,
+        .resize_border = 13,
+        .button_width = 30,
+        .icon_size = 24,
+        .button_svg = button_light_svg_src,
+    },
+
+    .shadow = {
+        .shadow_border = 30,
+        .corner_radius = 12,
+    },
+
+    .tooltip = {
+        .border_width = 1,
+        .corner_radius = 8,
+    },
+
+    .menu = {
+        .border_width = 1.5,
+        .corner_radius = 8,
+        .sub_menu_gap = 2,
+    },
+
+    .snapbox = {
+        .background_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
+    },
+
+    .maxswitcher = {
+        .item_height = 36,
+        .max_display_view = 25,
+        .min_display_view = 4,
+        .icon_size = 24,
+        .icon_area_width = 30,
+    },
 };
 
 /* default dark theme from ukui-dark */
 static struct theme dark = {
     .builtin = true,
-    .border_width = 1,
-    .padding_height = 3,
-    .menu_overlap_x = 0,
-    .menu_overlap_y = 0,
-    .button_width = 30,
-    .corner_radius = 12,
-    .title_height = 38,
-    .resize_border = 13,
-    .shadow_border = 30,
     .font_name = "sans",
     .font_size = 11,
     .active_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
@@ -75,11 +93,47 @@ static struct theme dark = {
     .active_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
     .inactive_text_color = { 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0 },
     .text_justify = JUSTIFY_LEFT,
-    .selected_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
     .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
 
     .theme_name = DEFAULT_DARK_THEME,
-    .button_svg = button_dark_svg_src,
+
+    .ssd = {
+        .border_width = 1,
+        .corner_radius = 12,
+        .title_height = 38,
+        .resize_border = 13,
+        .button_width = 30,
+        .icon_size = 24,
+        .button_svg = button_dark_svg_src,
+    },
+
+    .shadow = {
+        .shadow_border = 30,
+        .corner_radius = 12,
+    },
+
+    .tooltip = {
+        .border_width = 1,
+        .corner_radius = 8,
+    },
+
+    .menu = {
+        .border_width = 1.5,
+        .corner_radius = 8,
+        .sub_menu_gap = 2,
+    },
+
+    .snapbox = {
+        .background_color = { 128.0 / 255, 128.0 / 255, 128.0 / 255, 128.0 / 255 },
+    },
+
+    .maxswitcher = {
+        .item_height = 36,
+        .max_display_view = 25,
+        .min_display_view = 4,
+        .icon_size = 24,
+        .icon_area_width = 30,
+    },
 };
 
 static int handle_manager_timer(void *data)
@@ -170,11 +224,11 @@ static void destroy_theme_buffers(struct theme_buffer *bufs)
 static void draw_theme_corner(struct theme *theme, float scale, struct theme_buffer *buffers)
 {
     struct draw_info info = { 0 };
-    info.width = theme->button_width + theme->border_width;
-    info.height = theme->title_height + theme->border_width;
+    info.width = theme->ssd.button_width + theme->ssd.border_width;
+    info.height = theme->ssd.title_height + theme->ssd.border_width;
     info.scale = scale;
-    info.border_width = theme->border_width;
-    info.corner_radius = theme->corner_radius;
+    info.border_width = theme->ssd.border_width;
+    info.corner_radius = theme->ssd.corner_radius;
 
     /* draw top-left corner */
     info.corner_mask = CORNER_MASK_TOP_LEFT;
@@ -217,10 +271,10 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
     }
 
     buffers->scale = scale;
-    wl_list_insert(&theme->scaled_buffers, &buffers->link);
+    wl_list_insert(&theme->ssd.scaled_buffers, &buffers->link);
 
-    buffers->buf[BUTTONS_BUFFER] =
-        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 2, scale);
+    buffers->buf[BUTTONS_BUFFER] = draw_svg(theme->ssd.button_svg, theme->ssd.button_width * 4,
+                                            theme->ssd.button_width * 2, scale);
 
     draw_theme_corner(theme, scale, buffers);
     return buffers;
@@ -228,7 +282,8 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
 
 static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
 {
-    int half = theme->shadow_border + theme->corner_radius + theme->border_width;
+    int half =
+        theme->shadow.shadow_border + theme->shadow.corner_radius + theme->ssd.border_width;
     float fill_color[4] = { 0.0, 0.0, 0.0, 1.0 };
 
     /* a blured circle */
@@ -238,7 +293,7 @@ static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
         .scale = 1.0,
         .solid_rgba = fill_color,
         .circle = CIRCLE_TYPE_CLEAR,
-        .corner_radius = theme->corner_radius + theme->border_width,
+        .corner_radius = theme->shadow.corner_radius + theme->ssd.border_width,
         .blur_margin = half,
     };
 
@@ -288,7 +343,7 @@ static struct theme *theme_create(const char *name, float scale)
         return NULL;
     }
 
-    wl_list_init(&theme->scaled_buffers);
+    wl_list_init(&theme->ssd.scaled_buffers);
     wl_list_insert(&manager->themes, &theme->link);
 
     /* override some configs */
@@ -298,8 +353,8 @@ static struct theme *theme_create(const char *name, float scale)
     draw_theme_buffers(theme, scale);
 
     /* draw shadow buffer */
-    theme->shadow = draw_shadow_buffer(theme);
-    // painter_buffer_to_file(theme->shadow, "shadow.png");
+    theme->shadow.shadow = draw_shadow_buffer(theme);
+    // painter_buffer_to_file(theme->shadow->shadow, "shadow.png");
 
     return theme;
 }
@@ -312,16 +367,16 @@ static void theme_destroy(struct theme *theme)
     if (!theme->builtin) {
         free((void *)theme->theme_name);
         free((void *)theme->font_name);
-        free((void *)theme->button_svg);
+        free((void *)theme->ssd.button_svg);
     }
 
     /* destroy all theme buffers */
     struct theme_buffer *bufs, *bufs_tmp;
-    wl_list_for_each_safe(bufs, bufs_tmp, &theme->scaled_buffers, link) {
+    wl_list_for_each_safe(bufs, bufs_tmp, &theme->ssd.scaled_buffers, link) {
         destroy_theme_buffers(bufs);
     }
 
-    wlr_buffer_drop(theme->shadow);
+    wlr_buffer_drop(theme->shadow.shadow);
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
@@ -430,7 +485,7 @@ static struct theme_buffer *theme_buffers_load(struct theme *theme, float scale)
 {
     /* find scale buffers */
     struct theme_buffer *bufs;
-    wl_list_for_each(bufs, &theme->scaled_buffers, link) {
+    wl_list_for_each(bufs, &theme->ssd.scaled_buffers, link) {
         if (bufs->scale == scale) {
             return bufs;
         }
@@ -453,8 +508,8 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
     }
 
     if (buffer_index == BUTTONS_BUFFER) {
-        src->width = theme->button_width * scale;
-        src->height = theme->button_width * scale;
+        src->width = theme->ssd.button_width * scale;
+        src->height = theme->ssd.button_width * scale;
         src->x = src->width * (type % 4);
         src->y = src->height * (int)(type / 4);
     } else {

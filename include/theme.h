@@ -37,19 +37,6 @@ struct theme {
     const char *theme_name;
     bool builtin;
 
-    /* general */
-    int border_width;
-    int padding_height;
-    int menu_overlap_x;
-    int menu_overlap_y;
-
-    /* others may useful */
-    int button_width;
-    int corner_radius;
-    int title_height;
-    int resize_border;
-    int shadow_border;
-
     /* font */
     const char *font_name;
     int font_size;
@@ -67,17 +54,52 @@ struct theme {
     float inactive_text_color[4];
     enum justification text_justify;
 
-    /* selected color */
-    float selected_color[4];
     float accent_color[4];
 
-    /* button svg string */
-    const char *button_svg;
+    struct {
+        float border_width;
+        int corner_radius;
+        int title_height;
+        int resize_border;
+        int button_width;
+        int icon_size;
 
-    /* shadow buffer */
-    struct wlr_buffer *shadow;
+        /* button svg string */
+        const char *button_svg;
 
-    struct wl_list scaled_buffers;
+        struct wl_list scaled_buffers;
+    } ssd;
+
+    struct {
+        int shadow_border;
+        int corner_radius;
+
+        /* shadow buffer */
+        struct wlr_buffer *shadow;
+    } shadow;
+
+    struct {
+        float border_width;
+        int corner_radius;
+    } tooltip;
+
+    struct {
+        float border_width;
+        int corner_radius;
+        int sub_menu_gap;
+    } menu;
+
+    struct {
+        float background_color[4];
+    } snapbox;
+
+    struct {
+        int item_height;
+        int max_display_view;
+        int min_display_view;
+        int icon_size;
+        int icon_area_width;
+    } maxswitcher;
 };
 
 struct theme_manager *theme_manager_create(struct server *server);

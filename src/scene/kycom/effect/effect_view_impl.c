@@ -293,9 +293,9 @@ void *kywc_theme_manager_get_current(const char *name)
 {
     struct theme *th = theme_manager_get_current();
     if (strcmp(name, "border_width") == 0) {
-        return &th->border_width;
+        return &th->ssd.border_width;
     } else if (strcmp(name, "corner_radius") == 0) {
-        return &th->corner_radius;
+        return &th->ssd.corner_radius;
     } else if (strcmp(name, "active_border_color") == 0) {
         return th->active_border_color;
     } else if (strcmp(name, "inactive_border_color") == 0) {

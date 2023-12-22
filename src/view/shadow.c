@@ -83,7 +83,7 @@ struct shadow {
 static struct ky_scene_node *shadow_part_create(struct ky_scene_tree *parent, enum shadow_part part)
 {
     struct theme *theme = theme_manager_get_current();
-    struct wlr_buffer *shadow = theme->shadow;
+    struct wlr_buffer *shadow = theme->shadow.shadow;
 
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_create(parent, shadow);
     if (!scene_buffer) {
@@ -175,16 +175,16 @@ static void shadow_update_parts_tiled(struct shadow *shadow, enum kywc_tile tile
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = shadow->kywc_view;
     /* use view margin to calc all positions */
-    int off = theme->corner_radius + theme->border_width;
-    int size = theme->shadow_border + off;
+    int off = theme->ssd.corner_radius + theme->ssd.border_width;
+    int size = theme->shadow.shadow_border + off;
     int full_w = view->geometry.width + view->margin.off_width;
     int w = full_w - 2 * off;
     int full_h = view->geometry.height + view->margin.off_height;
     int h = full_h - 2 * off;
-    int x1 = -theme->shadow_border;
+    int x1 = -theme->shadow.shadow_border;
     int x2 = off;
     int x3 = off + w;
-    int y1 = -theme->shadow_border;
+    int y1 = -theme->shadow.shadow_border;
     int y2 = off;
     int y3 = off + h;
 
@@ -251,14 +251,14 @@ static void shadow_update_parts(struct shadow *shadow, uint32_t cause)
     struct kywc_view *view = shadow->kywc_view;
 
     /* use view margin to calc all positions */
-    int off = theme->corner_radius + theme->border_width;
-    int size = theme->shadow_border + off;
+    int off = theme->ssd.corner_radius + theme->ssd.border_width;
+    int size = theme->shadow.shadow_border + off;
     int w = view->geometry.width + view->margin.off_width - 2 * off;
     int h = view->geometry.height + view->margin.off_height - 2 * off;
-    int x1 = -theme->shadow_border;
+    int x1 = -theme->shadow.shadow_border;
     int x2 = off;
     int x3 = off + w;
-    int y1 = -theme->shadow_border;
+    int y1 = -theme->shadow.shadow_border;
     int y2 = off;
     int y3 = off + h;
 

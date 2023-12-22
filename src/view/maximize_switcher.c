@@ -20,11 +20,6 @@
 #include "widget/scaled_buffer.h"
 #include "widget/widget.h"
 
-#define DEFAULT_VIEWS (25)
-#define ITEM_HEIGHT (36)
-#define DEFAULT_ICON_AREA_WIDTH (30)
-#define DEFAULT_ICON_WIDTH (24)
-
 enum set_dir {
     NONE = 0,
     BOTTOM,
@@ -269,13 +264,13 @@ static void update_title_text(struct item_view *item_view)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = item_view->kywc_view;
 
-    int max_width = switcher->max_width - DEFAULT_ICON_AREA_WIDTH;
+    int max_width = switcher->max_width - theme->maxswitcher.icon_area_width;
     widget_set_text(item_view->title_text, view->title, JUSTIFY_CENTER, false, false);
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
 
     widget_set_front_color(item_view->title_text, theme->active_text_color);
 
-    widget_set_max_size(item_view->title_text, max_width, ITEM_HEIGHT);
+    widget_set_max_size(item_view->title_text, max_width, theme->maxswitcher.item_height);
     widget_set_auto_resize(item_view->title_text, AUTO_RESIZE_ONLY);
 
     widget_set_enabled(item_view->title_text, true);
@@ -286,9 +281,9 @@ static void update_title_text(struct item_view *item_view)
     widget_get_size(item_view->title_text, &text_width, &text_height);
 
     if (text_width > max_width) {
-        switcher->width = max_width + DEFAULT_ICON_AREA_WIDTH;
-    } else if (text_width > switcher->width - DEFAULT_ICON_AREA_WIDTH) {
-        switcher->width = text_width + DEFAULT_ICON_AREA_WIDTH;
+        switcher->width = max_width + theme->maxswitcher.icon_area_width;
+    } else if (text_width > switcher->width - theme->maxswitcher.icon_area_width) {
+        switcher->width = text_width + theme->maxswitcher.icon_area_width;
     }
 
     item_view->text_width = text_width;
@@ -402,21 +397,22 @@ static void draw_select_box(int index, struct item_view *current, struct item_vi
     ky_scene_rect_set_color(new->background, color);
 
     /* update select left*/
-    ky_scene_rect_set_size(switcher->select.left, 1, ITEM_HEIGHT - 2);
+    ky_scene_rect_set_size(switcher->select.left, 1, theme->maxswitcher.item_height - 2);
     ky_scene_node_set_position(ky_scene_node_from_rect(switcher->select.left), 0,
-                               index * ITEM_HEIGHT + 1);
+                               index * theme->maxswitcher.item_height + 1);
     /* update select top*/
     ky_scene_rect_set_size(switcher->select.top, switcher->width, 1);
     ky_scene_node_set_position(ky_scene_node_from_rect(switcher->select.top), 0,
-                               index * ITEM_HEIGHT);
+                               index * theme->maxswitcher.item_height);
     /* update select right*/
-    ky_scene_rect_set_size(switcher->select.right, 1, ITEM_HEIGHT - 2);
+    ky_scene_rect_set_size(switcher->select.right, 1, theme->maxswitcher.item_height - 2);
     ky_scene_node_set_position(ky_scene_node_from_rect(switcher->select.right), switcher->width - 1,
-                               index * ITEM_HEIGHT + 1);
+                               index * theme->maxswitcher.item_height + 1);
     /* update select box bottom*/
     ky_scene_rect_set_size(switcher->select.bottom, switcher->width, 1);
     ky_scene_node_set_position(ky_scene_node_from_rect(switcher->select.bottom), 0,
-                               index * ITEM_HEIGHT + ITEM_HEIGHT - 1);
+                               index * theme->maxswitcher.item_height +
+                                   theme->maxswitcher.item_height - 1);
 }
 
 static void hide_all_items(void)
@@ -430,8 +426,9 @@ static void hide_all_items(void)
 
 static void show_current_page_items(int index)
 {
-    int icon_x = (DEFAULT_ICON_AREA_WIDTH - DEFAULT_ICON_WIDTH) / 2;
-    int icon_y = (ITEM_HEIGHT - DEFAULT_ICON_WIDTH) / 2;
+    struct theme *theme = theme_manager_get_current();
+    int icon_x = (theme->maxswitcher.icon_area_width - theme->maxswitcher.icon_size) / 2;
+    int icon_y = (theme->maxswitcher.item_height - theme->maxswitcher.icon_size) / 2;
     struct item_view *item_view;
     for (int i = 0; i < switcher->num_view; i++) {
         /* skipped view */
@@ -447,17 +444,19 @@ static void show_current_page_items(int index)
         item_view = switcher->item_views[i];
         struct ky_scene_node *node = ky_scene_node_from_tree(item_view->tree);
         ky_scene_node_set_enabled(node, true);
-        ky_scene_node_set_position(node, 0, start_i * ITEM_HEIGHT);
+        ky_scene_node_set_position(node, 0, start_i * theme->maxswitcher.item_height);
 
         /* set icon position */
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
         /* set text position */
-        int text_x = DEFAULT_ICON_AREA_WIDTH +
-                     (switcher->width - DEFAULT_ICON_AREA_WIDTH - item_view->text_width) / 2;
-        int text_y = (ITEM_HEIGHT - item_view->text_height) / 2;
+        int text_x =
+            theme->maxswitcher.icon_area_width +
+            (switcher->width - theme->maxswitcher.icon_area_width - item_view->text_width) / 2;
+        int text_y = (theme->maxswitcher.item_height - item_view->text_height) / 2;
         ky_scene_node_set_position(item_view->text_node, text_x, text_y);
 
-        ky_scene_rect_set_size(item_view->background, switcher->width - 2, ITEM_HEIGHT - 2);
+        ky_scene_rect_set_size(item_view->background, switcher->width - 2,
+                               theme->maxswitcher.item_height - 2);
         ky_scene_node_set_position(ky_scene_node_from_rect(item_view->background), 1, 1);
     }
 }
@@ -522,6 +521,7 @@ static void hide_maximize_switcher(void)
 
 static bool show_maximize_switcher(void)
 {
+    struct theme *theme = theme_manager_get_current();
     struct kywc_output *kywc_output = kywc_output_get_primary();
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *usable_area = &output->usable_area;
@@ -536,20 +536,20 @@ static bool show_maximize_switcher(void)
         return false;
     }
 
-    if (num_view >= DEFAULT_VIEWS) {
-        switcher->height = ITEM_HEIGHT * DEFAULT_VIEWS;
-    } else if (num_view <= 4) {
-        switcher->height = ITEM_HEIGHT * 4;
+    if (num_view >= theme->maxswitcher.max_display_view) {
+        switcher->height = theme->maxswitcher.item_height * theme->maxswitcher.max_display_view;
+    } else if (num_view <= theme->maxswitcher.min_display_view) {
+        switcher->height = theme->maxswitcher.item_height * theme->maxswitcher.min_display_view;
     } else {
-        switcher->height = ITEM_HEIGHT * num_view;
+        switcher->height = theme->maxswitcher.item_height * num_view;
     }
 
     if (switcher->height > switcher->max_height) {
-        int max_num = switcher->max_height / ITEM_HEIGHT;
+        int max_num = switcher->max_height / theme->maxswitcher.item_height;
         switcher->views_control = max_num;
-        switcher->height = max_num * ITEM_HEIGHT;
+        switcher->height = max_num * theme->maxswitcher.item_height;
     } else {
-        switcher->views_control = DEFAULT_VIEWS;
+        switcher->views_control = theme->maxswitcher.max_display_view;
     }
 
     switcher->num_view = num_view;

@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-07 15:39+0800\n"
-"PO-Revision-Date: 2023-12-07 15:40+0800\n"
+"POT-Creation-Date: 2023-12-22 17:03+0800\n"
+"PO-Revision-Date: 2023-12-22 17:03+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
@@ -17,90 +17,90 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/ssd.c:253
+#: src/view/ssd.c:255
 msgid "More actions for this window"
 msgstr "此窗口的更多操作"
 
-#: src/view/ssd.c:254
+#: src/view/ssd.c:256
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/view/ssd.c:255
+#: src/view/ssd.c:257
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/view/ssd.c:256
+#: src/view/ssd.c:258
 msgid "Restore"
 msgstr "还原"
 
-#: src/view/ssd.c:257
+#: src/view/ssd.c:259
 msgid "Close"
 msgstr "关闭"
 
-#: src/view/window_menu.c:163
+#: src/view/window_menu.c:164
 msgid "Desktop"
 msgstr "桌面"
 
-#: src/view/window_menu.c:192
+#: src/view/window_menu.c:194
 msgid "Move To Desktop"
 msgstr "移动到桌面"
 
-#: src/view/window_menu.c:226
+#: src/view/window_menu.c:229
 msgid "Screen"
 msgstr "屏幕"
 
-#: src/view/window_menu.c:307
+#: src/view/window_menu.c:311
 msgid "Desktop(D)"
 msgstr "桌面(D)"
 
-#: src/view/window_menu.c:309
+#: src/view/window_menu.c:313
 msgid "All Desktop(A)"
 msgstr "全部桌面(A)"
 
-#: src/view/window_menu.c:311
+#: src/view/window_menu.c:315
 msgid "Add To New Desktop(N)"
 msgstr "添加到新桌面(N)"
 
-#: src/view/window_menu.c:314
+#: src/view/window_menu.c:318
 msgid "Move To New Desktop(M)"
 msgstr "移动到新桌面(M)"
 
-#: src/view/window_menu.c:317
+#: src/view/window_menu.c:321
 msgid "Maximize(X)"
 msgstr "最大化(X)"
 
-#: src/view/window_menu.c:320
+#: src/view/window_menu.c:324
 msgid "Move To Screen(S)"
 msgstr "移动到屏幕(S)"
 
-#: src/view/window_menu.c:323
+#: src/view/window_menu.c:327
 msgid "Minimize(N)"
 msgstr "最小化(N)"
 
-#: src/view/window_menu.c:326
+#: src/view/window_menu.c:330
 msgid "More(M)"
 msgstr "更多操作(M)"
 
-#: src/view/window_menu.c:328
+#: src/view/window_menu.c:332
 msgid "Move(M)"
 msgstr "移动(M)"
 
-#: src/view/window_menu.c:329
+#: src/view/window_menu.c:333
 msgid "Resize(R)"
 msgstr "调整大小(R)"
 
-#: src/view/window_menu.c:330
+#: src/view/window_menu.c:334
 msgid "Keep-Above(A)"
 msgstr "置于顶层(A)"
 
-#: src/view/window_menu.c:331
+#: src/view/window_menu.c:335
 msgid "Keep-Below(B)"
 msgstr "置于底层(B)"
 
-#: src/view/window_menu.c:332
+#: src/view/window_menu.c:336
 msgid "Fullscreen(F)"
 msgstr "全屏(F)"
 
-#: src/view/window_menu.c:334
+#: src/view/window_menu.c:338
 msgid "Close(C)"
 msgstr "关闭(C)"

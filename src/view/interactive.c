@@ -117,7 +117,7 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
         struct theme *theme = theme_manager_get_current();
         struct ky_scene_node *sibling = ky_scene_node_from_tree(view->tree);
         struct ky_scene_tree *parent = ky_scene_node_get_parent(sibling);
-        grab->snap_rect = ky_scene_rect_create(parent, 0, 0, theme->selected_color);
+        grab->snap_rect = ky_scene_rect_create(parent, 0, 0, theme->snapbox.background_color);
         grab->snap_node = ky_scene_node_from_rect(grab->snap_rect);
         ky_scene_node_place_below(grab->snap_node, sibling);
         need_source_box = true;

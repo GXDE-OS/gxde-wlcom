@@ -20,8 +20,6 @@
 #include "widget/scaled_buffer.h"
 #include "widget/widget.h"
 
-#define ICON_SIZE 24
-
 enum {
     /* buttons */
     SSD_BUTTON_MINIMIZE = 0,
@@ -171,8 +169,9 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     if (!tooltip) {
         return;
     }
-
+    struct theme *theme = theme_manager_get_current();
     struct widget *widget;
+
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE:
         widget = tooltip->minimize;
@@ -211,7 +210,7 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     widget_update(widget, true);
 
     int x = seat->cursor->lx;
-    int y = seat->cursor->ly + ICON_SIZE;
+    int y = seat->cursor->ly + theme->ssd.icon_size;
     int w, h;
     widget_get_size(widget, &w, &h);
 
@@ -245,8 +244,9 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
     widget_set_backgrond_color(widget, theme->inactive_bg_color);
     widget_set_front_color(widget, theme->active_text_color);
-    widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, 1);
-    widget_set_round_coner(widget, CORNER_MASK_ALL, 8);
+    widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL,
+                      theme->tooltip.border_width);
+    widget_set_round_coner(widget, CORNER_MASK_ALL, theme->tooltip.corner_radius);
     widget_update(widget, true);
 }
 
@@ -524,7 +524,7 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
     if (type > BUTTON_CLOSE) {
         painter_buffer_unscaled_size(buf, &width, &height);
     } else {
-        width = height = theme->button_width;
+        width = height = theme->ssd.button_width;
     }
     ky_scene_buffer_set_dest_size(buffer, width, height);
     ky_scene_buffer_set_source_box(buffer, &src);
@@ -599,7 +599,7 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
 static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
-    int y = theme->border_width + (theme->title_height - ICON_SIZE) / 2;
+    int y = theme->ssd.border_width + (theme->ssd.title_height - theme->ssd.icon_size) / 2;
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node, y, y);
 }
 
@@ -608,7 +608,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int max_width = view->geometry.width - 4.5 * theme->button_width;
+    int max_width = view->geometry.width - 4.5 * theme->ssd.button_width;
     /* no space left for title text */
     if (max_width <= 0) {
         widget_set_enabled(ssd->title_text, false);
@@ -622,7 +622,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
         widget_set_font(ssd->title_text, theme->font_name, theme->font_size);
     }
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
-        widget_set_max_size(ssd->title_text, max_width, theme->title_height);
+        widget_set_max_size(ssd->title_text, max_width, theme->ssd.title_height);
         widget_set_auto_resize(ssd->title_text, AUTO_RESIZE_ONLY);
     }
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
@@ -643,17 +643,17 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 
     /* calc the text position by jystify */
     int x, y;
-    y = theme->border_width + (theme->title_height - text_height) / 2;
+    y = theme->ssd.border_width + (theme->ssd.title_height - text_height) / 2;
     if (theme->text_justify == JUSTIFY_LEFT) {
-        x = theme->button_width + theme->border_width + y;
+        x = theme->ssd.button_width + theme->ssd.border_width + y;
     } else if (theme->text_justify == JUSTIFY_CENTER) {
-        x = (theme->border_width * 2 + view->geometry.width - text_width) / 2;
+        x = (theme->ssd.border_width * 2 + view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
-        if (text_width + 4 * theme->button_width > max_width) {
-            x -= theme->button_width;
+        if (text_width + 4 * theme->ssd.button_width > max_width) {
+            x -= theme->ssd.button_width;
         }
     } else {
-        x = theme->border_width + theme->button_width + max_width - text_width + y;
+        x = theme->ssd.border_width + theme->ssd.button_width + max_width - text_width + y;
     }
     /* setting position directly is better */
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_TEXT].node, x, y);
@@ -664,9 +664,9 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int border_w = theme->border_width;
-    int button_w = theme->button_width;
-    int title_h = theme->title_height;
+    int border_w = theme->ssd.border_width;
+    int button_w = theme->ssd.button_width;
+    int title_h = theme->ssd.title_height;
     int view_w = view->geometry.width;
 
     /* set titlebar subtree position if theme changed */
@@ -738,10 +738,10 @@ static void ssd_update_border(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int corner_radius = theme->corner_radius;
-    int border_w = theme->border_width;
-    int button_w = theme->button_width;
-    int title_h = theme->title_height;
+    int corner_radius = theme->ssd.corner_radius;
+    int border_w = theme->ssd.border_width;
+    int button_w = theme->ssd.button_width;
+    int title_h = theme->ssd.title_height;
     int view_w = view->geometry.width;
     int view_h = view->geometry.height;
 
@@ -812,18 +812,18 @@ static void ssd_update_extend(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
-    int border = view->ssd == KYWC_SSD_ALL ? theme->border_width : 0;
-    int title = view->ssd == KYWC_SSD_ALL ? theme->title_height : 0;
+    int border = view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
+    int title = view->ssd == KYWC_SSD_ALL ? theme->ssd.title_height : 0;
 
-    int size = theme->resize_border + theme->corner_radius + border;
-    int w = view->geometry.width - 2 * theme->corner_radius;
-    int h = view->geometry.height + title - 2 * theme->corner_radius;
-    int x1 = -(theme->resize_border + border);
-    int x2 = theme->corner_radius;
-    int x3 = theme->corner_radius + w;
-    int y1 = -(title + border + theme->resize_border);
-    int y2 = -(title - theme->corner_radius);
-    int y3 = view->geometry.height - theme->corner_radius;
+    int size = theme->ssd.resize_border + theme->ssd.corner_radius + border;
+    int w = view->geometry.width - 2 * theme->ssd.corner_radius;
+    int h = view->geometry.height + title - 2 * theme->ssd.corner_radius;
+    int x1 = -(theme->ssd.resize_border + border);
+    int x2 = theme->ssd.corner_radius;
+    int x3 = theme->ssd.corner_radius + w;
+    int y1 = -(title + border + theme->ssd.resize_border);
+    int y2 = -(title - theme->ssd.corner_radius);
+    int y3 = view->geometry.height - theme->ssd.corner_radius;
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         UPDATE_PART_POSITION(SSD_EXTEND_TOP_LEFT, x1, y1);
@@ -893,10 +893,10 @@ static void ssd_update_margin(struct ssd *ssd)
     }
 
     struct theme *theme = theme_manager_get_current();
-    view->margin.off_x = theme->border_width;
-    view->margin.off_y = theme->border_width + theme->title_height;
-    view->margin.off_width = 2 * theme->border_width;
-    view->margin.off_height = view->margin.off_width + theme->title_height;
+    view->margin.off_x = theme->ssd.border_width;
+    view->margin.off_y = theme->ssd.border_width + theme->ssd.title_height;
+    view->margin.off_width = 2 * theme->ssd.border_width;
+    view->margin.off_height = view->margin.off_width + theme->ssd.title_height;
 }
 
 static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
