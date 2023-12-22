@@ -6,6 +6,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#include <wlr/types/wlr_buffer.h>
+#include <wlr/util/box.h>
+
 #include <kywc/log.h>
 
 #include "config_p.h"

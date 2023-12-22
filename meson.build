@@ -120,14 +120,15 @@ have_kde_nightcolor = get_option('kde_nightcolor')
 have_kde_plasma_shell = get_option('kde_plasma_shell')
 have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
-have_kycom_scene = get_option('ky_scene')
 have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 
-if not have_kycom_scene and not have_wlr_scene
+have_ky_scene = true
+if not have_ky_scene and not have_wlr_scene
   warning('No scene enabled, just for scene api check')
 endif
-have_kycom_scene = have_kycom_scene and not have_wlr_scene
+# disable ky_scene when wlr_scene enabled
+have_ky_scene = have_ky_scene and not have_wlr_scene
 
 if not have_kde_output and not have_wlr_output
   error('Must enable one output protocol support at least')
@@ -146,7 +147,7 @@ add_project_arguments([
   '-DHAVE_KDE_PLASMA_SHELL=@0@'.format(have_kde_plasma_shell.to_int()),
   '-DHAVE_KDE_PLASMA_WINDOW_MANAGEMENT=@0@'.format(have_kde_plasma_window_management.to_int()),
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
-  '-DHAVE_KYCOM_SCENE=@0@'.format(have_kycom_scene.to_int()),
+  '-DHAVE_KY_SCENE=@0@'.format(have_ky_scene.to_int()),
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
 ], language: 'c')

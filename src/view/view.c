@@ -150,7 +150,6 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
 void view_init(struct view *view, const struct view_impl *impl, void *data)
 {
     struct kywc_view *kywc_view = &view->base;
-    wlr_addon_set_init(&view->addons);
 
     wl_signal_init(&kywc_view->events.premap);
     wl_signal_init(&kywc_view->events.map);
@@ -505,7 +504,6 @@ void view_destroy(struct view *view)
     struct kywc_view *kywc_view = &view->base;
     kywc_log(KYWC_DEBUG, "kywc_view %p destroy", kywc_view);
 
-    wlr_addon_set_finish(&view->addons);
     wl_signal_emit_mutable(&kywc_view->events.destroy, NULL);
 
     wl_list_remove(&view->output_destroy.link);

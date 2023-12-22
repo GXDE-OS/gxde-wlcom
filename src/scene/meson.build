@@ -5,7 +5,3 @@ wlcom_sources += files(
   'subsurface.c',
   'xdg_shell.c',
 )
-
-if have_kycom_scene
-  subdir('kycom')
-endif

@@ -253,7 +253,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
-#if HAVE_WLR_SCENE | HAVE_KYCOM_SCENE
+#if HAVE_WLR_SCENE | HAVE_KY_SCENE
     ky_scene_output_commit(output->scene_output, NULL);
 
     struct timespec now = { 0 };
@@ -360,7 +360,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->needs_frame.notify = handle_output_needs_frame;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
-#if HAVE_WLR_SCENE | HAVE_KYCOM_SCENE
+#if HAVE_WLR_SCENE | HAVE_KY_SCENE
     wl_list_init(&output->damage.link);
     wl_list_init(&output->needs_frame.link);
 #else

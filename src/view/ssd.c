@@ -8,6 +8,7 @@
 #include <linux/input-event-codes.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/util/box.h>
 
 #include "input/cursor.h"
 #include "nls.h"

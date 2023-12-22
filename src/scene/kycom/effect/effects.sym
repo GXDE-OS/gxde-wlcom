@@ -1,6 +1,0 @@
-{
-global:
-    *_plugin_data;
-local:
-    *;
-};

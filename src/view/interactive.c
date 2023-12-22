@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <linux/input-event-codes.h>
+#include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "input/cursor.h"
