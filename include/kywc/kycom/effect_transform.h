@@ -26,9 +26,12 @@ struct xy_linear_func {
 struct kywc_transform_data {
     struct kywc_group_node *view_node;
     struct kywc_effect_view *view;
-    struct kywc_box geometry_box;
-    struct padding shadow;
+    struct kywc_box view_box;
     struct padding padding;
+    /* offset relative to parent node */
+    int x, y;
+    /* layout coordination */
+    struct kywc_box dst_box;
     int32_t start_time;
     int32_t time;
 
@@ -37,7 +40,7 @@ struct kywc_transform_data {
 
     float alpha;
     struct xy_linear_func alpha_func;
-    struct xy_linear_func geometry_func[4];
+    struct xy_linear_func view_box_func[4];
 };
 
 struct kywc_geometry_transform_node {
@@ -56,19 +59,16 @@ float kywc_transform_data_calc_time_factor(struct kywc_transform_data *data);
 
 void kywc_transform_data_alpha_func_init(struct kywc_transform_data *data, float end_alpha);
 
-void kywc_transform_data_geometry_func_init(struct kywc_transform_data *data);
+void kywc_transform_data_view_box_func_init(struct kywc_transform_data *data);
 
 void kywc_transform_data_calc_alpha(struct kywc_transform_data *data);
 
-void kywc_transform_data_calc_geometry(struct kywc_transform_data *data);
+void kywc_transform_data_calc_view_box(struct kywc_transform_data *data);
 
 void kywc_transform_data_calc_padding_region(struct kywc_transform_data *data,
                                              struct kywc_effect_view *view);
 
-void kywc_transform_data_calc_local_damage(struct kywc_transform_data *data,
-                                           struct wlr_box *local_damage);
-
-void kywc_transform_data_calc_shadow(struct kywc_transform_data *data, struct kywc_box *bound_box);
+void kywc_transform_data_update_location(struct kywc_transform_data *data);
 
 struct kywc_geometry_transform_node *
 kywc_transform_geometry_node_create(struct kywc_effect_view *view);

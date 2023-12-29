@@ -43,18 +43,51 @@ void kywc_effect_view_get_save_geometry(struct kywc_effect_view *view,
     geometry_box->height = _view->saved.geometry.height;
 }
 
-void kywc_effect_view_get_bound_box(struct kywc_effect_view *view, struct kywc_box *bound_box)
+void kywc_effect_view_calc_shadow(struct kywc_effect_view *view)
 {
     if (!view) {
         return;
     }
-    struct kywc_node *node = &view->view_node->node;
-    struct wlr_box box;
-    node->get_bounding_box(node, &box);
-    bound_box->x = box.x;
-    bound_box->y = box.y;
-    bound_box->width = box.width;
-    bound_box->height = box.height;
+    struct padding *shadow = &view->shadow;
+    struct kywc_view *_view = view->kywc_view;
+    if (view->kywc_view->shaded) {
+        struct wlr_box bound_box = { 0 };
+        struct kywc_node *node = &view->view_node->node;
+        node->get_bounding_box(node, &bound_box);
+        shadow->top = (bound_box.width - _view->geometry.width - _view->margin.off_width) / 2;
+        shadow->bottom = (bound_box.height - _view->geometry.height - _view->margin.off_height) / 2;
+        shadow->left = shadow->top;
+        shadow->right = shadow->bottom;
+    } else {
+        memcpy(&shadow, &_view->padding, sizeof(_view->padding));
+    }
+}
+
+void kywc_effect_view_get_end_box(struct kywc_effect_view *view, enum kywc_end_box_position type,
+                                  struct kywc_box *box)
+{
+    struct kywc_view *kywc_view;
+    struct kywc_texture_node *view_texture_node;
+    switch (type) {
+    case VIEW_CENTER:
+        kywc_view = view->kywc_view;
+        box->x = kywc_view->geometry.x + kywc_view->geometry.width / 2;
+        box->y = kywc_view->geometry.y + kywc_view->geometry.height / 2;
+        return;
+    case OUTPUT_CENTER:
+        view_texture_node = kywc_effect_view_get_texture_node(view);
+        if (!view_texture_node) {
+            return;
+        }
+        int width, height;
+        struct kywc_scene_output *output = view_texture_node->primary_output;
+        wlr_output_effective_resolution(output->output, &width, &height);
+        box->x = (width - box->width) / 2;
+        box->y = (height - box->height) / 2;
+        return;
+    case PANEL:
+        return;
+    }
 }
 
 static void effect_handle_view_size_changed(struct wl_listener *listener, void *data)

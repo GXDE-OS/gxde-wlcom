@@ -145,8 +145,6 @@ struct view *view_manager_get_activated(void);
 
 void view_manager_show_desktop(bool enabled, bool apply);
 
-void view_manager_add_show_desktop_listener(struct wl_listener *listener);
-
 bool view_manager_get_show_desktop(void);
 
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);

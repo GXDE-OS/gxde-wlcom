@@ -124,6 +124,8 @@ struct kywc_view {
 /**
  * listen new_view signal for xdg-shell and xwayland-shell
  */
+void kywc_view_add_show_desktop_listener(struct wl_listener *listener);
+
 void kywc_view_add_new_listener(struct wl_listener *listener);
 
 void kywc_surface_add_blur_listener(struct wl_listener *listener);

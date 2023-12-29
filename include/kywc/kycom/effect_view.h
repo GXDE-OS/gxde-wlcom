@@ -14,6 +14,12 @@
 struct kywc_group_node;
 struct kywc_effect_view;
 
+enum kywc_end_box_position {
+    VIEW_CENTER = 0,
+    OUTPUT_CENTER = 1,
+    PANEL = 2,
+};
+
 struct padding {
     int top, bottom, left, right;
 };
@@ -33,6 +39,7 @@ struct kywc_effect_view {
     struct kywc_group_node *view_node;
     struct kywc_effect_box dst_box;
     struct kywc_effect_box last_box;
+    struct padding shadow;
     enum kywc_effects_state effects_state;
 
     struct {
@@ -85,7 +92,10 @@ bool kywc_effect_view_is_minimized(struct kywc_effect_view *view);
 void kywc_effect_view_get_save_geometry(struct kywc_effect_view *view,
                                         struct kywc_box *geometry_box);
 
-void kywc_effect_view_get_bound_box(struct kywc_effect_view *view, struct kywc_box *bound_box);
+void kywc_effect_view_calc_shadow(struct kywc_effect_view *view);
+
+void kywc_effect_view_get_end_box(struct kywc_effect_view *view, enum kywc_end_box_position type,
+                                  struct kywc_box *box);
 
 bool kywc_renderer_is_opengl(struct kywc_effect_server *server);
 

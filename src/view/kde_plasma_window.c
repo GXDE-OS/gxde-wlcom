@@ -672,7 +672,7 @@ bool kde_plasma_window_management_create(struct server *server)
     management->new_view.notify = handle_new_view;
     kywc_view_add_new_listener(&management->new_view);
     management->show_desktop.notify = handle_shown_desktop;
-    view_manager_add_show_desktop_listener(&management->show_desktop);
+    kywc_view_add_show_desktop_listener(&management->show_desktop);
 
     return true;
 }

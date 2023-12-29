@@ -18,6 +18,8 @@ const char *scale_effect_name = "scale_effect";
 struct scale_data {
     struct wl_listener minimize;
     struct wl_listener maximize;
+    struct wl_listener show_desktop;
+    bool is_show_desktop;
     struct wl_list item_transforms; // kywc_transform_item
 };
 
@@ -39,18 +41,8 @@ static void scale_effect_post(void)
     }
     struct kywc_transform_item *pos_item, *tmp_item;
     wl_list_for_each_safe(pos_item, tmp_item, &scale_data.item_transforms, link) {
-        struct kywc_transform_data *data = &pos_item->node->data;
         struct kywc_node *node = &pos_item->node->node.node;
-        struct padding padding = data->padding;
-        struct kywc_box geometry_box = data->geometry_box;
-
-        struct wlr_box local_damage = {
-            .x = geometry_box.x - padding.left,
-            .y = geometry_box.y - padding.right,
-            .width = geometry_box.width + padding.top + padding.left,
-            .height = geometry_box.height + padding.bottom + padding.right,
-        };
-        node->push_damage(node, &local_damage);
+        node->push_damage(node, NULL);
     }
 }
 
@@ -58,19 +50,15 @@ static void transform_data_update(struct kywc_transform_data *data)
 {
     struct kywc_effect_view *view = data->view;
 
-    struct kywc_box bound_box = { 0 };
-
     kywc_transform_data_calc_time_factor(data);
 
     kywc_transform_data_calc_alpha(data);
 
-    kywc_transform_data_calc_geometry(data);
-
-    kywc_effect_view_get_bound_box(view, &bound_box);
-
-    kywc_transform_data_calc_shadow(data, &bound_box);
+    kywc_transform_data_calc_view_box(data);
 
     kywc_transform_data_calc_padding_region(data, view);
+
+    kywc_transform_data_update_location(data);
 }
 
 static void update_time_and_status(struct kywc_transform_data *data)
@@ -98,13 +86,10 @@ static void scale_effect_prehook(void)
             continue;
         }
 
-        struct wlr_box local_damage = { 0 };
-
+        kywc_effect_view_calc_shadow(data->view);
         transform_data_update(data);
 
-        kywc_transform_data_calc_local_damage(data, &local_damage);
-
-        pos_item->node->node.node.push_damage(&pos_item->node->node.node, &local_damage);
+        pos_item->node->node.node.push_damage(&pos_item->node->node.node, NULL);
     }
 }
 
@@ -147,6 +132,7 @@ static void destroy_scale_effect(struct kywc_effect_view *view)
     if (!view || !view->view_node) {
         return;
     }
+    scale_data.is_show_desktop = false;
     struct kywc_group_node *group_node =
         kywc_node_transform_remove(&view->view_node->node, scale_effect_name);
     if (!group_node) {
@@ -186,17 +172,16 @@ static struct kywc_geometry_transform_node *create_scale_effect(struct kywc_effe
             return NULL;
         }
         return node;
-    } else {
-        struct kywc_geometry_transform_node *node = wl_container_of(transform_node, node, node);
-        if (node->data.max_time_factor - node->data.time_factor < 0.4) {
-            node->data.max_time_factor += 0.5;
-        }
-        return node;
     }
+    struct kywc_geometry_transform_node *node = wl_container_of(transform_node, node, node);
+    if (node->data.max_time_factor - node->data.time_factor < 0.4) {
+        node->data.max_time_factor += 0.5;
+    }
+    return node;
 }
 
-static void view_box_with_ssd(struct kywc_effect_view *view, struct kywc_box *in_box,
-                                 struct kywc_box *out_box)
+static void get_view_box(struct kywc_effect_view *view, struct kywc_box *in_box,
+                         struct kywc_box *out_box)
 {
     struct kywc_view *_view = view->kywc_view;
     out_box->x = in_box->x - _view->margin.off_x;
@@ -233,39 +218,17 @@ static void maximize_update_view_box(struct kywc_effect_view *view)
         return;
     }
     struct kywc_view *kywc_view = view->kywc_view;
-    struct kywc_box last_box = { 0 };
-    struct kywc_box dst_box = { 0 };
+    struct kywc_box save_geometry_box = { 0 };
+    struct kywc_box geometry_box = { 0 };
 
-    get_geometry_box(view, &dst_box);
-    kywc_effect_view_get_save_geometry(view, &last_box);
-    if (kywc_view->ssd == KYWC_SSD_ALL) {
-        if (kywc_view->maximized) {
-            view_box_with_ssd(view, &dst_box, &view->dst_box);
-            view_box_with_ssd(view, &last_box, &view->last_box);
-        } else {
-            struct kywc_box last_box = {
-                .x = view->dst_box.x,
-                .y = view->dst_box.y,
-                .height = view->dst_box.height,
-                .width = view->dst_box.width,
-            };
-            view->last_box = last_box;
-            view_box_with_ssd(view, &dst_box, &view->dst_box);
-        }
+    get_geometry_box(view, &geometry_box);
+    kywc_effect_view_get_save_geometry(view, &save_geometry_box);
+    if (kywc_view->maximized) {
+        get_view_box(view, &save_geometry_box, &view->last_box);
     } else {
-        if (kywc_view->maximized) {
-            view->last_box = last_box;
-        } else {
-            struct kywc_box last_box = {
-                .x = view->dst_box.x,
-                .y = view->dst_box.y,
-                .height = view->dst_box.height,
-                .width = view->dst_box.width,
-            };
-            view->last_box = last_box;
-        }
-        view->dst_box = dst_box;
+        view->last_box = view->dst_box;
     }
+    get_view_box(view, &geometry_box, &view->dst_box);
 }
 
 static void handle_view_maximize(struct wl_listener *listener, void *data)
@@ -275,7 +238,7 @@ static void handle_view_maximize(struct wl_listener *listener, void *data)
     struct kywc_geometry_transform_node *node = create_scale_effect(view);
     maximize_update_view_box(view);
     maximized_alpha_func_init(&node->data);
-    kywc_transform_data_geometry_func_init(&node->data);
+    kywc_transform_data_view_box_func_init(&node->data);
 }
 
 static void minimized_alpha_func_init(struct kywc_transform_data *data)
@@ -309,32 +272,26 @@ static void minimize_update_view_box(struct kywc_effect_view *view)
         return;
     }
     struct kywc_view *kywc_view = view->kywc_view;
-    struct kywc_box last_box = { 0 };
-    struct kywc_box dst_box = { 0 };
-    dst_box.x = (kywc_view->geometry.x + kywc_view->geometry.width) / 2;
-    dst_box.y = (kywc_view->geometry.y + kywc_view->geometry.height) / 2;
-    dst_box.height = 10;
-    dst_box.width = 10;
-    get_geometry_box(view, &last_box);
-    if (kywc_view->ssd == KYWC_SSD_ALL) {
-        if (kywc_view->minimized) {
-            view_box_with_ssd(view, &dst_box, &view->dst_box);
-            view_box_with_ssd(view, &last_box, &view->last_box);
-        } else {
-            get_geometry_box(view, &dst_box);
-            view->last_box = view->dst_box;
-            view->dst_box = dst_box;
-            view_box_with_ssd(view, &view->last_box, &view->last_box);
-            view_box_with_ssd(view, &dst_box, &view->dst_box);
-        }
+    struct kywc_box save_geometry_box = { 0 };
+    struct kywc_box geometry_box = { 0 };
+    geometry_box.height = 10;
+    geometry_box.width = 10;
+    if (scale_data.is_show_desktop) {
+        kywc_effect_view_get_end_box(view, OUTPUT_CENTER, &geometry_box);
     } else {
-        if (kywc_view->minimized) {
-            view->last_box = last_box;
-            view->dst_box = dst_box;
+        kywc_effect_view_get_end_box(view, VIEW_CENTER, &geometry_box);
+    }
+    get_geometry_box(view, &save_geometry_box);
+    if (kywc_view->minimized) {
+        get_view_box(view, &save_geometry_box, &view->last_box);
+        get_view_box(view, &geometry_box, &view->dst_box);
+    } else {
+        if (scale_data.is_show_desktop) {
+            get_view_box(view, &geometry_box, &view->last_box);
         } else {
-            view->dst_box = last_box;
-            view->last_box = dst_box;
+            get_view_box(view, &view->dst_box, &view->last_box);
         }
+        get_view_box(view, &save_geometry_box, &view->dst_box);
     }
 }
 
@@ -348,7 +305,22 @@ static void handle_view_minimize(struct wl_listener *listener, void *data)
     struct kywc_geometry_transform_node *node = create_scale_effect(view);
     minimize_update_view_box(view);
     minimized_alpha_func_init(&node->data);
-    kywc_transform_data_geometry_func_init(&node->data);
+    kywc_transform_data_view_box_func_init(&node->data);
+}
+
+static void handle_view_show_desktop(struct wl_listener *listener, void *data)
+{
+    if (wl_list_empty(&scale_data.item_transforms)) {
+        return;
+    }
+    scale_data.is_show_desktop = true;
+    struct kywc_transform_item *pos_item, *tmp_item;
+    wl_list_for_each_safe(pos_item, tmp_item, &scale_data.item_transforms, link) {
+        struct kywc_transform_data *data = &pos_item->node->data;
+        minimize_update_view_box(data->view);
+        minimized_alpha_func_init(data);
+        kywc_transform_data_view_box_func_init(data);
+    }
 }
 
 static bool scale_plugin_init(void *plugin, void **teardown_data)
@@ -369,6 +341,9 @@ static bool scale_plugin_init(void *plugin, void **teardown_data)
 
     scale_data.maximize.notify = handle_view_maximize;
     wl_signal_add(&s->events.view_maximize, &scale_data.maximize);
+
+    scale_data.show_desktop.notify = handle_view_show_desktop;
+    kywc_view_add_show_desktop_listener(&scale_data.show_desktop);
 
     return true;
 }
