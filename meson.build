@@ -123,17 +123,6 @@ have_kde_blur = get_option('kde_blur')
 have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 
-have_ky_scene = true
-if not have_ky_scene and not have_wlr_scene
-  warning('No scene enabled, just for scene api check')
-endif
-# disable ky_scene when wlr_scene enabled
-have_ky_scene = have_ky_scene and not have_wlr_scene
-
-if not have_kde_output and not have_wlr_output
-  error('Must enable one output protocol support at least')
-endif
-
 add_project_arguments([
   '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
   '-DHAVE_KDE_VIRTUAL_DESKTOP=@0@'.format(have_kde_virtual_desktop.to_int()),
@@ -147,7 +136,6 @@ add_project_arguments([
   '-DHAVE_KDE_PLASMA_SHELL=@0@'.format(have_kde_plasma_shell.to_int()),
   '-DHAVE_KDE_PLASMA_WINDOW_MANAGEMENT=@0@'.format(have_kde_plasma_window_management.to_int()),
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
-  '-DHAVE_KY_SCENE=@0@'.format(have_ky_scene.to_int()),
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
 ], language: 'c')

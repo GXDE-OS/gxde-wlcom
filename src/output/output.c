@@ -253,45 +253,11 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
-#if HAVE_WLR_SCENE | HAVE_KY_SCENE
     ky_scene_output_commit(output->scene_output, NULL);
 
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);
     ky_scene_output_send_frame_done(output->scene_output, &now);
-#else
-    if (!wlr_output->needs_frame) {
-        kywc_log(KYWC_DEBUG, "no frame needed, stop commit");
-        return;
-    }
-
-    struct wlr_output_state state;
-    wlr_output_state_init(&state);
-    struct wlr_render_pass *pass = wlr_output_begin_render_pass(wlr_output, &state, NULL, NULL);
-    wlr_render_pass_add_rect(
-        pass, &(struct wlr_render_rect_options){
-                  .box = { .width = wlr_output->width, .height = wlr_output->height },
-                  .color = { 0.25f, 0.25f, 0.25f, 1 },
-              });
-    wlr_output_add_software_cursors_to_render_pass(wlr_output, pass, NULL);
-    wlr_render_pass_submit(pass);
-    wlr_output_commit_state(wlr_output, &state);
-    wlr_output_state_finish(&state);
-#endif
-}
-
-static void handle_output_damage(struct wl_listener *listener, void *data)
-{
-    struct output *output = wl_container_of(listener, output, damage);
-
-    wlr_output_schedule_frame(output->wlr_output);
-}
-
-static void handle_output_needs_frame(struct wl_listener *listener, void *data)
-{
-    struct output *output = wl_container_of(listener, output, needs_frame);
-
-    wlr_output_schedule_frame(output->wlr_output);
 }
 
 static void output_destroy(struct output *output)
@@ -326,9 +292,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     struct output *output = wl_container_of(listener, output, destroy);
 
     wl_list_remove(&output->destroy.link);
-    wl_list_remove(&output->damage.link);
     wl_list_remove(&output->frame.link);
-    wl_list_remove(&output->needs_frame.link);
 
     /* output may be disabled before */
     if (output->scene_output) {
@@ -356,17 +320,8 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 
     output->frame.notify = handle_output_frame;
     output->destroy.notify = handle_output_destroy;
-    output->damage.notify = handle_output_damage;
-    output->needs_frame.notify = handle_output_needs_frame;
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
-#if HAVE_WLR_SCENE | HAVE_KY_SCENE
-    wl_list_init(&output->damage.link);
-    wl_list_init(&output->needs_frame.link);
-#else
-    wl_signal_add(&wlr_output->events.damage, &output->damage);
-    wl_signal_add(&wlr_output->events.needs_frame, &output->needs_frame);
-#endif
 }
 
 void output_manager_power_outputs(bool power)

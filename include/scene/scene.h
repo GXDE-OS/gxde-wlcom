@@ -7,13 +7,11 @@
 
 #define SCENE_API static __attribute__((unused)) inline
 
-#if HAVE_KY_SCENE
-
-// clang-format off
-
-#elif HAVE_WLR_SCENE /* redefine all wlr-scene api */
+#if HAVE_WLR_SCENE // redefine all wlr-scene api
 
 #include <wlr/types/wlr_scene.h>
+
+// clang-format off
 
 #define ky_scene wlr_scene
 #define ky_scene_node wlr_scene_node
@@ -58,11 +56,9 @@
 #define ky_scene_node_set_bypassed wlr_scene_node_set_bypassed
 #define ky_scene_output_destroy wlr_scene_output_destroy
 
-struct server;
-
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 SCENE_API struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node) { return node->type == WLR_SCENE_NODE_BUFFER ? wlr_scene_buffer_from_node(node) : NULL; };
-SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return wlr_scene_create(); } 
+SCENE_API struct ky_scene *ky_scene_create(void) { return wlr_scene_create(); } 
 SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return scene->presentation; }
 SCENE_API void ky_scene_destroy(struct ky_scene *scene) { scene ? ky_scene_node_destroy(&scene->tree.node) : true; }
 SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return &scene->tree.node; }
@@ -88,91 +84,11 @@ SCENE_API struct ky_scene_output *ky_scene_output_sample_event_output(const stru
 SCENE_API bool ky_scene_output_sample_event_direct_scanout(const struct ky_scene_output_sample_event *event) { return event->direct_scanout; }
 SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) { wl_signal_add(&scene_buffer->events.frame_done, listener); }
 
-#else /* dummy scene api */
+// clang-format on
 
-#include <pixman.h>
-#include <time.h>
-#include <wlr/util/addon.h>
-#include <wlr/util/box.h>
+#else
 
-struct wlr_buffer;
-struct wlr_output;
-struct wlr_output_layout;
-struct wlr_presentation;
-struct wlr_output_layout_output;
-
-struct ky_scene;
-struct ky_scene_node { int x, y; };
-struct ky_scene_tree;
-struct ky_scene_rect { int width, height; float color[4]; };
-struct ky_scene_buffer;
-struct ky_scene_output;
-struct ky_scene_output_state_options;
-struct ky_scene_output_sample_event;
-struct ky_scene_output_layout;
-
-struct server;
-
-typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer, double *sx, double *sy);
-
-SCENE_API struct ky_scene *ky_scene_create(struct server *server) { return NULL; } 
-SCENE_API void ky_scene_destroy(struct ky_scene *scene) {}
-SCENE_API struct ky_scene *ky_scene_from_node(struct ky_scene_node *node) { return NULL; }
-SCENE_API struct ky_scene_node *ky_scene_node_from_scene(struct ky_scene *scene) { return NULL; }
-SCENE_API void ky_scene_node_destroy(struct ky_scene_node *node) {}
-SCENE_API void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled) {}
-SCENE_API void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y) {}
-SCENE_API void ky_scene_node_get_position(struct ky_scene_node *node, int *x, int *y) {}
-SCENE_API void ky_scene_node_place_above(struct ky_scene_node *node, struct ky_scene_node *sibling) {}
-SCENE_API void ky_scene_node_place_below(struct ky_scene_node *node, struct ky_scene_node *sibling) {}
-SCENE_API void ky_scene_node_raise_to_top(struct ky_scene_node *node) {}
-SCENE_API void ky_scene_node_lower_to_bottom(struct ky_scene_node *node) {}
-SCENE_API void ky_scene_node_reparent(struct ky_scene_node *node, struct ky_scene_tree *new_parent) {}
-SCENE_API bool ky_scene_node_coords(struct ky_scene_node *node, int *lx_ptr, int *ly_ptr) { return false; }
-SCENE_API struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, double ly, double *nx, double *ny) { return NULL; }
-SCENE_API void *ky_scene_node_get_user_data(struct ky_scene_node *node) { return NULL; };
-SCENE_API void ky_scene_node_set_user_data(struct ky_scene_node *node, void *user_data) {};
-SCENE_API struct ky_scene_tree *ky_scene_node_get_parent(struct ky_scene_node *node) { return NULL; }
-SCENE_API void ky_scene_node_add_destroy_listener(struct ky_scene_node *node, struct wl_listener *listener) {}
-SCENE_API struct wlr_addon_set *ky_scene_node_get_addon_set(struct ky_scene_node *node) { return NULL; }
-SCENE_API struct ky_scene_tree *ky_scene_tree_create(struct ky_scene_tree *parent) { return NULL; }
-SCENE_API struct ky_scene_tree *ky_scene_create_tree(struct ky_scene *scene) { return NULL; }
-SCENE_API struct ky_scene_node *ky_scene_node_from_tree(struct ky_scene_tree *tree) { return NULL; }
-SCENE_API struct ky_scene_rect *ky_scene_rect_create(struct ky_scene_tree *parent, int width, int height, const float color[static 4]) { return NULL; }
-SCENE_API void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height) {}
-SCENE_API void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[static 4]) {}
-SCENE_API struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node) { return NULL;};
-SCENE_API struct ky_scene_node *ky_scene_node_from_rect(struct ky_scene_rect *rect) { return NULL; }
-SCENE_API struct ky_scene_node *ky_scene_node_from_buffer(struct ky_scene_buffer *buffer) { return NULL; }
-SCENE_API struct ky_scene_buffer *ky_scene_buffer_create(struct ky_scene_tree *parent, struct wlr_buffer *buffer) { return NULL; }
-SCENE_API struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node) { return NULL; }
-SCENE_API void ky_scene_buffer_set_buffer(struct ky_scene_buffer *scene_buffer, struct wlr_buffer *buffer) {}
-SCENE_API void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer, struct wlr_buffer *buffer, const pixman_region32_t *region) {}
-SCENE_API void ky_scene_buffer_set_opaque_region(struct ky_scene_buffer *scene_buffer, const pixman_region32_t *region) {}
-SCENE_API void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer, const struct wlr_fbox *box) {}
-SCENE_API void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int width, int height) {}
-SCENE_API void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer, enum wl_output_transform transform) {}
-SCENE_API struct ky_scene_output *ky_scene_buffer_get_primary_output(struct ky_scene_buffer *scene_buffer) { return NULL; }
-SCENE_API struct wlr_buffer *ky_scene_buffer_get_buffer(struct ky_scene_buffer *scene_buffer) { return NULL; }
-SCENE_API void ky_scene_buffer_set_point_accepts_input(struct ky_scene_buffer *scene_buffer, ky_scene_buffer_point_accepts_input_func_t point_accepts_input) {}
-SCENE_API void ky_scene_buffer_add_outputs_update_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API void ky_scene_buffer_add_output_enter_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API void ky_scene_buffer_add_output_leave_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API void ky_scene_buffer_add_output_sample_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API struct ky_scene_output *ky_scene_output_sample_event_output(const struct ky_scene_output_sample_event *event) { return NULL; }
-SCENE_API bool ky_scene_output_sample_event_direct_scanout(const struct ky_scene_output_sample_event *event) { return false; }
-SCENE_API void ky_scene_buffer_add_frame_done_listener(struct ky_scene_buffer *scene_buffer, struct wl_listener *listener) {}
-SCENE_API struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene,struct wlr_output *output) { return NULL; }
-SCENE_API struct wlr_output *ky_scene_output_get_output(struct ky_scene_output *output) { return NULL; }
-SCENE_API struct ky_scene_output_layout *ky_scene_attach_output_layout(struct ky_scene *scene, struct wlr_output_layout *output_layout) { return NULL; }
-SCENE_API bool ky_scene_output_commit(struct ky_scene_output *scene_output, const struct ky_scene_output_state_options *options) { return false; }
-SCENE_API void ky_scene_output_send_frame_done(struct ky_scene_output *scene_output, struct timespec *now) {}
-SCENE_API void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *presentation) {}
-SCENE_API struct wlr_presentation *ky_scene_get_presentation(struct ky_scene *scene) { return NULL; }
-SCENE_API struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wlr_output *output) { return NULL; }
-SCENE_API void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol, struct wlr_output_layout_output *lo, struct ky_scene_output *so) {}
-SCENE_API void ky_scene_node_set_bypassed(struct ky_scene_node *node, bool bypassed) {};
-SCENE_API void ky_scene_output_destroy(struct ky_scene_output *scene_output) {};
+// clang-format off
 
 #endif
 

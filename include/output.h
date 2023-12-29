@@ -38,8 +38,6 @@ struct output {
     } events;
 
     struct wl_listener frame;
-    struct wl_listener damage;
-    struct wl_listener needs_frame;
     struct wl_listener destroy;
 
     bool modeset;
