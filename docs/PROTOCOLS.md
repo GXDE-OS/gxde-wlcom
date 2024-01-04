@@ -37,6 +37,7 @@ wayland协议支持情况
 | ext_foreign_toplevel_list_v1      |    no    | 1     |
 | ext_idle_notifier_v1              |    1     |       |
 | ext_session_lock_manager_v1       |    no    | 1     |
+| ext_transient_seat_manager_v1     |    no    | 1     |
 | wp_fractional_scale_manager_v1    |    1     | check |
 | wp_security_context_manager_v1    |    no    | 1     |
 | wp_single_pixel_buffer_manager_v1 |    no    | 1     |
@@ -80,7 +81,7 @@ wayland协议支持情况
 | zwlr_export_dmabuf_manager_v1    |    1     | check |
 | zwlr_foreign_toplevel_manager_v1 |    3     | check |
 | zwlr_gamma_control_manager_v1    |    no    | 1     |
-| zwlr_input_inhibit_manager_v1    |    no    | 1     |
+| zwlr_input_inhibit_manager_v1    |    no    | deprecated |
 | zwlr_layer_shell_v1              |    4     |       |
 | zwlr_output_manager_v1           |    4     |       |
 | zwlr_output_power_manager_v1     |    1     |       |
@@ -96,12 +97,12 @@ wayland协议支持情况
 | org_kde_kwin_blur_manager                      |    1     | ukui  |
 | org_kde_kwin_contrast_manager                  |    no    | 2     |
 | org_kde_kwin_dpms_manager                      |    1     |       |
-| org_kde_kwin_fake_input                        |    no    | 4     |
+| org_kde_kwin_fake_input                        |    no    | 5     |
 | org_kde_kwin_idle                              |    1     |       |
 | kde_lockscreen_overlay_v1                      |    no    | 1     |
-| kde_output_device_v2                           |    2     | 3     |
-| kde_output_management_v2                       |    2     | 4     |
-| kde_output_order_v1                            |    no    | 2     |
+| kde_output_device_v2                           |    2     | 6     |
+| kde_output_management_v2                       |    2     | 7     |
+| kde_output_order_v1                            |    no    | 1     |
 | kde_primary_output_v1                          |    2     |       |
 | kde_screen_edge_manager_v1                     |    no    | 1     |
 | org_kde_kwin_keystate                          |    no    | 4     |
