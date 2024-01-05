@@ -57,7 +57,7 @@ struct theme {
     float accent_color[4];
 
     struct {
-        float border_width;
+        int border_width;
         int corner_radius;
         int title_height;
         int resize_border;
@@ -79,12 +79,12 @@ struct theme {
     } shadow;
 
     struct {
-        float border_width;
+        int border_width;
         int corner_radius;
     } tooltip;
 
     struct {
-        float border_width;
+        int border_width;
         int corner_radius;
         int sub_menu_gap;
     } menu;

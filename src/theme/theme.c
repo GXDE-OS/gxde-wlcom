@@ -63,7 +63,7 @@ static struct theme light = {
     },
 
     .menu = {
-        .border_width = 1.5,
+        .border_width = 1,
         .corner_radius = 8,
         .sub_menu_gap = 2,
     },
@@ -118,7 +118,7 @@ static struct theme dark = {
     },
 
     .menu = {
-        .border_width = 1.5,
+        .border_width = 1,
         .corner_radius = 8,
         .sub_menu_gap = 2,
     },
