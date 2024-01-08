@@ -239,6 +239,13 @@ void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, ui
     struct seat *seat = keyboard->seat;
     uint32_t state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED;
 
+    /* early return if key is sent by input method */
+    if (keyboard_is_from_input_method(keyboard)) {
+        wlr_seat_set_keyboard(seat->wlr_seat, keyboard->wlr_keyboard);
+        wlr_seat_keyboard_notify_key(seat->wlr_seat, time, key, state);
+        return;
+    }
+
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
         keyboard_state_clear(&keyboard->state);

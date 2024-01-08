@@ -111,6 +111,8 @@ bool input_method_handle_key(struct keyboard *keyboard, uint32_t time, uint32_t 
 
 bool input_method_handle_modifiers(struct keyboard *keyboard);
 
+bool keyboard_is_from_input_method(struct keyboard *keyboard);
+
 /**
  * selection drag icon
  */

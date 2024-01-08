@@ -786,3 +786,14 @@ bool input_method_handle_modifiers(struct keyboard *keyboard)
                                                      &keyboard->wlr_keyboard->modifiers);
     return true;
 }
+
+bool keyboard_is_from_input_method(struct keyboard *keyboard)
+{
+    struct wlr_input_method_v2 *input_method = keyboard->seat->relay->wlr_input_method;
+    struct wlr_virtual_keyboard_v1 *virtual_keyboard =
+        wlr_input_device_get_virtual_keyboard(&keyboard->wlr_keyboard->base);
+
+    return input_method && input_method->keyboard_grab && virtual_keyboard &&
+           wl_resource_get_client(virtual_keyboard->resource) ==
+               wl_resource_get_client(input_method->keyboard_grab->resource);
+}
