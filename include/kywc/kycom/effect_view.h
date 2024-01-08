@@ -10,6 +10,7 @@
 #include "kywc/view.h"
 
 #include "effects.h"
+#include "scene/animation.h"
 
 struct kywc_group_node;
 struct kywc_effect_view;
@@ -98,5 +99,11 @@ void kywc_effect_view_get_end_box(struct kywc_effect_view *view, enum kywc_end_b
                                   struct kywc_box *box);
 
 bool kywc_renderer_is_opengl(struct kywc_effect_server *server);
+
+struct animation *kywc_animation_create(float p1x, float p1y, float p2x, float p2y);
+
+float kywc_animation_value(struct animation *animation, float x);
+
+void kywc_animation_destroy(struct animation *animation);
 
 #endif

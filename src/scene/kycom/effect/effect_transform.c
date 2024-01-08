@@ -9,6 +9,9 @@
 #include "kywc/kycom/effect_view.h"
 #include "kywc/log.h"
 
+static const float max_animation_value = 1;
+static const float max_time_factor = 1;
+
 static void geometry_transform_node_render(struct kywc_render_instance *instance,
                                            struct kywc_render_target *target,
                                            pixman_region32_t *damage);
@@ -63,9 +66,10 @@ static void transform_data_init(struct kywc_transform_data *data)
 {
     data->start_time = 0;
     data->time = -1;
-    data->time_factor = -1;
+    data->max_time = -1;
+    data->time_factor = 0;
+    data->animation_value = 0;
     data->alpha = -1;
-    data->max_time_factor = 1;
     data->view = NULL;
     data->view_node = NULL;
     memset(&data->padding, 0, sizeof(data->padding));
@@ -73,34 +77,28 @@ static void transform_data_init(struct kywc_transform_data *data)
     memset(&data->dst_box, 0, sizeof(data->dst_box));
 }
 
-float kywc_transform_data_calc_time_factor(struct kywc_transform_data *data)
-{
-    float time_factor = (data->time - data->start_time) / TRANSFORM_TIME;
-
-    if (time_factor > data->max_time_factor) {
-        time_factor = data->max_time_factor;
-    } else if (time_factor < 0.0) {
-        time_factor = 0.0;
-    }
-    data->time_factor = time_factor;
-    return time_factor;
-}
-
 void kywc_transform_data_alpha_func_init(struct kywc_transform_data *data, float end_alpha)
 {
-    xy_linear_func_init(&data->alpha_func, data->time_factor, data->alpha, data->max_time_factor,
+    xy_linear_func_init(&data->alpha_func, data->animation_value, data->alpha, max_animation_value,
                         end_alpha);
+}
+
+void kywc_transform_data_time_func_init(struct kywc_transform_data *data)
+{
+    int delta_time = data->time - data->start_time;
+    int delta_max_time = data->max_time - data->start_time;
+    xy_linear_func_init(&data->time_factor_func, delta_time, data->time_factor, delta_max_time,
+                        max_time_factor);
 }
 
 void kywc_transform_data_view_box_func_init(struct kywc_transform_data *data)
 {
     struct kywc_effect_view *view = data->view;
-    float factor = data->time_factor;
-    float max_factor = data->max_time_factor;
+    float animation_value = data->animation_value;
     float start_value[4];
     float end_value[4];
 
-    if (data->time == -1) {
+    if (data->time == data->start_time) {
         // start transform
         data->view_box = view->last_box;
     }
@@ -115,27 +113,33 @@ void kywc_transform_data_view_box_func_init(struct kywc_transform_data *data)
     end_value[2] = view->dst_box.width;
     end_value[3] = view->dst_box.height;
     for (int i = 0; i < 4; i++) {
-        xy_linear_func_init(data->view_box_func + i, factor, start_value[i], max_factor,
-                            end_value[i]);
+        xy_linear_func_init(data->view_box_func + i, animation_value, start_value[i],
+                            max_animation_value, end_value[i]);
     }
+}
+
+void kywc_transform_data_calc_time_factor(struct kywc_transform_data *data)
+{
+    data->time_factor =
+        xy_linear_func_get_value(&data->time_factor_func, data->time - data->start_time);
 }
 
 void kywc_transform_data_calc_alpha(struct kywc_transform_data *data)
 {
-    data->alpha = xy_linear_func_get_value(&data->alpha_func, data->time_factor);
+    data->alpha = xy_linear_func_get_value(&data->alpha_func, data->animation_value);
 }
 
 void kywc_transform_data_calc_view_box(struct kywc_transform_data *data)
 {
-    float factor = data->time_factor;
+    float value = data->animation_value;
 
-    data->view_box.x = xy_linear_func_get_value(data->view_box_func, factor);
+    data->view_box.x = xy_linear_func_get_value(data->view_box_func, value);
 
-    data->view_box.y = xy_linear_func_get_value(data->view_box_func + 1, factor);
+    data->view_box.y = xy_linear_func_get_value(data->view_box_func + 1, value);
 
-    data->view_box.width = xy_linear_func_get_value(data->view_box_func + 2, factor);
+    data->view_box.width = xy_linear_func_get_value(data->view_box_func + 2, value);
 
-    data->view_box.height = xy_linear_func_get_value(data->view_box_func + 3, factor);
+    data->view_box.height = xy_linear_func_get_value(data->view_box_func + 3, value);
 }
 
 void kywc_transform_data_update_location(struct kywc_transform_data *data)
@@ -341,11 +345,16 @@ kywc_transform_geometry_node_create(struct kywc_effect_view *view)
     if (!tg_node) {
         return NULL;
     }
+
     struct kywc_transform_data *data = &tg_node->data;
     transform_data_init(data);
+    data->animation = kywc_animation_create(0, 0, 0.22, 1);
     data->view = view;
     data->view_node = view->view_node;
     data->start_time = kywc_get_current_time_msec();
+    data->max_time = data->start_time + TRANSFORM_TIME;
+    data->time = data->start_time;
+    data->time_factor = 0;
 
     transform_geometry_node_init(tg_node, data);
 

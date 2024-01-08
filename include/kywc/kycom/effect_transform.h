@@ -26,19 +26,26 @@ struct xy_linear_func {
 struct kywc_transform_data {
     struct kywc_group_node *view_node;
     struct kywc_effect_view *view;
+    struct animation *animation;
     struct kywc_box view_box;
     struct padding padding;
     /* offset relative to parent node */
     int x, y;
     /* layout coordination */
     struct kywc_box dst_box;
+
     int32_t start_time;
     int32_t time;
+    int32_t max_time;
 
-    float max_time_factor;
     float time_factor;
 
+    float animation_value;
+
+    struct xy_linear_func time_factor_func;
+
     float alpha;
+
     struct xy_linear_func alpha_func;
     struct xy_linear_func view_box_func[4];
 };
@@ -55,9 +62,11 @@ extern const char *scale_effect_name;
 
 int64_t kywc_get_current_time_msec(void);
 
-float kywc_transform_data_calc_time_factor(struct kywc_transform_data *data);
+void kywc_transform_data_calc_time_factor(struct kywc_transform_data *data);
 
 void kywc_transform_data_alpha_func_init(struct kywc_transform_data *data, float end_alpha);
+
+void kywc_transform_data_time_func_init(struct kywc_transform_data *data);
 
 void kywc_transform_data_view_box_func_init(struct kywc_transform_data *data);
 

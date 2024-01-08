@@ -309,3 +309,18 @@ bool kywc_renderer_is_opengl(struct kywc_effect_server *server)
     struct wlr_renderer *renderer = server->kywc_server->renderer;
     return wlr_renderer_is_opengl(renderer);
 }
+
+struct animation *kywc_animation_create(float p1x, float p1y, float p2x, float p2y)
+{
+    return animation_create(p1x, p1y, p2x, p2y);
+}
+
+float kywc_animation_value(struct animation *animation, float x)
+{
+    return animation_value(animation, x);
+}
+
+void kywc_animation_destroy(struct animation *animation)
+{
+    return animation_destroy(animation);
+}

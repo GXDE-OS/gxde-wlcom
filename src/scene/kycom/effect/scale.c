@@ -52,6 +52,8 @@ static void transform_data_update(struct kywc_transform_data *data)
 
     kywc_transform_data_calc_time_factor(data);
 
+    data->animation_value = kywc_animation_value(data->animation, data->time_factor);
+
     kywc_transform_data_calc_alpha(data);
 
     kywc_transform_data_calc_view_box(data);
@@ -63,7 +65,7 @@ static void transform_data_update(struct kywc_transform_data *data)
 
 static void update_time_and_status(struct kywc_transform_data *data)
 {
-    if (data->time - data->start_time <= TRANSFORM_TIME * data->max_time_factor) {
+    if (data->time <= data->max_time) {
         data->view->effects_state = EFFECTS_ZOOMING;
     } else {
         data->view->effects_state = EFFECTS_END;
@@ -141,6 +143,7 @@ static void destroy_scale_effect(struct kywc_effect_view *view)
 
     struct kywc_geometry_transform_node *geo_node = wl_container_of(group_node, geo_node, node);
 
+    kywc_animation_destroy(geo_node->data.animation);
     kywc_node_destroy(&group_node->node);
 
     if (kywc_effect_view_is_minimized(view)) {
@@ -173,9 +176,13 @@ static struct kywc_geometry_transform_node *create_scale_effect(struct kywc_effe
         }
         return node;
     }
+
     struct kywc_geometry_transform_node *node = wl_container_of(transform_node, node, node);
-    if (node->data.max_time_factor - node->data.time_factor < 0.4) {
-        node->data.max_time_factor += 0.5;
+    /* After exceeding this value, compressing a small value between 0 and 1 may cause jitter */
+    if (node->data.time_factor < 0.95) {
+        if (node->data.max_time - node->data.time < 0.4 * TRANSFORM_TIME) {
+            node->data.max_time = 0.5 * TRANSFORM_TIME + node->data.time;
+        }
     }
     return node;
 }
@@ -205,9 +212,8 @@ static void maximized_alpha_func_init(struct kywc_transform_data *data)
         return;
     }
     // start maximize
-    if (data->alpha == -1 || data->time_factor == -1 || data->time == -1) {
+    if (data->time == data->start_time) {
         data->alpha = 1;
-        data->time_factor = 0;
         kywc_transform_data_alpha_func_init(data, 1);
     }
 }
@@ -237,6 +243,7 @@ static void handle_view_maximize(struct wl_listener *listener, void *data)
 
     struct kywc_geometry_transform_node *node = create_scale_effect(view);
     maximize_update_view_box(view);
+    kywc_transform_data_time_func_init(&node->data);
     maximized_alpha_func_init(&node->data);
     kywc_transform_data_view_box_func_init(&node->data);
 }
@@ -246,7 +253,7 @@ static void minimized_alpha_func_init(struct kywc_transform_data *data)
     if (!data) {
         return;
     }
-    if (data->time == -1) {
+    if (data->time == data->start_time) {
         // start
         if (data->view->kywc_view->minimized) {
             // minimized
@@ -304,6 +311,7 @@ static void handle_view_minimize(struct wl_listener *listener, void *data)
     }
     struct kywc_geometry_transform_node *node = create_scale_effect(view);
     minimize_update_view_box(view);
+    kywc_transform_data_time_func_init(&node->data);
     minimized_alpha_func_init(&node->data);
     kywc_transform_data_view_box_func_init(&node->data);
 }
@@ -318,6 +326,7 @@ static void handle_view_show_desktop(struct wl_listener *listener, void *data)
     wl_list_for_each_safe(pos_item, tmp_item, &scale_data.item_transforms, link) {
         struct kywc_transform_data *data = &pos_item->node->data;
         minimize_update_view_box(data->view);
+        kywc_transform_data_time_func_init(data);
         minimized_alpha_func_init(data);
         kywc_transform_data_view_box_func_init(data);
     }
