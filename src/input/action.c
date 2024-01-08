@@ -374,9 +374,11 @@ static struct keyboard *get_keyboard_form_seat(struct input_action_manager *mana
 
     struct seat *seat;
     wl_list_for_each(seat, &input_manager->seats, link) {
-        struct wlr_keyboard *wlr_keyboard = wlr_seat_get_keyboard(seat->wlr_seat);
-        if (wlr_keyboard) {
-            struct keyboard *keyboard = wlr_keyboard->data;
+        struct keyboard *keyboard;
+        wl_list_for_each(keyboard, &seat->keyboards, link) {
+            if (keyboard->is_virtual) {
+                continue;
+            }
             return keyboard;
         }
     }
