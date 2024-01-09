@@ -49,7 +49,7 @@ static struct xwayland_server *xwayland = NULL;
 static void handle_new_xwayland_surface(struct wl_listener *listener, void *data)
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = data;
-    wlr_xwayland_surface_ping(wlr_xwayland_surface);
+    // wlr_xwayland_surface_ping(wlr_xwayland_surface);
 
     if (xwayland->shape) {
         xcb_shape_select_input(xwayland->xcb_conn, wlr_xwayland_surface->window_id, true);
