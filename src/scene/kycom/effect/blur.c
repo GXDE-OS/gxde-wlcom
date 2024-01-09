@@ -545,7 +545,7 @@ static void blur_render(struct kywc_render_instance *instance, struct kywc_rende
 
 /********************generate_render_task*******************************/
 static void get_blur_region(pixman_region32_t *kde_blur_region, pixman_region32_t *blur_region,
-                            struct _kywc_effect_blur_node *blur_node, struct wlr_box *bound_box)
+                            struct wlr_box *bound_box)
 {
     if (!pixman_region32_not_empty(kde_blur_region)) {
         pixman_region32_init_rect(blur_region, bound_box->x, bound_box->y, bound_box->width,
@@ -595,7 +595,7 @@ static void effect_blur_generate_render_task(const struct kywc_node *node,
         kywc_log(KYWC_INFO, "conf is NULL.");
         return;
     }
-    get_blur_region(&conf->kde_blur_region, &node_blur_region, blur_node, &bound_box);
+    get_blur_region(&conf->kde_blur_region, &node_blur_region, &bound_box);
 
     /* Update the node translucent background. */
     int r = effect_blur_node_radius(node);
@@ -753,6 +753,7 @@ static void handle_kde_blur_create(struct wl_listener *listener, void *data)
         return;
     }
 
+    handle_kde_blur_commit(&conf->handle_blur_commit, _kde_blur);
     conf->handle_blur_commit.notify = handle_kde_blur_commit;
     wl_signal_add(&_kde_blur->events.commit, &conf->handle_blur_commit);
 }
