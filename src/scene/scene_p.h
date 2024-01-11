@@ -1,0 +1,53 @@
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
+#ifndef _SCENE_P_H_
+#define _SCENE_P_H_
+
+#include <wlr/render/pass.h>
+
+#include <kywc/log.h>
+
+#include "scene/scene.h"
+
+struct ky_scene_render_target {
+    /* current output states */
+    enum wl_output_transform transform;
+    struct wlr_box logical;
+    float scale;
+
+    /* transformed output resolution */
+    int trans_width, trans_height;
+
+    struct ky_scene_output *output;
+    struct wlr_render_pass *render_pass;
+};
+
+/**
+ * translate logical coord box to render target buffer coord
+ */
+bool ky_scene_render_box(struct wlr_box *clip, struct wlr_box *box,
+                         struct ky_scene_render_target *target);
+
+void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target);
+
+void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent);
+
+/**
+ * update output states for buffer node in the tree or the single buffer node, when
+ * 1. scene buffer state:
+ *      position: set_position, reparent
+ *      dest_size
+ *      create with buffer
+ *      destroy: direct emit output_leave
+ * 2. scene output state:
+ *      position
+ *      mode
+ *      create/destroy
+ *      scale/transform/subpixel: force update
+ */
+void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *outputs,
+                                  struct ky_scene_output *ignore, struct ky_scene_output *force);
+
+#endif /* _SCENE_P_H_ */

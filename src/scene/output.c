@@ -1,0 +1,453 @@
+// SPDX-FileCopyrightText: 2023 The wlroots contributors
+// SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: MulanPSL-2.0
+
+#include <assert.h>
+#include <stdlib.h>
+
+#include <wlr/render/swapchain.h>
+#include <wlr/types/wlr_output_layout.h>
+#include <wlr/util/region.h>
+
+#include "scene_p.h"
+
+static void scene_output_set_position(struct ky_scene_output *scene_output, int lx, int ly);
+
+struct ky_scene_output_layout {
+    struct wlr_output_layout *layout;
+    struct ky_scene *scene;
+
+    struct wl_list outputs; // ky_scene_output_layout_output.link
+
+    struct wl_listener layout_change;
+    struct wl_listener layout_destroy;
+    struct wl_listener scene_destroy;
+};
+
+struct ky_scene_output_layout_output {
+    struct wlr_output_layout_output *layout_output;
+    struct ky_scene_output *scene_output;
+
+    struct wl_list link; // ky_scene_output_layout.outputs
+
+    struct wl_listener layout_output_destroy;
+    struct wl_listener scene_output_destroy;
+};
+
+static void scene_output_layout_output_destroy(struct ky_scene_output_layout_output *solo)
+{
+    wl_list_remove(&solo->layout_output_destroy.link);
+    wl_list_remove(&solo->scene_output_destroy.link);
+    wl_list_remove(&solo->link);
+    free(solo);
+}
+
+static void scene_output_layout_output_handle_layout_output_destroy(struct wl_listener *listener,
+                                                                    void *data)
+{
+    struct ky_scene_output_layout_output *solo =
+        wl_container_of(listener, solo, layout_output_destroy);
+    scene_output_layout_output_destroy(solo);
+}
+
+static void scene_output_layout_output_handle_scene_output_destroy(struct wl_listener *listener,
+                                                                   void *data)
+{
+    struct ky_scene_output_layout_output *solo =
+        wl_container_of(listener, solo, scene_output_destroy);
+    scene_output_layout_output_destroy(solo);
+}
+
+static void scene_output_layout_destroy(struct ky_scene_output_layout *sol)
+{
+    struct ky_scene_output_layout_output *solo, *tmp;
+    wl_list_for_each_safe(solo, tmp, &sol->outputs, link) {
+        scene_output_layout_output_destroy(solo);
+    }
+    wl_list_remove(&sol->layout_change.link);
+    wl_list_remove(&sol->layout_destroy.link);
+    wl_list_remove(&sol->scene_destroy.link);
+    free(sol);
+}
+
+static void scene_output_layout_handle_layout_change(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output_layout *sol = wl_container_of(listener, sol, layout_change);
+
+    struct ky_scene_output_layout_output *solo;
+    wl_list_for_each(solo, &sol->outputs, link) {
+        scene_output_set_position(solo->scene_output, solo->layout_output->x,
+                                  solo->layout_output->y);
+    }
+}
+
+void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol,
+                                       struct wlr_output_layout_output *lo,
+                                       struct ky_scene_output *so)
+{
+    assert(lo->output == so->output);
+
+    struct ky_scene_output_layout_output *solo;
+    wl_list_for_each(solo, &sol->outputs, link) {
+        assert(solo->scene_output != so);
+    }
+
+    solo = calloc(1, sizeof(*solo));
+    if (!solo) {
+        return;
+    }
+
+    solo->scene_output = so;
+    solo->layout_output = lo;
+
+    solo->layout_output_destroy.notify = scene_output_layout_output_handle_layout_output_destroy;
+    wl_signal_add(&lo->events.destroy, &solo->layout_output_destroy);
+
+    solo->scene_output_destroy.notify = scene_output_layout_output_handle_scene_output_destroy;
+    wl_signal_add(&solo->scene_output->events.destroy, &solo->scene_output_destroy);
+
+    wl_list_insert(&sol->outputs, &solo->link);
+
+    scene_output_set_position(solo->scene_output, lo->x, lo->y);
+}
+
+static void scene_output_layout_handle_layout_destroy(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output_layout *sol = wl_container_of(listener, sol, layout_destroy);
+    scene_output_layout_destroy(sol);
+}
+
+static void scene_output_layout_handle_scene_destroy(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output_layout *sol = wl_container_of(listener, sol, scene_destroy);
+    scene_output_layout_destroy(sol);
+}
+
+struct ky_scene_output_layout *
+ky_scene_attach_output_layout(struct ky_scene *scene, struct wlr_output_layout *output_layout)
+{
+    struct ky_scene_output_layout *sol = calloc(1, sizeof(*sol));
+    if (!sol) {
+        return false;
+    }
+
+    sol->scene = scene;
+    sol->layout = output_layout;
+
+    wl_list_init(&sol->outputs);
+
+    sol->layout_destroy.notify = scene_output_layout_handle_layout_destroy;
+    wl_signal_add(&output_layout->events.destroy, &sol->layout_destroy);
+
+    sol->layout_change.notify = scene_output_layout_handle_layout_change;
+    wl_signal_add(&output_layout->events.change, &sol->layout_change);
+
+    sol->scene_destroy.notify = scene_output_layout_handle_scene_destroy;
+    wl_signal_add(&scene->tree.node.events.destroy, &sol->scene_destroy);
+
+    return sol;
+}
+
+/**
+ * scene output
+ */
+
+static void scene_output_update_geometry(struct ky_scene_output *scene_output, bool force_update)
+{
+    int width, height;
+    wlr_output_transformed_resolution(scene_output->output, &width, &height);
+    wlr_damage_ring_set_bounds(&scene_output->damage_ring, width, height);
+    wlr_damage_ring_add_whole(&scene_output->damage_ring);
+    wlr_output_schedule_frame(scene_output->output);
+
+    ky_scene_node_update_outputs(&scene_output->scene->tree.node, &scene_output->scene->outputs,
+                                 NULL, force_update ? scene_output : NULL);
+}
+
+static void scene_output_set_position(struct ky_scene_output *scene_output, int lx, int ly)
+{
+    if (scene_output->x == lx && scene_output->y == ly) {
+        return;
+    }
+
+    scene_output->x = lx;
+    scene_output->y = ly;
+
+    scene_output_update_geometry(scene_output, false);
+}
+
+static void scene_output_handle_destroy(struct wlr_addon *addon)
+{
+    struct ky_scene_output *scene_output = wl_container_of(addon, scene_output, addon);
+    ky_scene_output_destroy(scene_output);
+}
+
+static const struct wlr_addon_interface output_addon_impl = {
+    .name = "ky_scene_output",
+    .destroy = scene_output_handle_destroy,
+};
+
+static void scene_output_handle_commit(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output *scene_output = wl_container_of(listener, scene_output, output_commit);
+    struct wlr_output_event_commit *event = data;
+    const struct wlr_output_state *state = event->state;
+
+    bool force_update = state->committed & (WLR_OUTPUT_STATE_TRANSFORM | WLR_OUTPUT_STATE_SCALE |
+                                            WLR_OUTPUT_STATE_SUBPIXEL);
+
+    if (force_update || state->committed & (WLR_OUTPUT_STATE_MODE | WLR_OUTPUT_STATE_ENABLED)) {
+        scene_output_update_geometry(scene_output, force_update);
+    }
+}
+
+static void scene_output_handle_damage(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output *scene_output = wl_container_of(listener, scene_output, output_damage);
+    struct wlr_output_event_damage *event = data;
+
+    pixman_region32_t damage;
+    pixman_region32_init(&damage);
+    wlr_region_scale(&damage, event->damage, 1 / event->output->scale);
+
+    if (wlr_damage_ring_add(&scene_output->damage_ring, &damage)) {
+        wlr_output_schedule_frame(scene_output->output);
+    }
+
+    pixman_region32_fini(&damage);
+}
+
+static void scene_output_handle_needs_frame(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_output *scene_output =
+        wl_container_of(listener, scene_output, output_needs_frame);
+    wlr_output_schedule_frame(scene_output->output);
+}
+
+struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wlr_output *output)
+{
+    struct ky_scene_output *scene_output = calloc(1, sizeof(*scene_output));
+    if (!scene_output) {
+        return NULL;
+    }
+
+    scene_output->output = output;
+    scene_output->scene = scene;
+    wlr_addon_init(&scene_output->addon, &output->addons, scene, &output_addon_impl);
+
+    wlr_damage_ring_init(&scene_output->damage_ring);
+
+    int prev_output_index = -1;
+    struct wl_list *prev_output_link = &scene->outputs;
+
+    struct ky_scene_output *current_output;
+    wl_list_for_each(current_output, &scene->outputs, link) {
+        if (prev_output_index + 1 != current_output->index) {
+            break;
+        }
+
+        prev_output_index = current_output->index;
+        prev_output_link = &current_output->link;
+    }
+
+    scene_output->index = prev_output_index + 1;
+    assert(scene_output->index < 64);
+    wl_list_insert(prev_output_link, &scene_output->link);
+
+    wl_signal_init(&scene_output->events.destroy);
+
+    scene_output->output_commit.notify = scene_output_handle_commit;
+    wl_signal_add(&output->events.commit, &scene_output->output_commit);
+
+    scene_output->output_damage.notify = scene_output_handle_damage;
+    wl_signal_add(&output->events.damage, &scene_output->output_damage);
+
+    scene_output->output_needs_frame.notify = scene_output_handle_needs_frame;
+    wl_signal_add(&output->events.needs_frame, &scene_output->output_needs_frame);
+
+    scene_output_update_geometry(scene_output, false);
+
+    return scene_output;
+}
+
+void ky_scene_output_destroy(struct ky_scene_output *scene_output)
+{
+    if (!scene_output) {
+        return;
+    }
+
+    wl_signal_emit_mutable(&scene_output->events.destroy, NULL);
+
+    ky_scene_node_update_outputs(&scene_output->scene->tree.node, &scene_output->scene->outputs,
+                                 scene_output, NULL);
+
+    wlr_addon_finish(&scene_output->addon);
+    wlr_damage_ring_finish(&scene_output->damage_ring);
+    wl_list_remove(&scene_output->link);
+    wl_list_remove(&scene_output->output_commit.link);
+    wl_list_remove(&scene_output->output_damage.link);
+    wl_list_remove(&scene_output->output_needs_frame.link);
+
+    free(scene_output);
+}
+
+struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene, struct wlr_output *output)
+{
+    struct wlr_addon *addon = wlr_addon_find(&output->addons, scene, &output_addon_impl);
+    if (!addon) {
+        return NULL;
+    }
+    struct ky_scene_output *scene_output = wl_container_of(addon, scene_output, addon);
+    return scene_output;
+}
+
+static void scene_node_send_frame_done(struct ky_scene_node *node,
+                                       struct ky_scene_output *scene_output, struct timespec *now)
+{
+    if (!node->enabled) {
+        return;
+    }
+
+    if (node->type == KY_SCENE_NODE_BUFFER) {
+        struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
+        if (scene_buffer->primary_output == scene_output) {
+            wl_signal_emit_mutable(&scene_buffer->events.frame_done, now);
+        }
+    } else if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *scene_tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *child;
+        wl_list_for_each(child, &scene_tree->children, link) {
+            scene_node_send_frame_done(child, scene_output, now);
+        }
+    }
+}
+
+void ky_scene_output_send_frame_done(struct ky_scene_output *scene_output, struct timespec *now)
+{
+    scene_node_send_frame_done(&scene_output->scene->tree.node, scene_output, now);
+}
+
+static bool scene_output_build_state(struct ky_scene_output *scene_output,
+                                     struct wlr_output_state *state,
+                                     const struct ky_scene_output_state_options *options)
+{
+    struct wlr_output *output = scene_output->output;
+
+    if (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {
+        return false;
+    }
+
+    struct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, NULL);
+    if (buffer == NULL) {
+        return false;
+    }
+
+    struct wlr_render_pass *render_pass =
+        wlr_renderer_begin_buffer_pass(output->renderer, buffer, NULL);
+    if (render_pass == NULL) {
+        wlr_buffer_unlock(buffer);
+        return false;
+    }
+
+    // TODO: if we combined with output setting, make sure the output position is applied ?
+    struct ky_scene_render_target render_target = {
+        .transform = output->transform,
+        .scale = output->scale,
+        .logical = { .x = scene_output->x, .y = scene_output->y },
+        .output = scene_output,
+        .render_pass = render_pass,
+    };
+
+    wlr_output_transformed_resolution(output, &render_target.trans_width,
+                                      &render_target.trans_height);
+    render_target.logical.width = render_target.trans_width / output->scale;
+    render_target.logical.height = render_target.trans_height / output->scale;
+
+    // clear current output buffer
+    wlr_render_pass_add_rect(render_pass,
+                             &(struct wlr_render_rect_options){
+                                 .box = { .width = buffer->width, .height = buffer->height },
+                                 .color = { .r = 0, .g = 0, .b = 0, .a = 1 },
+                             });
+
+    // call all nodes from bottom to top
+    struct ky_scene_node *root = &scene_output->scene->tree.node;
+    int lx, ly;
+    ky_scene_node_coords(root, &lx, &ly);
+    root->impl.render(root, lx, ly, &render_target);
+
+    // for software cursor
+    wlr_output_add_software_cursors_to_render_pass(output, render_pass, NULL);
+
+    if (!wlr_render_pass_submit(render_pass)) {
+        wlr_buffer_unlock(buffer);
+        return false;
+    }
+
+    wlr_output_state_set_buffer(state, buffer);
+    wlr_buffer_unlock(buffer);
+
+    return true;
+}
+
+bool ky_scene_output_commit(struct ky_scene_output *scene_output,
+                            const struct ky_scene_output_state_options *options)
+{
+    if (!scene_output->output->needs_frame) {
+        return true;
+    }
+
+    bool ok = false;
+    struct wlr_output_state state;
+    // TODO: an empty state, combined with commit in output
+    wlr_output_state_init(&state);
+
+    if (!scene_output_build_state(scene_output, &state, options)) {
+        goto out;
+    }
+
+    ok = wlr_output_commit_state(scene_output->output, &state);
+    if (!ok) {
+        goto out;
+    }
+
+out:
+    wlr_output_state_finish(&state);
+    return ok;
+}
+
+static int scale_length(int length, int offset, float scale)
+{
+    return round((offset + length) * scale) - round(offset * scale);
+}
+
+bool ky_scene_render_box(struct wlr_box *clip, struct wlr_box *box,
+                         struct ky_scene_render_target *target)
+{
+    if (!wlr_box_intersection(clip, box,
+                              &(struct wlr_box){
+                                  .width = target->logical.width,
+                                  .height = target->logical.height,
+                              })) {
+        return false;
+    }
+
+    box->width = scale_length(box->width, box->x, target->scale);
+    box->height = scale_length(box->height, box->y, target->scale);
+    box->x = round(box->x * target->scale);
+    box->y = round(box->y * target->scale);
+
+    enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
+    wlr_box_transform(box, box, transform, target->trans_width, target->trans_height);
+
+    return true;
+}
+
+void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target)
+{
+    wlr_region_scale(region, region, target->scale);
+
+    enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
+    wlr_region_transform(region, region, transform, target->trans_width, target->trans_height);
+}

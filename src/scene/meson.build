@@ -5,3 +5,11 @@ wlcom_sources += files(
   'subsurface.c',
   'xdg_shell.c',
 )
+
+if not have_wlr_scene
+  wlcom_sources += files(
+    'buffer.c',
+    'output.c',
+    'rect.c',
+  )
+endif
