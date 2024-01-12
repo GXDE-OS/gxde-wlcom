@@ -22,13 +22,14 @@ struct ky_scene_render_target {
 
     struct ky_scene_output *output;
     struct wlr_render_pass *render_pass;
+
+    pixman_region32_t damage;
 };
 
 /**
  * translate logical coord box to render target buffer coord
  */
-bool ky_scene_render_box(struct wlr_box *clip, struct wlr_box *box,
-                         struct ky_scene_render_target *target);
+void ky_scene_render_box(struct wlr_box *box, struct ky_scene_render_target *target);
 
 void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target);
 

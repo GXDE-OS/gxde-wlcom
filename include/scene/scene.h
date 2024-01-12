@@ -123,6 +123,18 @@ typedef void (*ky_scene_node_update_outputs_func_t)(struct ky_scene_node *node, 
                                                     struct ky_scene_output *ignore,
                                                     struct ky_scene_output *force);
 
+/**
+ * if the output is full damaged, this can be skipped.
+ * TODO: current enabled state of the parent tree
+ */
+typedef void (*ky_scene_node_collect_damage_func_t)(struct ky_scene_node *node, int lx, int ly,
+                                                    pixman_region32_t *damage);
+/**
+ * region ?
+ */
+typedef void (*ky_scene_node_cull_invisible_func_t)(struct ky_scene_node *node, int lx, int ly,
+                                                    pixman_region32_t *region);
+
 typedef void (*ky_scene_node_render_func_t)(struct ky_scene_node *node, int lx, int ly,
                                             struct ky_scene_render_target *target);
 
@@ -135,6 +147,14 @@ struct ky_scene_node_interface {
      * Update node output state.
      */
     ky_scene_node_update_outputs_func_t update_outputs;
+    /**
+     * Collect all nodes damage region.
+     */
+    ky_scene_node_collect_damage_func_t collect_damage;
+    /**
+     * Cull invisible region.
+     */
+    ky_scene_node_cull_invisible_func_t cull_invisible;
     /**
      * Generate a rendering instance for the node and
      * start the rendering instance generation function for the child nodes.
@@ -212,8 +232,11 @@ struct ky_scene {
 
 struct ky_scene_rect {
     struct ky_scene_node node;
+    ky_scene_node_destroy_func_t node_destroy;
+
     int width, height;
     float color[4];
+    pixman_region32_t visible_region;
 };
 
 typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer,
@@ -244,6 +267,8 @@ struct ky_scene_buffer {
 
     float opacity;
     pixman_region32_t opaque_region;
+
+    pixman_region32_t visible_region;
 
     /**
      * The output that the largest area of this buffer is displayed on.

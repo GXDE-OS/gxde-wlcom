@@ -328,12 +328,11 @@ void ky_scene_output_send_frame_done(struct ky_scene_output *scene_output, struc
     scene_node_send_frame_done(&scene_output->scene->tree.node, scene_output, now);
 }
 
-static bool scene_output_build_state(struct ky_scene_output *scene_output,
-                                     struct wlr_output_state *state,
-                                     const struct ky_scene_output_state_options *options)
+static bool scene_output_render(struct ky_scene_output *scene_output,
+                                struct wlr_output_state *state,
+                                struct ky_scene_render_target *target)
 {
     struct wlr_output *output = scene_output->output;
-
     if (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {
         return false;
     }
@@ -350,19 +349,13 @@ static bool scene_output_build_state(struct ky_scene_output *scene_output,
         return false;
     }
 
-    // TODO: if we combined with output setting, make sure the output position is applied ?
-    struct ky_scene_render_target render_target = {
-        .transform = output->transform,
-        .scale = output->scale,
-        .logical = { .x = scene_output->x, .y = scene_output->y },
-        .output = scene_output,
-        .render_pass = render_pass,
-    };
-
-    wlr_output_transformed_resolution(output, &render_target.trans_width,
-                                      &render_target.trans_height);
-    render_target.logical.width = render_target.trans_width / output->scale;
-    render_target.logical.height = render_target.trans_height / output->scale;
+    struct ky_scene_node *root = &scene_output->scene->tree.node;
+    pixman_region32_t cull_region;
+    pixman_region32_init_rect(&cull_region, target->logical.x, target->logical.y,
+                              target->logical.width, target->logical.height);
+    // calc visible region for each node in the region
+    root->impl.cull_invisible(root, root->x, root->y, &cull_region);
+    pixman_region32_fini(&cull_region);
 
     // clear current output buffer
     wlr_render_pass_add_rect(render_pass,
@@ -371,11 +364,9 @@ static bool scene_output_build_state(struct ky_scene_output *scene_output,
                                  .color = { .r = 0, .g = 0, .b = 0, .a = 1 },
                              });
 
-    // call all nodes from bottom to top
-    struct ky_scene_node *root = &scene_output->scene->tree.node;
-    int lx, ly;
-    ky_scene_node_coords(root, &lx, &ly);
-    root->impl.render(root, lx, ly, &render_target);
+    target->render_pass = render_pass;
+    // render each node with damage region and visible region
+    root->impl.render(root, root->x, root->y, target);
 
     // for software cursor
     wlr_output_add_software_cursors_to_render_pass(output, render_pass, NULL);
@@ -391,19 +382,51 @@ static bool scene_output_build_state(struct ky_scene_output *scene_output,
     return true;
 }
 
+static bool ky_scene_output_collect_damage(struct ky_scene_output *scene_output,
+                                           struct ky_scene_render_target *target)
+{
+    struct ky_scene_node *root = &scene_output->scene->tree.node;
+    // get current damage in all scene
+    root->impl.collect_damage(root, root->x, root->y, &target->damage);
+    // TODO: merge to outputs
+    pixman_region32_intersect_rect(&target->damage, &target->damage, target->logical.x,
+                                   target->logical.y, target->logical.width,
+                                   target->logical.height);
+
+    return pixman_region32_not_empty(&target->damage);
+}
+
 bool ky_scene_output_commit(struct ky_scene_output *scene_output,
                             const struct ky_scene_output_state_options *options)
 {
-    if (!scene_output->output->needs_frame) {
+    struct wlr_output *output = scene_output->output;
+    struct ky_scene_render_target render_target = {
+        .transform = output->transform,
+        .scale = output->scale,
+        .logical = { .x = scene_output->x, .y = scene_output->y },
+        .output = scene_output,
+    };
+    pixman_region32_init(&render_target.damage);
+    wlr_output_transformed_resolution(output, &render_target.trans_width,
+                                      &render_target.trans_height);
+    render_target.logical.width = render_target.trans_width / output->scale;
+    render_target.logical.height = render_target.trans_height / output->scale;
+
+    if (!scene_output->output->needs_frame &&
+        !ky_scene_output_collect_damage(scene_output, &render_target)) {
+        pixman_region32_fini(&render_target.damage);
         return true;
     }
+
+    // TODO: union output damage from damge signal
 
     bool ok = false;
     struct wlr_output_state state;
     // TODO: an empty state, combined with commit in output
+    // if we combined with output setting, make sure the output position is applied ?
     wlr_output_state_init(&state);
 
-    if (!scene_output_build_state(scene_output, &state, options)) {
+    if (!scene_output_render(scene_output, &state, &render_target)) {
         goto out;
     }
 
@@ -414,6 +437,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
 out:
     wlr_output_state_finish(&state);
+    pixman_region32_fini(&render_target.damage);
     return ok;
 }
 
@@ -422,17 +446,8 @@ static int scale_length(int length, int offset, float scale)
     return round((offset + length) * scale) - round(offset * scale);
 }
 
-bool ky_scene_render_box(struct wlr_box *clip, struct wlr_box *box,
-                         struct ky_scene_render_target *target)
+void ky_scene_render_box(struct wlr_box *box, struct ky_scene_render_target *target)
 {
-    if (!wlr_box_intersection(clip, box,
-                              &(struct wlr_box){
-                                  .width = target->logical.width,
-                                  .height = target->logical.height,
-                              })) {
-        return false;
-    }
-
     box->width = scale_length(box->width, box->x, target->scale);
     box->height = scale_length(box->height, box->y, target->scale);
     box->x = round(box->x * target->scale);
@@ -440,8 +455,6 @@ bool ky_scene_render_box(struct wlr_box *clip, struct wlr_box *box,
 
     enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
     wlr_box_transform(box, box, transform, target->trans_width, target->trans_height);
-
-    return true;
 }
 
 void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target)

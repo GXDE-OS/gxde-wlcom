@@ -51,6 +51,20 @@ static void node_update_outputs(struct ky_scene_node *node, int lx, int ly, stru
     assert(false);
 }
 
+static void node_collect_damage(struct ky_scene_node *node, int lx, int ly,
+                                pixman_region32_t *damage)
+{
+    kywc_log(KYWC_ERROR, "Need to implement collect_damage interface!");
+    assert(false);
+}
+
+static void node_cull_invisible(struct ky_scene_node *node, int lx, int ly,
+                                pixman_region32_t *region)
+{
+    kywc_log(KYWC_ERROR, "Need to implement cull_invisible interface!");
+    assert(false);
+}
+
 static void node_render(struct ky_scene_node *node, int lx, int ly,
                         struct ky_scene_render_target *target)
 {
@@ -75,6 +89,8 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
         .impl = {
             .accpet_input = node_accpet_input,
             .update_outputs = node_update_outputs,
+            .collect_damage = node_collect_damage,
+            .cull_invisible = node_cull_invisible,
             .render = node_render,
             .destroy = node_destroy,
         },
@@ -136,6 +152,33 @@ static void tree_update_outputs(struct ky_scene_node *node, int lx, int ly, stru
     }
 }
 
+static void tree_collect_damage(struct ky_scene_node *node, int lx, int ly,
+                                pixman_region32_t *damage)
+{
+    // skip node enabled check, damage is needed when enabled state changed
+    struct ky_scene_tree *scene_tree = ky_scene_tree_from_node(node);
+    struct ky_scene_node *child;
+
+    wl_list_for_each_reverse(child, &scene_tree->children, link) {
+        child->impl.collect_damage(child, lx + child->x, ly + child->y, damage);
+    }
+}
+
+static void tree_cull_invisible(struct ky_scene_node *node, int lx, int ly,
+                                pixman_region32_t *region)
+{
+    if (!node->enabled) {
+        return;
+    }
+
+    struct ky_scene_tree *scene_tree = ky_scene_tree_from_node(node);
+    struct ky_scene_node *child;
+
+    wl_list_for_each_reverse(child, &scene_tree->children, link) {
+        child->impl.cull_invisible(child, lx + child->x, ly + child->y, region);
+    }
+}
+
 static void tree_render(struct ky_scene_node *node, int lx, int ly,
                         struct ky_scene_render_target *target)
 {
@@ -175,6 +218,8 @@ static void ky_scene_tree_init(struct ky_scene_tree *tree, struct ky_scene_tree 
     /* override node interface */
     tree->node.impl.accpet_input = tree_accpet_input;
     tree->node.impl.update_outputs = tree_update_outputs;
+    tree->node.impl.collect_damage = tree_collect_damage;
+    tree->node.impl.cull_invisible = tree_cull_invisible;
     tree->node.impl.render = tree_render;
     tree->node.impl.destroy = tree_destroy;
 
