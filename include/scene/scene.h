@@ -123,17 +123,10 @@ typedef void (*ky_scene_node_update_outputs_func_t)(struct ky_scene_node *node, 
                                                     struct ky_scene_output *ignore,
                                                     struct ky_scene_output *force);
 
-/**
- * if the output is full damaged, this can be skipped.
- * TODO: current enabled state of the parent tree
- */
 typedef void (*ky_scene_node_collect_damage_func_t)(struct ky_scene_node *node, int lx, int ly,
-                                                    pixman_region32_t *damage);
-/**
- * region ?
- */
-typedef void (*ky_scene_node_cull_invisible_func_t)(struct ky_scene_node *node, int lx, int ly,
-                                                    pixman_region32_t *region);
+                                                    bool parent_enabled, bool damage_all,
+                                                    pixman_region32_t *damage,
+                                                    pixman_region32_t *invisible);
 
 typedef void (*ky_scene_node_render_func_t)(struct ky_scene_node *node, int lx, int ly,
                                             struct ky_scene_render_target *target);
@@ -151,10 +144,6 @@ struct ky_scene_node_interface {
      * Collect all nodes damage region.
      */
     ky_scene_node_collect_damage_func_t collect_damage;
-    /**
-     * Cull invisible region.
-     */
-    ky_scene_node_cull_invisible_func_t cull_invisible;
     /**
      * Generate a rendering instance for the node and
      * start the rendering instance generation function for the child nodes.
@@ -184,6 +173,14 @@ enum ky_scene_node_prop {
     KY_SCENE_NODE_EXTERNAL = 1 << 7,
 };
 
+enum ky_scene_node_update_mask {
+    KY_SCENE_NODE_UPDATE_NONE = 0,
+    KY_SCENE_NODE_UPDATE_POSITION = 1 << 0,
+    KY_SCENE_NODE_UPDATE_SIZE = 1 << 1,
+    KY_SCENE_NODE_UPDATE_LAYER = 1 << 2,
+    KY_SCENE_NODE_UPDATE_CONTENT = 1 << 3,
+};
+
 struct ky_scene_node {
     struct ky_scene_tree *parent;
     struct wl_list link;
@@ -199,6 +196,11 @@ struct ky_scene_node {
 
     bool enabled, bypassed;
     int x, y;
+
+    /* node state changes after last collect_damage */
+    uint32_t update_mask;
+    /* enabled state after last collect_damage */
+    bool last_enabled;
 
     /* impl.xxx MUST not be NULL */
     struct ky_scene_node_interface impl;
@@ -222,6 +224,7 @@ struct ky_scene {
     ky_scene_node_destroy_func_t tree_destroy;
 
     struct wl_list outputs;
+    pixman_region32_t pending_damage;
 
     // May be NULL
     struct wlr_presentation *presentation;

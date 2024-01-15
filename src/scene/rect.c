@@ -43,38 +43,48 @@ static void rect_update_outputs(struct ky_scene_node *node, int lx, int ly, stru
     // Do nothing
 }
 
-static void rect_collect_damage(struct ky_scene_node *node, int lx, int ly,
-                                pixman_region32_t *damage)
+static void rect_collect_damage(struct ky_scene_node *node, int lx, int ly, bool parent_enabled,
+                                bool damage_all, pixman_region32_t *damage,
+                                pixman_region32_t *invisible)
 {
-    struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
-
-    pixman_region32_union_rect(damage, damage, lx, ly, rect->width, rect->height);
-}
-
-static void rect_cull_invisible(struct ky_scene_node *node, int lx, int ly,
-                                pixman_region32_t *region)
-{
-    if (!node->enabled) {
+    bool node_enabled = parent_enabled && node->enabled;
+    /* node is still disabled, skip it */
+    if (!node_enabled && !node->last_enabled) {
+        node->update_mask = KY_SCENE_NODE_UPDATE_NONE;
         return;
     }
 
     struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
-    /* invisible */
-    if (rect->color[3] == 0) {
-        return;
+    /* return early if node is not updated, update visible is needed */
+    if (node->last_enabled && node_enabled && !damage_all && !node->update_mask) {
+        pixman_region32_clear(&rect->visible_region);
+        if (rect->color[3] != 0) {
+            pixman_region32_init_rect(&rect->visible_region, lx, ly, rect->width, rect->height);
+            pixman_region32_subtract(&rect->visible_region, &rect->visible_region, invisible);
+        }
+        goto done;
+    }
+
+    if (node->last_enabled) {
+        pixman_region32_union(damage, damage, &rect->visible_region);
     }
 
     pixman_region32_clear(&rect->visible_region);
 
-    pixman_region32_t logical;
-    pixman_region32_init_rect(&logical, lx, ly, rect->width, rect->height);
-    pixman_region32_intersect(&rect->visible_region, &logical, region);
-
-    if (rect->color[3] == 1) {
-        pixman_region32_subtract(region, region, &logical);
+    // current visible region
+    if (node_enabled && rect->color[3] != 0) {
+        pixman_region32_init_rect(&rect->visible_region, lx, ly, rect->width, rect->height);
+        pixman_region32_subtract(&rect->visible_region, &rect->visible_region, invisible);
+        pixman_region32_union(damage, damage, &rect->visible_region);
     }
 
-    pixman_region32_fini(&logical);
+done:
+    if (node_enabled && rect->color[3] == 1) {
+        pixman_region32_union_rect(invisible, invisible, lx, ly, rect->width, rect->height);
+    }
+
+    node->last_enabled = node_enabled;
+    node->update_mask = KY_SCENE_NODE_UPDATE_NONE;
 }
 
 static void rect_render(struct ky_scene_node *node, int lx, int ly,
@@ -89,7 +99,12 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
-    if (!pixman_region32_not_empty(&rect->visible_region)) {
+    pixman_region32_t render_region;
+    pixman_region32_init(&render_region);
+    pixman_region32_intersect(&render_region, &rect->visible_region, &target->damage);
+
+    if (!pixman_region32_not_empty(&render_region)) {
+        pixman_region32_fini(&render_region);
         return;
     }
 
@@ -101,9 +116,6 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     };
     ky_scene_render_box(&dst_box, target);
 
-    pixman_region32_t render_region;
-    pixman_region32_init(&render_region);
-    pixman_region32_copy(&render_region, &rect->visible_region);
     pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&render_region, target);
 
@@ -128,6 +140,11 @@ static void rect_destroy(struct ky_scene_node *node)
     }
 
     struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
+    if (node->last_enabled) {
+        struct ky_scene *scene = ky_scene_from_node(node);
+        pixman_region32_union(&scene->pending_damage, &scene->pending_damage,
+                              &rect->visible_region);
+    }
 
     pixman_region32_fini(&rect->visible_region);
     rect->node_destroy(node);
@@ -147,7 +164,6 @@ static void scene_rect_init(struct ky_scene_rect *rect, struct ky_scene_tree *pa
     rect->node.impl.accpet_input = rect_accpet_input;
     rect->node.impl.update_outputs = rect_update_outputs;
     rect->node.impl.collect_damage = rect_collect_damage;
-    rect->node.impl.cull_invisible = rect_cull_invisible;
     rect->node.impl.render = rect_render;
 
     rect->width = width;
@@ -178,6 +194,7 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
 
     rect->width = width;
     rect->height = height;
+    rect->node.update_mask |= KY_SCENE_NODE_UPDATE_SIZE;
 }
 
 void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[static 4])
@@ -187,4 +204,5 @@ void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[stati
     }
 
     memcpy(rect->color, color, sizeof(rect->color));
+    rect->node.update_mask |= KY_SCENE_NODE_UPDATE_CONTENT;
 }
