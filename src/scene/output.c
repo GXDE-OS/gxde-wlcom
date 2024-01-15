@@ -415,9 +415,11 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     // current scene damage in the output box
     ky_scene_collect_damage_in_box(scene_output->scene, &target.logical, &target.damage);
-
     // union all damage in the output layout box
     pixman_region32_translate(&target.damage, -target.logical.x, -target.logical.y);
+    if (floor(target.scale) != target.scale) {
+        wlr_region_expand(&target.damage, &target.damage, 1);
+    }
     wlr_damage_ring_add(&scene_output->damage_ring, &target.damage);
 
     if (!scene_output->output->needs_frame &&
