@@ -249,12 +249,12 @@ static struct keycodes *keycodes_create(const char *str)
 
     size_t len = 0;
     char **split_str = split_string(str, "+", &len);
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0, j = 0; i < len; i++) {
         if (!keycode_map(split_str[i])) {
             continue;
         }
-        keycodes->code = realloc(keycodes->code, sizeof(uint32_t));
-        keycodes->code[i] = keycode_map(split_str[i]);
+        keycodes->code = realloc(keycodes->code, (keycodes->len + 1) * sizeof(uint32_t));
+        keycodes->code[j++] = keycode_map(split_str[i]);
         keycodes->len++;
     }
     free_split_string(&split_str, len);
