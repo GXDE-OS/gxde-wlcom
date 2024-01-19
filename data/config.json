@@ -26,6 +26,75 @@
                 "actiontype": "button",
                 "button": "right",
                 "desc": "simulate right key"
+            },
+            "swipe:touch:1:left:right": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Super_L",
+                "keys": "a",
+                "desc": "show Siderbar"
+            },
+            "hold:touchpad:3:none": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "com.ukui.search.service",
+                "path": "\/",
+                "interface": "org.ukui.search.service",
+                "method": "showWindow",
+                "desc": "global search"
+            },
+            "swipe:touchpad:3:down": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Super_L",
+                "keys": "h",
+                "desc": "show desktop"
+            },
+            "hold:touchpad:4:none": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Super_L",
+                "keys": "a",
+                "desc": "show Siderbar"
+            },
+            "swipe:touchpad:4:left": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Control_L+Alt_L",
+                "keys": "Left",
+                "desc": "switch Left Workspace"
+            },
+            "swipe:touchpad:4:right": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Control_L+Alt_L",
+                "keys": "Right",
+                "desc": "switch Right Workspace"
+            },
+            "swipe:touchpad:4:up": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Control_L+Alt_L",
+                "keys": "Up",
+                "desc": "switch Up Workspace"
+            },
+            "swipe:touchpad:4:down": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Control_L+Alt_L",
+                "keys": "Down",
+                "desc": "switch Down Workspace"
+            },
+            "swipe:touch:4:down": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "com.ukui.search.service",
+                "path": "\/",
+                "interface": "org.ukui.search.service",
+                "method": "showWindow",
+                "desc": "global search"
             }
         }
     },
