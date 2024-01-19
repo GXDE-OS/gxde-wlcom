@@ -143,7 +143,7 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
         wl_list_remove(&cursor->hover.destroy.link);
         cursor->hover.node = NULL;
     }
-    _cursor_feed_motion(cursor, current_time_msec());
+    cursor_feed_motion(cursor, current_time_msec());
 }
 
 void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
@@ -595,8 +595,9 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
     struct cursor *cursor = wl_container_of(listener, cursor, request_set_cursor);
     struct wlr_seat_pointer_request_set_cursor_event *event = data;
     struct wlr_seat_client *focused_client = cursor->seat->wlr_seat->pointer_state.focused_client;
+    struct seat_pointer_grab *grab = cursor->seat->pointer_grab;
 
-    if (focused_client != event->seat_client) {
+    if (grab || focused_client != event->seat_client) {
         return;
     }
 
