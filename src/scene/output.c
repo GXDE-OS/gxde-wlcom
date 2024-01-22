@@ -353,36 +353,12 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
         return false;
     }
 
+    target->buffer = buffer;
+    target->render_pass = render_pass;
     pixman_region32_clear(&target->damage);
     wlr_damage_ring_get_buffer_damage(&scene_output->damage_ring, buffer_age, &target->damage);
 
-    // to scene layout coord
-    pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
-
-    // clear current output buffer damage region
-    pixman_region32_t background;
-    pixman_region32_init(&background);
-    pixman_region32_subtract(&background, &target->damage,
-                             &scene_output->scene->collected_invisible);
-    pixman_region32_translate(&background, -target->logical.x, -target->logical.y);
-    ky_scene_render_region(&background, target);
-    wlr_render_pass_add_rect(render_pass,
-                             &(struct wlr_render_rect_options){
-                                 .box = { .width = buffer->width, .height = buffer->height },
-                                 .color = { .r = 0, .g = 0, .b = 0, .a = 1 },
-                                 .clip = &background,
-                             });
-    pixman_region32_fini(&background);
-
-    target->render_pass = render_pass;
-    struct ky_scene_node *root = &scene_output->scene->tree.node;
-    // render each node with damage region and visible region
-    root->impl.render(root, root->x, root->y, target);
-
-    // for software cursor
-    pixman_region32_translate(&target->damage, -target->logical.x, -target->logical.y);
-    wlr_region_scale(&target->damage, &target->damage, target->scale);
-    wlr_output_add_software_cursors_to_render_pass(output, render_pass, &target->damage);
+    ky_scene_render_damage_in_target(scene_output->scene, target);
 
     pixman_region32_t frame_damage;
     pixman_region32_init(&frame_damage);
