@@ -93,6 +93,8 @@ struct cursor {
 
     /* special: hold a pressed button and leave surface */
     bool hold_mode;
+
+    bool hidden;
 };
 
 struct cursor *cursor_create(struct seat *seat);
@@ -109,5 +111,7 @@ void cursor_rebase(struct cursor *cursor);
 
 void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, double y,
                  bool delta, bool absolute);
+
+void cursor_set_hidden(struct cursor *cursor, bool hidden);
 
 #endif /* _CURSOR_H_ */

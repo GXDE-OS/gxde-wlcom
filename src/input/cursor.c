@@ -823,3 +823,18 @@ void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, 
     cursor->lx = wlr_cursor->x;
     cursor->ly = wlr_cursor->y;
 }
+
+void cursor_set_hidden(struct cursor *cursor, bool hidden)
+{
+    if (cursor->hidden == hidden) {
+        return;
+    }
+
+    if (hidden) {
+        cursor_set_image(cursor, CURSOR_NONE);
+        cursor->hidden = true;
+    } else {
+        cursor->hidden = false;
+        cursor_rebase(cursor);
+    }
+}
