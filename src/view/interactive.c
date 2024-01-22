@@ -17,6 +17,8 @@
 #define VIEW_EDGE_GAP 20
 #define VIEW_TOP_GAP 5
 #define VIEW_BOTTOM_GAP 100
+#define VIEW_LEFT_GAP 100
+#define VIEW_RIGHT_GAP 100
 #define VIEW_MIN_WIDTH 200
 #define VIEW_MIN_HEIGHT 100
 #define VIEW_MOVE_STEP 10
@@ -294,6 +296,15 @@ static void interactive_move_constraints(struct interactive_grab *grab, int *x, 
     } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) &&
                uy2 - y1 < VIEW_BOTTOM_GAP) {
         *y = uy2 - VIEW_BOTTOM_GAP + kywc_view->margin.off_y;
+    }
+
+    /* constraints when moving to left and right */
+    if (output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) && x2 < VIEW_LEFT_GAP) {
+        *x = VIEW_LEFT_GAP - kywc_view->geometry.width -
+             (kywc_view->margin.off_width - kywc_view->margin.off_x);
+    } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) &&
+               ux2 - x1 < VIEW_RIGHT_GAP) {
+        *x = ux2 - VIEW_RIGHT_GAP + kywc_view->margin.off_y;
     }
 }
 
