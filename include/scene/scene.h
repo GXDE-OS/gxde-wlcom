@@ -217,6 +217,7 @@ struct ky_scene_node {
     uint32_t damage_type;
     /* enabled state after last collect_damage */
     bool last_enabled;
+    pixman_region32_t visible_region;
 
     /* impl.xxx MUST not be NULL */
     struct ky_scene_node_interface impl;
@@ -261,7 +262,6 @@ struct ky_scene_rect {
 
     int width, height;
     float color[4];
-    pixman_region32_t visible_region;
 };
 
 typedef bool (*ky_scene_buffer_point_accepts_input_func_t)(struct ky_scene_buffer *buffer,
@@ -292,8 +292,6 @@ struct ky_scene_buffer {
 
     float opacity;
     pixman_region32_t opaque_region;
-
-    pixman_region32_t visible_region;
 
     /**
      * The output that the largest area of this buffer is displayed on.

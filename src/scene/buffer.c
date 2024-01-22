@@ -248,20 +248,19 @@ static void buffer_collect_damage(struct ky_scene_node *node, int lx, int ly, bo
     if (!no_damage) {
         /* node last visible region is added to damgae */
         if (node->last_enabled && (!node_enabled || (damage_type & KY_SCENE_DAMAGE_HARMFUL))) {
-            pixman_region32_union(damage, damage, &scene_buffer->visible_region);
+            pixman_region32_union(damage, damage, &node->visible_region);
         }
     }
 
     bool visible = node_enabled && scene_buffer->opacity != 0 && scene_buffer->buffer;
-    pixman_region32_clear(&scene_buffer->visible_region);
+    pixman_region32_clear(&node->visible_region);
 
     if (visible) {
-        pixman_region32_init_rect(&scene_buffer->visible_region, lx, ly, width, height);
-        pixman_region32_subtract(&scene_buffer->visible_region, &scene_buffer->visible_region,
-                                 invisible);
+        pixman_region32_init_rect(&node->visible_region, lx, ly, width, height);
+        pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
 
         if (!no_damage) {
-            pixman_region32_union(damage, damage, &scene_buffer->visible_region);
+            pixman_region32_union(damage, damage, &node->visible_region);
         }
 
         pixman_region32_t region;
@@ -304,13 +303,13 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
-    if (!pixman_region32_not_empty(&scene_buffer->visible_region)) {
+    if (!pixman_region32_not_empty(&node->visible_region)) {
         return;
     }
 
     pixman_region32_t render_region;
     pixman_region32_init(&render_region);
-    pixman_region32_intersect(&render_region, &scene_buffer->visible_region, &target->damage);
+    pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
 
     if (!pixman_region32_not_empty(&render_region)) {
         pixman_region32_fini(&render_region);
@@ -408,11 +407,10 @@ static void buffer_destroy(struct ky_scene_node *node)
 
     if (node->last_enabled) {
         struct ky_scene *scene = ky_scene_from_node(node);
-        ky_scene_add_damage(scene, &scene_buffer->visible_region);
+        ky_scene_add_damage(scene, &node->visible_region);
     }
 
     pixman_region32_fini(&scene_buffer->opaque_region);
-    pixman_region32_fini(&scene_buffer->visible_region);
     scene_buffer->node_destroy(node);
 }
 
@@ -441,7 +439,6 @@ static void scene_buffer_init(struct ky_scene_buffer *scene_buffer, struct ky_sc
     wl_signal_init(&scene_buffer->events.frame_done);
 
     pixman_region32_init(&scene_buffer->opaque_region);
-    pixman_region32_init(&scene_buffer->visible_region);
 }
 
 struct ky_scene_buffer *ky_scene_buffer_create(struct ky_scene_tree *parent,
@@ -512,10 +509,10 @@ void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer
             struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
             pixman_region32_t region;
             pixman_region32_init(&region);
-            pixman_region32_copy(&region, &scene_buffer->visible_region);
+            pixman_region32_copy(&region, &scene_buffer->node.visible_region);
             if (damage && pixman_region32_not_empty(damage)) {
                 buffer_get_scene_damage(scene_buffer, &region, damage);
-                pixman_region32_intersect(&region, &region, &scene_buffer->visible_region);
+                pixman_region32_intersect(&region, &region, &scene_buffer->node.visible_region);
             }
             ky_scene_add_damage(scene, &region);
             pixman_region32_fini(&region);
@@ -568,7 +565,7 @@ void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer,
     scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMLESS;
     if (scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL)) {
         struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
-        ky_scene_add_damage(scene, &scene_buffer->visible_region);
+        ky_scene_add_damage(scene, &scene_buffer->node.visible_region);
     }
 }
 
@@ -615,7 +612,7 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
     scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMLESS;
     if (scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL)) {
         struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
-        ky_scene_add_damage(scene, &scene_buffer->visible_region);
+        ky_scene_add_damage(scene, &scene_buffer->node.visible_region);
     }
 }
 

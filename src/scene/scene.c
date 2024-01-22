@@ -104,6 +104,7 @@ static void node_destroy(struct ky_scene_node *node)
     wlr_addon_set_finish(&node->addons);
     ky_scene_node_set_enabled(node, false);
 
+    pixman_region32_fini(&node->visible_region);
     wl_list_remove(&node->link);
     free(node);
 }
@@ -127,6 +128,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
 
     wl_list_init(&node->link);
     wl_signal_init(&node->events.destroy);
+    pixman_region32_init(&node->visible_region);
 
     if (parent != NULL) {
         wl_list_insert(parent->children.prev, &node->link);
