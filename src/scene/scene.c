@@ -76,27 +76,28 @@ static void node_get_bounding_box(struct ky_scene_node *node, struct wlr_box *bo
     assert(false);
 }
 
-static bool node_push_damage(struct ky_scene_node *node, uint32_t damage_type,
-                             struct wlr_box *damage)
+static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
+                             uint32_t damage_type, pixman_region32_t *damage)
 {
     if (!node->enabled) {
-        return false;
+        return;
     }
 
-    struct wlr_box node_damage = { 0 };
-    damage ? node_damage = *damage : node->impl.get_bounding_box(node, &node_damage);
-
-    if (wlr_box_empty(&node_damage)) {
-        return false;
+    if (!pixman_region32_not_empty(damage)) {
+        struct wlr_box box = { 0 };
+        node->impl.get_bounding_box(node, &box);
+        if (wlr_box_empty(&box)) {
+            return;
+        }
+        pixman_region32_init_rect(damage, box.x, box.y, box.width, box.height);
     }
 
     /* root node has own push_damage */
     assert(node->parent);
 
-    node_damage.x += node->x;
-    node_damage.y += node->y;
-    return node->parent->node.impl.push_damage(&node->parent->node, damage_type | node->damage_type,
-                                               &node_damage);
+    pixman_region32_translate(damage, node->x, node->y);
+    node->parent->node.impl.push_damage(&node->parent->node, damage_node,
+                                        damage_type | node->damage_type, damage);
 }
 
 static void node_destroy(struct ky_scene_node *node)
@@ -303,40 +304,38 @@ static void scene_damage_outputs(struct ky_scene *scene, const pixman_region32_t
     }
 }
 
-static bool scene_push_damage(struct ky_scene_node *node, uint32_t damage_type,
-                              struct wlr_box *damage)
+static void scene_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
+                              uint32_t damage_type, pixman_region32_t *damage)
 {
     if (!node->enabled) {
-        return false;
+        return;
     }
 
-    damage_type |= node->damage_type;
-    assert(damage_type != KY_SCENE_DAMAGE_NONE);
-    if (damage_type == KY_SCENE_DAMAGE_HARMLESS) {
-        return true;
+    if (!pixman_region32_not_empty(damage)) {
+        struct wlr_box box = { 0 };
+        node->impl.get_bounding_box(node, &box);
+        if (wlr_box_empty(&box)) {
+            return;
+        }
+        pixman_region32_init_rect(damage, box.x, box.y, box.width, box.height);
     }
 
-    struct wlr_box node_damage = { 0 };
-    damage ? node_damage = *damage : node->impl.get_bounding_box(node, &node_damage);
-
-    if (wlr_box_empty(&node_damage)) {
-        return false;
-    }
-
-    node_damage.x += node->x;
-    node_damage.y += node->y;
+    pixman_region32_translate(damage, node->x, node->y);
 
     struct ky_scene *scene = ky_scene_from_node(node);
+    damage_type |= node->damage_type;
 
-    pixman_region32_t region;
-    pixman_region32_init_rect(&region, damage->x, damage->y, damage->width, damage->height);
+    assert(damage_type != KY_SCENE_DAMAGE_NONE);
+    if (damage_type == KY_SCENE_DAMAGE_HARMLESS) {
+        assert(damage_node->type == KY_SCENE_NODE_RECT ||
+               damage_node->type == KY_SCENE_NODE_BUFFER);
+        pixman_region32_intersect(damage, damage, &damage_node->visible_region);
+        ky_scene_add_damage(scene, damage);
+        return;
+    }
 
-    scene_damage_outputs(scene, &region);
-
-    pixman_region32_union(&scene->pushed_damage, &scene->pushed_damage, &region);
-    pixman_region32_fini(&region);
-
-    return false;
+    scene_damage_outputs(scene, damage);
+    pixman_region32_union(&scene->pushed_damage, &scene->pushed_damage, damage);
 }
 
 static void scene_destroy(struct ky_scene_node *node)
@@ -485,11 +484,9 @@ void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled)
         return;
     }
 
-    node->damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     node->enabled = enabled;
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y)
@@ -498,12 +495,10 @@ void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y)
         return;
     }
 
-    node->damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     node->x = x;
     node->y = y;
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 
     ky_scene_node_update_outputs(node, NULL, NULL, NULL);
 }
@@ -516,12 +511,10 @@ void ky_scene_node_place_above(struct ky_scene_node *node, struct ky_scene_node 
         return;
     }
 
-    node->damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     wl_list_remove(&node->link);
     wl_list_insert(&sibling->link, &node->link);
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
 void ky_scene_node_place_below(struct ky_scene_node *node, struct ky_scene_node *sibling)
@@ -532,12 +525,10 @@ void ky_scene_node_place_below(struct ky_scene_node *node, struct ky_scene_node 
         return;
     }
 
-    node->damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     wl_list_remove(&node->link);
     wl_list_insert(sibling->link.prev, &node->link);
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
 void ky_scene_node_raise_to_top(struct ky_scene_node *node)
@@ -575,13 +566,11 @@ void ky_scene_node_reparent(struct ky_scene_node *node, struct ky_scene_tree *ne
         assert(&ancestor->node != node);
     }
 
-    node->damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     wl_list_remove(&node->link);
     node->parent = new_parent;
     wl_list_insert(new_parent->children.prev, &node->link);
-    node->impl.push_damage(node, 0, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 
     ky_scene_node_update_outputs(node, NULL, NULL, NULL);
 }
@@ -626,6 +615,22 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
         *ny = sy;
     }
     return found;
+}
+
+void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
+                               const pixman_region32_t *damage)
+{
+    pixman_region32_t damage_region;
+    pixman_region32_init(&damage_region);
+
+    if (damage != NULL) {
+        pixman_region32_copy(&damage_region, damage);
+    }
+
+    node->damage_type |= damage_type;
+    node->impl.push_damage(node, node, 0, &damage_region);
+
+    pixman_region32_fini(&damage_region);
 }
 
 void ky_scene_log_region(enum kywc_log_level level, const char *desc,

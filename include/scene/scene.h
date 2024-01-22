@@ -132,9 +132,9 @@ typedef void (*ky_scene_node_collect_damage_func_t)(struct ky_scene_node *node, 
 typedef void (*ky_scene_node_get_bounding_box_func_t)(struct ky_scene_node *node,
                                                       struct wlr_box *box);
 
-/* return true if node damage is harmless */
-typedef bool (*ky_scene_node_push_damage_func_t)(struct ky_scene_node *node, uint32_t damage_type,
-                                                 struct wlr_box *damage);
+typedef void (*ky_scene_node_push_damage_func_t)(struct ky_scene_node *node,
+                                                 struct ky_scene_node *damage_node,
+                                                 uint32_t damage_type, pixman_region32_t *damage);
 
 typedef void (*ky_scene_node_render_func_t)(struct ky_scene_node *node, int lx, int ly,
                                             struct ky_scene_render_target *target);

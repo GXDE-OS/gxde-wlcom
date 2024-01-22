@@ -453,7 +453,7 @@ struct ky_scene_buffer *ky_scene_buffer_create(struct ky_scene_tree *parent,
 
     if (buffer) {
         scene_buffer->buffer = wlr_buffer_lock(buffer);
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
         ky_scene_node_update_outputs(&scene_buffer->node, NULL, NULL, NULL);
     }
 
@@ -481,10 +481,6 @@ static void buffer_get_scene_damage(struct ky_scene_buffer *scene_buffer, pixman
     pixman_region32_intersect_rect(dst, dst, box.x, box.y, box.width, box.height);
     pixman_region32_translate(dst, -box.x, -box.y);
     wlr_region_scale_xy(dst, dst, scale_x, scale_y);
-
-    int lx, ly;
-    ky_scene_node_coords(&scene_buffer->node, &lx, &ly);
-    pixman_region32_translate(dst, lx, ly);
 }
 
 void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer,
@@ -504,28 +500,25 @@ void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer
 
     /* return early if the scene buffer output no need to update */
     if (old_width == new_width && old_height == new_height) {
-        scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMLESS;
-        if (scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL)) {
-            struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
+        if (damage && pixman_region32_not_empty(damage)) {
             pixman_region32_t region;
             pixman_region32_init(&region);
-            pixman_region32_copy(&region, &scene_buffer->node.visible_region);
-            if (damage && pixman_region32_not_empty(damage)) {
-                buffer_get_scene_damage(scene_buffer, &region, damage);
-                pixman_region32_intersect(&region, &region, &scene_buffer->node.visible_region);
-            }
-            ky_scene_add_damage(scene, &region);
+            buffer_get_scene_damage(scene_buffer, &region, damage);
+            ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, &region);
             pixman_region32_fini(&region);
+        } else {
+            ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
         }
         return;
     }
 
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
     if (old_width > new_width || old_height > new_height) {
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0,
-                                            &(struct wlr_box){ 0, 0, old_width, old_height });
+        pixman_region32_t region;
+        pixman_region32_init_rect(&region, 0, 0, old_width, old_height);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, &region);
+        pixman_region32_fini(&region);
     } else if (old_width < new_width || old_height < new_height) {
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     }
 
     // buffer update outputs, leave active outputs when no buffer
@@ -545,8 +538,7 @@ void ky_scene_buffer_set_opaque_region(struct ky_scene_buffer *scene_buffer,
     }
 
     pixman_region32_copy(&scene_buffer->opaque_region, region);
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-    scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
 void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer,
@@ -562,11 +554,7 @@ void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer,
         scene_buffer->src_box = (struct wlr_fbox){ 0 };
     }
 
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMLESS;
-    if (scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL)) {
-        struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
-        ky_scene_add_damage(scene, &scene_buffer->node.visible_region);
-    }
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
 void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int width, int height)
@@ -575,11 +563,9 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
         return;
     }
 
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
     bool update_later = false;
     if (scene_buffer->dst_width > width || scene_buffer->dst_height > height) {
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     } else if (scene_buffer->dst_width < width || scene_buffer->dst_height < height) {
         update_later = true;
     }
@@ -588,7 +574,7 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
     scene_buffer->dst_height = height;
 
     if (update_later) {
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     }
 
     ky_scene_node_update_outputs(&scene_buffer->node, NULL, NULL, NULL);
@@ -603,17 +589,12 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
 
     // buffer size is used
     if (scene_buffer->dst_width <= 0 || scene_buffer->dst_height <= 0) {
-        scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-        scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     }
 
     scene_buffer->transform = transform;
 
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMLESS;
-    if (scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL)) {
-        struct ky_scene *scene = ky_scene_from_node(&scene_buffer->node);
-        ky_scene_add_damage(scene, &scene_buffer->node.visible_region);
-    }
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
 void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opacity)
@@ -623,8 +604,7 @@ void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opa
     }
 
     scene_buffer->opacity = opacity;
-    scene_buffer->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-    scene_buffer->node.impl.push_damage(&scene_buffer->node, 0, NULL);
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
 void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *outputs,

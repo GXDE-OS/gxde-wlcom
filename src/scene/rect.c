@@ -209,8 +209,7 @@ struct ky_scene_rect *ky_scene_rect_create(struct ky_scene_tree *parent, int wid
     }
 
     scene_rect_init(scene_rect, parent, width, height, color);
-
-    scene_rect->node.impl.push_damage(&scene_rect->node, 0, NULL);
+    ky_scene_node_push_damage(&scene_rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 
     return scene_rect;
 }
@@ -221,11 +220,9 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
         return;
     }
 
-    rect->node.damage_type |= KY_SCENE_DAMAGE_HARMFUL;
-
     bool update_later = false;
     if ((rect->width > width || rect->height > height)) {
-        rect->node.impl.push_damage(&rect->node, 0, NULL);
+        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     } else if (rect->width < width || rect->height < height) {
         update_later = true;
     }
@@ -234,7 +231,7 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
     rect->height = height;
 
     if (update_later) {
-        rect->node.impl.push_damage(&rect->node, 0, NULL);
+        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     }
 }
 
@@ -244,13 +241,9 @@ void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[stati
         return;
     }
 
-    bool harmful = (rect->color[3] != 1 && color[3] == 1) || (rect->color[1] == 1 && color[3] != 1);
-    rect->node.damage_type |= harmful ? KY_SCENE_DAMAGE_HARMFUL : KY_SCENE_DAMAGE_HARMLESS;
-
     memcpy(rect->color, color, sizeof(rect->color));
 
-    if (rect->node.impl.push_damage(&rect->node, 0, NULL)) {
-        struct ky_scene *scene = ky_scene_from_node(&rect->node);
-        ky_scene_add_damage(scene, &rect->node.visible_region);
-    }
+    bool harmful = (rect->color[3] != 1 && color[3] == 1) || (rect->color[1] == 1 && color[3] != 1);
+    ky_scene_node_push_damage(&rect->node,
+                              harmful ? KY_SCENE_DAMAGE_HARMFUL : KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
