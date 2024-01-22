@@ -319,7 +319,9 @@ static void scene_node_send_frame_done(struct ky_scene_node *node,
         struct ky_scene_tree *scene_tree = ky_scene_tree_from_node(node);
         struct ky_scene_node *child;
         wl_list_for_each(child, &scene_tree->children, link) {
-            scene_node_send_frame_done(child, scene_output, now);
+            if (child->type != KY_SCENE_NODE_RECT) {
+                scene_node_send_frame_done(child, scene_output, now);
+            }
         }
     }
 }
@@ -354,10 +356,15 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     pixman_region32_clear(&target->damage);
     wlr_damage_ring_get_buffer_damage(&scene_output->damage_ring, buffer_age, &target->damage);
 
+    // to scene layout coord
+    pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
+
     // clear current output buffer damage region
     pixman_region32_t background;
     pixman_region32_init(&background);
-    pixman_region32_copy(&background, &target->damage);
+    pixman_region32_subtract(&background, &target->damage,
+                             &scene_output->scene->collected_invisible);
+    pixman_region32_translate(&background, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&background, target);
     wlr_render_pass_add_rect(render_pass,
                              &(struct wlr_render_rect_options){
@@ -368,8 +375,6 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     pixman_region32_fini(&background);
 
     target->render_pass = render_pass;
-    pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
-
     struct ky_scene_node *root = &scene_output->scene->tree.node;
     // render each node with damage region and visible region
     root->impl.render(root, root->x, root->y, target);
@@ -427,6 +432,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         pixman_region32_fini(&target.damage);
         return true;
     }
+
+    // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
     bool ok = false;
     struct wlr_output_state state;

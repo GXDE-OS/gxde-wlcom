@@ -124,9 +124,17 @@ typedef void (*ky_scene_node_update_outputs_func_t)(struct ky_scene_node *node, 
                                                     struct ky_scene_output *force);
 
 typedef void (*ky_scene_node_collect_damage_func_t)(struct ky_scene_node *node, int lx, int ly,
-                                                    bool parent_enabled, bool damage_all,
+                                                    bool parent_enabled, uint32_t damage_type,
                                                     pixman_region32_t *damage,
-                                                    pixman_region32_t *invisible);
+                                                    pixman_region32_t *invisible,
+                                                    pixman_region32_t *affected);
+
+typedef void (*ky_scene_node_get_bounding_box_func_t)(struct ky_scene_node *node,
+                                                      struct wlr_box *box);
+
+/* return true if node damage is harmless */
+typedef bool (*ky_scene_node_push_damage_func_t)(struct ky_scene_node *node, uint32_t damage_type,
+                                                 struct wlr_box *damage);
 
 typedef void (*ky_scene_node_render_func_t)(struct ky_scene_node *node, int lx, int ly,
                                             struct ky_scene_render_target *target);
@@ -149,6 +157,14 @@ struct ky_scene_node_interface {
      * start the rendering instance generation function for the child nodes.
      */
     ky_scene_node_render_func_t render;
+    /**
+     * Get node bounding box.
+     */
+    ky_scene_node_get_bounding_box_func_t get_bounding_box;
+    /**
+     * Push damgae to output.
+     */
+    ky_scene_node_push_damage_func_t push_damage;
     /**
      * Private method, call it by ky_scene_node_destroy.
      */
@@ -173,12 +189,12 @@ enum ky_scene_node_prop {
     KY_SCENE_NODE_EXTERNAL = 1 << 7,
 };
 
-enum ky_scene_node_update_mask {
-    KY_SCENE_NODE_UPDATE_NONE = 0,
-    KY_SCENE_NODE_UPDATE_POSITION = 1 << 0,
-    KY_SCENE_NODE_UPDATE_SIZE = 1 << 1,
-    KY_SCENE_NODE_UPDATE_LAYER = 1 << 2,
-    KY_SCENE_NODE_UPDATE_CONTENT = 1 << 3,
+enum ky_scene_damage_type {
+    KY_SCENE_DAMAGE_NONE = 0,
+    /* the damage will not affect the visible region of the node */
+    KY_SCENE_DAMAGE_HARMLESS = 1 << 0,
+    /* the damage will affect the visible region of the node */
+    KY_SCENE_DAMAGE_HARMFUL = 1 << 1,
 };
 
 struct ky_scene_node {
@@ -197,8 +213,8 @@ struct ky_scene_node {
     bool enabled, bypassed;
     int x, y;
 
-    /* node state changes after last collect_damage */
-    uint32_t update_mask;
+    /* node damage type after last collect_damage */
+    uint32_t damage_type;
     /* enabled state after last collect_damage */
     bool last_enabled;
 
@@ -224,7 +240,13 @@ struct ky_scene {
     ky_scene_node_destroy_func_t tree_destroy;
 
     struct wl_list outputs;
-    pixman_region32_t pending_damage;
+
+    /* damage regon after collect_damage based in node's visible region */
+    pixman_region32_t collected_damage;
+    /* invisible region after collect_damage */
+    pixman_region32_t collected_invisible;
+    /* damage region pushed by nodes */
+    pixman_region32_t pushed_damage;
 
     // May be NULL
     struct wlr_presentation *presentation;

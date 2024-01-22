@@ -57,6 +57,9 @@ void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *ou
 void ky_scene_collect_damage_in_box(struct ky_scene *scene, struct wlr_box *box,
                                     pixman_region32_t *damage);
 
-void ky_scene_log_region(enum kywc_log_level level, pixman_region32_t *region);
+void ky_scene_add_damage(struct ky_scene *scene, const pixman_region32_t *damage);
+
+void ky_scene_log_region(enum kywc_log_level level, const char *desc,
+                         const pixman_region32_t *region);
 
 #endif /* _SCENE_P_H_ */
