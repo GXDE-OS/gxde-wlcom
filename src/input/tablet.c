@@ -86,6 +86,11 @@ static void tablet_tool_handle_set_cursor(struct wl_listener *listener, void *da
     struct tablet_tool *tablet_tool = wl_container_of(listener, tablet_tool, set_cursor);
     struct wlr_tablet_v2_event_cursor *event = data;
 
+    struct cursor *cursor = tablet_tool->tablet->input->seat->cursor;
+    if (cursor->seat->pointer_grab || cursor->hidden) {
+        return;
+    }
+
     struct wl_client *focused_client = NULL;
     struct wlr_surface *focused_surface = tablet_tool->tablet_tool->focused_surface;
     if (focused_surface != NULL) {
@@ -97,7 +102,6 @@ static void tablet_tool_handle_set_cursor(struct wl_listener *listener, void *da
         return;
     }
 
-    struct cursor *cursor = tablet_tool->tablet->input->seat->cursor;
     cursor->client_requested = true;
     wlr_cursor_set_surface(cursor->wlr_cursor, event->surface, event->hotspot_x, event->hotspot_y);
 }
