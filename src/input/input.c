@@ -24,8 +24,6 @@
 #include "output.h"
 #include "server.h"
 
-#define VIRTUAL_INPUT_DEVICE ((void *)0xdead)
-
 static struct input_manager *input_manager = NULL;
 
 void input_rebase_all_cursor(void)
@@ -139,7 +137,7 @@ static void input_get_prop(struct input *input, struct input_prop *prop)
     input->prop.type = wlr_input->type;
     input->prop.vendor = wlr_input->vendor;
     input->prop.product = wlr_input->product;
-    input->prop.is_virtual = wlr_input->data == VIRTUAL_INPUT_DEVICE;
+    input->prop.is_virtual = strncmp(input->name, "V_", 2) == 0;
     input->prop.support_mapped_to_output = wlr_input->type == WLR_INPUT_DEVICE_POINTER ||
                                            wlr_input->type == WLR_INPUT_DEVICE_TOUCH ||
                                            wlr_input->type == WLR_INPUT_DEVICE_TABLET_TOOL;
@@ -190,6 +188,7 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     }
 
     input->wlr_input = wlr_input;
+    wlr_input->data = input;
     input->name = name;
 
     input->manager = input_manager;
@@ -250,8 +249,6 @@ static void handle_new_virtual_pointer(struct wl_listener *listener, void *data)
     struct wlr_virtual_pointer_v1 *pointer = event->new_pointer;
     struct wlr_input_device *wlr_input = &pointer->pointer.base;
 
-    wlr_input->data = VIRTUAL_INPUT_DEVICE;
-
     const char *name = kywc_identifier_generate("V_%s", wlr_input->name);
 
     struct input *input = input_create(name, wlr_input);
@@ -279,8 +276,6 @@ static void handle_new_virtual_keyboard(struct wl_listener *listener, void *data
 {
     struct wlr_virtual_keyboard_v1 *keyboard = data;
     struct wlr_input_device *wlr_input = &keyboard->keyboard.base;
-
-    wlr_input->data = VIRTUAL_INPUT_DEVICE;
 
     const char *name = kywc_identifier_generate("V_%s", wlr_input->name);
 
@@ -482,6 +477,11 @@ struct input *input_by_name(const char *name)
     }
 
     return NULL;
+}
+
+struct input *input_from_wlr_input(struct wlr_input_device *wlr_input)
+{
+    return wlr_input->data;
 }
 
 struct seat *input_manager_get_default_seat(void)

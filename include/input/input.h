@@ -138,6 +138,8 @@ bool input_set_state(struct input *input, struct input_state *state);
 
 struct input *input_by_name(const char *name);
 
+struct input *input_from_wlr_input(struct wlr_input_device *wlr_input);
+
 void input_set_seat(struct input *input, const char *seat);
 
 void input_rebase_all_cursor(void);
