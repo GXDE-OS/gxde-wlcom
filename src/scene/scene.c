@@ -86,15 +86,7 @@ static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *d
         return;
     }
 
-    if (!pixman_region32_not_empty(damage)) {
-        struct wlr_box box = { 0 };
-        node->impl.get_bounding_box(node, &box);
-        if (wlr_box_empty(&box)) {
-            return;
-        }
-        pixman_region32_init_rect(damage, box.x, box.y, box.width, box.height);
-    }
-
+    assert(damage != NULL);
     /* root node has own push_damage */
     assert(node->parent);
 
@@ -314,15 +306,7 @@ static void scene_push_damage(struct ky_scene_node *node, struct ky_scene_node *
         return;
     }
 
-    if (!pixman_region32_not_empty(damage)) {
-        struct wlr_box box = { 0 };
-        node->impl.get_bounding_box(node, &box);
-        if (wlr_box_empty(&box)) {
-            return;
-        }
-        pixman_region32_init_rect(damage, box.x, box.y, box.width, box.height);
-    }
-
+    assert(damage != NULL);
     pixman_region32_translate(damage, node->x, node->y);
 
     struct ky_scene *scene = ky_scene_from_node(node);
@@ -665,8 +649,17 @@ void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_
     pixman_region32_t damage_region;
     pixman_region32_init(&damage_region);
 
-    if (damage != NULL) {
+    if (damage == NULL) {
+        struct wlr_box box = { 0 };
+        node->impl.get_bounding_box(node, &box);
+        pixman_region32_init_rect(&damage_region, box.x, box.y, box.width, box.height);
+    } else {
         pixman_region32_copy(&damage_region, damage);
+    }
+
+    if (!pixman_region32_not_empty(&damage_region)) {
+        pixman_region32_fini(&damage_region);
+        return;
     }
 
     node->damage_type |= damage_type;
