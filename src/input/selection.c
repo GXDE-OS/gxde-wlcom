@@ -63,10 +63,9 @@ static void handle_drag_icon_commit(struct wl_listener *listener, void *data)
     struct selection *selection = wl_container_of(listener, selection, drag_icon_commit);
     struct wlr_surface *surface = selection->drag_icon->surface;
 
-    int x = 0, y = 0;
-    ky_scene_node_get_position(selection->surface_node, &x, &y);
-    ky_scene_node_set_position(selection->surface_node, x + surface->current.dx,
-                               y + surface->current.dy);
+    ky_scene_node_set_position(selection->surface_node,
+                               selection->surface_node->x + surface->current.dx,
+                               selection->surface_node->y + surface->current.dy);
 }
 
 static void handle_drag_icon_destroy(struct wl_listener *listener, void *data)
@@ -129,8 +128,8 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     struct ky_scene_tree *tree = ky_scene_tree_create(layer->tree);
     struct ky_scene_tree *surface_tree = ky_scene_subsurface_tree_create(tree, drag_icon->surface);
-    selection->icon_node = ky_scene_node_from_tree(tree);
-    selection->surface_node = ky_scene_node_from_tree(surface_tree);
+    selection->icon_node = &tree->node;
+    selection->surface_node = &surface_tree->node;
 
     ky_scene_node_set_position(selection->icon_node, selection->seat->cursor->lx,
                                selection->seat->cursor->ly);

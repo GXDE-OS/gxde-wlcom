@@ -268,7 +268,7 @@ static void window_menu_set_enabled(struct window_menu *window_menu, bool enable
         return;
     }
 
-    ky_scene_node_raise_to_top(ky_scene_node_from_tree(manager->tree));
+    ky_scene_node_raise_to_top(&manager->tree->node);
     wl_signal_add(&window_menu->view->base.events.destroy, &window_menu->view_destroy);
 
     window_menu_update_screen(window_menu);
@@ -442,7 +442,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     }
 
     /* free all menus by tree node destroy */
-    ky_scene_node_destroy(ky_scene_node_from_tree(manager->tree));
+    ky_scene_node_destroy(&manager->tree->node);
 
     free(manager);
     manager = NULL;

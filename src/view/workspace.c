@@ -254,7 +254,7 @@ uint32_t workspace_manager_get_count(void)
 static void workspace_set_enabled(struct workspace *workspace, bool enabled)
 {
     for (int i = 0; i < 3; i++) {
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(workspace->layers[i].tree), enabled);
+        ky_scene_node_set_enabled(&workspace->layers[i].tree->node, enabled);
     }
 }
 
@@ -383,7 +383,7 @@ void workspace_destroy(struct workspace *workspace)
 
     /* destroy trees, trees must be empty */
     for (int i = 0; i < 3; i++) {
-        ky_scene_node_destroy(ky_scene_node_from_tree(workspace->layers[i].tree));
+        ky_scene_node_destroy(&workspace->layers[i].tree->node);
     }
 
     free((void *)workspace->uuid);

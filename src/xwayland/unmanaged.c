@@ -326,8 +326,7 @@ static bool unmanaged_buffer_point_accepts_input(struct ky_scene_buffer *scene_b
                                                  double *sy)
 {
     struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_buffer(scene_buffer);
-    struct input_event_node *input_node =
-        ky_scene_node_get_user_data(ky_scene_node_from_buffer(scene_buffer));
+    struct input_event_node *input_node = scene_buffer->node.data;
     struct xwayland_unmanaged *unmanaged = input_node->data;
 
     if (pixman_region32_not_empty(&unmanaged->input_region)) {
@@ -348,10 +347,9 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
     struct view_layer *layer = view_manager_get_layer(LAYER_UNMANAGED, false);
     struct ky_scene_surface *scene_surface =
         ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
-    unmanaged->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
+    unmanaged->surface_node = &scene_surface->buffer->node;
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
-    ky_scene_buffer_set_point_accepts_input(scene_surface->buffer,
-                                            unmanaged_buffer_point_accepts_input);
+    scene_surface->buffer->point_accepts_input = unmanaged_buffer_point_accepts_input;
 
     input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
                             xwayland_unmanaged_get_root, xwayland_unmanaged_get_toplevel,
@@ -364,7 +362,7 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
     unmanaged->unmap.notify = unmanaged_handle_unmap;
     wl_signal_add(&wlr_xwayland_surface->surface->events.unmap, &unmanaged->unmap);
     unmanaged->node_destroy.notify = unmanaged_handle_node_destroy;
-    ky_scene_node_add_destroy_listener(unmanaged->surface_node, &unmanaged->node_destroy);
+    wl_signal_add(&unmanaged->surface_node->events.destroy, &unmanaged->node_destroy);
 }
 
 static void unmanaged_handle_dissociate(struct wl_listener *listener, void *data)

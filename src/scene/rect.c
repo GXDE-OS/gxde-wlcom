@@ -12,6 +12,7 @@
 
 struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node)
 {
+    assert(node->type == KY_SCENE_NODE_RECT);
     struct ky_scene_rect *rect = wl_container_of(node, rect, node);
     return rect;
 };

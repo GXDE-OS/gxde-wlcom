@@ -78,30 +78,28 @@ static void subsurface_tree_reconfigure(struct ky_scene_subsurface_tree *subsurf
     wl_list_for_each(subsurface, &surface->current.subsurfaces_below, current.link) {
         struct ky_scene_subsurface_tree *child =
             subsurface_tree_from_subsurface(subsurface_tree, subsurface);
-        struct ky_scene_node *tree_node = ky_scene_node_from_tree(child->tree);
         if (prev != NULL) {
-            ky_scene_node_place_above(tree_node, prev);
+            ky_scene_node_place_above(&child->tree->node, prev);
         }
-        prev = tree_node;
+        prev = &child->tree->node;
 
-        ky_scene_node_set_position(tree_node, subsurface->current.x, subsurface->current.y);
+        ky_scene_node_set_position(&child->tree->node, subsurface->current.x,
+                                   subsurface->current.y);
     }
 
-    struct ky_scene_node *buffer_node =
-        ky_scene_node_from_buffer(subsurface_tree->scene_surface->buffer);
     if (prev != NULL) {
-        ky_scene_node_place_above(buffer_node, prev);
+        ky_scene_node_place_above(&subsurface_tree->scene_surface->buffer->node, prev);
     }
-    prev = buffer_node;
+    prev = &subsurface_tree->scene_surface->buffer->node;
 
     wl_list_for_each(subsurface, &surface->current.subsurfaces_above, current.link) {
         struct ky_scene_subsurface_tree *child =
             subsurface_tree_from_subsurface(subsurface_tree, subsurface);
-        struct ky_scene_node *tree_node = ky_scene_node_from_tree(child->tree);
-        ky_scene_node_place_above(tree_node, prev);
-        prev = tree_node;
+        ky_scene_node_place_above(&child->tree->node, prev);
+        prev = &child->tree->node;
 
-        ky_scene_node_set_position(tree_node, subsurface->current.x, subsurface->current.y);
+        ky_scene_node_set_position(&child->tree->node, subsurface->current.x,
+                                   subsurface->current.y);
     }
 }
 
@@ -109,7 +107,7 @@ static void subsurface_tree_handle_surface_destroy(struct wl_listener *listener,
 {
     struct ky_scene_subsurface_tree *subsurface_tree =
         wl_container_of(listener, subsurface_tree, surface_destroy);
-    ky_scene_node_destroy(ky_scene_node_from_tree(subsurface_tree->tree));
+    ky_scene_node_destroy(&subsurface_tree->tree->node);
 }
 
 static void subsurface_tree_handle_surface_commit(struct wl_listener *listener, void *data)
@@ -125,7 +123,7 @@ static void subsurface_tree_handle_subsurface_destroy(struct wl_listener *listen
 {
     struct ky_scene_subsurface_tree *subsurface_tree =
         wl_container_of(listener, subsurface_tree, subsurface_destroy);
-    ky_scene_node_destroy(ky_scene_node_from_tree(subsurface_tree->tree));
+    ky_scene_node_destroy(&subsurface_tree->tree->node);
 }
 
 static void subsurface_tree_handle_surface_map(struct wl_listener *listener, void *data)
@@ -133,7 +131,7 @@ static void subsurface_tree_handle_surface_map(struct wl_listener *listener, voi
     struct ky_scene_subsurface_tree *subsurface_tree =
         wl_container_of(listener, subsurface_tree, surface_map);
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(subsurface_tree->tree), true);
+    ky_scene_node_set_enabled(&subsurface_tree->tree->node, true);
 }
 
 static void subsurface_tree_handle_surface_unmap(struct wl_listener *listener, void *data)
@@ -141,14 +139,14 @@ static void subsurface_tree_handle_surface_unmap(struct wl_listener *listener, v
     struct ky_scene_subsurface_tree *subsurface_tree =
         wl_container_of(listener, subsurface_tree, surface_unmap);
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(subsurface_tree->tree), false);
+    ky_scene_node_set_enabled(&subsurface_tree->tree->node, false);
 }
 
 static void subsurface_tree_addon_destroy(struct wlr_addon *addon)
 {
     struct ky_scene_subsurface_tree *subsurface_tree =
         wl_container_of(addon, subsurface_tree, surface_addon);
-    ky_scene_node_destroy(ky_scene_node_from_tree(subsurface_tree->tree));
+    ky_scene_node_destroy(&subsurface_tree->tree->node);
 }
 
 static const struct wlr_addon_interface subsurface_tree_addon_impl = {
@@ -224,8 +222,7 @@ static struct ky_scene_subsurface_tree *scene_surface_tree_create(struct ky_scen
     subsurface_tree_reconfigure(subsurface_tree);
 
     subsurface_tree->tree_destroy.notify = subsurface_tree_handle_tree_destroy;
-    ky_scene_node_add_destroy_listener(ky_scene_node_from_tree(subsurface_tree->tree),
-                                       &subsurface_tree->tree_destroy);
+    wl_signal_add(&subsurface_tree->tree->node.events.destroy, &subsurface_tree->tree_destroy);
 
     subsurface_tree->surface_destroy.notify = subsurface_tree_handle_surface_destroy;
     wl_signal_add(&surface->events.destroy, &subsurface_tree->surface_destroy);
@@ -242,12 +239,12 @@ static struct ky_scene_subsurface_tree *scene_surface_tree_create(struct ky_scen
     subsurface_tree->surface_new_subsurface.notify = subsurface_tree_handle_surface_new_subsurface;
     wl_signal_add(&surface->events.new_subsurface, &subsurface_tree->surface_new_subsurface);
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(subsurface_tree->tree), surface->mapped);
+    ky_scene_node_set_enabled(&subsurface_tree->tree->node, surface->mapped);
 
     return subsurface_tree;
 
 error_scene_surface:
-    ky_scene_node_destroy(ky_scene_node_from_tree(subsurface_tree->tree));
+    ky_scene_node_destroy(&subsurface_tree->tree->node);
 error_surface_tree:
     free(subsurface_tree);
     return NULL;

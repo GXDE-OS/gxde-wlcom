@@ -48,7 +48,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .hover_svg = widget->hover_svg,
     };
 
-    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    struct wlr_buffer *buffer = widget->content.buffer->buffer;
     if (buffer && redraw_only) {
         painter_redraw_buffer(buffer, &info);
     } else {
@@ -95,7 +95,7 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer, 
         return;
     }
 
-    struct wlr_buffer *old_buffer = ky_scene_buffer_get_buffer(scene_buffer);
+    struct wlr_buffer *old_buffer = scene_buffer->buffer;
     if (old_buffer != buffer) {
         wlr_buffer_drop(old_buffer);
     }
@@ -103,7 +103,7 @@ static void widget_set_buffer(struct widget *widget, struct wlr_buffer *buffer, 
         ky_scene_buffer_set_buffer(scene_buffer, buffer);
     }
     /* shortcut here if set_buffer triggered scaled buffer update */
-    if (ky_scene_buffer_get_buffer(scene_buffer) != buffer) {
+    if (scene_buffer->buffer != buffer) {
         return;
     }
 
@@ -126,7 +126,7 @@ static void widget_do_update(struct widget *widget)
         return;
     }
 
-    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    struct wlr_buffer *buffer = widget->content.buffer->buffer;
     /* draw it in scaled buffer update at the first time */
     if (widget->scale == 0.0 || !buffer) {
         widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
@@ -395,7 +395,7 @@ void widget_destroy(struct widget *widget)
 static void widget_destroy_buffer(struct ky_scene_buffer *buffer, void *data)
 {
     struct widget *widget = data;
-    wlr_buffer_drop(ky_scene_buffer_get_buffer(buffer));
+    wlr_buffer_drop(buffer->buffer);
     free((void *)widget->text);
     free((void *)widget->svg);
     free((void *)widget->hover_svg);
@@ -434,7 +434,7 @@ struct widget *widget_create(struct ky_scene_tree *parent)
     widget->scale = 0.0;
     widget->content.buffer = scaled_buffer_create(parent, widget->scale, widget_update_buffer,
                                                   widget_destroy_buffer, widget);
-    widget->content.node = ky_scene_node_from_buffer(widget->content.buffer);
+    widget->content.node = &widget->content.buffer->node;
     ky_scene_node_set_enabled(widget->content.node, false);
 
     return widget;
@@ -445,7 +445,7 @@ void widget_get_size(struct widget *widget, int *width, int *height)
     *width = 0;
     *height = 0;
 
-    struct wlr_buffer *buffer = ky_scene_buffer_get_buffer(widget->content.buffer);
+    struct wlr_buffer *buffer = widget->content.buffer->buffer;
     if (!buffer) {
         return;
     }

@@ -193,7 +193,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
     view->tree = ky_scene_tree_create(layer->tree);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
+    ky_scene_node_set_enabled(&view->tree->node, false);
     view->content = ky_scene_tree_create(view->tree);
 
     struct output *output = input_current_output(input_manager_get_default_seat());
@@ -309,8 +309,7 @@ void view_map(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     /* assume that request_minimize may emited before map */
-    struct ky_scene_node *node = ky_scene_node_from_tree(view->tree);
-    ky_scene_node_set_enabled(node, !kywc_view->minimized);
+    ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
 
     kywc_view->mapped = true;
 
@@ -347,7 +346,7 @@ void view_unmap(struct view *view)
     struct kywc_view *kywc_view = &view->base;
 
     kywc_view->title = kywc_view->app_id = NULL;
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), false);
+    ky_scene_node_set_enabled(&view->tree->node, false);
     kywc_view->mapped = false;
 
     if (view->pending.configure_timeout) {
@@ -471,7 +470,7 @@ void view_proxy_destroy(struct view_proxy *view_proxy)
     }
     wl_list_remove(&view_proxy->view_link);
     wl_list_remove(&view_proxy->workspace_link);
-    ky_scene_node_destroy(ky_scene_node_from_tree(view_proxy->tree));
+    ky_scene_node_destroy(&view_proxy->tree->node);
     free(view_proxy);
 }
 
@@ -484,7 +483,7 @@ void view_set_current_proxy(struct view *view, struct view_proxy *view_proxy)
         assert(wl_list_empty(&view->view_proxies));
     }
     if (view_proxy) {
-        ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), view_proxy->tree);
+        ky_scene_node_reparent(&view->tree->node, view_proxy->tree);
     }
     view->current_proxy = view_proxy;
     wl_signal_emit_mutable(&view->events.workspace, NULL);
@@ -508,7 +507,7 @@ void view_destroy(struct view *view)
 
     wl_list_remove(&view->output_destroy.link);
 
-    ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
+    ky_scene_node_destroy(&view->tree->node);
     view_proxies_destroy(view);
     free((void *)kywc_view->uuid);
 
@@ -615,7 +614,7 @@ static void view_do_set_workspace(struct view *view, struct workspace *workspace
         }
     }
 
-    if (proxy->tree != ky_scene_node_get_parent(ky_scene_node_from_tree(view->tree))) {
+    if (proxy->tree != view->tree->node.parent) {
         view_set_current_proxy(view, proxy);
     }
 
@@ -641,7 +640,7 @@ void view_unset_workspace(struct view *view, struct view_layer *layer)
     assert(layer->layer != LAYER_BELOW && layer->layer != LAYER_NORMAL &&
            layer->layer != LAYER_ABOVE);
 
-    ky_scene_node_reparent(ky_scene_node_from_tree(view->tree), layer->tree);
+    ky_scene_node_reparent(&view->tree->node, layer->tree);
     view_do_set_workspace(view, NULL);
 }
 
@@ -894,7 +893,7 @@ static void view_activate_with_workspace(struct view *view, bool find_parent)
     wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
         wl_list_remove(&view_proxy->workspace_link);
         wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(view_proxy->tree));
+        ky_scene_node_raise_to_top(&view_proxy->tree->node);
     }
     /* raise children if any */
     struct view *child;
@@ -911,7 +910,7 @@ static void view_activate_without_workspace(struct view *view, bool find_parent)
     if (view->parent && find_parent) {
         view_activate_without_workspace(view->parent, true);
     }
-    ky_scene_node_raise_to_top(ky_scene_node_from_tree(view->tree));
+    ky_scene_node_raise_to_top(&view->tree->node);
     /* raise children if any */
     struct view *child;
     wl_list_for_each(child, &view->children, parent_link) {
@@ -977,7 +976,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(view->tree), !minimized);
+    ky_scene_node_set_enabled(&view->tree->node, !minimized);
 
     kywc_view->minimized = minimized;
     view->pending.action |= VIEW_ACTION_MINIMIZE;
@@ -1060,7 +1059,7 @@ static void view_reparent_fullscreen(struct view *view, bool active)
             /* restore fullscreen view to workspace */
             layer = workspace_layer(view_proxy->workspace, view->saved.layer);
         }
-        ky_scene_node_reparent(ky_scene_node_from_tree(view_proxy->tree), layer->tree);
+        ky_scene_node_reparent(&view_proxy->tree->node, layer->tree);
     }
 }
 
@@ -1121,7 +1120,7 @@ void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above)
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
         struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
-        ky_scene_node_reparent(ky_scene_node_from_tree(proxy->tree), view_layer->tree);
+        ky_scene_node_reparent(&proxy->tree->node, view_layer->tree);
     }
 }
 
@@ -1146,7 +1145,7 @@ void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below)
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
         struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
-        ky_scene_node_reparent(ky_scene_node_from_tree(proxy->tree), view_layer->tree);
+        ky_scene_node_reparent(&proxy->tree->node, view_layer->tree);
     }
 }
 
@@ -1170,7 +1169,7 @@ void view_helper_move(struct view *view, int x, int y)
     view_update_output(view);
 
     if (changed) {
-        ky_scene_node_set_position(ky_scene_node_from_tree(view->tree), x, y);
+        ky_scene_node_set_position(&view->tree->node, x, y);
         wl_signal_emit_mutable(&view->base.events.position, NULL);
     }
 }
@@ -1313,7 +1312,7 @@ struct view_manager *view_manager_create(struct server *server)
     /* create all layers */
     for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
         view_manager->layers[layer].layer = layer;
-        view_manager->layers[layer].tree = ky_scene_create_tree(server->scene);
+        view_manager->layers[layer].tree = ky_scene_tree_create(&server->scene->tree);
     }
 
     workspace_manager_create(view_manager);

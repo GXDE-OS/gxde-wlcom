@@ -45,7 +45,7 @@ static bool cursor_set_node(struct cursor_node *cursor_node, struct ky_scene_nod
         wl_list_remove(&cursor_node->destroy.link);
     }
     if (hover) {
-        ky_scene_node_add_destroy_listener(hover, &cursor_node->destroy);
+        wl_signal_add(&hover->events.destroy, &cursor_node->destroy);
     }
     cursor_node->node = hover;
 
@@ -57,8 +57,8 @@ static bool cursor_update_node(struct cursor *cursor, bool click)
     struct seat *seat = cursor->seat;
 
     /* find node below the cursor */
-    struct ky_scene_node *hover = ky_scene_node_at(
-        ky_scene_node_from_scene(seat->scene), cursor->lx, cursor->ly, &cursor->sx, &cursor->sy);
+    struct ky_scene_node *hover =
+        ky_scene_node_at(&seat->scene->tree.node, cursor->lx, cursor->ly, &cursor->sx, &cursor->sy);
 
     /* update cursor hover node */
     if (!click) {

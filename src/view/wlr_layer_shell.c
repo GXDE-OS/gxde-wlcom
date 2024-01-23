@@ -225,7 +225,7 @@ static void layer_shell_configure_surface(struct layer_shell *layer_shell,
         box.y = bounds.y + bounds.height / 2 - box.height / 2;
     }
 
-    ky_scene_node_set_position(ky_scene_node_from_tree(layer_shell->tree), box.x, box.y);
+    ky_scene_node_set_position(&layer_shell->tree->node, box.x, box.y);
     wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
     if (layer_surface->surface->mapped && state->exclusive_zone > 0) {
@@ -253,7 +253,7 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
     uint32_t committed = layer_surface->current.committed;
 
     if (committed & WLR_LAYER_SURFACE_V1_STATE_LAYER) {
-        ky_scene_node_reparent(ky_scene_node_from_tree(layer_shell->tree),
+        ky_scene_node_reparent(&layer_shell->tree->node,
                                manager->layers[layer_surface->current.layer].tree);
         committed &= ~WLR_LAYER_SURFACE_V1_STATE_LAYER;
     }
@@ -275,7 +275,7 @@ static void layer_shell_handle_map(struct wl_listener *listener, void *data)
     struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
 
     /* layer-shell first configure is done in commit */
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree), true);
+    ky_scene_node_set_enabled(&layer_shell->tree->node, true);
 
     if (layer_surface->current.exclusive_zone > 0) {
         struct output *output = output_from_wlr_output(layer_surface->output);
@@ -291,7 +291,7 @@ static void layer_shell_handle_unmap(struct wl_listener *listener, void *data)
     struct layer_shell *layer_shell = wl_container_of(listener, layer_shell, unmap);
     struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree), false);
+    ky_scene_node_set_enabled(&layer_shell->tree->node, false);
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
 
     if (layer_surface->output && layer_surface->current.exclusive_zone > 0) {
@@ -310,7 +310,7 @@ static void layer_shell_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&layer_shell->new_popup.link);
     wl_list_remove(&layer_shell->link);
 
-    ky_scene_node_destroy(ky_scene_node_from_tree(layer_shell->tree));
+    ky_scene_node_destroy(&layer_shell->tree->node);
 
     free(layer_shell);
 }
@@ -354,7 +354,7 @@ static void layer_shell_leave(struct seat *seat, struct ky_scene_node *node, boo
 static struct ky_scene_node *layer_shell_get_root(void *data)
 {
     struct layer_shell *layer_shell = data;
-    return ky_scene_node_from_tree(layer_shell->tree);
+    return &layer_shell->tree->node;
 }
 
 static struct wlr_surface *layer_shell_get_toplevel(void *data)
@@ -396,9 +396,8 @@ static void handle_new_layer_surface(struct wl_listener *listener, void *data)
     layer_shell->tree = ky_scene_tree_create(manager->layers[layer_surface->current.layer].tree);
     ky_scene_subsurface_tree_create(layer_shell->tree, layer_surface->surface);
 
-    input_event_node_create(ky_scene_node_from_tree(layer_shell->tree),
-                            &layer_shell_event_node_impl, layer_shell_get_root,
-                            layer_shell_get_toplevel, layer_shell);
+    input_event_node_create(&layer_shell->tree->node, &layer_shell_event_node_impl,
+                            layer_shell_get_root, layer_shell_get_toplevel, layer_shell);
 
     layer_shell->commit.notify = layer_shell_handle_commit;
     wl_signal_add(&layer_surface->surface->events.commit, &layer_shell->commit);
@@ -412,8 +411,7 @@ static void handle_new_layer_surface(struct wl_listener *listener, void *data)
     layer_shell->new_popup.notify = layer_shell_handle_new_popup;
     wl_signal_add(&layer_surface->events.new_popup, &layer_shell->new_popup);
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(layer_shell->tree),
-                              layer_surface->surface->mapped);
+    ky_scene_node_set_enabled(&layer_shell->tree->node, layer_surface->surface->mapped);
 }
 
 static void layer_output_destroy_shells(struct layer_output *layer_output)

@@ -122,17 +122,16 @@ static void input_popup_update(struct input_popup *popup, struct seat *seat)
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(focused_surface);
     assert(scene_buffer);
     /* surface primary output */
-    struct ky_scene_output *scene_output = ky_scene_buffer_get_primary_output(scene_buffer);
-    if (!scene_output) {
+    if (!scene_buffer->primary_output) {
         return;
     }
 
     struct kywc_box *output_box =
-        &output_from_wlr_output(ky_scene_output_get_output(scene_output))->geometry;
+        &output_from_wlr_output(scene_buffer->primary_output->output)->geometry;
 
     /* focused surface geometry in layout coord */
     struct kywc_box parent_box;
-    ky_scene_node_coords(ky_scene_node_from_buffer(scene_buffer), &parent_box.x, &parent_box.y);
+    ky_scene_node_coords(&scene_buffer->node, &parent_box.x, &parent_box.y);
     parent_box.width = focused_surface->current.width;
     parent_box.height = focused_surface->current.height;
 
@@ -563,7 +562,7 @@ static void handle_new_popup_surface(struct wl_listener *listener, void *data)
     struct view_layer *layer = view_manager_get_layer(LAYER_POPUP, false);
     struct ky_scene_surface *scene_surface =
         ky_scene_surface_create(layer->tree, popup_surface->surface);
-    popup->surface_node = ky_scene_node_from_buffer(scene_surface->buffer);
+    popup->surface_node = &scene_surface->buffer->node;
     input_event_node_create(popup->surface_node, &input_popup_event_node_impl, input_popup_get_root,
                             NULL, popup);
     ky_scene_node_set_enabled(popup->surface_node, popup_surface->surface->mapped);

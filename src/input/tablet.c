@@ -383,7 +383,7 @@ static struct wlr_surface *tablet_get_surface(struct tablet *tablet, double *sx,
     struct cursor *cursor = seat->cursor;
 
     struct ky_scene_node *node =
-        ky_scene_node_at(ky_scene_node_from_scene(seat->scene), cursor->lx, cursor->ly, sx, sy);
+        ky_scene_node_at(&seat->scene->tree.node, cursor->lx, cursor->ly, sx, sy);
     if (!node) {
         return NULL;
     }

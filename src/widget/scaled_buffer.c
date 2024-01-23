@@ -103,9 +103,8 @@ static void handle_output_enter(struct wl_listener *listener, void *data)
 {
     struct scaled_buffer *buffer = wl_container_of(listener, buffer, output_enter);
     struct ky_scene_output *scene_output = data;
-    struct wlr_output *wlr_output = ky_scene_output_get_output(scene_output);
 
-    if (scaled_output_create(buffer, wlr_output)) {
+    if (scaled_output_create(buffer, scene_output->output)) {
         scaled_buffer_update(buffer);
     }
 }
@@ -127,9 +126,8 @@ static void handle_output_leave(struct wl_listener *listener, void *data)
 {
     struct scaled_buffer *buffer = wl_container_of(listener, buffer, output_leave);
     struct ky_scene_output *scene_output = data;
-    struct wlr_output *wlr_output = ky_scene_output_get_output(scene_output);
 
-    struct scaled_output *output = scaled_output_from_wlr_output(buffer, wlr_output);
+    struct scaled_output *output = scaled_output_from_wlr_output(buffer, scene_output->output);
     if (!output) {
         return;
     }
@@ -179,14 +177,13 @@ struct ky_scene_buffer *scaled_buffer_create(struct ky_scene_tree *parent, float
 
     /* add output enter and leave listener */
     buffer->output_enter.notify = handle_output_enter;
-    ky_scene_buffer_add_output_enter_listener(buffer->base, &buffer->output_enter);
+    wl_signal_add(&buffer->base->events.output_enter, &buffer->output_enter);
     buffer->output_leave.notify = handle_output_leave;
-    ky_scene_buffer_add_output_leave_listener(buffer->base, &buffer->output_leave);
+    wl_signal_add(&buffer->base->events.output_leave, &buffer->output_leave);
 
     /* do something when node destroy */
     buffer->node_destroy.notify = handle_node_destroy;
-    ky_scene_node_add_destroy_listener(ky_scene_node_from_buffer(buffer->base),
-                                       &buffer->node_destroy);
+    wl_signal_add(&buffer->base->node.events.destroy, &buffer->node_destroy);
 
     return buffer->base;
 }

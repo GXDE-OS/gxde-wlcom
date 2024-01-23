@@ -104,8 +104,7 @@ static void menu_render_items(struct menu *menu, bool force)
             continue;
         }
 
-        ky_scene_node_set_position(ky_scene_node_from_tree(item->tree), 0,
-                                   index * menu->item_height);
+        ky_scene_node_set_position(&item->tree->node, 0, index * menu->item_height);
 
         item->first = index == 0;
         item->last = ++index == item_count;
@@ -122,11 +121,10 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
     menu->current = NULL;
     menu->hovered = NULL;
     menu->enabled = enabled;
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(menu->tree), enabled);
+    ky_scene_node_set_enabled(&menu->tree->node, enabled);
 
     if (enabled) {
-        ky_scene_node_raise_to_top(
-            ky_scene_node_from_tree(menu->parent ? menu->parent->tree : menu->tree));
+        ky_scene_node_raise_to_top(menu->parent ? &menu->parent->tree->node : &menu->tree->node);
         menu_render_items(menu, false);
     }
 
@@ -135,7 +133,7 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
         if (!item->enabled) {
             continue;
         }
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(item->tree), enabled);
+        ky_scene_node_set_enabled(&item->tree->node, enabled);
         if (!enabled && item->submenu) {
             menu_set_enabled(item->submenu, false);
         }
@@ -166,8 +164,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
     /* use (x, y) when root-menu, otherwise use parent item pos */
     int lx = x, ly = y;
     if (menu->parent) {
-        struct ky_scene_node *node = ky_scene_node_from_tree(menu->parent->tree);
-        ky_scene_node_coords(node, &lx, &ly);
+        ky_scene_node_coords(&menu->parent->tree->node, &lx, &ly);
     }
 
     struct kywc_output *kywc_output = kywc_output_at_point(lx, ly);
@@ -200,7 +197,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
         }
     }
 
-    ky_scene_node_set_position(ky_scene_node_from_tree(menu->tree), x, y);
+    ky_scene_node_set_position(&menu->tree->node, x, y);
 }
 
 static bool menu_item_action(struct menu_item *item)
@@ -346,7 +343,7 @@ static struct ky_scene_node *menu_item_get_root(void *data)
     while (menu->parent) {
         menu = menu->parent->menu;
     }
-    return ky_scene_node_from_tree(menu->tree);
+    return &menu->tree->node;
 }
 
 static bool menu_shortcut(struct menu *menu, uint32_t key)
@@ -446,10 +443,9 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct seat *seat = pointer_grab->seat;
 
     /* check current hover node in the window menu tree */
-    struct ky_scene_node *root_node = ky_scene_node_from_tree(root->tree);
     struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
     struct ky_scene_node *node = input_event_node_root(inode);
-    if (node == root_node) {
+    if (node == &root->tree->node) {
         inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, CLICK_STATE_NONE,
                            inode->data);
     } else if (pressed) {
@@ -623,7 +619,7 @@ struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t ke
     item->tree = ky_scene_tree_create(menu->tree);
     item->destroy.notify = item_handle_destroy;
     /* tree destroy event is before node destroy */
-    ky_scene_node_add_destroy_listener(ky_scene_node_from_tree(item->tree), &item->destroy);
+    wl_signal_add(&item->tree->node.events.destroy, &item->destroy);
     /* use widget to create a scene buffer */
     item->content = widget_create(item->tree);
     input_event_node_create(ky_scene_node_from_widget(item->content), &menu_item_impl,
@@ -657,10 +653,9 @@ struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_
 
     parent = parent_item ? parent_item->tree : parent;
     menu->tree = ky_scene_tree_create(parent);
-    struct ky_scene_node *node = ky_scene_node_from_tree(menu->tree);
-    ky_scene_node_set_enabled(node, false);
+    ky_scene_node_set_enabled(&menu->tree->node, false);
     menu->destroy.notify = menu_handle_destroy;
-    ky_scene_node_add_destroy_listener(node, &menu->destroy);
+    wl_signal_add(&menu->tree->node.events.destroy, &menu->destroy);
 
     wl_list_init(&menu->items);
     menu->parent = parent_item;
@@ -693,7 +688,7 @@ void menu_destroy(struct menu *menu)
         menu->parent->submenu = NULL;
     }
 
-    ky_scene_node_destroy(ky_scene_node_from_tree(menu->tree));
+    ky_scene_node_destroy(&menu->tree->node);
 }
 
 void menu_show_root(struct menu *menu, struct seat *seat, int x, int y)

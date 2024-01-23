@@ -282,16 +282,14 @@ static struct animation_entity *animation_entity_create(struct ky_scene_node *no
     wl_list_init(&entity->output_frame.link);
     entity->output_frame.notify = entity_handle_output_frame;
 
-    struct wlr_addon_set *addons = ky_scene_node_get_addon_set(node);
-    wlr_addon_init(&entity->addon, addons, node, &animation_entity_addon_impl);
+    wlr_addon_init(&entity->addon, &node->addons, node, &animation_entity_addon_impl);
 
     return entity;
 }
 
 static struct animation_entity *animation_entity_get(struct ky_scene_node *node)
 {
-    struct wlr_addon_set *addons = ky_scene_node_get_addon_set(node);
-    struct wlr_addon *addon = wlr_addon_find(addons, node, &animation_entity_addon_impl);
+    struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &animation_entity_addon_impl);
 
     struct animation_entity *entity =
         addon ? wl_container_of(addon, entity, addon) : animation_entity_create(node);
@@ -372,7 +370,7 @@ void ky_scene_rect_set_size_with_animation(struct ky_scene_rect *rect, int width
         return;
     }
 
-    struct animation_entity *entity = animation_entity_get(ky_scene_node_from_rect(rect));
+    struct animation_entity *entity = animation_entity_get(&rect->node);
     if (!entity) {
         ky_scene_rect_set_size(rect, width, height);
         return;
@@ -402,7 +400,7 @@ void ky_scene_rect_set_color_with_animation(struct ky_scene_rect *rect, const fl
         return;
     }
 
-    struct animation_entity *entity = animation_entity_get(ky_scene_node_from_rect(rect));
+    struct animation_entity *entity = animation_entity_get(&rect->node);
     if (!entity) {
         ky_scene_rect_set_color(rect, color);
         return;

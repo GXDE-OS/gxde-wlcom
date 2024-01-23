@@ -149,7 +149,7 @@ static struct ky_scene_node *shadow_part_create(struct ky_scene_tree *parent, en
     }
 
     ky_scene_buffer_set_source_box(scene_buffer, &src_box);
-    return ky_scene_node_from_buffer(scene_buffer);
+    return &scene_buffer->node;
 }
 
 static void shadow_create_parts(struct shadow *shadow)
@@ -386,7 +386,7 @@ static void shadow_parts_create(struct shadow *shadow)
 
     struct view *view = view_from_kywc_view(kywc_view);
     shadow->tree = ky_scene_tree_create(view->tree);
-    shadow->node = ky_scene_node_from_tree(shadow->tree);
+    shadow->node = &shadow->tree->node;
     ky_scene_node_lower_to_bottom(shadow->node);
     ky_scene_node_set_bypassed(shadow->node, true);
 

@@ -3,9 +3,9 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#include "scene_p.h"
-
 #if HAVE_WLR_SCENE
+
+#include "scene/scene.h"
 
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node)
 {
@@ -33,6 +33,8 @@ struct ky_scene *ky_scene_from_node(struct ky_scene_node *node)
 #include <wlr/util/region.h>
 
 #include <kywc/log.h>
+
+#include "scene_p.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -522,6 +524,11 @@ void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled)
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     node->enabled = enabled;
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+}
+
+void ky_scene_node_set_bypassed(struct ky_scene_node *node, bool bypassed)
+{
+    node->bypassed = bypassed;
 }
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y)

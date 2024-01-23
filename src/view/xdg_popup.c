@@ -38,7 +38,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
      * popup tree will be destroyed by xdg_surface destroy in scene
      */
     if (popup->topmost_popup) {
-        ky_scene_node_destroy(ky_scene_node_from_tree(popup->parent_tree));
+        ky_scene_node_destroy(&popup->parent_tree->node);
     }
 
     free(popup);
@@ -67,7 +67,7 @@ static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
     struct kywc_box *output_box = &output->geometry;
 
     int lx = 0, ly = 0;
-    ky_scene_node_coords(ky_scene_node_from_tree(popup->shell_tree), &lx, &ly);
+    ky_scene_node_coords(&popup->shell_tree->node, &lx, &ly);
 
     struct wlr_box toplevel_space_box = {
         .x = output_box->x - lx,
@@ -133,7 +133,7 @@ static void xdg_popup_leave(struct seat *seat, struct ky_scene_node *node, bool 
 static struct ky_scene_node *xdg_popup_get_root(void *data)
 {
     struct xdg_popup *popup = data;
-    return ky_scene_node_from_tree(popup->parent_tree);
+    return &popup->parent_tree->node;
 }
 
 static const struct input_event_node_impl xdg_popup_event_node_impl = {
@@ -149,12 +149,12 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
 
     /* get shell layout coord, and set it to parent tree */
     int lx, ly;
-    ky_scene_node_coords(ky_scene_node_from_tree(shell), &lx, &ly);
-    ky_scene_node_set_position(ky_scene_node_from_tree(parent), lx, ly);
+    ky_scene_node_coords(&shell->node, &lx, &ly);
+    ky_scene_node_set_position(&parent->node, lx, ly);
 
     struct xdg_popup *popup = _xdg_popup_create(wlr_xdg_popup, parent, shell);
     popup->topmost_popup = true;
 
-    input_event_node_create(ky_scene_node_from_tree(parent), &xdg_popup_event_node_impl,
-                            xdg_popup_get_root, NULL, popup);
+    input_event_node_create(&parent->node, &xdg_popup_event_node_impl, xdg_popup_get_root, NULL,
+                            popup);
 }

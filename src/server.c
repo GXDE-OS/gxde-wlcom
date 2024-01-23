@@ -288,7 +288,10 @@ void server_finish(struct server *server)
     /* call all server_destroy listeners */
     wl_signal_emit_mutable(&server->events.destroy, NULL);
 
-    ky_scene_destroy(server->scene);
+    /* scene may be NULL when server_init failed */
+    if (server->scene) {
+        ky_scene_node_destroy(&server->scene->tree.node);
+    }
     wlr_output_layout_destroy(server->layout);
     wlr_allocator_destroy(server->allocator);
     wlr_renderer_destroy(server->renderer);

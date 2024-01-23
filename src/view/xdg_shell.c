@@ -89,7 +89,7 @@ static void xdg_view_leave(struct seat *seat, struct ky_scene_node *node, bool l
 static struct ky_scene_node *xdg_view_get_root(void *data)
 {
     struct xdg_view *xdg_view = data;
-    return ky_scene_node_from_tree(xdg_view->view.tree);
+    return &xdg_view->view.tree->node;
 }
 
 static struct wlr_surface *xdg_view_get_toplevel(void *data)
@@ -484,9 +484,8 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     /* create tree for surface and all sub-surfaces */
     xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.content, wlr_xdg_surface);
     /* event node will be destroyed when xdg_surface destroy */
-    input_event_node_create(ky_scene_node_from_tree(xdg_view->surface_tree),
-                            &xdg_view_event_node_impl, xdg_view_get_root, xdg_view_get_toplevel,
-                            xdg_view);
+    input_event_node_create(&xdg_view->surface_tree->node, &xdg_view_event_node_impl,
+                            xdg_view_get_root, xdg_view_get_toplevel, xdg_view);
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;

@@ -29,9 +29,9 @@ struct input_event_node *input_event_node_create(struct ky_scene_node *node,
     inode->get_root = get_root;
     inode->get_toplevel = get_toplevel;
 
-    ky_scene_node_set_user_data(node, inode);
+    node->data = inode;
     inode->node_destroy.notify = input_event_node_destroy;
-    ky_scene_node_add_destroy_listener(node, &inode->node_destroy);
+    wl_signal_add(&node->events.destroy, &inode->node_destroy);
 
     return inode;
 }
@@ -58,12 +58,12 @@ struct input_event_node *input_event_node_from_node(struct ky_scene_node *node)
     struct ky_scene_node *n = node;
 
     struct ky_scene_tree *parent;
-    while (n && !ky_scene_node_get_user_data(n)) {
-        parent = ky_scene_node_get_parent(n);
-        n = parent ? ky_scene_node_from_tree(parent) : NULL;
+    while (n && !n->data) {
+        parent = n->parent;
+        n = parent ? &parent->node : NULL;
     }
 
-    return n ? ky_scene_node_get_user_data(n) : NULL;
+    return n ? n->data : NULL;
 }
 
 struct ky_scene_node *input_event_node_root(struct input_event_node *event_node)

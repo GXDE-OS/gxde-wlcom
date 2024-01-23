@@ -306,7 +306,7 @@ static struct wlr_surface *touch_get_surface(struct touch *touch, double *sx, do
     struct cursor *cursor = seat->cursor;
 
     struct ky_scene_node *node =
-        ky_scene_node_at(ky_scene_node_from_scene(seat->scene), cursor->lx, cursor->ly, sx, sy);
+        ky_scene_node_at(&seat->scene->tree.node, cursor->lx, cursor->ly, sx, sy);
     if (!node) {
         return NULL;
     }
@@ -649,7 +649,7 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     if (surface != point->surface) {
         int lx, ly;
         struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(point->surface);
-        ky_scene_node_coords(ky_scene_node_from_buffer(scene_buffer), &lx, &ly);
+        ky_scene_node_coords(&scene_buffer->node, &lx, &ly);
         sx = seat->cursor->lx - lx;
         sy = seat->cursor->ly - ly;
     }

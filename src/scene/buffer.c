@@ -15,6 +15,7 @@
 
 struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node)
 {
+    assert(node->type == KY_SCENE_NODE_BUFFER);
     struct ky_scene_buffer *scene_buffer = wl_container_of(node, scene_buffer, node);
     return scene_buffer;
 }

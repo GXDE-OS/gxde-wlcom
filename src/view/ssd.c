@@ -500,7 +500,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
 static struct ky_scene_node *ssd_get_root(void *data)
 {
     struct ssd_part *part = data;
-    return ky_scene_node_from_tree(part->ssd->tree);
+    return &part->ssd->tree->node;
 }
 
 static const struct input_event_node_impl ssd_impl = {
@@ -516,11 +516,11 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
     struct wlr_fbox src;
     struct wlr_buffer *buf = theme_buffer_load(theme, part->scale, type, &src);
     struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         ky_scene_buffer_set_buffer(buffer, buf);
     }
     /* shortcut here if set_buffer triggered scaled buffer update */
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         return;
     }
 
@@ -544,10 +544,10 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
     }
 
     struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         ky_scene_buffer_set_buffer(buffer, buf);
     }
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         return;
     }
 
@@ -675,8 +675,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
 
     /* set titlebar subtree position if theme changed */
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        ky_scene_node_set_position(ky_scene_node_from_tree(ssd->titlebar_tree), -border_w,
-                                   -(title_h + border_w));
+        ky_scene_node_set_position(&ssd->titlebar_tree->node, -border_w, -(title_h + border_w));
         ssd_update_title_icon(ssd);
     }
 
@@ -685,7 +684,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
         int pad = (title_h - button_w) / 2;
         int x = view_w + border_w - 3 * button_w - pad;
         int y = pad + border_w;
-        ky_scene_node_set_position(ky_scene_node_from_tree(ssd->button_tree), x, y);
+        ky_scene_node_set_position(&ssd->button_tree->node, x, y);
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
@@ -857,7 +856,7 @@ static void ssd_update_extend(struct ssd *ssd, uint32_t cause)
 
     if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
         bool tiled = view->tiled || view->maximized;
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(ssd->extend_tree), !tiled);
+        ky_scene_node_set_enabled(&ssd->extend_tree->node, !tiled);
     }
 }
 
@@ -909,7 +908,7 @@ static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
 
     if (cause & SSD_UPDATE_CAUSE_FULLSCREEN) {
         bool enabled = !ssd->kywc_view->fullscreen;
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(ssd->tree), enabled);
+        ky_scene_node_set_enabled(&ssd->tree->node, enabled);
     }
 
     if (ssd->kywc_view->ssd == KYWC_SSD_ALL) {
@@ -977,7 +976,7 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
             } else {
                 struct ky_scene_buffer *buf = scaled_buffer_create(
                     parent, scale, ssd_update_buffer, ssd_destroy_buffer, &ssd->parts[i]);
-                ssd->parts[i].node = ky_scene_node_from_buffer(buf);
+                ssd->parts[i].node = &buf->node;
                 ssd->parts[i].scale = scale;
                 /* set_buffer will emit output_enter,
                  * otherwise we cannot get initial output the view in.
@@ -994,7 +993,7 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
                                                   : theme->inactive_border_color;
             }
             struct ky_scene_rect *rect = ky_scene_rect_create(parent, 0, 0, color);
-            ssd->parts[i].node = ky_scene_node_from_rect(rect);
+            ssd->parts[i].node = &rect->node;
         }
 
         input_event_node_create(ssd->parts[i].node, &ssd_impl, ssd_get_root, NULL, &ssd->parts[i]);
@@ -1002,7 +1001,7 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
 
     if (ssd->kywc_view->ssd == KYWC_SSD_ALL) {
         /* button is top of titlebar */
-        ky_scene_node_raise_to_top(ky_scene_node_from_tree(ssd->button_tree));
+        ky_scene_node_raise_to_top(&ssd->button_tree->node);
     }
 }
 
@@ -1069,7 +1068,7 @@ static void ssd_parts_create(struct ssd *ssd)
     struct kywc_view *kywc_view = ssd->kywc_view;
     struct view *view = view_from_kywc_view(kywc_view);
     ssd->tree = ky_scene_tree_create(view->content);
-    ky_scene_node_lower_to_bottom(ky_scene_node_from_tree(ssd->tree));
+    ky_scene_node_lower_to_bottom(&ssd->tree->node);
 
     /* subtrees in ssd tree */
     ssd->extend_tree = ky_scene_tree_create(ssd->tree);
@@ -1133,7 +1132,7 @@ static void ssd_parts_destroy(struct ssd *ssd)
     wl_list_remove(&ssd->icon_update.link);
 
     // XXX: destroyed in view_destroy, check ssd->tree ?
-    ky_scene_node_destroy(ky_scene_node_from_tree(ssd->tree));
+    ky_scene_node_destroy(&ssd->tree->node);
 }
 
 static void handle_view_decoration(struct wl_listener *listener, void *data)

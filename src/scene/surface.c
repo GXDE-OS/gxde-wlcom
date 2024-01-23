@@ -14,12 +14,10 @@
 static void handle_scene_buffer_outputs_update(struct wl_listener *listener, void *data)
 {
     struct ky_scene_surface *surface = wl_container_of(listener, surface, outputs_update);
-
-    struct ky_scene_output *primary_output = ky_scene_buffer_get_primary_output(surface->buffer);
-    if (primary_output == NULL) {
+    if (surface->buffer->primary_output == NULL) {
         return;
     }
-    double scale = ky_scene_output_get_output(primary_output)->scale;
+    double scale = surface->buffer->primary_output->output->scale;
     wlr_fractional_scale_v1_notify_scale(surface->surface, scale);
     wlr_surface_set_preferred_buffer_scale(surface->surface, ceil(scale));
 }
@@ -29,7 +27,7 @@ static void handle_scene_buffer_output_enter(struct wl_listener *listener, void 
     struct ky_scene_surface *surface = wl_container_of(listener, surface, output_enter);
     struct ky_scene_output *output = data;
 
-    wlr_surface_send_enter(surface->surface, ky_scene_output_get_output(output));
+    wlr_surface_send_enter(surface->surface, output->output);
 }
 
 static void handle_scene_buffer_output_leave(struct wl_listener *listener, void *data)
@@ -37,31 +35,30 @@ static void handle_scene_buffer_output_leave(struct wl_listener *listener, void 
     struct ky_scene_surface *surface = wl_container_of(listener, surface, output_leave);
     struct ky_scene_output *output = data;
 
-    wlr_surface_send_leave(surface->surface, ky_scene_output_get_output(output));
+    wlr_surface_send_leave(surface->surface, output->output);
 }
 
 static void handle_scene_buffer_output_sample(struct wl_listener *listener, void *data)
 {
     struct ky_scene_surface *surface = wl_container_of(listener, surface, output_sample);
     const struct ky_scene_output_sample_event *event = data;
-    struct ky_scene_output *scene_output = ky_scene_output_sample_event_output(event);
+    struct ky_scene_output *scene_output = event->output;
 
-    struct ky_scene_output *primary_output = ky_scene_buffer_get_primary_output(surface->buffer);
-    if (primary_output != scene_output) {
+    if (surface->buffer->primary_output != scene_output) {
         return;
     }
 
-    struct ky_scene *root = ky_scene_from_node(ky_scene_node_from_buffer(surface->buffer));
-    struct wlr_presentation *presentation = ky_scene_get_presentation(root);
-    if (!presentation) {
+    struct ky_scene *root = ky_scene_from_node(&surface->buffer->node);
+    if (!root->presentation) {
         return;
     }
 
-    struct wlr_output *output = ky_scene_output_get_output(scene_output);
-    if (ky_scene_output_sample_event_direct_scanout(event)) {
-        wlr_presentation_surface_scanned_out_on_output(presentation, surface->surface, output);
+    if (event->direct_scanout) {
+        wlr_presentation_surface_scanned_out_on_output(root->presentation, surface->surface,
+                                                       scene_output->output);
     } else {
-        wlr_presentation_surface_textured_on_output(presentation, surface->surface, output);
+        wlr_presentation_surface_textured_on_output(root->presentation, surface->surface,
+                                                    scene_output->output);
     }
 }
 
@@ -77,7 +74,7 @@ static void scene_surface_handle_surface_destroy(struct wl_listener *listener, v
 {
     struct ky_scene_surface *surface = wl_container_of(listener, surface, surface_destroy);
 
-    ky_scene_node_destroy(ky_scene_node_from_buffer(surface->buffer));
+    ky_scene_node_destroy(&surface->buffer->node);
 }
 
 // This is used for wlr_scene where it unconditionally locks buffers preventing
@@ -91,12 +88,11 @@ static void client_buffer_mark_next_can_damage(struct wlr_client_buffer *buffer)
 
 static void scene_buffer_unmark_client_buffer(struct ky_scene_buffer *scene_buffer)
 {
-    struct wlr_buffer *wlr_buffer = ky_scene_buffer_get_buffer(scene_buffer);
-    if (!wlr_buffer) {
+    if (!scene_buffer->buffer) {
         return;
     }
 
-    struct wlr_client_buffer *buffer = wlr_client_buffer_get(wlr_buffer);
+    struct wlr_client_buffer *buffer = wlr_client_buffer_get(scene_buffer->buffer);
     if (!buffer) {
         return;
     }
@@ -144,12 +140,12 @@ static void handle_scene_surface_surface_commit(struct wl_listener *listener, vo
     // output intersecting, otherwise the frame done events would never reach
     // the surface anyway.
     int lx, ly;
-    bool enabled = ky_scene_node_coords(ky_scene_node_from_buffer(scene_buffer), &lx, &ly);
+    bool enabled = ky_scene_node_coords(&scene_buffer->node, &lx, &ly);
 
-    struct ky_scene_output *primary_output = ky_scene_buffer_get_primary_output(surface->buffer);
+    struct ky_scene_output *primary_output = surface->buffer->primary_output;
     if (!wl_list_empty(&surface->surface->current.frame_callback_list) && primary_output != NULL &&
         enabled) {
-        wlr_output_schedule_frame(ky_scene_output_get_output(primary_output));
+        wlr_output_schedule_frame(primary_output->output);
     }
 }
 
@@ -188,9 +184,8 @@ static const struct wlr_addon_interface surface_addon_impl = {
 
 struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer *scene_buffer)
 {
-    struct wlr_addon_set *addons =
-        ky_scene_node_get_addon_set(ky_scene_node_from_buffer(scene_buffer));
-    struct wlr_addon *addon = wlr_addon_find(addons, scene_buffer, &surface_addon_impl);
+    struct wlr_addon *addon =
+        wlr_addon_find(&scene_buffer->node.addons, scene_buffer, &surface_addon_impl);
     if (!addon) {
         return NULL;
     }
@@ -239,22 +234,22 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
     surface->buffer = scene_buffer;
     surface->surface = wlr_surface;
-    ky_scene_buffer_set_point_accepts_input(scene_buffer, scene_buffer_point_accepts_input);
+    scene_buffer->point_accepts_input = scene_buffer_point_accepts_input;
 
     surface->outputs_update.notify = handle_scene_buffer_outputs_update;
-    ky_scene_buffer_add_outputs_update_listener(scene_buffer, &surface->outputs_update);
+    wl_signal_add(&scene_buffer->events.outputs_update, &surface->outputs_update);
 
     surface->output_enter.notify = handle_scene_buffer_output_enter;
-    ky_scene_buffer_add_output_enter_listener(scene_buffer, &surface->output_enter);
+    wl_signal_add(&scene_buffer->events.output_enter, &surface->output_enter);
 
     surface->output_leave.notify = handle_scene_buffer_output_leave;
-    ky_scene_buffer_add_output_leave_listener(scene_buffer, &surface->output_leave);
+    wl_signal_add(&scene_buffer->events.output_leave, &surface->output_leave);
 
     surface->output_sample.notify = handle_scene_buffer_output_sample;
-    ky_scene_buffer_add_output_sample_listener(scene_buffer, &surface->output_sample);
+    wl_signal_add(&scene_buffer->events.output_sample, &surface->output_sample);
 
     surface->frame_done.notify = handle_scene_buffer_frame_done;
-    ky_scene_buffer_add_frame_done_listener(scene_buffer, &surface->frame_done);
+    wl_signal_add(&scene_buffer->events.frame_done, &surface->frame_done);
 
     surface->surface_destroy.notify = scene_surface_handle_surface_destroy;
     wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
@@ -262,9 +257,7 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
     surface->surface_commit.notify = handle_scene_surface_surface_commit;
     wl_signal_add(&wlr_surface->events.commit, &surface->surface_commit);
 
-    struct wlr_addon_set *addons =
-        ky_scene_node_get_addon_set(ky_scene_node_from_buffer(scene_buffer));
-    wlr_addon_init(&surface->addon, addons, scene_buffer, &surface_addon_impl);
+    wlr_addon_init(&surface->addon, &scene_buffer->node.addons, scene_buffer, &surface_addon_impl);
     wlr_addon_init(&surface->node_addon, &wlr_surface->addons, wlr_surface,
                    &surface_node_addon_impl);
 
@@ -275,6 +268,10 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
 struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node)
 {
+    if (node->type != KY_SCENE_NODE_BUFFER) {
+        return NULL;
+    }
+
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
     if (!scene_buffer) {
         return NULL;

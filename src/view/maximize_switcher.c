@@ -14,9 +14,9 @@
 
 #include "input/cursor.h"
 #include "input/seat.h"
-#include "kywc/kycom/scene.h"
 #include "output.h"
 #include "painter.h"
+#include "scene/scene.h"
 #include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -171,10 +171,9 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct seat *seat = pointer_grab->seat;
 
     /* check current hover node in the window menu tree */
-    struct ky_scene_node *root_node = ky_scene_node_from_tree(window_menu->tree);
     struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
     struct ky_scene_node *node = input_event_node_root(inode);
-    if (node == root_node) {
+    if (node == &window_menu->tree->node) {
         inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, CLICK_STATE_NONE,
                            inode->data);
     } else if (pressed) {
@@ -313,10 +312,10 @@ static void set_icon_buffer(struct item_view *item_view, float scale)
     }
 
     struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(item_view->icon_node);
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         ky_scene_buffer_set_buffer(buffer, buf);
     }
-    if (ky_scene_buffer_get_buffer(buffer) != buf) {
+    if (buffer->buffer != buf) {
         return;
     }
 
@@ -341,7 +340,7 @@ static void destroy_buffer(struct ky_scene_buffer *buffer, void *data)
 
 static struct ky_scene_node *item_get_root(void *data)
 {
-    return ky_scene_node_from_tree(switcher->tree);
+    return &switcher->tree->node;
 }
 
 static void handle_view_destroy(struct wl_listener *listener, void *data)
@@ -375,8 +374,7 @@ static void get_maximize_views(int *num_views)
         item_view->view_destroy.notify = handle_view_destroy;
         wl_signal_add(&view->base.events.destroy, &item_view->view_destroy);
         item_view->tree = ky_scene_tree_create(switcher->tree);
-        input_event_node_create(ky_scene_node_from_tree(item_view->tree), &item_impl, item_get_root,
-                                NULL, item_view);
+        input_event_node_create(&item_view->tree->node, &item_impl, item_get_root, NULL, item_view);
         /* create background */
         item_view->background = ky_scene_rect_create(item_view->tree, 0, 0, color);
         /* create title */
@@ -394,7 +392,7 @@ static void get_maximize_views(int *num_views)
         /* create icon */
         struct ky_scene_buffer *buf = scaled_buffer_create(
             item_view->tree, view->output->state.scale, update_buffer, destroy_buffer, item_view);
-        item_view->icon_node = ky_scene_node_from_buffer(buf);
+        item_view->icon_node = &buf->node;
         /* update */
         set_icon_buffer(item_view, switcher->icon_ratio);
         update_title_text(item_view);
@@ -408,7 +406,7 @@ static void get_maximize_views(int *num_views)
             ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
         item_view->border.bottom =
             ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(item_view->border_tree), false);
+        ky_scene_node_set_enabled(&item_view->border_tree->node, false);
         /* add item_views */
         ensure_thumbnails_size(*num_views + 1);
         switcher->item_views[*num_views] = item_view;
@@ -424,24 +422,24 @@ static void update_item_view(struct item_view *item_view)
     int width = switcher->width - select_width_gap * 2 - 2;
     int height = theme->maxswitcher.item_height - select_height_gap * 2;
     ky_scene_rect_set_size(item_view->background, width, height);
-    ky_scene_node_set_position(ky_scene_node_from_rect(item_view->background), select_width_gap + 1,
+    ky_scene_node_set_position(&item_view->background->node, select_width_gap + 1,
                                select_height_gap);
 
-    ky_scene_node_set_position(ky_scene_node_from_tree(item_view->border_tree), select_width_gap,
+    ky_scene_node_set_position(&item_view->border_tree->node, select_width_gap,
                                select_height_gap - 1);
 
     /*left*/
     ky_scene_rect_set_size(item_view->border.left, 1, height);
-    ky_scene_node_set_position(ky_scene_node_from_rect(item_view->border.left), 0, 1);
+    ky_scene_node_set_position(&item_view->border.left->node, 0, 1);
     /*top*/
     ky_scene_rect_set_size(item_view->border.top, width + 2, 1);
-    ky_scene_node_set_position(ky_scene_node_from_rect(item_view->border.top), 0, 0);
+    ky_scene_node_set_position(&item_view->border.top->node, 0, 0);
     /*right*/
     ky_scene_rect_set_size(item_view->border.right, 1, height);
-    ky_scene_node_set_position(ky_scene_node_from_rect(item_view->border.right), width + 1, 1);
+    ky_scene_node_set_position(&item_view->border.right->node, width + 1, 1);
     /*bottom*/
     ky_scene_rect_set_size(item_view->border.bottom, width + 2, 1);
-    ky_scene_node_set_position(ky_scene_node_from_rect(item_view->border.bottom), 0, height + 1);
+    ky_scene_node_set_position(&item_view->border.bottom->node, 0, height + 1);
 }
 
 static void set_select_item_view(int index, struct item_view *current, struct item_view *new)
@@ -449,11 +447,11 @@ static void set_select_item_view(int index, struct item_view *current, struct it
     float color[4] = { 0 };
     if (current) {
         ky_scene_rect_set_color(current->background, color);
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(current->border_tree), false);
+        ky_scene_node_set_enabled(&current->border_tree->node, false);
         set_icon_buffer(current, switcher->icon_ratio);
     }
 
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(new->border_tree), true);
+    ky_scene_node_set_enabled(&new->border_tree->node, true);
     struct theme *theme = theme_manager_get_current();
     ky_scene_rect_set_color(new->background, theme->maxswitcher.select_color);
     set_icon_buffer(new, 1);
@@ -464,7 +462,7 @@ static void hide_all_items(void)
     struct item_view *item_view;
     for (int i = 0; i < switcher->num_view; i++) {
         item_view = switcher->item_views[i];
-        ky_scene_node_set_enabled(ky_scene_node_from_tree(item_view->tree), false);
+        ky_scene_node_set_enabled(&item_view->tree->node, false);
     }
 }
 
@@ -491,9 +489,9 @@ static void show_current_page_items(int index)
         }
 
         item_view = switcher->item_views[i];
-        struct ky_scene_node *node = ky_scene_node_from_tree(item_view->tree);
-        ky_scene_node_set_enabled(node, true);
-        ky_scene_node_set_position(node, 0, start_i * theme->maxswitcher.item_height);
+        ky_scene_node_set_enabled(&item_view->tree->node, true);
+        ky_scene_node_set_position(&item_view->tree->node, 0,
+                                   start_i * theme->maxswitcher.item_height);
 
         /* set icon position */
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
@@ -555,7 +553,7 @@ static void hide_maximize_switcher(void)
     for (int i = 0; i < switcher->num_view; i++) {
         item_view = switcher->item_views[i];
         wl_list_remove(&item_view->view_destroy.link);
-        ky_scene_node_destroy(ky_scene_node_from_tree(item_view->tree));
+        ky_scene_node_destroy(&item_view->tree->node);
         free(item_view->text);
         free(item_view);
     }
@@ -564,7 +562,7 @@ static void hide_maximize_switcher(void)
     switcher->item_views = NULL;
     switcher->num_windows = 0;
     wl_list_remove(&switcher->output_frame.link);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(switcher->tree), false);
+    ky_scene_node_set_enabled(&switcher->tree->node, false);
 }
 
 static bool show_maximize_switcher(void)
@@ -601,27 +599,25 @@ static bool show_maximize_switcher(void)
 
     switcher->num_view = num_view;
 
-    struct ky_scene_node *node = ky_scene_node_from_tree(switcher->tree);
     int x = usable_area->x + usable_area->width / 2 - switcher->width / 2;
     int y = usable_area->y + usable_area->height / 2 - switcher->height / 2;
     ky_scene_rect_set_size(switcher->background, switcher->width, switcher->height);
-    ky_scene_node_set_position(node, x, y);
-    ky_scene_node_set_enabled(node, true);
+    ky_scene_node_set_position(&switcher->tree->node, x, y);
+    ky_scene_node_set_enabled(&switcher->tree->node, true);
 
     /* draw border */
     /* left */
     ky_scene_rect_set_size(switcher->border.left, 1, switcher->height);
-    ky_scene_node_set_position(ky_scene_node_from_rect(switcher->border.left), -1, 0);
+    ky_scene_node_set_position(&switcher->border.left->node, -1, 0);
     /* top */
-    ky_scene_node_set_position(ky_scene_node_from_rect(switcher->border.top), -1, -1);
+    ky_scene_node_set_position(&switcher->border.top->node, -1, -1);
     ky_scene_rect_set_size(switcher->border.top, switcher->width + 2, 1);
     /* right */
     ky_scene_rect_set_size(switcher->border.right, 1, switcher->height);
-    ky_scene_node_set_position(ky_scene_node_from_rect(switcher->border.right), switcher->width, 0);
+    ky_scene_node_set_position(&switcher->border.right->node, switcher->width, 0);
     /* bottom */
     ky_scene_rect_set_size(switcher->border.bottom, switcher->width + 2, 1);
-    ky_scene_node_set_position(ky_scene_node_from_rect(switcher->border.bottom), -1,
-                               switcher->height);
+    ky_scene_node_set_position(&switcher->border.bottom->node, -1, switcher->height);
 
     switcher->output_frame.notify = handle_output_frame;
     wl_signal_add(&output->base.events.frame, &switcher->output_frame);
@@ -698,7 +694,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&switcher->server_destroy.link);
-    ky_scene_node_destroy(ky_scene_node_from_tree(switcher->tree));
+    ky_scene_node_destroy(&switcher->tree->node);
 
     free(switcher);
     switcher = NULL;
@@ -713,7 +709,7 @@ bool maximize_switcher_create(struct view_manager *view_manager)
 
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     switcher->tree = ky_scene_tree_create(layer->tree);
-    ky_scene_node_set_enabled(ky_scene_node_from_tree(switcher->tree), false);
+    ky_scene_node_set_enabled(&switcher->tree->node, false);
 
     struct theme *theme = theme_manager_get_current();
     switcher->icon_ratio = theme->maxswitcher.icon_ratio;
