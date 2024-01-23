@@ -8,6 +8,8 @@
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_input_device.h>
 
+#define DEFAULT_DOUBLE_CLICK_TIME (500)
+
 struct server;
 
 struct input_state {
@@ -45,6 +47,9 @@ struct input_state {
     uint32_t rotation_angle; // CW
 
     float calibration_matrix[6];
+
+    double scroll_factor;
+    uint32_t double_click_time;
 
     /* for keyboard */
     const char *xkb_layout;

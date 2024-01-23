@@ -56,8 +56,6 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
 
     seat->state.cursor_theme = NULL;
     seat->state.cursor_size = 24;
-    seat->state.scroll_factor = 1.0;
-    seat->state.double_click_time = 500;
     if (!seat_read_config(seat)) {
         kywc_log(KYWC_ERROR, "seat(%s) read config error!", seat->name);
     }
@@ -358,7 +356,8 @@ void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolu
 
 void seat_feed_pointer_button(struct seat *seat, uint32_t button, bool pressed)
 {
-    cursor_feed_button(seat->cursor, button, pressed, current_time_msec());
+    cursor_feed_button(seat->cursor, button, pressed, current_time_msec(),
+                       DEFAULT_DOUBLE_CLICK_TIME);
     wlr_seat_pointer_notify_frame(seat->wlr_seat);
 }
 

@@ -179,7 +179,8 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
 
 void cursor_feed_motion(struct cursor *cursor, uint32_t time);
 
-void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time);
+void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time,
+                        uint32_t double_click_time);
 
 void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
                       int32_t delta_discrete, uint32_t time);

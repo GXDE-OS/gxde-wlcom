@@ -154,6 +154,12 @@ static void input_get_state(struct input *input, struct input_state *state)
     state->seat = input->seat ? input->seat->name : NULL;
     state->mapped_to_output = input->mapped_output ? input->mapped_output->name : NULL;
 
+    state->scroll_factor = input->state.scroll_factor > 0 ? input->state.scroll_factor
+                                                          : input->default_state.scroll_factor;
+    state->double_click_time = input->state.double_click_time > 0
+                                   ? input->state.double_click_time
+                                   : input->default_state.double_click_time;
+
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
         state->repeat_rate = wlr_keyboard->repeat_info.rate;
@@ -169,6 +175,9 @@ static void input_get_default_state(struct input *input, struct input_state *sta
 {
     state->seat = NULL;
     state->mapped_to_output = NULL;
+
+    state->scroll_factor = 1.0;
+    state->double_click_time = DEFAULT_DOUBLE_CLICK_TIME;
 
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         state->repeat_rate = 25;
@@ -407,6 +416,9 @@ static bool _input_set_state(struct input *input, struct input_state *state)
         }
         xkb_keymap_unref(keymap);
     }
+
+    input->state.scroll_factor = state->scroll_factor;
+    input->state.double_click_time = state->double_click_time;
 
     /* choose a suitable seat, add the input device to the seat */
     input_set_seat(input, state->seat ? state->seat : "seat0");

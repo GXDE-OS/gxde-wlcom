@@ -146,7 +146,8 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
     cursor_feed_motion(cursor, current_time_msec());
 }
 
-void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time)
+void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time,
+                        uint32_t double_click_time)
 {
     struct seat *seat = cursor->seat;
     if (seat->pointer_grab && seat->pointer_grab->interface->button &&
@@ -220,7 +221,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     bool double_click = false;
     if (pressed) {
         if (!changed && button == cursor->last_click_button &&
-            time - cursor->last_click_time < seat->state.double_click_time) {
+            time - cursor->last_click_time < double_click_time) {
             double_click = true;
         }
         /* reset after a double click */
@@ -265,7 +266,9 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
     struct wlr_pointer_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec);
+    struct input *input = input_from_wlr_input(&event->pointer->base);
+    cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec,
+                       input->state.double_click_time);
 }
 
 void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
@@ -278,10 +281,8 @@ void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t sour
         return;
     }
 
-    double scroll_factor = (seat->state.scroll_factor <= 0) ? 1.0 : seat->state.scroll_factor;
     /* Notify the client with pointer focus of the axis event. */
-    wlr_seat_pointer_notify_axis(seat->wlr_seat, time, orientation, scroll_factor * delta,
-                                 roundf(scroll_factor * delta_discrete), source);
+    wlr_seat_pointer_notify_axis(seat->wlr_seat, time, orientation, delta, delta_discrete, source);
 }
 
 static void cursor_handle_axis(struct wl_listener *listener, void *data)
@@ -290,8 +291,10 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
     struct wlr_pointer_axis_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    cursor_feed_axis(cursor, event->orientation, event->source, event->delta, event->delta_discrete,
-                     event->time_msec);
+    struct input *input = input_from_wlr_input(&event->pointer->base);
+    cursor_feed_axis(cursor, event->orientation, event->source,
+                     input->state.scroll_factor * event->delta,
+                     roundf(input->state.scroll_factor * event->delta_discrete), event->time_msec);
 }
 
 static void cursor_handle_frame(struct wl_listener *listener, void *data)
@@ -362,11 +365,13 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
 {
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_tip);
     struct wlr_tablet_tool_tip_event *event = data;
+    struct input *input = input_from_wlr_input(&event->tablet->base);
     idle_manager_notify_activity(cursor->seat);
 
     if (cursor->tablet_tool_tip_simulation_pointer && event->state == WLR_TABLET_TOOL_TIP_UP) {
         cursor->tablet_tool_tip_simulation_pointer = false;
-        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec,
+                           input->state.double_click_time);
         wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
         /* workaround to send a tool-tip up */
         tablet_handle_tool_tip(event);
@@ -378,7 +383,7 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
     }
 
     cursor->tablet_tool_tip_simulation_pointer = true;
-    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec);
+    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec, input->state.double_click_time);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 }
 
@@ -389,7 +394,9 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
     idle_manager_notify_activity(cursor->seat);
 
     if (cursor->tablet_tool_buttons > 0 && cursor->tablet_tool_button_simulation_pointer) {
-        cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec);
+        struct input *input = input_from_wlr_input(&event->tablet->base);
+        cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec,
+                           input->state.double_click_time);
         wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
     } else if (tablet_handle_tool_button(event)) {
         cursor->tablet_tool_button_simulation_pointer = false;
@@ -421,7 +428,9 @@ static void cursor_handle_touch_up(struct wl_listener *listener, void *data)
 
     if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
         cursor->pointer_touch_up = true;
-        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+        struct input *input = input_from_wlr_input(&event->touch->base);
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec,
+                           input->state.double_click_time);
     }
 }
 
@@ -444,7 +453,9 @@ static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
 
     cursor->touch_simulation_pointer = true;
     cursor->pointer_touch_id = event->touch_id;
-    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec);
+
+    struct input *input = input_from_wlr_input(&event->touch->base);
+    cursor_feed_button(cursor, BTN_LEFT, true, event->time_msec, input->state.double_click_time);
 }
 
 static void cursor_handle_touch_motion(struct wl_listener *listener, void *data)
@@ -471,7 +482,9 @@ static void cursor_handle_touch_cancel(struct wl_listener *listener, void *data)
 
     if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
         cursor->pointer_touch_up = true;
-        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec);
+        struct input *input = input_from_wlr_input(&event->touch->base);
+        cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec,
+                           input->state.double_click_time);
     }
 }
 

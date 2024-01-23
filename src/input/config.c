@@ -593,6 +593,114 @@ static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "dd", input->state.scroll_factor,
+                                      input->default_state.scroll_factor);
+}
+
+static int set_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    double scroll_factor;
+    CK(sd_bus_message_read(m, "sd", &input_name, &scroll_factor));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->state.scroll_factor != scroll_factor) {
+        struct input_state state = input->state;
+        state.scroll_factor = scroll_factor;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, "uu", input->state.double_click_time,
+                                      input->default_state.double_click_time);
+}
+
+static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t double_click_time;
+    CK(sd_bus_message_read(m, "su", &input_name, &double_click_time));
+
+    struct input *input = input_by_name(input_name);
+    if (!input) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (input->state.double_click_time != double_click_time) {
+        struct input_state state = input->state;
+        state.double_click_time = double_click_time;
+        input_set_state(input, &state);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static const sd_bus_vtable service_input_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("ListAllInputs", "", "a(su)", list_inputs, 0),
+    SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
+    SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
+    SD_BUS_METHOD("GetSendEventsMode", "s", "uu", get_send_events, 0),
+    SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
+    SD_BUS_METHOD("GetTapToClick", "s", "bb", get_tap_to_click, 0),
+    SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
+    SD_BUS_METHOD("GetTapAndDrag", "s", "bb", get_tap_and_drag, 0),
+    SD_BUS_METHOD("EnableTapAndDrag", "sb", "", enable_tap_and_drag, 0),
+    SD_BUS_METHOD("GetPointerSpeed", "s", "dd", get_pointer_speed, 0),
+    SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
+    SD_BUS_METHOD("GetAccelProfile", "s", "uu", get_accel_profile, 0),
+    SD_BUS_METHOD("SetAccelProfile", "su", "", set_accel_profile, 0),
+    SD_BUS_METHOD("GetScrollMethod", "s", "uu", get_scroll_method, 0),
+    SD_BUS_METHOD("SetScrollMethod", "su", "", set_scroll_method, 0),
+    SD_BUS_METHOD("GetDisableWhileTyping", "s", "bb", get_disable_while_typing, 0),
+    SD_BUS_METHOD("SetDisableWhileTyping", "sb", "", set_disable_while_typing, 0),
+    SD_BUS_METHOD("GetNaturalScroll", "s", "bb", get_natural_scroll, 0),
+    SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
+    SD_BUS_METHOD("GetLeftHand", "s", "bb", get_left_handed, 0),
+    SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
+    SD_BUS_METHOD("GetRepeatInfo", "s", "iiii", get_repeat_info, 0),
+    SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
+    SD_BUS_METHOD("GetScrollFactor", "s", "dd", get_scroll_factor, 0),
+    SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
+    SD_BUS_METHOD("GetDoubleClickTime", "s", "uu", get_double_click_time, 0),
+    SD_BUS_METHOD("SetDoubleClickTime", "su", "", set_double_click_time, 0),
+    SD_BUS_VTABLE_END,
+};
+
 static int list_seats(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     struct input_manager *manager = userdata;
@@ -633,86 +741,10 @@ static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
     return sd_bus_reply_method_return(m, NULL);
 }
 
-static int set_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
-{
-    const char *seat_name;
-    double scroll_factor;
-    CK(sd_bus_message_read(m, "sd", &seat_name, &scroll_factor));
-
-    struct seat *seat = seat_by_name(seat_name);
-    if (!seat) {
-        const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
-        return sd_bus_reply_method_error(m, &error);
-    }
-
-    if (scroll_factor <= 0) {
-        const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild scroll_factor.");
-        return sd_bus_reply_method_error(m, &error);
-    }
-
-    seat->state.scroll_factor = scroll_factor;
-
-    seat_write_config(seat);
-
-    return sd_bus_reply_method_return(m, NULL);
-}
-
-static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
-{
-    const char *seat_name;
-    uint32_t double_click_time;
-    CK(sd_bus_message_read(m, "su", &seat_name, &double_click_time));
-
-    struct seat *seat = seat_by_name(seat_name);
-    if (!seat) {
-        const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
-        return sd_bus_reply_method_error(m, &error);
-    }
-
-    seat->state.double_click_time = double_click_time;
-
-    seat_write_config(seat);
-
-    return sd_bus_reply_method_return(m, NULL);
-}
-
-static const sd_bus_vtable service_input_vtable[] = {
-    SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllInputs", "", "a(su)", list_inputs, 0),
-    SD_BUS_METHOD("MapToOutput", "ss", "", map_to_output, 0),
-    SD_BUS_METHOD("ChangeSeat", "ss", "", change_seat, 0),
-    SD_BUS_METHOD("GetSendEventsMode", "s", "uu", get_send_events, 0),
-    SD_BUS_METHOD("SetSendEventsMode", "su", "", set_send_events, 0),
-    SD_BUS_METHOD("GetTapToClick", "s", "bb", get_tap_to_click, 0),
-    SD_BUS_METHOD("EnableTapToClick", "sb", "", enable_tap_to_click, 0),
-    SD_BUS_METHOD("GetTapAndDrag", "s", "bb", get_tap_and_drag, 0),
-    SD_BUS_METHOD("EnableTapAndDrag", "sb", "", enable_tap_and_drag, 0),
-    SD_BUS_METHOD("GetPointerSpeed", "s", "dd", get_pointer_speed, 0),
-    SD_BUS_METHOD("SetPointerSpeed", "sd", "", set_pointer_speed, 0),
-    SD_BUS_METHOD("GetAccelProfile", "s", "uu", get_accel_profile, 0),
-    SD_BUS_METHOD("SetAccelProfile", "su", "", set_accel_profile, 0),
-    SD_BUS_METHOD("GetScrollMethod", "s", "uu", get_scroll_method, 0),
-    SD_BUS_METHOD("SetScrollMethod", "su", "", set_scroll_method, 0),
-    SD_BUS_METHOD("GetDisableWhileTyping", "s", "bb", get_disable_while_typing, 0),
-    SD_BUS_METHOD("SetDisableWhileTyping", "sb", "", set_disable_while_typing, 0),
-    SD_BUS_METHOD("GetNaturalScroll", "s", "bb", get_natural_scroll, 0),
-    SD_BUS_METHOD("EnableNaturalScroll", "sb", "", enable_natural_scroll, 0),
-    SD_BUS_METHOD("GetLeftHand", "s", "bb", get_left_handed, 0),
-    SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
-    SD_BUS_METHOD("GetRepeatInfo", "s", "iiii", get_repeat_info, 0),
-    SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
-    SD_BUS_VTABLE_END,
-};
-
 static const sd_bus_vtable service_seat_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllSeats", "", "a(ss)", list_seats, 0),
     SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
-    SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
-    SD_BUS_METHOD("SetDoubleClickTime", "su", "", set_double_click_time, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -869,6 +901,13 @@ bool input_read_config(struct input *input, struct input_state *state)
         }
     }
 
+    if (json_object_object_get_ex(config, "scroll_factor", &data)) {
+        state->scroll_factor = json_object_get_double(data);
+    }
+    if (json_object_object_get_ex(config, "double_click_time", &data)) {
+        state->double_click_time = json_object_get_int(data);
+    }
+
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         if (json_object_object_get_ex(config, "repeat_delay", &data)) {
             state->repeat_delay = json_object_get_int(data);
@@ -983,6 +1022,9 @@ void input_write_config(struct input *input)
 
     // TODO: rotation angle
 
+    WRITE_CONFIG(scroll_factor, double);
+    WRITE_CONFIG(double_click_time, int);
+
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         WRITE_CONFIG(repeat_delay, int);
         WRITE_CONFIG(repeat_rate, int);
@@ -1008,12 +1050,6 @@ bool seat_read_config(struct seat *seat)
     }
     if (json_object_object_get_ex(config, "cursor_size", &data)) {
         seat->state.cursor_size = json_object_get_int(data);
-    }
-    if (json_object_object_get_ex(config, "scroll_factor", &data)) {
-        seat->state.scroll_factor = json_object_get_double(data);
-    }
-    if (json_object_object_get_ex(config, "double_click_time", &data)) {
-        seat->state.double_click_time = json_object_get_double(data);
     }
 
     return true;
@@ -1042,19 +1078,5 @@ void seat_write_config(struct seat *seat)
         json_object_object_add(config, "cursor_size", json_object_new_int(seat->state.cursor_size));
     } else {
         json_object_object_del(config, "cursor_size");
-    }
-
-    if (seat->state.scroll_factor != 1.0) {
-        json_object_object_add(config, "scroll_factor",
-                               json_object_new_double(seat->state.scroll_factor));
-    } else {
-        json_object_object_del(config, "scroll_factor");
-    }
-
-    if (seat->state.double_click_time != 500) {
-        json_object_object_add(config, "double_click_time",
-                               json_object_new_double(seat->state.double_click_time));
-    } else {
-        json_object_object_del(config, "double_click_time");
     }
 }
