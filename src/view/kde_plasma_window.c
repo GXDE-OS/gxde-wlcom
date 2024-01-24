@@ -529,7 +529,7 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         if (!window->kywc_view->mapped) {
             continue;
         }
-        org_kde_plasma_window_management_send_window(resource, window->id);
+        // org_kde_plasma_window_management_send_window(resource, window->id);
         org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
     }
 
@@ -543,7 +543,7 @@ static void window_handle_view_map(struct wl_listener *listener, void *data)
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {
-        org_kde_plasma_window_management_send_window(resource, window->id);
+        // org_kde_plasma_window_management_send_window(resource, window->id);
         org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
     }
 }
