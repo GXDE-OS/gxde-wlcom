@@ -27,6 +27,7 @@ struct kde_plasma_surface {
 
     struct wlr_surface *wlr_surface;
     struct wl_listener surface_map;
+    struct wl_listener surface_destroy;
 
     /* get in map listener */
     struct view *view;
@@ -60,6 +61,9 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
                                 int32_t y)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
 
     surface->x = x;
     surface->y = y;
@@ -128,6 +132,9 @@ static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surfac
 static void handle_set_role(struct wl_client *client, struct wl_resource *resource, uint32_t role)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
 
     surface->role = role;
 
@@ -148,6 +155,10 @@ static void handle_set_skip_taskbar(struct wl_client *client, struct wl_resource
                                     uint32_t skip)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
+
     surface->skip_taskbar = skip;
 
     if (surface->view) {
@@ -362,18 +373,29 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     }
 }
 
+static void surface_handle_destroy(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_surface *surface = wl_container_of(listener, surface, surface_destroy);
+
+    wl_list_remove(&surface->surface_map.link);
+    wl_list_remove(&surface->surface_destroy.link);
+
+    surface->wlr_surface = NULL;
+}
+
 static void kde_plasma_surface_handle_resource_destroy(struct wl_resource *resource)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
-    wl_list_remove(&surface->surface_map.link);
+
+    if (surface->wlr_surface) {
+        surface_handle_destroy(&surface->surface_destroy, NULL);
+    }
 
     if (surface->view) {
         if (surface->view->base.mapped) {
             surface_handle_view_unmap(&surface->view_unmap, NULL);
         }
-        wl_list_remove(&surface->view_destroy.link);
-        wl_list_remove(&surface->view_map.link);
-        wl_list_remove(&surface->view_unmap.link);
+        surface_handle_view_destroy(&surface->view_destroy, NULL);
     }
 
     free(surface);
@@ -411,6 +433,13 @@ static void handle_get_surface(struct wl_client *client, struct wl_resource *she
     surface->wlr_surface = wlr_surface;
     surface->surface_map.notify = surface_handle_map;
     wl_signal_add(&wlr_surface->events.map, &surface->surface_map);
+    surface->surface_destroy.notify = surface_handle_destroy;
+    wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
+
+    /* workaround to fix this request is behind surface map */
+    if (surface->wlr_surface->mapped) {
+        surface_handle_map(&surface->surface_map, NULL);
+    }
 }
 
 static const struct org_kde_plasma_shell_interface kde_plasma_shell_impl = {
