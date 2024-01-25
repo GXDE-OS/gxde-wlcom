@@ -86,6 +86,8 @@ struct view {
     struct kywc_view base;
     struct wlr_surface *surface;
 
+    pid_t pid;
+
     /* parent and children */
     struct view *parent;
     struct wl_list parent_link;

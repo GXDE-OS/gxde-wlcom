@@ -415,6 +415,8 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     xdg_view->commit.notify = xdg_view_handle_commit;
     wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
 
+    struct wl_client *client = wl_resource_get_client(wlr_surface->resource);
+    wl_client_get_credentials(client, &xdg_view->view.pid, NULL, NULL);
     view_map(&xdg_view->view);
 }
 

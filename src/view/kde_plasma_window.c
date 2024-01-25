@@ -428,6 +428,7 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     kde_plasma_window_send_state(window, resource, true);
 
     struct kywc_view *kywc_view = window->kywc_view;
+    struct view *view = view_from_kywc_view(kywc_view);
     if (kywc_view->title) {
         org_kde_plasma_window_send_title_changed(resource, kywc_view->title);
     }
@@ -436,6 +437,9 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     }
     if (!kywc_view->mapped) {
         org_kde_plasma_window_send_unmapped(resource);
+    }
+    if (view->pid) {
+        org_kde_plasma_window_send_pid_changed(resource, view->pid);
     }
 
     org_kde_plasma_window_send_geometry(resource, kywc_view->geometry.x, kywc_view->geometry.y,
@@ -448,7 +452,6 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
 
     // org_kde_plasma_window_send_themed_icon_name_changed
     // org_kde_plasma_window_send_icon_changed
-    // org_kde_plasma_window_send_pid_changed
     // org_kde_plasma_window_send_application_menu
     // org_kde_plasma_window_send_activity_entered
     // org_kde_plasma_window_send_activity_left
