@@ -246,6 +246,7 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
     struct wlr_pointer_motion_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y, true, false);
     cursor_feed_motion(cursor, event->time_msec);
 }
@@ -256,6 +257,7 @@ static void cursor_handle_motion_absolute(struct wl_listener *listener, void *da
     struct wlr_pointer_motion_absolute_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     cursor_move(cursor, &event->pointer->base, event->x, event->y, false, true);
     cursor_feed_motion(cursor, event->time_msec);
 }
@@ -266,6 +268,7 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
     struct wlr_pointer_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     struct input *input = input_from_wlr_input(&event->pointer->base);
     cursor_feed_button(cursor, event->button, event->state == WLR_BUTTON_PRESSED, event->time_msec,
                        input->state.double_click_time);
@@ -291,6 +294,7 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
     struct wlr_pointer_axis_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     struct input *input = input_from_wlr_input(&event->pointer->base);
     cursor_feed_axis(cursor, event->orientation, event->source,
                      input->state.scroll_factor * event->delta,
@@ -311,6 +315,7 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
     struct wlr_tablet_tool_axis_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     /* force to pointer when move and resize */
     if (cursor->seat->pointer_grab) {
         cursor->tablet_tool_tip_simulation_pointer = true;
@@ -347,6 +352,7 @@ static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, vo
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_proximity);
     struct wlr_tablet_tool_proximity_event *event = data;
     idle_manager_notify_activity(cursor->seat);
+    cursor_set_hidden(cursor, false);
     cursor_move(cursor, &event->tablet->base, event->x, event->y, false, true);
 
     if (!cursor->tablet_tool_tip_simulation_pointer && tablet_handle_tool_proximity(event)) {
@@ -368,6 +374,7 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
     struct input *input = input_from_wlr_input(&event->tablet->base);
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     if (cursor->tablet_tool_tip_simulation_pointer && event->state == WLR_TABLET_TOOL_TIP_UP) {
         cursor->tablet_tool_tip_simulation_pointer = false;
         cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec,
@@ -393,6 +400,7 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
     struct wlr_tablet_tool_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
+    cursor_set_hidden(cursor, false);
     if (cursor->tablet_tool_buttons > 0 && cursor->tablet_tool_button_simulation_pointer) {
         struct input *input = input_from_wlr_input(&event->tablet->base);
         cursor_feed_button(cursor, BTN_RIGHT, event->state == WLR_BUTTON_PRESSED, event->time_msec,
@@ -439,8 +447,7 @@ static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
     struct cursor *cursor = wl_container_of(listener, cursor, touch_down);
     struct wlr_touch_down_event *event = data;
     idle_manager_notify_activity(cursor->seat);
-    // TODO: hide cursor and show it when pointer motion
-    // cursor_set_image(cursor, CURSOR_NONE);
+    cursor_set_hidden(cursor, true);
     cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
 
     /* workaround to fix peony drag icon position */
@@ -610,7 +617,7 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
     struct wlr_seat_client *focused_client = cursor->seat->wlr_seat->pointer_state.focused_client;
     struct seat_pointer_grab *grab = cursor->seat->pointer_grab;
 
-    if (grab || focused_client != event->seat_client) {
+    if (grab || cursor->hidden || focused_client != event->seat_client) {
         return;
     }
 
@@ -779,6 +786,10 @@ void cursor_remove_input(struct input *input)
 
 static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool force)
 {
+    if (cursor->hidden) {
+        return;
+    }
+
     /* early return if cursor not changed when client not requested */
     if (!force && name == cursor->name && !cursor->client_requested) {
         return;
