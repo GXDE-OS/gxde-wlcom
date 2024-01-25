@@ -188,6 +188,8 @@ struct ky_scene_node {
     /* enabled state after last collect_damage */
     bool last_enabled;
     pixman_region32_t visible_region;
+    /* region that can accept input */
+    pixman_region32_t input_region;
 
     /* impl.xxx MUST not be NULL */
     struct ky_scene_node_interface impl;
@@ -336,6 +338,8 @@ bool ky_scene_node_coords(struct ky_scene_node *node, int *lx_ptr, int *ly_ptr);
 
 struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, double ly, double *nx,
                                        double *ny);
+
+void ky_scene_node_set_input_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
 // TODO: is removed in wlroots
 struct wlr_presentation;

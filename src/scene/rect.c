@@ -33,6 +33,11 @@ static struct ky_scene_node *rect_accpet_input(struct ky_scene_node *node, int l
         return NULL;
     }
 
+    if (pixman_region32_not_empty(&node->input_region) &&
+        !pixman_region32_contains_point(&node->input_region, box.x - lx, box.y - ly, NULL)) {
+        return NULL;
+    }
+
     *rx = px - lx;
     *ry = py - ly;
     return node;

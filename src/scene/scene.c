@@ -101,6 +101,7 @@ static void node_destroy(struct ky_scene_node *node)
     ky_scene_node_set_enabled(node, false);
 
     pixman_region32_fini(&node->visible_region);
+    pixman_region32_fini(&node->input_region);
     wl_list_remove(&node->link);
     free(node);
 }
@@ -125,6 +126,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
     wl_list_init(&node->link);
     wl_signal_init(&node->events.destroy);
     pixman_region32_init(&node->visible_region);
+    pixman_region32_init(&node->input_region);
 
     if (parent != NULL) {
         wl_list_insert(parent->children.prev, &node->link);
@@ -641,6 +643,16 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
         *ny = sy;
     }
     return found;
+}
+
+void ky_scene_node_set_input_region(struct ky_scene_node *node, const pixman_region32_t *region)
+{
+    /* tree is not support currently */
+    assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
+    if (pixman_region32_equal(&node->input_region, region)) {
+        return;
+    }
+    pixman_region32_copy(&node->input_region, region);
 }
 
 void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,

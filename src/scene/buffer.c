@@ -99,6 +99,11 @@ static struct ky_scene_node *buffer_accpet_input(struct ky_scene_node *node, int
     *rx = px - lx;
     *ry = py - ly;
 
+    if (pixman_region32_not_empty(&node->input_region) &&
+        !pixman_region32_contains_point(&node->input_region, box.x - lx, box.y - ly, NULL)) {
+        return NULL;
+    }
+
     /* check buffer_point_accepts_input */
     if (scene_buffer->point_accepts_input &&
         !scene_buffer->point_accepts_input(scene_buffer, rx, ry)) {
