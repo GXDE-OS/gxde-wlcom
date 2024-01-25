@@ -37,8 +37,6 @@ struct xwayland_unmanaged {
     struct wl_listener set_override_redirect;
 
     struct wlr_seat_pointer_grab pointer_grab;
-
-    pixman_region32_t input_region;
 };
 
 static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *node, double x,
@@ -322,23 +320,6 @@ static void unmanaged_handle_precommit(struct wl_listener *listener, void *data)
     }
 }
 
-static bool unmanaged_buffer_point_accepts_input(struct ky_scene_buffer *scene_buffer, double *sx,
-                                                 double *sy)
-{
-    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_buffer(scene_buffer);
-    struct input_event_node *input_node = scene_buffer->node.data;
-    struct xwayland_unmanaged *unmanaged = input_node->data;
-
-    if (pixman_region32_not_empty(&unmanaged->input_region)) {
-        return *sx >= 0 && *sx < scene_surface->surface->current.width && *sy >= 0 &&
-               *sy < scene_surface->surface->current.height &&
-               pixman_region32_contains_point(&unmanaged->input_region, floor(*sx), floor(*sy),
-                                              NULL);
-    } else {
-        return wlr_surface_point_accepts_input(scene_surface->surface, *sx, *sy);
-    }
-}
-
 static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, associate);
@@ -349,7 +330,6 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
         ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
     unmanaged->surface_node = &scene_surface->buffer->node;
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
-    scene_surface->buffer->point_accepts_input = unmanaged_buffer_point_accepts_input;
 
     input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
                             xwayland_unmanaged_get_root, xwayland_unmanaged_get_toplevel,
@@ -388,7 +368,6 @@ static void unmanaged_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&unmanaged->dissociate.link);
     wl_list_remove(&unmanaged->destroy.link);
 
-    pixman_region32_fini(&unmanaged->input_region);
     free(unmanaged);
 }
 
@@ -419,7 +398,6 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
     unmanaged->xwayland = xwayland;
     wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     unmanaged->wlr_xwayland_surface = wlr_xwayland_surface;
-    pixman_region32_init(&unmanaged->input_region);
 
     unmanaged->associate.notify = unmanaged_handle_associate;
     wl_signal_add(&wlr_xwayland_surface->events.associate, &unmanaged->associate);
@@ -476,11 +454,13 @@ void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_w
         return;
     }
 
-    pixman_region32_clear(&unmanaged->input_region);
+    pixman_region32_t input_region;
+    pixman_region32_init(&input_region);
     for (int i = 0; i < count; i++) {
-        pixman_region32_union_rect(&unmanaged->input_region, &unmanaged->input_region,
-                                   xwayland_unscale(rects[i].x), xwayland_unscale(rects[i].y),
-                                   xwayland_unscale(rects[i].width),
+        pixman_region32_union_rect(&input_region, &input_region, xwayland_unscale(rects[i].x),
+                                   xwayland_unscale(rects[i].y), xwayland_unscale(rects[i].width),
                                    xwayland_unscale(rects[i].height));
     }
+    ky_scene_node_set_input_region(unmanaged->surface_node, &input_region);
+    pixman_region32_fini(&input_region);
 }
