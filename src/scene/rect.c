@@ -90,7 +90,14 @@ static void rect_collect_damage(struct ky_scene_node *node, int lx, int ly, bool
 
     if (node_enabled && rect->color[3] != 0) {
         // current visible region
-        pixman_region32_init_rect(&node->visible_region, lx, ly, rect->width, rect->height);
+        bool has_clip_region = pixman_region32_not_empty(&node->clip_region);
+        if (has_clip_region) {
+            pixman_region32_intersect_rect(&node->visible_region, &node->clip_region, 0, 0,
+                                           rect->width, rect->height);
+            pixman_region32_translate(&node->visible_region, lx, ly);
+        } else {
+            pixman_region32_init_rect(&node->visible_region, lx, ly, rect->width, rect->height);
+        }
         pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
 
         if (!no_damage) {
@@ -98,7 +105,16 @@ static void rect_collect_damage(struct ky_scene_node *node, int lx, int ly, bool
         }
 
         if (rect->color[3] == 1) {
-            pixman_region32_union_rect(invisible, invisible, lx, ly, rect->width, rect->height);
+            if (has_clip_region) {
+                pixman_region32_t region;
+                pixman_region32_init_rect(&region, 0, 0, rect->width, rect->height);
+                pixman_region32_intersect(&region, &region, &node->clip_region);
+                pixman_region32_translate(&region, lx, ly);
+                pixman_region32_union(invisible, invisible, &region);
+                pixman_region32_fini(&region);
+            } else {
+                pixman_region32_union_rect(invisible, invisible, lx, ly, rect->width, rect->height);
+            }
         }
     }
 

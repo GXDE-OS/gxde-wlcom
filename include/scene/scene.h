@@ -190,6 +190,8 @@ struct ky_scene_node {
     pixman_region32_t visible_region;
     /* region that can accept input */
     pixman_region32_t input_region;
+    /* reigon that can render */
+    pixman_region32_t clip_region;
 
     /* impl.xxx MUST not be NULL */
     struct ky_scene_node_interface impl;
@@ -340,6 +342,8 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
                                        double *ny);
 
 void ky_scene_node_set_input_region(struct ky_scene_node *node, const pixman_region32_t *region);
+
+void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
 // TODO: is removed in wlroots
 struct wlr_presentation;
