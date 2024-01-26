@@ -160,6 +160,8 @@ int main(int argc, char *argv[])
     /* handle SIGTERM signals */
     set_signal(SIGTERM, sig_handler);
     set_signal(SIGINT, sig_handler);
+    /* handle SIGHUP signals */
+    set_signal(SIGHUP, sig_handler);
 
     if (!server_init(&server)) {
         terminate(EXIT_FAILURE);
