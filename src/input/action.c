@@ -946,7 +946,6 @@ static void intput_action_create_with_gesture(struct input_action_manager *manag
         struct gesture_binding *binding =
             kywc_gesture_binding_create_by_string(gesture, action_data->desc);
         if (!binding) {
-            free(action_data);
             continue;
         }
 
