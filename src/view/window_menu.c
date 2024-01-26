@@ -153,6 +153,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
     char name[64] = { 0 };
 
     for (uint32_t i = 0; i < MAX_WORKSPACES; i++) {
+        uint32_t key = i < 9 ? KEY_1 + i : 0;
         desktop = &window_menu->add_items[i];
         if (i >= count) {
             if (desktop->item) {
@@ -164,7 +165,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         snprintf(name, 64, "%s %d", tr("Desktop"), i + 1);
         if (!desktop->item) {
             desktop->item =
-                menu_add_item(window_menu->desktop, name, 0, add_desktop_action, desktop);
+                menu_add_item(window_menu->desktop, name, key, add_desktop_action, desktop);
         } else {
             menu_item_update_text(desktop->item, name);
         }
