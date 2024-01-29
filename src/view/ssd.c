@@ -14,7 +14,7 @@
 #include "nls.h"
 #include "output.h"
 #include "painter.h"
-#include "scene/scene.h"
+#include "scene/decoration.h"
 #include "theme.h"
 #include "view/action.h"
 #include "view_p.h"
@@ -304,7 +304,7 @@ static enum cursor_name get_resize_type(struct ssd_part *part, double x, double 
     struct ky_scene_rect *frame = ky_scene_rect_from_node(part->node);
     struct theme *theme = theme_manager_get_current();
     int border = part->ssd->kywc_view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
-    int x1 = theme->ssd.resize_border + theme->ssd.corner_radius + border;
+    int x1 = theme->shadow.shadow_border + theme->ssd.corner_radius + border;
     int x2 = frame->width - x1;
     int y2 = frame->height - x1;
     int sx = floor(x);
@@ -330,7 +330,7 @@ static enum cursor_name get_resize_type(struct ssd_part *part, double x, double 
         }
     } else if (sy >= y2) {
         cursor_name = CURSOR_RESIZE_BOTTOM;
-    } else if (sy <= theme->ssd.resize_border + border) {
+    } else if (sy <= theme->shadow.shadow_border + border) {
         cursor_name = CURSOR_RESIZE_TOP;
     }
 
@@ -723,53 +723,29 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
-    int border = view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
-    int title = view->ssd == KYWC_SSD_ALL ? theme->ssd.title_height : 0;
-    int size = theme->ssd.resize_border + border;
-    int w = view->geometry.width;
-    int h = view->geometry.height;
+    struct ky_scene_decoration *frame =
+        ky_scene_decoration_from_node(ssd->parts[SSD_FRAME_RECT].node);
 
     if (cause & (SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_CREATE)) {
-        float *color = (float[4]){ 0.f, 0.f, 0.f, 0.f };
-        if (border > 0 || title > 0) {
-            color = view->activated ? theme->active_bg_color : theme->inactive_bg_color;
-        }
-        UPDATE_PART_COLOR(SSD_FRAME_RECT, color);
-    }
-
-    if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        UPDATE_PART_POSITION(SSD_FRAME_RECT, -size, -(title + size));
+        ky_scene_decoration_set_margin_color(
+            frame, view->activated ? theme->active_bg_color : theme->inactive_bg_color,
+            view->activated ? theme->active_border_color : theme->inactive_border_color,
+            (float[4]){ 0.f, 0.f, 0.f, 0.f });
     }
 
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
-        UPDATE_PART_SIZE(SSD_FRAME_RECT, w + 2 * size, h + title + 2 * size);
+        ky_scene_decoration_set_window_size(frame, view->geometry.width, view->geometry.height);
+    }
 
-        pixman_region32_t clip;
-        pixman_region32_init(&clip);
+    if (cause & SSD_UPDATE_CAUSE_CREATE) {
+        int border = view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
+        int title = view->ssd == KYWC_SSD_ALL ? theme->ssd.title_height : 0;
+        int size = theme->shadow.shadow_border + border;
 
-        if (border > 0 || title > 0) {
-            /* update clip region with 5 rect */
-            int x1 = theme->ssd.resize_border;
-            int x2 = theme->ssd.resize_border + border;
-            int x3 = theme->ssd.resize_border + border + w;
-            int y1 = theme->ssd.resize_border;
-            int y2 = theme->ssd.resize_border + border;
-            int y3 = theme->ssd.resize_border + border + title + h;
+        ky_scene_decoration_set_margin(frame, title, border, theme->shadow.shadow_border);
+        ky_scene_decoration_set_resize_width(frame, theme->ssd.resize_border);
 
-            /* top border */
-            pixman_region32_union_rect(&clip, &clip, x1, y1, w + 2 * border, border);
-            /* bottom border */
-            pixman_region32_union_rect(&clip, &clip, x1, y3, w + 2 * border, border);
-            /* left border */
-            pixman_region32_union_rect(&clip, &clip, x1, y2, border, title + h);
-            /* right border */
-            pixman_region32_union_rect(&clip, &clip, x3, y2, border, title + h);
-            /* title rect */
-            pixman_region32_union_rect(&clip, &clip, x2, y2, w, title);
-        }
-
-        ky_scene_node_set_clip_region(ssd->parts[SSD_FRAME_RECT].node, &clip);
-        pixman_region32_fini(&clip);
+        UPDATE_PART_POSITION(SSD_FRAME_RECT, -size, -(title + size));
     }
 }
 
@@ -889,10 +865,9 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
                 ssd_part_update_theme_buffer(&ssd->parts[i], false);
             }
         } else {
-            struct ky_scene_rect *rect =
-                ky_scene_rect_create(parent, 0, 0, (float[4]){ 0.f, 0.f, 0.f, 0.f });
-            ssd->parts[i].node = &rect->node;
-            ky_scene_node_lower_to_bottom(&rect->node);
+            struct ky_scene_decoration *frame = ky_scene_decoration_create(parent);
+            ssd->parts[i].node = ky_scene_node_from_decoration(frame);
+            ky_scene_node_lower_to_bottom(ssd->parts[i].node);
         }
 
         input_event_node_create(ssd->parts[i].node, &ssd_impl, ssd_get_root, NULL, &ssd->parts[i]);
