@@ -36,6 +36,11 @@ void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_ta
 
 void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent);
 
+void ky_scene_rect_init(struct ky_scene_rect *rect, struct ky_scene_tree *parent, int width,
+                        int height, const float color[static 4]);
+
+void ky_scene_buffer_init(struct ky_scene_buffer *scene_buffer, struct ky_scene_tree *parent);
+
 /**
  * update output states for buffer node in the tree or the single buffer node, when
  * 1. scene buffer state:

@@ -430,7 +430,7 @@ static void buffer_destroy(struct ky_scene_node *node)
     scene_buffer->node_destroy(node);
 }
 
-static void scene_buffer_init(struct ky_scene_buffer *scene_buffer, struct ky_scene_tree *parent)
+void ky_scene_buffer_init(struct ky_scene_buffer *scene_buffer, struct ky_scene_tree *parent)
 {
     *scene_buffer = (struct ky_scene_buffer){
         .opacity = 1,
@@ -465,7 +465,7 @@ struct ky_scene_buffer *ky_scene_buffer_create(struct ky_scene_tree *parent,
         return NULL;
     }
 
-    scene_buffer_init(scene_buffer, parent);
+    ky_scene_buffer_init(scene_buffer, parent);
 
     if (buffer) {
         scene_buffer->buffer = wlr_buffer_lock(buffer);

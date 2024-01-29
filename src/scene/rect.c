@@ -200,8 +200,8 @@ static void rect_destroy(struct ky_scene_node *node)
     rect->node_destroy(node);
 }
 
-static void scene_rect_init(struct ky_scene_rect *rect, struct ky_scene_tree *parent, int width,
-                            int height, const float color[static 4])
+void ky_scene_rect_init(struct ky_scene_rect *rect, struct ky_scene_tree *parent, int width,
+                        int height, const float color[static 4])
 {
     *rect = (struct ky_scene_rect){ 0 };
     ky_scene_node_init(&rect->node, parent);
@@ -230,7 +230,7 @@ struct ky_scene_rect *ky_scene_rect_create(struct ky_scene_tree *parent, int wid
         return NULL;
     }
 
-    scene_rect_init(scene_rect, parent, width, height, color);
+    ky_scene_rect_init(scene_rect, parent, width, height, color);
     ky_scene_node_push_damage(&scene_rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 
     return scene_rect;
