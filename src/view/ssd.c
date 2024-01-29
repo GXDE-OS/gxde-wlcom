@@ -244,8 +244,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
     widget_set_backgrond_color(widget, theme->inactive_bg_color);
     widget_set_front_color(widget, theme->active_text_color);
-    widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL,
-                      theme->tooltip.border_width);
+    widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, theme->tooltip.border_width);
     widget_set_round_coner(widget, CORNER_MASK_ALL, theme->tooltip.corner_radius);
     widget_update(widget, true);
 }
@@ -398,7 +397,7 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
 }
 
 static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t button, bool pressed,
-                      uint32_t time, bool dual, void *data)
+                      uint32_t time, enum click_state state, void *data)
 {
     struct ssd_part *part = data;
     struct kywc_view *kywc_view = part->ssd->kywc_view;
@@ -409,7 +408,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         ssd_tooltip_show(seat, part, false);
     }
 
-    if (dual) {
+    if (CLICK_STATE_DOUBLE == state) {
         if (button != BTN_LEFT) {
             return;
         }
@@ -422,6 +421,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         default:
             break;
         }
+        return;
+    }
+    if (CLICK_STATE_FOCUS_LOST == state) {
+        /* menu and ssd buttons do not effective */
         return;
     }
 

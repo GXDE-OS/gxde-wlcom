@@ -56,7 +56,6 @@ static void popup_handle_new_xdg_popup(struct wl_listener *listener, void *data)
     _xdg_popup_create(wlr_popup, popup->popup_tree, popup->shell_tree);
 }
 
-
 static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
 {
     struct xdg_popup *popup = wl_container_of(listener, popup, commit);
@@ -119,7 +118,7 @@ static bool xdg_popup_hover(struct seat *seat, struct ky_scene_node *node, doubl
 }
 
 static void xdg_popup_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                            bool pressed, uint32_t time, bool dual, void *data)
+                            bool pressed, uint32_t time, enum click_state state, void *data)
 {
     seat_notify_button(seat, time, button, pressed);
 }

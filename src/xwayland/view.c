@@ -81,7 +81,7 @@ static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, d
 }
 
 static void xwayland_view_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                                bool pressed, uint32_t time, bool dual, void *data)
+                                bool pressed, uint32_t time, enum click_state state, void *data)
 {
     struct xwayland_view *xwayland_view = data;
     struct wlr_xwayland *wlr_xwayland = xwayland_view->xwayland->wlr_xwayland;

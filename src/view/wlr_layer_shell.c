@@ -336,7 +336,7 @@ static bool layer_shell_hover(struct seat *seat, struct ky_scene_node *node, dou
 }
 
 static void layer_shell_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                              bool pressed, uint32_t time, bool dual, void *data)
+                              bool pressed, uint32_t time, enum click_state state, void *data)
 {
     struct layer_shell *layer_shell = data;
     seat_notify_button(seat, time, button, pressed);

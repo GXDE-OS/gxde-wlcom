@@ -92,7 +92,8 @@ static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
 }
 
 static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                                     bool pressed, uint32_t time, bool dual, void *data)
+                                     bool pressed, uint32_t time, enum click_state state,
+                                     void *data)
 {
     struct xwayland_unmanaged *unmanaged = data;
     struct wlr_xwayland *wlr_xwayland = unmanaged->xwayland->wlr_xwayland;

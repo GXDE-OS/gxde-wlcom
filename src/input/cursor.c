@@ -176,7 +176,8 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     if (cursor->hold_mode) {
         /* send button release to last focus node */
         if (old_inode && old_inode->impl->click) {
-            old_inode->impl->click(seat, old_focus, BTN_LEFT, false, time, false, old_inode->data);
+            old_inode->impl->click(seat, old_focus, BTN_LEFT, false, time, CLICK_STATE_NONE,
+                                   old_inode->data);
         }
         /* leave focus node, otherwise wrong curser image */
         if (old_inode && old_inode->impl->leave) {
@@ -208,7 +209,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     if (old_focus && changed && !pressed && last_is_pressed) {
         kywc_log(KYWC_DEBUG, "release button %d in %p", last_button, old_focus);
         if (old_inode && old_inode->impl->click) {
-            old_inode->impl->click(seat, old_focus, last_button, false, time, false,
+            old_inode->impl->click(seat, old_focus, last_button, false, time, CLICK_STATE_FOCUS_LOST,
                                    old_inode->data);
         }
         /* fix cursor image sometimes */
@@ -230,8 +231,8 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     }
 
     if (inode && inode->impl->click) {
-        inode->impl->click(seat, cursor->focus.node, button, pressed, time, double_click,
-                           inode->data);
+        inode->impl->click(seat, cursor->focus.node, button, pressed, time,
+                           double_click ? CLICK_STATE_DOUBLE : CLICK_STATE_NONE, inode->data);
     }
 
     if (!cursor->focus.node) {

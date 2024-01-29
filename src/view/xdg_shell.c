@@ -64,7 +64,7 @@ static bool xdg_view_hover(struct seat *seat, struct ky_scene_node *node, double
 }
 
 static void xdg_view_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                           bool pressed, uint32_t time, bool dual, void *data)
+                           bool pressed, uint32_t time, enum click_state state, void *data)
 {
     seat_notify_button(seat, time, button, pressed);
 

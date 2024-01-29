@@ -7,6 +7,15 @@
 
 #include "input/seat.h"
 
+enum click_state {
+    /* normal */
+    CLICK_STATE_NONE = 0,
+    /* double click */
+    CLICK_STATE_DOUBLE,
+    /* focus node lost */
+    CLICK_STATE_FOCUS_LOST,
+};
+
 #define LEFT_BUTTON_PRESSED(button, pressed) (button == BTN_LEFT && pressed)
 #define LEFT_BUTTON_RELEASED(button, pressed) (button == BTN_LEFT && !pressed)
 #define RIGHT_BUTTON_PRESSED(button, pressed) (button == BTN_RIGHT && pressed)
@@ -24,7 +33,7 @@ struct input_event_node_impl {
      * dual is true when double clicked
      */
     void (*click)(struct seat *seat, struct ky_scene_node *node, uint32_t button, bool pressed,
-                  uint32_t time, bool dual, void *data);
+                  uint32_t time, enum click_state state, void *data);
     /**
      * called when pointer leave this node,
      * last is true when leaving the root

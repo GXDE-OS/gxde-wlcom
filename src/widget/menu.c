@@ -50,7 +50,8 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_front_color(item->content, theme->active_text_color);
     widget_set_hovered_color(item->content, theme->accent_color);
 
-    widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->menu.border_width);
+    widget_set_border(item->content, theme->inactive_bg_color, border_mask,
+                      theme->menu.border_width);
     widget_set_round_coner(item->content, corner_mask, theme->menu.corner_radius);
 
     widget_update(item->content, true);
@@ -318,7 +319,7 @@ static void menu_item_leave(struct seat *seat, struct ky_scene_node *node, bool 
 }
 
 static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
-                            bool pressed, uint32_t time, bool dual, void *data)
+                            bool pressed, uint32_t time, enum click_state state, void *data)
 {
     struct menu_item *item = data;
     /* do actions when released */
@@ -448,7 +449,7 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
     struct ky_scene_node *node = input_event_node_root(inode);
     if (node == root_node) {
-        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, false,
+        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, CLICK_STATE_NONE,
                            inode->data);
     } else if (pressed) {
         menu_hide_root(root);

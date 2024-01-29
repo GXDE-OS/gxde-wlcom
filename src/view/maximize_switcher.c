@@ -120,7 +120,7 @@ static bool item_hover(struct seat *seat, struct ky_scene_node *node, double x, 
 static void item_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data) {}
 
 static void item_click(struct seat *seat, struct ky_scene_node *node, uint32_t button, bool pressed,
-                       uint32_t time, bool dual, void *data)
+                       uint32_t time, enum click_state state, void *data)
 {
     /* do actions when released */
     if (pressed || button != BTN_LEFT) {
@@ -161,7 +161,7 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
     struct ky_scene_node *node = input_event_node_root(inode);
     if (node == root_node) {
-        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, false,
+        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, CLICK_STATE_NONE,
                            inode->data);
     } else if (pressed) {
         maximize_switcher_set_enable(false);
