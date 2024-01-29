@@ -37,13 +37,6 @@ enum {
     SSD_PART_COUNT,
 };
 
-enum ssd_update_mask {
-    SSD_UPDATE_NONE = 0,
-    SSD_UPDATE_POS = 1 << 0,
-    SSD_UPDATE_SIZE = 1 << 1,
-    SSD_UPDATE_COLOR = 1 << 2,
-};
-
 enum ssd_update_cause {
     SSD_UPDATE_CAUSE_NONE = 0,
     SSD_UPDATE_CAUSE_SIZE = 1 << 0,
@@ -84,10 +77,7 @@ struct ssd_part {
     struct ssd *ssd;
     struct ky_scene_node *node;
 
-    enum ssd_update_mask update;
-    struct wlr_box geo;
     float scale;
-    float *color;
 };
 
 struct ssd {
@@ -592,20 +582,6 @@ static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
     }
 }
 
-#define UPDATE_PART_POSITION(index, px, py)                                                        \
-    ssd->parts[index].geo.x = px;                                                                  \
-    ssd->parts[index].geo.y = py;                                                                  \
-    ssd->parts[index].update |= SSD_UPDATE_POS
-
-#define UPDATE_PART_SIZE(index, w, h)                                                              \
-    ssd->parts[index].geo.width = w;                                                               \
-    ssd->parts[index].geo.height = h;                                                              \
-    ssd->parts[index].update |= SSD_UPDATE_SIZE
-
-#define UPDATE_PART_COLOR(index, color)                                                            \
-    ssd->parts[index].color = color;                                                               \
-    ssd->parts[index].update |= SSD_UPDATE_COLOR
-
 static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
@@ -694,8 +670,8 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        UPDATE_PART_POSITION(SSD_BUTTON_MAXIMIZE, button_w, 0);
-        UPDATE_PART_POSITION(SSD_BUTTON_CLOSE, 2 * button_w, 0);
+        ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MAXIMIZE].node, button_w, 0);
+        ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 2 * button_w, 0);
         ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_MINIMIZE], false);
         ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_CLOSE], false);
     }
@@ -710,11 +686,11 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_MAXIMIZE) {
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node, view->maximizable);
         if (view->maximizable) {
-            UPDATE_PART_POSITION(SSD_BUTTON_MINIMIZE, 0, 0);
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node, 0, 0);
             /* set maximize and restore  */
             ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], false);
         } else {
-            UPDATE_PART_POSITION(SSD_BUTTON_MINIMIZE, button_w, 0);
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node, button_w, 0);
         }
     }
 }
@@ -745,32 +721,7 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         ky_scene_decoration_set_margin(frame, title, border, theme->shadow.shadow_border);
         ky_scene_decoration_set_resize_width(frame, theme->ssd.resize_border);
 
-        UPDATE_PART_POSITION(SSD_FRAME_RECT, -size, -(title + size));
-    }
-}
-
-#undef UPDATE_PART_POSITON
-#undef UPDATE_PART_SIZE
-
-static void ssd_apply_parts(struct ssd *ssd)
-{
-    struct ssd_part *part;
-    for (int i = 0; i < SSD_PART_COUNT; i++) {
-        part = &ssd->parts[i];
-        if (part->update & SSD_UPDATE_POS) {
-            ky_scene_node_set_position(part->node, part->geo.x, part->geo.y);
-            part->update &= ~SSD_UPDATE_POS;
-        }
-        if (part->update & SSD_UPDATE_SIZE) {
-            struct ky_scene_rect *rect = ky_scene_rect_from_node(part->node);
-            ky_scene_rect_set_size(rect, part->geo.width, part->geo.height);
-            part->update &= ~SSD_UPDATE_SIZE;
-        }
-        if (part->update & SSD_UPDATE_COLOR) {
-            struct ky_scene_rect *rect = ky_scene_rect_from_node(part->node);
-            ky_scene_rect_set_color(rect, part->color);
-            part->update &= ~SSD_UPDATE_COLOR;
-        }
+        ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -size, -(title + size));
     }
 }
 
@@ -802,10 +753,8 @@ static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
     if (ssd->kywc_view->ssd == KYWC_SSD_ALL) {
         ssd_update_titlebar(ssd, cause);
     }
-    ssd_update_frame(ssd, cause);
 
-    /* apply all ssd parts changes */
-    ssd_apply_parts(ssd);
+    ssd_update_frame(ssd, cause);
 }
 
 static void ssd_update_buffer(struct ky_scene_buffer *buffer, float scale, void *data)
