@@ -25,16 +25,13 @@ static void box_update_region(struct ky_scene_box *scene_box)
     int height = scene_box->rect->height;
 
     if (width > 0 && height > 0) {
-        int w = scene_box->border_width;
-        int h = height - 2 * w;
-        /* top border */
-        pixman_region32_union_rect(&region, &region, 0, 0, width, w);
-        /* bottom border */
-        pixman_region32_union_rect(&region, &region, 0, height - w, width, w);
-        /* left border */
-        pixman_region32_union_rect(&region, &region, 0, w, w, h);
-        /* right border */
-        pixman_region32_union_rect(&region, &region, width - w, w, w, h);
+        pixman_region32_init_rect(&region, 0, 0, width, height);
+
+        int off = scene_box->border_width;
+        pixman_region32_t reg;
+        pixman_region32_init_rect(&reg, off, off, width - 2 * off, height - 2 * off);
+        pixman_region32_subtract(&region, &region, &reg);
+        pixman_region32_fini(&reg);
     }
 
     ky_scene_node_set_input_region(&scene_box->rect->node, &region);
