@@ -709,6 +709,30 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
             (float[4]){ 0.f, 0.f, 0.f, 0.f });
     }
 
+    if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
+        uint32_t shadow_mask = SHADOW_MASK_ALL;
+        if (view->maximized) {
+            shadow_mask = SHADOW_MASK_NONE;
+        } else if (view->tiled == KYWC_TILE_TOP) {
+            shadow_mask = SHADOW_MASK_BOTTOM;
+        } else if (view->tiled == KYWC_TILE_BOTTOM) {
+            shadow_mask = SHADOW_MASK_TOP;
+        } else if (view->tiled == KYWC_TILE_LEFT) {
+            shadow_mask = SHADOW_MASK_RIGHT;
+        } else if (view->tiled == KYWC_TILE_RIGHT) {
+            shadow_mask = SHADOW_MASK_LEFT;
+        } else if (view->tiled == KYWC_TILE_TOP_LEFT) {
+            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_BOTTOM_RIGHT | SHADOW_MASK_BOTTOM;
+        } else if (view->tiled == KYWC_TILE_BOTTOM_LEFT) {
+            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_TOP_RIGHT | SHADOW_MASK_TOP;
+        } else if (view->tiled == KYWC_TILE_TOP_RIGHT) {
+            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_BOTTOM_LEFT | SHADOW_MASK_BOTTOM;
+        } else if (view->tiled == KYWC_TILE_BOTTOM_RIGHT) {
+            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_TOP_LEFT | SHADOW_MASK_TOP;
+        }
+        ky_scene_decoration_set_shadow_mask(frame, shadow_mask);
+    }
+
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
         ky_scene_decoration_set_window_size(frame, view->geometry.width, view->geometry.height);
     }

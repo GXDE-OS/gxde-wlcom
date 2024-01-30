@@ -32,6 +32,8 @@ struct ky_scene_decoration {
     // window round rect
     // 0=right-bottom, 1=right-top, 2=left-bottom, 3=left-top
     int round_corner_radius[4];
+    /* shadow part need be shown */
+    uint32_t shadow_mask;
 
     pixman_region32_t title_region;
     pixman_region32_t border_region;
@@ -360,7 +362,6 @@ void ky_scene_decoration_set_margin_color(struct ky_scene_decoration *scene_deco
                                           const float border_color[static 4],
                                           const float shadow_color[static 4])
 {
-
     if (memcmp(scene_decoration->title_color, title_color, sizeof(scene_decoration->title_color)) ==
             0 &&
         memcmp(scene_decoration->border_color, border_color,
@@ -374,7 +375,20 @@ void ky_scene_decoration_set_margin_color(struct ky_scene_decoration *scene_deco
     memcpy(scene_decoration->border_color, border_color, sizeof(scene_decoration->border_color));
     memcpy(scene_decoration->shadow_color, shadow_color, sizeof(scene_decoration->shadow_color));
 
-    ky_scene_node_push_damage(&scene_decoration->rect.node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+    ky_scene_node_push_damage(&scene_decoration->rect.node, KY_SCENE_DAMAGE_HARMFUL,
+                              &scene_decoration->rect.node.clip_region);
+}
+
+void ky_scene_decoration_set_shadow_mask(struct ky_scene_decoration *scene_decoration,
+                                         uint32_t shadow_mask)
+{
+    if (scene_decoration->shadow_mask == shadow_mask) {
+        return;
+    }
+
+    scene_decoration->shadow_mask = shadow_mask;
+    ky_scene_node_push_damage(&scene_decoration->rect.node, KY_SCENE_DAMAGE_HARMFUL,
+                              &scene_decoration->shadow_region);
 }
 
 void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *scene_decoration,
