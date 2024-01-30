@@ -2,8 +2,10 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <linux/input-event-codes.h>
 #include <wlr/types/wlr_output.h>
@@ -47,6 +49,7 @@ struct item_view {
 
     int text_width, text_height;
     float scale;
+    char *text;
 
     struct wl_listener view_destroy;
 };
@@ -275,8 +278,9 @@ static void update_title_text(struct item_view *item_view)
     struct theme *theme = theme_manager_get_current();
     int select_width_gap = theme->maxswitcher.select_width_gap * 2;
     int max_width = switcher->max_width - theme->maxswitcher.icon_area_width - select_width_gap;
-    widget_set_text(item_view->title_text, item_view->kywc_view->title, JUSTIFY_CENTER, false,
-                    false, item_view->kywc_view->minimized);
+    widget_set_text(item_view->title_text, item_view->text, JUSTIFY_CENTER, false, false,
+                    item_view->kywc_view->minimized);
+
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
 
     widget_set_front_color(item_view->title_text, theme->active_text_color);
@@ -377,6 +381,15 @@ static void get_maximize_views(int *num_views)
         /* create background */
         item_view->background = ky_scene_rect_create(item_view->tree, 0, 0, color);
         /* create title */
+        if (view->base.minimized) {
+            char left_bracket[] = "(";
+            char right_bracket[] = ")";
+            int len = strlen(view->base.title) + strlen(left_bracket) + strlen(right_bracket) + 1;
+            item_view->text = malloc(len * sizeof(char));
+            sprintf(item_view->text, "%s%s%s", left_bracket, view->base.title, right_bracket);
+        } else {
+            item_view->text = strdup(view->base.title);
+        }
         item_view->title_text = widget_create(item_view->tree);
         item_view->text_node = ky_scene_node_from_widget(item_view->title_text);
         /* create icon */
@@ -544,6 +557,7 @@ static void hide_maximize_switcher(void)
         item_view = switcher->item_views[i];
         wl_list_remove(&item_view->view_destroy.link);
         ky_scene_node_destroy(ky_scene_node_from_tree(item_view->tree));
+        free(item_view->text);
         free(item_view);
     }
 
