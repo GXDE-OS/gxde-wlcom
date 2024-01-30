@@ -151,7 +151,7 @@ static void handle_set_state(struct wl_client *client, struct wl_resource *resou
             kde_plasma_window_set_state(window, i, (flags >> i) & 0x1);
         }
     }
-    kde_plasma_window_send_state(window, resource, false);
+    kde_plasma_window_send_state(window, NULL, false);
 }
 
 static void handle_set_virtual_desktop(struct wl_client *client, struct wl_resource *resource,
@@ -402,7 +402,14 @@ static void kde_plasma_window_send_state(struct kde_plasma_window *window,
 
     if (force || states != window->states) {
         window->states = states;
-        org_kde_plasma_window_send_state_changed(resource, window->states);
+        if (resource) {
+            org_kde_plasma_window_send_state_changed(resource, window->states);
+        } else {
+            struct wl_resource *resource;
+            wl_resource_for_each(resource, &window->resources) {
+                org_kde_plasma_window_send_state_changed(resource, window->states);
+            }
+        }
     }
 }
 
