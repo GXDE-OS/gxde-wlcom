@@ -69,6 +69,7 @@ struct draw_info {
     int font_size;
     enum text_align align;
     enum auto_resize auto_resize;
+    bool slant;
     bool submenu; // ">"
     bool checked; // "✓"
 

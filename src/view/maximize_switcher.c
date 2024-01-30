@@ -276,7 +276,7 @@ static void update_title_text(struct item_view *item_view)
     int select_width_gap = theme->maxswitcher.select_width_gap * 2;
     int max_width = switcher->max_width - theme->maxswitcher.icon_area_width - select_width_gap;
     widget_set_text(item_view->title_text, item_view->kywc_view->title, JUSTIFY_CENTER, false,
-                    false);
+                    false, item_view->kywc_view->minimized);
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
 
     widget_set_front_color(item_view->title_text, theme->active_text_color);

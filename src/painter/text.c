@@ -77,6 +77,9 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
     pango_font_description_set_family(desc, info->font);
     pango_font_description_set_size(desc, info->font_size * PANGO_SCALE);
     pango_font_description_set_weight(desc, FONT_WEIGHT);
+    if (info->slant) {
+        pango_font_description_set_style(desc, PANGO_STYLE_ITALIC);
+    }
 
     pango_layout_set_font_description(layout, desc);
     pango_cairo_update_layout(cairo, layout);

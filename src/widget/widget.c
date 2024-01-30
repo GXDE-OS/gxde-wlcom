@@ -38,6 +38,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .font_rgba = color_valid(widget->front_color) ? widget->front_color : NULL,
         .font = widget->font_name,
         .font_size = widget->font_size,
+        .slant = widget->slant,
         .align = widget->text_align,
         .submenu = widget->submenu,
         .checked = widget->checked,
@@ -352,8 +353,14 @@ void widget_set_font(struct widget *widget, const char *name, int size)
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
-void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked)
+void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked,
+                     bool slant)
 {
+    if (widget->slant != slant) {
+        widget->slant = slant;
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+    }
+
     if (widget->submenu != submenu) {
         widget->submenu = submenu;
         widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;

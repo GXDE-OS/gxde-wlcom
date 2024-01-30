@@ -33,6 +33,7 @@ struct widget {
     int font_size;
     int text_align;
     bool text_truncated;
+    bool slant;
 
     /* color in this widget */
     float background_color[4];

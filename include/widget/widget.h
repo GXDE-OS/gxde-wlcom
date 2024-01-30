@@ -17,7 +17,8 @@ void widget_destroy(struct widget *widget);
 /* the content is drawn immediately, or drawn before output commit */
 void widget_update(struct widget *widget, bool immediately);
 
-void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked);
+void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked,
+                     bool slant);
 
 void widget_set_font(struct widget *widget, const char *name, int size);
 
