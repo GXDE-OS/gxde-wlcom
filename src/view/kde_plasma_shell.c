@@ -124,8 +124,20 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
     } else {
         view_unset_workspace(surface->view, layer);
     }
-    surface->view->base.activatable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL;
-    surface->view->base.focusable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL;
+
+    struct kywc_view *kywc_view = &surface->view->base;
+    kywc_view->minimizable = kywc_view->maximizable = kywc_view->fullscreenable =
+        surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
+    kywc_view->closeable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP &&
+                           surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL;
+    kywc_view->movable = kywc_view->resizable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
+    kywc_view->activatable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL &&
+                             surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_TOOLTIP &&
+                             surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_WATERMARK;
+    kywc_view->focusable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL ||
+                           surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP ||
+                           surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK;
+    kywc_view->shadeable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
 }
 
 static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surface, bool enabled);
