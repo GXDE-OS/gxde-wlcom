@@ -94,6 +94,12 @@ struct theme {
     } snapbox;
 
     struct {
+        float background_color[4];
+        float border_color[4];
+        float select_color[4];
+        int select_width_gap;
+        int select_height_gap;
+        float icon_ratio;
         int item_height;
         int max_display_view;
         int min_display_view;

@@ -73,7 +73,13 @@ static struct theme light = {
     },
 
     .maxswitcher = {
-        .item_height = 36,
+        .background_color = { 1.0, 1.0, 1.0, 1.0 },
+        .border_color = {25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
+        .select_color = {16.0 / 255, 43.0 / 255.0, 75.0 / 255, 0.3},
+        .select_width_gap = 5,
+        .select_height_gap = 8,
+        .icon_ratio = 0.4,
+        .item_height = 48,
         .max_display_view = 25,
         .min_display_view = 4,
         .icon_size = 24,
@@ -128,7 +134,13 @@ static struct theme dark = {
     },
 
     .maxswitcher = {
-        .item_height = 36,
+        .background_color = { 25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
+        .border_color = { 1.0, 1.0, 1.0, 1.0 },
+        .select_color = { 73.0 / 255, 10.0 / 255.0, 13.0 / 255, 0.3},
+        .select_width_gap = 5,
+        .select_height_gap = 8,
+        .icon_ratio = 0.4,
+        .item_height = 48,
         .max_display_view = 25,
         .min_display_view = 4,
         .icon_size = 24,
@@ -282,8 +294,7 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
 
 static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
 {
-    int half =
-        theme->shadow.shadow_border + theme->shadow.corner_radius + theme->ssd.border_width;
+    int half = theme->shadow.shadow_border + theme->shadow.corner_radius + theme->ssd.border_width;
     float fill_color[4] = { 0.0, 0.0, 0.0, 1.0 };
 
     /* a blured circle */
