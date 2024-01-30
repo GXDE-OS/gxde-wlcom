@@ -30,12 +30,6 @@
     "  -d, --debug              Enables full logging, including debug information.\n"
     "  -D, --debug <options>    noxwayland or logtostdout.\n"
 
-## 输出
-
-如果显示渲染输出存在问题，可在编译时选择kylin-wlcom的scene实现，进行基本的定位
-
-    meson setup build -Dwlr_scene=true -Dky_scene=false
-
 ## 输入
 
 使用如下指令来显示输入事件

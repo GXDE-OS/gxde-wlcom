@@ -5,59 +5,6 @@
 #ifndef _SCENE_H_
 #define _SCENE_H_
 
-#if HAVE_WLR_SCENE // redefine all wlr-scene api
-
-#include <wlr/types/wlr_scene.h>
-
-#define ky_scene wlr_scene
-#define ky_scene_node wlr_scene_node
-#define ky_scene_tree wlr_scene_tree
-#define ky_scene_rect wlr_scene_rect
-#define ky_scene_buffer wlr_scene_buffer
-#define ky_scene_output wlr_scene_output
-#define ky_scene_output_state_options wlr_scene_output_state_options
-#define ky_scene_output_sample_event wlr_scene_output_sample_event
-#define ky_scene_output_layout wlr_scene_output_layout
-
-#define ky_scene_node_destroy wlr_scene_node_destroy
-#define ky_scene_node_set_enabled wlr_scene_node_set_enabled
-#define ky_scene_node_set_position wlr_scene_node_set_position
-#define ky_scene_node_place_above wlr_scene_node_place_above
-#define ky_scene_node_place_below wlr_scene_node_place_below
-#define ky_scene_node_raise_to_top wlr_scene_node_raise_to_top
-#define ky_scene_node_lower_to_bottom wlr_scene_node_lower_to_bottom
-#define ky_scene_node_reparent wlr_scene_node_reparent
-#define ky_scene_node_coords wlr_scene_node_coords
-#define ky_scene_node_at wlr_scene_node_at
-#define ky_scene_tree_create wlr_scene_tree_create
-#define ky_scene_rect_create wlr_scene_rect_create
-#define ky_scene_rect_set_size wlr_scene_rect_set_size
-#define ky_scene_rect_set_color wlr_scene_rect_set_color
-#define ky_scene_rect_from_node wlr_scene_rect_from_node
-#define ky_scene_buffer_create wlr_scene_buffer_create
-#define ky_scene_buffer_set_buffer wlr_scene_buffer_set_buffer
-#define ky_scene_buffer_set_buffer_with_damage wlr_scene_buffer_set_buffer_with_damage
-#define ky_scene_buffer_set_opaque_region wlr_scene_buffer_set_opaque_region
-#define ky_scene_buffer_set_source_box wlr_scene_buffer_set_source_box
-#define ky_scene_buffer_set_dest_size wlr_scene_buffer_set_dest_size
-#define ky_scene_buffer_set_transform wlr_scene_buffer_set_transform
-#define ky_scene_attach_output_layout wlr_scene_attach_output_layout
-#define ky_scene_get_scene_output wlr_scene_get_scene_output
-#define ky_scene_output_commit wlr_scene_output_commit
-#define ky_scene_output_send_frame_done wlr_scene_output_send_frame_done
-#define ky_scene_set_presentation wlr_scene_set_presentation
-#define ky_scene_buffer_point_accepts_input_func_t wlr_scene_buffer_point_accepts_input_func_t
-#define ky_scene_output_create wlr_scene_output_create
-#define ky_scene_output_layout_add_output wlr_scene_output_layout_add_output
-#define ky_scene_node_set_bypassed wlr_scene_node_set_bypassed
-#define ky_scene_output_destroy wlr_scene_output_destroy
-#define ky_scene_create wlr_scene_create
-#define ky_scene_buffer_from_node wlr_scene_buffer_from_node
-
-struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
-
-#else // ky_scene api
-
 #include <pixman.h>
 #include <time.h>
 
@@ -411,5 +358,3 @@ void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol,
 void ky_scene_output_destroy(struct ky_scene_output *scene_output);
 
 #endif
-
-#endif /* _SCENE_H_ */

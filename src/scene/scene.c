@@ -3,27 +3,6 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#if HAVE_WLR_SCENE
-
-#include "scene/scene.h"
-
-struct ky_scene *ky_scene_from_node(struct ky_scene_node *node)
-{
-    struct ky_scene_tree *tree;
-    if (node->type == WLR_SCENE_NODE_TREE) {
-        tree = wl_container_of(node, tree, node);
-    } else {
-        tree = node->parent;
-    }
-
-    while (tree->node.parent != NULL) {
-        tree = tree->node.parent;
-    }
-    return (struct ky_scene *)tree;
-}
-
-#else
-
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -710,5 +689,3 @@ void ky_scene_log_region(enum kywc_log_level level, const char *desc,
                  rect->y2 - rect->y1);
     }
 }
-
-#endif
