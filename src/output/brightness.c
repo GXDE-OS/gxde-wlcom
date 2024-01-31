@@ -14,7 +14,7 @@
 #include "util/sysfs.h"
 
 #define MAX_NAME 512
-#define BRIGHTNESS_CLAMP(val) ((val) < 0 ? 0 : ((val) > 100 ? 100 : (val)))
+#define BRIGHTNESS_CLAMP(val) ((val) > 100 ? 100 : (val))
 
 bool output_support_brightness(struct output *output)
 {
@@ -143,16 +143,16 @@ static bool brightness_get(uint32_t *brightness)
     return true;
 }
 
-bool output_get_brightness(struct kywc_output *kywc_output, int32_t *brightness)
+bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness)
 {
     if (!kywc_output->prop.brightness_support) {
         return false;
     }
 
-    return brightness_get((uint32_t *)brightness);
+    return brightness_get(brightness);
 }
 
-void output_set_brightness(struct kywc_output *kywc_output, int32_t brightness)
+void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
 {
     if (!kywc_output->prop.brightness_support) {
         return;
@@ -161,8 +161,7 @@ void output_set_brightness(struct kywc_output *kywc_output, int32_t brightness)
     uint32_t temp_value;
     if (brightness_get(&temp_value)) {
         brightness = BRIGHTNESS_CLAMP(brightness);
-        if (temp_value == (uint32_t)kywc_output->state.brightness &&
-            temp_value == (uint32_t)brightness) {
+        if (temp_value == kywc_output->state.brightness && temp_value == brightness) {
             return;
         }
         if (!brightness_set(brightness)) {

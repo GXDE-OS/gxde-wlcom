@@ -33,8 +33,8 @@ struct kywc_output_state {
 
     /* layout coord */
     int32_t lx, ly;
-    int32_t brightness;
-    int32_t color_temp;
+    uint32_t brightness;
+    uint32_t color_temp;
 };
 
 struct kywc_output_mode {

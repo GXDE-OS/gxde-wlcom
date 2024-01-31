@@ -46,9 +46,9 @@ void output_write_config(struct output *output);
 
 bool output_support_brightness(struct output *output);
 
-bool output_get_brightness(struct kywc_output *kywc_output, int32_t *brightness);
+bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness);
 
-void output_set_brightness(struct kywc_output *kywc_output, int32_t brightness);
+void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness);
 
 void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
                           struct wlr_output_state *wlr_state, uint32_t color_temp);
