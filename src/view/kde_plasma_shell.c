@@ -175,6 +175,7 @@ static void handle_set_skip_taskbar(struct wl_client *client, struct wl_resource
 
     if (surface->view) {
         surface->view->base.skip_taskbar = surface->skip_taskbar;
+        wl_signal_emit_mutable(&surface->view->base.events.capabilities, NULL);
     }
 }
 

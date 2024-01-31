@@ -42,6 +42,7 @@ struct kde_plasma_window {
     struct wl_listener view_minimize;
     struct wl_listener view_maximize;
     struct wl_listener view_fullscreen;
+    struct wl_listener view_capabilities;
 
     /* The internal window id and uuid */
     uint32_t id;
@@ -374,6 +375,12 @@ static void window_handle_view_fullscreen(struct wl_listener *listener, void *da
     }
 }
 
+static void window_handle_view_capabilities(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_window *window = wl_container_of(listener, window, view_capabilities);
+    kde_plasma_window_send_state(window, NULL, false);
+}
+
 static void kde_plasma_window_send_state(struct kde_plasma_window *window,
                                          struct wl_resource *resource, bool force)
 {
@@ -571,6 +578,7 @@ static void window_handle_view_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_minimize.link);
     wl_list_remove(&window->view_maximize.link);
     wl_list_remove(&window->view_fullscreen.link);
+    wl_list_remove(&window->view_capabilities.link);
     wl_list_remove(&window->link);
 
     struct wl_resource *resource, *tmp;
@@ -619,6 +627,8 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.maximize, &window->view_maximize);
     window->view_fullscreen.notify = window_handle_view_fullscreen;
     wl_signal_add(&kywc_view->events.fullscreen, &window->view_fullscreen);
+    window->view_capabilities.notify = window_handle_view_capabilities;
+    wl_signal_add(&kywc_view->events.capabilities, &window->view_capabilities);
 }
 
 static void handle_shown_desktop(struct wl_listener *listener, void *data)

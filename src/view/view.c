@@ -160,6 +160,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.minimize);
     wl_signal_init(&kywc_view->events.fullscreen);
     wl_signal_init(&kywc_view->events.tile);
+    wl_signal_init(&kywc_view->events.capabilities);
     wl_signal_init(&kywc_view->events.title);
     wl_signal_init(&kywc_view->events.app_id);
     wl_signal_init(&kywc_view->events.position);
