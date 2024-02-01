@@ -282,7 +282,6 @@ static void update_title_text(struct item_view *item_view)
                     item_view->kywc_view->minimized);
 
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
-
     widget_set_front_color(item_view->title_text, theme->active_text_color);
 
     widget_set_max_size(item_view->title_text, max_width, theme->maxswitcher.item_height);
@@ -571,8 +570,7 @@ static void hide_maximize_switcher(void)
 static bool show_maximize_switcher(void)
 {
     struct theme *theme = theme_manager_get_current();
-    struct kywc_output *kywc_output = kywc_output_get_primary();
-    struct output *output = output_from_kywc_output(kywc_output);
+    struct output *output = input_current_output(input_manager_get_default_seat());
     struct kywc_box *usable_area = &output->usable_area;
 
     switcher->max_width = usable_area->width / 3 * 2;
@@ -626,7 +624,7 @@ static bool show_maximize_switcher(void)
                                switcher->height);
 
     switcher->output_frame.notify = handle_output_frame;
-    wl_signal_add(&kywc_output->events.frame, &switcher->output_frame);
+    wl_signal_add(&output->base.events.frame, &switcher->output_frame);
 
     switcher->pending = 1;
     switcher->current = -1;
