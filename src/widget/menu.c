@@ -614,7 +614,6 @@ struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t ke
     item->redraw = true;
     item->enabled = true;
 
-    item->action = action;
     item->data = data;
     item->text = strdup(text);
     item->key = key;
