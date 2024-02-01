@@ -381,27 +381,11 @@ static struct touch_point *touch_point_from_id(struct touch *touch, int32_t touc
     return NULL;
 }
 
-static void touch_cancel_points(struct touch *touch)
-{
-    struct seat *seat = touch->input->seat;
-
-    struct touch_point *point;
-    wl_list_for_each(point, &touch->points, link) {
-        if (point->touch_id < 0 || !point->surface) {
-            continue;
-        }
-        point->abs_x = point->last_x;
-        point->abs_y = point->last_y;
-        wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
-    }
-}
-
 static void touch_point_reset(struct touch_point *point, bool cancelled)
 {
     struct gesture_state *state = &point->touch->gestures;
-    if (state->type != GESTURE_TYPE_NONE &&
-        gesture_state_end(state, state->type, state->device, cancelled)) {
-        touch_cancel_points(point->touch);
+    if (state->type != GESTURE_TYPE_NONE) {
+        gesture_state_end(state, state->type, state->device, cancelled);
     }
 
     point->touch_id = -1;
