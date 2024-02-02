@@ -19,8 +19,8 @@
 #include "view/view.h"
 #include "xwayland.h"
 
-#define TOUCH_HOLD_TIMEOUT (100)
-#define TOUCH_FILTER_TIMEOUT (200)
+#define TOUCH_HOLD_TIMEOUT (50)
+#define TOUCH_FILTER_TIMEOUT (100)
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -45,6 +45,9 @@ struct touch {
     /* current gesture state per touch */
     struct gesture_state gestures;
     uint32_t hold_points;
+
+    /* hold canceled status */
+    uint32_t hold_canceled;
 
     /* pinch angle */
     double angle;
@@ -133,22 +136,24 @@ static enum gesture_edge touch_calc_edge(struct touch *touch)
     return edge;
 }
 
-static void touch_gesture_begin(struct touch *touch, enum gesture_type gesture, uint8_t fingers)
+static bool touch_gesture_begin(struct touch *touch, enum gesture_type gesture, uint8_t fingers)
 {
     struct gesture_state *state = &touch->gestures;
     if (state->type == gesture && state->fingers == fingers) {
-        return;
+        return false;
     }
     /* cancel current gesture and enter the new hold */
     if (state->type != GESTURE_TYPE_NONE) {
         gesture_state_end(state, state->type, state->device, true);
     }
     if (gesture == GESTURE_TYPE_NONE) {
-        return;
+        return false;
     }
 
     enum gesture_edge edge = touch_calc_edge(touch);
     gesture_state_begin(state, gesture, GESTURE_DEVICE_TOUCHSCREEN, edge, fingers);
+
+    return true;
 }
 
 static void touch_gesture_detect(struct touch *touch)
@@ -171,9 +176,18 @@ static void touch_gesture_detect(struct touch *touch)
     }
 
     if (!all_points_moved) {
-        /* hold geture if all hold points not moved */
-        if (touch->hold_points) {
-            touch_gesture_begin(touch, GESTURE_TYPE_HOLD, touch->hold_points);
+        /* hold gesture if all hold points not moved */
+        if (touch->hold_points && !touch->hold_canceled) {
+            if (!touch_gesture_begin(touch, GESTURE_TYPE_HOLD, touch->hold_points)) {
+                /* cancel the hold gesture when touch point is moved,
+                 * except for there is only one touch point
+                 */
+                if (touch->hold_points != 1) {
+                    gesture_state_end(&touch->gestures, GESTURE_TYPE_HOLD,
+                                      GESTURE_DEVICE_TOUCHSCREEN, true);
+                }
+                touch->hold_canceled = true;
+            }
         }
         return;
     }
@@ -385,6 +399,15 @@ static void touch_point_reset(struct touch_point *point, bool cancelled)
 {
     struct gesture_state *state = &point->touch->gestures;
     if (state->type != GESTURE_TYPE_NONE) {
+        /* touch point up to set hold canceled in hold state,
+         * and canceles gesture when touch point count is more than 1
+         */
+        if (state->type == GESTURE_TYPE_HOLD) {
+            point->touch->hold_canceled = true;
+            if (!cancelled && point->touch->points_count > 1) {
+                cancelled = true;
+            }
+        }
         gesture_state_end(state, state->type, state->device, cancelled);
     }
 
@@ -405,6 +428,10 @@ static void touch_point_reset(struct touch_point *point, bool cancelled)
         point->hold = false;
     }
 
+    /* last touch point up reset the hold canceled state */
+    if (!point->touch->points_count) {
+        point->touch->hold_canceled = false;
+    }
     /* reinsert to tail */
     wl_list_remove(&point->link);
     wl_list_insert(point->touch->points.prev, &point->link);
@@ -658,8 +685,6 @@ void touch_handle_up(struct wlr_touch_up_event *event, bool handle)
     if (!point) {
         return;
     }
-
-    touch_filter_enable(touch, true);
 
     if (handle) {
         wlr_seat_touch_notify_up(seat->wlr_seat, event->time_msec, event->touch_id);
