@@ -741,9 +741,14 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         int border = view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
         int title = view->ssd == KYWC_SSD_ALL ? theme->ssd.title_height : 0;
         int size = theme->shadow.shadow_border + border;
+        int bottom = ssd->kywc_view->has_round_corner ? theme->ssd.corner_radius : 0;
+        int top = (view->ssd == KYWC_SSD_ALL || ssd->kywc_view->has_round_corner)
+                      ? theme->ssd.corner_radius
+                      : 0;
 
         ky_scene_decoration_set_margin(frame, title, border, theme->shadow.shadow_border);
         ky_scene_decoration_set_resize_width(frame, theme->ssd.resize_border);
+        ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
         ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -size, -(title + size));
     }

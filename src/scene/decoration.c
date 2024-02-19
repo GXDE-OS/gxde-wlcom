@@ -38,7 +38,57 @@ struct ky_scene_decoration {
     pixman_region32_t title_region;
     pixman_region32_t border_region;
     pixman_region32_t shadow_region;
+    pixman_region32_t round_corner_region;
 };
+
+static void scene_decoration_update_round_corner_region(struct ky_scene_decoration *deco,
+                                                        bool damage)
+{
+    if (damage) {
+        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_HARMFUL,
+                                  &deco->round_corner_region);
+    }
+
+    pixman_region32_clear(&deco->round_corner_region);
+
+    int width = deco->window_width;
+    int height = deco->window_height;
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    int x1 = deco->shadow_width;
+    int x2 = deco->shadow_width + width + 2 * deco->border_thickness;
+    int y1 = deco->shadow_width;
+    int y2 = deco->shadow_width + height + deco->title_height + 2 * deco->border_thickness;
+
+    // TODO: remove borders in the region
+    if ((deco->shadow_mask & SHADOW_MASK_TOP_LEFT) && deco->round_corner_radius[3] > 0) {
+        pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region, x1, y1,
+                                   deco->round_corner_radius[3], deco->round_corner_radius[3]);
+    }
+    if ((deco->shadow_mask & SHADOW_MASK_TOP_RIGHT) && deco->round_corner_radius[1] > 0) {
+        pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region,
+                                   x2 - deco->round_corner_radius[1], y1,
+                                   deco->round_corner_radius[1], deco->round_corner_radius[1]);
+    }
+    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT) && deco->round_corner_radius[2] > 0) {
+        pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region, x1,
+                                   y2 - deco->round_corner_radius[2], deco->round_corner_radius[2],
+                                   deco->round_corner_radius[2]);
+    }
+    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT) && deco->round_corner_radius[0] > 0) {
+        pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region,
+                                   x2 - deco->round_corner_radius[0],
+                                   y2 - deco->round_corner_radius[0], deco->round_corner_radius[0],
+                                   deco->round_corner_radius[0]);
+    }
+
+    if (damage) {
+        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_HARMFUL,
+                                  &deco->round_corner_region);
+    }
+}
 
 static void scene_decoration_update_region(struct ky_scene_decoration *scene_decoration)
 {
@@ -74,9 +124,12 @@ static void scene_decoration_update_region(struct ky_scene_decoration *scene_dec
         pixman_region32_fini(&reg1);
         pixman_region32_fini(&reg2);
 
+        scene_decoration_update_round_corner_region(scene_decoration, false);
+
         pixman_region32_t region;
         pixman_region32_init_rect(&region, x, y, width, height);
         pixman_region32_subtract(&clip, &clip, &region);
+        pixman_region32_union(&clip, &clip, &scene_decoration->round_corner_region);
         pixman_region32_fini(&region);
     }
 
@@ -188,6 +241,7 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
             if (title_is_opaque) {
                 pixman_region32_union(&region, &region, &deco->title_region);
             }
+            pixman_region32_subtract(&region, &region, &deco->round_corner_region);
             pixman_region32_translate(&region, lx, ly);
             pixman_region32_union(invisible, invisible, &region);
             pixman_region32_fini(&region);
@@ -291,6 +345,7 @@ static void scene_decoration_destroy(struct ky_scene_node *node)
     pixman_region32_fini(&scene_decoration->title_region);
     pixman_region32_fini(&scene_decoration->border_region);
     pixman_region32_fini(&scene_decoration->shadow_region);
+    pixman_region32_fini(&scene_decoration->round_corner_region);
 
     scene_decoration->node_destroy(node);
 }
@@ -313,6 +368,7 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
     pixman_region32_init(&scene_decoration->title_region);
     pixman_region32_init(&scene_decoration->border_region);
     pixman_region32_init(&scene_decoration->shadow_region);
+    pixman_region32_init(&scene_decoration->round_corner_region);
 
     return scene_decoration;
 }
@@ -339,7 +395,7 @@ void ky_scene_decoration_set_round_corner_radius(struct ky_scene_decoration *sce
 
     memcpy(scene_decoration->round_corner_radius, round_corner_radius,
            sizeof(scene_decoration->round_corner_radius));
-    ky_scene_node_push_damage(&scene_decoration->rect.node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+    scene_decoration_update_round_corner_region(scene_decoration, true);
 }
 
 void ky_scene_decoration_set_margin(struct ky_scene_decoration *scene_decoration, int title_height,
@@ -389,6 +445,7 @@ void ky_scene_decoration_set_shadow_mask(struct ky_scene_decoration *scene_decor
     scene_decoration->shadow_mask = shadow_mask;
     ky_scene_node_push_damage(&scene_decoration->rect.node, KY_SCENE_DAMAGE_HARMFUL,
                               &scene_decoration->shadow_region);
+    scene_decoration_update_round_corner_region(scene_decoration, true);
 }
 
 void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *scene_decoration,
