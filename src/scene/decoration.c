@@ -4,8 +4,12 @@
 
 #include <stdlib.h>
 
+#include "decoration_frag.h"
+#include "decoration_vert.h"
+#include "render/opengl.h"
 #include "scene/decoration.h"
 #include "scene_p.h"
+#include "util/matrix.h"
 
 struct ky_scene_decoration {
     /* based on scene_rect */
@@ -41,9 +45,167 @@ struct ky_scene_decoration {
     pixman_region32_t round_corner_region;
 };
 
+// opengl render
+static int32_t gl_shader = 0;
+
+static int scene_decoration_create_opengl_shader(void)
+{
+    GLint ok = GL_TRUE;
+    GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
+    const GLchar *vert_src = decoration_vert;
+    glShaderSource(vert_shader, 1, &vert_src, NULL);
+    glCompileShader(vert_shader);
+    glGetShaderiv(vert_shader, GL_COMPILE_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        kywc_log(KYWC_ERROR, "Failed to compile vert shader");
+        glDeleteShader(vert_shader);
+        return -1;
+    }
+
+    GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    const GLchar *frag_src = decoration_frag;
+    glShaderSource(frag_shader, 1, &frag_src, NULL);
+    glCompileShader(frag_shader);
+    glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        kywc_log(KYWC_ERROR, "Failed to compile frag shader");
+        glDeleteShader(vert_shader);
+        glDeleteShader(frag_shader);
+        return -1;
+    }
+
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vert_shader);
+    glAttachShader(prog, frag_shader);
+    glLinkProgram(prog);
+
+    glDetachShader(prog, vert_shader);
+    glDetachShader(prog, frag_shader);
+    glDeleteShader(vert_shader);
+    glDeleteShader(frag_shader);
+
+    glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        kywc_log(KYWC_ERROR, "Failed to link shader program");
+        glDeleteProgram(prog);
+        glDeleteShader(frag_shader);
+        glDeleteShader(vert_shader);
+        return -1;
+    }
+    return prog;
+}
+
+static void scene_decoration_opengl_render(struct ky_scene_decoration *decoration, int lx, int ly,
+                                           struct ky_scene_render_target *target,
+                                           pixman_box32_t *clip)
+{
+    float x = lx - target->logical.x;
+    float y = ly - target->logical.y;
+    float width = decoration->rect.width;
+    float height = decoration->rect.height;
+    float frame_width = target->logical.width;
+    float frame_height = target->logical.height;
+    float shadow_width = decoration->shadow_width;
+
+    // clip region. framebuffer coord
+    struct wlr_box clip_box = {
+        .x = clip->x1,
+        .y = clip->y1,
+        .width = clip->x2 - clip->x1,
+        .height = clip->y2 - clip->y1,
+    };
+
+    // vertex
+    float pos_vertex[8] = { 0, 0, width, 0, width, height, 0, height };
+    // docking margin clip
+    if ((decoration->shadow_mask & SHADOW_MASK_LEFT) == 0) {
+        pos_vertex[0] += shadow_width;
+        pos_vertex[6] += shadow_width;
+    }
+    if ((decoration->shadow_mask & SHADOW_MASK_RIGHT) == 0) {
+        pos_vertex[2] -= shadow_width;
+        pos_vertex[4] -= shadow_width;
+    }
+    if ((decoration->shadow_mask & SHADOW_MASK_TOP) == 0) {
+        pos_vertex[1] += shadow_width;
+        pos_vertex[7] += shadow_width;
+    }
+    if ((decoration->shadow_mask & SHADOW_MASK_BOTTOM) == 0) {
+        pos_vertex[3] -= shadow_width;
+        pos_vertex[5] -= shadow_width;
+    }
+
+    // inner window. rect - shadow
+    struct wlr_box box = {
+        .x = shadow_width,
+        .y = shadow_width,
+        .width = width - shadow_width * 2.0,
+        .height = height - shadow_width * 2.0,
+    };
+
+    struct ky_mat3 transform;
+    ky_mat3_identity(&transform);
+    // ky_mat3_scale(&transform, target->scale, target->scale);
+    ky_mat3_translate(&transform, x, y);
+
+    struct ky_mat3 to_ndc;
+    ky_mat3_logic_to_ndc(&to_ndc, frame_width, frame_height, target->transform);
+    struct ky_mat3 transform_ndc;
+    ky_mat3_multiply(&to_ndc, &transform, &transform_ndc);
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(clip_box.x, clip_box.y, clip_box.width, clip_box.height);
+
+    glEnable(GL_BLEND);
+
+    glUseProgram(gl_shader);
+    GLint location = glGetAttribLocation(gl_shader, "position");
+    glEnableVertexAttribArray(location);
+    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), pos_vertex);
+    // vert shader param
+    glUniform2f(glGetUniformLocation(gl_shader, "size"), width, height);
+    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "transform"), 1, GL_FALSE,
+                       transform_ndc.matrix);
+    // frag shader param
+    // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
+    glUniform1f(glGetUniformLocation(gl_shader, "shadowSigma"), shadow_width * 0.424660891f);
+    glUniform4f(glGetUniformLocation(gl_shader, "shadowRect"), box.x, box.y, box.x + box.width,
+                box.y + box.height);
+    glUniform4fv(glGetUniformLocation(gl_shader, "shadowColor"), 1, decoration->shadow_color);
+    glUniform1f(glGetUniformLocation(gl_shader, "aspect"), width / height);
+    float width_distance = box.width / height;
+    float height_distance = box.height / height;
+    float offset_x_distance = width_distance * 0.5f + box.x / height;
+    float offset_y_distance = height_distance * 0.5f + box.y / height;
+    glUniform4f(glGetUniformLocation(gl_shader, "windowRect"), offset_x_distance, offset_y_distance,
+                width_distance, height_distance);
+    float round_corner_radius[4] = { (float)decoration->round_corner_radius[0] / height * 2.0f,
+                                     (float)decoration->round_corner_radius[1] / height * 2.0f,
+                                     (float)decoration->round_corner_radius[2] / height * 2.0f,
+                                     (float)decoration->round_corner_radius[3] / height * 2.0f };
+    glUniform4f(glGetUniformLocation(gl_shader, "roundedCornerRadius"),
+                decoration->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] : 0.0f,
+                decoration->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] : 0.0f,
+                decoration->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] : 0.0f,
+                decoration->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] : 0.0f);
+    glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"),
+                decoration->border_thickness / height * 2.0f);
+    glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, decoration->border_color);
+    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), decoration->title_height / height);
+    glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, decoration->title_color);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glUseProgram(0);
+    glDisableVertexAttribArray(location);
+    glDisable(GL_SCISSOR_TEST);
+}
+
 static void scene_decoration_update_round_corner_region(struct ky_scene_decoration *deco,
                                                         bool damage)
 {
+    if (gl_shader < 0) {
+        return;
+    }
+
     if (damage) {
         ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_HARMFUL,
                                   &deco->round_corner_region);
@@ -283,6 +445,25 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
     ky_scene_render_box(&dst_box, target);
 
     pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
+
+    // try opengl render if opengl is used
+    if (gl_shader >= 0 && wlr_renderer_is_opengl(target->output->output->renderer)) {
+        if (gl_shader == 0) {
+            gl_shader = scene_decoration_create_opengl_shader();
+        }
+        if (gl_shader > 0) {
+            ky_scene_render_region(&render_region, target);
+            int nrects;
+            pixman_box32_t *rects = pixman_region32_rectangles(&render_region, &nrects);
+            for (int i = 0; i < nrects; ++i) {
+                scene_decoration_opengl_render(deco, lx, ly, target, &rects[i]);
+            }
+            pixman_region32_fini(&render_region);
+            return;
+        } else {
+            gl_shader = -1;
+        }
+    }
 
     /* draw border with border color */
     if (deco->border_thickness > 0) {

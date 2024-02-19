@@ -10,3 +10,5 @@ wlcom_sources += files(
   'subsurface.c',
   'xdg_shell.c',
 )
+
+subdir('shaders')
