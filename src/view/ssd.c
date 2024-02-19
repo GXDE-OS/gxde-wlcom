@@ -706,7 +706,7 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         ky_scene_decoration_set_margin_color(
             frame, view->activated ? theme->active_bg_color : theme->inactive_bg_color,
             view->activated ? theme->active_border_color : theme->inactive_border_color,
-            (float[4]){ 0.f, 0.f, 0.f, 0.f });
+            (float[4]){ 0.f, 0.f, 0.f, 0.5f });
     }
 
     if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
