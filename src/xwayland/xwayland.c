@@ -248,6 +248,17 @@ void xwayland_set_cursor(struct seat *seat)
     }
 }
 
+void xwayland_update_seat(struct seat *seat)
+{
+    if (xwayland->wlr_xwayland->seat == seat->wlr_seat) {
+        return;
+    }
+
+    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+    /* update xwayland cursor */
+    xwayland_set_cursor(seat);
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
@@ -265,10 +276,8 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
                              xwayland_event_handler, NULL);
     wl_event_source_check(xwayland->event_source);
 
-    /* set xwayland cursor, use the default seat0 */
-    struct seat *seat = input_manager_get_default_seat();
-    wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
-    xwayland_set_cursor(seat);
+    /* use the default seat0 */
+    xwayland_update_seat(input_manager_get_default_seat());
 
     /* set xft.dpi */
     xwayland_update_dpi(xwayland->xcb_conn);

@@ -86,4 +86,6 @@ void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool
 struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
                                                         xcb_window_t window_id);
 
+void xwayland_update_seat(struct seat *seat);
+
 #endif /* _XWAYLAND_P_H_ */
