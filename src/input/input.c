@@ -34,6 +34,14 @@ void input_rebase_all_cursor(void)
     }
 }
 
+void input_set_all_cursor(const char *cursor_theme, uint32_t cursor_size)
+{
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        seat_set_cursor(seat, cursor_theme, cursor_size);
+    }
+}
+
 void input_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&input_manager->events.new_input, listener);

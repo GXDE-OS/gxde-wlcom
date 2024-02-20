@@ -16,6 +16,7 @@
 #include "server.h"
 #include "util/time.h"
 #include "view/view.h"
+#include "xwayland.h"
 
 static void handle_seat_destroy(struct wl_listener *listener, void *data)
 {
@@ -215,6 +216,13 @@ struct seat *seat_from_resource(struct wl_resource *resource)
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat)
 {
     return wlr_seat->data;
+}
+
+void seat_set_cursor(struct seat *seat, const char *cursor_theme, uint32_t cursor_size)
+{
+    cursor_set_xcursor_manager(seat->cursor, cursor_theme, cursor_size, true);
+    xwayland_set_cursor(seat);
+    seat_write_config(seat);
 }
 
 void seat_start_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab)

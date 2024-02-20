@@ -103,6 +103,8 @@ struct seat *seat_from_resource(struct wl_resource *resource);
 
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
 
+void seat_set_cursor(struct seat *seat, const char *cursor_theme, uint32_t cursor_size);
+
 void seat_start_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
 void seat_end_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointer_grab);
 

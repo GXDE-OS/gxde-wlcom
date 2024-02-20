@@ -132,6 +132,9 @@ static void handle_output_configured(struct wl_listener *listener, void *data)
 
     output_manager_update_scale(xwayland->scale);
     xwayland_update_dpi(xwayland->xcb_conn);
+
+    /* update default cursor with current scale */
+    xwayland_set_cursor(seat_from_wlr_seat(xwayland->wlr_xwayland->seat));
 }
 
 static void xwayland_get_atoms(xcb_connection_t *xcb_conn)
@@ -229,6 +232,22 @@ static int xwayland_event_handler(int fd, uint32_t mask, void *data)
     return count;
 }
 
+void xwayland_set_cursor(struct seat *seat)
+{
+    if (xwayland->wlr_xwayland->seat != seat->wlr_seat) {
+        return;
+    }
+
+    wlr_xcursor_manager_load(seat->cursor->xcursor_manager, xwayland->scale);
+    struct wlr_xcursor *xcursor =
+        wlr_xcursor_manager_get_xcursor(seat->cursor->xcursor_manager, "left_ptr", xwayland->scale);
+    if (xcursor) {
+        struct wlr_xcursor_image *image = xcursor->images[0];
+        wlr_xwayland_set_cursor(xwayland->wlr_xwayland, image->buffer, image->width * 4,
+                                image->width, image->height, image->hotspot_x, image->hotspot_y);
+    }
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
@@ -246,8 +265,11 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
                              xwayland_event_handler, NULL);
     wl_event_source_check(xwayland->event_source);
 
+    /* set xwayland cursor, use the default seat0 */
     struct seat *seat = input_manager_get_default_seat();
     wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+    xwayland_set_cursor(seat);
+
     /* set xft.dpi */
     xwayland_update_dpi(xwayland->xcb_conn);
 
@@ -363,17 +385,6 @@ bool xwayland_server_create(struct server *server)
 
     setenv("DISPLAY", xwayland->wlr_xwayland->display_name, true);
     kywc_log(KYWC_INFO, "xwayland is running on display %s", xwayland->wlr_xwayland->display_name);
-
-    /* set xwayland cursor, use the default seat0 */
-    struct seat *seat = input_manager_get_default_seat();
-    wlr_xcursor_manager_load(seat->cursor->xcursor_manager, 1.0);
-    struct wlr_xcursor *xcursor =
-        wlr_xcursor_manager_get_xcursor(seat->cursor->xcursor_manager, "left_ptr", 1);
-    if (xcursor) {
-        struct wlr_xcursor_image *image = xcursor->images[0];
-        wlr_xwayland_set_cursor(xwayland->wlr_xwayland, image->buffer, image->width * 4,
-                                image->width, image->height, image->hotspot_x, image->hotspot_y);
-    }
 
     return true;
 }

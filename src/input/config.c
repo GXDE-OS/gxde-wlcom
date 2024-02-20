@@ -735,8 +735,7 @@ static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
         return sd_bus_reply_method_error(m, &error);
     }
 
-    cursor_set_xcursor_manager(seat->cursor, cursor_theme, cursor_size, true);
-    seat_write_config(seat);
+    seat_set_cursor(seat, cursor_theme, cursor_size);
 
     return sd_bus_reply_method_return(m, NULL);
 }

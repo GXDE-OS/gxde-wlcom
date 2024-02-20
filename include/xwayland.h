@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 
+struct seat;
 struct server;
 struct wl_client;
 struct wl_global;
@@ -23,6 +24,8 @@ int xwayland_unscale(int value);
 
 float xwayland_scale(int value);
 
+void xwayland_set_cursor(struct seat *seat);
+
 #else
 
 // clang-format off
@@ -38,6 +41,8 @@ INLINE bool xwayland_check_client(const struct wl_client *client) { return false
 INLINE int xwayland_unscale(int value) { return value; }
 
 INLINE float xwayland_scale(int value) { return value; }
+
+INLINE void xwayland_set_cursor(struct seat *seat) {}
 
 // clang-format on
 

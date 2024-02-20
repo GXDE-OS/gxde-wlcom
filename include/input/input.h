@@ -149,4 +149,6 @@ void input_set_seat(struct input *input, const char *seat);
 
 void input_rebase_all_cursor(void);
 
+void input_set_all_cursor(const char *cursor_theme, uint32_t cursor_size);
+
 #endif /* _INPUT_H_ */
