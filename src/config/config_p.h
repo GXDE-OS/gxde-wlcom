@@ -75,4 +75,14 @@ ukui_screenshot_create(struct config_manager *config_manager)
 }
 #endif
 
+#if HAVE_UKUI_GSETTINGS
+bool ukui_gsettings_create(struct config_manager *config_mananger);
+#else
+static __attribute__((unused)) inline bool
+ukui_gsettings_create(struct config_manager *config_mananger)
+{
+    return false;
+}
+#endif
+
 #endif /* _CONFIG_P_H_ */

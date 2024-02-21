@@ -121,6 +121,7 @@ have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
 have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
+have_ukui_gsettings = get_option('ukui_gsettings')
 
 add_project_arguments([
   '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
@@ -136,6 +137,7 @@ add_project_arguments([
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
+  '-DHAVE_UKUI_GSETTINGS=@0@'.format(have_ukui_gsettings.to_int()), 
 ], language: 'c')
 
 msgfmt = find_program('msgfmt', required: get_option('nls'))

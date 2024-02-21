@@ -41,3 +41,11 @@ if have_ukui_screenshot
     'ukui_screenshot.c',
   )
 endif
+
+if have_ukui_gsettings
+  wlcom_sources += files(
+    'ukui_gsettings.c',
+  )
+  glib = dependency('glib-2.0', version: '>= 2.68')
+  wlcom_deps += glib 
+endif
