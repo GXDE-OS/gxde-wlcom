@@ -53,4 +53,7 @@ void ky_mat3_framebuffer_to_ndc(struct ky_mat3 *mat3, int width, int height);
 void ky_mat3_logic_to_ndc(struct ky_mat3 *mat3, int width, int height,
                           enum wl_output_transform transform);
 
+// for invert rotate uv
+void ky_mat3_invert_output_transform(struct ky_mat3 *mat, enum wl_output_transform transform);
+
 #endif /* _UTIL_MATRIX_H_ */

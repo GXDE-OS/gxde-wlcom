@@ -143,3 +143,40 @@ void ky_mat3_logic_to_ndc(struct ky_mat3 *mat, int width, int height,
         break;
     }
 }
+
+void ky_mat3_invert_output_transform(struct ky_mat3 *mat, enum wl_output_transform transform)
+{
+    ky_mat3_identity(mat);
+    // rotate center at (0,0)
+    ky_mat3_translate(mat, -0.5, -0.5);
+    switch (transform) {
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+        // do nothing
+        break;
+    case WL_OUTPUT_TRANSFORM_90:
+        ky_mat3_rotate(mat, -M_PI * 0.5f);
+        break;
+    case WL_OUTPUT_TRANSFORM_180:
+        ky_mat3_rotate(mat, -M_PI);
+        break;
+    case WL_OUTPUT_TRANSFORM_270:
+        ky_mat3_rotate(mat, -M_PI * 1.5f);
+        break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+        ky_mat3_flip_x(mat);
+        break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+        ky_mat3_rotate(mat, -M_PI * 0.5f);
+        ky_mat3_flip_x(mat);
+        break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        ky_mat3_rotate(mat, -M_PI);
+        ky_mat3_flip_x(mat);
+        break;
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+        ky_mat3_rotate(mat, -M_PI * 1.5f);
+        ky_mat3_flip_x(mat);
+        break;
+    }
+    ky_mat3_translate(mat, 0.5, 0.5);
+}

@@ -95,108 +95,106 @@ static int scene_decoration_create_opengl_shader(void)
     return prog;
 }
 
-static void scene_decoration_opengl_render(struct ky_scene_decoration *decoration, int lx, int ly,
+static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
                                            struct ky_scene_render_target *target,
-                                           pixman_box32_t *clip)
+                                           const struct wlr_box *box, const pixman_region32_t *clip)
 {
-    float x = lx - target->logical.x;
-    float y = ly - target->logical.y;
-    float width = decoration->rect.width;
-    float height = decoration->rect.height;
-    float frame_width = target->logical.width;
-    float frame_height = target->logical.height;
-    float shadow_width = decoration->shadow_width;
+    pixman_region32_t region;
+    pixman_region32_init_rect(&region, box->x, box->y, box->width, box->height);
+    pixman_region32_intersect(&region, &region, clip);
 
-    // clip region. framebuffer coord
-    struct wlr_box clip_box = {
-        .x = clip->x1,
-        .y = clip->y1,
-        .width = clip->x2 - clip->x1,
-        .height = clip->y2 - clip->y1,
-    };
-
-    // vertex
-    float pos_vertex[8] = { 0, 0, width, 0, width, height, 0, height };
-    // docking margin clip
-    if ((decoration->shadow_mask & SHADOW_MASK_LEFT) == 0) {
-        pos_vertex[0] += shadow_width;
-        pos_vertex[6] += shadow_width;
-    }
-    if ((decoration->shadow_mask & SHADOW_MASK_RIGHT) == 0) {
-        pos_vertex[2] -= shadow_width;
-        pos_vertex[4] -= shadow_width;
-    }
-    if ((decoration->shadow_mask & SHADOW_MASK_TOP) == 0) {
-        pos_vertex[1] += shadow_width;
-        pos_vertex[7] += shadow_width;
-    }
-    if ((decoration->shadow_mask & SHADOW_MASK_BOTTOM) == 0) {
-        pos_vertex[3] -= shadow_width;
-        pos_vertex[5] -= shadow_width;
+    int rects_len;
+    const pixman_box32_t *rects = pixman_region32_rectangles(&region, &rects_len);
+    if (rects_len == 0) {
+        pixman_region32_fini(&region);
+        return;
     }
 
+    GLfloat verts[rects_len * 6 * 2];
+    size_t vert_index = 0;
+    for (int i = 0; i < rects_len; i++) {
+        const pixman_box32_t *rect = &rects[i];
+        verts[vert_index++] = (GLfloat)(rect->x1 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y1 - box->y) / box->height;
+        verts[vert_index++] = (GLfloat)(rect->x2 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y1 - box->y) / box->height;
+        verts[vert_index++] = (GLfloat)(rect->x1 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
+        verts[vert_index++] = (GLfloat)(rect->x2 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y1 - box->y) / box->height;
+        verts[vert_index++] = (GLfloat)(rect->x2 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
+        verts[vert_index++] = (GLfloat)(rect->x1 - box->x) / box->width;
+        verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
+    }
+
+    float width = deco->rect.width;
+    float height = deco->rect.height;
+    float shadow_width = deco->shadow_width;
     // inner window. rect - shadow
-    struct wlr_box box = {
+    struct wlr_box window = {
         .x = shadow_width,
         .y = shadow_width,
         .width = width - shadow_width * 2.0,
         .height = height - shadow_width * 2.0,
     };
 
-    struct ky_mat3 transform;
-    ky_mat3_identity(&transform);
-    // ky_mat3_scale(&transform, target->scale, target->scale);
-    ky_mat3_translate(&transform, x, y);
+    struct ky_mat3 projection;
+    ky_mat3_framebuffer_to_ndc(&projection, target->output->output->width,
+                               target->output->output->height);
+    struct ky_mat3 uv2pos;
+    ky_mat3_identity(&uv2pos);
+    ky_mat3_scale(&uv2pos, box->width, box->height);
+    ky_mat3_translate(&uv2pos, box->x, box->y);
+    struct ky_mat3 uv2ndc;
+    ky_mat3_multiply(&projection, &uv2pos, &uv2ndc);
 
-    struct ky_mat3 to_ndc;
-    ky_mat3_logic_to_ndc(&to_ndc, frame_width, frame_height, target->transform);
-    struct ky_mat3 transform_ndc;
-    ky_mat3_multiply(&to_ndc, &transform, &transform_ndc);
-
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(clip_box.x, clip_box.y, clip_box.width, clip_box.height);
+    struct ky_mat3 inverseTransform;
+    ky_mat3_invert_output_transform(&inverseTransform, target->transform);
 
     glEnable(GL_BLEND);
-
     glUseProgram(gl_shader);
-    GLint location = glGetAttribLocation(gl_shader, "position");
-    glEnableVertexAttribArray(location);
-    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), pos_vertex);
+    GLint attrib = glGetAttribLocation(gl_shader, "inUV");
+    glEnableVertexAttribArray(attrib);
+    glVertexAttribPointer(attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
     // vert shader param
+    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "uv2ndc"), 1, GL_FALSE, uv2ndc.matrix);
+    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "inverseTransform"), 1, GL_FALSE,
+                       inverseTransform.matrix);
     glUniform2f(glGetUniformLocation(gl_shader, "size"), width, height);
-    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "transform"), 1, GL_FALSE,
-                       transform_ndc.matrix);
     // frag shader param
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
     glUniform1f(glGetUniformLocation(gl_shader, "shadowSigma"), shadow_width * 0.424660891f);
-    glUniform4f(glGetUniformLocation(gl_shader, "shadowRect"), box.x, box.y, box.x + box.width,
-                box.y + box.height);
-    glUniform4fv(glGetUniformLocation(gl_shader, "shadowColor"), 1, decoration->shadow_color);
+    glUniform4f(glGetUniformLocation(gl_shader, "shadowRect"), window.x, window.y,
+                window.x + window.width, window.y + window.height);
+    glUniform4fv(glGetUniformLocation(gl_shader, "shadowColor"), 1, deco->shadow_color);
     glUniform1f(glGetUniformLocation(gl_shader, "aspect"), width / height);
-    float width_distance = box.width / height;
-    float height_distance = box.height / height;
-    float offset_x_distance = width_distance * 0.5f + box.x / height;
-    float offset_y_distance = height_distance * 0.5f + box.y / height;
+    float width_distance = window.width / height;
+    float height_distance = window.height / height;
+    float offset_x_distance = width_distance * 0.5f + window.x / height;
+    float offset_y_distance = height_distance * 0.5f + window.y / height;
     glUniform4f(glGetUniformLocation(gl_shader, "windowRect"), offset_x_distance, offset_y_distance,
                 width_distance, height_distance);
-    float round_corner_radius[4] = { (float)decoration->round_corner_radius[0] / height * 2.0f,
-                                     (float)decoration->round_corner_radius[1] / height * 2.0f,
-                                     (float)decoration->round_corner_radius[2] / height * 2.0f,
-                                     (float)decoration->round_corner_radius[3] / height * 2.0f };
+    float round_corner_radius[4] = { (float)deco->round_corner_radius[0] / height * 2.0f,
+                                     (float)deco->round_corner_radius[1] / height * 2.0f,
+                                     (float)deco->round_corner_radius[2] / height * 2.0f,
+                                     (float)deco->round_corner_radius[3] / height * 2.0f };
     glUniform4f(glGetUniformLocation(gl_shader, "roundedCornerRadius"),
-                decoration->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] : 0.0f,
-                decoration->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] : 0.0f,
-                decoration->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] : 0.0f,
-                decoration->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] : 0.0f);
+                deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] : 0.0f,
+                deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] : 0.0f,
+                deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] : 0.0f,
+                deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] : 0.0f);
     glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"),
-                decoration->border_thickness / height * 2.0f);
-    glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, decoration->border_color);
-    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), decoration->title_height / height);
-    glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, decoration->title_color);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+                deco->border_thickness / height * 2.0f);
+    glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, deco->border_color);
+    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), deco->title_height / height);
+    glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, deco->title_color);
+
+    glDrawArrays(GL_TRIANGLES, 0, rects_len * 6);
     glUseProgram(0);
-    glDisableVertexAttribArray(location);
-    glDisable(GL_SCISSOR_TEST);
+    glDisableVertexAttribArray(attrib);
+
+    pixman_region32_fini(&region);
 }
 
 static void scene_decoration_update_round_corner_region(struct ky_scene_decoration *deco,
@@ -453,11 +451,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         }
         if (gl_shader > 0) {
             ky_scene_render_region(&render_region, target);
-            int nrects;
-            pixman_box32_t *rects = pixman_region32_rectangles(&render_region, &nrects);
-            for (int i = 0; i < nrects; ++i) {
-                scene_decoration_opengl_render(deco, lx, ly, target, &rects[i]);
-            }
+            scene_decoration_opengl_render(deco, target, &dst_box, &render_region);
             pixman_region32_fini(&render_region);
             return;
         } else {
