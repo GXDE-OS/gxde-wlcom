@@ -184,7 +184,7 @@ static void print_workspaces_info(struct virtual_desktop_manager *manager)
     printf("%d worskpaces in %d rows\n\n", wl_list_length(&manager->desktops), manager->rows);
 
     struct virtual_desktop *desktop;
-    wl_list_for_each(desktop, &manager->desktops, link) {
+    wl_list_for_each_reverse(desktop, &manager->desktops, link) {
         printf("workspace \"%s\"\n", desktop->id);
         printf("  name: %s\n", desktop->name);
         printf("  position: %d\n", desktop->position);

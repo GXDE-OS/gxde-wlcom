@@ -246,7 +246,7 @@ static void kde_virtual_desktop_management_bind(struct wl_client *client, void *
 
     /* send all desktops to client when bind */
     struct kde_virtual_desktop *virtual_desktop;
-    wl_list_for_each(virtual_desktop, &management->virtual_desktops, link) {
+    wl_list_for_each_reverse(virtual_desktop, &management->virtual_desktops, link) {
         org_kde_plasma_virtual_desktop_management_send_desktop_created(
             resource, virtual_desktop->uuid, virtual_desktop->workspace->position);
     }
