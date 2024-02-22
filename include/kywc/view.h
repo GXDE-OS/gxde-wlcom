@@ -42,8 +42,24 @@ enum kywc_ssd {
     KYWC_SSD_ALL,
 };
 
+enum kywc_view_role {
+    KYWC_VIEW_ROLE_NORMAL = 0,
+    KYWC_VIEW_ROLE_DESKTOP,
+    KYWC_VIEW_ROLE_PANEL,
+    KYWC_VIEW_ROLE_ONSCREENDISPLAY,
+    KYWC_VIEW_ROLE_NOTIFICATION,
+    KYWC_VIEW_ROLE_TOOLTIP,
+    KYWC_VIEW_ROLE_CRITICALNOTIFICATION,
+    KYWC_VIEW_ROLE_SYSTEMWINDOW,
+    KYWC_VIEW_ROLE_INPUTPANEL,
+    KYWC_VIEW_ROLE_LOGOUT,
+    KYWC_VIEW_ROLE_SCREENLOCK,
+    KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION,
+    KYWC_VIEW_ROLE_WATERMARK,
+};
+
 struct kywc_view {
-    // TODO: hint mask for dock, desktop and others
+    enum kywc_view_role role;
 
     /* current geometry in global layout */
     struct kywc_box geometry;

@@ -76,46 +76,60 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
 static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
 {
     struct view_layer *layer = NULL;
+    struct kywc_view *kywc_view = &surface->view->base;
 
     switch (surface->role) {
     case ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL:
         layer = view_manager_get_layer(LAYER_NORMAL, true);
+        kywc_view->role = KYWC_VIEW_ROLE_NORMAL;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP:
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
+        kywc_view->role = KYWC_VIEW_ROLE_DESKTOP;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_PANEL:
         layer = view_manager_get_layer(LAYER_DOCK, false);
+        kywc_view->role = KYWC_VIEW_ROLE_PANEL;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_TOOLTIP:
         layer = view_manager_get_layer(LAYER_POPUP, false);
+        kywc_view->role = KYWC_VIEW_ROLE_TOOLTIP;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_ONSCREENDISPLAY:
         layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
+        kywc_view->role = KYWC_VIEW_ROLE_ONSCREENDISPLAY;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_NOTIFICATION:
         layer = view_manager_get_layer(LAYER_NOTIFICATION, false);
+        kywc_view->role = KYWC_VIEW_ROLE_NOTIFICATION;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_CRITICALNOTIFICATION:
         layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+        kywc_view->role = KYWC_VIEW_ROLE_CRITICALNOTIFICATION;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_SYSTEMWINDOW:
         layer = view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
+        kywc_view->role = KYWC_VIEW_ROLE_SYSTEMWINDOW;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_INPUTPANEL:
         layer = view_manager_get_layer(LAYER_INPUT_PANEL, false);
+        kywc_view->role = KYWC_VIEW_ROLE_INPUTPANEL;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_LOGOUT:
         layer = view_manager_get_layer(LAYER_LOGOUT, false);
+        kywc_view->role = KYWC_VIEW_ROLE_LOGOUT;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK:
         layer = view_manager_get_layer(LAYER_SCREEN_LOCK, false);
+        kywc_view->role = KYWC_VIEW_ROLE_SCREENLOCK;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCKNOTIFICATION:
         layer = view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
+        kywc_view->role = KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION;
         break;
     case ORG_KDE_PLASMA_SURFACE_ROLE_WATERMARK:
         layer = view_manager_get_layer(LAYER_WATERMARK, false);
+        kywc_view->role = KYWC_VIEW_ROLE_WATERMARK;
         break;
     }
 
@@ -125,7 +139,6 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         view_unset_workspace(surface->view, layer);
     }
 
-    struct kywc_view *kywc_view = &surface->view->base;
     kywc_view->minimizable = kywc_view->maximizable = kywc_view->fullscreenable =
         surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
     kywc_view->closeable = surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP &&

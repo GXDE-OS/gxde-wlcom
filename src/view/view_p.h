@@ -73,7 +73,8 @@ bool window_menu_manager_create(struct view_manager *view_manager);
 bool maximize_switcher_create(struct view_manager *view_manager);
 
 struct wlr_xdg_popup;
-void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell);
+void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
+                      struct view_layer *layer);
 
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);

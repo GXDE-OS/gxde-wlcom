@@ -320,7 +320,8 @@ static void layer_shell_handle_new_popup(struct wl_listener *listener, void *dat
     struct layer_shell *layer_shell = wl_container_of(listener, layer_shell, new_popup);
     struct wlr_xdg_popup *wlr_xdg_popup = data;
 
-    xdg_popup_create(wlr_xdg_popup, layer_shell->tree);
+    struct view_layer *popup_layer = view_manager_get_layer(LAYER_POPUP, false);
+    xdg_popup_create(wlr_xdg_popup, layer_shell->tree, popup_layer);
 }
 
 static bool layer_shell_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,

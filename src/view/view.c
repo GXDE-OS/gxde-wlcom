@@ -177,6 +177,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&view->events.workspace);
     wl_signal_init(&view->events.output);
 
+    kywc_view->role = KYWC_VIEW_ROLE_NORMAL;
     kywc_view->minimizable = true;
     kywc_view->maximizable = true;
     kywc_view->fullscreenable = true;

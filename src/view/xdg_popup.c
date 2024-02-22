@@ -142,10 +142,10 @@ static const struct input_event_node_impl xdg_popup_event_node_impl = {
     .leave = xdg_popup_leave,
 };
 
-void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell)
+void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
+                      struct view_layer *layer)
 {
-    struct view_layer *popup_layer = view_manager_get_layer(LAYER_POPUP, false);
-    struct ky_scene_tree *parent = ky_scene_tree_create(popup_layer->tree);
+    struct ky_scene_tree *parent = ky_scene_tree_create(layer->tree);
 
     /* get shell layout coord, and set it to parent tree */
     int lx, ly;
