@@ -130,6 +130,7 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
 
     float width = deco->rect.width;
     float height = deco->rect.height;
+    float half_height = deco->rect.height * 0.5f; // shader distance scale
     float shadow_width = deco->shadow_width;
     // inner window. rect - shadow
     struct wlr_box window = {
@@ -175,17 +176,27 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
     float offset_y_distance = height_distance * 0.5f + window.y / height;
     glUniform4f(glGetUniformLocation(gl_shader, "windowRect"), offset_x_distance, offset_y_distance,
                 width_distance, height_distance);
-    float round_corner_radius[4] = { (float)deco->round_corner_radius[0] / height * 2.0f,
-                                     (float)deco->round_corner_radius[1] / height * 2.0f,
-                                     (float)deco->round_corner_radius[2] / height * 2.0f,
-                                     (float)deco->round_corner_radius[3] / height * 2.0f };
+    float round_corner_radius[4] = {
+        deco->round_corner_radius[0] > 0
+            ? (deco->round_corner_radius[0] + deco->border_thickness) / half_height
+            : 0.0f,
+        deco->round_corner_radius[1] > 0
+            ? (deco->round_corner_radius[1] + deco->border_thickness) / half_height
+            : 0.0f,
+        deco->round_corner_radius[2] > 0
+            ? (deco->round_corner_radius[2] + deco->border_thickness) / half_height
+            : 0.0f,
+        deco->round_corner_radius[3] > 0
+            ? (deco->round_corner_radius[3] + deco->border_thickness) / half_height
+            : 0.0f,
+    };
     glUniform4f(glGetUniformLocation(gl_shader, "roundedCornerRadius"),
                 deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] : 0.0f,
                 deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] : 0.0f,
                 deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] : 0.0f,
                 deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] : 0.0f);
     glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"),
-                deco->border_thickness / height * 2.0f);
+                deco->border_thickness / half_height);
     glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, deco->border_color);
     glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), deco->title_height / height);
     glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, deco->title_color);
@@ -217,31 +228,35 @@ static void scene_decoration_update_round_corner_region(struct ky_scene_decorati
         return;
     }
 
+    // include border round_corner
+    float round_corner_radius[4] = {
+        deco->round_corner_radius[0] + deco->border_thickness,
+        deco->round_corner_radius[1] + deco->border_thickness,
+        deco->round_corner_radius[2] + deco->border_thickness,
+        deco->round_corner_radius[3] + deco->border_thickness,
+    };
     int x1 = deco->shadow_width;
     int x2 = deco->shadow_width + width + 2 * deco->border_thickness;
     int y1 = deco->shadow_width;
     int y2 = deco->shadow_width + height + deco->title_height + 2 * deco->border_thickness;
-
-    // TODO: remove borders in the region
-    if ((deco->shadow_mask & SHADOW_MASK_TOP_LEFT) && deco->round_corner_radius[3] > 0) {
+    if ((deco->shadow_mask & SHADOW_MASK_TOP_LEFT) && round_corner_radius[3] > 0) {
         pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region, x1, y1,
-                                   deco->round_corner_radius[3], deco->round_corner_radius[3]);
+                                   round_corner_radius[3], round_corner_radius[3]);
     }
-    if ((deco->shadow_mask & SHADOW_MASK_TOP_RIGHT) && deco->round_corner_radius[1] > 0) {
+    if ((deco->shadow_mask & SHADOW_MASK_TOP_RIGHT) && round_corner_radius[1] > 0) {
         pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region,
-                                   x2 - deco->round_corner_radius[1], y1,
-                                   deco->round_corner_radius[1], deco->round_corner_radius[1]);
+                                   x2 - round_corner_radius[1], y1, round_corner_radius[1],
+                                   round_corner_radius[1]);
     }
-    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT) && deco->round_corner_radius[2] > 0) {
+    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT) && round_corner_radius[2] > 0) {
         pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region, x1,
-                                   y2 - deco->round_corner_radius[2], deco->round_corner_radius[2],
-                                   deco->round_corner_radius[2]);
+                                   y2 - round_corner_radius[2], round_corner_radius[2],
+                                   round_corner_radius[2]);
     }
-    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT) && deco->round_corner_radius[0] > 0) {
+    if ((deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT) && round_corner_radius[0] > 0) {
         pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region,
-                                   x2 - deco->round_corner_radius[0],
-                                   y2 - deco->round_corner_radius[0], deco->round_corner_radius[0],
-                                   deco->round_corner_radius[0]);
+                                   x2 - round_corner_radius[0], y2 - round_corner_radius[0],
+                                   round_corner_radius[0], round_corner_radius[0]);
     }
 
     if (damage) {
