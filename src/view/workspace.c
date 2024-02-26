@@ -183,6 +183,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
 {
     /* create the default workspace and activate it */
     workspace_activate(workspace_create(NULL, 0));
+    // TODO: create workspaces according to configuration
     workspace_create(NULL, 1);
     workspace_create(NULL, 2);
     workspace_create(NULL, 3);

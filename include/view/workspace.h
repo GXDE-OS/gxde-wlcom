@@ -7,12 +7,12 @@
 
 #include "view.h"
 
-#define MAX_WORKSPACES 16
+#define MAX_WORKSPACES 15
 
 struct workspace {
     /* user readable descriptive name */
     const char *name;
-    /* layers in workspacec, below, nornal and above */
+    /* layers in workspacec, below, normal and above */
     struct view_layer layers[3];
 
     struct wl_list view_proxies;
@@ -39,7 +39,7 @@ struct view_proxy {
 
     struct view *view;
     struct workspace *workspace;
-    /* use to mount view tree */
+    /* used to mount view tree */
     struct ky_scene_tree *tree;
 };
 
