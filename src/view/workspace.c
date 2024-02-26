@@ -11,6 +11,7 @@
 #include <kywc/log.h>
 
 #include "input/input.h"
+#include "nls.h"
 #include "server.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -256,7 +257,23 @@ static void workspace_set_enabled(struct workspace *workspace, bool enabled)
     }
 }
 
-static void auto_add_all_workspaces_view(struct workspace *workspace)
+static void workspace_update_name(struct workspace *workspace, const char *name)
+{
+    if (workspace->has_custom_name && !name) {
+        return;
+    }
+
+    free((void *)workspace->name);
+    workspace->name =
+        name ? strdup(name)
+             : kywc_identifier_generate("%s %d", tr("Desktop"), workspace->position + 1);
+    workspace->has_custom_name = !!name;
+
+    wl_signal_emit_mutable(&workspace->events.name, NULL);
+}
+
+/* auto add views in all workspaces */
+static void workspace_auto_add_views(struct workspace *workspace)
 {
     if (!workspace_manager->view_manager->server->ready) {
         return;
@@ -287,10 +304,9 @@ struct workspace *workspace_create(const char *name, uint32_t position)
         position = workspace_manager->count;
     }
 
-    workspace->position = position;
-    workspace->name = name ? strdup(name) : kywc_identifier_generate("Desktop %d", position + 1);
-
     wl_list_init(&workspace->view_proxies);
+    wl_signal_init(&workspace->events.name);
+    wl_signal_init(&workspace->events.position);
     wl_signal_init(&workspace->events.activate);
     wl_signal_init(&workspace->events.destroy);
     wl_signal_init(&workspace->events.view_enter);
@@ -306,6 +322,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace->layers[2].tree = ky_scene_tree_create(layers[LAYER_ABOVE].tree);
     workspace_set_enabled(workspace, false);
 
+    workspace->position = position;
     /* insert to workspace manager workspaces */
     for (uint32_t i = workspace_manager->count; i > position; i--) {
         workspace_manager->workspaces[i] = workspace_manager->workspaces[i - 1];
@@ -314,7 +331,9 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace_manager->workspaces[position] = workspace;
     workspace_manager_update_count(workspace_manager->count + 1);
 
-    auto_add_all_workspaces_view(workspace);
+    workspace_update_name(workspace, name);
+
+    workspace_auto_add_views(workspace);
     wl_signal_emit_mutable(&workspace_manager->events.new_workspace, workspace);
 
     return workspace;
@@ -326,7 +345,7 @@ static void fix_workspace(struct workspace *workspace)
     for (uint32_t i = workspace->position; i < workspace_manager->count - 1; i++) {
         workspace_manager->workspaces[i] = workspace_manager->workspaces[i + 1];
         workspace_manager->workspaces[i]->position = i;
-        // TODO: rename workspace ?
+        workspace_update_name(workspace_manager->workspaces[i], NULL);
     }
     workspace_manager_update_count(workspace_manager->count - 1);
 
@@ -343,7 +362,6 @@ static void fix_workspace(struct workspace *workspace)
     struct workspace *current = workspace_manager_get_current();
     struct view_proxy *view_proxy, *tmp;
     wl_list_for_each_safe(view_proxy, tmp, &workspace->view_proxies, workspace_link) {
-        // TODO: fullscreen views
         struct view_proxy *new_proxy = view_add_workspace(view_proxy->view, current);
         if (new_proxy) {
             view_set_current_proxy(view_proxy->view, new_proxy);
@@ -434,4 +452,33 @@ struct workspace *workspace_by_position(uint32_t position)
     }
 
     return workspace_manager->workspaces[position];
+}
+
+void workspace_set_position(struct workspace *workspace, uint32_t position)
+{
+    /* insert to last if position is too bigger */
+    if (position >= workspace_manager->count) {
+        position = workspace_manager->count - 1;
+    }
+    if (position == workspace->position) {
+        return;
+    }
+
+    /* move workspaces */
+    for (uint32_t i = workspace->position; i > position; i--) {
+        workspace_manager->workspaces[i] = workspace_manager->workspaces[i - 1];
+        workspace_manager->workspaces[i]->position = i;
+        wl_signal_emit_mutable(&workspace_manager->workspaces[i]->events.position, NULL);
+        workspace_update_name(workspace_manager->workspaces[i], NULL);
+    }
+    for (uint32_t i = workspace->position; i < position; i++) {
+        workspace_manager->workspaces[i] = workspace_manager->workspaces[i + 1];
+        workspace_manager->workspaces[i]->position = i;
+        wl_signal_emit_mutable(&workspace_manager->workspaces[i]->events.position, NULL);
+        workspace_update_name(workspace_manager->workspaces[i], NULL);
+    }
+
+    workspace->position = position;
+    wl_signal_emit_mutable(&workspace->events.position, NULL);
+    workspace_update_name(workspace, NULL);
 }

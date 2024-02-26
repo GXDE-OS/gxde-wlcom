@@ -16,8 +16,9 @@ struct workspace {
     struct view_layer layers[3];
 
     struct wl_list view_proxies;
-
+    /* start from 0 */
     uint32_t position;
+    bool has_custom_name;
     bool activated;
 
     struct {
@@ -25,7 +26,9 @@ struct workspace {
         struct wl_signal view_enter;
         /* view is gone or unmapped */
         struct wl_signal view_leave;
-        // TODO: name and position
+
+        struct wl_signal name;
+        struct wl_signal position;
         struct wl_signal activate;
         struct wl_signal destroy;
     } events;
@@ -64,5 +67,7 @@ void workspace_activate(struct workspace *workspace);
 struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer);
 
 struct workspace *workspace_by_position(uint32_t position);
+
+void workspace_set_position(struct workspace *workspace, uint32_t position);
 
 #endif /* _WORKSPACE_H_ */
