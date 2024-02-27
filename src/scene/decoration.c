@@ -128,10 +128,28 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
         verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
     }
 
-    float width = deco->rect.width;
-    float height = deco->rect.height;
-    float half_height = deco->rect.height * 0.5f; // shader distance scale
-    float shadow_width = deco->shadow_width;
+    // like ky_scene_render_box() use round()
+    float scale = target->scale;
+    float width = round(deco->rect.width * scale);
+    float height = round(deco->rect.height * scale);
+    float half_height = height * 0.5f; // shader distance scale
+    float shadow_width = round(deco->shadow_width * scale);
+    float title_height = round(deco->title_height * scale);
+    float border_thickness = round(deco->border_thickness * scale);
+    float round_corner_radius[4] = {
+        deco->round_corner_radius[0] > 0
+            ? (deco->round_corner_radius[0] + deco->border_thickness) * scale
+            : 0.0f,
+        deco->round_corner_radius[1] > 0
+            ? (deco->round_corner_radius[1] + deco->border_thickness) * scale
+            : 0.0f,
+        deco->round_corner_radius[2] > 0
+            ? (deco->round_corner_radius[2] + deco->border_thickness) * scale
+            : 0.0f,
+        deco->round_corner_radius[3] > 0
+            ? (deco->round_corner_radius[3] + deco->border_thickness) * scale
+            : 0.0f,
+    };
     // inner window. rect - shadow
     struct wlr_box window = {
         .x = shadow_width,
@@ -176,29 +194,15 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
     float offset_y_distance = height_distance * 0.5f + window.y / height;
     glUniform4f(glGetUniformLocation(gl_shader, "windowRect"), offset_x_distance, offset_y_distance,
                 width_distance, height_distance);
-    float round_corner_radius[4] = {
-        deco->round_corner_radius[0] > 0
-            ? (deco->round_corner_radius[0] + deco->border_thickness) / half_height
-            : 0.0f,
-        deco->round_corner_radius[1] > 0
-            ? (deco->round_corner_radius[1] + deco->border_thickness) / half_height
-            : 0.0f,
-        deco->round_corner_radius[2] > 0
-            ? (deco->round_corner_radius[2] + deco->border_thickness) / half_height
-            : 0.0f,
-        deco->round_corner_radius[3] > 0
-            ? (deco->round_corner_radius[3] + deco->border_thickness) / half_height
-            : 0.0f,
-    };
-    glUniform4f(glGetUniformLocation(gl_shader, "roundedCornerRadius"),
-                deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] : 0.0f,
-                deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] : 0.0f,
-                deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] : 0.0f,
-                deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] : 0.0f);
-    glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"),
-                deco->border_thickness / half_height);
+    glUniform4f(
+        glGetUniformLocation(gl_shader, "roundedCornerRadius"),
+        deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] / half_height : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] / half_height : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] / half_height : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] / half_height : 0.0f);
+    glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"), border_thickness / half_height);
     glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, deco->border_color);
-    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), deco->title_height / height);
+    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), title_height / height);
     glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, deco->title_color);
 
     glDrawArrays(GL_TRIANGLES, 0, rects_len * 6);

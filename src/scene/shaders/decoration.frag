@@ -62,10 +62,10 @@ void main() {
         float shapeTitle = 1.0 - step(0.0, titleDist);
         result += shapeTitle * titleColor;
     }
-
+    
     // border
-    float shapeWindowInner = 1.0 - step(0.0, windowDist + borderThickness);
-    result += (1.0 - shapeWindow - shapeWindowInner) * borderColor;
+    float border = step(0.0, windowDist + borderThickness) - shapeWindow;
+    result += border * borderColor;
 
     gl_FragColor = result;
 }
