@@ -261,8 +261,18 @@ static const float blackbody_color[] = {
 };
 // clang-format on
 
+/* Helper macro used in the fill functions */
+#define F(Y, C) pow((Y)*_brightness *whitepoint[C], 1.0)
+
+static void interpolate_clolor(float a, const float *c1, const float *c2, float *c)
+{
+    c[0] = (1.0 - a) * c1[0] + a * c2[0];
+    c[1] = (1.0 - a) * c1[1] + a * c2[1];
+    c[2] = (1.0 - a) * c1[2] + a * c2[2];
+}
+
 static void fill_gamma_ramp_with_colortemp(uint16_t *gamma_ramp, uint32_t ramp_size,
-                                           uint32_t color_temp)
+                                           uint32_t color_temp, uint32_t brightness)
 {
     uint16_t *red = &gamma_ramp[0 * ramp_size];
     uint16_t *green = &gamma_ramp[1 * ramp_size];
@@ -279,27 +289,25 @@ static void fill_gamma_ramp_with_colortemp(uint16_t *gamma_ramp, uint32_t ramp_s
     float whitepoint[3];
     float alpha = (color_temp % 100) / 100.;
     int bbc_index = ((color_temp - 1000) / 100) * 3;
+    interpolate_clolor(alpha, &blackbody_color[bbc_index], &blackbody_color[bbc_index + 3],
+                       whitepoint);
 
-    whitepoint[0] =
-        (1. - alpha) * blackbody_color[bbc_index] + alpha * blackbody_color[bbc_index + 3];
-    whitepoint[1] =
-        (1. - alpha) * blackbody_color[bbc_index + 1] + alpha * blackbody_color[bbc_index + 4];
-    whitepoint[2] =
-        (1. - alpha) * blackbody_color[bbc_index + 2] + alpha * blackbody_color[bbc_index + 5];
+    float _brightness = (float)brightness / 100;
 
     /* Helper macro used in the fill functions */
     for (uint32_t i = 0; i < ramp_size; i++) {
-        red[i] = (double)red[i] / (UINT16_MAX + 1) * whitepoint[0] * (UINT16_MAX + 1);
-        green[i] = (double)green[i] / (UINT16_MAX + 1) * whitepoint[1] * (UINT16_MAX + 1);
-        blue[i] = (double)blue[i] / (UINT16_MAX + 1) * whitepoint[2] * (UINT16_MAX + 1);
+        red[i] = F((double)red[i] / (UINT16_MAX + 1), 0) * (UINT16_MAX + 1);
+        green[i] = F((double)green[i] / (UINT16_MAX + 1), 1) * (UINT16_MAX + 1);
+        blue[i] = F((double)blue[i] / (UINT16_MAX + 1), 2) * (UINT16_MAX + 1);
     }
 }
 
 void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
-                          struct wlr_output_state *wlr_state, uint32_t color_temp)
+                          struct wlr_output_state *wlr_state, uint32_t color_temp,
+                          uint32_t brightness)
 {
     uint16_t *gamma_ramp = malloc(gamma_size * sizeof(uint16_t) * 3);
-    fill_gamma_ramp_with_colortemp(gamma_ramp, gamma_size, color_temp);
+    fill_gamma_ramp_with_colortemp(gamma_ramp, gamma_size, color_temp, brightness);
     if (wlr_state) {
         wlr_output_state_set_gamma_lut(wlr_state, gamma_size, &gamma_ramp[0],
                                        &gamma_ramp[1 * gamma_size], &gamma_ramp[2 * gamma_size]);
@@ -312,7 +320,7 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
     kywc_log(KYWC_DEBUG, "output:%s set gama lut colr_tempe: %d", wlr_output->name, color_temp);
 }
 
-void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp)
+void output_set_gamma_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
 {
     if (kywc_output->prop.gamma_size <= 1) {
         kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
@@ -323,8 +331,33 @@ void output_set_colortemp(struct kywc_output *kywc_output, int32_t color_temp)
         return;
     }
     kywc_output->state.color_temp = color_temp;
+    uint32_t brightness =
+        kywc_output->prop.brightness_support ? 100 : kywc_output->state.brightness;
 
     struct output *output = output_from_kywc_output(kywc_output);
-    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL, color_temp);
+    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL, color_temp,
+                         brightness);
+    wlr_output_schedule_frame(output->wlr_output);
+}
+
+void output_set_gamma_brightness(struct kywc_output *kywc_output, uint32_t brightness)
+{
+    if (kywc_output->prop.brightness_support) {
+        kywc_log(KYWC_DEBUG, "brightness can not by adjusted by gamma");
+        return;
+    }
+    if (kywc_output->prop.gamma_size <= 1) {
+        kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
+        return;
+    }
+
+    if (!kywc_output->state.enabled) {
+        return;
+    }
+    kywc_output->state.brightness = brightness;
+
+    struct output *output = output_from_kywc_output(kywc_output);
+    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL,
+                         kywc_output->state.color_temp, kywc_output->state.brightness);
     wlr_output_schedule_frame(output->wlr_output);
 }

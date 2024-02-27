@@ -154,7 +154,9 @@ bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness
 
 void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
 {
+    brightness = BRIGHTNESS_CLAMP(brightness);
     if (!kywc_output->prop.brightness_support) {
+        output_set_gamma_brightness(kywc_output, brightness);
         return;
     }
 

@@ -835,8 +835,9 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
             wlr_output_state_set_scale(&wlr_state, state->scale);
 
             if (output->base.prop.gamma_size > 1) {
-                output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, &wlr_state,
-                                     state->color_temp);
+                output_set_gamma_lut(
+                    wlr_output, output->base.prop.gamma_size, &wlr_state, state->color_temp,
+                    output->base.prop.brightness_support ? 100 : state->brightness);
             }
         }
 
