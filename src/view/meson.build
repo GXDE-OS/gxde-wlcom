@@ -13,6 +13,7 @@ wlcom_sources += files(
   'xdg_dialog.c',
   'xdg_popup.c',
   'xdg_shell.c',
+  'xdg_activation.c',
 )
 
 wlcom_sources += files(

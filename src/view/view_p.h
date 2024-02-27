@@ -97,6 +97,8 @@ bool ky_toplevel_manager_create(struct server *server);
 
 bool xdg_dialog_create(struct server *server);
 
+bool xdg_activation_create(struct server *server);
+
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);
 #else
