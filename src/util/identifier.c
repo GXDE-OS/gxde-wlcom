@@ -37,6 +37,32 @@ static void replace_unprintable(char *str)
     }
 }
 
+const char *kywc_identifier_utf8_generate(const char *format, ...)
+{
+    if (!format) {
+        return NULL;
+    }
+
+    int len = 0;
+    char *identifier = NULL;
+    va_list args;
+
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args) + 1;
+    va_end(args);
+
+    identifier = malloc(len);
+    if (!identifier) {
+        return NULL;
+    }
+
+    va_start(args, format);
+    vsnprintf(identifier, len, format, args);
+    va_end(args);
+
+    return identifier;
+}
+
 const char *kywc_identifier_generate(const char *format, ...)
 {
     if (!format) {

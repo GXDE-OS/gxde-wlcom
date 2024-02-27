@@ -13,6 +13,8 @@
 
 const char *kywc_identifier_generate(const char *format, ...) _KYWC_ATTRIB_PRINTF(1, 2);
 
+const char *kywc_identifier_utf8_generate(const char *format, ...) _KYWC_ATTRIB_PRINTF(1, 2);
+
 /* return 36-byte string (plus trailing '\0') of the form 1b4e28ba-2fa1-11d2-883f-0016d3cca427 */
 const char *kywc_identifier_uuid_generate(void);
 

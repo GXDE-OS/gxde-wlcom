@@ -266,7 +266,7 @@ static void workspace_update_name(struct workspace *workspace, const char *name)
     free((void *)workspace->name);
     workspace->name =
         name ? strdup(name)
-             : kywc_identifier_generate("%s %d", tr("Desktop"), workspace->position + 1);
+             : kywc_identifier_utf8_generate("%s %d", tr("Desktop"), workspace->position + 1);
     workspace->has_custom_name = !!name;
 
     wl_signal_emit_mutable(&workspace->events.name, NULL);
