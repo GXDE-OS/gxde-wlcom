@@ -1,10 +1,10 @@
-#extension GL_OES_standard_derivatives : enable
 precision highp float;
 
 uniform vec4 shadowRect; // pixel. left-top right-bottom
 uniform float shadowSigma;
 uniform vec4 shadowColor;
 
+uniform float pixelDistance; // 1px in distance
 uniform float aspect; // width / height
 uniform vec4 windowRect; // distance. x y w h
 uniform vec4 roundedCornerRadius;
@@ -49,7 +49,7 @@ void main() {
     vec2 offset = -windowRect.xy * 2.0;
 
     float windowDist = sdRoundedBox(st + offset, windowRect.zw, roundedCornerRadius);
-    float aa = fwidth(windowDist);
+    float aa = pixelDistance * 0.5;
     float shapeWindow = smoothstep(-aa, 0.0, windowDist);
     vec4 result = mix(vec4(0.0), shadowColor, shapeWindow * shadow);
 

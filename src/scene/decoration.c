@@ -187,6 +187,7 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
     glUniform4f(glGetUniformLocation(gl_shader, "shadowRect"), window.x, window.y,
                 window.x + window.width, window.y + window.height);
     glUniform4fv(glGetUniformLocation(gl_shader, "shadowColor"), 1, deco->shadow_color);
+    glUniform1f(glGetUniformLocation(gl_shader, "pixelDistance"), 1.0 / half_height);
     glUniform1f(glGetUniformLocation(gl_shader, "aspect"), width / height);
     float width_distance = window.width / height;
     float height_distance = window.height / height;
