@@ -332,9 +332,9 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace_manager_update_count(workspace_manager->count + 1);
 
     workspace_update_name(workspace, name);
-
-    workspace_auto_add_views(workspace);
     wl_signal_emit_mutable(&workspace_manager->events.new_workspace, workspace);
+    /* after new_workspace */
+    workspace_auto_add_views(workspace);
 
     return workspace;
 }
