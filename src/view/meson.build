@@ -2,6 +2,7 @@ wlcom_sources += files(
   'action.c',
   'decoration.c',
   'interactive.c',
+  'ky_workspace.c',
   'positioner.c',
   'shadow.c',
   'ssd.c',

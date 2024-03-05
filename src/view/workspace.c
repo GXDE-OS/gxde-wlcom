@@ -211,6 +211,7 @@ bool workspace_manager_create(struct view_manager *view_manager)
     wl_display_add_destroy_listener(view_manager->server->display,
                                     &workspace_manager->display_destroy);
 
+    ky_workspace_manager_create(view_manager->server);
     /* kde-plasma-virtual-desktop support */
     kde_virtual_desktop_management_create(view_manager->server);
 

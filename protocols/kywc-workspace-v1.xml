@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="kywc_workspace_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+    SPDX-License-Identifier: MulanPSL-2.0
+  ]]></copyright>
+
+  <interface name="kywc_workspace_manager_v1" version="1">
+    <description summary="list and control workspaces">
+      Workspaces, also called virtual desktops, are groups of surfaces. A
+      compositor with a concept of workspaces may only show some such groups of
+      surfaces (those of 'active' workspaces) at a time. 'Activating' a
+      workspace is a request for the compositor to display that workspace's
+      surfaces as normal, whereas the compositor may hide or otherwise
+      de-emphasise surfaces that are associated only with 'inactive' workspaces.
+
+      After a client binds the kywc_workspace_manager_v1, each workspace will be
+      sent via the workspace event.
+    </description>
+
+    <event name="workspace">
+      <description summary="workspace has been created">
+        This event is emitted whenever a new workspace has been created.
+
+        All initial details of the workspace (name, position, activated) will
+        be sent immediately after this event via the corresponding events in
+        kywc_workspace_v1.
+      </description>
+      <arg name="workspace" type="new_id" interface="kywc_workspace_v1"/>
+      <arg name="uuid" type="string" summary="Unique id of the workspace"/>
+    </event>
+
+    <request name="create_workspace">
+      <description summary="create a new workspace">
+        Request that the compositor create a new workspace with the given name
+        and position it at a specified position.
+
+        If the position is zero or less, it will be positioned at the beginning,
+        if the position is the count or more, it will be positioned at the end.
+
+        There is no guarantee that the compositor will create a new workspace,
+        or that the created workspace will have the provided name and position.
+      </description>
+      <arg name="name" type="string" summary="the user readable name we want"/>
+      <arg name="position" type="uint" summary="the position we want for the workspace"/>
+    </request>
+
+    <event name="done">
+      <description summary="all information about the workspaces has been sent">
+        This event is sent after all changes in all workspaces have been sent.
+
+        This allows changes to one or more kywc_workspace_v1 properties
+        to be seen as atomic, even if they happen via multiple events.
+      </description>
+    </event>
+
+    <event name="finished">
+      <description summary="the compositor has finished with the workspace_manager">
+        This event indicates that the compositor is done sending events to the
+        kywc_workspace_manager_v1. The server will destroy the object
+        immediately after sending this request, so it will become invalid and
+        the client should free any resources associated with it.
+      </description>
+    </event>
+
+    <request name="stop">
+      <description summary="stop sending events">
+        Indicates the client no longer wishes to receive events for new workspace.
+        However the compositor may emit further workspace events,
+        until the finished event is emitted. The compositor is expected
+        to send the finished event eventually once the stop request has been processed.
+
+        The client must not send any more requests after this one.
+      </description>
+    </request>
+  </interface>
+
+  <interface name="kywc_workspace_v1" version="1">
+    <description summary="a workspace handing a group of surfaces">
+      A kywc_workspace_v1 object represents a workspace that handles a
+      group of surfaces.
+
+      Each workspace has a name, conveyed to the client with the name event;
+      and a position, conveyed to the client with the position event.
+      The client may request that the compositor activate or deactivate the workspace.
+    </description>
+
+    <event name="name">
+      <description summary="workspace name changed">
+        This event is emitted immediately after the kywc_workspace_v1 is
+        created and whenever the name of the workspace changes.
+      </description>
+      <arg name="name" type="string"/>
+    </event>
+
+    <event name="position">
+      <description summary="workspace position changed">
+      </description>
+      <arg name="position" type="uint"/>
+    </event>
+
+    <event name="activated">
+      <description summary="the workspace has been activated">
+        The workspace will be the new "current" workspace of the system. 
+      </description>
+    </event>
+
+    <event name="deactivated">
+      <description summary="this workspace is no longer active">
+        surfaces that were associated only to this workspace will be hidden.
+      </description>
+    </event>
+
+    <event name="removed">
+      <description summary="this workspace has been destroyed">
+        This event means the kywc_workspace_v1 has been destroyed. It is
+        guaranteed there won't be any more events for this
+        kywc_workspace_v1. The kywc_workspace_v1 becomes inert so
+        any requests will be ignored except the destroy request.
+      </description>
+    </event>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the kywc_workspace_v1 object">
+        Destroys the kywc_workspace_v1 object.
+
+        This request should be called either when the client does not want to
+        use the workspace object any more or after the remove event to finalize
+        the destruction of the object.
+      </description>
+    </request>
+
+    <request name="set_position">
+      <description summary="set the workspace position">
+        If the position is zero or less, it will be positioned at the beginning,
+        if the position is the count or more, it will be positioned at the end.
+      </description>
+      <arg name="position" type="uint" summary="the position we want for the workspace"/>
+    </request>
+
+    <request name="activate">
+      <description summary="activate the workspace">
+        Request that this workspace be activated.
+
+        There is no guarantee the workspace will be actually activated, and
+        behaviour may be compositor-dependentption
+      </description>
+    </request>
+
+    <request name="remove">
+      <description summary="remove the workspace">
+        Request that this workspace be removed.
+
+        There is no guarantee the workspace will be actually removed.
+      </description>
+    </request>
+  </interface>
+</protocol>

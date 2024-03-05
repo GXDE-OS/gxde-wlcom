@@ -11,6 +11,10 @@ protocols = {
   'org-kde-kwin-idle': 'idle.xml',
 }
 
+protocols += {
+  'kywc-workspace-manager-v1': 'kywc-workspace-v1.xml',
+}
+
 if have_kde_output
   protocols += {
     'kde-output-device-v2': 'kde-output-device-v2.xml',
