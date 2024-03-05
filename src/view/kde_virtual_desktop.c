@@ -25,7 +25,6 @@ struct kde_virtual_desktop_management {
 };
 
 struct kde_virtual_desktop {
-    const char *uuid;
     struct wl_list link;
     /* request get_virtual_desktop */
     struct wl_list resources;
@@ -71,13 +70,10 @@ static void handle_workspace_destroy(struct wl_listener *listener, void *data)
     }
 
     wl_resource_for_each(resource, &management->resources) {
-        org_kde_plasma_virtual_desktop_management_send_desktop_removed(resource,
-                                                                       virtual_desktop->uuid);
+        org_kde_plasma_virtual_desktop_management_send_desktop_removed(
+            resource, virtual_desktop->workspace->uuid);
     }
 
-    kywc_log(KYWC_INFO, "kde workspace %s destroy", virtual_desktop->uuid);
-
-    free((void *)virtual_desktop->uuid);
     free(virtual_desktop);
 }
 
@@ -106,7 +102,6 @@ static void handle_new_workspace(struct wl_listener *listener, void *data)
 
     struct workspace *workspace = data;
     virtual_desktop->workspace = workspace;
-    virtual_desktop->uuid = kywc_identifier_uuid_generate();
 
     virtual_desktop->activate.notify = handle_workspace_activate;
     wl_signal_add(&workspace->events.activate, &virtual_desktop->activate);
@@ -122,7 +117,7 @@ static void handle_new_workspace(struct wl_listener *listener, void *data)
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {
         org_kde_plasma_virtual_desktop_management_send_desktop_created(
-            resource, virtual_desktop->uuid, virtual_desktop->workspace->position);
+            resource, workspace->uuid, virtual_desktop->workspace->position);
     }
 }
 
@@ -131,7 +126,7 @@ get_virtual_desktop(struct kde_virtual_desktop_management *management, const cha
 {
     struct kde_virtual_desktop *virtual_desktop;
     wl_list_for_each(virtual_desktop, &management->virtual_desktops, link) {
-        if (!strcmp(uuid, virtual_desktop->uuid)) {
+        if (!strcmp(uuid, virtual_desktop->workspace->uuid)) {
             return virtual_desktop;
         }
     }
@@ -180,7 +175,7 @@ static void handle_get_virtual_desktop(struct wl_client *client,
     wl_list_insert(&virtual_desktop->resources, wl_resource_get_link(resource));
 
     /* send all desktop info to client */
-    org_kde_plasma_virtual_desktop_send_desktop_id(resource, virtual_desktop->uuid);
+    org_kde_plasma_virtual_desktop_send_desktop_id(resource, virtual_desktop->workspace->uuid);
     org_kde_plasma_virtual_desktop_send_name(resource, virtual_desktop->workspace->name);
     if (virtual_desktop->workspace->activated) {
         org_kde_plasma_virtual_desktop_send_activated(resource);
@@ -248,7 +243,7 @@ static void kde_virtual_desktop_management_bind(struct wl_client *client, void *
     struct kde_virtual_desktop *virtual_desktop;
     wl_list_for_each_reverse(virtual_desktop, &management->virtual_desktops, link) {
         org_kde_plasma_virtual_desktop_management_send_desktop_created(
-            resource, virtual_desktop->uuid, virtual_desktop->workspace->position);
+            resource, virtual_desktop->workspace->uuid, virtual_desktop->workspace->position);
     }
     if (version >= ORG_KDE_PLASMA_VIRTUAL_DESKTOP_MANAGEMENT_ROWS_SINCE_VERSION) {
         org_kde_plasma_virtual_desktop_management_send_rows(resource, workspace_manager_get_rows());

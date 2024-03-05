@@ -10,6 +10,7 @@
 #define MAX_WORKSPACES 15
 
 struct workspace {
+    const char *uuid;
     /* user readable descriptive name */
     const char *name;
     /* layers in workspacec, below, normal and above */

@@ -331,6 +331,7 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace_manager->workspaces[position] = workspace;
     workspace_manager_update_count(workspace_manager->count + 1);
 
+    workspace->uuid = kywc_identifier_uuid_generate();
     workspace_update_name(workspace, name);
     wl_signal_emit_mutable(&workspace_manager->events.new_workspace, workspace);
     /* after new_workspace */
@@ -383,6 +384,7 @@ void workspace_destroy(struct workspace *workspace)
         ky_scene_node_destroy(ky_scene_node_from_tree(workspace->layers[i].tree));
     }
 
+    free((void *)workspace->uuid);
     free((void *)workspace->name);
     free(workspace);
 }
