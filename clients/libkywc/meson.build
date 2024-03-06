@@ -1,11 +1,13 @@
 files_libkywc = files(
   'libkywc.c',
   'workspace.c',
+  # providers
+  'kywc_workspace.c',
 )
 
-protos = []
-
-subdir('provider')
+protos = [
+  'kywc-workspace-manager-v1',
+]
 
 foreach p : protos 
   files_libkywc += protocols_code[p]
