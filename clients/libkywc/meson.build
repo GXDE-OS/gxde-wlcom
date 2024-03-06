@@ -1,0 +1,33 @@
+files_libkywc = files(
+  'libkywc.c',
+)
+
+ld_args = '-Wl,--version-script,@0@/@1@'.format(
+  meson.current_source_dir(), 'kywc.syms')
+link_depends = files('kywc.syms')
+
+kywc = shared_library(
+  'kywc',
+  files_libkywc,
+  c_args: '-fvisibility=default',
+  link_args : ld_args,
+  link_depends : link_depends,
+  dependencies: wayland_client,
+  install : true,
+  version : meson.project_version(),
+)
+
+libkywc = declare_dependency(
+  link_with: kywc,
+  dependencies: wayland_client,
+  include_directories: include_directories('.'),
+)
+
+install_headers('libkywc.h')
+
+pkgconfig = import('pkgconfig')
+pkgconfig.generate(
+  kywc,
+  description: 'Kylin wayland compositor client library',
+  url: 'https://gitee.com/openkylin/kylin-wayland-compositor',
+)

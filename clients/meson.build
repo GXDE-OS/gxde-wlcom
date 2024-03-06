@@ -1,5 +1,7 @@
 wayland_client = dependency('wayland-client')
 
+subdir('libkywc')
+
 clients = {}
 
 if have_kde_output
