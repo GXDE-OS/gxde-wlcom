@@ -3,7 +3,14 @@ files_libkywc = files(
   'workspace.c',
 )
 
+protos = []
+
 subdir('provider')
+
+foreach p : protos 
+  files_libkywc += protocols_code[p]
+  files_libkywc += protocols_client_header[p]
+endforeach
 
 ld_args = '-Wl,--version-script,@0@/@1@'.format(
   meson.current_source_dir(), 'kywc.syms')
