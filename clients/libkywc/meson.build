@@ -2,6 +2,8 @@ files_libkywc = files(
   'libkywc.c',
 )
 
+subdir('provider')
+
 ld_args = '-Wl,--version-script,@0@/@1@'.format(
   meson.current_source_dir(), 'kywc.syms')
 link_depends = files('kywc.syms')
