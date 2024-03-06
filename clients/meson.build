@@ -23,9 +23,16 @@ if have_kde_virtual_desktop
   }
 endif
 
+clients += {
+  'monitor': {
+  'src': 'monitor.c',
+  'dep': libkywc,
+  },
+}
+
 foreach name, info : clients
   extra_src = []
-  foreach p : info.get('proto')
+  foreach p : info.get('proto', [])
     extra_src += protocols_code[p]
     extra_src += protocols_client_header[p]
   endforeach
