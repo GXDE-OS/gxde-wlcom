@@ -57,6 +57,48 @@ void kywc_context_set_user_data(kywc_context *ctx, void *data);
 
 void *kywc_context_get_user_data(kywc_context *ctx);
 
+/**
+ * workspace or virtual desktop
+ */
+struct _kywc_workspace {
+    const char *uuid;
+    const char *name;
+    uint32_t position;
+    bool activated;
+};
+
+enum kywc_workspace_state_mask {
+    KYWC_WORKSPACE_STATE_NAME = 1 << 0,
+    KYWC_WORKSPACE_STATE_POSITION = 1 << 1,
+    KYWC_WORKSPACE_STATE_ACTIVATED = 1 << 2,
+};
+
+struct kywc_workspace_interface {
+    void (*state)(kywc_workspace *workspace, uint32_t mask);
+    void (*destroy)(kywc_workspace *workspace);
+};
+
+void kywc_workspace_set_interface(kywc_workspace *workspace,
+                                  const struct kywc_workspace_interface *impl);
+
+/* return true if need to break the loop */
+typedef bool (*kywc_workspace_iterator_func_t)(kywc_workspace *workspace, void *data);
+
+void kywc_context_for_each_workspace(kywc_context *ctx, kywc_workspace_iterator_func_t iterator,
+                                     void *data);
+
+void kywc_workspace_create(kywc_context *ctx, const char *name, uint32_t position);
+
+void kywc_workspace_remove(kywc_workspace *workspace);
+
+void kywc_workspace_set_position(kywc_workspace *workspace, uint32_t position);
+
+void kywc_workspace_activate(kywc_workspace *workspace);
+
+void kywc_workspace_set_user_data(kywc_workspace *workspace, void *data);
+
+void *kywc_workspace_get_user_data(kywc_workspace *workspace);
+
 #ifdef __cplusplus
 }
 #endif

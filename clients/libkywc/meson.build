@@ -1,5 +1,6 @@
 files_libkywc = files(
   'libkywc.c',
+  'workspace.c',
 )
 
 subdir('provider')

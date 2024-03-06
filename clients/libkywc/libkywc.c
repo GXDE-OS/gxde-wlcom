@@ -158,6 +158,10 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
     if (provider->capability == KYWC_CONTEXT_CAPABILITY_OUTPUT) {
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_TOPLEVEL) {
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_WORKSPACE) {
+        if (ctx->workspace) {
+            return false;
+        }
+        ctx->workspace = manager;
     }
 
     wl_list_insert(&ctx->providers, &provider->link);
