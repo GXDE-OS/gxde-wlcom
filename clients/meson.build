@@ -44,3 +44,5 @@ foreach name, info : clients
     build_by_default: true,
   )
 endforeach
+
+subdir('gui')
