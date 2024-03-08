@@ -15,26 +15,26 @@ static void workspace_handle_name(void *data, struct kywc_workspace_v1 *kywc_wor
                                   const char *name)
 {
     struct ky_workspace *workspace = data;
-    ky_workspace_set_name(workspace, name);
+    ky_workspace_update_name(workspace, name);
 }
 
 static void workspace_handle_position(void *data, struct kywc_workspace_v1 *kywc_workspace_v1,
                                       uint32_t position)
 {
     struct ky_workspace *workspace = data;
-    ky_workspace_set_position(workspace, position);
+    ky_workspace_update_position(workspace, position);
 }
 
 static void workspace_handle_activated(void *data, struct kywc_workspace_v1 *kywc_workspace_v1)
 {
     struct ky_workspace *workspace = data;
-    ky_workspace_set_activated(workspace, true);
+    ky_workspace_update_activated(workspace, true);
 }
 
 static void workspace_handle_deactivated(void *data, struct kywc_workspace_v1 *kywc_workspace_v1)
 {
     struct ky_workspace *workspace = data;
-    ky_workspace_set_activated(workspace, false);
+    ky_workspace_update_activated(workspace, false);
 }
 
 static void workspace_handle_removed(void *data, struct kywc_workspace_v1 *kywc_workspace_v1)

@@ -31,7 +31,7 @@ void ky_workspace_destroy(struct ky_workspace *workspace)
     free(workspace);
 }
 
-void ky_workspace_set_name(struct ky_workspace *workspace, const char *name)
+void ky_workspace_update_name(struct ky_workspace *workspace, const char *name)
 {
     if (workspace->base.name && strcmp(workspace->base.name, name) == 0) {
         return;
@@ -42,7 +42,7 @@ void ky_workspace_set_name(struct ky_workspace *workspace, const char *name)
     workspace->pending_mask |= KYWC_WORKSPACE_STATE_NAME;
 }
 
-void ky_workspace_set_position(struct ky_workspace *workspace, uint32_t position)
+void ky_workspace_update_position(struct ky_workspace *workspace, uint32_t position)
 {
     if (workspace->base.position == position) {
         return;
@@ -52,7 +52,7 @@ void ky_workspace_set_position(struct ky_workspace *workspace, uint32_t position
     workspace->pending_mask |= KYWC_WORKSPACE_STATE_POSITION;
 }
 
-void ky_workspace_set_activated(struct ky_workspace *workspace, bool activated)
+void ky_workspace_update_activated(struct ky_workspace *workspace, bool activated)
 {
     if (workspace->base.activated == activated) {
         return;

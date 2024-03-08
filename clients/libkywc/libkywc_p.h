@@ -75,10 +75,10 @@ struct ky_workspace *ky_workspace_create(struct ky_workspace_manager *manager, c
 
 void ky_workspace_destroy(struct ky_workspace *workspace);
 
-void ky_workspace_set_name(struct ky_workspace *workspace, const char *name);
+void ky_workspace_update_name(struct ky_workspace *workspace, const char *name);
 
-void ky_workspace_set_position(struct ky_workspace *workspace, uint32_t position);
+void ky_workspace_update_position(struct ky_workspace *workspace, uint32_t position);
 
-void ky_workspace_set_activated(struct ky_workspace *workspace, bool activated);
+void ky_workspace_update_activated(struct ky_workspace *workspace, bool activated);
 
 #endif /* _LIBKYWC_HEADER_P_H_ */
