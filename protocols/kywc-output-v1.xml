@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="kywc_workspace_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+    SPDX-License-Identifier: MulanPSL-2.0
+  ]]></copyright>
+
+  <interface name="kywc_output_manager_v1" version="1">
+    <description summary="output device configuration manager">
+      This interface is a manager that allows reading and writing the current
+      output device configuration.
+    </description>
+
+    <event name="output">
+      <description summary="introduce a new output">
+        This event introduces a new output. This happens whenever a new output 
+        appears (e.g. a monitor is plugged in) or after the output manager is bound.
+      </description>
+      <arg name="output" type="new_id" interface="kywc_output_v1"/>
+      <arg name="uuid" type="string" summary="Unique id of the output"/>
+    </event>
+
+    <event name="primary">
+      <description summary="current primary output">
+        This events is sent when the output will become the primary output. 
+      </description>
+      <arg name="output" type="object" interface="kywc_output_v1"/>
+    </event>
+
+    <event name="done">
+      <description summary="sent all information about current configuration">
+        This event is sent after all information has been sent after binding to
+        the output manager object and after any subsequent changes. This applies
+        to child output and mode objects as well.
+
+        This allows changes to the output configuration to be seen as atomic,
+        even if they happen via multiple events.
+      </description>
+    </event>
+
+    <request name="stop">
+      <description summary="stop sending events">
+        Indicates the client no longer wishes to receive events for output
+        configuration changes. However the compositor may emit further events,
+        until the finished event is emitted.
+
+        The client must not send any more requests after this one.
+      </description>
+    </request>
+
+    <event name="finished" type="destructor">
+      <description summary="the compositor has finished with the manager">
+        This event indicates that the compositor is done sending manager events.
+        The compositor will destroy the object immediately after sending this
+        event, so it will become invalid and the client should release any
+        resources associated with it.
+      </description>
+    </event>
+  </interface>
+
+  <interface name="kywc_output_v1" version="1">
+    <description summary="output device">
+      A output has some read-only properties: modes, name, description, 
+      physical_size. These cannot be changed by clients.
+
+      Properties sent via this interface are applied atomically via the
+      kywc_output_manager.done event. No guarantees are made regarding the order
+      in which properties are sent.
+    </description>
+
+    <event name="name">
+      <description summary="output name">
+        This event describes the output name.
+
+        The name event is sent after a kywc_output object is created. This
+        event is only sent once per object, and the name does not change over
+        the lifetime of the kywc_output object.
+      </description>
+      <arg name="name" type="string"/>
+    </event>
+
+    <event name="make">
+      <description summary="output monitor manufacturer">
+        This event describes the manufacturer of the output monitor.
+      </description>
+      <arg name="make" type="string"/>
+    </event>
+
+    <event name="model">
+      <description summary="output monitor model">
+        This event describes the model of the output monitor.
+      </description>
+      <arg name="model" type="string"/>
+    </event>
+
+    <event name="serial_number">
+      <description summary="output serial number">
+        This event describes the serial number of the output monitor.
+      </description>
+      <arg name="serial_number" type="string"/>
+    </event>
+
+    <event name="description">
+      <description summary="output description">
+        This event describes a human-readable description of the output.
+      </description>
+      <arg name="description" type="string"/>
+    </event>
+
+    <event name="physical_size">
+      <description summary="output monitor physical size">
+        This event describes the physical size of the monitor. This event is only
+        sent if has a physical size (e.g. is not a projector or a virtual device).
+      </description>
+      <arg name="width" type="int" summary="width in millimeters of the output"/>
+      <arg name="height" type="int" summary="height in millimeters of the output"/>
+    </event>
+
+    <event name="mode">
+      <description summary="introduce a mode">
+        This event introduces a mode for this monitor. It is sent once per supported mode.
+      </description>
+      <arg name="mode" type="new_id" interface="kywc_output_mode_v1"/>
+    </event>
+
+    <enum name="capability" bitfield="true">
+      <description summary="describes capabilities of the outputdevice">
+        Describes what capabilities this device has.
+      </description>
+      <entry name="power" value="1"
+           summary="if this output can support power(dpms)"/>
+      <entry name="brightness" value="2"
+           summary="if this output supports brightness"/>
+      <entry name="color_temp" value="4"
+             summary="if setting the color temperature is possible"/>
+    </enum>
+
+    <event name="capabilities">
+      <description summary="capability flags">
+        What capabilities this output has, sent on startup before the first
+        done event.
+      </description>
+      <arg name="flags" type="uint" enum="capability"/>
+    </event>
+
+    <event name="enabled">
+      <description summary="the output is enabled or disabled">
+        This event describes whether the output is enabled. A disabled output is not
+        mapped to a region of the global compositor space.
+
+        When a output is disabled, some properties (current_mode, position,
+        transform and scale) are irrelevant.
+      </description>
+      <arg name="enabled" type="int" summary="zero if disabled, non-zero if enabled"/>
+    </event>
+
+    <event name="current_mode">
+      <description summary="current mode">
+        This event describes the mode currently in use for this output. It is only
+        sent if the output is enabled.
+      </description>
+      <arg name="mode" type="object" interface="kywc_output_mode_v1"/>
+    </event>
+
+    <event name="position">
+      <description summary="current position">
+        This events describes the position of the output in the global compositor
+        space. It is only sent if the output is enabled.
+      </description>
+      <arg name="x" type="int"
+        summary="x position within the global compositor space"/>
+      <arg name="y" type="int"
+        summary="y position within the global compositor space"/>
+    </event>
+
+    <event name="transform">
+      <description summary="current transformation">
+        This event describes the transformation currently applied to the output.
+        It is only sent if the output is enabled.
+      </description>
+      <arg name="transform" type="int" enum="wl_output.transform"/>
+    </event>
+
+    <event name="scale">
+      <description summary="current scale">
+        This events describes the scale of the output in the global compositor
+        space. It is only sent if the output is enabled.
+      </description>
+      <arg name="scale" type="fixed"/>
+    </event>
+
+    <event name="power">
+      <description summary="current power state">
+        This events describes the power(dpms) state. 
+      </description>
+      <arg name="power" type="uint"/>
+    </event>
+
+    <event name="brightness">
+      <description summary="current output brightness">
+        This events describes the output brightness. 
+      </description>
+      <arg name="brightness" type="uint"/>
+    </event>
+
+    <event name="color_temp">
+      <description summary="current color temperature">
+        This events describes the output color temperature. 
+      </description>
+      <arg name="color_temp" type="uint"/>
+    </event>
+
+    <event name="finished">
+      <description summary="the output has disappeared">
+        This event indicates that the output is no longer available. The output 
+        object becomes inert. Clients should send a destroy request and release
+        any resources associated with it.
+      </description>
+    </event>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the output object">
+        This request indicates that the client will no longer use this output object.
+      </description>
+    </request>
+  </interface>
+
+  <interface name="kywc_output_mode_v1" version="1">
+    <description summary="output mode">
+      This object describes an output mode.
+
+      Properties sent via this interface are applied atomically via the
+      kywc_output_manager.done event. No guarantees are made regarding the order
+      in which properties are sent.
+    </description>
+
+    <event name="size">
+      <description summary="mode size">
+        This event describes the mode size. The size is given in physical
+        hardware units of the output device. This is not necessarily the same as
+        the output size in the global compositor space. For instance, the output
+        may be scaled or transformed.
+      </description>
+      <arg name="width" type="int" summary="width of the mode in hardware units"/>
+      <arg name="height" type="int" summary="height of the mode in hardware units"/>
+    </event>
+
+    <event name="refresh">
+      <description summary="mode refresh rate">
+        This event describes the mode's fixed vertical refresh rate. It is only
+        sent if the mode has a fixed refresh rate.
+      </description>
+      <arg name="refresh" type="int" summary="vertical refresh rate in mHz"/>
+    </event>
+
+    <event name="preferred">
+      <description summary="mode is preferred">
+        This event advertises this mode as preferred.
+      </description>
+    </event>
+
+    <event name="finished">
+      <description summary="the mode has disappeared">
+        This event indicates that the mode is no longer available. The mode
+        object becomes inert. Clients should send a destroy request and release
+        any resources associated with it.
+      </description>
+    </event>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the mode object">
+        This request indicates that the client will no longer use this mode
+        object.
+      </description>
+    </request>
+  </interface>
+</protocol>

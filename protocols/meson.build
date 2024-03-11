@@ -12,6 +12,7 @@ protocols = {
 }
 
 protocols += {
+  'kywc-output-manager-v1': 'kywc-output-v1.xml',
   'kywc-workspace-manager-v1': 'kywc-workspace-v1.xml',
 }
 

@@ -632,6 +632,7 @@ struct output_manager *output_manager_create(struct server *server)
     output_manager_config_init(output_manager);
     output_manager_layout_init(output_manager);
 
+    ky_output_manager_create(server);
     kde_output_management_create(server);
     wlr_output_management_create(server);
 

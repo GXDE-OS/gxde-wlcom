@@ -6,6 +6,7 @@ wlcom_sources += files(
   'modes.c',
   'output.c',
   'xdg_output.c',  
+  'ky_output.c',
 )
 
 if have_kde_output
