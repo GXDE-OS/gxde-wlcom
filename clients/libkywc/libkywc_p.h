@@ -69,7 +69,7 @@ struct ky_workspace_manager *ky_workspace_manager_create(kywc_context *ctx);
 
 void ky_workspace_manager_destroy(struct ky_workspace_manager *manager);
 
-void ky_workspace_manager_update(struct ky_workspace_manager *manager);
+void ky_workspace_manager_update_states(struct ky_workspace_manager *manager);
 
 struct ky_workspace *ky_workspace_create(struct ky_workspace_manager *manager, const char *uuid);
 

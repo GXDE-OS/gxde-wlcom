@@ -98,7 +98,7 @@ static void manager_handle_done(void *data,
                                 struct kywc_workspace_manager_v1 *kywc_workspace_manager_v1)
 {
     struct ky_workspace_manager *manager = data;
-    ky_workspace_manager_update(manager);
+    ky_workspace_manager_update_states(manager);
 }
 
 static void manager_handle_finished(void *data,

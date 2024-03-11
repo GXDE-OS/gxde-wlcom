@@ -5,7 +5,7 @@
 #ifndef _LIBKYWC_PROVIDER_H_
 #define _LIBKYWC_PROVIDER_H_
 
-#include "libkywc_p.h"
+#include "libkywc.h"
 
 bool _kywc_workspace_init(kywc_context *ctx, enum kywc_context_capability capability);
 

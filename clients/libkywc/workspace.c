@@ -16,7 +16,7 @@ static struct ky_workspace *workspace_from_kywc_workspace(kywc_workspace *kywc_w
 
 void ky_workspace_destroy(struct ky_workspace *workspace)
 {
-    if (workspace->impl) {
+    if (workspace->impl && workspace->impl->destroy) {
         workspace->impl->destroy(&workspace->base);
     }
 
@@ -77,21 +77,21 @@ struct ky_workspace *ky_workspace_create(struct ky_workspace_manager *manager, c
     return workspace;
 }
 
-void ky_workspace_manager_update(struct ky_workspace_manager *manager)
+void ky_workspace_manager_update_states(struct ky_workspace_manager *manager)
 {
     kywc_context *ctx = manager->ctx;
 
     struct ky_workspace *workspace;
     wl_list_for_each_reverse(workspace, &manager->workspaces, link) {
         if (workspace->newly_added) {
-            if (ctx->impl) {
+            if (ctx->impl && ctx->impl->new_workspace) {
                 ctx->impl->new_workspace(ctx, &workspace->base);
             }
             workspace->newly_added = false;
             workspace->pending_mask = 0;
         } else {
             if (workspace->pending_mask) {
-                if (workspace->impl) {
+                if (workspace->impl && workspace->impl->state) {
                     workspace->impl->state(&workspace->base, workspace->pending_mask);
                 }
                 workspace->pending_mask = 0;
