@@ -9,12 +9,15 @@
 
 bool _kywc_workspace_init(kywc_context *ctx, enum kywc_context_capability capability);
 
+bool _kywc_output_init(kywc_context *ctx, enum kywc_context_capability capability);
+
 static const struct ky_provider {
     enum kywc_context_capability capability;
     const char *name;
     bool (*init)(kywc_context *ctx, enum kywc_context_capability capability);
 } providers[] = {
     { KYWC_CONTEXT_CAPABILITY_WORKSPACE, "kywc_workspace_manager_v1", _kywc_workspace_init },
+    { KYWC_CONTEXT_CAPABILITY_OUTPUT, "kywc_output_manager_v1", _kywc_output_init },
 };
 
 #endif /* _LIBKYWC_PROVIDER_H_ */

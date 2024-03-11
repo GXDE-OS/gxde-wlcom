@@ -3,10 +3,12 @@ files_libkywc = files(
   'output.c',
   'workspace.c',
   # providers
+  'kywc_output.c',
   'kywc_workspace.c',
 )
 
 protos = [
+  'kywc-output-manager-v1', 
   'kywc-workspace-manager-v1',
 ]
 
