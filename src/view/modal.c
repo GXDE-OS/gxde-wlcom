@@ -248,16 +248,16 @@ void modal_create(struct view *view, struct seat *seat)
         .height = kywc_view->geometry.height + kywc_view->margin.off_height,
     };
 
-    /* An animation time */
-    modal->shake_effect.period = 50;
-    /* offset distance */
-    modal->shake_effect.offset = 5;
-    /* Run times */
-    modal->shake_effect.times = 2;
-
     struct theme *theme = theme_manager_get_current();
-    modal->modal_box = ky_scene_rect_create(view->tree->node.parent, geo.width, geo.height,
-                                            theme->snapbox.background_color);
+    /* An animation time */
+    modal->shake_effect.period = theme->modal.shake_effect_period;
+    /* offset distance */
+    modal->shake_effect.offset = theme->modal.shake_effect_offset;
+    /* Run times */
+    modal->shake_effect.times = theme->modal.shake_effect_times;
+
+    modal->modal_box =
+        ky_scene_rect_create(view->tree->node.parent, geo.width, geo.height, theme->modal.color);
     ky_scene_node_lower_to_bottom(&modal->modal_box->node);
     ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
     ky_scene_node_set_enabled(&modal->modal_box->node, true);

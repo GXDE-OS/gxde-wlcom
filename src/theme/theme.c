@@ -81,6 +81,13 @@ static struct theme light = {
         .icon_size = 24,
         .icon_area_width = 30,
     },
+
+    .modal = {
+        .color = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 },
+        .shake_effect_period = 50,
+        .shake_effect_offset = 5,
+        .shake_effect_times = 2,
+    },
 };
 
 /* default dark theme from ukui-dark */
@@ -137,6 +144,13 @@ static struct theme dark = {
         .min_display_view = 4,
         .icon_size = 24,
         .icon_area_width = 30,
+    },
+
+    .modal = {
+        .color = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 },
+        .shake_effect_period = 50,
+        .shake_effect_offset = 5,
+        .shake_effect_times = 2,
     },
 };
 

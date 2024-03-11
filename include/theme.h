@@ -99,6 +99,16 @@ struct theme {
         int icon_size;
         int icon_area_width;
     } maxswitcher;
+
+    struct {
+        float color[4];
+        /* An animation time */
+        int shake_effect_period;
+        /* offset distance */
+        int shake_effect_offset;
+        /* Run times */
+        int shake_effect_times;
+    } modal;
 };
 
 struct theme_manager *theme_manager_create(struct server *server);
