@@ -70,7 +70,8 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
 {
     struct wlr_output *wlr_output = output->wlr_output;
 
-    prop->capability = 0;
+    prop->capabilities = KYWC_OUTPUT_CAPABILITY_POWER | KYWC_OUTPUT_CAPABILITY_BRIGHTNESS |
+                         KYWC_OUTPUT_CAPABILITY_COLOR_TEMP;
     prop->phys_width = wlr_output->phys_width;
     prop->phys_height = wlr_output->phys_height;
     prop->make = wlr_output->make;
@@ -186,6 +187,8 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&kywc_output->events.position);
     wl_signal_init(&kywc_output->events.power);
     wl_signal_init(&kywc_output->events.frame);
+    wl_signal_init(&kywc_output->events.brightness);
+    wl_signal_init(&kywc_output->events.color_temp);
     wl_signal_init(&kywc_output->events.destroy);
 
     wl_signal_init(&output->events.geometry);
@@ -989,8 +992,19 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         wl_signal_emit_mutable(&output->events.usable_area, NULL);
     }
 
-    if (current->power != old.power) {
+    if (kywc_output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_POWER &&
+        current->power != old.power) {
         wl_signal_emit_mutable(&kywc_output->events.power, NULL);
+    }
+
+    if (kywc_output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_BRIGHTNESS &&
+        current->brightness != old.brightness) {
+        wl_signal_emit_mutable(&kywc_output->events.brightness, NULL);
+    }
+
+    if (kywc_output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_COLOR_TEMP &&
+        current->color_temp != old.color_temp) {
+        wl_signal_emit_mutable(&kywc_output->events.color_temp, NULL);
     }
 
     if (current->width != old.width || current->height != old.height ||

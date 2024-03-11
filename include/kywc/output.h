@@ -12,23 +12,17 @@
 
 #include "boxes.h"
 
-enum kywc_output_vrr_policy {
-    KYWC_OUTPUT_VRR_DISABLED,
-    KYWC_OUTPUT_VRR_ENABLED,
-    KYWC_OUTPUT_VRR_AUTO,
-};
-
 enum kywc_output_capability {
-    KYWC_OUTPUT_CAPABILITY_OVERSCAN = 1 << 0,
-    KYWC_OUTPUT_CAPABILITY_VRR = 1 << 1,
-    KYWC_OUTPUT_CAPABILITY_RGB_RANGE = 1 << 2
+    KYWC_OUTPUT_CAPABILITY_POWER = 1 << 0,
+    KYWC_OUTPUT_CAPABILITY_BRIGHTNESS = 1 << 1,
+    KYWC_OUTPUT_CAPABILITY_COLOR_TEMP = 1 << 2,
 };
 
 struct kywc_output_state {
     bool enabled, power;
     int32_t width, height, refresh; // refresh in mHz
     enum wl_output_transform transform;
-    enum kywc_output_vrr_policy vrr_policy;
+    uint32_t vrr_policy;
     float scale;
 
     /* layout coord */
@@ -48,7 +42,7 @@ struct kywc_output_prop {
     bool is_virtual;
     bool brightness_support;
     size_t gamma_size;
-    uint32_t capability;
+    uint32_t capabilities;
     int32_t phys_width, phys_height;          // mm
     const char *make, *model, *serial, *desc; // may be NULL
     struct wl_list modes;
@@ -71,6 +65,8 @@ struct kywc_output {
         struct wl_signal mode;
         struct wl_signal position;
         struct wl_signal power;
+        struct wl_signal brightness;
+        struct wl_signal color_temp;
 
         struct wl_signal frame;
         struct wl_signal destroy;
