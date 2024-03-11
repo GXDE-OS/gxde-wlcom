@@ -224,10 +224,36 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     output_get_state(output, &kywc_output->state);
 
     /* read config and apply it */
+    struct kywc_output_state pending = kywc_output->state;
+    bool found = output_read_config(output, &pending);
+    if (!found) {
+        pending.enabled = pending.power = true;
+        pending.lx = pending.ly = -1;
+        pending.brightness = 80;
+        pending.color_temp = 6500;
+    }
+
     output->modeset = false;
     if (!kywc_output->prop.is_virtual) {
         output_uuid_generate(kywc_output);
-        output_manager_get_layout_configs(output_manager);
+        if (!output_manager->has_layout_manager) {
+            output_manager_add_output_pending_state(output, &pending);
+        } else {
+            output_manager_get_layout_configs(output_manager);
+            /* copy colortemp and brightness to pending */
+            struct output_pending_config *pending_config = NULL;
+            wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+                if (pending_config->output == output) {
+                    pending_config->state.brightness = pending.brightness;
+                    pending_config->state.color_temp = pending.color_temp;
+                } else {
+                    struct kywc_output_state *state = &pending_config->output->base.state;
+                    pending_config->state.brightness = state->brightness;
+                    pending_config->state.color_temp = state->color_temp;
+                }
+            }
+        }
+
         output_manager_configure_outputs();
     }
 
@@ -270,6 +296,13 @@ static void output_destroy(struct output *output)
     wl_list_remove(&output->link);
     /* get layouts configure outputs */
     output_manager_get_layout_configs(output_manager);
+    /* copy colortemp and brightness to pending */
+    struct output_pending_config *pending_config = NULL;
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        struct kywc_output_state *state = &pending_config->output->base.state;
+        pending_config->state.brightness = state->brightness;
+        pending_config->state.color_temp = state->color_temp;
+    }
     output_manager_configure_outputs();
 
     if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
@@ -471,7 +504,8 @@ bool output_manager_configure_outputs(void)
     }
 
     /* 2.config outputs */
-    /* call kywc_output_set_state in all pending outputs, enable first and disable outputs later */
+    /* call kywc_output_set_state in all pending outputs, enable first and disable outputs later
+     */
     wl_list_for_each(pending_config, &output_manager->output_configs, link) {
         if (!pending_config->state.enabled) {
             continue;
@@ -542,9 +576,6 @@ void output_manager_add_output_pending_state(struct output *output, struct kywc_
     pending_config->output = output;
 
     pending_config->state = *state;
-    /* copy colortemp and brightness to pending */
-    pending_config->state.color_temp = output->base.state.color_temp;
-    pending_config->state.brightness = output->base.state.brightness;
 
     kywc_log(KYWC_DEBUG,
              "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
@@ -585,7 +616,7 @@ struct output_manager *output_manager_create(struct server *server)
     wlr_output_set_name(wlr_output, "FALLBACK");
 
     output_manager_config_init(output_manager);
-    output_manager_layout_init(output_manager);
+    output_manager->has_layout_manager = output_manager_layout_init(output_manager);
 
     ky_output_manager_create(server);
     kde_output_management_create(server);

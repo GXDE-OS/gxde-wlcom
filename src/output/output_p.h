@@ -36,6 +36,8 @@ struct output_manager {
     struct wl_listener server_resume;
 
     char outputs_layout[16];
+
+    bool has_layout_manager;
 };
 
 bool output_manager_config_init(struct output_manager *output_manager);

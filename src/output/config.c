@@ -101,9 +101,6 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
     if (json_object_object_get_ex(config, "transform", &data)) {
         state->transform = json_object_get_int(data);
     }
-    if (json_object_object_get_ex(config, "vrr_policy", &data)) {
-        state->vrr_policy = json_object_get_int(data);
-    }
     if (json_object_object_get_ex(config, "scale", &data)) {
         state->scale = json_object_get_double(data);
     }
@@ -144,7 +141,6 @@ void output_write_config(struct output *output)
     json_object_object_add(config, "refresh", json_object_new_int(state->refresh));
     json_object_object_add(config, "scale", json_object_new_double(state->scale));
     json_object_object_add(config, "transform", json_object_new_int(state->transform));
-    json_object_object_add(config, "vrr_policy", json_object_new_int(state->vrr_policy));
     json_object_object_add(config, "lx", json_object_new_int(state->lx));
     json_object_object_add(config, "ly", json_object_new_int(state->ly));
     json_object_object_add(config, "brightness", json_object_new_int(state->brightness));
