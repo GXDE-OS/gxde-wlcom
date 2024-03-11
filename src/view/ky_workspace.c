@@ -198,6 +198,8 @@ static void handle_workspace_destroy(struct wl_listener *listener, void *data)
     wl_resource_for_each(resource, &ky_workspace->resources) {
         kywc_workspace_v1_send_removed(resource);
         // make the resource inert
+        wl_list_remove(wl_resource_get_link(resource));
+        wl_list_init(wl_resource_get_link(resource));
         wl_resource_set_user_data(resource, NULL);
     }
 
