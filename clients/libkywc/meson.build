@@ -1,5 +1,6 @@
 files_libkywc = files(
   'libkywc.c',
+  'output.c',
   'workspace.c',
   # providers
   'kywc_workspace.c',

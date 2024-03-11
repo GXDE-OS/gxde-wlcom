@@ -99,6 +99,71 @@ void kywc_workspace_set_user_data(kywc_workspace *workspace, void *data);
 
 void *kywc_workspace_get_user_data(kywc_workspace *workspace);
 
+/**
+ * output
+ */
+enum kywc_output_capability {
+    KYWC_OUTPUT_CAPABILITY_POWER = 1 << 0,
+    KYWC_OUTPUT_CAPABILITY_BRIGHTNESS = 1 << 1,
+    KYWC_OUTPUT_CAPABILITY_COLOR_TEMP = 1 << 2,
+};
+
+struct kywc_output_mode {
+    int32_t width, height;
+    int32_t refresh; // mHz
+    bool preferred;
+    struct wl_list link;
+};
+
+struct _kywc_output {
+    const char *uuid;
+    /* props */
+    const char *name;
+    const char *make, *model, *serial, *description;
+    int32_t physical_width, physical_height;
+    uint32_t capabilities;
+
+    struct wl_list modes;
+
+    /* states */
+    struct kywc_output_mode *mode;
+    int32_t x, y, width, height;
+    int32_t transform;
+    float scale;
+
+    bool enabled, power, primary;
+    uint32_t brightness;
+    uint32_t color_temp;
+};
+
+enum kywc_output_state_mask {
+    KYWC_OUTPUT_STATE_ENABLED = 1 << 0,
+    KYWC_OUTPUT_STATE_MODE = 1 << 1,
+    KYWC_OUTPUT_STATE_POSITION = 1 << 2,
+    KYWC_OUTPUT_STATE_TRANSFROM = 1 << 3,
+    KYWC_OUTPUT_STATE_SCALE = 1 << 4,
+    KYWC_OUTPUT_STATE_POWER = 1 << 5,
+    KYWC_OUTPUT_STATE_PRIMARY = 1 << 6,
+    KYWC_OUTPUT_STATE_BRIGHTNESS = 1 << 7,
+    KYWC_OUTPUT_STATE_COLOR_TEMP = 1 << 8,
+};
+
+struct kywc_output_interface {
+    void (*state)(kywc_output *output, uint32_t mask);
+    void (*destroy)(kywc_output *output);
+};
+
+void kywc_output_set_interface(kywc_output *output, const struct kywc_output_interface *impl);
+
+typedef bool (*kywc_output_iterator_func_t)(kywc_output *output, void *data);
+
+void kywc_context_for_each_output(kywc_context *ctx, kywc_output_iterator_func_t iterator,
+                                  void *data);
+
+void kywc_output_set_user_data(kywc_output *output, void *data);
+
+void *kywc_output_get_user_data(kywc_output *output);
+
 #ifdef __cplusplus
 }
 #endif

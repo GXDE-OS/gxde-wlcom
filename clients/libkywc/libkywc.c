@@ -156,6 +156,10 @@ void *kywc_context_get_user_data(kywc_context *ctx)
 bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *provider, void *manager)
 {
     if (provider->capability == KYWC_CONTEXT_CAPABILITY_OUTPUT) {
+        if (ctx->output) {
+            return false;
+        }
+        ctx->output = manager;
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_TOPLEVEL) {
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_WORKSPACE) {
         if (ctx->workspace) {
