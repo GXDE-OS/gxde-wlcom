@@ -13,4 +13,4 @@
 #define tr(s) (s)
 #endif
 
-#endif
+#endif /* _NLS_H_ */

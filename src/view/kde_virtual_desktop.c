@@ -42,7 +42,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         wl_container_of(listener, management, server_destroy);
 
     wl_list_remove(&management->server_destroy.link);
-    wl_list_remove(&management->new_workspace.link);
     free(management);
 }
 
@@ -51,6 +50,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     struct kde_virtual_desktop_management *management =
         wl_container_of(listener, management, display_destroy);
 
+    wl_list_remove(&management->new_workspace.link);
     wl_list_remove(&management->display_destroy.link);
     wl_global_destroy(management->global);
 }
