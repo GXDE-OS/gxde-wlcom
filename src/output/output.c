@@ -127,10 +127,10 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
         state->lx = 0;
         state->ly = 0;
     }
-    if (!output_get_brightness(kywc_output, &state->brightness)) {
-        state->brightness = 80;
+    if (!output_get_backlight(kywc_output, &state->brightness)) {
+        state->brightness = output->brightness;
     }
-    state->color_temp = 6500;
+    state->color_temp = output->color_temp;
 }
 
 static void fallback_output_set_state(struct kywc_output *kywc_output, bool enabled)
@@ -774,19 +774,35 @@ static void output_ensure_mode(struct wlr_output *wlr_output, struct wlr_output_
     }
 }
 
+static bool output_mode_changed(struct output *output, const struct kywc_output_state *state)
+{
+    struct kywc_output_state *current_state = &output->base.state;
+    return current_state->width != state->width || current_state->height != state->height ||
+           current_state->refresh != state->refresh;
+}
+
+static bool output_gamma_changed(struct output *output, const struct kywc_output_state *state)
+{
+    struct kywc_output_state *current_state = &output->base.state;
+    if (output->base.prop.gamma_size < 1) {
+        return false;
+    }
+
+    return current_state->color_temp != state->color_temp ||
+           (!output->base.prop.brightness_support &&
+            current_state->brightness != state->brightness);
+}
+
 static bool output_compare_state(struct output *output, const struct kywc_output_state *state)
 {
     struct kywc_output_state *current_state = &output->base.state;
 
     bool changed = current_state->enabled != state->enabled;
     changed |= current_state->power != state->power;
-    changed |= current_state->width != state->width || current_state->height != state->height ||
-               current_state->refresh != state->refresh;
+    changed |= output_mode_changed(output, state);
     changed |= current_state->transform != state->transform;
     changed |= current_state->vrr_policy != state->vrr_policy;
     changed |= current_state->scale != state->scale;
-    changed |= output->base.prop.gamma_size < 1;
-    changed |= output->base.prop.gamma_size > 1 && current_state->color_temp != state->color_temp;
 
     return changed;
 }
@@ -797,38 +813,35 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     struct server *server = output_manager->server;
 
     bool changed = !output->modeset || output_compare_state(output, state);
+    bool enabled = state->enabled && state->power;
+
     if (changed) {
-        bool enabled = state->enabled && state->power;
         struct wlr_output_state wlr_state;
         wlr_output_state_init(&wlr_state);
         wlr_output_state_set_enabled(&wlr_state, enabled);
 
         if (enabled) {
-            struct wlr_output_mode *best = NULL;
-            if (state->width <= 0 || state->height <= 0) {
-                kywc_log(KYWC_INFO, "set preferred mode as no config found");
-                best = wlr_output_preferred_mode(wlr_output);
-            } else {
-                output_find_best_mode(wlr_output, state->width, state->height, state->refresh,
-                                      &best);
-            }
+            if (output_mode_changed(output, state)) {
+                struct wlr_output_mode *best = NULL;
+                if (state->width <= 0 || state->height <= 0) {
+                    kywc_log(KYWC_INFO, "set preferred mode as no config found");
+                    best = wlr_output_preferred_mode(wlr_output);
+                } else {
+                    output_find_best_mode(wlr_output, state->width, state->height, state->refresh,
+                                          &best);
+                }
 
-            if (best) {
-                wlr_output_state_set_mode(&wlr_state, best);
-            } else {
-                wlr_output_state_set_custom_mode(&wlr_state, state->width, state->height,
-                                                 state->refresh);
+                if (best) {
+                    wlr_output_state_set_mode(&wlr_state, best);
+                } else {
+                    wlr_output_state_set_custom_mode(&wlr_state, state->width, state->height,
+                                                     state->refresh);
+                }
+                output_ensure_mode(wlr_output, &wlr_state, best);
             }
-            output_ensure_mode(wlr_output, &wlr_state, best);
 
             wlr_output_state_set_transform(&wlr_state, state->transform);
             wlr_output_state_set_scale(&wlr_state, state->scale);
-
-            if (output->base.prop.gamma_size > 1) {
-                output_set_gamma_lut(
-                    wlr_output, output->base.prop.gamma_size, &wlr_state, state->color_temp,
-                    output->base.prop.brightness_support ? 100 : state->brightness);
-            }
         }
 
         if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
@@ -838,6 +851,30 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
         }
         wlr_output_state_finish(&wlr_state);
     }
+
+    /* fix gamma supoort by get gamma_size again */
+    output->base.prop.gamma_size = wlr_output_get_gamma_size(wlr_output);
+    /* gamma settings for brightness and color temperature */
+    if (enabled && output_gamma_changed(output, state)) {
+        output->color_temp = state->color_temp;
+        if (!output->base.prop.brightness_support) {
+            output->brightness = state->brightness;
+        }
+
+        uint32_t brightness = output->base.prop.brightness_support ? 100 : state->brightness;
+        output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, NULL, state->color_temp,
+                             brightness);
+        wlr_output_schedule_frame(output->wlr_output);
+    }
+
+    /* set brightness of backlight */
+    uint32_t brightness;
+    if (enabled && output_get_backlight(&output->base, &brightness)) {
+        if (brightness != state->brightness) {
+            output_set_backlight(state->brightness);
+        }
+    }
+
     /* after output commit, we get actual status */
     struct wlr_output_layout_output *loutput = wlr_output_layout_get(server->layout, wlr_output);
     bool need_layout = state->enabled;
@@ -929,12 +966,6 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
 
     // XXX: fix current.enabled for dpms power
     current->enabled = state->enabled;
-    if (kywc_output->prop.gamma_size > 1) {
-        current->color_temp = state->color_temp;
-    }
-
-    /* fix gamma supoort by get gamma_size again */
-    kywc_output->prop.gamma_size = wlr_output_get_gamma_size(output->wlr_output);
 
     /* update geometry and usable area before all signals */
     bool geometry_changed = false;

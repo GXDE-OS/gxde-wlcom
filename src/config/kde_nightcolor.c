@@ -768,7 +768,7 @@ static void color_temperature_commit(int colortemp, bool force)
     struct kde_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
         struct kywc_output *kywc_output = output->kywc_output;
-        output_set_gamma_colortemp(kywc_output, colortemp);
+        output_set_colortemp(kywc_output, colortemp);
     }
 
     if (manager->current_colortemp != colortemp) {
@@ -1196,7 +1196,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
     struct kde_output *output = wl_container_of(listener, output, on);
     struct kywc_output *kywc_output = output->kywc_output;
 
-    output_set_gamma_colortemp(kywc_output, manager->current_colortemp);
+    output_set_colortemp(kywc_output, manager->current_colortemp);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)

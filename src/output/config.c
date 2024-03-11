@@ -51,7 +51,7 @@ static int set_colortemp(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 
     struct kywc_output *kywc_output = kywc_output_by_name(name);
     if (kywc_output) {
-        output_set_gamma_colortemp(kywc_output, value);
+        output_set_colortemp(kywc_output, value);
     }
     return sd_bus_reply_method_return(m, NULL);
 }

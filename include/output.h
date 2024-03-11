@@ -27,6 +27,10 @@ struct output {
     struct kywc_box geometry;
     struct kywc_box usable_area;
 
+    /* software rendering and gamma settings for color-temp and brightness */
+    uint32_t color_temp;
+    uint32_t brightness;
+
     struct {
         /* emit when output geometry changed */
         struct wl_signal geometry;
@@ -62,7 +66,7 @@ float output_manager_get_scale(void);
 /* update scale to xwayland */
 void output_manager_update_scale(float scale);
 
-void output_set_gamma_colortemp(struct kywc_output *kywc_output, uint32_t color_temp);
+void output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp);
 
 void output_manager_add_output_pending_state(struct output *output,
                                              struct kywc_output_state *state);

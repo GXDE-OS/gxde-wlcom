@@ -89,7 +89,7 @@ static bool get_backlight_info(char **ddir, uint64_t *cur_brightness, uint64_t *
     return false;
 }
 
-static bool brightness_set(uint32_t value)
+bool output_set_backlight(uint32_t value)
 {
     char *ddir = NULL;
     uint64_t cur_brightness = 0;
@@ -143,7 +143,7 @@ static bool brightness_get(uint32_t *brightness)
     return true;
 }
 
-bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness)
+bool output_get_backlight(struct kywc_output *kywc_output, uint32_t *brightness)
 {
     if (!kywc_output->prop.brightness_support) {
         return false;
@@ -154,21 +154,11 @@ bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness
 
 void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
 {
-    brightness = BRIGHTNESS_CLAMP(brightness);
-    if (!kywc_output->prop.brightness_support) {
-        output_set_gamma_brightness(kywc_output, brightness);
+    if (!kywc_output->state.enabled) {
         return;
     }
 
-    uint32_t temp_value;
-    if (brightness_get(&temp_value)) {
-        brightness = BRIGHTNESS_CLAMP(brightness);
-        if (temp_value == kywc_output->state.brightness && temp_value == brightness) {
-            return;
-        }
-        if (!brightness_set(brightness)) {
-            return;
-        }
-        kywc_output->state.brightness = brightness;
-    }
+    struct kywc_output_state state = kywc_output->state;
+    state.brightness = BRIGHTNESS_CLAMP(brightness);
+    kywc_output_set_state(kywc_output, &state);
 }

@@ -48,11 +48,11 @@ void output_write_config(struct output *output);
 
 bool output_support_brightness(struct output *output);
 
-bool output_get_brightness(struct kywc_output *kywc_output, uint32_t *brightness);
+bool output_set_backlight(uint32_t value);
+
+bool output_get_backlight(struct kywc_output *kywc_output, uint32_t *brightness);
 
 void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness);
-
-void output_set_gamma_brightness(struct kywc_output *kywc_output, uint32_t brightness);
 
 struct wlr_output_state;
 void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,

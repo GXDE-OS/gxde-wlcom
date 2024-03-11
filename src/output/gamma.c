@@ -262,7 +262,7 @@ static const float blackbody_color[] = {
 // clang-format on
 
 /* Helper macro used in the fill functions */
-#define F(Y, C) pow((Y)*_brightness *whitepoint[C], 1.0)
+#define F(Y, C) pow((Y) * _brightness * whitepoint[C], 1.0)
 
 static void interpolate_clolor(float a, const float *c1, const float *c2, float *c)
 {
@@ -287,6 +287,7 @@ static void fill_gamma_ramp_with_colortemp(uint16_t *gamma_ramp, uint32_t ramp_s
     }
     /* approximate white point */
     float whitepoint[3];
+    color_temp = COLORTEMP_CLAMP(color_temp);
     float alpha = (color_temp % 100) / 100.;
     int bbc_index = ((color_temp - 1000) / 100) * 3;
     interpolate_clolor(alpha, &blackbody_color[bbc_index], &blackbody_color[bbc_index + 3],
@@ -317,47 +318,21 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
     }
     free(gamma_ramp);
 
-    kywc_log(KYWC_DEBUG, "output:%s set gama lut colr_tempe: %d", wlr_output->name, color_temp);
+    kywc_log(KYWC_DEBUG, "output:%s set gamma lut colr_tempe: %d", wlr_output->name, color_temp);
 }
 
-void output_set_gamma_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
+void output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
 {
-    if (kywc_output->prop.gamma_size <= 1) {
-        kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
-        return;
-    }
-    color_temp = COLORTEMP_CLAMP(color_temp);
     if (!kywc_output->state.enabled) {
         return;
     }
-    kywc_output->state.color_temp = color_temp;
-    uint32_t brightness =
-        kywc_output->prop.brightness_support ? 100 : kywc_output->state.brightness;
 
-    struct output *output = output_from_kywc_output(kywc_output);
-    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL, color_temp,
-                         brightness);
-    wlr_output_schedule_frame(output->wlr_output);
-}
-
-void output_set_gamma_brightness(struct kywc_output *kywc_output, uint32_t brightness)
-{
-    if (kywc_output->prop.brightness_support) {
-        kywc_log(KYWC_DEBUG, "brightness can not by adjusted by gamma");
-        return;
-    }
     if (kywc_output->prop.gamma_size <= 1) {
         kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
         return;
     }
 
-    if (!kywc_output->state.enabled) {
-        return;
-    }
-    kywc_output->state.brightness = brightness;
-
-    struct output *output = output_from_kywc_output(kywc_output);
-    output_set_gamma_lut(output->wlr_output, kywc_output->prop.gamma_size, NULL,
-                         kywc_output->state.color_temp, kywc_output->state.brightness);
-    wlr_output_schedule_frame(output->wlr_output);
+    struct kywc_output_state state = kywc_output->state;
+    state.color_temp = COLORTEMP_CLAMP(color_temp);
+    kywc_output_set_state(kywc_output, &state);
 }
