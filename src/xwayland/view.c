@@ -730,6 +730,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     }
 
     xwayland_view->view.pid = wlr_xwayland_surface->pid;
+    xwayland_view->view.base.modal = wlr_xwayland_surface->modal;
     view_map(&xwayland_view->view);
 
     xwayland_view_set_sruct_partial(xwayland_view, true);

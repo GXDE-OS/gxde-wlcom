@@ -380,6 +380,8 @@ void view_map(struct view *view)
     kywc_view_activate(kywc_view);
     seat_focus_surface(input_manager_get_default_seat(), view->surface);
 
+    modal_create(view, input_manager_get_default_seat());
+
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
 

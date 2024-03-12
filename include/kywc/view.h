@@ -92,6 +92,7 @@ struct kywc_view {
     /* current configured states */
     bool maximized, fullscreen, activated;
     enum kywc_tile tiled;
+    bool modal;
 
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
