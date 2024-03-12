@@ -54,7 +54,7 @@
       </description>
     </event>
 
-    <event name="finished">
+    <event name="finished" type="destructor">
       <description summary="the compositor has finished with the workspace_manager">
         This event indicates that the compositor is done sending events to the
         kywc_workspace_manager_v1. The server will destroy the object

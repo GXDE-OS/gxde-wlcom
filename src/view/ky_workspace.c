@@ -194,8 +194,8 @@ static void handle_workspace_destroy(struct wl_listener *listener, void *data)
 {
     struct ky_workspace *ky_workspace = wl_container_of(listener, ky_workspace, destroy);
 
-    struct wl_resource *resource;
-    wl_resource_for_each(resource, &ky_workspace->resources) {
+    struct wl_resource *resource, *tmp;
+    wl_resource_for_each_safe(resource, tmp, &ky_workspace->resources) {
         kywc_workspace_v1_send_removed(resource);
         // make the resource inert
         wl_list_remove(wl_resource_get_link(resource));
@@ -289,13 +289,13 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     struct ky_workspace_manager *manager = wl_container_of(listener, manager, server_destroy);
     wl_list_remove(&manager->server_destroy.link);
-    wl_list_remove(&manager->new_workspace.link);
     free(manager);
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     struct ky_workspace_manager *manager = wl_container_of(listener, manager, display_destroy);
+    wl_list_remove(&manager->new_workspace.link);
     wl_list_remove(&manager->display_destroy.link);
     if (manager->idle_source) {
         wl_event_source_remove(manager->idle_source);
