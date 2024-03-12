@@ -2,7 +2,6 @@ wlcom_sources += files(
   'action.c',
   'decoration.c',
   'interactive.c',
-  'ky_workspace.c',
   'positioner.c',
   'shadow.c',
   'ssd.c',
@@ -12,6 +11,11 @@ wlcom_sources += files(
   'xdg_popup.c',
   'xdg_shell.c',
   'maximize_switcher.c',
+)
+
+wlcom_sources += files(
+  'ky_toplevel.c',
+  'ky_workspace.c',
 )
 
 if have_kde_virtual_desktop

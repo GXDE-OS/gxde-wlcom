@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="kywc_workspace_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+    SPDX-License-Identifier: MulanPSL-2.0
+  ]]></copyright>
+
+  <interface name="kywc_toplevel_manager_v1" version="1">
+    <description summary="list and control toplevels">
+      A toplevel is defined as a surface with a role similar to xdg_toplevel.
+      XWayland surfaces may be treated like toplevels in this protocol.
+
+      After a client binds the global, each mapped toplevel window will be sent
+      using the toplevel event.
+    </description>
+
+    <event name="toplevel">
+      <description summary="a toplevel has been created">
+        This event is emitted whenever a new toplevel window is created. It is
+        emitted for all toplevels, regardless of the app that has created them.
+
+        All initial properties of the toplevel (identifier, title, app_id) will be sent
+        immediately after this event using the corresponding events for kywc_toplevel.
+        The compositor will use the done event to indicate when all data has been sent.
+      </description>
+      <arg name="toplevel" type="new_id" interface="kywc_toplevel_v1"/>
+      <arg name="uuid" type="string" summary="unique id of the toplevel"/>
+    </event>
+
+    <event name="finished" type="destructor">
+      <description summary="the compositor has finished with the toplevel manager">
+        This event indicates that the compositor is done sending events
+        to this object. The client should destroy the object.
+        See destroy for more information.
+
+        The compositor must not send any more toplevel events after this event.
+      </description>
+    </event>
+
+    <request name="stop">
+      <description summary="stop sending events">
+        This request indicates that the client no longer wishes to receive
+        events for new toplevels.
+
+        The Wayland protocol is asynchronous, meaning the compositor may send
+        further toplevel events until the stop request is processed.
+        The client should wait for a finished event before destroying this object.
+      </description>
+    </request>
+  </interface>
+
+  <interface name="kywc_toplevel_v1" version="1">
+    <description summary="a mapped toplevel">
+      A kywc_toplevel_v1 object represents a mapped toplevel window.
+      A single app may have multiple mapped toplevels.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the object">
+        This request should be used when the client will no longer use the toplevel 
+        or after the closed event has been received to allow destruction of the object.
+      </description>
+    </request>
+
+    <event name="closed">
+      <description summary="the toplevel has been closed">
+        The server will emit no further events on the kywc_toplevel_v1
+        after this event. Any requests received aside from the destroy request must
+        be ignored. Upon receiving this event, the client should destroy the handle.
+      </description>
+    </event>
+
+    <event name="done">
+      <description summary="all information about the toplevel has been sent">
+        This event is sent after all changes in the toplevel state have been sent.
+      </description>
+    </event>
+
+    <event name="title">
+      <description summary="title change">
+        The title of the toplevel has changed.
+      </description>
+      <arg name="title" type="string"/>
+    </event>
+
+    <event name="app_id">
+      <description summary="app_id change">
+        The app id of the topleve.done for details.
+      </description>
+      <arg name="app_id" type="string"/>
+    </event>
+
+    <event name="primary_output">
+      <description summary="toplevel's primary output changes">
+        This event is emitted whenever the output that the largest area of this toplevel
+        is displayed on has channged.
+      </description>
+      <arg name="output" type="string" summary="the output unique id"/>
+    </event>
+
+    <event name="workspace_enter">
+      <description summary="toplevel entered a workspace">
+        This event is emitted whenever the toplevel becomes visible on
+        the given workspace. A toplevel may be visible on multiple workspaces.
+      </description>
+      <arg name="workspace" type="string" summary="the workspace unique id"/>
+    </event>
+
+    <event name="workspace_leave">
+      <description summary="toplevel left a workspace">
+        This event is emitted whenever the toplevel stops being visible on
+        the given workspace. It is guaranteed that an entered-workspace event
+        with the same workspace has been emitted before this event.
+      </description>
+      <arg name="workspace" type="string" summary="the workspace unique id"/>
+    </event>
+
+    <enum name="state" bitfield="true">
+      <description summary="types of states on the toplevel">
+        The different states that a toplevel can have.
+      </description>
+      <entry name="maximized"  value="1" summary="the toplevel is maximized"/>
+      <entry name="minimized"  value="2" summary="the toplevel is minimized"/>
+      <entry name="activated"  value="4" summary="the toplevel is active"/>
+      <entry name="fullscreen" value="8" summary="the toplevel is fullscreen"/>
+    </enum>
+
+    <event name="state">
+      <description summary="the toplevel state changed">
+        This event is emitted immediately after the kywc_toplevel_v1 
+        is created and each time the toplevel state changes, either because of a
+        compositor action or because of a request in this protocol.
+      </description>
+      <arg name="state" type="uint" enum="state"/>
+    </event>
+
+    <event name="parent">
+      <description summary="parent change">
+        This event is emitted whenever the parent of the toplevel changes.
+
+        No event is emitted when the parent handle is destroyed by the client.
+      </description>
+      <arg name="parent" type="object" interface="kywc_toplevel_v1" allow-null="true"/>
+    </event>
+
+    <event name="icon">
+      <description summary="toplevel's icon changed">
+        This event will be sent whenever the icon changes. May be null.
+      </description>
+      <arg name="name" type="string" summary="the new icon name"/>
+    </event>
+
+    <request name="set_maximized">
+      <description summary="requests that the toplevel be maximized">
+        Requests that the toplevel be maximized. If the maximized state actually
+        changes, this will be indicated by the state event.
+      </description>
+    </request>
+
+    <request name="unset_maximized">
+      <description summary="requests that the toplevel be unmaximized">
+        Requests that the toplevel be unmaximized. If the maximized state actually
+        changes, this will be indicated by the state event.
+      </description>
+    </request>
+
+    <request name="set_minimized">
+      <description summary="requests that the toplevel be minimized">
+        Requests that the toplevel be minimized. If the minimized state actually
+        changes, this will be indicated by the state event.
+      </description>
+    </request>
+
+    <request name="unset_minimized">
+      <description summary="requests that the toplevel be unminimized">
+        Requests that the toplevel be unminimized. If the minimized state actually
+        changes, this will be indicated by the state event.
+      </description>
+    </request>
+
+    <request name="set_fullscreen">
+      <description summary="request that the toplevel be fullscreened">
+        Requests that the toplevel be fullscreened on the given output. If the
+        fullscreen state and/or the outputs the toplevel is visible on actually
+        change, this will be indicated by the state and output_enter/leave
+        events.
+
+        The output parameter is only a hint to the compositor. Also, if output
+        is NULL, the compositor should decide which output the toplevel will be
+        fullscreened on, if at all.
+      </description>
+      <arg name="output" type="string" summary="the output unique id" allow-null="true"/>
+    </request>
+
+    <request name="unset_fullscreen">
+      <description summary="request that the toplevel be unfullscreened">
+        Requests that the toplevel be unfullscreened. If the fullscreen state
+        actually changes, this will be indicated by the state event.
+      </description>
+    </request>
+
+    <request name="activate">
+      <description summary="activate the toplevel">
+        Request that this toplevel be activated.
+        There is no guarantee the toplevel will be actually activated.
+      </description>
+    </request>
+
+    <request name="close">
+      <description summary="request that the toplevel be closed">
+        Send a request to the toplevel to close itself. The compositor would
+        typically use a shell-specific method to carry out this request, for
+        example by sending the xdg_toplevel.close event. However, this gives
+        no guarantees the toplevel will actually be destroyed. If and when
+        this happens, the closed event will be emitted.
+      </description>
+    </request>
+
+    <request name="enter_workspace">
+      <description summary="map window on a workspace">
+        Make the toplevel enter a workspace. A toplevel can enter more
+        than one workspace. if the id is empty or invalid, no action will be performed.
+      </description>
+      <arg name="id" type="string" summary="desktop id"/>
+    </request>
+
+    <request name="leave_workspace">
+      <description summary="remove a toplevel from a workspace">
+        Make the toplevel exit a workspace.
+      </description>
+      <arg name="id" type="string" summary="desktop id"/>
+    </request>
+
+    <request name="send_to_output">
+     <description summary="send toplevel to specified output">
+        Requests this toplevel to be displayed in a specific output.
+      </description>
+      <arg name="id" type="string" summary="the output unique id"/>
+    </request>
+  </interface>
+</protocol>

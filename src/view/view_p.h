@@ -78,6 +78,8 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
 
 bool ky_workspace_manager_create(struct server *server);
 
+bool ky_toplevel_manager_create(struct server *server);
+
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);
 #else
