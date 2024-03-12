@@ -202,7 +202,7 @@ static void keyboard_repeat_stop(struct keyboard *keyboard)
     wl_event_source_timer_update(keyboard->repeat.timer, 0);
 }
 
-static void keybaord_repeat_start(struct keyboard *keyboard, uint32_t key, bool pressed)
+static void keyboard_repeat_start(struct keyboard *keyboard, uint32_t key, bool pressed)
 {
     if (!keyboard->repeat.timer) {
         return;
@@ -249,7 +249,7 @@ void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, ui
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
         keyboard_state_clear(&keyboard->state);
-        keybaord_repeat_start(keyboard, key, pressed);
+        keyboard_repeat_start(keyboard, key, pressed);
         return;
     }
 
@@ -257,7 +257,7 @@ void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, ui
     bool need_repeat = false;
     bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers, &need_repeat);
     if (handled) {
-        need_repeat ? keybaord_repeat_start(keyboard, key, pressed)
+        need_repeat ? keyboard_repeat_start(keyboard, key, pressed)
                     : keyboard_repeat_stop(keyboard);
         return;
     }
