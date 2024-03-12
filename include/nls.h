@@ -7,7 +7,6 @@
 
 #if HAVE_NLS
 #include <libintl.h>
-#include <locale.h>
 #define tr gettext
 #else
 #define tr(s) (s)

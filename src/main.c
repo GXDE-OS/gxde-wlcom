@@ -4,12 +4,13 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <getopt.h>
+#include <libintl.h>
+#include <locale.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "nls.h"
 #include "server.h"
 #include "util/limit.h"
 #include "util/logger.h"
