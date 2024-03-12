@@ -6,6 +6,7 @@
 
 #include <wlr/types/wlr_compositor.h>
 
+#include <kywc/identifier.h>
 #include <kywc/log.h>
 
 #include "input/seat.h"
@@ -187,6 +188,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->activatable = true;
     kywc_view->focusable = true;
     kywc_view->shadeable = true;
+
+    kywc_view->uuid = kywc_identifier_uuid_generate();
 
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
@@ -509,6 +512,7 @@ void view_destroy(struct view *view)
 
     ky_scene_node_destroy(ky_scene_node_from_tree(view->tree));
     view_proxies_destroy(view);
+    free((void *)kywc_view->uuid);
 
     view->impl->destroy(view);
 }
