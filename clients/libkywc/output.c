@@ -17,6 +17,11 @@ static struct ky_output *output_from_kywc_output(kywc_output *kywc_output)
 
 void ky_output_destroy(struct ky_output *output)
 {
+    struct ky_output_mode *mode, *tmp;
+    wl_list_for_each_safe(mode, tmp, &output->base.modes, base.link) {
+        ky_output_mode_destroy(mode);
+    }
+
     if (output->impl && output->impl->destroy) {
         output->impl->destroy(&output->base);
     }
