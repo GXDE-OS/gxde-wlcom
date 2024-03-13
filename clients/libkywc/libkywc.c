@@ -106,8 +106,8 @@ void kywc_context_destroy(kywc_context *ctx)
         }
     }
 
+    wl_registry_destroy(ctx->registry);
     wl_display_disconnect(ctx->display);
-    free(ctx->registry);
     free(ctx);
 }
 
