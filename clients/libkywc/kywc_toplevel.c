@@ -11,23 +11,37 @@
 
 bool _kywc_toplevel_init(kywc_context *ctx, enum kywc_context_capability capability);
 
-static void toplevel_handle_closed(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1) {}
+static void toplevel_handle_closed(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1)
+{
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_destroy(toplevel);
+}
 
-static void toplevel_handle_done(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1) {}
+static void toplevel_handle_done(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1)
+{
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_states(toplevel);
+}
 
 static void toplevel_handle_title(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                   const char *title)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_title(toplevel, title);
 }
 
 static void toplevel_handle_app_id(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                    const char *app_id)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_app_id(toplevel, app_id);
 }
 
 static void toplevel_handle_primary_output(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                            const char *output)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_primary_output(toplevel, output);
 }
 
 static void toplevel_handle_workspace_enter(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
@@ -43,16 +57,26 @@ static void toplevel_handle_workspace_leave(void *data, struct kywc_toplevel_v1 
 static void toplevel_handle_state(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                   uint32_t state)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_maximized(toplevel, state & KYWC_TOPLEVEL_V1_STATE_MAXIMIZED);
+    ky_toplevel_update_minimized(toplevel, state & KYWC_TOPLEVEL_V1_STATE_MINIMIZED);
+    ky_toplevel_update_activated(toplevel, state & KYWC_TOPLEVEL_V1_STATE_ACTIVATED);
+    ky_toplevel_update_fullscreen(toplevel, state & KYWC_TOPLEVEL_V1_STATE_FULLSCREEN);
 }
 
 static void toplevel_handle_parent(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                    struct kywc_toplevel_v1 *parent)
 {
+    struct ky_toplevel *toplevel = data;
+    struct ky_toplevel *parent_toplevel = parent ? kywc_toplevel_v1_get_user_data(parent) : NULL;
+    ky_toplevel_update_parent(toplevel, parent_toplevel);
 }
 
 static void toplevel_handle_icon(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                  const char *name)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_icon(toplevel, name);
 }
 
 static const struct kywc_toplevel_v1_listener toplevel_listener = {
@@ -99,7 +123,6 @@ static void manager_handle_finished(void *data,
 static const struct kywc_toplevel_manager_v1_listener toplevel_manager_listener = {
     .toplevel = manager_handle_toplevel,
     .finished = manager_handle_finished,
-
 };
 
 static void manager_destroy(struct ky_toplevel_manager *manager)

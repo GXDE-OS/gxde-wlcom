@@ -170,16 +170,25 @@ void *kywc_output_get_user_data(kywc_output *output);
 struct _kywc_toplevel {
     const char *uuid;
     const char *title, *app_id;
+    const char *icon;
     uint32_t capabilities;
-
-    // output and workspace
-
+    kywc_toplevel *parent;
+    const char *primary_output;
+    /* state */
     bool activated, minimized, maximized, fullscreen;
 };
 
 enum kywc_toplevel_state_mask {
-    KYWC_TOPLEVEL_STATE_APPID = 1 << 0,
+    KYWC_TOPLEVEL_STATE_APP_ID = 1 << 0,
     KYWC_TOPLEVEL_STATE_TITLE = 1 << 1,
+    KYWC_TOPLEVEL_STATE_ACTIVATED = 1 << 2,
+    KYWC_TOPLEVEL_STATE_MINIMIZED = 1 << 3,
+    KYWC_TOPLEVEL_STATE_MAXIMIZED = 1 << 4,
+    KYWC_TOPLEVEL_STATE_FULLSCREEN = 1 << 5,
+    KYWC_TOPLEVEL_STATE_PRIMARY_OUTPUT = 1 << 6,
+    KYWC_TOPLEVEL_STATE_WORKSPACE = 1 << 7,
+    KYWC_TOPLEVEL_STATE_PARENT = 1 << 8,
+    KYWC_TOPLEVEL_STATE_ICON = 1 << 9,
 };
 
 struct kywc_toplevel_interface {

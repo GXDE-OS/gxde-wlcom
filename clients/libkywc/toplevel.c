@@ -29,7 +29,104 @@ void ky_toplevel_destroy(struct ky_toplevel *toplevel)
     free((void *)toplevel->base.uuid);
     free((void *)toplevel->base.title);
     free((void *)toplevel->base.app_id);
+    free((void *)toplevel->base.icon);
+    free((void *)toplevel->base.primary_output);
     free(toplevel);
+}
+
+void ky_toplevel_update_title(struct ky_toplevel *toplevel, const char *title)
+{
+    if (toplevel->base.title && strcmp(toplevel->base.title, title) == 0) {
+        return;
+    }
+
+    free((void *)toplevel->base.title);
+    toplevel->base.title = strdup(title);
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_TITLE;
+}
+
+void ky_toplevel_update_app_id(struct ky_toplevel *toplevel, const char *app_id)
+{
+    if (toplevel->base.app_id && strcmp(toplevel->base.app_id, app_id) == 0) {
+        return;
+    }
+
+    free((void *)toplevel->base.app_id);
+    toplevel->base.app_id = strdup(app_id);
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_APP_ID;
+}
+
+void ky_toplevel_update_primary_output(struct ky_toplevel *toplevel, const char *output_id)
+{
+    if (toplevel->base.primary_output && strcmp(toplevel->base.primary_output, output_id) == 0) {
+        return;
+    }
+
+    free((void *)toplevel->base.primary_output);
+    toplevel->base.primary_output = strdup(output_id);
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_PRIMARY_OUTPUT;
+}
+
+void ky_toplevel_update_maximized(struct ky_toplevel *toplevel, bool maximized)
+{
+    if (toplevel->base.maximized == maximized) {
+        return;
+    }
+
+    toplevel->base.maximized = maximized;
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_MAXIMIZED;
+}
+
+void ky_toplevel_update_minimized(struct ky_toplevel *toplevel, bool minimized)
+{
+    if (toplevel->base.minimized == minimized) {
+        return;
+    }
+
+    toplevel->base.minimized = minimized;
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_MINIMIZED;
+}
+
+void ky_toplevel_update_activated(struct ky_toplevel *toplevel, bool activated)
+{
+    if (toplevel->base.activated == activated) {
+        return;
+    }
+
+    toplevel->base.activated = activated;
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_ACTIVATED;
+}
+
+void ky_toplevel_update_fullscreen(struct ky_toplevel *toplevel, bool fullscreen)
+{
+    if (toplevel->base.fullscreen == fullscreen) {
+        return;
+    }
+
+    toplevel->base.fullscreen = fullscreen;
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_FULLSCREEN;
+}
+
+void ky_toplevel_update_parent(struct ky_toplevel *toplevel, struct ky_toplevel *parent)
+{
+    kywc_toplevel *parent_toplevel = parent ? &parent->base : NULL;
+    if (toplevel->base.parent == parent_toplevel) {
+        return;
+    }
+
+    toplevel->base.parent = parent_toplevel;
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_PARENT;
+}
+
+void ky_toplevel_update_icon(struct ky_toplevel *toplevel, const char *icon)
+{
+    if (toplevel->base.icon && strcmp(toplevel->base.icon, icon) == 0) {
+        return;
+    }
+
+    free((void *)toplevel->base.icon);
+    toplevel->base.icon = strdup(icon);
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_ICON;
 }
 
 struct ky_toplevel *ky_toplevel_create(struct ky_toplevel_manager *manager, const char *uuid)

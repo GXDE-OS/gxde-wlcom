@@ -212,4 +212,22 @@ void ky_toplevel_destroy(struct ky_toplevel *toplevel);
 
 void ky_toplevel_update_states(struct ky_toplevel *toplevel);
 
+void ky_toplevel_update_title(struct ky_toplevel *toplevel, const char *title);
+
+void ky_toplevel_update_app_id(struct ky_toplevel *toplevel, const char *app_id);
+
+void ky_toplevel_update_primary_output(struct ky_toplevel *toplevel, const char *output_id);
+
+void ky_toplevel_update_maximized(struct ky_toplevel *toplevel, bool maximized);
+
+void ky_toplevel_update_minimized(struct ky_toplevel *toplevel, bool minimized);
+
+void ky_toplevel_update_activated(struct ky_toplevel *toplevel, bool activated);
+
+void ky_toplevel_update_fullscreen(struct ky_toplevel *toplevel, bool fullscreen);
+
+void ky_toplevel_update_parent(struct ky_toplevel *toplevel, struct ky_toplevel *parent);
+
+void ky_toplevel_update_icon(struct ky_toplevel *toplevel, const char *icon);
+
 #endif /* _LIBKYWC_HEADER_P_H_ */
