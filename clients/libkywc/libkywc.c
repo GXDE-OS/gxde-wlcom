@@ -161,6 +161,10 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
         }
         ctx->output = manager;
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_TOPLEVEL) {
+        if (ctx->toplevel) {
+            return false;
+        }
+        ctx->toplevel = manager;
     } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_WORKSPACE) {
         if (ctx->workspace) {
             return false;

@@ -29,6 +29,7 @@ struct _kywc_context {
 
     struct ky_workspace_manager *workspace;
     struct ky_output_manager *output;
+    struct ky_toplevel_manager *toplevel;
 };
 
 bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *provider,
@@ -173,5 +174,42 @@ void ky_output_update_primary(struct ky_output *output, bool primary);
 void ky_output_update_brightness(struct ky_output *output, uint32_t brightness);
 
 void ky_output_update_color_temp(struct ky_output *output, uint32_t color_temp);
+
+/**
+ * toplevel
+ */
+struct ky_toplevel_manager {
+    kywc_context *ctx;
+    struct wl_list toplevels;
+
+    void (*destroy)(struct ky_toplevel_manager *manager);
+    void *data;
+};
+
+struct ky_toplevel {
+    kywc_toplevel base;
+
+    struct ky_toplevel_manager *manager;
+    struct wl_list link;
+
+    const struct kywc_toplevel_interface *impl;
+    void *user_data;
+
+    void (*destroy)(struct ky_toplevel *toplevel);
+    void *data;
+
+    uint32_t pending_mask;
+    bool newly_added;
+};
+
+struct ky_toplevel_manager *ky_toplevel_manager_create(kywc_context *ctx);
+
+void ky_toplevel_manager_destroy(struct ky_toplevel_manager *manager);
+
+struct ky_toplevel *ky_toplevel_create(struct ky_toplevel_manager *manager, const char *uuid);
+
+void ky_toplevel_destroy(struct ky_toplevel *toplevel);
+
+void ky_toplevel_update_states(struct ky_toplevel *toplevel);
 
 #endif /* _LIBKYWC_HEADER_P_H_ */

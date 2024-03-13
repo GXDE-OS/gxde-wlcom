@@ -164,6 +164,41 @@ void kywc_output_set_user_data(kywc_output *output, void *data);
 
 void *kywc_output_get_user_data(kywc_output *output);
 
+/**
+ * toplevel or window
+ */
+struct _kywc_toplevel {
+    const char *uuid;
+    const char *title, *app_id;
+    uint32_t capabilities;
+
+    // output and workspace
+
+    bool activated, minimized, maximized, fullscreen;
+};
+
+enum kywc_toplevel_state_mask {
+    KYWC_TOPLEVEL_STATE_APPID = 1 << 0,
+    KYWC_TOPLEVEL_STATE_TITLE = 1 << 1,
+};
+
+struct kywc_toplevel_interface {
+    void (*state)(kywc_toplevel *toplevel, uint32_t mask);
+    void (*destroy)(kywc_toplevel *toplevel);
+};
+
+void kywc_toplevel_set_interface(kywc_toplevel *toplevel,
+                                 const struct kywc_toplevel_interface *impl);
+
+typedef bool (*kywc_toplevel_iterator_func_t)(kywc_toplevel *toplevel, void *data);
+
+void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_func_t iterator,
+                                    void *data);
+
+void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data);
+
+void *kywc_toplevel_get_user_data(kywc_toplevel *toplevel);
+
 #ifdef __cplusplus
 }
 #endif

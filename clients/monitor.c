@@ -41,7 +41,8 @@ static struct kywc_context_interface context_impl = {
 
 int main(int argc, char *argv[])
 {
-    uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE | KYWC_CONTEXT_CAPABILITY_OUTPUT;
+    uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE | KYWC_CONTEXT_CAPABILITY_OUTPUT |
+                    KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
     kywc_context *ctx = kywc_context_create(NULL, caps, &context_impl);
     if (!ctx) {
         return -1;
