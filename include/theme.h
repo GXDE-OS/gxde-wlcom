@@ -129,4 +129,6 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
 
 struct wlr_buffer *theme_icon_load(const char *app_id, float scale);
 
+const char *theme_icon_name(const char *app_id);
+
 #endif /* _THEME_H_ */

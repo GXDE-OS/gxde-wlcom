@@ -709,7 +709,7 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
     return buf;
 }
 
-struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
+static struct icon *theme_icon_find(const char *app_id)
 {
     struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
     struct icon *icon = NULL;
@@ -763,6 +763,18 @@ fallback:
         icon = manager->fallback_icon;
     }
 
+    return icon;
+}
+
+struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
+{
+    struct icon *icon = theme_icon_find(app_id);
     struct icon_buffer *buf = icon_get_buffer(icon, scale);
     return buf ? buf->buffer : NULL;
+}
+
+const char *theme_icon_name(const char *app_id)
+{
+    struct icon *icon = theme_icon_find(app_id);
+    return icon->name;
 }
