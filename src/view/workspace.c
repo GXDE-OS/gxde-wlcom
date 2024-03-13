@@ -457,6 +457,18 @@ struct workspace *workspace_by_position(uint32_t position)
     return workspace_manager->workspaces[position];
 }
 
+struct workspace *workspace_by_uuid(const char *uuid)
+{
+    struct workspace *workspace;
+    for (uint32_t i = 0; i < workspace_manager->count; i++) {
+        workspace = workspace_manager->workspaces[i];
+        if (strcmp(workspace->uuid, uuid) == 0) {
+            return workspace;
+        }
+    }
+    return NULL;
+}
+
 void workspace_set_position(struct workspace *workspace, uint32_t position)
 {
     /* insert to last if position is too bigger */
