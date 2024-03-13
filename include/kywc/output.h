@@ -93,4 +93,6 @@ bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y);
 
 struct kywc_output *kywc_output_by_name(const char *name);
 
+struct kywc_output *kywc_output_by_uuid(const char *uuid);
+
 #endif /* _KYWC_OUTPUT_H_ */

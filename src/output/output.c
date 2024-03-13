@@ -1034,7 +1034,19 @@ struct kywc_output *kywc_output_by_name(const char *name)
 {
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
-        if (!strcmp(name, output->base.name)) {
+        if (strcmp(name, output->base.name) == 0) {
+            return &output->base;
+        }
+    }
+
+    return NULL;
+}
+
+struct kywc_output *kywc_output_by_uuid(const char *uuid)
+{
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (strcmp(uuid, output->base.uuid) == 0) {
             return &output->base;
         }
     }
