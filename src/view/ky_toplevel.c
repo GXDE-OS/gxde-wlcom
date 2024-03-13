@@ -2,13 +2,16 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <string.h>
 
 #include <kywc/output.h>
 
 #include "kywc-toplevel-v1-protocol.h"
 
 #include "input/seat.h"
+#include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
@@ -29,6 +32,8 @@ struct ky_toplevel {
 
     struct wl_event_source *idle_source;
     struct wl_list resources;
+
+    const char *icon_name;
 
     struct kywc_view *view;
     struct wl_listener map;
@@ -57,6 +62,22 @@ static struct ky_toplevel *toplevel_for_view(struct ky_toplevel_manager *manager
         }
     }
     return NULL;
+}
+
+static void toplevel_update_icon_name(struct ky_toplevel *toplevel)
+{
+    const char *app_id = toplevel->view->app_id;
+    if (!app_id) {
+        return;
+    }
+
+    const char *icon_name = theme_icon_name(app_id);
+    if (toplevel->icon_name && strcmp(toplevel->icon_name, icon_name) == 0) {
+        return;
+    }
+
+    free((void *)toplevel->icon_name);
+    toplevel->icon_name = strdup(icon_name);
 }
 
 static void toplevel_handle_destroy(struct wl_client *client, struct wl_resource *resource)
@@ -291,7 +312,7 @@ static void toplevel_send_details_to_toplevel_resource(struct ky_toplevel *tople
         kywc_toplevel_v1_send_parent(resource, NULL);
     }
 
-    // kywc_toplevel_v1_send_icon(resource, );
+    kywc_toplevel_v1_send_icon(resource, toplevel->icon_name);
 
     kywc_toplevel_v1_send_done(resource);
 }
@@ -388,9 +409,13 @@ static void handle_toplevel_app_id(struct wl_listener *listener, void *data)
         return;
     }
 
+    /* update toplevel icon when app_id changed */
+    toplevel_update_icon_name(toplevel);
+
     struct wl_resource *resource;
     wl_resource_for_each(resource, &toplevel->resources) {
         kywc_toplevel_v1_send_app_id(resource, toplevel->view->app_id);
+        kywc_toplevel_v1_send_icon(resource, toplevel->icon_name);
     }
 
     toplevel_update_idle_source(toplevel);
@@ -523,6 +548,8 @@ static void handle_toplevel_map(struct wl_listener *listener, void *data)
     toplevel->workspace.notify = handle_toplevel_workspace;
     wl_signal_add(&view->events.workspace, &toplevel->workspace);
 
+    toplevel_update_icon_name(toplevel);
+
     /* send toplevel and detail */
     struct wl_resource *resource, *toplevel_resource;
     wl_resource_for_each(resource, &toplevel->manager->resources) {
@@ -557,6 +584,9 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&toplevel->output.link);
     wl_list_remove(&toplevel->parent.link);
     wl_list_remove(&toplevel->workspace.link);
+
+    free((void *)toplevel->icon_name);
+    toplevel->icon_name = NULL;
 }
 
 static void handle_toplevel_destroy(struct wl_listener *listener, void *data)
