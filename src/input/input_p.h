@@ -185,9 +185,6 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
 void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
                       int32_t delta_discrete, uint32_t time);
 
-void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
-                       uint32_t modifiers);
-
 /**
  * input action for keyshort, gesture binding
  */

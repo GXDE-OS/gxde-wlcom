@@ -4,14 +4,16 @@
 
 #include <stdlib.h>
 #include <strings.h>
+
+#include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include <wlr/types/wlr_keyboard_group.h>
 #include <wlr/types/wlr_seat.h>
 
 #include <kywc/log.h>
 
 #include "input/keyboard.h"
+#include "input/keyboard_group.h"
 #include "input/seat.h"
 #include "input_p.h"
 #include "util/time.h"
@@ -231,13 +233,37 @@ static void keyboard_repeat_start(struct keyboard *keyboard, uint32_t key, bool 
     }
 }
 
-void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, bool pressed, uint32_t time,
-                       uint32_t modifiers)
+static void keyboard_update_lock(struct keyboard *keyboard, uint32_t key, bool pressed)
+{
+    if (key != KEY_SCROLLLOCK) {
+        return;
+    }
+
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard->wlr_keyboard);
+    if (!group) {
+        return;
+    }
+
+    if (group->scroll_lock == 0 && pressed) {
+        group->scroll_lock = 2;
+        group->keyboard.leds |= WLR_LED_SCROLL_LOCK;
+    } else if (group->scroll_lock > 0 && !pressed) {
+        if (--group->scroll_lock == 0) {
+            // only used to bypass check in wlr_keyboard_led_update
+            group->keyboard.leds |= WLR_LED_SCROLL_LOCK;
+        }
+    }
+}
+
+static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, uint32_t state,
+                              uint32_t time, uint32_t modifiers)
 {
     modifiers_mask_debug(modifiers, "modifiers");
 
     struct seat *seat = keyboard->seat;
-    uint32_t state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED;
+    bool pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+
+    keyboard_update_lock(keyboard, key, pressed);
 
     /* early return if key is sent by input method */
     if (keyboard_is_from_input_method(keyboard)) {
@@ -344,8 +370,8 @@ struct keyboard *keyboard_create(struct seat *seat, struct wlr_keyboard *wlr_key
     }
 
     if (!wlr_keyboard) {
-        struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_create();
-        keyboard->wlr_keyboard = &wlr_group->keyboard;
+        struct keyboard_group *group = keyboard_group_create();
+        keyboard->wlr_keyboard = &group->keyboard;
     } else {
         keyboard->wlr_keyboard = wlr_keyboard;
     }
@@ -391,14 +417,14 @@ void keyboard_add_input(struct seat *seat, struct input *input)
         }
 
         struct wlr_keyboard *dst_keyboard = keyboard->wlr_keyboard;
-        struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_from_wlr_keyboard(dst_keyboard);
-        bool empty_group = wl_list_empty(&wlr_group->devices);
+        struct keyboard_group *group = keyboard_group_from_wlr_keyboard(dst_keyboard);
+        bool empty_group = wl_list_empty(&group->devices);
 
         if (empty_group ||
             (wlr_keyboard_keymaps_match(wlr_keyboard->keymap, dst_keyboard->keymap) &&
              wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
              wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay)) {
-            kywc_log(KYWC_DEBUG, "Adding keyboard %s to group %p", input->name, wlr_group);
+            kywc_log(KYWC_DEBUG, "Adding keyboard %s to group %p", input->name, group);
 
             if (empty_group) {
                 wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
@@ -406,8 +432,8 @@ void keyboard_add_input(struct seat *seat, struct input *input)
                                              wlr_keyboard->repeat_info.delay);
             }
 
-            wlr_keyboard_group_add_keyboard(wlr_group, wlr_keyboard);
-            wlr_keyboard->data = wlr_group;
+            keyboard_group_add_keyboard(group, wlr_keyboard);
+            wlr_keyboard->data = group;
             return;
         }
     }
@@ -418,14 +444,13 @@ void keyboard_add_input(struct seat *seat, struct input *input)
         return;
     }
 
-    struct wlr_keyboard_group *wlr_group =
-        wlr_keyboard_group_from_wlr_keyboard(keyboard->wlr_keyboard);
-    wlr_keyboard->data = wlr_group;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard->wlr_keyboard);
+    wlr_keyboard->data = group;
 
     wlr_keyboard_set_keymap(keyboard->wlr_keyboard, wlr_keyboard->keymap);
     wlr_keyboard_set_repeat_info(keyboard->wlr_keyboard, wlr_keyboard->repeat_info.rate,
                                  wlr_keyboard->repeat_info.delay);
-    wlr_keyboard_group_add_keyboard(wlr_group, wlr_keyboard);
+    keyboard_group_add_keyboard(group, wlr_keyboard);
 }
 
 void keyboard_destroy(struct keyboard *keyboard)
@@ -442,8 +467,8 @@ void keyboard_destroy(struct keyboard *keyboard)
     wl_list_remove(&keyboard->modifiers.link);
 
     if (!keyboard->is_virtual) {
-        struct wlr_keyboard_group *wlr_group = wlr_keyboard_group_from_wlr_keyboard(wlr_keyboard);
-        wlr_keyboard_group_destroy(wlr_group);
+        struct keyboard_group *group = keyboard_group_from_wlr_keyboard(wlr_keyboard);
+        keyboard_group_destroy(group);
     }
 
     if (keyboard->repeat.timer) {
@@ -468,17 +493,17 @@ void keyboard_remove_input(struct input *input)
         return;
     }
 
-    struct wlr_keyboard_group *wlr_group = wlr_keyboard->group;
+    struct keyboard_group *group = (struct keyboard_group *)wlr_keyboard->group;
     /* already remove when input destroy at keyboard group */
-    if (!wlr_group) {
-        wlr_group = wlr_keyboard->data;
+    if (!group) {
+        group = wlr_keyboard->data;
     } else {
-        wlr_keyboard_group_remove_keyboard(wlr_group, wlr_keyboard);
+        keyboard_group_remove_keyboard(group, wlr_keyboard);
     }
 
     /* destroy keyboard group if empty */
-    if (wl_list_empty(&wlr_group->devices)) {
-        keyboard = wlr_group->keyboard.data;
+    if (wl_list_empty(&group->devices)) {
+        keyboard = group->keyboard.data;
         if (keyboard != keyboard->seat->keyboard) {
             keyboard_destroy(keyboard);
         }
