@@ -150,7 +150,7 @@ void ky_toplevel_update_states(struct ky_toplevel *toplevel)
 
     if (toplevel->newly_added) {
         if (ctx->impl && ctx->impl->new_toplevel) {
-            ctx->impl->new_toplevel(ctx, &toplevel->base);
+            ctx->impl->new_toplevel(ctx, &toplevel->base, ctx->user_data);
         }
         toplevel->newly_added = false;
         toplevel->pending_mask = 0;

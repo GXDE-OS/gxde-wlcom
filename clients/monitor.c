@@ -29,7 +29,7 @@ static struct kywc_workspace_interface workspace_impl = {
     .destroy = workspace_handle_destroy,
 };
 
-static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace)
+static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace, void *data)
 {
     print_workspace(workspace);
     kywc_workspace_set_interface(workspace, &workspace_impl);
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 {
     uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE | KYWC_CONTEXT_CAPABILITY_OUTPUT |
                     KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
-    kywc_context *ctx = kywc_context_create(NULL, caps, &context_impl);
+    kywc_context *ctx = kywc_context_create(NULL, caps, &context_impl, NULL);
     if (!ctx) {
         return -1;
     }

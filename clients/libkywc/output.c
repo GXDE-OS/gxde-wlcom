@@ -230,7 +230,7 @@ void ky_output_manager_update_states(struct ky_output_manager *manager)
     wl_list_for_each_reverse(output, &manager->outputs, link) {
         if (output->newly_added) {
             if (ctx->impl && ctx->impl->new_output) {
-                ctx->impl->new_output(ctx, &output->base);
+                ctx->impl->new_output(ctx, &output->base, ctx->user_data);
             }
             output->newly_added = false;
             output->pending_mask = 0;

@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
 #include <libkywc.h>
 
-static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace)
+static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace, void *data)
 {
     printf("new workspace: %s\n", workspace->name);
 }
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE;
-    kywc_context_create_by_display(display, caps, &context_impl);
+    kywc_context_create_by_display(display, caps, &context_impl, nullptr);
 
     return app.exec();
 }

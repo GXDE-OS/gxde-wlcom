@@ -85,7 +85,7 @@ void ky_workspace_manager_update_states(struct ky_workspace_manager *manager)
     wl_list_for_each_reverse(workspace, &manager->workspaces, link) {
         if (workspace->newly_added) {
             if (ctx->impl && ctx->impl->new_workspace) {
-                ctx->impl->new_workspace(ctx, &workspace->base);
+                ctx->impl->new_workspace(ctx, &workspace->base, ctx->user_data);
             }
             workspace->newly_added = false;
             workspace->pending_mask = 0;

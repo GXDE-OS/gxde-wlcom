@@ -24,21 +24,21 @@ enum kywc_context_capability {
 };
 
 struct kywc_context_interface {
-    void (*new_output)(kywc_context *context, kywc_output *output);
-    void (*new_toplevel)(kywc_context *context, kywc_toplevel *toplevel);
-    void (*new_workspace)(kywc_context *context, kywc_workspace *workspace);
+    void (*new_output)(kywc_context *ctx, kywc_output *output, void *data);
+    void (*new_toplevel)(kywc_context *ctx, kywc_toplevel *toplevel, void *data);
+    void (*new_workspace)(kywc_context *ctx, kywc_workspace *workspace, void *data);
 };
 
 /**
  * Create a kywc context with the wayland display name.
  */
 kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
-                                  const struct kywc_context_interface *impl);
+                                  const struct kywc_context_interface *impl, void *data);
 /**
  * Create a kywc context with the exist wayland display.
  */
 kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_t capabilities,
-                                             const struct kywc_context_interface *impl);
+                                             const struct kywc_context_interface *impl, void *data);
 /**
  * Get the fd, work with kywc_context_process.
  */
@@ -52,10 +52,6 @@ int kywc_context_process(kywc_context *ctx);
 void kywc_context_dispatch(kywc_context *ctx);
 
 void kywc_context_destroy(kywc_context *ctx);
-
-void kywc_context_set_user_data(kywc_context *ctx, void *data);
-
-void *kywc_context_get_user_data(kywc_context *ctx);
 
 /**
  * workspace or virtual desktop

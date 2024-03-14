@@ -4,7 +4,7 @@
 
 #include "context.h"
 
-static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace)
+static void handle_new_workspace(kywc_context *context, kywc_workspace *workspace, void *data)
 {
     printf("new workspace: %s\n", workspace->name);
 }
@@ -19,7 +19,7 @@ Context::Context(QObject *parent)
     : QObject{parent}
 {
     uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE;
-    ctx = kywc_context_create(NULL, caps, &context_impl);
+    ctx = kywc_context_create(NULL, caps, &context_impl, this);
     if (!ctx) {
         return;
     } 

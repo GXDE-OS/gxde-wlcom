@@ -48,7 +48,7 @@ static void kywc_context_init_providers(kywc_context *ctx)
 }
 
 kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_t capabilities,
-                                             const struct kywc_context_interface *impl)
+                                             const struct kywc_context_interface *impl, void *data)
 {
     kywc_context *ctx = calloc(1, sizeof(kywc_context));
     if (!ctx) {
@@ -58,6 +58,7 @@ kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_
     ctx->display = display;
     ctx->capabilities = capabilities;
     ctx->impl = impl;
+    ctx->user_data = data;
 
     // create managers with capabilities by context providers
     kywc_context_init_providers(ctx);
@@ -72,7 +73,7 @@ kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_
 }
 
 kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
-                                  const struct kywc_context_interface *impl)
+                                  const struct kywc_context_interface *impl, void *data)
 {
     struct wl_display *display = wl_display_connect(name);
     if (!display) {
@@ -80,7 +81,7 @@ kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
         return NULL;
     }
 
-    return kywc_context_create_by_display(display, capabilities, impl);
+    return kywc_context_create_by_display(display, capabilities, impl, data);
 }
 
 int kywc_context_get_fd(kywc_context *ctx)
@@ -139,18 +140,6 @@ void kywc_context_dispatch(kywc_context *ctx)
     while (wl_display_dispatch(ctx->display) != -1) {
         // This space intentionally left blank
     }
-}
-
-void kywc_context_set_user_data(kywc_context *ctx, void *data)
-{
-    if (ctx) {
-        ctx->user_data = data;
-    }
-}
-
-void *kywc_context_get_user_data(kywc_context *ctx)
-{
-    return ctx ? ctx->user_data : NULL;
 }
 
 bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *provider, void *manager)
