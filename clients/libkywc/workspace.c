@@ -154,6 +154,22 @@ void kywc_context_for_each_workspace(kywc_context *ctx, kywc_workspace_iterator_
     }
 }
 
+kywc_workspace *kywc_context_find_workspace(kywc_context *ctx, const char *uuid)
+{
+    if (!ctx->workspace || !uuid) {
+        return NULL;
+    }
+
+    struct ky_workspace *workspace;
+    wl_list_for_each_reverse(workspace, &ctx->workspace->workspaces, link) {
+        if (strcmp(workspace->base.uuid, uuid) == 0) {
+            return &workspace->base;
+        }
+    }
+
+    return NULL;
+}
+
 void kywc_workspace_create(kywc_context *ctx, const char *name, uint32_t position)
 {
     if (ctx && ctx->workspace && ctx->workspace->create_workspace) {

@@ -316,6 +316,22 @@ void kywc_context_for_each_output(kywc_context *ctx, kywc_output_iterator_func_t
     }
 }
 
+kywc_output *kywc_context_find_output(kywc_context *ctx, const char *uuid)
+{
+    if (!ctx->output || !uuid) {
+        return NULL;
+    }
+
+    struct ky_output *output;
+    wl_list_for_each_reverse(output, &ctx->output->outputs, link) {
+        if (strcmp(output->base.uuid, uuid) == 0) {
+            return &output->base;
+        }
+    }
+
+    return NULL;
+}
+
 void kywc_output_set_user_data(kywc_output *output, void *data)
 {
     struct ky_output *ky_output = output_from_kywc_output(output);

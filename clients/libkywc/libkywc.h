@@ -87,6 +87,8 @@ typedef bool (*kywc_workspace_iterator_func_t)(kywc_workspace *workspace, void *
 void kywc_context_for_each_workspace(kywc_context *ctx, kywc_workspace_iterator_func_t iterator,
                                      void *data);
 
+kywc_workspace *kywc_context_find_workspace(kywc_context *ctx, const char *uuid);
+
 void kywc_workspace_create(kywc_context *ctx, const char *name, uint32_t position);
 
 void kywc_workspace_remove(kywc_workspace *workspace);
@@ -159,6 +161,8 @@ typedef bool (*kywc_output_iterator_func_t)(kywc_output *output, void *data);
 
 void kywc_context_for_each_output(kywc_context *ctx, kywc_output_iterator_func_t iterator,
                                   void *data);
+
+kywc_output *kywc_context_find_output(kywc_context *ctx, const char *uuid);
 
 void kywc_output_set_user_data(kywc_output *output, void *data);
 
