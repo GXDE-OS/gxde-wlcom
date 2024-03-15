@@ -51,90 +51,89 @@ struct kde_plasma_window {
     uint32_t states;
 };
 
-enum state {
-    STATE_ACTIVE = 0,
-    STATE_MINIMIZED,
-    STATE_MAXIMIZED,
-    STATE_FULLSCREEN,
-    STATE_KEEP_ABOVE,
-    STATE_KEEP_BELOW,
-    STATE_ON_ALL_DESKTOPS,
-    STATE_DEMANDS_ATTENTION,
-    STATE_CLOSEABLE,
-    STATE_MINIMIZABLE,
-    STATE_MAXIMIZABLE,
-    STATE_FULLSCREENABLE,
-    STATE_SKIPTASKBAR,
-    STATE_SHADEABLE,
-    STATE_SHADED,
-    STATE_MOVABLE,
-    STATE_RESIZABLE,
-    STATE_VIRTUAL_DESKTOP_CHANGEABLE,
-    STATE_SKIPSWITCHER,
-    STATE_LAST,
+enum state_flag {
+    STATE_FLAG_ACTIVE = 0,
+    STATE_FLAG_MINIMIZED,
+    STATE_FLAG_MAXIMIZED,
+    STATE_FLAG_FULLSCREEN,
+    STATE_FLAG_KEEP_ABOVE,
+    STATE_FLAG_KEEP_BELOW,
+    STATE_FLAG_ON_ALL_DESKTOPS,
+    STATE_FLAG_DEMANDS_ATTENTION,
+    STATE_FLAG_CLOSEABLE,
+    STATE_FLAG_MINIMIZABLE,
+    STATE_FLAG_MAXIMIZABLE,
+    STATE_FLAG_FULLSCREENABLE,
+    STATE_FLAG_SKIPTASKBAR,
+    STATE_FLAG_SHADEABLE,
+    STATE_FLAG_SHADED,
+    STATE_FLAG_MOVABLE,
+    STATE_FLAG_RESIZABLE,
+    STATE_FLAG_VIRTUAL_DESKTOP_CHANGEABLE,
+    STATE_FLAG_SKIPSWITCHER,
+    STATE_FLAG_LAST,
 };
 
-static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum state state,
-                                        bool flag)
+static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum state_flag flag,
+                                        bool state)
 {
-    switch (state) {
-    case STATE_ACTIVE:
-        assert(flag);
+    switch (flag) {
+    case STATE_FLAG_ACTIVE:
+        assert(state);
         kywc_view_activate(window->kywc_view);
         seat_focus_surface(input_manager_get_default_seat(),
                            view_from_kywc_view(window->kywc_view)->surface);
         break;
-    case STATE_MINIMIZED:
-        kywc_view_set_minimized(window->kywc_view, flag);
+    case STATE_FLAG_MINIMIZED:
+        kywc_view_set_minimized(window->kywc_view, state);
         break;
-    case STATE_MAXIMIZED:
-        kywc_view_set_maximized(window->kywc_view, flag, NULL);
+    case STATE_FLAG_MAXIMIZED:
+        kywc_view_set_maximized(window->kywc_view, state, NULL);
         break;
-    case STATE_FULLSCREEN:
-        kywc_view_set_fullscreen(window->kywc_view, flag, NULL);
+    case STATE_FLAG_FULLSCREEN:
+        kywc_view_set_fullscreen(window->kywc_view, state, NULL);
         break;
-    case STATE_KEEP_ABOVE:
-        kywc_view_set_kept_above(window->kywc_view, flag);
+    case STATE_FLAG_KEEP_ABOVE:
+        kywc_view_set_kept_above(window->kywc_view, state);
         break;
-    case STATE_KEEP_BELOW:
-        kywc_view_set_kept_below(window->kywc_view, flag);
+    case STATE_FLAG_KEEP_BELOW:
+        kywc_view_set_kept_below(window->kywc_view, state);
         break;
-    case STATE_ON_ALL_DESKTOPS:
+    case STATE_FLAG_ON_ALL_DESKTOPS:
         break;
-    case STATE_DEMANDS_ATTENTION:
+    case STATE_FLAG_DEMANDS_ATTENTION:
         break;
-    case STATE_CLOSEABLE:
-        window->kywc_view->closeable = flag;
+    case STATE_FLAG_CLOSEABLE:
+        window->kywc_view->closeable = state;
         break;
-    case STATE_MINIMIZABLE:
-        window->kywc_view->minimizable = flag;
+    case STATE_FLAG_MINIMIZABLE:
+        window->kywc_view->minimizable = state;
         break;
-    case STATE_MAXIMIZABLE:
-        window->kywc_view->maximizable = flag;
+    case STATE_FLAG_MAXIMIZABLE:
+        window->kywc_view->maximizable = state;
         break;
-    case STATE_FULLSCREENABLE:
-        window->kywc_view->fullscreenable = flag;
+    case STATE_FLAG_FULLSCREENABLE:
+        window->kywc_view->fullscreenable = state;
         break;
-    case STATE_SKIPTASKBAR:
-        window->kywc_view->skip_taskbar = flag;
+    case STATE_FLAG_SKIPTASKBAR:
+        window->kywc_view->skip_taskbar = state;
         break;
-    case STATE_SHADEABLE:
+    case STATE_FLAG_SHADEABLE:
         break;
-    case STATE_SHADED:
+    case STATE_FLAG_SHADED:
         break;
-    case STATE_MOVABLE:
-        window->kywc_view->movable = flag;
+    case STATE_FLAG_MOVABLE:
+        window->kywc_view->movable = state;
         break;
-    case STATE_RESIZABLE:
-        window->kywc_view->resizable = flag;
+    case STATE_FLAG_RESIZABLE:
+        window->kywc_view->resizable = state;
         break;
-    case STATE_VIRTUAL_DESKTOP_CHANGEABLE:
+    case STATE_FLAG_VIRTUAL_DESKTOP_CHANGEABLE:
         break;
-    case STATE_SKIPSWITCHER:
-        window->kywc_view->skip_switcher = flag;
+    case STATE_FLAG_SKIPSWITCHER:
+        window->kywc_view->skip_switcher = state;
         break;
-    case STATE_LAST:
-        assert(state == STATE_LAST);
+    case STATE_FLAG_LAST:
         break;
     }
 }
@@ -149,9 +148,9 @@ static void handle_set_state(struct wl_client *client, struct wl_resource *resou
     if (!window) {
         return;
     }
-    for (int i = 0; i < STATE_LAST; i++) {
-        if ((state >> i) & 0x1) {
-            kde_plasma_window_set_state(window, i, (flags >> i) & 0x1);
+    for (int i = 0; i < STATE_FLAG_LAST; i++) {
+        if ((flags >> i) & 0x1) {
+            kde_plasma_window_set_state(window, i, (state >> i) & 0x1);
         }
     }
     kde_plasma_window_send_state(window, NULL, false);
