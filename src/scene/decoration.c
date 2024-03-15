@@ -220,8 +220,7 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     };
 
     struct ky_mat3 projection;
-    ky_mat3_framebuffer_to_ndc(&projection, target->output->output->width,
-                               target->output->output->height);
+    ky_mat3_framebuffer_to_ndc(&projection, target->buffer->width, target->buffer->height);
     struct ky_mat3 uv2pos;
     ky_mat3_identity(&uv2pos);
     ky_mat3_scale(&uv2pos, box->width, box->height);
