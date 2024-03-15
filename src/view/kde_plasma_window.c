@@ -94,8 +94,10 @@ static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum s
         kywc_view_set_fullscreen(window->kywc_view, flag, NULL);
         break;
     case STATE_KEEP_ABOVE:
+        kywc_view_set_kept_above(window->kywc_view, flag);
         break;
     case STATE_KEEP_BELOW:
+        kywc_view_set_kept_below(window->kywc_view, flag);
         break;
     case STATE_ON_ALL_DESKTOPS:
         break;
