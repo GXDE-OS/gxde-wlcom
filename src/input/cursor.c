@@ -209,8 +209,8 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     if (old_focus && changed && !pressed && last_is_pressed) {
         kywc_log(KYWC_DEBUG, "release button %d in %p", last_button, old_focus);
         if (old_inode && old_inode->impl->click) {
-            old_inode->impl->click(seat, old_focus, last_button, false, time, CLICK_STATE_FOCUS_LOST,
-                                   old_inode->data);
+            old_inode->impl->click(seat, old_focus, last_button, false, time,
+                                   CLICK_STATE_FOCUS_LOST, old_inode->data);
         }
         /* fix cursor image sometimes */
         if (!selection_is_draging(seat)) {
@@ -294,6 +294,13 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
     struct cursor *cursor = wl_container_of(listener, cursor, axis);
     struct wlr_pointer_axis_event *event = data;
     idle_manager_notify_activity(cursor->seat);
+
+    /* workaround to fix zwcada2023 crash */
+    static uint32_t time_tmp = 0;
+    if (time_tmp == event->time_msec) {
+        wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+    }
+    time_tmp = event->time_msec;
 
     cursor_set_hidden(cursor, false);
     struct input *input = input_from_wlr_input(&event->pointer->base);
