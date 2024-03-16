@@ -149,6 +149,7 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
                              surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_WATERMARK;
     kywc_view->focusable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL ||
                            surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_DESKTOP ||
+                           surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_SYSTEMWINDOW ||
                            surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK;
     kywc_view->shadeable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
 }
