@@ -68,6 +68,11 @@ static void workspace_handle_remove(struct wl_client *client, struct wl_resource
         return;
     }
 
+    if (wl_list_length(&ky_workspace->manager->workspaces) == 1) {
+        kywc_log(KYWC_WARN, "reject to destroy the last workspace");
+        return;
+    }
+
     workspace_destroy(ky_workspace->workspace);
 }
 
