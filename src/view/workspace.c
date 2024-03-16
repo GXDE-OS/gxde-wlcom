@@ -347,6 +347,7 @@ static void fix_workspace(struct workspace *workspace)
     for (uint32_t i = workspace->position; i < workspace_manager->count - 1; i++) {
         workspace_manager->workspaces[i] = workspace_manager->workspaces[i + 1];
         workspace_manager->workspaces[i]->position = i;
+        wl_signal_emit_mutable(&workspace_manager->workspaces[i]->events.position, NULL);
         workspace_update_name(workspace_manager->workspaces[i], NULL);
     }
     workspace_manager_update_count(workspace_manager->count - 1);
