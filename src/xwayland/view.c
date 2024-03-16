@@ -400,7 +400,7 @@ static void xwayland_view_handle_set_hints(struct wl_listener *listener, void *d
     enum wlr_xwayland_icccm_input_model input_model =
         wlr_xwayland_icccm_input_model(xwayland_view->wlr_xwayland_surface);
 
-    if (input_model == WLR_ICCCM_INPUT_MODEL_NONE || input_model == WLR_ICCCM_INPUT_MODEL_GLOBAL) {
+    if (input_model == WLR_ICCCM_INPUT_MODEL_NONE) {
         xwayland_view->view.base.focusable = false;
         xwayland_view->view.base.activatable = false;
     }
