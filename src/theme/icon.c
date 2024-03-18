@@ -113,38 +113,44 @@ exit:
     icon_png->height = height;
 }
 
-static void icon_create(struct icon_theme *theme, const char *path, const char *full_name)
+struct icon *icon_create(struct icon_theme *theme, const char *path, const char *full_name)
 {
     size_t index = strlen(full_name) - 4;
     const char *suffix = full_name + index;
     if (strcasecmp(suffix, ".svg") != 0 && strcasecmp(suffix, ".png") != 0 &&
         strcasecmp(suffix, ".xpm") != 0) {
-        return;
+        return NULL;
     }
 
     FILE *fp = fopen(path, "r");
     if (!fp) {
-        return;
+        return NULL;
     }
 
     char *name = strndup(full_name, index);
     if (!name) {
         fclose(fp);
-        return;
+        return NULL;
     }
 
-    struct icon *icon = icon_theme_get_icon(theme, name, false);
+    struct icon *icon = NULL;
+    if (theme) {
+        icon = icon_theme_get_icon(theme, name, false);
+    }
+
     if (!icon) {
         icon = calloc(1, sizeof(struct icon));
         if (!icon) {
             fclose(fp);
             free(name);
-            return;
+            return NULL;
         }
         icon->name = name;
         wl_list_init(&icon->buffers);
         wl_list_init(&icon->pngs);
-        wl_list_insert(&theme->icons, &icon->link);
+        if (theme) {
+            wl_list_insert(&theme->icons, &icon->link);
+        }
     } else {
         free(name);
     }
@@ -170,6 +176,8 @@ static void icon_create(struct icon_theme *theme, const char *path, const char *
         }
     }
     fclose(fp);
+
+    return icon;
 }
 
 void icon_destroy(struct icon *icon)

@@ -93,6 +93,8 @@ struct theme_manager {
     struct icon_theme *hicolor_theme;
     /* pixmaps icons */
     struct wl_list pixmaps_icons; // struct icon
+    /* specific icons */
+    struct wl_list specific_icons; // struct icon
     /* fallback icon */
     struct icon *fallback_icon;
 
@@ -134,5 +136,7 @@ void icon_theme_destroy(struct icon_theme *theme);
 struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, bool search_parents);
 
 bool icon_need_reload(const char *path, struct icon_theme *theme, time_t threshold);
+
+struct icon *icon_create(struct icon_theme *theme, const char *path, const char *full_name);
 
 #endif /* _THEME_P_H */

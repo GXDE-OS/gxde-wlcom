@@ -413,6 +413,11 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     pixmaps_icon_destroy(&manager->pixmaps_icons);
     icon_destroy(manager->fallback_icon);
 
+    struct icon *icon, *icon_tmp;
+    wl_list_for_each_safe(icon, icon_tmp, &manager->specific_icons, link) {
+        icon_destroy(icon);
+    }
+
     free(manager->override.font_name);
     free(manager);
     manager = NULL;
@@ -458,6 +463,8 @@ struct theme_manager *theme_manager_create(struct server *server)
     /* load pixmaps path icons */
     wl_list_init(&manager->pixmaps_icons);
     icon_load_pixmaps_path(&manager->pixmaps_icons);
+
+    wl_list_init(&manager->specific_icons);
 
     manager->fallback_icon = icon_fallback_create();
     assert(manager->fallback_icon);
@@ -709,6 +716,32 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
     return buf;
 }
 
+static struct icon *get_icon_from_specific_path(const char *path)
+{
+    const char *full_name = strrchr(path, '/');
+    if (!full_name) {
+        return NULL;
+    }
+    full_name++;
+
+    size_t index = strlen(full_name) - 4;
+    struct icon *icon;
+    wl_list_for_each(icon, &manager->specific_icons, link) {
+        if (strncmp(full_name, icon->name, index) == 0) {
+            return icon;
+        }
+    }
+
+    icon = NULL;
+    icon = icon_create(NULL, path, full_name);
+    if (!icon) {
+        return NULL;
+    }
+    wl_list_insert(&manager->specific_icons, &icon->link);
+
+    return icon;
+}
+
 static struct icon *theme_icon_find(const char *app_id)
 {
     struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
@@ -727,6 +760,7 @@ static struct icon *theme_icon_find(const char *app_id)
     }
 
     if (icon_name) {
+        /* get icon from icon_name*/
         icon = icon_theme_get_icon(theme, icon_name, true);
         if (!icon && theme != manager->hicolor_theme) {
             icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
@@ -742,6 +776,7 @@ static struct icon *theme_icon_find(const char *app_id)
         }
     }
 
+    /* get icon from app_id*/
     if (!icon) {
         icon = icon_theme_get_icon(theme, app_id, true);
         if (!icon && theme != manager->hicolor_theme) {
@@ -756,6 +791,11 @@ static struct icon *theme_icon_find(const char *app_id)
                 }
             }
         }
+    }
+
+    /* if icon_name is specific path */
+    if (!icon && icon_name) {
+        icon = get_icon_from_specific_path(icon_name);
     }
 
 fallback:

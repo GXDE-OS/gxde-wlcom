@@ -195,10 +195,6 @@ char *fscan_search_keyword(FILE *fp, const char *keyword)
             p++;
         }
 
-        if (*p == '/') {
-            continue;
-        }
-
         result = malloc(strlen(p) + 1);
         if (!result) {
             free(line);
