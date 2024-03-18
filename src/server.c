@@ -204,6 +204,7 @@ bool server_init(struct server *server)
     server->event_loop = wl_display_get_event_loop(server->display);
 
     wl_signal_init(&server->events.ready);
+    wl_signal_init(&server->events.start);
     wl_signal_init(&server->events.terminate);
     wl_signal_init(&server->events.destroy);
     wl_signal_init(&server->events.suspend);
@@ -257,6 +258,9 @@ bool server_start(struct server *server)
         kywc_log(KYWC_FATAL, "unable to start the wlroots backend");
         return false;
     }
+
+    server->start = true;
+    wl_signal_emit_mutable(&server->events.start, NULL);
 
     return true;
 }
