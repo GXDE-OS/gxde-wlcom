@@ -18,7 +18,6 @@
 #include <kywc/log.h>
 
 #include "input/input.h"
-#include "input/keyboard.h"
 #include "input/seat.h"
 #include "input_p.h"
 #include "output.h"

@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 

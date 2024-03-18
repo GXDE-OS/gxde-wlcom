@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #include <kywc/log.h>
+#include <kywc/output.h>
 
 #include "config.h"
 #include "input_p.h"
-#include "output.h"
 
 static const char *service_input_path = "/com/kylin/Wlcom/Input";
 static const char *service_input_interface = "com.kylin.Wlcom.Input";

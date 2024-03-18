@@ -122,6 +122,11 @@ void seat_destroy(struct seat *seat)
 
 void seat_consider_destroy(struct seat *seat)
 {
+    if (strcmp(seat->name, "seat0") == 0) {
+        kywc_log(KYWC_WARN, "the default seat can't be destroyed");
+        return;
+    }
+
     struct input *input;
     wl_list_for_each(input, &seat->inputs, seat_link) {
         if (!input->prop.is_virtual) {
