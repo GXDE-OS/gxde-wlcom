@@ -474,7 +474,7 @@ struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, boo
 {
     struct icon *icon;
     wl_list_for_each(icon, &theme->icons, link) {
-        if (strcmp(icon->name, name) == 0) {
+        if (strcasecmp(icon->name, name) == 0) {
             return icon;
         }
     }
