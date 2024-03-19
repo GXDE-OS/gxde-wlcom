@@ -4,6 +4,7 @@ wlcom_sources += files(
   'config.c',
   'effect.c',
   'showfps.c',
+  'watermark.c',
 )
 
 wlcom_sources += files(

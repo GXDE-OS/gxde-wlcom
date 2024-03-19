@@ -332,6 +332,7 @@ bool effect_manager_create(struct server *server)
     showfps_effect_create(manager);
     ukui_screenshot_create(manager);
     blur_effect_create(manager);
+    watermark_effect_create(manager);
 
     return true;
 }
