@@ -30,6 +30,7 @@ struct output {
     /* software rendering and gamma settings for color-temp and brightness */
     uint32_t color_temp;
     uint32_t brightness;
+    bool gamma_changed;
 
     struct {
         /* emit when output geometry changed */
@@ -94,5 +95,8 @@ bool output_at_layout_edge(struct output *output, enum layout_edge edge);
 struct output *output_adjacent_output(struct output *output, enum layout_edge edge);
 
 struct kywc_output *kywc_output_at_point(double lx, double ly);
+
+struct wlr_output_state;
+bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state);
 
 #endif /* _OUTPUT_H_ */

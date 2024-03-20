@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/region.h>
 
+#include "output.h"
 #include "scene_p.h"
 
 static void scene_output_set_position(struct ky_scene_output *scene_output, int lx, int ly);
@@ -413,9 +414,9 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     bool ok = false;
     struct wlr_output_state state;
-    // TODO: an empty state, combined with commit in output
-    // if we combined with output setting, make sure the output position is applied ?
+    struct output *_output = output_from_wlr_output(output);
     wlr_output_state_init(&state);
+    output_state_attempt_gamma(_output, &state);
 
     if (!scene_output_render(scene_output, &state, &target)) {
         goto out;

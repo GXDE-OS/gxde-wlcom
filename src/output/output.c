@@ -807,6 +807,23 @@ static bool output_compare_state(struct output *output, const struct kywc_output
     return changed;
 }
 
+bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state)
+{
+    if (!output->gamma_changed) {
+        return false;
+    }
+
+    uint32_t brightness =
+        output->base.prop.brightness_support ? 100 : output->base.state.brightness;
+    uint32_t color_temp = output->base.state.color_temp;
+
+    output_set_gamma_lut(output->wlr_output, output->base.prop.gamma_size, state, color_temp,
+                         brightness);
+    output->gamma_changed = false;
+
+    return true;
+}
+
 static bool output_set_state(struct output *output, struct kywc_output_state *state)
 {
     struct wlr_output *wlr_output = output->wlr_output;
@@ -857,13 +874,12 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     /* gamma settings for brightness and color temperature */
     if (enabled && output_gamma_changed(output, state)) {
         output->color_temp = state->color_temp;
+
         if (!output->base.prop.brightness_support) {
             output->brightness = state->brightness;
         }
 
-        uint32_t brightness = output->base.prop.brightness_support ? 100 : state->brightness;
-        output_set_gamma_lut(wlr_output, output->base.prop.gamma_size, NULL, state->color_temp,
-                             brightness);
+        output->gamma_changed = true;
         wlr_output_schedule_frame(output->wlr_output);
     }
 
