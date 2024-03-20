@@ -11,7 +11,8 @@ static void print_workspace(kywc_workspace *workspace)
     printf("workspace \"%s\"\n", workspace->uuid);
     printf("  name: %s\n", workspace->name);
     printf("  position: %d\n", workspace->position);
-    printf("  activated: %s\n\n", workspace->activated ? "true" : "false");
+    printf("  activated: %s\n", workspace->activated ? "true" : "false");
+    printf("\n");
 }
 
 static void workspace_handle_state(kywc_workspace *workspace, uint32_t mask)
@@ -35,7 +36,70 @@ static void handle_new_workspace(kywc_context *context, kywc_workspace *workspac
     kywc_workspace_set_interface(workspace, &workspace_impl);
 }
 
+static void print_output(kywc_output *output)
+{
+    printf("output \"%s\"\n", output->uuid);
+    printf("  name: %s\n", output->name);
+    printf("  mode: %d x %d @ %d\n", output->mode->width, output->mode->height,
+           output->mode->refresh / 1000);
+    printf("  position: %d, %d\n", output->x, output->y);
+    printf("\n");
+}
+
+static void output_handle_state(kywc_output *output, uint32_t mask)
+{
+    print_output(output);
+}
+
+static void output_handle_destroy(kywc_output *output)
+{
+    printf("output %s is gone\n", output->name);
+}
+
+static struct kywc_output_interface output_impl = {
+    .state = output_handle_state,
+    .destroy = output_handle_destroy,
+};
+
+static void handle_new_output(kywc_context *context, kywc_output *output, void *data)
+{
+    print_output(output);
+    kywc_output_set_interface(output, &output_impl);
+}
+
+static void print_toplevel(kywc_toplevel *toplevel)
+{
+    printf("toplevel \"%s\"\n", toplevel->uuid);
+    printf("  app_id: %s\n", toplevel->app_id);
+    printf("  activated: %s\n", toplevel->activated ? "true" : "false");
+    printf("  primary output: %s\n", toplevel->primary_output);
+    printf("\n");
+}
+
+static void toplevel_handle_state(kywc_toplevel *toplevel, uint32_t mask)
+{
+    print_toplevel(toplevel);
+}
+
+static void toplevel_handle_destroy(kywc_toplevel *toplevel)
+{
+    printf("toplevel %s is gone\n", toplevel->app_id);
+}
+
+static struct kywc_toplevel_interface toplevel_impl = {
+    .state = toplevel_handle_state,
+    .destroy = toplevel_handle_destroy,
+};
+
+static void handle_new_toplevel(kywc_context *context, kywc_toplevel *toplevel, void *data)
+{
+    print_toplevel(toplevel);
+    kywc_toplevel_set_interface(toplevel, &toplevel_impl);
+}
+
 static struct kywc_context_interface context_impl = {
+    .new_output = handle_new_output,
+    .new_toplevel = handle_new_toplevel,
     .new_workspace = handle_new_workspace,
 };
 
@@ -49,6 +113,7 @@ int main(int argc, char *argv[])
     }
 
     kywc_context_dispatch(ctx);
+    // kywc_context_process(ctx);
 
     kywc_context_destroy(ctx);
 
