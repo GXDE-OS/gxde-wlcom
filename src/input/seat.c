@@ -123,7 +123,7 @@ void seat_destroy(struct seat *seat)
 void seat_consider_destroy(struct seat *seat)
 {
     if (strcmp(seat->name, "seat0") == 0) {
-        kywc_log(KYWC_WARN, "the default seat can't be destroyed");
+        kywc_log(KYWC_DEBUG, "the default seat can't be destroyed");
         return;
     }
 
