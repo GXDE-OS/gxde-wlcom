@@ -16,7 +16,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "painter.h"
-#include "scene/scene.h"
+#include "scene/box.h"
 #include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -38,14 +38,8 @@ struct item_view {
     struct ky_scene_node *icon_node;
     struct ky_scene_node *text_node;
 
-    struct ky_scene_tree *border_tree;
-    /* border */
-    struct {
-        struct ky_scene_rect *left;
-        struct ky_scene_rect *top;
-        struct ky_scene_rect *right;
-        struct ky_scene_rect *bottom;
-    } border;
+    struct ky_scene_box *border_box;
+    struct ky_scene_node *border_node;
 
     int text_width, text_height;
     float scale;
@@ -397,16 +391,9 @@ static void get_maximize_views(int *num_views)
         set_icon_buffer(item_view, switcher->icon_ratio);
         update_title_text(item_view);
         /* draw border */
-        item_view->border_tree = ky_scene_tree_create(item_view->tree);
-        item_view->border.left =
-            ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
-        item_view->border.top =
-            ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
-        item_view->border.right =
-            ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
-        item_view->border.bottom =
-            ky_scene_rect_create(item_view->border_tree, 0, 0, theme->accent_color);
-        ky_scene_node_set_enabled(&item_view->border_tree->node, false);
+        item_view->border_box = ky_scene_box_create(item_view->tree, 0, 0, theme->accent_color, 1);
+        item_view->border_node = ky_scene_node_from_box(item_view->border_box);
+        ky_scene_node_set_enabled(item_view->border_node, false);
         /* add item_views */
         ensure_thumbnails_size(*num_views + 1);
         switcher->item_views[*num_views] = item_view;
@@ -425,21 +412,8 @@ static void update_item_view(struct item_view *item_view)
     ky_scene_node_set_position(&item_view->background->node, select_width_gap + 1,
                                select_height_gap);
 
-    ky_scene_node_set_position(&item_view->border_tree->node, select_width_gap,
-                               select_height_gap - 1);
-
-    /*left*/
-    ky_scene_rect_set_size(item_view->border.left, 1, height);
-    ky_scene_node_set_position(&item_view->border.left->node, 0, 1);
-    /*top*/
-    ky_scene_rect_set_size(item_view->border.top, width + 2, 1);
-    ky_scene_node_set_position(&item_view->border.top->node, 0, 0);
-    /*right*/
-    ky_scene_rect_set_size(item_view->border.right, 1, height);
-    ky_scene_node_set_position(&item_view->border.right->node, width + 1, 1);
-    /*bottom*/
-    ky_scene_rect_set_size(item_view->border.bottom, width + 2, 1);
-    ky_scene_node_set_position(&item_view->border.bottom->node, 0, height + 1);
+    ky_scene_node_set_position(item_view->border_node, select_width_gap, select_height_gap - 1);
+    ky_scene_box_set_size(item_view->border_box, width, height);
 }
 
 static void set_select_item_view(int index, struct item_view *current, struct item_view *new)
@@ -447,11 +421,11 @@ static void set_select_item_view(int index, struct item_view *current, struct it
     float color[4] = { 0 };
     if (current) {
         ky_scene_rect_set_color(current->background, color);
-        ky_scene_node_set_enabled(&current->border_tree->node, false);
+        ky_scene_node_set_enabled(current->border_node, false);
         set_icon_buffer(current, switcher->icon_ratio);
     }
 
-    ky_scene_node_set_enabled(&new->border_tree->node, true);
+    ky_scene_node_set_enabled(new->border_node, true);
     struct theme *theme = theme_manager_get_current();
     ky_scene_rect_set_color(new->background, theme->maxswitcher.select_color);
     set_icon_buffer(new, 1);
