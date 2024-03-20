@@ -31,18 +31,13 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
 
 static int set_brightness(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
-    struct output_manager *om = userdata;
-
     char *name = NULL;
     uint32_t value = 0;
     CK(sd_bus_message_read(m, "su", &name, &value));
 
-    struct output *output;
-    wl_list_for_each(output, &om->outputs, link) {
-        if (strcmp(output->base.name, name) == 0) {
-            struct kywc_output *kywc_output = &output->base;
-            output_set_brightness(kywc_output, value);
-        }
+    struct kywc_output *kywc_output = kywc_output_by_name(name);
+    if (kywc_output) {
+        output_set_brightness(kywc_output, value);
     }
 
     return sd_bus_reply_method_return(m, NULL);
@@ -50,18 +45,13 @@ static int set_brightness(sd_bus_message *m, void *userdata, sd_bus_error *ret_e
 
 static int set_colortemp(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
-    struct output_manager *om = userdata;
-
     char *name = NULL;
     uint32_t value = 0;
     CK(sd_bus_message_read(m, "su", &name, &value));
 
-    struct output *output;
-    wl_list_for_each(output, &om->outputs, link) {
-        if (strcmp(output->base.name, name) == 0) {
-            struct kywc_output *kywc_output = &output->base;
-            output_set_gamma_colortemp(kywc_output, value);
-        }
+    struct kywc_output *kywc_output = kywc_output_by_name(name);
+    if (kywc_output) {
+        output_set_gamma_colortemp(kywc_output, value);
     }
     return sd_bus_reply_method_return(m, NULL);
 }
