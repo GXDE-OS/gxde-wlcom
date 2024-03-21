@@ -107,9 +107,6 @@ struct ky_opengl_texture {
     struct ky_opengl_renderer *renderer;
     struct wl_list link; // ky_opengl_renderer.textures
 
-    // Basically:
-    //   GL_TEXTURE_2D == mutable
-    //   GL_TEXTURE_EXTERNAL_OES == immutable
     GLenum target;
     GLuint tex;
 
@@ -117,10 +114,8 @@ struct ky_opengl_texture {
 
     bool has_alpha;
 
-    // Only affects target == GL_TEXTURE_2D
-    uint32_t drm_format; // used to interpret upload data
-    // If imported from a wlr_buffer
-    struct wlr_buffer *buffer;
+    uint32_t drm_format;       // for mutable textures only, used to interpret upload data
+    struct wlr_buffer *buffer; // for DMA-BUF and WL-BUF imports only
     struct wlr_addon buffer_addon;
 };
 
