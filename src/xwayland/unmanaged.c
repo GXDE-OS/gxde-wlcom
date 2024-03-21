@@ -451,7 +451,7 @@ void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_w
     }
 
     struct xwayland_unmanaged *unmanaged = xwayland_unmanaged_look_surface(xwayland, window_id);
-    if (!unmanaged) {
+    if (!unmanaged || !unmanaged->surface_node) {
         return;
     }
 
