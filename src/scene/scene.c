@@ -648,6 +648,19 @@ void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_regi
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
+void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4])
+{
+    /* tree is not support currently */
+    assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
+    if (memcmp(node->radius, radius, sizeof(node->radius)) == 0) {
+        return;
+    }
+
+    memcpy(node->radius, radius, sizeof(node->radius));
+    // TODO: add damage in corners
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+}
+
 void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
                                const pixman_region32_t *damage)
 {
@@ -671,6 +684,28 @@ void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_
     node->impl.push_damage(node, node, 0, &damage_region);
 
     pixman_region32_fini(&damage_region);
+}
+
+void ky_scene_corner_region(pixman_region32_t *region, int width, int height,
+                            const int radius[static 4])
+{
+    int rb = radius[KY_SCENE_ROUND_CORNER_RB];
+    int rt = radius[KY_SCENE_ROUND_CORNER_RT];
+    int lb = radius[KY_SCENE_ROUND_CORNER_LB];
+    int lt = radius[KY_SCENE_ROUND_CORNER_LT];
+
+    if (rb > 0) {
+        pixman_region32_union_rect(region, region, width - rb, height - rb, rb, rb);
+    }
+    if (rt > 0) {
+        pixman_region32_union_rect(region, region, width - rt, 0, rt, rt);
+    }
+    if (lb > 0) {
+        pixman_region32_union_rect(region, region, 0, height - lb, lb, lb);
+    }
+    if (lt > 0) {
+        pixman_region32_union_rect(region, region, 0, 0, lt, lt);
+    }
 }
 
 void ky_scene_log_region(enum kywc_log_level level, const char *desc,

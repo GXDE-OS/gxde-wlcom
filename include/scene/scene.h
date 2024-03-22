@@ -114,6 +114,13 @@ enum ky_scene_damage_type {
     KY_SCENE_DAMAGE_HARMFUL = 1 << 1,
 };
 
+enum ky_scene_round_corner {
+    KY_SCENE_ROUND_CORNER_RB, // right-bottom
+    KY_SCENE_ROUND_CORNER_RT, // right-top
+    KY_SCENE_ROUND_CORNER_LB, // left-bottom
+    KY_SCENE_ROUND_CORNER_LT, // left-top
+};
+
 struct ky_scene_node {
     struct ky_scene_tree *parent;
     struct wl_list link;
@@ -129,6 +136,8 @@ struct ky_scene_node {
 
     bool enabled, bypassed;
     int x, y;
+    /* round corner radius */
+    int radius[4];
 
     /* node damage type after last collect_damage */
     uint32_t damage_type;
@@ -291,6 +300,8 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
 void ky_scene_node_set_input_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
 void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_region32_t *region);
+
+void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 
 // TODO: is removed in wlroots
 struct wlr_presentation;
