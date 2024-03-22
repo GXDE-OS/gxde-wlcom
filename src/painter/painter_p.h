@@ -29,6 +29,10 @@ struct cairo_buffer *cairo_buffer_create(uint32_t width, uint32_t height, float 
 struct cairo_buffer *cairo_buffer_create_from_png(uint32_t width, uint32_t height,
                                                   const char *png_path);
 
+struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t height,
+                                                    uint32_t src_width, uint32_t src_height,
+                                                    unsigned char *src_data);
+
 bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box);
 
 bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,

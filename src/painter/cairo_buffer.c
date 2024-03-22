@@ -101,3 +101,30 @@ struct cairo_buffer *cairo_buffer_create_from_png(uint32_t width, uint32_t heigh
 
     return buffer;
 }
+
+struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t height,
+                                                    uint32_t src_width, uint32_t src_height,
+                                                    unsigned char *src_data)
+{
+    struct cairo_buffer *buffer = calloc(1, sizeof(struct cairo_buffer));
+    if (!buffer) {
+        return NULL;
+    }
+
+    uint32_t src_stride = src_width * sizeof(uint32_t);
+    buffer->surface = cairo_image_surface_create_for_data(src_data, CAIRO_FORMAT_ARGB32, src_width,
+                                                          src_height, src_stride);
+    if (cairo_surface_status(buffer->surface) != CAIRO_STATUS_SUCCESS) {
+        free(buffer);
+        return NULL;
+    }
+
+    wlr_buffer_init(&buffer->base, &cairo_buffer_impl, src_width, src_height);
+
+    buffer->cairo = cairo_create(buffer->surface);
+
+    buffer->width = width;
+    buffer->height = height;
+
+    return buffer;
+}
