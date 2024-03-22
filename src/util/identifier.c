@@ -127,7 +127,7 @@ const char *kywc_identifier_md5_generate(void *data, unsigned int len)
     unsigned char md5[16] = { 0 };
     EVP_Digest(data, len, md5, NULL, EVP_md5(), NULL);
 
-    char *md5_str = malloc(33);
+    char *md5_str = malloc(UUID_SIZE);
     size_t k = 0;
     for (size_t n = 0; n < 16; n++) {
         md5_str[k++] = hexchar(md5[n] >> 4);
@@ -150,4 +150,23 @@ void kywc_identifier_md5_generate_ex(void *data, unsigned int len, char *md5_str
         md5_str[k++] = hexchar(md5[n] & 0xF);
     }
     md5_str[str_size - 1] = 0;
+}
+
+const char *kywc_identifier_md5_generate_uuid(void *data, unsigned int len)
+{
+    unsigned char md5[16] = { 0 };
+    EVP_Digest(data, len, md5, NULL, EVP_md5(), NULL);
+
+    char *uuid_str = malloc(UUID_SIZE);
+    size_t k = 0;
+    for (size_t n = 0; n < 16; n++) {
+        if (n == 4 || n == 6 || n == 8 || n == 10) {
+            uuid_str[k++] = '-';
+        }
+        uuid_str[k++] = hexchar(md5[n] >> 4);
+        uuid_str[k++] = hexchar(md5[n] & 0xF);
+    }
+
+    uuid_str[k] = 0;
+    return uuid_str;
 }

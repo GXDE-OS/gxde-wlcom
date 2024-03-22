@@ -5,6 +5,7 @@
 #ifndef _OUTPUT_P_H_
 #define _OUTPUT_P_H_
 
+#include <kywc/identifier.h>
 #include <kywc/log.h>
 
 #include "output.h"
@@ -35,7 +36,7 @@ struct output_manager {
     struct wl_listener server_suspend;
     struct wl_listener server_resume;
 
-    char outputs_layout[16];
+    char outputs_layout[UUID_SIZE];
 
     bool has_layout_manager;
 };
@@ -62,8 +63,6 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
 void output_set_pending_primary(struct output *output);
 
 void output_add_common_modes(struct output *output);
-
-void output_uuid_generate(struct kywc_output *kywc_output);
 
 bool output_manager_layout_init(struct output_manager *output_manager);
 

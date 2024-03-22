@@ -51,7 +51,7 @@ struct kywc_output_prop {
 /* connector with a monitor */
 struct kywc_output {
     const char *name;
-    char uuid[16];
+    const char *uuid;
     bool destroying;
 
     struct kywc_output_prop prop;

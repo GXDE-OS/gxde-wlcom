@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <stdio.h>
 #include <stdlib.h>
 #include <xf86drm.h>
 
@@ -166,6 +167,15 @@ static void output_lock_software_cursors(struct output *output)
     drmFreeVersion(version);
 }
 
+static void output_uuid_generate(struct kywc_output *kywc_output)
+{
+    char description[128];
+    snprintf(description, sizeof(description), "%s %s%s%s (%s)", kywc_output->prop.make,
+             kywc_output->prop.model, kywc_output->prop.serial ? " " : "",
+             kywc_output->prop.serial ? kywc_output->prop.serial : "", kywc_output->name);
+    kywc_output->uuid = kywc_identifier_md5_generate_uuid((void *)description, strlen(description));
+}
+
 static struct output *output_create(const char *name, struct wlr_output *wlr_output)
 {
     struct output *output = calloc(1, sizeof(struct output));
@@ -222,6 +232,8 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
 
     output_get_state(output, &kywc_output->state);
+    output_uuid_generate(kywc_output);
+    kywc_log(KYWC_INFO, "new output %s: %s", kywc_output->name, kywc_output->uuid);
 
     /* read config and apply it */
     struct kywc_output_state pending = kywc_output->state;
@@ -235,7 +247,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 
     output->modeset = false;
     if (!kywc_output->prop.is_virtual) {
-        output_uuid_generate(kywc_output);
         if (!output_manager->has_layout_manager) {
             output_manager_add_output_pending_state(output, &pending);
         } else {
@@ -317,6 +328,7 @@ static void output_destroy(struct output *output)
         free(mode);
     }
 
+    free((void *)kywc_output->uuid);
     free(output);
 }
 

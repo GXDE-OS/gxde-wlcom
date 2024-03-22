@@ -4,8 +4,6 @@
 
 #include <stdlib.h>
 
-#include <kywc/identifier.h>
-
 #include "config.h"
 #include "output_p.h"
 
@@ -16,10 +14,9 @@ struct output_uuid {
 
 static void output_get_layout(struct output *output, const char *active_layout, char *layout)
 {
-    memcpy(layout, active_layout, 15);
-    layout[15] = ':';
-    memcpy(layout + 16, output->base.uuid, 15);
-    layout[31] = '\0';
+    strcpy(layout, active_layout);
+    layout[UUID_SIZE - 1] = ':';
+    strcpy(layout + UUID_SIZE, output->base.uuid);
 }
 
 static const char *output_manager_get_active_layout(struct output_manager *output_manager)
@@ -72,7 +69,7 @@ static bool output_read_layout_config(struct output *output, struct kywc_output_
         return false;
     }
 
-    char layout[32];
+    char layout[UUID_SIZE * 2];
     output_get_layout(output, active_layout, layout);
     json_object *config = json_object_object_get(om->layout_config->json, layout);
     if (!config) {
@@ -124,7 +121,7 @@ static void output_write_layout_config(struct output *output, const char *active
         return;
     }
 
-    char layout[32];
+    char layout[UUID_SIZE * 2];
     output_get_layout(output, active_layout, layout);
 
     json_object *config = json_object_object_get(om->layout_config->json, layout);
@@ -183,20 +180,23 @@ static void output_manager_generate_layout(struct output_manager *output_manager
     }
 
     if (actual_cnt == 1) {
-        memcpy(layout_uuid, o_uuids[0].uuid, 16);
+        strcpy(layout_uuid, o_uuids[0].uuid);
         free(o_uuids);
         return;
     }
 
     qsort(o_uuids, actual_cnt, sizeof(struct output_uuid), compare_output_uuid);
 
-    uint8_t *uuids = malloc(actual_cnt * 15);
+    uint8_t *uuids = malloc(actual_cnt * (UUID_SIZE - 1));
     for (int i = 0; i < actual_cnt; ++i) {
-        memcpy(uuids + i * 15, o_uuids[i].uuid, 15);
+        memcpy(uuids + i * (UUID_SIZE - 1), o_uuids[i].uuid, (UUID_SIZE - 1));
     }
     free(o_uuids);
 
-    kywc_identifier_md5_generate_ex(uuids, actual_cnt * 15, layout_uuid, 16);
+    const char *uuid = kywc_identifier_md5_generate_uuid(uuids, actual_cnt * (UUID_SIZE - 1));
+    strcpy(layout_uuid, uuid);
+    free((void *)uuid);
+
     free(uuids);
 }
 
@@ -239,7 +239,7 @@ static void output_manager_save_layouts(struct output_manager *manager)
         return;
     }
 
-    char active_layout[16];
+    char active_layout[UUID_SIZE];
     output_manager_generate_layout(manager, active_layout, true);
     output_manager_set_active_layout(manager, active_layout);
 
@@ -263,14 +263,6 @@ static void output_manager_save_layouts(struct output_manager *manager)
                      state->enabled ? "enabled" : "disabled", primary ? "primary" : "");
         }
     }
-}
-
-void output_uuid_generate(struct kywc_output *kywc_output)
-{
-    const char *desc = kywc_output->prop.desc;
-
-    kywc_identifier_md5_generate_ex((void *)desc, strlen(desc), kywc_output->uuid, 16);
-    kywc_log(KYWC_INFO, "new output %s: %s", kywc_output->name, kywc_output->uuid);
 }
 
 static void output_manager_handle_configured(struct wl_listener *listener, void *data)

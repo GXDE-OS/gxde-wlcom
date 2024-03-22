@@ -5,6 +5,8 @@
 #ifndef _KYWC_IDENTIFIER_H_
 #define _KYWC_IDENTIFIER_H_
 
+#define UUID_SIZE 37
+
 #ifdef __GNUC__
 #define _KYWC_ATTRIB_PRINTF(start, end) __attribute__((format(printf, start, end)))
 #else
@@ -20,6 +22,9 @@ const char *kywc_identifier_uuid_generate(void);
 
 /* return 32-byte string */
 const char *kywc_identifier_md5_generate(void *data, unsigned int len);
+
+/* return 36_byte of md5-uuid */
+const char *kywc_identifier_md5_generate_uuid(void *data, unsigned int len);
 
 /* write md5 string to md5_str in size bytes */
 void kywc_identifier_md5_generate_ex(void *data, unsigned int len, char *md5_str,
