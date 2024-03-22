@@ -300,7 +300,8 @@ static void update_title_text(struct item_view *item_view)
 static void set_icon_buffer(struct item_view *item_view, float scale)
 {
     struct kywc_view *kywc_view = item_view->kywc_view;
-    struct wlr_buffer *buf = theme_icon_load(kywc_view->app_id, item_view->scale);
+    struct view *view = view_from_kywc_view(kywc_view);
+    struct wlr_buffer *buf = view_get_icon_buffer(view, item_view->scale);
     if (!buf) {
         return;
     }

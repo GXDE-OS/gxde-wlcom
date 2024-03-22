@@ -12,6 +12,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "server.h"
+#include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
@@ -300,6 +301,18 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
         geometry->height = usable->height - kywc_view->margin.off_height;
         return;
     }
+}
+
+struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
+{
+    if (view->impl->get_icon_buffer) {
+        struct wlr_buffer *buf = view->impl->get_icon_buffer(view, scale);
+        if (buf) {
+            return buf;
+        }
+    }
+
+    return theme_icon_load(view->base.app_id, scale);
 }
 
 void view_map(struct view *view)

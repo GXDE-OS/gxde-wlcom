@@ -541,9 +541,10 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
 
 static void ssd_part_set_icon_buffer(struct ssd_part *part)
 {
-    struct kywc_view *view = part->ssd->kywc_view;
+    struct kywc_view *kywc_view = part->ssd->kywc_view;
+    struct view *view = view_from_kywc_view(kywc_view);
 
-    struct wlr_buffer *buf = theme_icon_load(view->app_id, part->scale);
+    struct wlr_buffer *buf = view_get_icon_buffer(view, part->scale);
     if (!buf) {
         return;
     }

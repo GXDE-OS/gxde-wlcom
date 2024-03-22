@@ -11,6 +11,7 @@
 #include "input/event.h"
 #include "input/seat.h"
 #include "output.h"
+#include "painter.h"
 #include "scene/surface.h"
 #include "view/action.h"
 #include "xwayland_p.h"
@@ -56,6 +57,14 @@ struct xwayland_view {
     struct wl_listener output_update_usable_area;
 
     bool keep_above, keep_below;
+    struct wl_list net_wm_icons; // from net_wm_icon
+};
+
+struct net_wm_icon {
+    struct wl_list link;
+
+    uint32_t width, height;
+    unsigned char *data;
 };
 
 static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
@@ -248,10 +257,49 @@ static void xwayland_view_configure(struct view *view)
     view_configure(&xwayland_view->view, 0);
 }
 
+static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, float scale)
+{
+    struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
+    struct draw_info info = {
+        .width = 24,
+        .height = 24,
+        .scale = scale,
+        .svg = NULL,
+        .png_path = NULL,
+    };
+
+    float scale_width = info.width * info.scale;
+    float min_abs = 256.0;
+    float tmp_abs;
+    struct net_wm_icon *icon_similar = NULL;
+    struct net_wm_icon *icon;
+    wl_list_for_each(icon, &xwayland_view->net_wm_icons, link) {
+        tmp_abs = fabs(icon->width - scale_width);
+        if (tmp_abs < min_abs) {
+            min_abs = tmp_abs;
+            icon_similar = icon;
+        }
+    }
+    if (!icon_similar) {
+        return NULL;
+    }
+
+    info.pixel.width = icon_similar->width;
+    info.pixel.height = icon_similar->height;
+    info.pixel.data = icon_similar->data;
+    struct wlr_buffer *buffer = painter_draw_buffer(&info);
+    if (!buffer) {
+        return NULL;
+    }
+
+    return buffer;
+}
+
 static const struct view_impl xwl_surface_impl = {
     .configure = xwayland_view_configure,
     .close = xwayland_view_close,
     .destroy = xwayland_view_destroy,
+    .get_icon_buffer = xwayland_view_get_wm_icon_buffer,
 };
 
 static void xwayland_view_update_geometry(struct xwayland_view *xwayland_view)
@@ -759,6 +807,13 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
     wl_list_remove(&xwayland_view->set_override_redirect.link);
     wl_list_remove(&xwayland_view->output_update_usable_area.link);
 
+    struct net_wm_icon *icon, *tmp;
+    wl_list_for_each_safe(icon, tmp, &xwayland_view->net_wm_icons, link) {
+        wl_list_remove(&icon->link);
+        free(icon->data);
+        free(icon);
+    }
+
     view_destroy(&xwayland_view->view);
 }
 
@@ -837,6 +892,8 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &xwayland_view->set_override_redirect);
 
+    wl_list_init(&xwayland_view->net_wm_icons);
+
     if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
         xwayland_view_handle_associate(&xwayland_view->associate, NULL);
         xwayland_view_handle_map(&xwayland_view->map, NULL);
@@ -853,4 +910,24 @@ struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *
         }
     }
     return NULL;
+}
+
+void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_t width,
+                                   uint32_t height, uint32_t size, uint32_t *data)
+{
+    struct xwayland_view *xwayland_view = surface->data;
+    if (!xwayland_view) {
+        return;
+    }
+
+    struct net_wm_icon *icon = calloc(1, sizeof(struct net_wm_icon));
+    if (!icon) {
+        return;
+    }
+
+    wl_list_insert(&xwayland_view->net_wm_icons, &icon->link);
+    icon->width = width;
+    icon->height = height;
+    icon->data = (unsigned char *)malloc(size);
+    memcpy(icon->data, (unsigned char *)data, size);
 }

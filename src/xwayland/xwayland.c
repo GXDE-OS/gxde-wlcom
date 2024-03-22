@@ -42,6 +42,8 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_STATE] = "_NET_WM_STATE",
     [NET_WM_STATE_ABOVE] = "_NET_WM_STATE_ABOVE",
     [NET_WM_STATE_BELOW] = "_NET_WM_STATE_BELOW",
+
+    [NET_WM_ICON] = "_NET_WM_ICON",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -296,20 +298,11 @@ static bool xwayland_filter_global(const struct security_client *client, void *d
     return xwayland_check_client(client->client);
 }
 
-/* return 0 as we only handle few things */
-static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
+static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
 {
-    if ((event->response_type & 0x7f) != XCB_PROPERTY_NOTIFY) {
-        return 0;
-    }
-
-    xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
-    if (ev->atom != xwayland->atoms[NET_WM_STATE]) {
-        return 0;
-    }
-
     xcb_get_property_cookie_t cookie =
         xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_ANY, 0, 2048);
+
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (reply == NULL) {
         kywc_log(KYWC_ERROR, "Failed to get window property");
@@ -347,6 +340,63 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
     }
 
     free(reply);
+    return 0;
+}
+
+static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
+{
+    xcb_get_property_cookie_t cookie = xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom,
+                                                        XCB_ATOM_CARDINAL, 0, 0xffffffff);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
+
+    if (!reply || reply->value_len < 3 || reply->format != 32) {
+        free(reply);
+        return 0;
+    }
+
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
+    if (!surface) {
+        free(reply);
+        return 0;
+    }
+
+    uint32_t *data = (uint32_t *)xcb_get_property_value(reply);
+    for (unsigned int i = 0, j = 0; j < reply->value_len - 2; i++) {
+        uint32_t width = data[j++];
+        uint32_t height = data[j++];
+        uint32_t size = width * height * sizeof(uint32_t);
+        if (j + width * height > reply->value_len) {
+            kywc_log(KYWC_WARN, "proposed size leads to out of bounds access(%d x %d) ", width,
+                     height);
+            break;
+        }
+        if (width > 1024 || height > 1024) {
+            kywc_log(KYWC_WARN, "found huge icon. The icon data may be ill-encoded.(%d x %d)",
+                     width, height);
+        }
+
+        xwayland_view_add_new_wm_icon(surface, width, height, size, &data[j]);
+        j += width * height;
+    }
+
+    free(reply);
+    return 1;
+}
+
+/* return 0 as we only handle few things */
+static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
+{
+    if ((event->response_type & 0x7f) != XCB_PROPERTY_NOTIFY) {
+        return 0;
+    }
+
+    xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
+    if (ev->atom == xwayland->atoms[NET_WM_STATE]) {
+        return xwayland_handle_wm_state(ev);
+    } else if (ev->atom == xwayland->atoms[NET_WM_ICON]) {
+        return xwayland_handle_wm_icon(ev);
+    }
+
     return 0;
 }
 

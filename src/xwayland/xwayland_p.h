@@ -42,6 +42,8 @@ enum atom_name {
     NET_WM_STATE_ABOVE,
     NET_WM_STATE_BELOW,
 
+    NET_WM_ICON,
+
     ATOM_LAST,
 };
 
@@ -87,6 +89,9 @@ void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool
 
 struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
                                                         xcb_window_t window_id);
+
+void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_t width,
+                                   uint32_t height, uint32_t size, uint32_t *data);
 
 void xwayland_update_seat(struct seat *seat);
 

@@ -135,6 +135,8 @@ struct view_impl {
     void (*close_popups)(struct view *view);
     void (*close)(struct view *view);
     void (*destroy)(struct view *view);
+
+    struct wlr_buffer *(*get_icon_buffer)(struct view *view, float scale);
 };
 
 struct view_manager *view_manager_create(struct server *server);
@@ -197,5 +199,7 @@ bool view_is_resizable(struct view *view);
 
 void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
                              struct kywc_output *kywc_output, enum kywc_tile tile);
+
+struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
 
 #endif /* __VIEW_H_ */

@@ -202,6 +202,7 @@ static const struct view_impl xdg_surface_impl = {
     .close_popups = xdg_view_close_popups,
     .close = xdg_view_close,
     .destroy = xdg_view_destroy,
+    .get_icon_buffer = NULL,
 };
 
 static void xdg_view_update_geometry(struct xdg_view *xdg_view)
