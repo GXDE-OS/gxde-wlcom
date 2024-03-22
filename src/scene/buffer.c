@@ -289,6 +289,7 @@ static void buffer_collect_damage(struct ky_scene_node *node, int lx, int ly, bo
         pixman_region32_init(&corner);
         ky_scene_corner_region(&corner, width, height, node->radius);
         pixman_region32_subtract(&region, &region, &corner);
+        pixman_region32_fini(&corner);
 
         pixman_region32_translate(&region, lx, ly);
         pixman_region32_union(invisible, invisible, &region);
