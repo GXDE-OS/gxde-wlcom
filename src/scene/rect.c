@@ -8,6 +8,7 @@
 
 #include <wlr/types/wlr_output.h>
 
+#include "render/pass.h"
 #include "scene_p.h"
 
 struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node)
@@ -163,7 +164,8 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&render_region, target);
 
-    wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
+    struct ky_render_rect_options options = {
+        .base = {
 			.box = dst_box,
 			.color = {
 				.r = rect->color[0],
@@ -174,7 +176,15 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
             .clip = &render_region,
             .blend_mode = rect->color[3] != 1 ? 
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
-		});
+        },
+        .radius = {
+            .rb = node->radius[0],
+            .rt = node->radius[1],
+            .lb = node->radius[2],
+            .lt = node->radius[3],
+        },
+    };
+    ky_render_pass_add_rect(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);
 }

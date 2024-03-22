@@ -18,7 +18,13 @@
 
 static const struct wlr_render_pass_impl render_pass_impl;
 
-static struct ky_opengl_render_pass *get_render_pass(struct wlr_render_pass *wlr_pass)
+bool wlr_render_pass_is_opengl(struct wlr_render_pass *render_pass)
+{
+    return render_pass->impl == &render_pass_impl;
+}
+
+struct ky_opengl_render_pass *
+ky_opengl_render_pass_from_wlr_render_pass(struct wlr_render_pass *wlr_pass)
 {
     assert(wlr_pass->impl == &render_pass_impl);
     struct ky_opengl_render_pass *pass = wl_container_of(wlr_pass, pass, base);
@@ -27,7 +33,7 @@ static struct ky_opengl_render_pass *get_render_pass(struct wlr_render_pass *wlr
 
 static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
 {
-    struct ky_opengl_render_pass *pass = get_render_pass(wlr_pass);
+    struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct ky_opengl_render_timer *timer = pass->timer;
 
@@ -151,7 +157,7 @@ static void setup_blending(enum wlr_render_blend_mode mode)
 static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
                                     const struct wlr_render_texture_options *options)
 {
-    struct ky_opengl_render_pass *pass = get_render_pass(wlr_pass);
+    struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct ky_opengl_texture *texture = ky_opengl_texture_from_wlr_texture(options->texture);
 
@@ -220,7 +226,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
                                  const struct wlr_render_rect_options *options)
 {
-    struct ky_opengl_render_pass *pass = get_render_pass(wlr_pass);
+    struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
 
     const struct wlr_render_color *color = &options->color;
@@ -244,6 +250,23 @@ static const struct wlr_render_pass_impl render_pass_impl = {
     .submit = render_pass_submit,
     .add_texture = render_pass_add_texture,
     .add_rect = render_pass_add_rect,
+};
+
+static void render_pass_add_texture_ex(struct wlr_render_pass *wlr_pass,
+                                       const struct ky_render_texture_options *options)
+{
+    wlr_render_pass_add_texture(wlr_pass, &options->base);
+}
+
+static void render_pass_add_rect_ex(struct wlr_render_pass *wlr_pass,
+                                    const struct ky_render_rect_options *options)
+{
+    wlr_render_pass_add_rect(wlr_pass, &options->base);
+}
+
+static const struct ky_render_pass_impl ky_render_pass_impl = {
+    .add_texture = render_pass_add_texture_ex,
+    .add_rect = render_pass_add_rect_ex,
 };
 
 static const char *reset_status_str(GLenum status)
@@ -280,6 +303,7 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
         return NULL;
     }
 
+    pass->impl = &ky_render_pass_impl;
     wlr_render_pass_init(&pass->base, &render_pass_impl);
     wlr_buffer_lock(wlr_buffer);
     pass->buffer = buffer;

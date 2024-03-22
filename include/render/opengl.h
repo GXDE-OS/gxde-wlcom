@@ -14,6 +14,7 @@
 #include <wlr/render/wlr_renderer.h>
 
 #include "egl.h"
+#include "pass.h"
 
 struct ky_opengl_pixel_format {
     uint32_t drm_format;
@@ -121,6 +122,7 @@ struct ky_opengl_texture {
 
 struct ky_opengl_render_pass {
     struct wlr_render_pass base;
+    const struct ky_render_pass_impl *impl;
     struct ky_opengl_buffer *buffer;
     float projection_matrix[9];
     struct ky_opengl_render_timer *timer;
@@ -152,6 +154,11 @@ void ky_opengl_push_debug_(struct ky_opengl_renderer *renderer, const char *file
 
 struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffer *buffer,
                                                           struct ky_opengl_render_timer *timer);
+
+bool wlr_render_pass_is_opengl(struct wlr_render_pass *render_pass);
+
+struct ky_opengl_render_pass *
+ky_opengl_render_pass_from_wlr_render_pass(struct wlr_render_pass *wlr_pass);
 
 struct wlr_texture *ky_opengl_texture_from_buffer(struct wlr_renderer *wlr_renderer,
                                                   struct wlr_buffer *buffer);

@@ -11,6 +11,7 @@
 #include <wlr/util/region.h>
 
 #include "render/opengl.h"
+#include "render/pass.h"
 #include "scene_p.h"
 
 struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node)
@@ -369,18 +370,25 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
     enum wl_output_transform transform = wlr_output_transform_invert(scene_buffer->transform);
     transform = wlr_output_transform_compose(transform, target->transform);
 
-    wlr_render_pass_add_texture(target->render_pass,
-                                &(struct wlr_render_texture_options){
-                                    .texture = texture,
-                                    .src_box = scene_buffer->src_box,
-                                    .dst_box = dst_box,
-                                    .transform = transform,
-                                    .alpha = &scene_buffer->opacity,
-                                    .clip = &render_region,
-                                    .blend_mode = pixman_region32_not_empty(&opaque)
-                                                      ? WLR_RENDER_BLEND_MODE_PREMULTIPLIED
-                                                      : WLR_RENDER_BLEND_MODE_NONE,
-                                });
+    struct ky_render_texture_options options = {
+        .base = {
+            .texture = texture,
+            .src_box = scene_buffer->src_box,
+            .dst_box = dst_box,
+            .transform = transform,
+            .alpha = &scene_buffer->opacity,
+            .clip = &render_region,
+            .blend_mode = pixman_region32_not_empty(&opaque) ?
+                WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
+        },
+        .radius = {
+            .rb = node->radius[0],
+            .rt = node->radius[1],
+            .lb = node->radius[2],
+            .lt = node->radius[3],
+        },
+    };
+    ky_render_pass_add_texture(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);
     pixman_region32_fini(&opaque);

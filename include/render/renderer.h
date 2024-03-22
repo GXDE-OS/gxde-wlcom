@@ -5,7 +5,6 @@
 #ifndef _RENDERER_H_
 #define _RENDERER_H_
 
-#include <stdbool.h>
 #include <wayland-server-core.h>
 
 struct wlr_backend;
