@@ -202,6 +202,10 @@ static void output_manager_generate_layout(struct output_manager *output_manager
 
 void output_manager_get_layout_configs(struct output_manager *output_manager)
 {
+    if (!output_manager->has_layout_manager) {
+        return;
+    }
+
     if (wl_list_empty(&output_manager->outputs)) {
         return;
     }

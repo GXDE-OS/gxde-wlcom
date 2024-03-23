@@ -439,6 +439,10 @@ bool output_manager_configure_outputs(void)
         goto failed;
     }
 
+    if (wl_list_empty(&output_manager->output_configs)) {
+        return false;
+    }
+
     /* 1.check configs */
     bool need_fix_primary_output = false;
     if (!output_manager->pending_primary && output_manager->primary_output &&
@@ -884,13 +888,12 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     /* fix gamma supoort by get gamma_size again */
     output->base.prop.gamma_size = wlr_output_get_gamma_size(wlr_output);
     /* gamma settings for brightness and color temperature */
+    output->color_temp = state->color_temp;
+    if (!output->base.prop.brightness_support) {
+        output->brightness = state->brightness;
+    }
+
     if (enabled && output_gamma_changed(output, state)) {
-        output->color_temp = state->color_temp;
-
-        if (!output->base.prop.brightness_support) {
-            output->brightness = state->brightness;
-        }
-
         output->gamma_changed = true;
         wlr_output_schedule_frame(output->wlr_output);
     }
