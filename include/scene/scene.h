@@ -143,6 +143,12 @@ struct ky_scene_node {
     uint32_t damage_type;
     /* enabled state after last collect_damage */
     bool last_enabled;
+
+    bool has_blur;
+    uint32_t blur_strength;
+    /* region that mark as blur area */
+    pixman_region32_t blur_region;
+
     pixman_region32_t visible_region;
     /* region that can accept input */
     pixman_region32_t input_region;
@@ -307,6 +313,10 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
 void ky_scene_node_set_input_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
 void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_region32_t *region);
+
+void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_region32_t *region);
+
+void ky_scene_node_set_blur_strength(struct ky_scene_node *node, uint32_t blur_strength);
 
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 
