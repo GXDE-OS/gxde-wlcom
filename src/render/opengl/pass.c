@@ -255,13 +255,107 @@ static const struct wlr_render_pass_impl render_pass_impl = {
 static void render_pass_add_texture_ex(struct wlr_render_pass *wlr_pass,
                                        const struct ky_render_texture_options *options)
 {
-    wlr_render_pass_add_texture(wlr_pass, &options->base);
+    struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
+    struct ky_opengl_renderer *renderer = pass->buffer->renderer;
+    struct ky_opengl_texture *texture = ky_opengl_texture_from_wlr_texture(options->base.texture);
+
+    struct ky_opengl_tex_ex_shader *shader = NULL;
+
+    switch (texture->target) {
+    case GL_TEXTURE_2D:
+        if (texture->has_alpha) {
+            shader = &renderer->shaders.tex_rgba_ex;
+        } else {
+            shader = &renderer->shaders.tex_rgbx_ex;
+        }
+        break;
+    case GL_TEXTURE_EXTERNAL_OES:
+        assert(renderer->exts.OES_egl_image_external);
+        shader = &renderer->shaders.tex_ext_ex;
+        break;
+    default:
+        abort();
+    }
+
+    struct wlr_box dst_box;
+    struct wlr_fbox src_fbox;
+    wlr_render_texture_options_get_src_box(&options->base, &src_fbox);
+    wlr_render_texture_options_get_dst_box(&options->base, &dst_box);
+    float alpha = wlr_render_texture_options_get_alpha(&options->base);
+
+    src_fbox.x /= options->base.texture->width;
+    src_fbox.y /= options->base.texture->height;
+    src_fbox.width /= options->base.texture->width;
+    src_fbox.height /= options->base.texture->height;
+
+    ky_opengl_push_debug(renderer);
+    setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
+                                                       : options->base.blend_mode);
+
+    glUseProgram(shader->program);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(texture->target, texture->tex);
+
+    switch (options->base.filter_mode) {
+    case WLR_SCALE_FILTER_BILINEAR:
+        glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        break;
+    case WLR_SCALE_FILTER_NEAREST:
+        glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        break;
+    }
+
+    glUniform1i(shader->tex, 0);
+    glUniform1f(shader->alpha, alpha);
+    set_proj_matrix(shader->proj, pass->projection_matrix, &dst_box);
+    set_tex_matrix(shader->tex_proj, options->base.transform, &src_fbox);
+
+    glUniform1f(shader->aspect,
+                options->base.texture->width / (float)options->base.texture->height);
+    float half_height = (float)options->base.texture->height * 0.5f; // shader distance scale
+    glUniform1f(shader->pixel_distance, 1.0 / half_height);
+    glUniform4f(shader->rounded_corner_radius, options->radius.rb / half_height,
+                options->radius.rt / half_height, options->radius.lb / half_height,
+                options->radius.lt / half_height);
+
+    render(&dst_box, options->base.clip, shader->pos_attrib);
+
+    glBindTexture(texture->target, 0);
+    ky_opengl_pop_debug(renderer);
 }
 
 static void render_pass_add_rect_ex(struct wlr_render_pass *wlr_pass,
                                     const struct ky_render_rect_options *options)
 {
-    wlr_render_pass_add_rect(wlr_pass, &options->base);
+    struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
+    struct ky_opengl_renderer *renderer = pass->buffer->renderer;
+
+    const struct wlr_render_color *color = &options->base.color;
+    struct wlr_box box;
+    wlr_render_rect_options_get_box(&options->base, pass->buffer->buffer, &box);
+
+    ky_opengl_push_debug(renderer);
+    setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
+
+    glUseProgram(renderer->shaders.quad_ex.program);
+
+    set_proj_matrix(renderer->shaders.quad_ex.proj, pass->projection_matrix, &box);
+    glUniform4f(renderer->shaders.quad_ex.color, color->r, color->g, color->b, color->a);
+
+    glUniform1f(renderer->shaders.quad_ex.aspect,
+                options->base.box.width / (float)options->base.box.height);
+    float half_height = (float)options->base.box.height * 0.5f; // shader distance scale
+    glUniform1f(renderer->shaders.quad_ex.pixel_distance, 1.0 / half_height);
+    glUniform4f(renderer->shaders.quad_ex.rounded_corner_radius, options->radius.rb / half_height,
+                options->radius.rt / half_height, options->radius.lb / half_height,
+                options->radius.lt / half_height);
+
+    render(&box, options->base.clip, renderer->shaders.quad_ex.pos_attrib);
+
+    ky_opengl_pop_debug(renderer);
 }
 
 static const struct ky_render_pass_impl ky_render_pass_impl = {

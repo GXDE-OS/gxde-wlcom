@@ -43,6 +43,18 @@ struct ky_opengl_tex_shader {
     GLint pos_attrib;
 };
 
+struct ky_opengl_tex_ex_shader {
+    GLuint program;
+    GLint proj;
+    GLint tex_proj;
+    GLint tex;
+    GLint alpha;
+    GLint pixel_distance;
+    GLint aspect;
+    GLint rounded_corner_radius;
+    GLint pos_attrib;
+};
+
 struct ky_opengl_renderer {
     struct wlr_renderer wlr_renderer;
     bool is_core_profile;
@@ -73,6 +85,19 @@ struct ky_opengl_renderer {
         struct ky_opengl_tex_shader tex_rgba;
         struct ky_opengl_tex_shader tex_rgbx;
         struct ky_opengl_tex_shader tex_ext;
+        // round corner clip shader
+        struct {
+            GLuint program;
+            GLint proj;
+            GLint color;
+            GLint pixel_distance;
+            GLint aspect;
+            GLint rounded_corner_radius;
+            GLint pos_attrib;
+        } quad_ex;
+        struct ky_opengl_tex_ex_shader tex_rgba_ex;
+        struct ky_opengl_tex_ex_shader tex_rgbx_ex;
+        struct ky_opengl_tex_ex_shader tex_ext_ex;
     } shaders;
 
     struct wl_list buffers;  // ky_opengl_buffer.link

@@ -4,6 +4,10 @@ shaders = [
   'tex_rgba.frag',
   'tex_rgbx.frag',
   'tex_external.frag',
+  'quad_ex.frag',
+  'tex_rgba_ex.frag',
+  'tex_rgbx_ex.frag',
+  'tex_external_ex.frag',
 ]
 
 foreach name : shaders
