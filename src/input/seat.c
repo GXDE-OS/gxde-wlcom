@@ -18,14 +18,46 @@
 #include "view/view.h"
 #include "xwayland.h"
 
+static void _seat_destroy(struct seat *seat)
+{
+    kywc_log(KYWC_DEBUG, "seat(%s) destroy", seat->name);
+    wl_signal_emit_mutable(&seat->events.destroy, NULL);
+
+    wl_list_remove(&seat->destroy.link);
+    wl_list_remove(&seat->link);
+
+    /* cancel grab when seat destroy */
+    if (seat->pointer_grab && seat->pointer_grab->interface->cancel) {
+        seat->pointer_grab->interface->cancel(seat->pointer_grab);
+    }
+    if (seat->keyboard_grab && seat->keyboard_grab->interface->cancel) {
+        seat->keyboard_grab->interface->cancel(seat->keyboard_grab);
+    }
+    if (seat->touch_grab && seat->touch_grab->interface->cancel) {
+        seat->touch_grab->interface->cancel(seat->touch_grab);
+    }
+
+    struct input *input, *tmp;
+    wl_list_for_each_safe(input, tmp, &seat->inputs, seat_link) {
+        seat_remove_input(input);
+    }
+
+    struct keyboard *keyboard, *keyboard_tmp;
+    wl_list_for_each_safe(keyboard, keyboard_tmp, &seat->keyboards, link) {
+        keyboard_destroy(keyboard);
+    }
+
+    cursor_destroy(seat->cursor);
+
+    free(seat->name);
+    free(seat);
+}
+
 static void handle_seat_destroy(struct wl_listener *listener, void *data)
 {
     struct seat *seat = wl_container_of(listener, seat, destroy);
-
-    wl_list_remove(&seat->destroy.link);
-
-    seat->wlr_seat = NULL;
-    seat_destroy(seat);
+    /* called when display destroy */
+    _seat_destroy(seat);
 }
 
 struct seat *seat_create(struct input_manager *input_manager, const char *name)
@@ -71,67 +103,25 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     return seat;
 }
 
-static void _seat_destroy(struct seat *seat)
-{
-    struct wlr_seat *wlr_seat = seat->wlr_seat;
-    /* wlr_seat is null when display_destroy */
-    if (!wlr_seat) {
-        return;
-    }
-
-    wl_list_remove(&seat->destroy.link);
-
-    struct keyboard *keyboard, *keyboard_tmp;
-    wl_list_for_each_safe(keyboard, keyboard_tmp, &seat->keyboards, link) {
-        keyboard_destroy(keyboard);
-    }
-
-    cursor_destroy(seat->cursor);
-
-    wlr_seat_destroy(wlr_seat);
-}
-
 void seat_destroy(struct seat *seat)
 {
-    kywc_log(KYWC_DEBUG, "seat(%s) destroy", seat->name);
-    wl_signal_emit_mutable(&seat->events.destroy, NULL);
-
-    wl_list_remove(&seat->link);
-
-    /* cancel grab when seat destroy */
-    if (seat->pointer_grab && seat->pointer_grab->interface->cancel) {
-        seat->pointer_grab->interface->cancel(seat->pointer_grab);
-    }
-    if (seat->keyboard_grab && seat->keyboard_grab->interface->cancel) {
-        seat->keyboard_grab->interface->cancel(seat->keyboard_grab);
-    }
-    if (seat->touch_grab && seat->touch_grab->interface->cancel) {
-        seat->touch_grab->interface->cancel(seat->touch_grab);
-    }
-
-    struct input *input, *tmp;
-    wl_list_for_each_safe(input, tmp, &seat->inputs, seat_link) {
-        seat_remove_input(input);
-    }
-
+    struct wlr_seat *wlr_seat = seat->wlr_seat;
     _seat_destroy(seat);
-
-    free(seat->name);
-    free(seat);
+    wlr_seat_destroy(wlr_seat);
 }
 
 void seat_consider_destroy(struct seat *seat)
 {
-    if (strcmp(seat->name, "seat0") == 0) {
-        kywc_log(KYWC_DEBUG, "the default seat can't be destroyed");
-        return;
-    }
-
     struct input *input;
     wl_list_for_each(input, &seat->inputs, seat_link) {
         if (!input->prop.is_virtual) {
             return;
         }
+    }
+
+    if (strcmp(seat->name, "seat0") == 0) {
+        kywc_log(KYWC_WARN, "the default seat(seat0) can't be destroyed");
+        return;
     }
 
     seat_destroy(seat);
