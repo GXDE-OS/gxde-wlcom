@@ -5,10 +5,78 @@
 #ifndef _EFFECT_H_
 #define _EFFECT_H_
 
-#include <stdbool.h>
+#include "scene/scene.h"
 
 struct server;
+struct effect_entity;
+
+struct effect_interface {
+    void (*entity_create)(struct effect_entity *entity);
+    void (*entity_destroy)(struct effect_entity *entity);
+    void (*entity_enable)(struct effect_entity *entity);
+};
+
+struct effect {
+    struct wl_list link;
+    struct wl_list entities; // effect_entity->link
+
+    const char *uuid, *name;
+    int priority;
+    bool enabled; // true default
+
+    const struct effect_interface *impl;
+
+    struct {
+        struct wl_signal enable;
+        struct wl_signal disable;
+        struct wl_signal destroy;
+    } events;
+};
+
+struct effect_slot {
+    struct wl_list link;
+    struct effect_chain *chain;
+    struct wl_listener chain_destroy;
+};
+
+struct effect_chain {
+    struct wl_list slots;
+    struct {
+        struct wl_signal destroy;
+    } events;
+};
+
+struct effect_entity {
+    struct effect_slot slot;
+
+    struct effect *effect;
+    struct wl_list effect_link;
+    struct wl_listener effect_enable;
+    struct wl_listener effect_disable;
+    struct wl_listener effect_destroy;
+
+    void *usr_data;
+};
+
+struct node_effect_chain {
+    struct effect_chain base;
+
+    struct wlr_addon addon;
+    struct ky_scene_node *node;
+    struct ky_scene_node_interface impl;
+};
 
 bool effect_manager_create(struct server *server);
+
+struct effect *effect_create(const char *name, int priority, bool enabled,
+                             const struct effect_interface *impl);
+
+void effect_destroy(struct effect *effect);
+
+void effect_set_enabled(struct effect *effect, bool enabled);
+
+struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect);
+
+void effect_entity_destroy(struct effect_entity *entity);
 
 #endif /* _EFFECT_H_ */
