@@ -79,6 +79,10 @@ struct draw_info {
     /* image: svg and png */
     const char *svg, *hover_svg;
     const char *png_path;
+    struct {
+        uint32_t width, height;
+        void *data; // pixel data  can be null
+    } pixel;
 };
 
 struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
