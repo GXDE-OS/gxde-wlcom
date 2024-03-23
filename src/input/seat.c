@@ -10,6 +10,7 @@
 #include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
+#include "input/keyboard_group.h"
 #include "input/keyboard.h"
 #include "input/seat.h"
 #include "input_p.h"
@@ -379,6 +380,7 @@ void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
         .update_state = true,
         .state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
     };
-
-    wlr_keyboard_notify_key(seat->keyboard->wlr_keyboard, &wlr_event);
+    struct wlr_keyboard *keyboard = seat->keyboard->wlr_keyboard;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard);
+    wlr_keyboard_notify_key(&group->virtual_keyboard, &wlr_event);
 }

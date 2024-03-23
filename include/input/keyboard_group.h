@@ -11,6 +11,7 @@
 
 struct keyboard_group {
     struct wlr_keyboard keyboard;
+    struct wlr_keyboard virtual_keyboard;
     struct wl_list devices; // keyboard_group_device.link
     struct wl_list keys;    // keyboard_group_key.link
 

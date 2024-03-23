@@ -8,6 +8,7 @@
 #include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
 #include <kywc/log.h>
@@ -398,6 +399,15 @@ struct keyboard *keyboard_create(struct seat *seat, struct wlr_keyboard *wlr_key
     return keyboard;
 }
 
+static void group_add_virtual_keyboard(struct keyboard_group *group)
+{
+    wlr_keyboard_init(&group->virtual_keyboard, NULL, "virtual wlr_keyboard");
+    wlr_keyboard_set_keymap(&group->virtual_keyboard, group->keyboard.keymap);
+    wlr_keyboard_set_repeat_info(&group->virtual_keyboard, group->keyboard.repeat_info.rate,
+                                 group->keyboard.repeat_info.delay);
+    keyboard_group_add_keyboard(group, &group->virtual_keyboard);
+}
+
 void keyboard_add_input(struct seat *seat, struct input *input)
 {
     struct wlr_input_device *wlr_input = input->wlr_input;
@@ -430,6 +440,8 @@ void keyboard_add_input(struct seat *seat, struct input *input)
                 wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
                 wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
                                              wlr_keyboard->repeat_info.delay);
+                /* create a virtual wlr_keyboard add to group */
+                group_add_virtual_keyboard(group);
             }
 
             keyboard_group_add_keyboard(group, wlr_keyboard);
