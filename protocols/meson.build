@@ -62,6 +62,12 @@ if have_kde_blur
   }
 endif
 
+if have_kde_keystate
+  protocols += {
+    'org-kde-kwin-keystate-manager': 'kde_keystate.xml',
+  }
+endif
+
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}

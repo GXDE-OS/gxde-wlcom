@@ -19,3 +19,9 @@ wlcom_sources += files(
   'seat.c',
   'selection.c',
 )
+
+if have_kde_keystate
+  wlcom_sources += files(
+    'kde_keystate.c',
+  )
+endif

@@ -197,4 +197,17 @@ void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t sour
 
 bool input_action_manager_create(struct input_manager *input_manager);
 
+/**
+ * keeps track of the states of capslock, numlock, scrolllock
+ */
+
+#if HAVE_KDE_KEYSTATE
+bool kde_keystate_manager_create(struct input_manager *input_manager);
+#else
+static __attribute__((unused)) inline bool kde_keystate_manager_create(struct input_manager *input_manager)
+{
+    return false;
+}
+#endif
+
 #endif /* _INPUT_P_H_ */

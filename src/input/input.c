@@ -352,6 +352,7 @@ struct input_manager *input_manager_create(struct server *server)
     tablet_manager_create(input_manager);
 
     input_action_manager_create(input_manager);
+    kde_keystate_manager_create(input_manager);
 
     idle_manager_create(server);
     idle_inhibit_manager_create(server);
