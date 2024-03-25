@@ -49,7 +49,8 @@ struct ky_toplevel {
 
     struct wl_listener output;
     struct wl_listener parent;
-    struct wl_listener workspace;
+    struct wl_listener workspace_enter;
+    struct wl_listener workspace_leave;
 };
 
 static struct ky_toplevel *toplevel_for_view(struct ky_toplevel_manager *manager,
@@ -510,14 +511,27 @@ static void handle_toplevel_parent(struct wl_listener *listener, void *data)
     toplevel_update_idle_source(toplevel);
 }
 
-static void handle_toplevel_workspace(struct wl_listener *listener, void *data)
+static void handle_toplevel_workspace_enter(struct wl_listener *listener, void *data)
 {
-    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, workspace);
-    struct view *view = view_from_kywc_view(toplevel->view);
+    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, workspace_enter);
+    struct workspace *workspace = data;
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &toplevel->resources) {
-        kywc_toplevel_v1_send_workspace_enter(resource, view->current_proxy->workspace->uuid);
+        kywc_toplevel_v1_send_workspace_enter(resource, workspace->uuid);
+    }
+
+    toplevel_update_idle_source(toplevel);
+}
+
+static void handle_toplevel_workspace_leave(struct wl_listener *listener, void *data)
+{
+    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, workspace_leave);
+    struct workspace *workspace = data;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &toplevel->resources) {
+        kywc_toplevel_v1_send_workspace_leave(resource, workspace->uuid);
     }
 
     toplevel_update_idle_source(toplevel);
@@ -545,8 +559,10 @@ static void handle_toplevel_map(struct wl_listener *listener, void *data)
     wl_signal_add(&view->events.output, &toplevel->output);
     toplevel->parent.notify = handle_toplevel_parent;
     wl_signal_add(&view->events.parent, &toplevel->parent);
-    toplevel->workspace.notify = handle_toplevel_workspace;
-    wl_signal_add(&view->events.workspace, &toplevel->workspace);
+    toplevel->workspace_enter.notify = handle_toplevel_workspace_enter;
+    wl_signal_add(&view->events.workspace_enter, &toplevel->workspace_enter);
+    toplevel->workspace_leave.notify = handle_toplevel_workspace_leave;
+    wl_signal_add(&view->events.workspace_leave, &toplevel->workspace_leave);
 
     toplevel_update_icon_name(toplevel);
 
@@ -583,7 +599,8 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&toplevel->fullscreen.link);
     wl_list_remove(&toplevel->output.link);
     wl_list_remove(&toplevel->parent.link);
-    wl_list_remove(&toplevel->workspace.link);
+    wl_list_remove(&toplevel->workspace_enter.link);
+    wl_list_remove(&toplevel->workspace_leave.link);
 
     free((void *)toplevel->icon_name);
     toplevel->icon_name = NULL;
