@@ -145,6 +145,18 @@ static void ky_workspace_manager_resource_destroy(struct wl_resource *resource)
     wl_list_remove(wl_resource_get_link(resource));
 }
 
+static struct ky_workspace *get_ky_workspace(struct ky_workspace_manager *manager,
+                                             struct workspace *workspace)
+{
+    struct ky_workspace *ky_workspace;
+    wl_list_for_each(ky_workspace, &manager->workspaces, link) {
+        if (ky_workspace->workspace == workspace) {
+            return ky_workspace;
+        }
+    }
+    return NULL;
+}
+
 static void ky_workspace_manager_bind(struct wl_client *client, void *data, uint32_t version,
                                       uint32_t id)
 {
@@ -161,13 +173,11 @@ static void ky_workspace_manager_bind(struct wl_client *client, void *data, uint
     wl_list_insert(&manager->resources, wl_resource_get_link(resource));
 
     /* send all workspaces and details */
-    struct ky_workspace *ky_workspace, *tmp;
-    wl_list_for_each_reverse_safe(ky_workspace, tmp, &manager->workspaces, link) {
-        create_workspace_resource_for_resource(ky_workspace, resource);
-    }
-    wl_list_for_each_reverse_safe(ky_workspace, tmp, &manager->workspaces, link) {
+    struct ky_workspace *ky_workspace;
+    for (uint32_t i = 0; i < workspace_manager_get_count(); i++) {
+        ky_workspace = get_ky_workspace(manager, workspace_by_position(i));
         struct wl_resource *workspace_resource =
-            wl_resource_find_for_client(&ky_workspace->resources, client);
+            create_workspace_resource_for_resource(ky_workspace, resource);
         workspace_send_details_to_workspace_resource(ky_workspace, workspace_resource);
     }
     kywc_workspace_manager_v1_send_done(resource);

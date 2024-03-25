@@ -224,6 +224,20 @@ static void kde_virtual_desktop_management_handle_resource_destroy(struct wl_res
     wl_list_remove(wl_resource_get_link(resource));
 }
 
+static struct kde_virtual_desktop *
+get_virtual_desktop_by_workspace(struct kde_virtual_desktop_management *management,
+                                 struct workspace *workspace)
+{
+    struct kde_virtual_desktop *virtual_desktop;
+    wl_list_for_each(virtual_desktop, &management->virtual_desktops, link) {
+        if (virtual_desktop->workspace == workspace) {
+            return virtual_desktop;
+        }
+    }
+
+    return NULL;
+}
+
 static void kde_virtual_desktop_management_bind(struct wl_client *client, void *data,
                                                 uint32_t version, uint32_t id)
 {
@@ -241,7 +255,8 @@ static void kde_virtual_desktop_management_bind(struct wl_client *client, void *
 
     /* send all desktops to client when bind */
     struct kde_virtual_desktop *virtual_desktop;
-    wl_list_for_each_reverse(virtual_desktop, &management->virtual_desktops, link) {
+    for (uint32_t i = 0; i < workspace_manager_get_count(); i++) {
+        virtual_desktop = get_virtual_desktop_by_workspace(management, workspace_by_position(i));
         org_kde_plasma_virtual_desktop_management_send_desktop_created(
             resource, virtual_desktop->workspace->uuid, virtual_desktop->workspace->position);
     }
