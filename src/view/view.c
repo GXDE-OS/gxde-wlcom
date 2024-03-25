@@ -177,6 +177,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_list_init(&view->view_proxies);
     wl_signal_init(&view->events.parent);
     wl_signal_init(&view->events.workspace);
+    wl_signal_init(&view->events.workspace_enter);
+    wl_signal_init(&view->events.workspace_leave);
     wl_signal_init(&view->events.output);
 
     kywc_view->role = KYWC_VIEW_ROLE_NORMAL;
@@ -381,14 +383,12 @@ void view_map(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
 
-    if (view->current_proxy) {
-        struct view_proxy *proxy;
-        wl_list_for_each(proxy, &view->view_proxies, view_link) {
-            wl_signal_emit_mutable(&proxy->workspace->events.view_enter, view);
-        }
-        if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
-            view_manager_show_desktop(false, false);
-        }
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        wl_signal_emit_mutable(&proxy->workspace->events.view_enter, view);
+    }
+    if (view->current_proxy && !kywc_view->minimized && view_manager->show_desktop_enabled) {
+        view_manager_show_desktop(false, false);
     }
 }
 
@@ -420,11 +420,9 @@ void view_unmap(struct view *view)
     input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
-    if (view->current_proxy) {
-        struct view_proxy *proxy;
-        wl_list_for_each(proxy, &view->view_proxies, view_link) {
-            wl_signal_emit_mutable(&proxy->workspace->events.view_leave, view);
-        }
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        wl_signal_emit_mutable(&proxy->workspace->events.view_leave, view);
     }
 }
 
@@ -523,6 +521,7 @@ void view_proxy_destroy(struct view_proxy *view_proxy)
     }
     if (view_proxy->view->base.mapped) {
         wl_signal_emit_mutable(&view_proxy->workspace->events.view_leave, view_proxy->view);
+        wl_signal_emit_mutable(&view_proxy->view->events.workspace_leave, view_proxy->workspace);
     }
     wl_list_remove(&view_proxy->view_link);
     wl_list_remove(&view_proxy->workspace_link);
@@ -647,6 +646,7 @@ static struct view_proxy *view_proxy_create(struct view *view, struct workspace 
     proxy->tree = ky_scene_tree_create(view_layer->tree);
     if (view->base.mapped) {
         wl_signal_emit_mutable(&workspace->events.view_enter, view);
+        wl_signal_emit_mutable(&view->events.workspace_enter, workspace);
     }
     return proxy;
 }

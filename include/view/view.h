@@ -111,6 +111,10 @@ struct view {
         struct wl_signal parent;
         /* emit if view's workspace changed */
         struct wl_signal workspace;
+        /* emit if view enter a workspace */
+        struct wl_signal workspace_enter;
+        /* emit if view leave a workspace */
+        struct wl_signal workspace_leave;
     } events;
 
     struct {
