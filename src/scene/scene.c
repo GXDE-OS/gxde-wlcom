@@ -168,12 +168,6 @@ static void tree_collect_damage(struct ky_scene_node *node, int lx, int ly, bool
                                 pixman_region32_t *invisible, pixman_region32_t *affected)
 {
     bool node_enabled = parent_enabled && node->enabled;
-    /* node is still disabled, skip it */
-    if (!node_enabled && !node->last_enabled) {
-        node->damage_type = KY_SCENE_DAMAGE_NONE;
-        return;
-    }
-
     struct ky_scene_tree *scene_tree = ky_scene_tree_from_node(node);
 
     struct ky_scene_node *child;
