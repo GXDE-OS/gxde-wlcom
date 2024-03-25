@@ -323,12 +323,12 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     workspace->layers[2].tree = ky_scene_tree_create(layers[LAYER_ABOVE].tree);
     workspace_set_enabled(workspace, false);
 
-    workspace->position = position;
     /* insert to workspace manager workspaces */
     for (uint32_t i = workspace_manager->count; i > position; i--) {
         workspace_manager->workspaces[i] = workspace_manager->workspaces[i - 1];
         workspace_manager->workspaces[i]->position = i;
     }
+    workspace->position = position;
     workspace_manager->workspaces[position] = workspace;
     workspace_manager_update_count(workspace_manager->count + 1);
 
@@ -495,6 +495,7 @@ void workspace_set_position(struct workspace *workspace, uint32_t position)
     }
 
     workspace->position = position;
+    workspace_manager->workspaces[position] = workspace;
     wl_signal_emit_mutable(&workspace->events.position, NULL);
     workspace_update_name(workspace, NULL);
 }

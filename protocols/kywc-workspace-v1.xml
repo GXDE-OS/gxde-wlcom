@@ -41,7 +41,7 @@
         There is no guarantee that the compositor will create a new workspace,
         or that the created workspace will have the provided name and position.
       </description>
-      <arg name="name" type="string" summary="the user readable name we want"/>
+      <arg name="name" type="string" summary="the user readable name we want" allow-null="true"/>
       <arg name="position" type="uint" summary="the position we want for the workspace"/>
     </request>
 
