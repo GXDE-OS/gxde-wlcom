@@ -9,6 +9,12 @@
 #include "input/gesture.h"
 #include "input/keyboard.h"
 
+enum input_lock_key {
+    INPUT_KEY_CAPSLOCK,
+    INPUT_KEY_NUMLOCK,
+    INPUT_KEY_SCROLLLOCK,
+};
+
 struct input_manager {
     struct server *server;
 

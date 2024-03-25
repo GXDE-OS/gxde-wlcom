@@ -85,8 +85,11 @@ struct seat {
     struct {
         const char *cursor_theme;
         uint32_t cursor_size;
+        uint32_t keyboard_lock_mode;
+        uint32_t keyboard_lock;
     } state;
 
+    struct wl_listener server_start;
     struct wl_listener destroy;
 };
 

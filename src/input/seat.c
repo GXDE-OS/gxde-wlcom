@@ -6,18 +6,55 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <linux/input-event-codes.h>
+
 #include <kywc/log.h>
 #include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
-#include "input/keyboard_group.h"
 #include "input/keyboard.h"
+#include "input/keyboard_group.h"
 #include "input/seat.h"
 #include "input_p.h"
 #include "server.h"
 #include "util/time.h"
 #include "view/view.h"
 #include "xwayland.h"
+
+static void handle_server_start(struct wl_listener *listener, void *data)
+{
+    struct seat *seat = wl_container_of(listener, seat, server_start);
+
+    if (seat->state.keyboard_lock & (1 << INPUT_KEY_CAPSLOCK)) {
+        seat_feed_keyboard_key(seat, KEY_CAPSLOCK, true);
+        seat_feed_keyboard_key(seat, KEY_CAPSLOCK, false);
+    }
+    if (seat->state.keyboard_lock & (1 << INPUT_KEY_NUMLOCK)) {
+        seat_feed_keyboard_key(seat, KEY_NUMLOCK, true);
+        seat_feed_keyboard_key(seat, KEY_NUMLOCK, false);
+    }
+    if (seat->state.keyboard_lock & (1 << INPUT_KEY_SCROLLLOCK)) {
+        seat_feed_keyboard_key(seat, KEY_SCROLLLOCK, true);
+        seat_feed_keyboard_key(seat, KEY_SCROLLLOCK, false);
+    }
+}
+
+static void seat_update_keyboard_lock(struct seat *seat)
+{
+    seat->state.keyboard_lock = 0;
+    struct wlr_keyboard *keyboard = seat->keyboard->wlr_keyboard;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard);
+
+    if (keyboard->modifiers.locked & WLR_MODIFIER_CAPS) {
+        seat->state.keyboard_lock |= 1 << INPUT_KEY_CAPSLOCK;
+    }
+    if (keyboard->modifiers.locked & WLR_MODIFIER_MOD2) {
+        seat->state.keyboard_lock |= 1 << INPUT_KEY_NUMLOCK;
+    }
+    if (group->scroll_lock) {
+        seat->state.keyboard_lock |= 1 << INPUT_KEY_SCROLLLOCK;
+    }
+}
 
 static void _seat_destroy(struct seat *seat)
 {
@@ -26,6 +63,10 @@ static void _seat_destroy(struct seat *seat)
 
     wl_list_remove(&seat->destroy.link);
     wl_list_remove(&seat->link);
+    wl_list_remove(&seat->server_start.link);
+
+    seat_update_keyboard_lock(seat);
+    seat_write_config(seat);
 
     /* cancel grab when seat destroy */
     if (seat->pointer_grab && seat->pointer_grab->interface->cancel) {
@@ -80,6 +121,8 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->pointer_gestures = input_manager->pointer_gestures;
     seat->manager = input_manager;
 
+    seat->server_start.notify = handle_server_start;
+    wl_signal_add(&input_manager->server->events.start, &seat->server_start);
     seat->destroy.notify = handle_seat_destroy;
     wl_signal_add(&seat->wlr_seat->events.destroy, &seat->destroy);
 

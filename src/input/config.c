@@ -1050,6 +1050,18 @@ bool seat_read_config(struct seat *seat)
     if (json_object_object_get_ex(config, "cursor_size", &data)) {
         seat->state.cursor_size = json_object_get_int(data);
     }
+    if (json_object_object_get_ex(config, "keyboard_lock_mode", &data)) {
+        seat->state.keyboard_lock_mode = json_object_get_int(data);
+    }
+    if (0 == seat->state.keyboard_lock_mode) {
+        seat->state.keyboard_lock = 0;
+    } else if (1 == seat->state.keyboard_lock_mode) {
+        seat->state.keyboard_lock = 7;
+    } else {
+        if (json_object_object_get_ex(config, "keyboard_lock", &data)) {
+            seat->state.keyboard_lock = json_object_get_int(data);
+        }
+    }
 
     return true;
 }
@@ -1078,4 +1090,8 @@ void seat_write_config(struct seat *seat)
     } else {
         json_object_object_del(config, "cursor_size");
     }
+
+    json_object_object_add(config, "keyboard_lock_mode",
+                           json_object_new_int(seat->state.keyboard_lock_mode));
+    json_object_object_add(config, "keyboard_lock", json_object_new_int(seat->state.keyboard_lock));
 }
