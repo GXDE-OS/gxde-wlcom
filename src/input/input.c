@@ -59,23 +59,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     input_manager = NULL;
 }
 
-static struct seat *input_manager_get_seat(const char *name, bool create)
-{
-    struct seat *seat = NULL;
-    wl_list_for_each(seat, &input_manager->seats, link) {
-        if (!strcmp(seat->name, name)) {
-            return seat;
-        }
-    }
-
-    if (!create) {
-        return NULL;
-    }
-
-    /* create a new seat */
-    return seat_create(input_manager, name);
-}
-
 static void input_clear_mapped_output(struct input *input)
 {
     /* current mapped output is being off or destroyed, restore it later */
@@ -356,7 +339,9 @@ struct input_manager *input_manager_create(struct server *server)
 
     idle_manager_create(server);
     idle_inhibit_manager_create(server);
-    input_manager_get_seat("seat0", true);
+
+    /* create the default seat */
+    input_manager->default_seat = seat_create(input_manager, "seat0");
 
     return input_manager;
 }
@@ -375,7 +360,11 @@ void input_set_seat(struct input *input, const char *seat)
         }
     }
 
-    input->seat = input_manager_get_seat(seat, true);
+    input->seat = seat_by_name(seat);
+    /* create a new seat */
+    if (!input->seat) {
+        input->seat = seat_create(input_manager, seat);
+    }
     seat_add_input(input->seat, input);
 }
 
@@ -506,12 +495,7 @@ struct input *input_from_wlr_input(struct wlr_input_device *wlr_input)
 
 struct seat *input_manager_get_default_seat(void)
 {
-    // TODO: return last activated seat ?
-    struct seat *seat = input_manager_get_seat("seat0", false);
-    if (!seat) {
-        seat = wl_container_of(input_manager->seats.prev, seat, link);
-    }
-    return seat;
+    return input_manager->default_seat;
 }
 
 struct output *input_current_output(struct seat *seat)

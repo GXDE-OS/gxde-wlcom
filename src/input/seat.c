@@ -163,7 +163,7 @@ void seat_consider_destroy(struct seat *seat)
         }
     }
 
-    if (strcmp(seat->name, "seat0") == 0) {
+    if (input->manager->default_seat == seat) {
         kywc_log(KYWC_WARN, "the default seat(seat0) can't be destroyed");
         return;
     }
