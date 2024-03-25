@@ -73,6 +73,12 @@ static void print_toplevel(kywc_toplevel *toplevel)
     printf("  app_id: %s\n", toplevel->app_id);
     printf("  activated: %s\n", toplevel->activated ? "true" : "false");
     printf("  primary output: %s\n", toplevel->primary_output);
+    printf("  workspace:\n");
+    for (int i = 0; i < MAX_WORKSPACES; i++) {
+        if (toplevel->workspaces[i]) {
+            printf("\t%s\n", toplevel->workspaces[i]);
+        }
+    }
     printf("\n");
 }
 

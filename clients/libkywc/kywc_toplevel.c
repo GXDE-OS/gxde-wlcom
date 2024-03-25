@@ -47,11 +47,15 @@ static void toplevel_handle_primary_output(void *data, struct kywc_toplevel_v1 *
 static void toplevel_handle_workspace_enter(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                             const char *workspace)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_enter_workspace(toplevel, workspace);
 }
 
 static void toplevel_handle_workspace_leave(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                             const char *workspace)
 {
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_leave_workspace(toplevel, workspace);
 }
 
 static void toplevel_handle_state(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,

@@ -26,6 +26,10 @@ void ky_toplevel_destroy(struct ky_toplevel *toplevel)
 
     wl_list_remove(&toplevel->link);
 
+    for (int i = 0; i < MAX_WORKSPACES; i++) {
+        free((void *)toplevel->base.workspaces[i]);
+    }
+
     free((void *)toplevel->base.uuid);
     free((void *)toplevel->base.title);
     free((void *)toplevel->base.app_id);
@@ -127,6 +131,31 @@ void ky_toplevel_update_icon(struct ky_toplevel *toplevel, const char *icon)
     free((void *)toplevel->base.icon);
     toplevel->base.icon = strdup(icon);
     toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_ICON;
+}
+
+void ky_toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace)
+{
+    for (int i = 0; i < MAX_WORKSPACES; i++) {
+        if (toplevel->base.workspaces[i] == NULL) {
+            toplevel->base.workspaces[i] = strdup(workspace);
+            break;
+        }
+    }
+
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_WORKSPACE;
+}
+
+void ky_toplevel_leave_workspace(struct ky_toplevel *toplevel, const char *workspace)
+{
+    for (int i = 0; i < MAX_WORKSPACES; i++) {
+        if (toplevel->base.workspaces[i] && strcmp(toplevel->base.workspaces[i], workspace) == 0) {
+            free((void *)toplevel->base.workspaces[i]);
+            toplevel->base.workspaces[i] = NULL;
+            break;
+        }
+    }
+
+    toplevel->pending_mask |= KYWC_TOPLEVEL_STATE_WORKSPACE;
 }
 
 struct ky_toplevel *ky_toplevel_create(struct ky_toplevel_manager *manager, const char *uuid)

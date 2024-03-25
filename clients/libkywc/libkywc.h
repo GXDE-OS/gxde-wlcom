@@ -167,13 +167,28 @@ void *kywc_output_get_user_data(kywc_output *output);
 /**
  * toplevel or window
  */
+enum kywc_toplevel_capability {
+    KYWC_TOPLEVEL_CAPABILITY_SKIP_TASKBAR = 1 << 0,
+    KYWC_TOPLEVEL_CAPABILITY_SKIP_SWITCHER = 1 << 1,
+};
+
+#define MAX_WORKSPACES 15
+
 struct _kywc_toplevel {
     const char *uuid;
+
     const char *title, *app_id;
     const char *icon;
-    uint32_t capabilities;
+
+    /* parent toplevel, NULL if has no parent */
     kywc_toplevel *parent;
+    /* output the toplevel most on */
     const char *primary_output;
+
+    /* workspaces the toplevel on, simply use array here */
+    const char *workspaces[MAX_WORKSPACES];
+
+    uint32_t capabilities;
     /* state */
     bool activated, minimized, maximized, fullscreen;
 };
