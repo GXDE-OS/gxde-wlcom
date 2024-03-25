@@ -235,7 +235,7 @@ struct ky_scene_buffer {
     ky_scene_buffer_point_accepts_input_func_t point_accepts_input;
 
     struct {
-        struct wl_signal outputs_update; // wl_array: struct ky_scene_output*
+        struct wl_signal outputs_update; // ky_scene_outputs_update_event
         struct wl_signal output_enter;   // struct ky_scene_output
         struct wl_signal output_leave;   // struct ky_scene_output
         struct wl_signal output_sample;  // ky_scene_output_sample_event
