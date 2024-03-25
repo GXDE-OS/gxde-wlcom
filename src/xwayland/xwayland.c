@@ -184,10 +184,6 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
 
 static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
 {
-    if (notify->shape_kind != XCB_SHAPE_SK_BOUNDING) {
-        return;
-    }
-
     xcb_shape_get_rectangles_reply_t *reply = xcb_shape_get_rectangles_reply(
         xwayland->xcb_conn,
         xcb_shape_get_rectangles_unchecked(xwayland->xcb_conn, notify->affected_window,
@@ -199,7 +195,8 @@ static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
 
     const xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
     const int count = xcb_shape_get_rectangles_rectangles_length(reply);
-    xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, rects, count);
+    xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
+                                        rects, count);
     free(reply);
 }
 

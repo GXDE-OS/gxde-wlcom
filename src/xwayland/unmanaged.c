@@ -443,7 +443,8 @@ static struct xwayland_unmanaged *xwayland_unmanaged_look_surface(struct xwaylan
 }
 
 void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
-                                         const xcb_rectangle_t *rects, int count)
+                                         xcb_shape_sk_t kind, const xcb_rectangle_t *rects,
+                                         int count)
 {
     if (!rects || count == 0) {
         return;
@@ -454,13 +455,19 @@ void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_w
         return;
     }
 
-    pixman_region32_t input_region;
-    pixman_region32_init(&input_region);
+    pixman_region32_t region;
+    pixman_region32_init(&region);
     for (int i = 0; i < count; i++) {
-        pixman_region32_union_rect(&input_region, &input_region, xwayland_unscale(rects[i].x),
+        pixman_region32_union_rect(&region, &region, xwayland_unscale(rects[i].x),
                                    xwayland_unscale(rects[i].y), xwayland_unscale(rects[i].width),
                                    xwayland_unscale(rects[i].height));
     }
-    ky_scene_node_set_input_region(unmanaged->surface_node, &input_region);
-    pixman_region32_fini(&input_region);
+
+    if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_CLIP) {
+        ky_scene_node_set_clip_region(unmanaged->surface_node, &region);
+    }
+    if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_INPUT) {
+        ky_scene_node_set_input_region(unmanaged->surface_node, &region);
+    }
+    pixman_region32_fini(&region);
 }
