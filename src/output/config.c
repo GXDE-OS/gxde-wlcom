@@ -116,6 +116,9 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
     if (json_object_object_get_ex(config, "color_temp", &data)) {
         state->color_temp = json_object_get_int(data);
     }
+    if (json_object_object_get_ex(config, "primary", &data)) {
+        state->primary = json_object_get_boolean(data);
+    }
 
     return true;
 }
@@ -145,4 +148,5 @@ void output_write_config(struct output *output)
     json_object_object_add(config, "ly", json_object_new_int(state->ly));
     json_object_object_add(config, "brightness", json_object_new_int(state->brightness));
     json_object_object_add(config, "color_temp", json_object_new_int(state->color_temp));
+    json_object_object_add(config, "primary", json_object_new_boolean(state->primary));
 }

@@ -431,6 +431,18 @@ static struct output_pending_config *get_output_pending_config(struct output *ou
     return NULL;
 }
 
+static void output_manager_update_primary_state(void)
+{
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        struct kywc_output_state *state = &kywc_output->state;
+        bool primary = kywc_output_get_primary() == kywc_output;
+        state->primary = primary;
+        output_write_config(output);
+    }
+}
+
 bool output_manager_configure_outputs(void)
 {
     bool ret = false;
@@ -672,6 +684,7 @@ void kywc_output_set_primary(struct kywc_output *kywc_output)
     kywc_log(KYWC_INFO, "primary output is changed to %s",
              kywc_output ? kywc_output->name : "none");
     output_manager->primary_output = kywc_output;
+    output_manager_update_primary_state();
     wl_signal_emit_mutable(&output_manager->events.primary_output, kywc_output);
 }
 

@@ -29,6 +29,8 @@ struct kywc_output_state {
     int32_t lx, ly;
     uint32_t brightness;
     uint32_t color_temp;
+
+    bool primary;
 };
 
 struct kywc_output_mode {
