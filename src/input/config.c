@@ -740,10 +740,23 @@ static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_lock_keys_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *seat_name;
+    uint32_t mode;
+    CK(sd_bus_message_read(m, "su", &seat_name, &mode));
+
+    struct seat *seat = seat_by_name(seat_name);
+    seat->state.keyboard_lock_mode = mode;
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_seat_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllSeats", "", "a(ss)", list_seats, 0),
     SD_BUS_METHOD("SetCursor", "ssu", "", set_cursor, 0),
+    SD_BUS_METHOD("SetLockKeysMode", "su", "", set_lock_keys_mode, 0),
     SD_BUS_VTABLE_END,
 };
 
