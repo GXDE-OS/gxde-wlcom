@@ -37,23 +37,6 @@ static void handle_server_start(struct wl_listener *listener, void *data)
     }
 }
 
-static void seat_update_keyboard_lock(struct seat *seat)
-{
-    seat->state.keyboard_lock = 0;
-    struct wlr_keyboard *keyboard = seat->keyboard->wlr_keyboard;
-    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard);
-
-    if (keyboard->modifiers.locked & WLR_MODIFIER_CAPS) {
-        seat->state.keyboard_lock |= 1 << INPUT_KEY_CAPSLOCK;
-    }
-    if (keyboard->modifiers.locked & WLR_MODIFIER_MOD2) {
-        seat->state.keyboard_lock |= 1 << INPUT_KEY_NUMLOCK;
-    }
-    if (group->scroll_lock) {
-        seat->state.keyboard_lock |= 1 << INPUT_KEY_SCROLLLOCK;
-    }
-}
-
 static void _seat_destroy(struct seat *seat)
 {
     kywc_log(KYWC_DEBUG, "seat(%s) destroy", seat->name);
@@ -63,7 +46,7 @@ static void _seat_destroy(struct seat *seat)
     wl_list_remove(&seat->link);
     wl_list_remove(&seat->server_start.link);
 
-    seat_update_keyboard_lock(seat);
+    seat->state.keyboard_lock = keyboard_get_locks(seat->keyboard);
     seat_write_config(seat);
 
     /* cancel grab when seat destroy */

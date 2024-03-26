@@ -210,7 +210,8 @@ bool kde_keystate_manager_create(struct input_manager *input_manager)
     }
 
     keystate_manager->display_destroy.notify = handle_display_destory;
-    wl_display_add_destroy_listener(input_manager->server->display, &keystate_manager->display_destroy);
+    wl_display_add_destroy_listener(input_manager->server->display,
+                                    &keystate_manager->display_destroy);
     keystate_manager->server_destroy.notify = handle_server_destory;
     server_add_destroy_listener(input_manager->server, &keystate_manager->server_destroy);
 

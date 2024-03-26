@@ -206,7 +206,8 @@ bool input_action_manager_create(struct input_manager *input_manager);
 #if HAVE_KDE_KEYSTATE
 bool kde_keystate_manager_create(struct input_manager *input_manager);
 #else
-static __attribute__((unused)) inline bool kde_keystate_manager_create(struct input_manager *input_manager)
+static __attribute__((unused)) inline bool
+kde_keystate_manager_create(struct input_manager *input_manager)
 {
     return false;
 }

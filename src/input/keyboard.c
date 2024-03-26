@@ -530,6 +530,27 @@ void keyboard_send_key(struct keyboard *keyboard, uint32_t key, bool pressed)
     wlr_keyboard_notify_key(wlr_keyboard, &wlr_event);
 }
 
+uint32_t keyboard_get_locks(struct keyboard *keyboard)
+{
+    struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(wlr_keyboard);
+    if (!group) {
+        return 0;
+    }
+
+    uint32_t locks = 0;
+    if (wlr_keyboard->modifiers.locked & WLR_MODIFIER_CAPS) {
+        locks |= 1 << INPUT_KEY_CAPSLOCK;
+    }
+    if (wlr_keyboard->modifiers.locked & WLR_MODIFIER_MOD2) {
+        locks |= 1 << INPUT_KEY_NUMLOCK;
+    }
+    if (group->scroll_lock) {
+        locks |= 1 << INPUT_KEY_SCROLLLOCK;
+    }
+    return locks;
+}
+
 bool keyboard_has_no_input(struct keyboard *keyboard)
 {
     if (keyboard->is_virtual) {

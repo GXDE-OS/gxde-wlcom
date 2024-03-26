@@ -748,6 +748,7 @@ static int set_lock_keys_mode(sd_bus_message *m, void *userdata, sd_bus_error *r
 
     struct seat *seat = seat_by_name(seat_name);
     seat->state.keyboard_lock_mode = mode;
+    seat_write_config(seat);
 
     return sd_bus_reply_method_return(m, NULL);
 }
@@ -1066,9 +1067,9 @@ bool seat_read_config(struct seat *seat)
     if (json_object_object_get_ex(config, "keyboard_lock_mode", &data)) {
         seat->state.keyboard_lock_mode = json_object_get_int(data);
     }
-    if (0 == seat->state.keyboard_lock_mode) {
+    if (seat->state.keyboard_lock_mode == 0) {
         seat->state.keyboard_lock = 0;
-    } else if (1 == seat->state.keyboard_lock_mode) {
+    } else if (seat->state.keyboard_lock_mode == 1) {
         seat->state.keyboard_lock = 7;
     } else {
         if (json_object_object_get_ex(config, "keyboard_lock", &data)) {
