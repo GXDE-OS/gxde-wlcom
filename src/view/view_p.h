@@ -30,7 +30,14 @@ struct view_manager {
         struct wl_listener unmap;
     } activated;
 
+    struct config *config;
+
+    struct {
+        uint32_t num_workspaces;
+    } state;
+
     struct wl_listener new_xdg_surface;
+    struct wl_listener server_terminate;
     struct wl_listener server_destroy;
 
     bool show_desktop_enabled;
@@ -41,6 +48,12 @@ struct view_show_window_menu_event {
     struct seat *seat;
     int x, y;
 };
+
+bool view_manager_config_init(struct view_manager *view_manager);
+
+bool view_read_config(struct view_manager *view_manager);
+
+void view_write_config(struct view_manager *view_manager);
 
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y);
 

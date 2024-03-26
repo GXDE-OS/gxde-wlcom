@@ -1,6 +1,7 @@
 wlcom_sources += files(
   'action.c',
   'decoration.c',
+  'config.c',
   'interactive.c',
   'positioner.c',
   'shadow.c',

@@ -1304,6 +1304,12 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     view_manager = NULL;
 }
 
+static void handle_server_terminate(struct wl_listener *listener, void *data)
+{
+    view_manager->state.num_workspaces = workspace_manager_get_count();
+    view_write_config(view_manager);
+}
+
 struct view_manager *view_manager_create(struct server *server)
 {
     view_manager = calloc(1, sizeof(struct view_manager));
@@ -1316,6 +1322,8 @@ struct view_manager *view_manager_create(struct server *server)
     wl_signal_init(&view_manager->events.window_menu);
     wl_signal_init(&view_manager->events.show_desktop);
 
+    view_manager->server_terminate.notify = handle_server_terminate;
+    wl_signal_add(&server->events.terminate, &view_manager->server_terminate);
     view_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &view_manager->server_destroy);
 
@@ -1327,6 +1335,11 @@ struct view_manager *view_manager_create(struct server *server)
         view_manager->layers[layer].layer = layer;
         view_manager->layers[layer].tree = ky_scene_tree_create(&server->scene->tree);
     }
+
+    view_manager_config_init(view_manager);
+
+    view_manager->state.num_workspaces = 1;
+    view_read_config(view_manager);
 
     workspace_manager_create(view_manager);
     decoration_manager_create(view_manager);
