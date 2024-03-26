@@ -82,6 +82,7 @@ static void _seat_destroy(struct seat *seat)
 
     cursor_destroy(seat->cursor);
 
+    free((void *)seat->state.cursor_theme);
     free(seat->name);
     free(seat);
 }

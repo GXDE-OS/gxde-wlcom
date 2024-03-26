@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <kywc/log.h>
 #include <kywc/output.h>
 
@@ -1059,7 +1060,7 @@ bool seat_read_config(struct seat *seat)
 
     json_object *data;
     if (json_object_object_get_ex(config, "cursor_theme", &data)) {
-        seat->state.cursor_theme = json_object_get_string(data);
+        seat->state.cursor_theme = strdup(json_object_get_string(data));
     }
     if (json_object_object_get_ex(config, "cursor_size", &data)) {
         seat->state.cursor_size = json_object_get_int(data);

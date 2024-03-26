@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 
 #include <linux/input-event-codes.h>
@@ -667,7 +668,8 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     cursor_rebase(cursor);
 
     if (saved) {
-        cursor->seat->state.cursor_theme = cursor->xcursor_manager->name;
+        free((void *)cursor->seat->state.cursor_theme);
+        cursor->seat->state.cursor_theme = strdup(cursor->xcursor_manager->name);
         cursor->seat->state.cursor_size = cursor->xcursor_manager->size;
     }
 }
