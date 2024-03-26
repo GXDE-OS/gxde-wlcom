@@ -9,11 +9,9 @@
 #include <linux/input-event-codes.h>
 
 #include <kywc/log.h>
-#include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "input/keyboard.h"
-#include "input/keyboard_group.h"
 #include "input/seat.h"
 #include "input_p.h"
 #include "server.h"
@@ -417,13 +415,17 @@ void seat_feed_pointer_axis(struct seat *seat, uint32_t axis, double step)
 
 void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed)
 {
-    struct wlr_keyboard_key_event wlr_event = {
-        .time_msec = current_time_msec(),
-        .keycode = key,
-        .update_state = true,
-        .state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
-    };
-    struct wlr_keyboard *keyboard = seat->keyboard->wlr_keyboard;
-    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(keyboard);
-    wlr_keyboard_notify_key(&group->virtual_keyboard, &wlr_event);
+    /* pick a keyboard to send key event */
+    struct keyboard *keyboard = seat->keyboard;
+    /* trying to find a keyboard that has input device */
+    if (keyboard_has_no_input(keyboard)) {
+        struct keyboard *kb;
+        wl_list_for_each(kb, &seat->keyboards, link) {
+            if (keyboard_has_no_input(kb)) {
+                continue;
+            }
+            keyboard = kb;
+        }
+    }
+    keyboard_send_key(keyboard, key, pressed);
 }

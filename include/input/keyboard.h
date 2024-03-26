@@ -47,4 +47,8 @@ uint32_t keyboard_get_modifier_mask_by_name(const char *name);
 
 const char *keyboard_get_modifier_name_by_mask(uint32_t modifier);
 
+void keyboard_send_key(struct keyboard *keyboard, uint32_t key, bool pressed);
+
+bool keyboard_has_no_input(struct keyboard *keyboard);
+
 #endif /* _KEYBOARD_H_ */

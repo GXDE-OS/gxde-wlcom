@@ -11,7 +11,6 @@
 
 struct keyboard_group {
     struct wlr_keyboard keyboard;
-    struct wlr_keyboard virtual_keyboard;
     struct wl_list devices; // keyboard_group_device.link
     struct wl_list keys;    // keyboard_group_key.link
 
@@ -30,5 +29,7 @@ bool keyboard_group_add_keyboard(struct keyboard_group *group, struct wlr_keyboa
 void keyboard_group_remove_keyboard(struct keyboard_group *group, struct wlr_keyboard *keyboard);
 
 void keyboard_group_destroy(struct keyboard_group *group);
+
+struct wlr_keyboard *keyboard_group_pick_keyboard(struct keyboard_group *group);
 
 #endif

@@ -289,3 +289,13 @@ void keyboard_group_destroy(struct keyboard_group *group)
     wlr_keyboard_finish(&group->keyboard);
     free(group);
 }
+
+struct wlr_keyboard *keyboard_group_pick_keyboard(struct keyboard_group *group)
+{
+    if (wl_list_empty(&group->devices)) {
+        return &group->keyboard;
+    }
+
+    struct keyboard_group_device *device = wl_container_of(group->devices.next, device, link);
+    return device->keyboard;
+}

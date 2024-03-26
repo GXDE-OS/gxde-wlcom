@@ -399,15 +399,6 @@ struct keyboard *keyboard_create(struct seat *seat, struct wlr_keyboard *wlr_key
     return keyboard;
 }
 
-static void group_add_virtual_keyboard(struct keyboard_group *group)
-{
-    wlr_keyboard_init(&group->virtual_keyboard, NULL, "virtual wlr_keyboard");
-    wlr_keyboard_set_keymap(&group->virtual_keyboard, group->keyboard.keymap);
-    wlr_keyboard_set_repeat_info(&group->virtual_keyboard, group->keyboard.repeat_info.rate,
-                                 group->keyboard.repeat_info.delay);
-    keyboard_group_add_keyboard(group, &group->virtual_keyboard);
-}
-
 void keyboard_add_input(struct seat *seat, struct input *input)
 {
     struct wlr_input_device *wlr_input = input->wlr_input;
@@ -440,8 +431,6 @@ void keyboard_add_input(struct seat *seat, struct input *input)
                 wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
                 wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
                                              wlr_keyboard->repeat_info.delay);
-                /* create a virtual wlr_keyboard add to group */
-                group_add_virtual_keyboard(group);
             }
 
             keyboard_group_add_keyboard(group, wlr_keyboard);
@@ -520,4 +509,34 @@ void keyboard_remove_input(struct input *input)
             keyboard_destroy(keyboard);
         }
     }
+}
+
+void keyboard_send_key(struct keyboard *keyboard, uint32_t key, bool pressed)
+{
+    struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(wlr_keyboard);
+    if (!group) {
+        return;
+    }
+
+    struct wlr_keyboard_key_event wlr_event = {
+        .time_msec = current_time_msec(),
+        .keycode = key,
+        .update_state = true,
+        .state = pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED,
+    };
+
+    wlr_keyboard = keyboard_group_pick_keyboard(group);
+    wlr_keyboard_notify_key(wlr_keyboard, &wlr_event);
+}
+
+bool keyboard_has_no_input(struct keyboard *keyboard)
+{
+    if (keyboard->is_virtual) {
+        return true;
+    }
+
+    struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
+    struct keyboard_group *group = keyboard_group_from_wlr_keyboard(wlr_keyboard);
+    return wl_list_empty(&group->devices);
 }

@@ -9,7 +9,6 @@
 #include <linux/input-event-codes.h>
 #include <wlr/interfaces/wlr_keyboard.h>
 
-#include "input/keyboard_group.h"
 #include "input/seat.h"
 #include "input_p.h"
 #include "kde_keystate-protocol.h"
