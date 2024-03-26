@@ -172,6 +172,7 @@
         Requests that the toplevel be maximized. If the maximized state actually
         changes, this will be indicated by the state event.
       </description>
+      <arg name="output" type="string" summary="the output unique id" allow-null="true"/>
     </request>
 
     <request name="unset_maximized">
@@ -238,14 +239,14 @@
         Make the toplevel enter a workspace. A toplevel can enter more
         than one workspace. if the id is empty or invalid, no action will be performed.
       </description>
-      <arg name="id" type="string" summary="desktop id"/>
+      <arg name="id" type="string" summary="the workspace unique id"/>
     </request>
 
     <request name="leave_workspace">
       <description summary="remove a toplevel from a workspace">
         Make the toplevel exit a workspace.
       </description>
-      <arg name="id" type="string" summary="desktop id"/>
+      <arg name="id" type="string" summary="the workspace unique id"/>
     </request>
 
     <request name="send_to_output">

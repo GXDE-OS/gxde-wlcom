@@ -252,6 +252,94 @@ void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_fu
     }
 }
 
+void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->set_maximized) {
+        ky_toplevel->set_maximized(ky_toplevel, output);
+    }
+}
+
+void kywc_toplevel_unset_maximized(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->unset_maximized) {
+        ky_toplevel->unset_maximized(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_set_minimized(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->set_minimized) {
+        ky_toplevel->set_minimized(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_unset_minimized(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->unset_minimized) {
+        ky_toplevel->unset_minimized(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_set_fullscreen(kywc_toplevel *toplevel, const char *output)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->set_fullscreen) {
+        ky_toplevel->set_fullscreen(ky_toplevel, output);
+    }
+}
+
+void kywc_toplevel_unset_fullscreen(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->unset_fullscreen) {
+        ky_toplevel->unset_fullscreen(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_activate(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->activate) {
+        ky_toplevel->activate(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_close(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->close) {
+        ky_toplevel->close(ky_toplevel);
+    }
+}
+
+void kywc_toplevel_enter_workspace(kywc_toplevel *toplevel, const char *workspace)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->enter_workspace) {
+        ky_toplevel->enter_workspace(ky_toplevel, workspace);
+    }
+}
+
+void kywc_toplevel_leave_workspace(kywc_toplevel *toplevel, const char *workspace)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->leave_workspace) {
+        ky_toplevel->leave_workspace(ky_toplevel, workspace);
+    }
+}
+
+void kywc_toplevel_send_to_output(kywc_toplevel *toplevel, const char *output)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->send_to_output) {
+        ky_toplevel->send_to_output(ky_toplevel, output);
+    }
+}
+
 void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data)
 {
     struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);

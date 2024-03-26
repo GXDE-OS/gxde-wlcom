@@ -110,6 +110,72 @@ static void toplevel_destroy(struct ky_toplevel *toplevel)
     kywc_toplevel_v1_destroy(kywc_toplevel_v1);
 }
 
+static void toplevel_set_maximized(struct ky_toplevel *toplevel, const char *output)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_set_maximized(kywc_toplevel_v1, output);
+}
+
+static void toplevel_unset_maximized(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_unset_maximized(kywc_toplevel_v1);
+}
+
+static void toplevel_set_minimized(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_set_minimized(kywc_toplevel_v1);
+}
+
+static void toplevel_unset_minimized(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_unset_minimized(kywc_toplevel_v1);
+}
+
+static void toplevel_set_fullscreen(struct ky_toplevel *toplevel, const char *output)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_set_fullscreen(kywc_toplevel_v1, output);
+}
+
+static void toplevel_unset_fullscreen(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_unset_fullscreen(kywc_toplevel_v1);
+}
+
+static void toplevel_activate(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_activate(kywc_toplevel_v1);
+}
+
+static void toplevel_close(struct ky_toplevel *toplevel)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_close(kywc_toplevel_v1);
+}
+
+static void toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_enter_workspace(kywc_toplevel_v1, workspace);
+}
+
+static void toplevel_leave_workspace(struct ky_toplevel *toplevel, const char *workspace)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_leave_workspace(kywc_toplevel_v1, workspace);
+}
+
+static void toplevel_send_to_output(struct ky_toplevel *toplevel, const char *output)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_send_to_output(kywc_toplevel_v1, output);
+}
+
 static void manager_handle_toplevel(void *data,
                                     struct kywc_toplevel_manager_v1 *kywc_toplevel_manager_v1,
                                     struct kywc_toplevel_v1 *kywc_toplevel_v1, const char *uuid)
@@ -120,6 +186,17 @@ static void manager_handle_toplevel(void *data,
         return;
     }
 
+    toplevel->set_maximized = toplevel_set_maximized;
+    toplevel->unset_maximized = toplevel_unset_maximized;
+    toplevel->set_minimized = toplevel_set_minimized;
+    toplevel->unset_minimized = toplevel_unset_minimized;
+    toplevel->set_fullscreen = toplevel_set_fullscreen;
+    toplevel->unset_fullscreen = toplevel_unset_fullscreen;
+    toplevel->activate = toplevel_activate;
+    toplevel->close = toplevel_close;
+    toplevel->enter_workspace = toplevel_enter_workspace;
+    toplevel->leave_workspace = toplevel_leave_workspace;
+    toplevel->send_to_output = toplevel_send_to_output;
     toplevel->destroy = toplevel_destroy;
 
     toplevel->data = kywc_toplevel_v1;

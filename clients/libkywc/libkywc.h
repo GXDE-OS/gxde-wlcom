@@ -219,6 +219,28 @@ typedef bool (*kywc_toplevel_iterator_func_t)(kywc_toplevel *toplevel, void *dat
 void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_func_t iterator,
                                     void *data);
 
+void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output);
+
+void kywc_toplevel_unset_maximized(kywc_toplevel *toplevel);
+
+void kywc_toplevel_set_minimized(kywc_toplevel *toplevel);
+
+void kywc_toplevel_unset_minimized(kywc_toplevel *toplevel);
+
+void kywc_toplevel_set_fullscreen(kywc_toplevel *toplevel, const char *output);
+
+void kywc_toplevel_unset_fullscreen(kywc_toplevel *toplevel);
+
+void kywc_toplevel_activate(kywc_toplevel *toplevel);
+
+void kywc_toplevel_close(kywc_toplevel *toplevel);
+
+void kywc_toplevel_enter_workspace(kywc_toplevel *toplevel, const char *workspace);
+
+void kywc_toplevel_leave_workspace(kywc_toplevel *toplevel, const char *workspace);
+
+void kywc_toplevel_send_to_output(kywc_toplevel *toplevel, const char *output);
+
 void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data);
 
 void *kywc_toplevel_get_user_data(kywc_toplevel *toplevel);

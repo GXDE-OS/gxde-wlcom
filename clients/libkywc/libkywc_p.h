@@ -195,6 +195,17 @@ struct ky_toplevel {
     const struct kywc_toplevel_interface *impl;
     void *user_data;
 
+    void (*set_maximized)(struct ky_toplevel *toplevel, const char *output);
+    void (*unset_maximized)(struct ky_toplevel *toplevel);
+    void (*set_minimized)(struct ky_toplevel *toplevel);
+    void (*unset_minimized)(struct ky_toplevel *toplevel);
+    void (*set_fullscreen)(struct ky_toplevel *toplevel, const char *output);
+    void (*unset_fullscreen)(struct ky_toplevel *toplevel);
+    void (*activate)(struct ky_toplevel *toplevel);
+    void (*close)(struct ky_toplevel *toplevel);
+    void (*enter_workspace)(struct ky_toplevel *toplevel, const char *workspace);
+    void (*leave_workspace)(struct ky_toplevel *toplevel, const char *workspace);
+    void (*send_to_output)(struct ky_toplevel *toplevel, const char *output);
     void (*destroy)(struct ky_toplevel *toplevel);
     void *data;
 

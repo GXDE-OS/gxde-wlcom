@@ -86,14 +86,19 @@ static void toplevel_handle_destroy(struct wl_client *client, struct wl_resource
     wl_resource_destroy(resource);
 }
 
-static void toplevel_handle_set_maximized(struct wl_client *client, struct wl_resource *resource)
+static void toplevel_handle_set_maximized(struct wl_client *client, struct wl_resource *resource,
+                                          const char *output)
 {
     struct ky_toplevel *toplevel = wl_resource_get_user_data(resource);
     if (!toplevel) {
         return;
     }
 
-    kywc_view_set_maximized(toplevel->view, true, NULL);
+    struct kywc_output *kywc_output = NULL;
+    if (output) {
+        kywc_output = kywc_output_by_uuid(output);
+    }
+    kywc_view_set_maximized(toplevel->view, true, kywc_output);
 }
 
 static void toplevel_handle_unset_maximized(struct wl_client *client, struct wl_resource *resource)
