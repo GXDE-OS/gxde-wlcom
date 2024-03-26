@@ -58,6 +58,13 @@ static void toplevel_handle_workspace_leave(void *data, struct kywc_toplevel_v1 
     ky_toplevel_leave_workspace(toplevel, workspace);
 }
 
+static void toplevel_handle_capabilities(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
+                                         uint32_t flags)
+{
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_set_capabilities(toplevel, flags);
+}
+
 static void toplevel_handle_state(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
                                   uint32_t state)
 {
@@ -91,6 +98,7 @@ static const struct kywc_toplevel_v1_listener toplevel_listener = {
     .primary_output = toplevel_handle_primary_output,
     .workspace_enter = toplevel_handle_workspace_enter,
     .workspace_leave = toplevel_handle_workspace_leave,
+    .capabilities = toplevel_handle_capabilities,
     .state = toplevel_handle_state,
     .parent = toplevel_handle_parent,
     .icon = toplevel_handle_icon,

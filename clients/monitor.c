@@ -71,6 +71,7 @@ static void print_toplevel(kywc_toplevel *toplevel)
 {
     printf("toplevel \"%s\"\n", toplevel->uuid);
     printf("  app_id: %s\n", toplevel->app_id);
+    printf("  capabilities: %d\n", toplevel->capabilities);
     printf("  activated: %s\n", toplevel->activated ? "true" : "false");
     printf("  primary output: %s\n", toplevel->primary_output);
     printf("  workspace:\n");

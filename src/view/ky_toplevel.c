@@ -273,6 +273,18 @@ static uint32_t toplevel_state(struct kywc_view *kywc_view)
     return state;
 }
 
+static uint32_t toplevel_caps(struct kywc_view *kywc_view)
+{
+    uint32_t caps = 0;
+    if (kywc_view->skip_taskbar) {
+        caps |= KYWC_TOPLEVEL_V1_CAPABILITY_SKIP_TASKBAR;
+    }
+    if (kywc_view->skip_switcher) {
+        caps |= KYWC_TOPLEVEL_V1_CAPABILITY_SKIP_SWITCHER;
+    }
+    return caps;
+}
+
 static void toplevel_send_details_to_toplevel_resource(struct ky_toplevel *toplevel,
                                                        struct wl_resource *resource)
 {
@@ -296,6 +308,8 @@ static void toplevel_send_details_to_toplevel_resource(struct ky_toplevel *tople
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
         kywc_toplevel_v1_send_workspace_enter(resource, proxy->workspace->uuid);
     }
+
+    kywc_toplevel_v1_send_capabilities(resource, toplevel_caps(toplevel->view));
 
     kywc_toplevel_v1_send_state(resource, toplevel_state(toplevel->view));
 

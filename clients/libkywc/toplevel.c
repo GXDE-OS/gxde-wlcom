@@ -38,6 +38,11 @@ void ky_toplevel_destroy(struct ky_toplevel *toplevel)
     free(toplevel);
 }
 
+void ky_toplevel_set_capabilities(struct ky_toplevel *toplevel, uint32_t capabilities)
+{
+    toplevel->base.capabilities = capabilities;
+}
+
 void ky_toplevel_update_title(struct ky_toplevel *toplevel, const char *title)
 {
     if (toplevel->base.title && strcmp(toplevel->base.title, title) == 0) {

@@ -212,6 +212,8 @@ void ky_toplevel_destroy(struct ky_toplevel *toplevel);
 
 void ky_toplevel_update_states(struct ky_toplevel *toplevel);
 
+void ky_toplevel_set_capabilities(struct ky_toplevel *toplevel, uint32_t capabilities);
+
 void ky_toplevel_update_title(struct ky_toplevel *toplevel, const char *title);
 
 void ky_toplevel_update_app_id(struct ky_toplevel *toplevel, const char *app_id);

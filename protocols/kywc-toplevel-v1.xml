@@ -115,6 +115,23 @@
       <arg name="workspace" type="string" summary="the workspace unique id"/>
     </event>
 
+    <enum name="capability" bitfield="true">
+      <description summary="describes capabilities of the toplevel">
+        Describes what capabilities this toplevel has.
+      </description>
+      <entry name="skip_taskbar" value="1"
+           summary="if this toplevel not be listed in the taskbar"/>
+      <entry name="skip_switcher" value="2"
+           summary="if this toplevel not appear in a switcher"/>
+    </enum>
+
+    <event name="capabilities">
+      <description summary="capability flags">
+        What capabilities this toplevel has, sent on startup before the first done event.
+      </description>
+      <arg name="flags" type="uint" enum="capability"/>
+    </event>
+
     <enum name="state" bitfield="true">
       <description summary="types of states on the toplevel">
         The different states that a toplevel can have.
