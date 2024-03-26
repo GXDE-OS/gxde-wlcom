@@ -22,6 +22,16 @@
 static void handle_server_start(struct wl_listener *listener, void *data)
 {
     struct seat *seat = wl_container_of(listener, seat, server_start);
+    /* there is no hardware keyboard input device */
+    if (!seat->keyboard->wlr_keyboard->keymap) {
+        struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_SECURE_GETENV);
+        struct xkb_rule_names rules = { 0 };
+        struct xkb_keymap *keymap =
+            xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        xkb_context_unref(context);
+        wlr_keyboard_set_keymap(seat->keyboard->wlr_keyboard, keymap);
+        xkb_keymap_unref(keymap);
+    }
 
     if (seat->state.keyboard_lock & (1 << INPUT_KEY_CAPSLOCK)) {
         seat_feed_keyboard_key(seat, KEY_CAPSLOCK, true);
