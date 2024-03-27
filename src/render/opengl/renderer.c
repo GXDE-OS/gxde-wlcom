@@ -840,6 +840,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         goto error;
     }
     renderer->shaders.quad_ex.proj = glGetUniformLocation(prog, "proj");
+    renderer->shaders.quad_ex.tex_proj = glGetUniformLocation(prog, "tex_proj");
     renderer->shaders.quad_ex.color = glGetUniformLocation(prog, "color");
     renderer->shaders.quad_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.quad_ex.aspect = glGetUniformLocation(prog, "aspect");

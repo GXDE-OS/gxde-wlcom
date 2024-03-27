@@ -336,6 +336,7 @@ static void render_pass_add_rect_ex(struct wlr_render_pass *wlr_pass,
     const struct wlr_render_color *color = &options->base.color;
     struct wlr_box box;
     wlr_render_rect_options_get_box(&options->base, pass->buffer->buffer, &box);
+    struct wlr_fbox src_fbox = { 0.0, 0.0, 1.0, 1.0 };
 
     ky_opengl_push_debug(renderer);
     setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
@@ -343,6 +344,8 @@ static void render_pass_add_rect_ex(struct wlr_render_pass *wlr_pass,
     glUseProgram(renderer->shaders.quad_ex.program);
 
     set_proj_matrix(renderer->shaders.quad_ex.proj, pass->projection_matrix, &box);
+    set_tex_matrix(renderer->shaders.quad_ex.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
+
     glUniform4f(renderer->shaders.quad_ex.color, color->r, color->g, color->b, color->a);
 
     glUniform1f(renderer->shaders.quad_ex.aspect,

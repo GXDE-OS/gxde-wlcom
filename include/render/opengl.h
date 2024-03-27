@@ -89,6 +89,7 @@ struct ky_opengl_renderer {
         struct {
             GLuint program;
             GLint proj;
+            GLint tex_proj;
             GLint color;
             GLint pixel_distance;
             GLint aspect;
