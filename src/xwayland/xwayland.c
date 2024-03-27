@@ -233,7 +233,7 @@ static int xwayland_event_handler(int fd, uint32_t mask, void *data)
 
 void xwayland_set_cursor(struct seat *seat)
 {
-    if (xwayland->wlr_xwayland->seat != seat->wlr_seat) {
+    if (!xwayland || xwayland->wlr_xwayland->seat != seat->wlr_seat) {
         return;
     }
 
