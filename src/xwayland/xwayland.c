@@ -348,7 +348,6 @@ static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
     xcb_get_property_cookie_t cookie = xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom,
                                                         XCB_ATOM_CARDINAL, 0, 0xffffffff);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
-
     if (!reply || reply->value_len < 3 || reply->format != 32) {
         free(reply);
         return 0;
@@ -361,18 +360,15 @@ static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
     }
 
     uint32_t *data = (uint32_t *)xcb_get_property_value(reply);
-    for (unsigned int i = 0, j = 0; j < reply->value_len - 2; i++) {
-        uint32_t width = data[j++];
-        uint32_t height = data[j++];
+    for (unsigned int j = 0; j < reply->value_len - 2;) {
+        uint32_t width = data[j++], height = data[j++];
         uint32_t size = width * height * sizeof(uint32_t);
         if (j + width * height > reply->value_len) {
-            kywc_log(KYWC_WARN, "proposed size leads to out of bounds access(%d x %d) ", width,
-                     height);
+            kywc_log(KYWC_WARN, "proposed size leads to out of bounds (%d x %d) ", width, height);
             break;
         }
         if (width > 1024 || height > 1024) {
-            kywc_log(KYWC_WARN, "found huge icon. The icon data may be ill-encoded.(%d x %d)",
-                     width, height);
+            kywc_log(KYWC_WARN, "found huge icon may be ill-encoded (%d x %d)", width, height);
         }
 
         xwayland_view_add_new_wm_icon(surface, width, height, size, &data[j]);
