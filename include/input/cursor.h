@@ -107,6 +107,8 @@ void cursor_destroy(struct cursor *cursor);
 
 void cursor_set_image(struct cursor *cursor, enum cursor_name name);
 
+void cursor_set_resize_image(struct cursor *cursor, uint32_t edges);
+
 void cursor_rebase(struct cursor *cursor);
 
 void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, double y,

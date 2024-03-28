@@ -16,6 +16,7 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 
 #include <kywc/log.h>
+#include <kywc/view.h>
 
 #include "input/cursor.h"
 #include "input_p.h"
@@ -807,17 +808,42 @@ static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool
 
     if (name == CURSOR_NONE) {
         wlr_cursor_unset_image(cursor->wlr_cursor);
-        return;
+    } else {
+        wlr_cursor_set_xcursor(cursor->wlr_cursor, cursor->xcursor_manager, cursor_image[name]);
     }
 
     cursor->client_requested = false;
     cursor->name = name;
-    wlr_cursor_set_xcursor(cursor->wlr_cursor, cursor->xcursor_manager, cursor_image[name]);
     kywc_log(KYWC_DEBUG, "set cursor to %s", cursor_image[name]);
 }
 
 void cursor_set_image(struct cursor *cursor, enum cursor_name name)
 {
+    _cursor_set_image(cursor, name, false);
+}
+
+void cursor_set_resize_image(struct cursor *cursor, uint32_t edges)
+{
+    enum cursor_name name = CURSOR_DEFAULT;
+
+    if (edges == (KYWC_EDGE_TOP | KYWC_EDGE_LEFT)) {
+        name = CURSOR_RESIZE_TOP_LEFT;
+    } else if (edges == KYWC_EDGE_TOP) {
+        name = CURSOR_RESIZE_TOP;
+    } else if (edges == (KYWC_EDGE_TOP | KYWC_EDGE_RIGHT)) {
+        name = CURSOR_RESIZE_TOP_RIGHT;
+    } else if (edges == KYWC_EDGE_RIGHT) {
+        name = CURSOR_RESIZE_RIGHT;
+    } else if (edges == (KYWC_EDGE_BOTTOM | KYWC_EDGE_RIGHT)) {
+        name = CURSOR_RESIZE_BOTTOM_RIGHT;
+    } else if (edges == KYWC_EDGE_BOTTOM) {
+        name = CURSOR_RESIZE_BOTTOM;
+    } else if (edges == (KYWC_EDGE_BOTTOM | KYWC_EDGE_LEFT)) {
+        name = CURSOR_RESIZE_BOTTOM_LEFT;
+    } else if (edges == KYWC_EDGE_LEFT) {
+        name = CURSOR_RESIZE_LEFT;
+    }
+
     _cursor_set_image(cursor, name, false);
 }
 
