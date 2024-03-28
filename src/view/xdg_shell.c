@@ -54,8 +54,8 @@ static bool xdg_view_hover(struct seat *seat, struct ky_scene_node *node, double
 
     double sx = x - geometry->x;
     double sy = y - geometry->y;
-    sx = sx < 0 ? 0 : (sx > geometry->width ? geometry->width : sx);
-    sy = sy < 0 ? 0 : (sy > geometry->height ? geometry->height : sy);
+    // sx = sx < 0 ? 0 : (sx > geometry->width ? geometry->width : sx);
+    // sy = sy < 0 ? 0 : (sy > geometry->height ? geometry->height : sy);
     sx += xdg_view->wlr_xdg_surface->current.geometry.x;
     sy += xdg_view->wlr_xdg_surface->current.geometry.y;
 
