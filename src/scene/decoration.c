@@ -48,6 +48,27 @@ struct ky_scene_decoration {
 // opengl render
 static int32_t gl_shader = 0;
 
+struct gl_shader_location {
+    // vs
+    GLint in_uv;
+    GLint size;
+    GLint uv2ndc;
+    GLint inverse_transform;
+    // fs
+    GLint shadow_rect;
+    GLint shadow_sigma;
+    GLint shadow_color;
+    GLint pixel_distance;
+    GLint aspect;
+    GLint window_rect;
+    GLint rounded_corner_radius;
+    GLint border_thickness;
+    GLint border_color;
+    GLint title_height;
+    GLint title_color;
+};
+static struct gl_shader_location gl_locations;
+
 static int scene_decoration_create_opengl_shader(void)
 {
     GLint ok = GL_TRUE;
@@ -92,6 +113,23 @@ static int scene_decoration_create_opengl_shader(void)
         glDeleteShader(vert_shader);
         return -1;
     }
+
+    gl_locations.in_uv = glGetAttribLocation(prog, "inUV");
+    gl_locations.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    gl_locations.inverse_transform = glGetUniformLocation(prog, "inverseTransform");
+    gl_locations.size = glGetUniformLocation(prog, "size");
+    gl_locations.shadow_sigma = glGetUniformLocation(prog, "shadowSigma");
+    gl_locations.shadow_rect = glGetUniformLocation(prog, "shadowRect");
+    gl_locations.shadow_color = glGetUniformLocation(prog, "shadowColor");
+    gl_locations.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+    gl_locations.aspect = glGetUniformLocation(prog, "aspect");
+    gl_locations.window_rect = glGetUniformLocation(prog, "windowRect");
+    gl_locations.rounded_corner_radius = glGetUniformLocation(prog, "roundedCornerRadius");
+    gl_locations.border_thickness = glGetUniformLocation(prog, "borderThickness");
+    gl_locations.border_color = glGetUniformLocation(prog, "borderColor");
+    gl_locations.title_height = glGetUniformLocation(prog, "titleHeight");
+    gl_locations.title_color = glGetUniformLocation(prog, "titleColor");
+
     return prog;
 }
 
@@ -173,42 +211,41 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
 
     glEnable(GL_BLEND);
     glUseProgram(gl_shader);
-    GLint attrib = glGetAttribLocation(gl_shader, "inUV");
-    glEnableVertexAttribArray(attrib);
-    glVertexAttribPointer(attrib, 2, GL_FLOAT, GL_FALSE, 0, verts);
+
+    glEnableVertexAttribArray(gl_locations.in_uv);
+    glVertexAttribPointer(gl_locations.in_uv, 2, GL_FLOAT, GL_FALSE, 0, verts);
     // vert shader param
-    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "uv2ndc"), 1, GL_FALSE, uv2ndc.matrix);
-    glUniformMatrix3fv(glGetUniformLocation(gl_shader, "inverseTransform"), 1, GL_FALSE,
-                       inverseTransform.matrix);
-    glUniform2f(glGetUniformLocation(gl_shader, "size"), width, height);
+    glUniformMatrix3fv(gl_locations.uv2ndc, 1, GL_FALSE, uv2ndc.matrix);
+    glUniformMatrix3fv(gl_locations.inverse_transform, 1, GL_FALSE, inverseTransform.matrix);
+    glUniform2f(gl_locations.size, width, height);
     // frag shader param
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
-    glUniform1f(glGetUniformLocation(gl_shader, "shadowSigma"), shadow_width * 0.424660891f);
-    glUniform4f(glGetUniformLocation(gl_shader, "shadowRect"), window.x, window.y,
-                window.x + window.width, window.y + window.height);
-    glUniform4fv(glGetUniformLocation(gl_shader, "shadowColor"), 1, deco->shadow_color);
-    glUniform1f(glGetUniformLocation(gl_shader, "pixelDistance"), 1.0 / half_height);
-    glUniform1f(glGetUniformLocation(gl_shader, "aspect"), width / height);
+    glUniform1f(gl_locations.shadow_sigma, shadow_width * 0.424660891f);
+    glUniform4f(gl_locations.shadow_rect, window.x, window.y, window.x + window.width,
+                window.y + window.height);
+    glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
+    glUniform1f(gl_locations.pixel_distance, 1.0 / half_height);
+    glUniform1f(gl_locations.aspect, width / height);
     float width_distance = window.width / height;
     float height_distance = window.height / height;
     float offset_x_distance = width_distance * 0.5f + window.x / height;
     float offset_y_distance = height_distance * 0.5f + window.y / height;
-    glUniform4f(glGetUniformLocation(gl_shader, "windowRect"), offset_x_distance, offset_y_distance,
-                width_distance, height_distance);
+    glUniform4f(gl_locations.window_rect, offset_x_distance, offset_y_distance, width_distance,
+                height_distance);
     glUniform4f(
-        glGetUniformLocation(gl_shader, "roundedCornerRadius"),
+        gl_locations.rounded_corner_radius,
         deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] / half_height : 0.0f,
         deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] / half_height : 0.0f,
         deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] / half_height : 0.0f,
         deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] / half_height : 0.0f);
-    glUniform1f(glGetUniformLocation(gl_shader, "borderThickness"), border_thickness / half_height);
-    glUniform4fv(glGetUniformLocation(gl_shader, "borderColor"), 1, deco->border_color);
-    glUniform1f(glGetUniformLocation(gl_shader, "titleHeight"), title_height / height);
-    glUniform4fv(glGetUniformLocation(gl_shader, "titleColor"), 1, deco->title_color);
+    glUniform1f(gl_locations.border_thickness, border_thickness / half_height);
+    glUniform4fv(gl_locations.border_color, 1, deco->border_color);
+    glUniform1f(gl_locations.title_height, title_height / height);
+    glUniform4fv(gl_locations.title_color, 1, deco->title_color);
 
     glDrawArrays(GL_TRIANGLES, 0, rects_len * 6);
     glUseProgram(0);
-    glDisableVertexAttribArray(attrib);
+    glDisableVertexAttribArray(gl_locations.in_uv);
 
     pixman_region32_fini(&region);
 }
