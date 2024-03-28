@@ -288,8 +288,7 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
     return tooltip;
 }
 
-static enum cursor_name get_resize_type(struct ssd_part *part, double x, double y,
-                                        uint32_t *resize_edges)
+static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
 {
     struct ky_scene_rect *frame = ky_scene_rect_from_node(part->node);
     struct theme *theme = theme_manager_get_current();
@@ -300,63 +299,31 @@ static enum cursor_name get_resize_type(struct ssd_part *part, double x, double 
     int sx = floor(x);
     int sy = floor(y);
 
-    enum cursor_name cursor_name = CURSOR_DEFAULT;
+    uint32_t resize_edges = KYWC_EDGE_NONE;
 
     if (sx <= x1) {
         if (sy <= x1) {
-            cursor_name = CURSOR_RESIZE_TOP_LEFT;
+            resize_edges = KYWC_EDGE_TOP | KYWC_EDGE_LEFT;
         } else if (sy <= y2) {
-            cursor_name = CURSOR_RESIZE_LEFT;
+            resize_edges = KYWC_EDGE_LEFT;
         } else {
-            cursor_name = CURSOR_RESIZE_BOTTOM_LEFT;
+            resize_edges = KYWC_EDGE_BOTTOM | KYWC_EDGE_LEFT;
         }
     } else if (sx >= x2) {
         if (sy <= x1) {
-            cursor_name = CURSOR_RESIZE_TOP_RIGHT;
+            resize_edges = KYWC_EDGE_TOP | KYWC_EDGE_RIGHT;
         } else if (sy < y2) {
-            cursor_name = CURSOR_RESIZE_RIGHT;
+            resize_edges = KYWC_EDGE_RIGHT;
         } else {
-            cursor_name = CURSOR_RESIZE_BOTTOM_RIGHT;
+            resize_edges = KYWC_EDGE_BOTTOM | KYWC_EDGE_RIGHT;
         }
     } else if (sy >= y2) {
-        cursor_name = CURSOR_RESIZE_BOTTOM;
+        resize_edges = KYWC_EDGE_BOTTOM;
     } else if (sy <= theme->shadow.shadow_border + border) {
-        cursor_name = CURSOR_RESIZE_TOP;
+        resize_edges = KYWC_EDGE_TOP;
     }
 
-    if (resize_edges) {
-        switch (cursor_name) {
-        case CURSOR_RESIZE_TOP_LEFT:
-            *resize_edges = KYWC_EDGE_TOP | KYWC_EDGE_LEFT;
-            break;
-        case CURSOR_RESIZE_TOP:
-            *resize_edges = KYWC_EDGE_TOP;
-            break;
-        case CURSOR_RESIZE_TOP_RIGHT:
-            *resize_edges = KYWC_EDGE_TOP | KYWC_EDGE_RIGHT;
-            break;
-        case CURSOR_RESIZE_RIGHT:
-            *resize_edges = KYWC_EDGE_RIGHT;
-            break;
-        case CURSOR_RESIZE_BOTTOM_RIGHT:
-            *resize_edges = KYWC_EDGE_BOTTOM | KYWC_EDGE_RIGHT;
-            break;
-        case CURSOR_RESIZE_BOTTOM:
-            *resize_edges = KYWC_EDGE_BOTTOM;
-            break;
-        case CURSOR_RESIZE_BOTTOM_LEFT:
-            *resize_edges = KYWC_EDGE_BOTTOM | KYWC_EDGE_LEFT;
-            break;
-        case CURSOR_RESIZE_LEFT:
-            *resize_edges = KYWC_EDGE_LEFT;
-            break;
-        default:
-            *resize_edges = KYWC_EDGE_NONE;
-            break;
-        }
-    }
-
-    return cursor_name;
+    return resize_edges;
 }
 
 static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change);
@@ -382,7 +349,7 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
         break;
     case SSD_FRAME_RECT:
         if (view_is_resizable(view_from_kywc_view(part->ssd->kywc_view))) {
-            cursor_set_image(seat->cursor, get_resize_type(part, x, y, NULL));
+            cursor_set_resize_image(seat->cursor, get_resize_type(part, x, y));
         }
         break;
     default:
@@ -420,7 +387,6 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     struct kywc_view *kywc_view = part->ssd->kywc_view;
     struct view *view = view_from_kywc_view(kywc_view);
     enum kywc_edges edges = KYWC_EDGE_NONE;
-    enum cursor_name cursor_name = CURSOR_DEFAULT;
 
     if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_TITLE_ICON) {
         ssd_tooltip_show(seat, part, false);
@@ -432,8 +398,8 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         }
         switch (part->type) {
         case SSD_FRAME_RECT:
-            cursor_name = get_resize_type(part, seat->cursor->sx, seat->cursor->sy, NULL);
-            if (cursor_name != CURSOR_DEFAULT) {
+            edges = get_resize_type(part, seat->cursor->sx, seat->cursor->sy);
+            if (edges != KYWC_EDGE_NONE) {
                 break;
             }
         // fallthrough if click in title
@@ -475,8 +441,8 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         }
         return;
     case SSD_FRAME_RECT:
-        cursor_name = get_resize_type(part, seat->cursor->sx, seat->cursor->sy, &edges);
-        if (cursor_name != CURSOR_DEFAULT) {
+        edges = get_resize_type(part, seat->cursor->sx, seat->cursor->sy);
+        if (edges != KYWC_EDGE_NONE) {
             break;
         }
         // fallthrough if press in title
