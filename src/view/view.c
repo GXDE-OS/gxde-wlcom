@@ -193,6 +193,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->shadeable = true;
     kywc_view->has_round_corner = true;
     kywc_view->uuid = kywc_identifier_uuid_generate();
+    wl_list_insert(&view_manager->views, &view->link);
 
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
@@ -560,6 +561,7 @@ void view_destroy(struct view *view)
 
     wl_signal_emit_mutable(&kywc_view->events.destroy, NULL);
 
+    wl_list_remove(&view->link);
     wl_list_remove(&view->output_destroy.link);
 
     ky_scene_node_destroy(&view->tree->node);
@@ -783,6 +785,17 @@ void view_set_parent(struct view *view, struct view *parent)
 void kywc_view_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&view_manager->events.new_view, listener);
+}
+
+struct kywc_view *kywc_view_by_uuid(const char *uuid)
+{
+    struct view *view;
+    wl_list_for_each(view, &view_manager->views, link) {
+        if (strcmp(uuid, view->base.uuid) == 0) {
+            return &view->base;
+        }
+    }
+    return NULL;
 }
 
 struct view *view_from_kywc_view(struct kywc_view *kywc_view)
@@ -1367,6 +1380,7 @@ struct view_manager *view_manager_create(struct server *server)
     }
 
     view_manager->server = server;
+    wl_list_init(&view_manager->views);
     wl_signal_init(&view_manager->events.new_view);
     wl_signal_init(&view_manager->events.window_menu);
     wl_signal_init(&view_manager->events.show_desktop);

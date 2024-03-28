@@ -85,8 +85,7 @@ struct view_configure_state {
 struct view {
     struct kywc_view base;
     struct wlr_surface *surface;
-
-    pid_t pid;
+    struct wl_list link;
 
     /* parent and children */
     struct view *parent;
@@ -129,6 +128,7 @@ struct view {
     const struct view_impl *impl;
     void *data;
 
+    pid_t pid;
     bool minimized_when_show_desktop;
     bool show_in_all_workspaces;
     uint32_t current_resize_edges;

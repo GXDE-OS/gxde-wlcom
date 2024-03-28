@@ -177,4 +177,6 @@ void kywc_view_toggle_kept_above(struct kywc_view *kywc_view);
 void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below);
 void kywc_view_toggle_kept_below(struct kywc_view *kywc_view);
 
+struct kywc_view *kywc_view_by_uuid(const char *uuid);
+
 #endif /* _KYWC_VIEW_H_ */
