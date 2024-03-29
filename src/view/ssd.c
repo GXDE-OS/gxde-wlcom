@@ -669,7 +669,7 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     struct ky_scene_decoration *frame =
         ky_scene_decoration_from_node(ssd->parts[SSD_FRAME_RECT].node);
 
-    if (cause & (SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_CREATE)) {
+    if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
         ky_scene_decoration_set_margin_color(
             frame, view->activated ? theme->active_bg_color : theme->inactive_bg_color,
             view->activated ? theme->active_border_color : theme->inactive_border_color,
@@ -712,9 +712,10 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         int top = (view->ssd == KYWC_SSD_ALL || ssd->kywc_view->has_round_corner)
                       ? theme->ssd.corner_radius
                       : 0;
-        ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
+
         ky_scene_decoration_set_margin(frame, title, border, theme->shadow.shadow_border);
         ky_scene_decoration_set_resize_width(frame, theme->ssd.resize_border);
+        ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
         ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -size, -(title + size));
     }
