@@ -153,6 +153,7 @@ struct ky_scene_node {
     struct ky_scene_node_interface impl;
 
     struct {
+        struct wl_signal damage;
         struct wl_signal destroy;
     } events;
 

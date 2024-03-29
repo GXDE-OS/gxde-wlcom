@@ -69,6 +69,12 @@ static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *d
     /* root node has own push_damage */
     assert(node->parent);
 
+    /* emit damage when node content damaged or children damaged */
+    if ((node == damage_node && node->damage_type == KY_SCENE_DAMAGE_HARMLESS) ||
+        node != damage_node) {
+        wl_signal_emit_mutable(&node->events.damage, NULL);
+    }
+
     pixman_region32_translate(damage, node->x, node->y);
     node->parent->node.impl.push_damage(&node->parent->node, damage_node,
                                         damage_type | node->damage_type, damage);
@@ -105,6 +111,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
     };
 
     wl_list_init(&node->link);
+    wl_signal_init(&node->events.damage);
     wl_signal_init(&node->events.destroy);
     pixman_region32_init(&node->visible_region);
     pixman_region32_init(&node->input_region);
