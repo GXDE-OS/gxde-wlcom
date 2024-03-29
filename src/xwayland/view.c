@@ -14,6 +14,7 @@
 #include "painter.h"
 #include "scene/surface.h"
 #include "view/action.h"
+#include "view/workspace.h"
 #include "xwayland_p.h"
 
 struct xwayland_view {
@@ -649,6 +650,47 @@ void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool 
     }
 }
 
+static void xwayland_view_fixup_position(struct xwayland_view *xwayland_view)
+{
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
+    struct kywc_box geo = { 0 };
+
+    if (wlr_xwayland_surface->x != 0 || wlr_xwayland_surface->y != 0) {
+        geo.x = xwayland_unscale(wlr_xwayland_surface->x);
+        geo.y = xwayland_unscale(wlr_xwayland_surface->y);
+        xwayland_view->view.base.has_initial_position = true;
+    } else {
+        /* apply the position in size_hints */
+        xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
+        if (size_hints && size_hints->flags &
+                              (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_P_POSITION)) {
+            geo.x = xwayland_unscale(size_hints->x);
+            geo.y = xwayland_unscale(size_hints->y);
+            xwayland_view->view.base.has_initial_position = true;
+        }
+    }
+    if (xwayland_view->view.base.has_initial_position) {
+        xwayland_view_adjust_geometry(xwayland_view, &geo);
+        kywc_view_move(&xwayland_view->view.base, geo.x, geo.y);
+    }
+}
+
+static void xwayland_view_fixup_parent(struct xwayland_view *xwayland_view)
+{
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view_proxy *view_proxy;
+    wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
+        /* skip views not mapped */
+        if (!view_proxy->view->base.mapped) {
+            continue;
+        }
+        if (view_proxy->view->pid == xwayland_view->view.pid) {
+            view_set_parent(&xwayland_view->view, view_proxy->view);
+        }
+        break;
+    }
+}
+
 static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, map);
@@ -707,30 +749,17 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     /* fix postion if not special state */
     if (!xwayland_view->view.base.maximized && !xwayland_view->view.base.fullscreen &&
         !xwayland_view->view.base.tiled) {
-        struct kywc_box geo = { 0 };
-
-        if (wlr_xwayland_surface->x != 0 || wlr_xwayland_surface->y != 0) {
-            geo.x = xwayland_unscale(wlr_xwayland_surface->x);
-            geo.y = xwayland_unscale(wlr_xwayland_surface->y);
-            xwayland_view->view.base.has_initial_position = true;
-        } else {
-            /* apply the position in size_hints */
-            xcb_size_hints_t *size_hints = wlr_xwayland_surface->size_hints;
-            if (size_hints && size_hints->flags & (XCB_ICCCM_SIZE_HINT_US_POSITION |
-                                                   XCB_ICCCM_SIZE_HINT_P_POSITION)) {
-                geo.x = xwayland_unscale(size_hints->x);
-                geo.y = xwayland_unscale(size_hints->y);
-                xwayland_view->view.base.has_initial_position = true;
-            }
-        }
-        if (xwayland_view->view.base.has_initial_position) {
-            xwayland_view_adjust_geometry(xwayland_view, &geo);
-            kywc_view_move(&xwayland_view->view.base, geo.x, geo.y);
-        }
+        xwayland_view_fixup_position(xwayland_view);
     }
 
     xwayland_view->view.pid = wlr_xwayland_surface->pid;
     xwayland_view->view.base.modal = wlr_xwayland_surface->modal;
+
+    if (wlr_xwayland_surface->modal &&
+        (!wlr_xwayland_surface->parent || !wlr_xwayland_surface->parent->surface)) {
+        xwayland_view_fixup_parent(xwayland_view);
+    }
+
     view_map(&xwayland_view->view);
 
     xwayland_view_set_sruct_partial(xwayland_view, true);
