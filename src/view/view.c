@@ -11,6 +11,7 @@
 
 #include "input/seat.h"
 #include "output.h"
+#include "scene/surface.h"
 #include "server.h"
 #include "theme.h"
 #include "view/workspace.h"
@@ -188,7 +189,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->activatable = true;
     kywc_view->focusable = true;
     kywc_view->shadeable = true;
-
+    kywc_view->has_round_corner = true;
     kywc_view->uuid = kywc_identifier_uuid_generate();
 
     /* create view tree and disable it */
@@ -315,6 +316,42 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
     return theme_icon_load(view->base.app_id, scale);
 }
 
+/* set surface round corner by ssd type, tiled, fullscreen and maximized state */
+static void view_update_round_corner(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->has_round_corner || kywc_view->role != KYWC_VIEW_ROLE_NORMAL) {
+        return;
+    }
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
+    if (!buffer) {
+        return;
+    }
+
+    /* don't draw top round corner if ssd has title */
+    struct theme *theme = theme_manager_get_current();
+    bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen;
+    bool need_top_corner = !(kywc_view->ssd & KYWC_SSD_TITLE);
+
+    bool need_right_bottom = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
+                                             kywc_view->tiled == KYWC_TILE_TOP_LEFT);
+    bool need_left_bottom = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
+                                            kywc_view->tiled == KYWC_TILE_TOP_RIGHT);
+    bool need_right_top =
+        need_corner && need_top_corner &&
+        (kywc_view->tiled == KYWC_TILE_NONE || kywc_view->tiled == KYWC_TILE_BOTTOM_LEFT);
+    bool need_left_top =
+        need_corner && need_top_corner &&
+        (kywc_view->tiled == KYWC_TILE_NONE || kywc_view->tiled == KYWC_TILE_BOTTOM_RIGHT);
+
+    int radius[4] = { 0 };
+    radius[KY_SCENE_ROUND_CORNER_RB] = need_right_bottom ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_RT] = need_right_top ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LB] = need_left_bottom ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LT] = need_left_top ? theme->ssd.corner_radius : 0;
+    ky_scene_node_set_radius(&buffer->node, radius);
+}
+
 void view_map(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
@@ -322,6 +359,7 @@ void view_map(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     /* assume that request_minimize may emited before map */
+    view_update_round_corner(view);
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
 
     kywc_view->mapped = true;
@@ -461,6 +499,11 @@ void view_configured(struct view *view)
     if (view->pending.configure_action != VIEW_ACTION_NOP &&
         (view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
         input_rebase_all_cursor();
+    }
+
+    if (view->pending.configure_action &
+        (VIEW_ACTION_FULLSCREEN | VIEW_ACTION_TILE | VIEW_ACTION_MAXIMIZE)) {
+        view_update_round_corner(view);
     }
 
     if (view->pending.configure_timeout) {
