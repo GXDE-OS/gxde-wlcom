@@ -8,6 +8,7 @@ wlcom_sources += files(
   'scene.c',
   'surface.c',
   'subsurface.c',
+  'thumbnail.c',
   'xdg_shell.c',
 )
 
