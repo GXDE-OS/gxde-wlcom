@@ -164,8 +164,16 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
         tooltip->timer_triggered = false;
         tooltip->timer_for_hidden = false;
         tooltip->hovered_part = NULL;
-        widget_set_enabled(widget, false);
-        widget_update(widget, true);
+        /* make sure restore and maximize widgets both are disabled */
+        if (part->type == SSD_BUTTON_MAXIMIZE) {
+            widget_set_enabled(tooltip->restore, false);
+            widget_update(tooltip->restore, true);
+            widget_set_enabled(tooltip->maximize, false);
+            widget_update(tooltip->maximize, true);
+        } else {
+            widget_set_enabled(widget, false);
+            widget_update(widget, true);
+        }
         return;
     }
 
