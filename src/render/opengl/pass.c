@@ -252,6 +252,11 @@ static const struct wlr_render_pass_impl render_pass_impl = {
     .add_rect = render_pass_add_rect,
 };
 
+static bool options_has_radius(const struct ky_render_round_corner *radius)
+{
+    return radius->lb > 0 || radius->lt > 0 || radius->rb > 0 || radius->rt > 0;
+}
+
 static void render_pass_add_texture_ex(struct wlr_render_pass *wlr_pass,
                                        const struct ky_render_texture_options *options)
 {
@@ -289,8 +294,12 @@ static void render_pass_add_texture_ex(struct wlr_render_pass *wlr_pass,
     src_fbox.height /= options->base.texture->height;
 
     ky_opengl_push_debug(renderer);
-    setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
-                                                       : options->base.blend_mode);
+    if (options_has_radius(&options->radius)) {
+        setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    } else {
+        setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
+                                                           : options->base.blend_mode);
+    }
 
     glUseProgram(shader->program);
 
@@ -339,7 +348,11 @@ static void render_pass_add_rect_ex(struct wlr_render_pass *wlr_pass,
     struct wlr_fbox src_fbox = { 0.0, 0.0, 1.0, 1.0 };
 
     ky_opengl_push_debug(renderer);
-    setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
+    if (options_has_radius(&options->radius)) {
+        setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    } else {
+        setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
+    }
 
     glUseProgram(renderer->shaders.quad_ex.program);
 
