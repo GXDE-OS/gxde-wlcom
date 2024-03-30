@@ -400,7 +400,8 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
         pixman_region32_fini(&clip);
     }
 
-    if (pending_cause & DECO_UPDATE_CAUSE_RESIZE_WIDTH) {
+    if (pending_cause & (DECO_UPDATE_CAUSE_WINDOW_SIZE | DECO_UPDATE_CAUSE_MARGIN |
+                         DECO_UPDATE_CAUSE_RESIZE_WIDTH)) {
         scene_decoration_update_input_region(deco);
     }
 
