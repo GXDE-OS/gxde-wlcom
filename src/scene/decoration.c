@@ -351,12 +351,10 @@ static void scene_decoration_update_input_region(struct ky_scene_decoration *sce
     int border = scene_decoration->border_thickness;
     int resize = scene_decoration->resize_width;
 
-    if (border > 0 || resize > 0) {
-        int off = shadow - resize; // MUST >= 0
-        int w = scene_decoration->rect.width - 2 * off;
-        int h = scene_decoration->rect.height - 2 * off;
-        pixman_region32_init_rect(&input, off, off, w, h);
-    }
+    int off = resize > 0 ? shadow - resize : shadow + border;
+    int w = scene_decoration->rect.width - 2 * off;
+    int h = scene_decoration->rect.height - 2 * off;
+    pixman_region32_init_rect(&input, off, off, w, h);
 
     ky_scene_node_set_input_region(&scene_decoration->rect.node, &input);
     pixman_region32_fini(&input);
