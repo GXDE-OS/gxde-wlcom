@@ -515,10 +515,13 @@ static void kde_output_device_bind(struct wl_client *client, void *data, uint32_
     kde_output_device_send_current_mode(kod_client);
 
     kde_output_device_v2_send_scale(resource, wl_fixed_from_double(kywc_output->state.scale));
-
+    if (kywc_output->edid) {
+        kde_output_device_v2_send_edid(resource, kywc_output->edid);
+    }
+    if (kywc_output->uuid) {
+        kde_output_device_v2_send_uuid(resource, kywc_output->uuid);
+    }
     /* TODO: finish these
-        kde_output_device_v2_send_edid();
-        kde_output_device_v2_send_uuid();
         kde_output_device_v2_send_serial_number();
         kde_output_device_v2_send_eisa_id();
         kde_output_device_v2_send_capabilities();
