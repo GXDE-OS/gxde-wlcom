@@ -446,11 +446,6 @@ void view_configured(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
-    if (view->pending.configure_action != VIEW_ACTION_NOP &&
-        (view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
-        input_rebase_all_cursor();
-    }
-
     if (view->pending.configure_action & VIEW_ACTION_FULLSCREEN) {
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
     }
@@ -461,6 +456,11 @@ void view_configured(struct view *view)
 
     if (view->pending.configure_action & VIEW_ACTION_TILE) {
         wl_signal_emit_mutable(&kywc_view->events.tile, NULL);
+    }
+
+    if (view->pending.configure_action != VIEW_ACTION_NOP &&
+        (view->pending.configure_action & VIEW_ACTION_RESIZE) == 0) {
+        input_rebase_all_cursor();
     }
 
     if (view->pending.configure_timeout) {
