@@ -38,8 +38,10 @@ enum kywc_tile {
 
 enum kywc_ssd {
     KYWC_SSD_NONE = 0,
-    KYWC_SSD_EXTEND_ONLY,
-    KYWC_SSD_ALL,
+    KYWC_SSD_TITLE = 1 << 0,
+    KYWC_SSD_BORDER = 1 << 1,
+    KYWC_SSD_RESIZE = 1 << 2,
+    KYWC_SSD_ALL = (1 << 3) - 1,
 };
 
 enum kywc_view_role {

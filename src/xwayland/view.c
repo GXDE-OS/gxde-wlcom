@@ -458,14 +458,21 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_decorations);
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
-    bool use_ssd = wlr_xwayland_surface->decorations == WLR_XWAYLAND_SURFACE_DECORATIONS_ALL;
 
     if (xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_DOCK) ||
         xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_SPLASH)) {
-        use_ssd = false;
+        view_set_decoration(&xwayland_view->view, KYWC_SSD_NONE);
+        return;
     }
 
-    view_set_decoration(&xwayland_view->view, use_ssd ? KYWC_SSD_ALL : KYWC_SSD_NONE);
+    enum kywc_ssd ssd = KYWC_SSD_ALL;
+    if (wlr_xwayland_surface->decorations & WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER) {
+        ssd &= ~KYWC_SSD_BORDER;
+    }
+    if (wlr_xwayland_surface->decorations & WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE) {
+        ssd &= ~KYWC_SSD_TITLE;
+    }
+    view_set_decoration(&xwayland_view->view, ssd);
 }
 
 static void xwayland_view_handle_output_update_usable_area(struct wl_listener *listener, void *data)

@@ -292,7 +292,7 @@ static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
 {
     struct ky_scene_rect *frame = ky_scene_rect_from_node(part->node);
     struct theme *theme = theme_manager_get_current();
-    int border = part->ssd->kywc_view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
+    int border = part->ssd->kywc_view->ssd & KYWC_SSD_BORDER ? theme->ssd.border_width : 0;
     int x1 = theme->shadow.shadow_border + theme->ssd.corner_radius + border;
     int x2 = frame->width - x1;
     int y2 = frame->height - x1;
@@ -705,16 +705,17 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
-        int border = view->ssd == KYWC_SSD_ALL ? theme->ssd.border_width : 0;
-        int title = view->ssd == KYWC_SSD_ALL ? theme->ssd.title_height : 0;
+        int border = view->ssd & KYWC_SSD_BORDER ? theme->ssd.border_width : 0;
+        int title = view->ssd & KYWC_SSD_TITLE ? theme->ssd.title_height : 0;
+        int resize = view->ssd & KYWC_SSD_RESIZE ? theme->ssd.resize_border : 0;
         int size = theme->shadow.shadow_border + border;
         int bottom = ssd->kywc_view->has_round_corner ? theme->ssd.corner_radius : 0;
-        int top = (view->ssd == KYWC_SSD_ALL || ssd->kywc_view->has_round_corner)
+        int top = (view->ssd & KYWC_SSD_TITLE || ssd->kywc_view->has_round_corner)
                       ? theme->ssd.corner_radius
                       : 0;
 
+        ky_scene_decoration_set_resize_width(frame, resize);
         ky_scene_decoration_set_margin(frame, title, border, theme->shadow.shadow_border);
-        ky_scene_decoration_set_resize_width(frame, theme->ssd.resize_border);
         ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
         ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -size, -(title + size));
@@ -724,17 +725,14 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
 static void ssd_update_margin(struct ssd *ssd)
 {
     struct kywc_view *view = ssd->kywc_view;
-
-    if (view->ssd != KYWC_SSD_ALL) {
-        memset(&view->margin, 0, 4 * sizeof(int));
-        return;
-    }
-
     struct theme *theme = theme_manager_get_current();
-    view->margin.off_x = theme->ssd.border_width;
-    view->margin.off_y = theme->ssd.border_width + theme->ssd.title_height;
-    view->margin.off_width = 2 * theme->ssd.border_width;
-    view->margin.off_height = view->margin.off_width + theme->ssd.title_height;
+    int border = view->ssd & KYWC_SSD_BORDER ? theme->ssd.border_width : 0;
+    int title = view->ssd & KYWC_SSD_TITLE ? theme->ssd.title_height : 0;
+
+    view->margin.off_x = border;
+    view->margin.off_y = border + title;
+    view->margin.off_width = 2 * border;
+    view->margin.off_height = 2 * border + title;
 }
 
 static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
@@ -746,7 +744,7 @@ static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
         ky_scene_node_set_enabled(&ssd->tree->node, enabled);
     }
 
-    if (ssd->kywc_view->ssd == KYWC_SSD_ALL) {
+    if (ssd->kywc_view->ssd & KYWC_SSD_TITLE) {
         ssd_update_titlebar(ssd, cause);
     }
 
@@ -779,7 +777,7 @@ static void ssd_destroy_buffer(struct ky_scene_buffer *buffer, void *data)
 
 static void ssd_create_parts(struct ssd *ssd, float scale)
 {
-    int start = ssd->kywc_view->ssd == KYWC_SSD_ALL ? 0 : SSD_FRAME_RECT;
+    int start = ssd->kywc_view->ssd & KYWC_SSD_TITLE ? 0 : SSD_FRAME_RECT;
 
     /* create buffers from bottom to top */
     for (int i = SSD_PART_COUNT - 1; i >= start; i--) {
@@ -893,25 +891,27 @@ static void ssd_parts_create(struct ssd *ssd)
     ssd->view_fullscreen.notify = handle_view_fullscreen;
     wl_signal_add(&kywc_view->events.fullscreen, &ssd->view_fullscreen);
 
-    /* skip border and title bar if extend only */
-    if (kywc_view->ssd == KYWC_SSD_ALL) {
+    wl_list_init(&ssd->view_activate.link);
+    wl_list_init(&ssd->view_title.link);
+    wl_list_init(&ssd->theme_update.link);
+    wl_list_init(&ssd->icon_update.link);
+
+    if (kywc_view->ssd & KYWC_SSD_TITLE) {
         ssd->titlebar_tree = ky_scene_tree_create(ssd->tree);
         /* buttons is subtree of titlebar, only need to set tree pos */
         ssd->button_tree = ky_scene_tree_create(ssd->titlebar_tree);
 
-        ssd->view_activate.notify = handle_view_activate;
-        wl_signal_add(&kywc_view->events.activate, &ssd->view_activate);
         ssd->view_title.notify = handle_view_title;
         wl_signal_add(&kywc_view->events.title, &ssd->view_title);
-        ssd->theme_update.notify = handle_theme_update;
-        theme_manager_add_update_listener(&ssd->theme_update);
         ssd->icon_update.notify = handle_icon_update;
         theme_manager_add_icon_update_listener(&ssd->icon_update);
-    } else {
-        wl_list_init(&ssd->view_activate.link);
-        wl_list_init(&ssd->view_title.link);
-        wl_list_init(&ssd->theme_update.link);
-        wl_list_init(&ssd->icon_update.link);
+    }
+
+    if (kywc_view->ssd & (KYWC_SSD_TITLE | KYWC_SSD_BORDER)) {
+        ssd->view_activate.notify = handle_view_activate;
+        wl_signal_add(&kywc_view->events.activate, &ssd->view_activate);
+        ssd->theme_update.notify = handle_theme_update;
+        theme_manager_add_update_listener(&ssd->theme_update);
     }
 
     /* detect scale by view geometry.
