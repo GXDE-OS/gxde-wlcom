@@ -54,6 +54,7 @@ struct kywc_output_prop {
 struct kywc_output {
     const char *name;
     const char *uuid;
+    const char *edid; // base64
     bool destroying;
 
     struct kywc_output_prop prop;

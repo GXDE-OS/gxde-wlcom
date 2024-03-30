@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
@@ -65,6 +66,48 @@ static void output_add_mode(struct kywc_output_prop *prop, struct wlr_output_mod
     new->refresh = mode->refresh;
     new->preferred = mode->preferred;
     wl_list_insert(&prop->modes, &new->link);
+}
+
+static const char *output_get_edid(struct wlr_output *wlr_output)
+{
+    if (!wlr_output_is_drm(wlr_output)) {
+        return NULL;
+    }
+
+    int drm_fd = wlr_backend_get_drm_fd(wlr_output->backend);
+    uint32_t conn_id = wlr_drm_connector_get_id(wlr_output);
+
+    drmModeObjectProperties *props =
+        drmModeObjectGetProperties(drm_fd, conn_id, DRM_MODE_OBJECT_CONNECTOR);
+    if (!props) {
+        kywc_log_errno(KYWC_ERROR, "Failed to get DRM object properties");
+        return NULL;
+    }
+
+    const char *edid = NULL;
+    for (uint32_t i = 0; i < props->count_props; ++i) {
+        drmModePropertyRes *prop = drmModeGetProperty(drm_fd, props->props[i]);
+        if (!prop) {
+            kywc_log_errno(KYWC_ERROR, "Failed to get DRM object property");
+            continue;
+        }
+
+        if (!strcmp(prop->name, "EDID")) {
+            drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(drm_fd, props->prop_values[i]);
+            if (blob) {
+                edid = kywc_identifier_base64_generate(blob->data, blob->length);
+                drmModeFreePropertyBlob(blob);
+            }
+            drmModeFreeProperty(prop);
+            break;
+        }
+
+        drmModeFreeProperty(prop);
+    }
+
+    drmModeFreeObjectProperties(props);
+
+    return edid;
 }
 
 static void output_get_prop(struct output *output, struct kywc_output_prop *prop)
@@ -232,6 +275,8 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
 
     output_get_state(output, &kywc_output->state);
+
+    kywc_output->edid = output_get_edid(output->wlr_output);
     output_uuid_generate(kywc_output);
     kywc_log(KYWC_INFO, "new output %s: %s", kywc_output->name, kywc_output->uuid);
 
@@ -328,6 +373,7 @@ static void output_destroy(struct output *output)
         free(mode);
     }
 
+    free((void *)kywc_output->edid);
     free((void *)kywc_output->uuid);
     free(output);
 }

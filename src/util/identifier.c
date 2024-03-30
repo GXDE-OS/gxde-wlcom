@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
@@ -169,4 +171,24 @@ const char *kywc_identifier_md5_generate_uuid(void *data, unsigned int len)
 
     uuid_str[k] = 0;
     return uuid_str;
+}
+
+const char *kywc_identifier_base64_generate(const void *data, unsigned int len)
+{
+    BIO *bmem, *b64;
+    BUF_MEM *bptr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bmem = BIO_new(BIO_s_mem());
+    b64 = BIO_push(b64, bmem);
+    BIO_write(b64, data, len);
+    BIO_flush(b64);
+    BIO_get_mem_ptr(b64, &bptr);
+
+    char *base64 = (char *)malloc(bptr->length + 1);
+    memcpy(base64, bptr->data, bptr->length);
+    base64[bptr->length] = 0;
+    BIO_free_all(b64);
+
+    return base64;
 }
