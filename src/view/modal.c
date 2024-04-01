@@ -9,6 +9,7 @@
 
 #include "input/event.h"
 #include "scene/animation.h"
+#include "scene/surface.h"
 #include "theme.h"
 #include "view_p.h"
 
@@ -221,6 +222,33 @@ static void handle_view_activate(struct wl_listener *listener, void *data)
     modal_shake_effect_init(modal);
 }
 
+static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct view *view)
+{
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
+    if (!buffer) {
+        return;
+    }
+
+    int radius[4] = { 0 };
+    memcpy(radius, buffer->node.radius, sizeof(radius));
+
+    /* set top corner if has ssd title */
+    struct kywc_view *kywc_view = &view->base;
+    if (kywc_view->ssd & KYWC_SSD_TITLE) {
+        bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen;
+        bool need_right_top = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
+                                              kywc_view->tiled == KYWC_TILE_BOTTOM_LEFT);
+        bool need_left_top = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
+                                             kywc_view->tiled == KYWC_TILE_BOTTOM_RIGHT);
+
+        struct theme *theme = theme_manager_get_current();
+        radius[KY_SCENE_ROUND_CORNER_RT] = need_right_top ? theme->ssd.corner_radius : 0;
+        radius[KY_SCENE_ROUND_CORNER_LT] = need_left_top ? theme->ssd.corner_radius : 0;
+    }
+
+    ky_scene_node_set_radius(&modal_box->node, radius);
+}
+
 void modal_create(struct view *view, struct seat *seat)
 {
     if (!view->base.modal || !view->parent) {
@@ -260,6 +288,7 @@ void modal_create(struct view *view, struct seat *seat)
         ky_scene_rect_create(view->tree->node.parent, geo.width, geo.height, theme->modal.color);
     ky_scene_node_lower_to_bottom(&modal->modal_box->node);
     ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
+    modal_box_set_round_corner(modal->modal_box, view->parent);
     ky_scene_node_set_enabled(&modal->modal_box->node, true);
 
     input_event_node_create(&modal->modal_box->node, &modal_impl, modal_get_root, NULL, modal);
