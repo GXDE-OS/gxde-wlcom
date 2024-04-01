@@ -152,6 +152,8 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
                            surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_SYSTEMWINDOW ||
                            surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK;
     kywc_view->shadeable = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
+
+    kywc_view->has_round_corner = surface->role == ORG_KDE_PLASMA_SURFACE_ROLE_NORMAL;
 }
 
 static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surface, bool enabled);

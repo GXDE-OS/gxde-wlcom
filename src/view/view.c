@@ -320,7 +320,7 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 static void view_update_round_corner(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    if (!kywc_view->has_round_corner || kywc_view->role != KYWC_VIEW_ROLE_NORMAL) {
+    if (!kywc_view->has_round_corner) {
         return;
     }
     struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);

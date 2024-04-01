@@ -597,6 +597,9 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
     if (removed_from_workspace) {
         view_unset_workspace(&xwayland_view->view, layer);
     }
+
+    xwayland_view->view.base.has_round_corner =
+        xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_NORMAL);
 }
 
 void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below)
