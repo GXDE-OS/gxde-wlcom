@@ -211,11 +211,6 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
                            inode->data);
     }
 
-    /* update surface coord if surface size changed when click, like maximize */
-    if (cursor->hover.node == cursor->focus.node && !selection_is_draging(seat)) {
-        cursor_feed_fake_motion(cursor, false);
-    }
-
     /* send a button released event to old focus node */
     if (old_focus && changed && !pressed && last_is_pressed) {
         kywc_log(KYWC_DEBUG, "release button %d in %p", last_button, old_focus);
@@ -244,6 +239,11 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     if (inode && inode->impl->click) {
         inode->impl->click(seat, cursor->focus.node, button, pressed, time,
                            double_click ? CLICK_STATE_DOUBLE : CLICK_STATE_NONE, inode->data);
+    }
+
+    /* update surface coord if surface size changed when click, like maximize */
+    if (cursor->hover.node == cursor->focus.node && !selection_is_draging(seat)) {
+        cursor_feed_fake_motion(cursor, false);
     }
 
     if (!cursor->focus.node) {
