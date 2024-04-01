@@ -26,7 +26,7 @@ const char *kywc_identifier_md5_generate(void *data, unsigned int len);
 /* return 36_byte of md5-uuid */
 const char *kywc_identifier_md5_generate_uuid(void *data, unsigned int len);
 
-/* return base64 encoding on data*/
+/* return base64 encoding on data */
 const char *kywc_identifier_base64_generate(const void *data, unsigned int len);
 
 /* write md5 string to md5_str in size bytes */
