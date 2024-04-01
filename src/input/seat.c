@@ -335,6 +335,10 @@ void seat_end_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
                         double sy, bool first_enter)
 {
+    if (seat->pointer_grab) {
+        return;
+    }
+
     struct wlr_seat *wlr_seat = seat->wlr_seat;
     struct wlr_surface *prev = wlr_seat->pointer_state.focused_surface;
 
@@ -348,6 +352,10 @@ void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t
 
 void seat_notify_button(struct seat *seat, uint32_t time, uint32_t button, bool pressed)
 {
+    if (seat->pointer_grab) {
+        return;
+    }
+
     struct wlr_seat *wlr_seat = seat->wlr_seat;
 
     enum wlr_button_state state = pressed ? WLR_BUTTON_PRESSED : WLR_BUTTON_RELEASED;
@@ -356,6 +364,10 @@ void seat_notify_button(struct seat *seat, uint32_t time, uint32_t button, bool 
 
 void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
 {
+    if (seat->pointer_grab) {
+        return;
+    }
+
     struct wlr_seat *wlr_seat = seat->wlr_seat;
     struct wlr_surface *prev = wlr_seat->pointer_state.focused_surface;
 

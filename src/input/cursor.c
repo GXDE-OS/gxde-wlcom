@@ -145,7 +145,16 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
         wl_list_remove(&cursor->hover.destroy.link);
         cursor->hover.node = NULL;
     }
-    cursor_feed_motion(cursor, current_time_msec());
+
+    /* skip motion when has grab */
+    if (cursor->seat->pointer_grab && cursor->seat->pointer_grab->interface->motion) {
+        return;
+    }
+
+    _cursor_feed_motion(cursor, current_time_msec());
+    if (leave) {
+        wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+    }
 }
 
 void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time,
@@ -314,9 +323,11 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
 static void cursor_handle_frame(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, frame);
+    if (cursor->seat->pointer_grab) {
+        return;
+    }
     /* Notify the client with pointer focus of the frame event. */
-    struct wlr_seat *wlr_seat = cursor->seat->wlr_seat;
-    wlr_seat_pointer_notify_frame(wlr_seat);
+    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 }
 
 static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *data)
