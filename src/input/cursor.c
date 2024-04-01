@@ -141,9 +141,6 @@ static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
         if (inode && inode->impl->leave) {
             inode->impl->leave(cursor->seat, cursor->hover.node, false, inode->data);
         }
-        /* clear hover */
-        wl_list_remove(&cursor->hover.destroy.link);
-        cursor->hover.node = NULL;
     }
 
     /* skip motion when has grab */
