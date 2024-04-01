@@ -270,6 +270,9 @@ void seat_start_pointer_grab(struct seat *seat, struct seat_pointer_grab *pointe
         grab->interface->cancel(grab);
     }
 
+    /* stop the client cursor surface */
+    cursor_set_image(seat->cursor, CURSOR_NONE);
+
     /* when we move quickly with left buttion pressed at view edges,
      * hold_mode is entered by a cursor motion event then client requests move
      */

@@ -475,7 +475,7 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
     grab->output = input_current_output(grab->seat);
 
     if (grab->mode == INTERACTIVE_MODE_MOVE) {
-        /* set moving cursor image in server side, may replaced by client set_cursor later */
+        /* set moving cursor image if moving */
         if (!grab->ongoing) {
             cursor_set_image(grab->seat->cursor, CURSOR_MOVE);
         }
@@ -622,6 +622,13 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     grab->view = view;
     grab->view_unmap.notify = handle_view_unmap;
     wl_signal_add(&view->base.events.unmap, &grab->view_unmap);
+
+    /* set the default cursor */
+    if (mode == INTERACTIVE_MODE_MOVE) {
+        cursor_set_image(seat->cursor, CURSOR_DEFAULT);
+    } else if (mode == INTERACTIVE_MODE_RESIZE) {
+        cursor_set_resize_image(seat->cursor, edges);
+    }
 
     struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
     grab->filter = wl_event_loop_add_timer(loop, handle_snap_box, grab);

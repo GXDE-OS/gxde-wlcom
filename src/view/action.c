@@ -127,17 +127,15 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
         lx = kywc_view->geometry.x + kywc_view->geometry.width / 2;
         ly = kywc_view->geometry.y + kywc_view->geometry.height / 2;
         cursor_move(seat->cursor, NULL, lx, ly, false, false);
-        window_begin_move(view, seat);
         cursor_rebase(seat->cursor);
-        cursor_set_image(seat->cursor, CURSOR_MOVE);
+        window_begin_move(view, seat);
         break;
     case WINDOW_ACTION_RESIZE:
         lx = kywc_view->geometry.x + kywc_view->geometry.width;
         ly = kywc_view->geometry.y + kywc_view->geometry.height;
         cursor_move(seat->cursor, NULL, lx + 8, ly + 8, false, false);
-        window_begin_resize(view, KYWC_EDGE_RIGHT | KYWC_EDGE_BOTTOM, seat);
         cursor_rebase(seat->cursor);
-        cursor_set_image(seat->cursor, CURSOR_RESIZE_BOTTOM_RIGHT);
+        window_begin_resize(view, KYWC_EDGE_RIGHT | KYWC_EDGE_BOTTOM, seat);
         break;
     case WINDOW_ACTION_KEEP_ABOVE:
         kywc_view_toggle_kept_above(kywc_view);
