@@ -709,7 +709,13 @@ struct view_proxy *view_add_workspace(struct view *view, struct workspace *works
     if (view_proxy) {
         return NULL;
     }
-    return view_proxy_create(view, workspace);
+
+    view_proxy = view_proxy_create(view, workspace);
+    struct workspace *current_workspace = workspace_manager_get_current();
+    if (workspace == current_workspace) {
+        view_set_current_proxy(view, view_proxy);
+    }
+    return view_proxy;
 }
 
 void view_remove_workspace(struct view *view, struct workspace *workspace)
