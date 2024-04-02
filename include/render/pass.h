@@ -8,7 +8,7 @@
 #include <wlr/render/pass.h>
 
 struct ky_render_round_corner {
-    int rb, rt, lb, lt;
+    float rb, rt, lb, lt;
 };
 
 struct ky_render_texture_options {

@@ -179,10 +179,10 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
         },
         .radius = {
-            .rb = node->radius[0],
-            .rt = node->radius[1],
-            .lb = node->radius[2],
-            .lt = node->radius[3],
+            .rb = node->radius[0] * target->scale,
+            .rt = node->radius[1] * target->scale,
+            .lb = node->radius[2] * target->scale,
+            .lt = node->radius[3] * target->scale,
         },
     };
     ky_render_pass_add_rect(target->render_pass, &options);
