@@ -28,8 +28,7 @@ void main() {
 	vec2 fullSize = vec2(aspect, 1.0);
 
 	float dist = sdRoundedBox(st, fullSize, roundedCornerRadius);
-	float aa = pixelDistance * 0.5;
-    float shape = 1.0 - smoothstep(-aa, 0.0, dist);
+    float shape = 1.0 - smoothstep(0.0, pixelDistance, dist);
     vec4 texColor = texture2D(tex, v_texcoord) * alpha;
 	gl_FragColor = mix(vec4(0.0), texColor, shape);
 }

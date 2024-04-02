@@ -56,7 +56,7 @@ void main() {
 
     float windowDist = sdRoundedBox(st + offset, windowRect.zw, roundedCornerRadius);
     float aa = pixelDistance * 0.5;
-    float shapeWindow = smoothstep(-aa, 0.0, windowDist);
+    float shapeWindow = smoothstep(0.0, aa, windowDist);
     vec4 result = mix(vec4(0.0), shadowColor, shapeWindow * shadow);
 
     // title
