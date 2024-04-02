@@ -902,6 +902,9 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &xwayland_view->set_override_redirect);
 
+    wl_list_init(&xwayland_view->precommit.link);
+    wl_list_init(&xwayland_view->map.link);
+    wl_list_init(&xwayland_view->unmap.link);
     wl_list_init(&xwayland_view->net_wm_icons);
 
     if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {

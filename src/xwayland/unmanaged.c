@@ -432,6 +432,10 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
     wl_signal_add(&wlr_xwayland_surface->events.set_override_redirect,
                   &unmanaged->set_override_redirect);
 
+    wl_list_init(&unmanaged->precommit.link);
+    wl_list_init(&unmanaged->map.link);
+    wl_list_init(&unmanaged->unmap.link);
+
     if (wlr_xwayland_surface->surface && wlr_xwayland_surface->surface->mapped) {
         unmanaged_handle_associate(&unmanaged->associate, NULL);
         unmanaged_handle_map(&unmanaged->map, NULL);
