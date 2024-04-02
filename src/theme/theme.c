@@ -809,6 +809,10 @@ fallback:
 struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
 {
     struct icon *icon = theme_icon_find(app_id);
+    if (icon == manager->fallback_icon) {
+        return NULL;
+    }
+
     struct icon_buffer *buf = icon_get_buffer(icon, scale);
     return buf ? buf->buffer : NULL;
 }
