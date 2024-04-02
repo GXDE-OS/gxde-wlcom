@@ -308,14 +308,14 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 {
-    if (view->impl->get_icon_buffer) {
-        struct wlr_buffer *buf = view->impl->get_icon_buffer(view, scale);
-        if (buf) {
-            return buf;
-        }
+    struct wlr_buffer *buf = NULL;
+    buf = theme_icon_load(view->base.app_id, scale);
+
+    if (!buf && view->impl->get_icon_buffer) {
+        buf = view->impl->get_icon_buffer(view, scale);
     }
 
-    return theme_icon_load(view->base.app_id, scale);
+    return buf;
 }
 
 /* set surface round corner by ssd type, tiled, fullscreen and maximized state */
