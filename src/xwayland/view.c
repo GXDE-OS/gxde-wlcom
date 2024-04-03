@@ -471,6 +471,16 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
         return;
     }
 
+    /* disable ssd if the window has clip region */
+    if (xwayland_view->view.surface) {
+        struct ky_scene_buffer *buffer =
+            ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+        if (pixman_region32_not_empty(&buffer->node.clip_region)) {
+            view_set_decoration(&xwayland_view->view, KYWC_SSD_NONE);
+            return;
+        }
+    }
+
     enum kywc_ssd ssd = KYWC_SSD_ALL;
     if (wlr_xwayland_surface->decorations & WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER) {
         ssd &= ~KYWC_SSD_BORDER;
