@@ -195,10 +195,28 @@ static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
         return;
     }
 
-    const xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
-    const int count = xcb_shape_get_rectangles_rectangles_length(reply);
-    xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
-                                        rects, count);
+    xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
+    int count = xcb_shape_get_rectangles_rectangles_length(reply);
+    if (!rects || count == 0) {
+        free(reply);
+        return;
+    }
+
+    pixman_region32_t region;
+    pixman_region32_init(&region);
+    for (int i = 0; i < count; i++) {
+        pixman_region32_union_rect(&region, &region, xwayland_unscale(rects[i].x),
+                                   xwayland_unscale(rects[i].y), xwayland_unscale(rects[i].width),
+                                   xwayland_unscale(rects[i].height));
+    }
+
+    if (!xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
+                                             &region)) {
+        xwayland_view_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
+                                       &region);
+    }
+
+    pixman_region32_fini(&region);
     free(reply);
 }
 

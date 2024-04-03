@@ -58,6 +58,9 @@ struct xwayland_view {
 
     bool keep_above, keep_below;
     struct wl_list net_wm_icons; // from net_wm_icon
+
+    pixman_region32_t clip_region;
+    pixman_region32_t input_region;
 };
 
 struct net_wm_icon {
@@ -145,6 +148,8 @@ static void xwayland_view_close(struct view *view)
 static void xwayland_view_destroy(struct view *view)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
+    pixman_region32_fini(&xwayland_view->clip_region);
+    pixman_region32_fini(&xwayland_view->input_region);
     free(xwayland_view);
 }
 
@@ -779,6 +784,16 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     input_event_node_create(xwayland_view->surface_node, &xwayland_view_event_node_impl,
                             xwayland_view_get_root, xwayland_view_get_toplevel, xwayland_view);
 
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+    if (pixman_region32_not_empty(&xwayland_view->clip_region)) {
+        ky_scene_node_set_clip_region(&buffer->node, &xwayland_view->clip_region);
+        pixman_region32_clear(&xwayland_view->clip_region);
+    }
+    if (pixman_region32_not_empty(&xwayland_view->input_region)) {
+        ky_scene_node_set_input_region(&buffer->node, &xwayland_view->input_region);
+        pixman_region32_clear(&xwayland_view->input_region);
+    }
+
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
     xwayland_view->map.notify = xwayland_view_handle_map;
@@ -886,6 +901,9 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     wlr_xwayland_surface->data = xwayland_view;
     wl_list_init(&xwayland_view->output_update_usable_area.link);
 
+    pixman_region32_init(&xwayland_view->clip_region);
+    pixman_region32_init(&xwayland_view->input_region);
+
     xwayland_view->associate.notify = xwayland_view_handle_associate;
     wl_signal_add(&wlr_xwayland_surface->events.associate, &xwayland_view->associate);
     xwayland_view->dissociate.notify = xwayland_view_handle_dissociate;
@@ -943,4 +961,36 @@ void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_
     icon->height = height;
     icon->data = (unsigned char *)malloc(size);
     memcpy(icon->data, (unsigned char *)data, size);
+}
+
+bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
+                                    xcb_shape_sk_t kind, const pixman_region32_t *region)
+{
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
+    if (!surface) {
+        return false;
+    }
+
+    struct xwayland_view *xwayland_view = surface->data;
+    struct ky_scene_buffer *buffer = NULL;
+    if (xwayland_view->view.surface) {
+        buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+    }
+
+    if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_CLIP) {
+        if (buffer) {
+            ky_scene_node_set_clip_region(&buffer->node, region);
+        } else {
+            pixman_region32_copy(&xwayland_view->clip_region, region);
+        }
+    }
+    if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_INPUT) {
+        if (buffer) {
+            ky_scene_node_set_input_region(&buffer->node, region);
+        } else {
+            pixman_region32_copy(&xwayland_view->input_region, region);
+        }
+    }
+
+    return true;
 }

@@ -463,40 +463,28 @@ static struct xwayland_unmanaged *xwayland_unmanaged_look_surface(struct xwaylan
     return NULL;
 }
 
-void xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
-                                         xcb_shape_sk_t kind, const xcb_rectangle_t *rects,
-                                         int count)
+bool xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
+                                         xcb_shape_sk_t kind, const pixman_region32_t *region)
 {
-    if (!rects || count == 0) {
-        return;
-    }
-
     struct xwayland_unmanaged *unmanaged = xwayland_unmanaged_look_surface(xwayland, window_id);
     if (!unmanaged) {
-        return;
-    }
-
-    pixman_region32_t region;
-    pixman_region32_init(&region);
-    for (int i = 0; i < count; i++) {
-        pixman_region32_union_rect(&region, &region, xwayland_unscale(rects[i].x),
-                                   xwayland_unscale(rects[i].y), xwayland_unscale(rects[i].width),
-                                   xwayland_unscale(rects[i].height));
+        return false;
     }
 
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_CLIP) {
         if (unmanaged->surface_node) {
-            ky_scene_node_set_clip_region(unmanaged->surface_node, &region);
+            ky_scene_node_set_clip_region(unmanaged->surface_node, region);
         } else {
-            pixman_region32_copy(&unmanaged->clip_region, &region);
+            pixman_region32_copy(&unmanaged->clip_region, region);
         }
     }
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_INPUT) {
         if (unmanaged->surface_node) {
-            ky_scene_node_set_input_region(unmanaged->surface_node, &region);
+            ky_scene_node_set_input_region(unmanaged->surface_node, region);
         } else {
-            pixman_region32_copy(&unmanaged->input_region, &region);
+            pixman_region32_copy(&unmanaged->input_region, region);
         }
     }
-    pixman_region32_fini(&region);
+
+    return true;
 }
