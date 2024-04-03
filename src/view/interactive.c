@@ -262,11 +262,10 @@ static void interactive_done(struct interactive_grab *grab)
     interactive_grab_destroy(grab);
 }
 
-static void interactive_move_constraints(struct interactive_grab *grab, int *x, int *y)
+void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y)
 {
     /* get current seat constraints output */
-    struct kywc_box *usable = &grab->output->usable_area;
-    struct kywc_view *kywc_view = &grab->view->base;
+    struct kywc_box *usable = &output->usable_area;
     struct kywc_box *current = &kywc_view->geometry;
 
     /* actual view coord */
@@ -292,19 +291,17 @@ static void interactive_move_constraints(struct interactive_grab *grab, int *x, 
     }
 
     /* constraints when moving to top and bottom */
-    if (output_at_layout_edge(grab->output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
+    if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
         *y = usable->y + kywc_view->margin.off_y;
-    } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_BOTTOM) &&
-               uy2 - y1 < VIEW_BOTTOM_GAP) {
+    } else if (output_at_layout_edge(output, LAYOUT_EDGE_BOTTOM) && uy2 - y1 < VIEW_BOTTOM_GAP) {
         *y = uy2 - VIEW_BOTTOM_GAP + kywc_view->margin.off_y;
     }
 
     /* constraints when moving to left and right */
-    if (output_at_layout_edge(grab->output, LAYOUT_EDGE_LEFT) && x2 < VIEW_LEFT_GAP) {
+    if (output_at_layout_edge(output, LAYOUT_EDGE_LEFT) && x2 < VIEW_LEFT_GAP) {
         *x = VIEW_LEFT_GAP - kywc_view->geometry.width -
              (kywc_view->margin.off_width - kywc_view->margin.off_x);
-    } else if (output_at_layout_edge(grab->output, LAYOUT_EDGE_RIGHT) &&
-               ux2 - x1 < VIEW_RIGHT_GAP) {
+    } else if (output_at_layout_edge(output, LAYOUT_EDGE_RIGHT) && ux2 - x1 < VIEW_RIGHT_GAP) {
         *x = ux2 - VIEW_RIGHT_GAP + kywc_view->margin.off_y;
     }
 }
@@ -333,7 +330,7 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
 
     int nx = grab->geo.x + x - grab->cursor_x;
     int ny = grab->geo.y + y - grab->cursor_y;
-    interactive_move_constraints(grab, &nx, &ny);
+    window_move_constraints(&grab->view->base, grab->output, &nx, &ny);
     kywc_view_move(kywc_view, nx, ny);
 
     interactive_move_show_snap_box(grab, x, y);
