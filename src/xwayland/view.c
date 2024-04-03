@@ -466,7 +466,8 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
 
     if (xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_DOCK) ||
-        xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_SPLASH)) {
+        xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_SPLASH) ||
+        xwayland_surface_has_type(wlr_xwayland_surface, KDE_NET_WM_WINDOW_TYPE_OVERRIDE)) {
         view_set_decoration(&xwayland_view->view, KYWC_SSD_NONE);
         return;
     }
