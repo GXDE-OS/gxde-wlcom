@@ -61,6 +61,7 @@ struct xwayland_view {
 
     pixman_region32_t clip_region;
     pixman_region32_t input_region;
+    bool need_bypassed;
 };
 
 struct net_wm_icon {
@@ -790,6 +791,7 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
         ky_scene_node_set_input_region(&buffer->node, &xwayland_view->input_region);
         pixman_region32_clear(&xwayland_view->input_region);
     }
+    ky_scene_node_set_bypassed(&buffer->node, xwayland_view->need_bypassed);
 
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
@@ -987,6 +989,12 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
         } else {
             pixman_region32_copy(&xwayland_view->input_region, region);
         }
+        /* empty input region means no input support */
+        bool need_bypassed = kind == XCB_SHAPE_SK_INPUT && !pixman_region32_not_empty(region);
+        if (buffer) {
+            ky_scene_node_set_bypassed(&buffer->node, need_bypassed);
+        }
+        xwayland_view->need_bypassed = need_bypassed;
     }
 
     return true;

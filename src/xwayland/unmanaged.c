@@ -40,6 +40,7 @@ struct xwayland_unmanaged {
 
     pixman_region32_t clip_region;
     pixman_region32_t input_region;
+    bool need_bypassed;
 };
 
 static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *node, double x,
@@ -342,6 +343,7 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
         ky_scene_node_set_input_region(unmanaged->surface_node, &unmanaged->input_region);
         pixman_region32_clear(&unmanaged->input_region);
     }
+    ky_scene_node_set_bypassed(unmanaged->surface_node, unmanaged->need_bypassed);
 
     input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
                             xwayland_unmanaged_get_root, xwayland_unmanaged_get_toplevel,
@@ -484,6 +486,12 @@ bool xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_w
         } else {
             pixman_region32_copy(&unmanaged->input_region, region);
         }
+        /* empty input region means no input support */
+        bool need_bypassed = kind == XCB_SHAPE_SK_INPUT && !pixman_region32_not_empty(region);
+        if (unmanaged->surface_node) {
+            ky_scene_node_set_bypassed(unmanaged->surface_node, need_bypassed);
+        }
+        unmanaged->need_bypassed = need_bypassed;
     }
 
     return true;

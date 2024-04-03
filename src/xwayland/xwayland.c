@@ -197,11 +197,6 @@ static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
 
     xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
     int count = xcb_shape_get_rectangles_rectangles_length(reply);
-    if (!rects || count == 0) {
-        free(reply);
-        return;
-    }
-
     pixman_region32_t region;
     pixman_region32_init(&region);
     for (int i = 0; i < count; i++) {
