@@ -547,8 +547,12 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         if (!window->kywc_view->mapped) {
             continue;
         }
-        // org_kde_plasma_window_management_send_window(resource, window->id);
-        org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
+        if (version >= ORG_KDE_PLASMA_WINDOW_MANAGEMENT_WINDOW_WITH_UUID_SINCE_VERSION) {
+            org_kde_plasma_window_management_send_window_with_uuid(resource, window->id,
+                                                                   window->uuid);
+        } else {
+            org_kde_plasma_window_management_send_window(resource, window->id);
+        }
     }
 
     // TODO: stacking_order_changed, stacking_order_uuid_changed
