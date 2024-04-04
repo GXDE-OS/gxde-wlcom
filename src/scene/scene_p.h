@@ -11,6 +11,10 @@
 
 #include "scene/scene.h"
 
+enum ky_scene_render_option {
+    KY_SCENE_RENDER_DISABLE_VISIBILITY = 1 << 0,
+};
+
 struct ky_scene_render_target {
     /* current output states */
     enum wl_output_transform transform;
@@ -25,6 +29,9 @@ struct ky_scene_render_target {
     struct wlr_render_pass *render_pass;
 
     pixman_region32_t damage;
+
+    /* options when render to this target */
+    uint32_t options;
 };
 
 /**

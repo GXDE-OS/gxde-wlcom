@@ -328,13 +328,18 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
-    if (!pixman_region32_not_empty(&node->visible_region)) {
+    bool render_with_visibility = !(target->options & KY_SCENE_RENDER_DISABLE_VISIBILITY);
+    if (render_with_visibility && !pixman_region32_not_empty(&node->visible_region)) {
         return;
     }
 
     pixman_region32_t render_region;
     pixman_region32_init(&render_region);
-    pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
+    if (render_with_visibility) {
+        pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
+    } else {
+        pixman_region32_copy(&render_region, &target->damage);
+    }
 
     if (!pixman_region32_not_empty(&render_region)) {
         pixman_region32_fini(&render_region);
