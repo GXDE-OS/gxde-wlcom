@@ -146,7 +146,7 @@ static int scene_decoration_create_opengl_shader(void)
     return prog;
 }
 
-static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
+static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int lx, int ly,
                                            struct ky_scene_render_target *target,
                                            const struct wlr_box *box, const pixman_region32_t *clip)
 {
@@ -179,34 +179,44 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
         verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
     }
 
-    // like ky_scene_render_box() use round()
+    // base by scaled window rect. avoid non-integer scale 1 pixel offset
+    struct wlr_box window_box = {
+        .x = lx + deco->shadow_width + deco->border_thickness - target->logical.x,
+        .y = ly + deco->shadow_width + deco->border_thickness + deco->title_height - target->logical.y,
+        .width = deco->window_width,
+        .height = deco->window_height,
+    };
+    ky_scene_render_box(&window_box, target);
+
     float scale = target->scale;
-    float width = round(deco->rect.width * scale);
-    float height = round(deco->rect.height * scale);
+    // keep border integer scale. avoid non-integer scale problem
+    int border_thickness = ceil(deco->border_thickness * scale);
+    int title_height = round(deco->title_height * scale);
+    
+    float width = box->width;
+    float height = box->height;
     float half_height = height * 0.5f; // shader distance scale
-    float shadow_width = round(deco->shadow_width * scale);
-    float title_height = round(deco->title_height * scale);
-    float border_thickness = round(deco->border_thickness * scale);
+    float shadow_width = deco->shadow_width * scale;
     float round_corner_radius[4] = {
         deco->round_corner_radius[0] > 0
-            ? (deco->round_corner_radius[0] + deco->border_thickness) * scale
+            ? deco->round_corner_radius[0] * scale + border_thickness
             : 0.0f,
         deco->round_corner_radius[1] > 0
-            ? (deco->round_corner_radius[1] + deco->border_thickness) * scale
+            ? deco->round_corner_radius[0] * scale + border_thickness
             : 0.0f,
         deco->round_corner_radius[2] > 0
-            ? (deco->round_corner_radius[2] + deco->border_thickness) * scale
+            ? deco->round_corner_radius[0] * scale + border_thickness
             : 0.0f,
         deco->round_corner_radius[3] > 0
-            ? (deco->round_corner_radius[3] + deco->border_thickness) * scale
+            ? deco->round_corner_radius[0] * scale + border_thickness
             : 0.0f,
     };
-    // inner window. rect - shadow
-    struct wlr_box window = {
-        .x = shadow_width,
-        .y = shadow_width,
-        .width = width - shadow_width * 2.0,
-        .height = height - shadow_width * 2.0,
+
+    struct wlr_box window_frame = {
+        .x = window_box.x - border_thickness - box->x,
+        .y = window_box.y - title_height - border_thickness - box->y,
+        .width = window_box.width + border_thickness * 2,
+        .height = window_box.height + title_height + border_thickness * 2,
     };
 
     struct ky_mat3 projection;
@@ -234,15 +244,15 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco,
     // frag shader param
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
     glUniform1f(gl_locations.shadow_sigma, shadow_width * 0.424660891f);
-    glUniform4f(gl_locations.shadow_rect, window.x, window.y, window.x + window.width,
-                window.y + window.height);
+    glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y, window_frame.x + window_frame.width,
+                window_frame.y + window_frame.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
     glUniform1f(gl_locations.pixel_distance, 1.0 / half_height);
     glUniform1f(gl_locations.aspect, width / height);
-    float width_distance = window.width / height;
-    float height_distance = window.height / height;
-    float offset_x_distance = width_distance * 0.5f + window.x / height;
-    float offset_y_distance = height_distance * 0.5f + window.y / height;
+    float width_distance = window_frame.width / height;
+    float height_distance = window_frame.height / height;
+    float offset_x_distance = width_distance * 0.5f + window_frame.x / height;
+    float offset_y_distance = height_distance * 0.5f + window_frame.y / height;
     glUniform4f(gl_locations.window_rect, offset_x_distance, offset_y_distance, width_distance,
                 height_distance);
     glUniform4f(
@@ -533,7 +543,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         }
         if (gl_shader > 0) {
             ky_scene_render_region(&render_region, target);
-            scene_decoration_opengl_render(deco, target, &dst_box, &render_region);
+            scene_decoration_opengl_render(deco, lx, ly, target, &dst_box, &render_region);
             pixman_region32_fini(&render_region);
             return;
         } else {
