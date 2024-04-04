@@ -2,7 +2,12 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#ifndef _SCENE_ANIMATION_H_
+#define _SCENE_ANIMATION_H_
+
 #include "scene.h"
+
+struct server;
 
 enum animation_type {
     ANIMATION_TYPE_MOD, // user defined
@@ -32,3 +37,5 @@ void ky_scene_rect_set_size_with_animation(struct ky_scene_rect *rect, int width
 
 void ky_scene_rect_set_color_with_animation(struct ky_scene_rect *rect, const float color[static 4],
                                             struct animation *animation, uint32_t duration);
+
+#endif /* _SCENE_ANIMATION_H_ */
