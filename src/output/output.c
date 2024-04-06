@@ -240,7 +240,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&kywc_output->events.mode);
     wl_signal_init(&kywc_output->events.position);
     wl_signal_init(&kywc_output->events.power);
-    wl_signal_init(&kywc_output->events.frame);
     wl_signal_init(&kywc_output->events.brightness);
     wl_signal_init(&kywc_output->events.color_temp);
     wl_signal_init(&kywc_output->events.destroy);
@@ -331,10 +330,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
-    struct kywc_output *kywc_output = &output->base;
-
-    /* make sure something is done before commit */
-    wl_signal_emit_mutable(&kywc_output->events.frame, NULL);
 
     ky_scene_output_commit(output->scene_output, NULL);
 

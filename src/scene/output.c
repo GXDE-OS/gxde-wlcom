@@ -257,6 +257,7 @@ struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wl
     assert(scene_output->index < 64);
     wl_list_insert(prev_output_link, &scene_output->link);
 
+    wl_signal_init(&scene_output->events.frame);
     wl_signal_init(&scene_output->events.destroy);
 
     scene_output->output_commit.notify = scene_output_handle_commit;
@@ -383,6 +384,9 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
 bool ky_scene_output_commit(struct ky_scene_output *scene_output,
                             const struct ky_scene_output_state_options *options)
 {
+    /* make sure something is done before commit */
+    wl_signal_emit_mutable(&scene_output->events.frame, NULL);
+
     struct wlr_output *output = scene_output->output;
     struct ky_scene_render_target target = {
         .transform = output->transform,

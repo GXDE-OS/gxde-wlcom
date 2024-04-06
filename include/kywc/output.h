@@ -71,7 +71,6 @@ struct kywc_output {
         struct wl_signal brightness;
         struct wl_signal color_temp;
 
-        struct wl_signal frame;
         struct wl_signal destroy;
     } events;
 };

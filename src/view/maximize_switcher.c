@@ -595,7 +595,7 @@ static bool show_maximize_switcher(void)
     ky_scene_node_set_position(&switcher->border.bottom->node, -1, switcher->height);
 
     switcher->output_frame.notify = handle_output_frame;
-    wl_signal_add(&output->base.events.frame, &switcher->output_frame);
+    wl_signal_add(&output->scene_output->events.frame, &switcher->output_frame);
 
     switcher->pending = 1;
     switcher->current = -1;

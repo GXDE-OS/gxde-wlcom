@@ -255,6 +255,7 @@ struct ky_scene_output {
     int x, y;
 
     struct {
+        struct wl_signal frame;
         struct wl_signal destroy;
     } events;
 

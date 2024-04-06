@@ -175,7 +175,8 @@ static void animation_entity_update_output(struct animation_entity *entity, bool
     }
 
     struct kywc_output *output = kywc_output_at_point(lx, ly);
-    wlr_output_schedule_frame(output_from_kywc_output(output)->wlr_output);
+    struct output *o = output_from_kywc_output(output);
+    wlr_output_schedule_frame(o->wlr_output);
 
     if (output == entity->output) {
         return;
@@ -184,7 +185,7 @@ static void animation_entity_update_output(struct animation_entity *entity, bool
     entity->output = output;
     // kywc_log(KYWC_INFO, "animation output to %s", output->name);
     wl_list_remove(&entity->output_frame.link);
-    wl_signal_add(&output->events.frame, &entity->output_frame);
+    wl_signal_add(&o->scene_output->events.frame, &entity->output_frame);
 }
 
 static void entity_handle_output_frame(struct wl_listener *listener, void *data)
