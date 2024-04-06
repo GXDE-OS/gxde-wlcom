@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _DEFAULT_SOURCE
-#include <limits.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_buffer.h>
@@ -12,8 +11,7 @@
 #include <kywc/log.h>
 
 #include "config_p.h"
-#include "effect/screencopy.h"
-#include "painter.h"
+#include "effect/capture.h"
 #include "server.h"
 
 static const char *registry_bus = "org.ukui.KWin";
@@ -28,15 +26,8 @@ static struct screenshot_manager {
     bool taking_screenshot;
 } *manager = NULL;
 
-static void screenshot_write_image(struct wlr_buffer *buffer)
+static void screenshot_finish(const char *path, void *data)
 {
-    char path[PATH_MAX];
-    snprintf(path, PATH_MAX, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
-    mkstemps(path, 4);
-
-    painter_buffer_to_file(buffer, path);
-    wlr_buffer_drop(buffer);
-
     sd_bus_reply_method_return(manager->msg, "s", path);
     sd_bus_message_unref(manager->msg);
     manager->msg = NULL;
@@ -45,32 +36,13 @@ static void screenshot_write_image(struct wlr_buffer *buffer)
     kywc_log(KYWC_DEBUG, "screenshot done, send reply %s", path);
 }
 
-static void write_image(void *job, void *gdata, int index)
+static void screenshot_done(struct wlr_buffer *buffer, int width, int height, void *data)
 {
-    struct wlr_buffer *buffer = job;
-    kywc_log(KYWC_DEBUG, "%s: in thread %d", __func__, index);
-    screenshot_write_image(buffer);
-}
+    char path[32];
+    snprintf(path, 32, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
+    mkstemps(path, 4);
 
-static bool screenshot_done(struct wlr_buffer *buffer, int width, int height, void *data)
-{
-    uint32_t format;
-    size_t stride;
-    void *dst_ptr;
-
-    struct wlr_buffer *dst_buf = painter_create_buffer(width, height, 1.0);
-    wlr_buffer_begin_data_ptr_access(dst_buf, WLR_BUFFER_DATA_PTR_ACCESS_WRITE, &dst_ptr, &format,
-                                     &stride);
-    screencopy_read_buffer(buffer, format, stride,
-                           &(struct wlr_box){ 0, 0, dst_buf->width, dst_buf->height }, dst_ptr);
-    wlr_buffer_end_data_ptr_access(dst_buf);
-    kywc_log(KYWC_DEBUG, "screenshot copy buffer to memory");
-
-    if (!queue_add_job(&manager->server->queue, dst_buf, write_image, NULL)) {
-        screenshot_write_image(dst_buf);
-    }
-
-    return true;
+    capture_write_file(buffer, width, height, path, screenshot_finish, NULL);
 }
 
 static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
@@ -81,7 +53,7 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
         return sd_bus_reply_method_error(msg, &error);
     }
 
-    if (!screencopy_full(false, false, screenshot_done, NULL)) {
+    if (!capture_fullscreen(false, false, screenshot_done, NULL)) {
         return 0;
     }
 
@@ -102,7 +74,7 @@ static int screenshot2_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_er
     uint32_t cursor = 0;
     CK(sd_bus_message_read(msg, "b", &cursor));
 
-    if (!screencopy_full(false, cursor, screenshot_done, NULL)) {
+    if (!capture_fullscreen(false, cursor, screenshot_done, NULL)) {
         return 0;
     }
 
@@ -123,7 +95,7 @@ static int screenshot_full(sd_bus_message *msg, void *userdata, sd_bus_error *re
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "bb", &unscaled, &cursor));
 
-    if (!screencopy_full(unscaled, cursor, screenshot_done, NULL)) {
+    if (!capture_fullscreen(unscaled, cursor, screenshot_done, NULL)) {
         return 0;
     }
 
@@ -145,7 +117,7 @@ static int screenshot_output(sd_bus_message *msg, void *userdata, sd_bus_error *
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "sbb", &name, &unscaled, &cursor));
 
-    if (!screencopy_output(name, unscaled, cursor, screenshot_done, NULL)) {
+    if (!capture_output(name, unscaled, cursor, screenshot_done, NULL)) {
         return 0;
     }
 
@@ -167,8 +139,8 @@ static int screenshot_area(sd_bus_message *msg, void *userdata, sd_bus_error *re
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "iiiibb", &x, &y, &width, &height, &unscaled, &cursor));
 
-    if (!screencopy_area(&(struct wlr_box){ x, y, width, height }, unscaled, cursor,
-                         screenshot_done, NULL)) {
+    if (!capture_area(&(struct wlr_box){ x, y, width, height }, unscaled, cursor, screenshot_done,
+                      NULL)) {
         return 0;
     }
 

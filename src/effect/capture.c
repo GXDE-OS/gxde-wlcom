@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#define _POSIX_C_SOURCE 200809L
 #include <drm_fourcc.h>
 #include <stdlib.h>
 
@@ -12,11 +13,12 @@
 
 #include <kywc/log.h>
 
-#include "effect/screencopy.h"
+#include "effect/capture.h"
 #include "effect_p.h"
+#include "painter.h"
 #include "render/renderer.h"
 
-struct screencopy_output {
+struct capture_output {
     struct wl_list link;
     struct wlr_output_layout_output *l_output;
     struct wl_listener output_commit;
@@ -29,7 +31,7 @@ struct screencopy_output {
     bool cursor_locked;
 };
 
-struct screencopy_manager {
+struct capture_manager {
     struct server *server;
     struct wl_listener destroy;
     struct wl_list outputs;
@@ -37,13 +39,13 @@ struct screencopy_manager {
     struct wlr_buffer *buffer;
     int width, height;
 
-    screencopy_done_func_t done;
+    capture_done_func_t done;
     void *data;
 
-    bool taking_screencopy;
+    bool taking_capture;
 };
 
-static struct screencopy_manager *manager = NULL;
+static struct capture_manager *manager = NULL;
 
 static float max_scale(void)
 {
@@ -68,7 +70,7 @@ static struct wlr_output *output_from_name(const char *name)
     return NULL;
 }
 
-static void screencopy_done(void)
+static void capture_done(void)
 {
     /* not finished yet */
     if (!wl_list_empty(&manager->outputs)) {
@@ -77,10 +79,10 @@ static void screencopy_done(void)
 
     manager->done(manager->buffer, manager->width, manager->height, manager->data);
 
-    manager->taking_screencopy = false;
+    manager->taking_capture = false;
 }
 
-static void screencopy_output_destroy(struct screencopy_output *s_output)
+static void capture_output_destroy(struct capture_output *s_output)
 {
     if (s_output->l_output) {
         wlr_output_lock_attach_render(s_output->l_output->output, false);
@@ -95,16 +97,16 @@ static void screencopy_output_destroy(struct screencopy_output *s_output)
     free(s_output);
 }
 
-static void screencopy_handle_layout_destroy(struct wl_listener *listener, void *data)
+static void capture_handle_layout_destroy(struct wl_listener *listener, void *data)
 {
-    struct screencopy_output *s_output = wl_container_of(listener, s_output, layout_destroy);
+    struct capture_output *s_output = wl_container_of(listener, s_output, layout_destroy);
     s_output->l_output = NULL;
-    screencopy_output_destroy(s_output);
+    capture_output_destroy(s_output);
 }
 
-static void screencopy_handle_output_commit(struct wl_listener *listener, void *data)
+static void capture_handle_output_commit(struct wl_listener *listener, void *data)
 {
-    struct screencopy_output *s_output = wl_container_of(listener, s_output, output_commit);
+    struct capture_output *s_output = wl_container_of(listener, s_output, output_commit);
     struct wlr_output_event_commit *event = data;
     struct wlr_output *output = s_output->l_output->output;
 
@@ -115,9 +117,9 @@ static void screencopy_handle_output_commit(struct wl_listener *listener, void *
     struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(output->renderer, manager->buffer, NULL);
     if (!pass) {
-        kywc_log(KYWC_ERROR, "screencopy pass create failed");
-        screencopy_output_destroy(s_output);
-        screencopy_done();
+        kywc_log(KYWC_ERROR, "capture pass create failed");
+        capture_output_destroy(s_output);
+        capture_done();
         return;
     }
 
@@ -134,19 +136,19 @@ static void screencopy_handle_output_commit(struct wl_listener *listener, void *
     wlr_render_pass_submit(pass);
     wlr_texture_destroy(src_tex);
 
-    kywc_log(KYWC_DEBUG, "screencopy output %s copy (%f, %f) %f x %f to (%d, %d) %d x %d",
+    kywc_log(KYWC_DEBUG, "capture output %s copy (%f, %f) %f x %f to (%d, %d) %d x %d",
              output->name, s_output->src_box.x, s_output->src_box.y, s_output->src_box.width,
              s_output->src_box.height, s_output->dst_box.x, s_output->dst_box.y,
              s_output->dst_box.width, s_output->dst_box.height);
 
-    screencopy_output_destroy(s_output);
-    screencopy_done();
+    capture_output_destroy(s_output);
+    capture_done();
 }
 
-static void screencopy_output_create(struct wlr_output_layout_output *l_output,
-                                     struct wlr_fbox *src, struct wlr_box *dst, bool cursor_locked)
+static void capture_output_create(struct wlr_output_layout_output *l_output, struct wlr_fbox *src,
+                                  struct wlr_box *dst, bool cursor_locked)
 {
-    struct screencopy_output *s_output = calloc(1, sizeof(*s_output));
+    struct capture_output *s_output = calloc(1, sizeof(*s_output));
     if (!s_output) {
         return;
     }
@@ -160,11 +162,11 @@ static void screencopy_output_create(struct wlr_output_layout_output *l_output,
     s_output->cursor_locked = cursor_locked;
     wl_list_insert(&manager->outputs, &s_output->link);
 
-    s_output->layout_destroy.notify = screencopy_handle_layout_destroy;
+    s_output->layout_destroy.notify = capture_handle_layout_destroy;
     wl_signal_add(&l_output->events.destroy, &s_output->layout_destroy);
 
     struct wlr_output *output = l_output->output;
-    s_output->output_commit.notify = screencopy_handle_output_commit;
+    s_output->output_commit.notify = capture_handle_output_commit;
     wl_signal_add(&output->events.commit, &s_output->output_commit);
 
     wlr_output_schedule_frame(output);
@@ -174,7 +176,7 @@ static void screencopy_output_create(struct wlr_output_layout_output *l_output,
     }
 }
 
-static struct wlr_buffer *screencopy_create_buffer(int width, int height)
+static struct wlr_buffer *capture_create_buffer(int width, int height)
 {
     manager->width = width;
     manager->height = height;
@@ -203,7 +205,7 @@ static struct wlr_buffer *screencopy_create_buffer(int width, int height)
     return wlr_buffer;
 }
 
-static bool screencopy_clear_buffer(struct wlr_buffer *buffer)
+static bool capture_clear_buffer(struct wlr_buffer *buffer)
 {
     struct wlr_render_pass *pass =
         wlr_renderer_begin_buffer_pass(manager->server->renderer, buffer, NULL);
@@ -219,10 +221,10 @@ static bool screencopy_clear_buffer(struct wlr_buffer *buffer)
     return true;
 }
 
-bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencopy_done_func_t done,
-                     void *data)
+bool capture_area(struct wlr_box *area, bool unscaled, bool cursor, capture_done_func_t done,
+                  void *data)
 {
-    if (!manager || manager->taking_screencopy) {
+    if (!manager || manager->taking_capture) {
         return false;
     }
 
@@ -231,7 +233,7 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
         return false;
     }
 
-    if (!screencopy_create_buffer(area->width, area->height)) {
+    if (!capture_create_buffer(area->width, area->height)) {
         return false;
     }
 
@@ -284,27 +286,27 @@ bool screencopy_area(struct wlr_box *area, bool unscaled, bool cursor, screencop
         wlr_fbox_transform(&fbox, &fbox, wlr_output_transform_invert(l_output->output->transform),
                            width, height);
 
-        screencopy_output_create(l_output, &fbox, &box, cursor);
+        capture_output_create(l_output, &fbox, &box, cursor);
 
         layout_output_count++;
     }
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        screencopy_clear_buffer(manager->buffer);
+        capture_clear_buffer(manager->buffer);
     }
 
     manager->done = done;
     manager->data = data;
-    manager->taking_screencopy = true;
+    manager->taking_capture = true;
 
     return true;
 }
 
-bool screencopy_output(const char *name, bool unscaled, bool cursor, screencopy_done_func_t done,
-                       void *data)
+bool capture_output(const char *name, bool unscaled, bool cursor, capture_done_func_t done,
+                    void *data)
 {
-    if (!manager || manager->taking_screencopy || !name) {
+    if (!manager || manager->taking_capture || !name) {
         return false;
     }
 
@@ -333,22 +335,22 @@ bool screencopy_output(const char *name, bool unscaled, bool cursor, screencopy_
         geo.height *= scale;
     }
 
-    if (!screencopy_create_buffer(geo.width, geo.height)) {
+    if (!capture_create_buffer(geo.width, geo.height)) {
         return false;
     }
 
-    screencopy_output_create(l_output, NULL, &geo, cursor);
+    capture_output_create(l_output, NULL, &geo, cursor);
 
     manager->done = done;
     manager->data = data;
-    manager->taking_screencopy = true;
+    manager->taking_capture = true;
 
     return true;
 }
 
-bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, void *data)
+bool capture_fullscreen(bool unscaled, bool cursor, capture_done_func_t done, void *data)
 {
-    if (!manager || manager->taking_screencopy) {
+    if (!manager || manager->taking_capture) {
         return false;
     }
 
@@ -387,13 +389,13 @@ bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, vo
 
         pixman_region32_union_rect(&region, &region, box.x, box.y, box.width, box.height);
 
-        if (!screencopy_create_buffer(region.extents.x2 - region.extents.x1,
-                                      region.extents.y2 - region.extents.y1)) {
+        if (!capture_create_buffer(region.extents.x2 - region.extents.x1,
+                                   region.extents.y2 - region.extents.y1)) {
             pixman_region32_fini(&region);
             return false;
         }
 
-        screencopy_output_create(l_output, NULL, &box, cursor);
+        capture_output_create(l_output, NULL, &box, cursor);
 
         layout_output_count++;
     }
@@ -401,18 +403,18 @@ bool screencopy_full(bool unscaled, bool cursor, screencopy_done_func_t done, vo
 
     /* clear buffer */
     if (layout_output_count > 1) {
-        screencopy_clear_buffer(manager->buffer);
+        capture_clear_buffer(manager->buffer);
     }
 
     manager->done = done;
     manager->data = data;
-    manager->taking_screencopy = true;
+    manager->taking_capture = true;
 
     return true;
 }
 
-void screencopy_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t stride,
-                            struct wlr_box *box, void *data)
+void capture_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t stride,
+                         struct wlr_box *box, void *data)
 {
     if (!wlr_renderer_begin_with_buffer(manager->server->renderer, buffer)) {
         return;
@@ -420,6 +422,61 @@ void screencopy_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t
     wlr_renderer_read_pixels(manager->server->renderer, format, stride, box->width, box->height, 0,
                              0, box->x, box->y, data);
     wlr_renderer_end(manager->server->renderer);
+}
+
+struct capture_data {
+    struct wlr_buffer *buffer;
+    void (*done)(const char *path, void *data);
+    char *path;
+    void *user_data;
+};
+
+static void capture_write_image(struct wlr_buffer *buffer, const char *path,
+                                void (*done)(const char *path, void *data), void *user_data)
+{
+    painter_buffer_to_file(buffer, path);
+    wlr_buffer_drop(buffer);
+
+    if (done) {
+        done(path, user_data);
+    }
+}
+
+static void write_image(void *job, void *gdata, int index)
+{
+    kywc_log(KYWC_DEBUG, "%s: in thread %d", __func__, index);
+    struct capture_data *data = job;
+    capture_write_image(data->buffer, data->path, data->done, data->user_data);
+    free(data->path);
+    free(data);
+}
+
+void capture_write_file(struct wlr_buffer *buffer, int width, int height, const char *path,
+                        void (*done)(const char *path, void *data), void *user_data)
+{
+    uint32_t format;
+    size_t stride;
+    void *dst_ptr;
+
+    struct wlr_buffer *dst_buf = painter_create_buffer(width, height, 1.0);
+    wlr_buffer_begin_data_ptr_access(dst_buf, WLR_BUFFER_DATA_PTR_ACCESS_WRITE, &dst_ptr, &format,
+                                     &stride);
+    capture_read_buffer(buffer, format, stride,
+                        &(struct wlr_box){ 0, 0, dst_buf->width, dst_buf->height }, dst_ptr);
+    wlr_buffer_end_data_ptr_access(dst_buf);
+    kywc_log(KYWC_DEBUG, "capture copy buffer to memory");
+
+    struct capture_data *data = malloc(sizeof(*data));
+    data->buffer = dst_buf;
+    data->path = strdup(path);
+    data->done = done;
+    data->user_data = user_data;
+
+    if (!queue_add_job(&manager->server->queue, data, write_image, NULL)) {
+        free(data->path);
+        free(data);
+        capture_write_image(dst_buf, path, done, user_data);
+    }
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -430,7 +487,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
-bool screencopy_manager_create(struct server *server)
+bool capture_manager_create(struct server *server)
 {
     manager = calloc(1, sizeof(*manager));
     if (!manager) {

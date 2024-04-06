@@ -6,7 +6,7 @@
 
 bool effect_manager_create(struct server *server)
 {
-    screencopy_manager_create(server);
+    capture_manager_create(server);
 
     return true;
 }

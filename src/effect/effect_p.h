@@ -8,6 +8,6 @@
 #include "effect/effect.h"
 #include "server.h"
 
-bool screencopy_manager_create(struct server *server);
+bool capture_manager_create(struct server *server);
 
 #endif /* _EFFECT_P_H_ */
