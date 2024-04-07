@@ -80,9 +80,9 @@ static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, fl
 static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail, int width,
                                                     int height, struct wlr_allocator *allocator)
 {
-    bool change = !thumbnail->buffer ||
-                  (thumbnail->buffer->width != width || thumbnail->buffer->height != height);
-    if (!change) {
+    bool need_create = !thumbnail->buffer || // no buffer or smaller than source
+                       (thumbnail->buffer->width < width || thumbnail->buffer->height < height);
+    if (!need_create) {
         return thumbnail->buffer;
     }
 
