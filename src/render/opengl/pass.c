@@ -322,8 +322,14 @@ static void render_pass_add_texture_ex(struct wlr_render_pass *wlr_pass,
     set_proj_matrix(shader->proj, pass->projection_matrix, &dst_box);
     set_tex_matrix(shader->tex_proj, options->base.transform, &src_fbox);
 
-    glUniform1f(shader->aspect, options->base.dst_box.width / (float)options->base.dst_box.height);
-    float half_height = (float)options->base.dst_box.height * 0.5f; // shader distance scale
+    int width = options->base.dst_box.width;
+    int height = options->base.dst_box.height;
+    if (options->base.transform & WL_OUTPUT_TRANSFORM_90) {
+        width = options->base.dst_box.height;
+        height = options->base.dst_box.width;
+    }
+    glUniform1f(shader->aspect, width / (float)height);
+    float half_height = height * 0.5f; // shader distance scale
     glUniform1f(shader->pixel_distance, 1.0 / half_height);
     glUniform4f(shader->rounded_corner_radius, options->radius.rb / half_height,
                 options->radius.rt / half_height, options->radius.lb / half_height,
