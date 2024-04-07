@@ -107,6 +107,8 @@ static void window_snap(struct view *view, enum kywc_tile dir)
     kywc_view_set_tiled(&view->base, tiled, &output->base);
 }
 
+#define MIRROR_BUFFER_DEBUG 0
+
 struct view_capture {
     struct view *view;
     struct wl_listener view_unmap;
@@ -114,6 +116,9 @@ struct view_capture {
     struct thumbnail *thumbnail;
     struct wl_listener thumbnail_update;
     struct wl_listener thumbnail_destroy;
+#if MIRROR_BUFFER_DEBUG
+    struct ky_scene_buffer *buffer;
+#endif
 };
 
 static void view_capture_destroy(struct view_capture *capture)
@@ -122,6 +127,11 @@ static void view_capture_destroy(struct view_capture *capture)
     wl_list_remove(&capture->thumbnail_update.link);
     wl_list_remove(&capture->thumbnail_destroy.link);
 
+#if MIRROR_BUFFER_DEBUG
+    if (capture->buffer) {
+        ky_scene_node_destroy(&capture->buffer->node);
+    }
+#endif
     if (capture->thumbnail) {
         thumbnail_destroy(capture->thumbnail);
     }
@@ -142,6 +152,20 @@ static void capture_handle_thumbnail_destroy(struct wl_listener *listener, void 
     view_capture_destroy(capture);
 }
 
+#if MIRROR_BUFFER_DEBUG
+static void capture_handle_thumbnail_update(struct wl_listener *listener, void *data)
+{
+    struct view_capture *capture = wl_container_of(listener, capture, thumbnail_update);
+    struct thumbnail_update_event *event = data;
+
+    ky_scene_buffer_set_opacity(capture->buffer, 0.5);
+    ky_scene_buffer_set_source_box(
+        capture->buffer, &(struct wlr_fbox){ event->content.x, event->content.y,
+                                             event->content.width, event->content.height });
+    ky_scene_buffer_set_dest_size(capture->buffer, event->content.width, event->content.height);
+    ky_scene_buffer_set_buffer(capture->buffer, event->buffer);
+}
+#else
 static void capture_done(const char *path, void *data)
 {
     config_notify("Capture saved to", path);
@@ -159,6 +183,7 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
 
     view_capture_destroy(capture);
 }
+#endif
 
 static void window_capture_create(struct view *view)
 {
@@ -178,6 +203,11 @@ static void window_capture_create(struct view *view)
         return;
     }
 
+#if MIRROR_BUFFER_DEBUG
+    struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
+    capture->buffer = ky_scene_buffer_create(layer->tree, NULL);
+    ky_scene_node_set_bypassed(&capture->buffer->node, true);
+#endif
     capture->thumbnail_update.notify = capture_handle_thumbnail_update;
     thumbnail_add_update_listener(capture->thumbnail, &capture->thumbnail_update);
     capture->thumbnail_destroy.notify = capture_handle_thumbnail_destroy;
