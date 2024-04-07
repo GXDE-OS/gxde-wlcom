@@ -236,3 +236,15 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
     wl_list_insert(&config_manager->configs, &config->link);
     return config;
 }
+
+void config_notify(const char *title, const char *body)
+{
+    if (!config_manager) {
+        return;
+    }
+
+    sd_bus_call_method_async(config_manager->bus, NULL, "org.freedesktop.Notifications",
+                             "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
+                             "Notify", NULL, NULL, "susssasa{sv}i", "Wlcom", 0, "", title, body, 0,
+                             0, 5000);
+}

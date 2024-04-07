@@ -33,6 +33,9 @@ struct config_manager *config_manager_create(struct server *server);
 struct config *config_manager_add_config(const char *name, const char *bus, const char *path,
                                          const char *interface, const sd_bus_vtable *vtable,
                                          void *data);
+
+void config_notify(const char *title, const char *body);
+
 void config_manager_sync(void);
 
 #endif /* _CONFIG_H_ */
