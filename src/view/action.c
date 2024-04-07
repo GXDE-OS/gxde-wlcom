@@ -4,9 +4,14 @@
 
 #include <stdlib.h>
 
+#include <kywc/identifier.h>
+
+#include "config.h"
+#include "effect/capture.h"
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
+#include "scene/thumbnail.h"
 #include "view/action.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -102,6 +107,87 @@ static void window_snap(struct view *view, enum kywc_tile dir)
     kywc_view_set_tiled(&view->base, tiled, &output->base);
 }
 
+struct view_capture {
+    struct view *view;
+    struct wl_listener view_unmap;
+
+    struct thumbnail *thumbnail;
+    struct wl_listener thumbnail_update;
+    struct wl_listener thumbnail_destroy;
+};
+
+static void view_capture_destroy(struct view_capture *capture)
+{
+    wl_list_remove(&capture->view_unmap.link);
+    wl_list_remove(&capture->thumbnail_update.link);
+    wl_list_remove(&capture->thumbnail_destroy.link);
+
+    if (capture->thumbnail) {
+        thumbnail_destroy(capture->thumbnail);
+    }
+
+    free(capture);
+}
+
+static void capture_handle_view_unmap(struct wl_listener *listener, void *data)
+{
+    struct view_capture *capture = wl_container_of(listener, capture, view_unmap);
+    view_capture_destroy(capture);
+}
+
+static void capture_handle_thumbnail_destroy(struct wl_listener *listener, void *data)
+{
+    struct view_capture *capture = wl_container_of(listener, capture, thumbnail_destroy);
+    capture->thumbnail = NULL;
+    view_capture_destroy(capture);
+}
+
+static void capture_done(const char *path, void *data)
+{
+    config_notify("Capture saved to", path);
+    free(data);
+}
+
+static void capture_handle_thumbnail_update(struct wl_listener *listener, void *data)
+{
+    struct view_capture *capture = wl_container_of(listener, capture, thumbnail_update);
+    struct thumbnail_update_event *event = data;
+
+    const char *path = kywc_identifier_time_generate("/tmp/", ".png");
+    capture_write_file(event->buffer, event->content.width, event->content.height, path,
+                       capture_done, (void *)path);
+
+    view_capture_destroy(capture);
+}
+
+static void window_capture_create(struct view *view)
+{
+    if (!view->base.mapped) {
+        return;
+    }
+
+    struct view_capture *capture = calloc(1, sizeof(*capture));
+    if (!capture) {
+        return;
+    }
+
+    // struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
+    capture->thumbnail = thumbnail_create_from_node(&view->tree->node, 1.0);
+    if (!capture->thumbnail) {
+        free(capture);
+        return;
+    }
+
+    capture->thumbnail_update.notify = capture_handle_thumbnail_update;
+    thumbnail_add_update_listener(capture->thumbnail, &capture->thumbnail_update);
+    capture->thumbnail_destroy.notify = capture_handle_thumbnail_destroy;
+    thumbnail_add_destroy_listener(capture->thumbnail, &capture->thumbnail_destroy);
+
+    capture->view = view;
+    capture->view_unmap.notify = capture_handle_view_unmap;
+    wl_signal_add(&view->base.events.unmap, &capture->view_unmap);
+}
+
 void window_action(struct view *view, struct seat *seat, enum window_action action)
 {
     struct kywc_view *kywc_view = &view->base;
@@ -153,6 +239,9 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
     case WINDOW_ACTION_SNAP_LEFT:
     case WINDOW_ACTION_SNAP_RIGHT:
         window_snap(view, action - WINDOW_ACTION_SNAP_TOP + 1);
+        break;
+    case WINDOW_ACTION_CAPTURE:
+        window_capture_create(view);
         break;
     }
 }

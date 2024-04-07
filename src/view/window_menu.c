@@ -86,6 +86,8 @@ static bool window_menu_action(struct menu_item *item, uint32_t key, void *data)
             action = WINDOW_ACTION_MAXIMIZE;
         } else if (key == KEY_C) {
             action = WINDOW_ACTION_CLOSE;
+        } else if (key == KEY_S) {
+            action = WINDOW_ACTION_CAPTURE;
         }
     } else if (menu == window_menu->more) {
         if (key == KEY_M) {
@@ -307,6 +309,9 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the root menu: items and submenus */
     window_menu->root = menu_create(manager->tree, NULL);
+
+    menu_add_item(window_menu->root, tr("Take Screenshot(S)"), KEY_S, window_menu_action,
+                  window_menu);
 
     struct menu_item *desktop =
         menu_add_item(window_menu->root, tr("Desktop(D)"), KEY_D, NULL, NULL);

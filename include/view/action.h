@@ -24,6 +24,7 @@ enum window_action {
     WINDOW_ACTION_SNAP_BOTTOM,
     WINDOW_ACTION_SNAP_LEFT,
     WINDOW_ACTION_SNAP_RIGHT,
+    WINDOW_ACTION_CAPTURE,
 };
 
 void window_action(struct view *view, struct seat *seat, enum window_action action);
