@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>
@@ -88,6 +89,23 @@ const char *kywc_identifier_generate(const char *format, ...)
 
     strip_whitespace(identifier);
     replace_unprintable(identifier);
+
+    return identifier;
+}
+
+const char *kywc_identifier_time_generate(const char *prefix, const char *suffix)
+{
+    size_t len = (prefix ? strlen(prefix) : 0) + (suffix ? strlen(suffix) : 0) + 20;
+    char *identifier = malloc(len);
+    if (!identifier) {
+        return NULL;
+    }
+
+    time_t timer = time(NULL);
+    struct tm *tm = localtime(&timer);
+    snprintf(identifier, len, "%s%04d-%02d-%02d_%02d-%02d-%02d%s", prefix ? prefix : "",
+             tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec,
+             suffix ? suffix : "");
 
     return identifier;
 }
