@@ -34,7 +34,7 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
                                          const char *interface, const sd_bus_vtable *vtable,
                                          void *data);
 
-void config_notify(const char *title, const char *body);
+void config_notify(const char *title, const char *body, const char *icon);
 
 void config_manager_sync(void);
 

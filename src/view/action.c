@@ -10,6 +10,7 @@
 #include "effect/capture.h"
 #include "input/cursor.h"
 #include "input/seat.h"
+#include "nls.h"
 #include "output.h"
 #include "scene/thumbnail.h"
 #include "view/action.h"
@@ -168,7 +169,7 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
 #else
 static void capture_done(const char *path, void *data)
 {
-    config_notify("Capture saved to", path);
+    config_notify(tr("Capture saved to"), path, "kylin-screenshot");
     free(data);
 }
 

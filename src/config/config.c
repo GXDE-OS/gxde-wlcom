@@ -237,7 +237,7 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
     return config;
 }
 
-void config_notify(const char *title, const char *body)
+void config_notify(const char *title, const char *body, const char *icon)
 {
     if (!config_manager) {
         return;
@@ -245,6 +245,6 @@ void config_notify(const char *title, const char *body)
 
     sd_bus_call_method_async(config_manager->bus, NULL, "org.freedesktop.Notifications",
                              "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
-                             "Notify", NULL, NULL, "susssasa{sv}i", "Wlcom", 0, "", title, body, 0,
-                             0, 5000);
+                             "Notify", NULL, NULL, "susssasa{sv}i", "kylin-wlcom", 0,
+                             icon ? icon : "", title, body, 0, 0, 5000);
 }
