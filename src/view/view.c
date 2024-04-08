@@ -396,6 +396,15 @@ void view_unmap(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
+    kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
+
+    wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
+
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        wl_signal_emit_mutable(&proxy->workspace->events.view_leave, view);
+    }
+
     kywc_view->title = kywc_view->app_id = NULL;
     ky_scene_node_set_enabled(&view->tree->node, false);
     kywc_view->mapped = false;
@@ -416,14 +425,7 @@ void view_unmap(struct view *view)
         child->parent = NULL;
     }
 
-    kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
-    wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
-
-    struct view_proxy *proxy;
-    wl_list_for_each(proxy, &view->view_proxies, view_link) {
-        wl_signal_emit_mutable(&proxy->workspace->events.view_leave, view);
-    }
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
