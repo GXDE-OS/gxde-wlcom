@@ -1,8 +1,9 @@
 wlcom_sources += files(
   'action.c',
-  'decoration.c',
   'config.c',
+  'decoration.c',
   'interactive.c',
+  'maximize_switcher.c',
   'positioner.c',
   'ssd.c',
   'view.c',
@@ -10,7 +11,6 @@ wlcom_sources += files(
   'workspace.c',
   'xdg_popup.c',
   'xdg_shell.c',
-  'maximize_switcher.c',
 )
 
 wlcom_sources += files(
