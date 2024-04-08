@@ -7,10 +7,9 @@
 
 #include <drm_fourcc.h>
 #include <wlr/render/allocator.h>
-#include <wlr/render/drm_format_set.h>
-#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_output.h>
 
+#include "render/renderer.h"
 #include "scene/thumbnail.h"
 #include "scene_p.h"
 #include "server.h"
@@ -86,9 +85,13 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail,
         return thumbnail->buffer;
     }
 
-    uint64_t modifier[2] = { DRM_FORMAT_MOD_LINEAR, DRM_FORMAT_MOD_INVALID };
-    struct wlr_drm_format format = { DRM_FORMAT_ARGB8888, 2, 2, modifier };
-    struct wlr_buffer *buffer = wlr_allocator_create_buffer(allocator, width, height, &format);
+    const struct wlr_drm_format *format =
+        ky_renderer_get_render_format(manager->server->renderer, DRM_FORMAT_ARGB8888);
+    if (!format) {
+        return NULL;
+    }
+
+    struct wlr_buffer *buffer = wlr_allocator_create_buffer(allocator, width, height, format);
     if (!buffer) {
         kywc_log(KYWC_ERROR, "failed create wlr buffer");
         return NULL;
