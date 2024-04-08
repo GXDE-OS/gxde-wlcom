@@ -71,7 +71,7 @@ struct gl_shader_location {
     GLint shadow_rect;
     GLint shadow_sigma;
     GLint shadow_color;
-    GLint pixel_distance;
+    GLint border_aa;
     GLint aspect;
     GLint window_rect;
     GLint rounded_corner_radius;
@@ -134,7 +134,7 @@ static int scene_decoration_create_opengl_shader(void)
     gl_locations.shadow_sigma = glGetUniformLocation(prog, "shadowSigma");
     gl_locations.shadow_rect = glGetUniformLocation(prog, "shadowRect");
     gl_locations.shadow_color = glGetUniformLocation(prog, "shadowColor");
-    gl_locations.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+    gl_locations.border_aa = glGetUniformLocation(prog, "borderAA");
     gl_locations.aspect = glGetUniformLocation(prog, "aspect");
     gl_locations.window_rect = glGetUniformLocation(prog, "windowRect");
     gl_locations.rounded_corner_radius = glGetUniformLocation(prog, "roundedCornerRadius");
@@ -302,7 +302,10 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y,
                 window_frame.x + window_frame.width, window_frame.y + window_frame.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
-    glUniform1f(gl_locations.pixel_distance, 1.0 / half_height);
+    // 1 pixel border thickness keep 1 pixel less soft aa
+    float one_pixel_distance = 1.0 / half_height;
+    glUniform1f(gl_locations.border_aa,
+                border_thickness > 1 ? one_pixel_distance * 0.7f : one_pixel_distance * 0.5f);
     glUniform1f(gl_locations.aspect, width / height);
     float width_distance = window_frame.width / height;
     float height_distance = window_frame.height / height;
