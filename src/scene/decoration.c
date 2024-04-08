@@ -179,45 +179,101 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
         verts[vert_index++] = (GLfloat)(rect->y2 - box->y) / box->height;
     }
 
-    // base by scaled window rect. avoid non-integer scale 1 pixel offset
+    float scale = target->scale;
+    float width = box->width;
+    float height = box->height;
+    if (target->transform & WL_OUTPUT_TRANSFORM_90) {
+        width = box->height;
+        height = box->width;
+    }
+    // keep border ceil scale. avoid non-integer scale different thickness
+    int border_thickness = ceil(deco->border_thickness * scale);
+    int border_thickness_2 = border_thickness * 2;
+    int title_height = round(deco->title_height * scale);
+    float half_height = height * 0.5f; // shader distance scale
+    float shadow_width = deco->shadow_width * scale;
+    float round_corner_radius[4] = {
+        deco->round_corner_radius[0] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
+                                         : 0.0f,
+        deco->round_corner_radius[1] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
+                                         : 0.0f,
+        deco->round_corner_radius[2] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
+                                         : 0.0f,
+        deco->round_corner_radius[3] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
+                                         : 0.0f,
+    };
+
+    // full rect logic coord to framebuffer coord
     struct wlr_box window_box = {
         .x = lx + deco->shadow_width + deco->border_thickness - target->logical.x,
-        .y = ly + deco->shadow_width + deco->border_thickness + deco->title_height - target->logical.y,
+        .y = ly + deco->shadow_width + deco->border_thickness + deco->title_height -
+             target->logical.y,
         .width = deco->window_width,
         .height = deco->window_height,
     };
     ky_scene_render_box(&window_box, target);
-
-    float scale = target->scale;
-    // keep border integer scale. avoid non-integer scale problem
-    int border_thickness = ceil(deco->border_thickness * scale);
-    int title_height = round(deco->title_height * scale);
-    
-    float width = box->width;
-    float height = box->height;
-    float half_height = height * 0.5f; // shader distance scale
-    float shadow_width = deco->shadow_width * scale;
-    float round_corner_radius[4] = {
-        deco->round_corner_radius[0] > 0
-            ? deco->round_corner_radius[0] * scale + border_thickness
-            : 0.0f,
-        deco->round_corner_radius[1] > 0
-            ? deco->round_corner_radius[0] * scale + border_thickness
-            : 0.0f,
-        deco->round_corner_radius[2] > 0
-            ? deco->round_corner_radius[0] * scale + border_thickness
-            : 0.0f,
-        deco->round_corner_radius[3] > 0
-            ? deco->round_corner_radius[0] * scale + border_thickness
-            : 0.0f,
-    };
-
-    struct wlr_box window_frame = {
-        .x = window_box.x - border_thickness - box->x,
-        .y = window_box.y - title_height - border_thickness - box->y,
-        .width = window_box.width + border_thickness * 2,
-        .height = window_box.height + title_height + border_thickness * 2,
-    };
+    // base by framebuffer coord window rect. avoid non-integer scale 1 pixel offset
+    // framebuffer coord origin on monitor left-top. need rotation correct
+    struct wlr_box window_frame = {};
+    if (target->transform == WL_OUTPUT_TRANSFORM_90) {
+        window_frame.x = window_box.y - border_thickness - box->y;
+        window_frame.y = window_box.x - title_height - border_thickness - box->x;
+        window_frame.width = window_box.height + border_thickness_2;
+        window_frame.height = window_box.width + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.x = box->height - window_box.height - border_thickness_2 - window_frame.x;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_180) {
+        window_frame.x = window_box.x - border_thickness - box->x;
+        window_frame.y = window_box.y - border_thickness - box->y;
+        window_frame.width = window_box.width + border_thickness_2;
+        window_frame.height = window_box.height + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.x = box->width - window_box.width - border_thickness_2 - window_frame.x;
+        window_frame.y =
+            box->height - window_box.height - border_thickness_2 - title_height - window_frame.y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_270) {
+        window_frame.x = window_box.y - border_thickness - box->y;
+        window_frame.y = window_box.x - border_thickness - box->x;
+        window_frame.width = window_box.height + border_thickness_2;
+        window_frame.height = window_box.width + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.y =
+            box->width - window_box.width - border_thickness_2 - title_height - window_frame.y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED) {
+        window_frame.x = window_box.x - border_thickness - box->x;
+        window_frame.y = window_box.y - title_height - border_thickness - box->y;
+        window_frame.width = window_box.width + border_thickness_2;
+        window_frame.height = window_box.height + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.x = box->width - window_box.width - border_thickness_2 - window_frame.x;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90) {
+        window_frame.x = window_box.y - border_thickness - box->y;
+        window_frame.y = window_box.x - title_height - border_thickness - box->x;
+        window_frame.width = window_box.height + border_thickness_2;
+        window_frame.height = window_box.width + title_height + border_thickness_2;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_180) {
+        window_frame.x = window_box.x - border_thickness - box->x;
+        window_frame.y = window_box.y - border_thickness - box->y;
+        window_frame.width = window_box.width + border_thickness_2;
+        window_frame.height = window_box.height + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.y =
+            box->height - window_box.height - border_thickness_2 - title_height - window_frame.y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270) {
+        window_frame.x = window_box.y - border_thickness - box->y;
+        window_frame.y = window_box.x - border_thickness - box->x;
+        window_frame.width = window_box.height + border_thickness_2;
+        window_frame.height = window_box.width + title_height + border_thickness_2;
+        // rotation correct
+        window_frame.x = box->height - window_box.height - border_thickness_2 - window_frame.x;
+        window_frame.y =
+            box->width - window_box.width - border_thickness_2 - title_height - window_frame.y;
+    } else {
+        window_frame.x = window_box.x - border_thickness - box->x;
+        window_frame.y = window_box.y - title_height - border_thickness - box->y;
+        window_frame.width = window_box.width + border_thickness_2;
+        window_frame.height = window_box.height + title_height + border_thickness_2;
+    }
 
     struct ky_mat3 projection;
     ky_mat3_framebuffer_to_ndc(&projection, target->buffer->width, target->buffer->height);
@@ -243,8 +299,8 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     // frag shader param
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
     glUniform1f(gl_locations.shadow_sigma, shadow_width * 0.424660891f);
-    glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y, window_frame.x + window_frame.width,
-                window_frame.y + window_frame.height);
+    glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y,
+                window_frame.x + window_frame.width, window_frame.y + window_frame.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
     glUniform1f(gl_locations.pixel_distance, 1.0 / half_height);
     glUniform1f(gl_locations.aspect, width / height);
