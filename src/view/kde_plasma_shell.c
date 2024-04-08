@@ -43,7 +43,7 @@ struct kde_plasma_surface {
 
     int x, y;
     enum org_kde_plasma_surface_role role;
-    bool skip_taskbar;
+    bool skip_taskbar, skip_switcher;
 };
 
 static void handle_destroy(struct wl_client *client, struct wl_resource *resource)
@@ -189,7 +189,7 @@ static void handle_set_skip_taskbar(struct wl_client *client, struct wl_resource
 
     surface->skip_taskbar = skip;
 
-    if (surface->view) {
+    if (surface->view && surface->skip_taskbar != surface->view->base.skip_taskbar) {
         surface->view->base.skip_taskbar = surface->skip_taskbar;
         wl_signal_emit_mutable(&surface->view->base.events.capabilities, NULL);
     }
@@ -214,7 +214,17 @@ static void handle_set_panel_takes_focus(struct wl_client *client, struct wl_res
 static void handle_set_skip_switcher(struct wl_client *client, struct wl_resource *resource,
                                      uint32_t skip)
 {
-    // Not implemented yet
+    struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
+
+    surface->skip_switcher = skip;
+
+    if (surface->view && surface->skip_switcher != surface->view->base.skip_switcher) {
+        surface->view->base.skip_switcher = surface->skip_switcher;
+        wl_signal_emit_mutable(&surface->view->base.events.capabilities, NULL);
+    }
 }
 
 static const struct org_kde_plasma_surface_interface kde_plasma_surface_impl = {
@@ -381,6 +391,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     }
 
     surface->view->base.skip_taskbar = surface->skip_taskbar;
+    surface->view->base.skip_switcher = surface->skip_switcher;
     kde_plasma_surface_apply_role(surface);
 
     /* apply set_position called beform map */
