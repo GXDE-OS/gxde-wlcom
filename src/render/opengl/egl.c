@@ -204,6 +204,8 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         return;
     }
 
+    kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
+
     bool has_modifiers = false;
     for (int i = 0; i < formats_len; i++) {
         EGLint fmt = formats[i];
@@ -227,6 +229,11 @@ static void init_dmabuf_formats(struct ky_egl *egl)
                 wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, modifiers[j]);
                 all_external_only = false;
             }
+            int plane_count =
+                gbm_device_get_format_modifier_plane_count(egl->gbm_device, fmt, modifiers[j]);
+            if (plane_count == 1) {
+                wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt, modifiers[j]);
+            }
         }
 
         // EGL always supports implicit modifiers. If at least one modifier supports rendering,
@@ -234,6 +241,8 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_INVALID);
         if (modifiers_len == 0 || !all_external_only) {
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_INVALID);
+            wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt,
+                                   DRM_FORMAT_MOD_INVALID);
         }
 
         if (modifiers_len == 0) {
@@ -241,10 +250,11 @@ static void init_dmabuf_formats(struct ky_egl *egl)
             // explicitly say otherwise
             wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_LINEAR);
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_LINEAR);
+            wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt,
+                                   DRM_FORMAT_MOD_LINEAR);
         }
 
         if (kywc_log_get_level() >= KYWC_DEBUG) {
-            kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
             char *fmt_name = drmGetFormatName(fmt);
             kywc_log(KYWC_DEBUG, "  %s (0x%08" PRIX32 ")", fmt_name ? fmt_name : "<unknown>", fmt);
             free(fmt_name);
@@ -736,6 +746,18 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd)
         return NULL;
     }
 
+    int gbm_fd = open_render_node(drm_fd);
+    if (gbm_fd < 0) {
+        kywc_log(KYWC_ERROR, "Failed to open DRM render node");
+        goto error;
+    }
+    egl->gbm_device = gbm_create_device(gbm_fd);
+    if (!egl->gbm_device) {
+        close(gbm_fd);
+        kywc_log(KYWC_ERROR, "Failed to create GBM device");
+        goto error;
+    }
+
     if (egl->exts.EXT_platform_device) {
         /*
          * Search for the EGL device matching the DRM fd using the
@@ -755,32 +777,19 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd)
     }
 
     if (egl->exts.KHR_platform_gbm) {
-        int gbm_fd = open_render_node(drm_fd);
-        if (gbm_fd < 0) {
-            kywc_log(KYWC_ERROR, "Failed to open DRM render node");
-            goto error;
-        }
-
-        egl->gbm_device = gbm_create_device(gbm_fd);
-        if (!egl->gbm_device) {
-            close(gbm_fd);
-            kywc_log(KYWC_ERROR, "Failed to create GBM device");
-            goto error;
-        }
-
         if (egl_init(egl, EGL_PLATFORM_GBM_KHR, egl->gbm_device)) {
             kywc_log(KYWC_DEBUG, "Using EGL_PLATFORM_GBM_KHR");
             return egl;
         }
 
-        gbm_device_destroy(egl->gbm_device);
-        close(gbm_fd);
     } else {
         kywc_log(KYWC_DEBUG, "KHR_platform_gbm not supported");
     }
 
 error:
     kywc_log(KYWC_ERROR, "Failed to initialize EGL context");
+    gbm_device_destroy(egl->gbm_device);
+    close(gbm_fd);
     free(egl);
     eglReleaseThread();
     return NULL;
@@ -792,8 +801,9 @@ void ky_egl_destroy(struct ky_egl *egl)
         return;
     }
 
-    wlr_drm_format_set_finish(&egl->dmabuf_render_formats);
     wlr_drm_format_set_finish(&egl->dmabuf_texture_formats);
+    wlr_drm_format_set_finish(&egl->dmabuf_render_formats);
+    wlr_drm_format_set_finish(&egl->dmabuf_render_single_plane_formats);
 
     eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(egl->display, egl->context);
