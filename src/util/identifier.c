@@ -110,6 +110,22 @@ const char *kywc_identifier_time_generate(const char *prefix, const char *suffix
     return identifier;
 }
 
+const char *kywc_identifier_rand_generate(char *data, int suffixlen)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    long r = ts.tv_nsec;
+    char *buf = data + strlen(data) - 6 - suffixlen;
+
+    for (int i = 0; i < 6; ++i) {
+        buf[i] = 'A' + (r & 15) + (r & 16) * 2;
+        r >>= 5;
+    }
+
+    return data;
+}
+
 static char hexchar(int x)
 {
     static const char table[16] = "0123456789abcdef";

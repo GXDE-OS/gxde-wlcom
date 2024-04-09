@@ -20,6 +20,9 @@ const char *kywc_identifier_utf8_generate(const char *format, ...) _KYWC_ATTRIB_
 /* prefix + xxxx-xx-xx_xx-xx-xx + suffix */
 const char *kywc_identifier_time_generate(const char *prefix, const char *suffix);
 
+/* replace XXXXXX with rand chars */
+const char *kywc_identifier_rand_generate(char *data, int suffixlen);
+
 /* return 36-byte string (plus trailing '\0') of the form 1b4e28ba-2fa1-11d2-883f-0016d3cca427 */
 const char *kywc_identifier_uuid_generate(void);
 
