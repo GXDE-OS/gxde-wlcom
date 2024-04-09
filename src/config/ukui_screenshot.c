@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#define _DEFAULT_SOURCE
 #include <stdlib.h>
 
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/util/box.h>
 
+#include <kywc/identifier.h>
 #include <kywc/log.h>
 
 #include "config_p.h"
@@ -40,7 +40,7 @@ static void screenshot_done(struct wlr_buffer *buffer, int width, int height, vo
 {
     char path[32];
     snprintf(path, 32, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
-    mkstemps(path, 4);
+    kywc_identifier_rand_generate(path, 4);
 
     capture_write_file(buffer, width, height, path, screenshot_finish, NULL);
 }
