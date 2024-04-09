@@ -10,8 +10,8 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/region.h>
 
-#include "render/opengl.h"
 #include "render/pass.h"
+#include "render/pixel_format.h"
 #include "scene_p.h"
 
 struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node)
@@ -39,7 +39,6 @@ static void buffer_get_dest_size(struct ky_scene_buffer *scene_buffer, int *widt
     }
 }
 
-// TODO: pixel format as a commn function
 static bool buffer_is_opaque(struct wlr_buffer *buffer)
 {
     void *data;
@@ -58,7 +57,7 @@ static bool buffer_is_opaque(struct wlr_buffer *buffer)
         return false;
     }
 
-    const struct ky_opengl_pixel_format *format_info = ky_opengl_pixel_format_from_drm(format);
+    const struct ky_pixel_format *format_info = ky_pixel_format_from_drm(format);
     if (format_info == NULL) {
         return false;
     }

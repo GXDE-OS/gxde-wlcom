@@ -6,7 +6,6 @@ wlcom_sources += files(
   'buffer.c',
   'egl.c',
   'pass.c',
-  'pixel_format.c',
   'renderer.c',
   'texture.c',
 )

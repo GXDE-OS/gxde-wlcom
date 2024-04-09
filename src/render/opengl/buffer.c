@@ -11,6 +11,7 @@
 #include <kywc/log.h>
 
 #include "render/opengl.h"
+#include "render/pixel_format.h"
 #include "render/renderer.h"
 
 #ifndef EGL_WL_bind_wayland_display
@@ -235,7 +236,7 @@ static struct wlr_texture *gl_texture_from_wayland(struct wlr_renderer *wlr_rend
     }
     texture->drm_format = DRM_FORMAT_INVALID; // texture can't be written anyways
 
-    const struct ky_opengl_pixel_format *fmt = ky_opengl_pixel_format_from_drm(buffer->format);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_drm(buffer->format);
     if (fmt != NULL) {
         texture->has_alpha = fmt->has_alpha;
     } else {

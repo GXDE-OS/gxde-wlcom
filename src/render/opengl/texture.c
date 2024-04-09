@@ -12,6 +12,7 @@
 #include <kywc/log.h>
 
 #include "render/opengl.h"
+#include "render/pixel_format.h"
 
 static const struct wlr_texture_impl texture_impl;
 
@@ -50,16 +51,16 @@ static bool gl_texture_update_from_buffer(struct wlr_texture *wlr_texture,
         return false;
     }
 
-    const struct ky_opengl_pixel_format *fmt = ky_opengl_pixel_format_from_drm(texture->drm_format);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_drm(texture->drm_format);
     assert(fmt);
 
-    if (ky_opengl_pixel_format_pixels_per_block(fmt) != 1) {
+    if (ky_pixel_format_pixels_per_block(fmt) != 1) {
         wlr_buffer_end_data_ptr_access(buffer);
         kywc_log(KYWC_ERROR, "Cannot update texture: block formats are not supported");
         return false;
     }
 
-    if (!ky_opengl_pixel_format_check_stride(fmt, stride, buffer->width)) {
+    if (!ky_pixel_format_check_stride(fmt, stride, buffer->width)) {
         wlr_buffer_end_data_ptr_access(buffer);
         return false;
     }
@@ -190,18 +191,18 @@ static struct wlr_texture *gl_texture_from_pixels(struct wlr_renderer *wlr_rende
 {
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
 
-    const struct ky_opengl_pixel_format *fmt = ky_opengl_pixel_format_from_drm(drm_format);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_drm(drm_format);
     if (fmt == NULL) {
         kywc_log(KYWC_ERROR, "Unsupported pixel format 0x%" PRIX32, drm_format);
         return NULL;
     }
 
-    if (ky_opengl_pixel_format_pixels_per_block(fmt) != 1) {
+    if (ky_pixel_format_pixels_per_block(fmt) != 1) {
         kywc_log(KYWC_ERROR, "Cannot upload texture: block formats are not supported");
         return NULL;
     }
 
-    if (!ky_opengl_pixel_format_check_stride(fmt, stride, width)) {
+    if (!ky_pixel_format_check_stride(fmt, stride, width)) {
         return NULL;
     }
 
@@ -268,7 +269,7 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
     }
     texture->drm_format = DRM_FORMAT_INVALID; // texture can't be written anyways
 
-    const struct ky_opengl_pixel_format *fmt = ky_opengl_pixel_format_from_drm(attribs->format);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_drm(attribs->format);
     if (fmt != NULL) {
         texture->has_alpha = fmt->has_alpha;
     } else {

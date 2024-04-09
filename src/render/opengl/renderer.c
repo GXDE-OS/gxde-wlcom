@@ -12,6 +12,7 @@
 #include <wlr/types/wlr_matrix.h>
 
 #include "render/opengl.h"
+#include "render/pixel_format.h"
 
 #include "common_vert_str.h"
 #include "quad_ex_frag_str.h"
@@ -339,8 +340,7 @@ static uint32_t gl_preferred_read_format(struct wlr_renderer *wlr_renderer)
 
     ky_opengl_pop_debug(renderer);
 
-    const struct ky_opengl_pixel_format *fmt =
-        ky_opengl_pixel_format_from_gl(gl_format, gl_type, alpha_size > 0);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_gl(gl_format, gl_type, alpha_size > 0);
     if (fmt != NULL) {
         return fmt->drm_format;
     }
@@ -357,7 +357,7 @@ static bool gl_read_pixels(struct wlr_renderer *wlr_renderer, uint32_t drm_forma
 {
     struct ky_opengl_renderer *renderer = gl_get_renderer_in_context(wlr_renderer);
 
-    const struct ky_opengl_pixel_format *fmt = ky_opengl_pixel_format_from_drm(drm_format);
+    const struct ky_pixel_format *fmt = ky_pixel_format_from_drm(drm_format);
     if (fmt == NULL || !ky_opengl_pixel_format_is_supported(renderer, fmt)) {
         kywc_log(KYWC_ERROR, "Cannot read pixels: unsupported pixel format 0x%" PRIX32, drm_format);
         return false;
@@ -368,7 +368,7 @@ static bool gl_read_pixels(struct wlr_renderer *wlr_renderer, uint32_t drm_forma
         return false;
     }
 
-    if (ky_opengl_pixel_format_pixels_per_block(fmt) != 1) {
+    if (ky_pixel_format_pixels_per_block(fmt) != 1) {
         kywc_log(KYWC_ERROR, "Cannot read pixels: block formats are not supported");
         return false;
     }
@@ -382,7 +382,7 @@ static bool gl_read_pixels(struct wlr_renderer *wlr_renderer, uint32_t drm_forma
 
     unsigned char *p = (unsigned char *)data + dst_y * stride;
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    uint32_t pack_stride = ky_opengl_pixel_format_min_stride(fmt, width);
+    uint32_t pack_stride = ky_pixel_format_min_stride(fmt, width);
     if (pack_stride == stride && dst_x == 0) {
         // Under these particular conditions, we can read the pixels with only
         // one glReadPixels call
