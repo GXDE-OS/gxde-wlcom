@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <wlr/backend.h>
+#include <wlr/render/allocator.h>
 #include <wlr/render/pixman.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 
@@ -95,4 +96,19 @@ const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *
     }
 
     return render_format;
+}
+
+struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
+                                             struct wlr_allocator *alloc, int width, int height,
+                                             uint32_t fmt)
+{
+    if (wlr_renderer_is_pixman(renderer)) {
+        return shm_create_buffer(width, height, fmt);
+    }
+
+    const struct wlr_drm_format *format = ky_renderer_get_render_format(renderer, fmt);
+    if (!format) {
+        return NULL;
+    }
+    return wlr_allocator_create_buffer(alloc, width, height, format);
 }

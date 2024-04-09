@@ -6,7 +6,6 @@
 #include <stdlib.h>
 
 #include <drm_fourcc.h>
-#include <wlr/render/allocator.h>
 #include <wlr/types/wlr_output.h>
 
 #include "render/renderer.h"
@@ -85,13 +84,8 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail,
         return thumbnail->buffer;
     }
 
-    const struct wlr_drm_format *format =
-        ky_renderer_get_render_format(manager->server->renderer, DRM_FORMAT_ARGB8888);
-    if (!format) {
-        return NULL;
-    }
-
-    struct wlr_buffer *buffer = wlr_allocator_create_buffer(allocator, width, height, format);
+    struct wlr_buffer *buffer = ky_renderer_create_buffer(
+        manager->server->renderer, manager->server->allocator, width, height, DRM_FORMAT_ARGB8888);
     if (!buffer) {
         kywc_log(KYWC_ERROR, "failed create wlr buffer");
         return NULL;

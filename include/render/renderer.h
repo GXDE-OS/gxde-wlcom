@@ -8,6 +8,7 @@
 #include <wayland-server-core.h>
 
 struct wlr_backend;
+struct wlr_allocator;
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend);
 
@@ -18,5 +19,9 @@ bool ky_wayland_buffer_create(struct wl_display *wl_display, struct wlr_renderer
 
 const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *renderer,
                                                            uint32_t fmt);
+
+struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
+                                             struct wlr_allocator *alloc, int width, int height,
+                                             uint32_t format);
 
 #endif /* _RENDER_H_ */
