@@ -45,6 +45,9 @@ enum atom_name {
     NET_WM_STATE,
     NET_WM_STATE_ABOVE,
     NET_WM_STATE_BELOW,
+    NET_WM_STATE_SKIP_TASKBAR,
+    // KDE-specific atom
+    KDE_NET_WM_STATE_SKIP_SWITCHER,
 
     NET_WM_ICON,
 
@@ -92,6 +95,10 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
 void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface);
 
 void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below);
+
+void xwayland_view_set_skip_taskbar(struct wlr_xwayland_surface *surface, bool skip_taskbar);
+
+void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool skip_switcher);
 
 struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
                                                         xcb_window_t window_id);

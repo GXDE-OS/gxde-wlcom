@@ -44,6 +44,8 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_STATE] = "_NET_WM_STATE",
     [NET_WM_STATE_ABOVE] = "_NET_WM_STATE_ABOVE",
     [NET_WM_STATE_BELOW] = "_NET_WM_STATE_BELOW",
+    [NET_WM_STATE_SKIP_TASKBAR] = "_NET_WM_STATE_SKIP_TASKBAR",
+    [KDE_NET_WM_STATE_SKIP_SWITCHER] = "_KDE_NET_WM_STATE_SKIP_SWITCHER",
 
     [NET_WM_ICON] = "_NET_WM_ICON",
 };
@@ -330,32 +332,30 @@ static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
         return 1;
     }
 
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
+    if (!surface) {
+        free(reply);
+        return 0;
+    }
+
     xcb_atom_t *atom = xcb_get_property_value(reply);
-    bool keep_above, keep_below;
-
+    int ret = 1;
     for (uint32_t i = 0; i < reply->value_len; i++) {
-        keep_above = atom[i] == xwayland->atoms[NET_WM_STATE_ABOVE];
-        keep_below = atom[i] == xwayland->atoms[NET_WM_STATE_BELOW];
-        if (!keep_above && !keep_below) {
-            continue;
+        if (atom[i] == xwayland->atoms[NET_WM_STATE_ABOVE]) {
+            xwayland_view_set_above_or_below(surface, true, false);
+        } else if (atom[i] == xwayland->atoms[NET_WM_STATE_BELOW]) {
+            xwayland_view_set_above_or_below(surface, false, true);
+        } else if (atom[i] == xwayland->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
+            xwayland_view_set_skip_taskbar(surface, true);
+        } else if (atom[i] == xwayland->atoms[KDE_NET_WM_STATE_SKIP_SWITCHER]) {
+            xwayland_view_set_skip_switcher(surface, true);
+        } else {
+            ret = 0;
         }
-
-        struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
-        if (surface) {
-            xwayland_view_set_above_or_below(surface, keep_above, keep_below);
-        }
-
-        /* return 1 if we handle all things in the event */
-        if (reply->value_len == 1) {
-            free(reply);
-            return 1;
-        }
-
-        break;
     }
 
     free(reply);
-    return 0;
+    return ret;
 }
 
 static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)

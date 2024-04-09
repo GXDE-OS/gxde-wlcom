@@ -633,6 +633,32 @@ void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool
     }
 }
 
+void xwayland_view_set_skip_taskbar(struct wlr_xwayland_surface *surface, bool skip_taskbar)
+{
+    struct xwayland_view *xwayland_view = surface->data;
+    if (!xwayland_view) {
+        return;
+    }
+
+    if (xwayland_view->view.base.skip_taskbar != skip_taskbar) {
+        xwayland_view->view.base.skip_taskbar = skip_taskbar;
+        wl_signal_emit_mutable(&xwayland_view->view.base.events.capabilities, NULL);
+    }
+}
+
+void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool skip_switcher)
+{
+    struct xwayland_view *xwayland_view = surface->data;
+    if (!xwayland_view) {
+        return;
+    }
+
+    if (xwayland_view->view.base.skip_switcher != skip_switcher) {
+        xwayland_view->view.base.skip_switcher = skip_switcher;
+        wl_signal_emit_mutable(&xwayland_view->view.base.events.capabilities, NULL);
+    }
+}
+
 static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, map);
