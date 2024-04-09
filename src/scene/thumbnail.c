@@ -28,7 +28,7 @@ struct thumbnail {
         struct wl_signal destroy;
     } events;
 
-    void (*render)(struct thumbnail *thumbnail, struct ky_scene_output *output);
+    bool (*render)(struct thumbnail *thumbnail, struct ky_scene_output *output);
     void (*destroy)(struct thumbnail *thumbnail);
 };
 
@@ -97,7 +97,7 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail,
     return buffer;
 }
 
-static void node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_output *scene_output)
+static bool node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_output *scene_output)
 {
     struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail, node_thumbnail, base);
     struct ky_scene_node *source_node = node_thumbnail->source_node;
@@ -111,14 +111,14 @@ static void node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_o
     struct wlr_buffer *buffer = thumbnail_buffer_allocate(thumbnail, buffer_width, buffer_height,
                                                           scene_output->output->allocator);
     if (!buffer) {
-        return;
+        return false;
     }
 
     struct wlr_render_pass *render_pass =
         wlr_renderer_begin_buffer_pass(scene_output->output->renderer, buffer, NULL);
     if (!render_pass) {
         wlr_buffer_drop(buffer);
-        return;
+        return false;
     }
 
     /* clear the target buffer */
@@ -161,6 +161,8 @@ static void node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_o
         .content = { 0, 0, buffer_width, buffer_height },
     };
     wl_signal_emit_mutable(&thumbnail->events.update, &event);
+
+    return true;
 }
 
 static void node_thumbnail_destroy(struct thumbnail *thumbnail)
@@ -265,7 +267,11 @@ static void thumbnail_manager_handle_output_frame(struct wl_listener *listener, 
             continue;
         }
         node_thumbnail->base.need_refresh = false;
-        node_thumbnail->base.render(&node_thumbnail->base, manager->output);
+        /* destroy it when render failed */
+        if (!node_thumbnail->base.render(&node_thumbnail->base, manager->output)) {
+            node_thumbnail->base.need_destroy = true;
+            thumbnail_destroy(&node_thumbnail->base);
+        }
     }
 }
 
