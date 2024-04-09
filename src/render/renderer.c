@@ -75,7 +75,14 @@ const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *
         return NULL;
     }
 
-    const struct wlr_drm_format_set *render_formats = renderer->impl->get_render_formats(renderer);
+    const struct wlr_drm_format_set *render_formats = NULL;
+    if (wlr_renderer_is_opengl(renderer)) {
+        struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
+        render_formats = &r->egl->dmabuf_render_single_plane_formats;
+    } else {
+        render_formats = renderer->impl->get_render_formats(renderer);
+    }
+
     if (!render_formats) {
         kywc_log(KYWC_ERROR, "Failed to get render formats");
         return NULL;
