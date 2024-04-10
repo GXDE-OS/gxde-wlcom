@@ -393,8 +393,7 @@ void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *
     wl_signal_add(&presentation->events.destroy, &scene->presentation_destroy);
 }
 
-void ky_scene_collect_damage_in_box(struct ky_scene *scene, struct wlr_box *box,
-                                    pixman_region32_t *damage)
+void ky_scene_collect_damage(struct ky_scene *scene)
 {
     /* skip collect damage if no pushed_damage */
     if (pixman_region32_not_empty(&scene->pushed_damage)) {
@@ -416,11 +415,24 @@ void ky_scene_collect_damage_in_box(struct ky_scene *scene, struct wlr_box *box,
         pixman_region32_clear(&scene->pushed_damage);
     }
 
-    if (pixman_region32_not_empty(&scene->collected_damage)) {
-        pixman_region32_intersect_rect(damage, &scene->collected_damage, box->x, box->y, box->width,
-                                       box->height);
-        pixman_region32_subtract(&scene->collected_damage, &scene->collected_damage, damage);
+    if (!pixman_region32_not_empty(&scene->collected_damage)) {
+        return;
     }
+
+    /* distribute damage to outputs */
+    int width, height;
+    pixman_region32_t region;
+
+    struct ky_scene_output *output;
+    wl_list_for_each(output, &scene->outputs, link) {
+        wlr_output_effective_resolution(output->output, &width, &height);
+        pixman_region32_init_rect(&region, output->x, output->y, width, height);
+        pixman_region32_intersect(&region, &region, &scene->collected_damage);
+        pixman_region32_union(&output->collected_damage, &output->collected_damage, &region);
+        pixman_region32_fini(&region);
+    }
+
+    pixman_region32_clear(&scene->collected_damage);
 }
 
 void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_render_target *target)

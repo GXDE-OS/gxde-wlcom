@@ -68,10 +68,9 @@ void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *ou
                                   struct ky_scene_output *ignore, struct ky_scene_output *force);
 
 /**
- * collect current damage in box.
+ * collect current damage and distribute to outputs
  */
-void ky_scene_collect_damage_in_box(struct ky_scene *scene, struct wlr_box *box,
-                                    pixman_region32_t *damage);
+void ky_scene_collect_damage(struct ky_scene *scene);
 
 void ky_scene_render_damage_in_target(struct ky_scene *scene,
                                       struct ky_scene_render_target *target);

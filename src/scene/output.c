@@ -239,6 +239,7 @@ struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wl
     wlr_addon_init(&scene_output->addon, &output->addons, scene, &output_addon_impl);
 
     wlr_damage_ring_init(&scene_output->damage_ring);
+    pixman_region32_init(&scene_output->collected_damage);
 
     int prev_output_index = -1;
     struct wl_list *prev_output_link = &scene->outputs;
@@ -287,6 +288,7 @@ void ky_scene_output_destroy(struct ky_scene_output *scene_output)
 
     wlr_addon_finish(&scene_output->addon);
     wlr_damage_ring_finish(&scene_output->damage_ring);
+    pixman_region32_fini(&scene_output->collected_damage);
     wl_list_remove(&scene_output->link);
     wl_list_remove(&scene_output->output_commit.link);
     wl_list_remove(&scene_output->output_damage.link);
@@ -394,13 +396,17 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         .logical = { .x = scene_output->x, .y = scene_output->y },
         .output = scene_output,
     };
-    pixman_region32_init(&target.damage);
     wlr_output_transformed_resolution(output, &target.trans_width, &target.trans_height);
     target.logical.width = target.trans_width / output->scale;
     target.logical.height = target.trans_height / output->scale;
 
     // current scene damage in the output box
-    ky_scene_collect_damage_in_box(scene_output->scene, &target.logical, &target.damage);
+    pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
+                              target.logical.width, target.logical.height);
+    ky_scene_collect_damage(scene_output->scene);
+    pixman_region32_intersect(&target.damage, &target.damage, &scene_output->collected_damage);
+    pixman_region32_clear(&scene_output->collected_damage);
+
     // union all damage in the output layout box
     pixman_region32_translate(&target.damage, -target.logical.x, -target.logical.y);
     if (floor(target.scale) != target.scale) {

@@ -252,6 +252,7 @@ struct ky_scene_output {
     struct wlr_addon addon;
 
     struct wlr_damage_ring damage_ring;
+    pixman_region32_t collected_damage;
 
     int x, y;
 
