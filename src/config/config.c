@@ -3,50 +3,40 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #include <stdio.h>
-#include <unistd.h>
 
 #include <kywc/log.h>
 #include <sys/stat.h>
 
 #include "config_p.h"
 #include "server.h"
+#include "util/dir.h"
 
 static struct config_manager *config_manager = NULL;
 
 static char *check_config_file(void)
 {
     /* get config path */
-    const char *home = getenv("HOME");
-    char *config_home_fallback = NULL;
-
-    const char *config_home = getenv("XDG_CONFIG_HOME");
-    if ((!config_home || config_home[0] == '\0') && home) {
-        size_t size_fallback = 1 + strlen(home) + strlen("/.config");
-        config_home_fallback = calloc(size_fallback, sizeof(char));
-        if (config_home_fallback != NULL) {
-            snprintf(config_home_fallback, size_fallback, "%s/.config", home);
-        }
-        config_home = config_home_fallback;
+    const char *config_home = dir_get_xdg_config();
+    if (!config_home) {
+        return NULL;
     }
 
     const char *config_folder = "kylin-wlcom";
     const char *filename = "config.json";
     size_t folder = 1 + strlen(config_home) + strlen(config_folder);
-
-    size_t size = 3 + strlen(config_home) + strlen(config_folder) + strlen(filename);
+    size_t size = 2 + folder + strlen(filename);
     char *path = calloc(size, sizeof(char));
     snprintf(path, size, "%s/%s/%s", config_home, config_folder, filename);
-    free(config_home_fallback);
+    free((void *)config_home);
     if (!path) {
         return NULL;
     }
 
     /* now check config folder */
     path[folder] = '\0';
-    int ret = access(path, F_OK);
-    if (ret) {
+    if (!dir_exists(path)) {
         kywc_log(KYWC_INFO, "configure dir %s not exist, create it", path);
-        ret = mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        int ret = mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         if (ret) {
             kywc_log_errno(KYWC_ERROR, "create configure dir failed");
             goto err;

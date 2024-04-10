@@ -13,6 +13,7 @@
 #include "nls.h"
 #include "output.h"
 #include "scene/thumbnail.h"
+#include "util/dir.h"
 #include "view/action.h"
 #include "view/workspace.h"
 #include "view_p.h"
@@ -178,7 +179,13 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     struct view_capture *capture = wl_container_of(listener, capture, thumbnail_update);
     struct thumbnail_update_event *event = data;
 
-    const char *path = kywc_identifier_time_generate("/tmp/", ".png");
+    const char *dir = dir_get_xdg_pictures();
+    const char *file = kywc_identifier_time_generate("", ".png");
+    const char *path =
+        kywc_identifier_utf8_generate("%s/%s", dir_exists(dir) ? dir : getenv("HOME"), file);
+    free((void *)dir);
+    free((void *)file);
+
     capture_write_file(event->buffer, event->content.width, event->content.height, path,
                        capture_done, (void *)path);
 

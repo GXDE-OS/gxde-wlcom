@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+#include <bits/types/time_t.h>
+
 char *fscan_build_fullname(const char *dir, const char *subdir, const char *file);
 
 void fscan_start(const char *scan_path, const char *subdir,
