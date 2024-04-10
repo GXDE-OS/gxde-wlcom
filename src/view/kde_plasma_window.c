@@ -10,6 +10,7 @@
 
 #include "input/seat.h"
 #include "plasma-window-management-protocol.h"
+#include "theme.h"
 #include "view_p.h"
 
 #define PLASMA_WINDOW_MANAGEMENT_VERSION 16
@@ -465,7 +466,10 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     // org_kde_plasma_window_send_virtual_desktop_entered
     // org_kde_plasma_window_send_virtual_desktop_left
 
-    // org_kde_plasma_window_send_themed_icon_name_changed
+    const char *icon_name = theme_icon_name(kywc_view->app_id);
+    if (strcmp(icon_name, "fallback")) {
+        org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
+    }
     // org_kde_plasma_window_send_icon_changed
     // org_kde_plasma_window_send_application_menu
     // org_kde_plasma_window_send_activity_entered
