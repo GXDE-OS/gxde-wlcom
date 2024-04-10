@@ -219,6 +219,8 @@ typedef bool (*kywc_toplevel_iterator_func_t)(kywc_toplevel *toplevel, void *dat
 void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_func_t iterator,
                                     void *data);
 
+kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid);
+
 void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output);
 
 void kywc_toplevel_unset_maximized(kywc_toplevel *toplevel);

@@ -252,6 +252,22 @@ void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_fu
     }
 }
 
+kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid)
+{
+    if (!ctx->toplevel || !uuid) {
+        return NULL;
+    }
+
+    struct ky_toplevel *toplevel;
+    wl_list_for_each_reverse(toplevel, &ctx->toplevel->toplevels, link) {
+        if (strcmp(toplevel->base.uuid, uuid) == 0) {
+            return &toplevel->base;
+        }
+    }
+
+    return NULL;
+}
+
 void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output)
 {
     struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
