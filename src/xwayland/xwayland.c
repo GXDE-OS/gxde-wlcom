@@ -221,7 +221,12 @@ static bool xwayland_get_shape_region(xcb_window_t window, xcb_shape_kind_t kind
 
 void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface)
 {
-    if (!xwayland->shape) {
+    if (!xwayland->shape || !surface->surface) {
+        return;
+    }
+
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface->surface);
+    if (!buffer) {
         return;
     }
 
@@ -232,7 +237,6 @@ void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface)
         return;
     }
 
-    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface->surface);
     pixman_region32_t region;
     pixman_region32_init(&region);
 
