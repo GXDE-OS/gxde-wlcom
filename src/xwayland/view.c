@@ -57,10 +57,6 @@ struct xwayland_view {
     struct wl_listener output_update_usable_area;
 
     struct wl_list net_wm_icons; // from net_wm_icon
-
-    pixman_region32_t clip_region;
-    pixman_region32_t input_region;
-    bool need_bypassed;
 };
 
 struct net_wm_icon {
@@ -148,8 +144,6 @@ static void xwayland_view_close(struct view *view)
 static void xwayland_view_destroy(struct view *view)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
-    pixman_region32_fini(&xwayland_view->clip_region);
-    pixman_region32_fini(&xwayland_view->input_region);
     free(xwayland_view);
 }
 
@@ -812,16 +806,8 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     input_event_node_create(xwayland_view->surface_node, &xwayland_view_event_node_impl,
                             xwayland_view_get_root, xwayland_view_get_toplevel, xwayland_view);
 
-    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
-    if (pixman_region32_not_empty(&xwayland_view->clip_region)) {
-        ky_scene_node_set_clip_region(&buffer->node, &xwayland_view->clip_region);
-        pixman_region32_clear(&xwayland_view->clip_region);
-    }
-    if (pixman_region32_not_empty(&xwayland_view->input_region)) {
-        ky_scene_node_set_input_region(&buffer->node, &xwayland_view->input_region);
-        pixman_region32_clear(&xwayland_view->input_region);
-    }
-    ky_scene_node_set_bypassed(&buffer->node, xwayland_view->need_bypassed);
+    xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
+    xwayland_surface_apply_shape_region(wlr_xwayland_surface);
 
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
@@ -930,9 +916,6 @@ void xwayland_view_create(struct xwayland_server *xwayland,
     wlr_xwayland_surface->data = xwayland_view;
     wl_list_init(&xwayland_view->output_update_usable_area.link);
 
-    pixman_region32_init(&xwayland_view->clip_region);
-    pixman_region32_init(&xwayland_view->input_region);
-
     xwayland_view->associate.notify = xwayland_view_handle_associate;
     wl_signal_add(&wlr_xwayland_surface->events.associate, &xwayland_view->associate);
     xwayland_view->dissociate.notify = xwayland_view_handle_dissociate;
@@ -999,32 +982,20 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
     if (!surface) {
         return false;
     }
-
     struct xwayland_view *xwayland_view = surface->data;
-    struct ky_scene_buffer *buffer = NULL;
-    if (xwayland_view->view.surface) {
-        buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+    if (!xwayland_view->view.surface) {
+        return false;
     }
 
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_CLIP) {
-        if (buffer) {
-            ky_scene_node_set_clip_region(&buffer->node, region);
-        } else {
-            pixman_region32_copy(&xwayland_view->clip_region, region);
-        }
+        ky_scene_node_set_clip_region(&buffer->node, region);
     }
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_INPUT) {
-        if (buffer) {
-            ky_scene_node_set_input_region(&buffer->node, region);
-        } else {
-            pixman_region32_copy(&xwayland_view->input_region, region);
-        }
+        ky_scene_node_set_input_region(&buffer->node, region);
         /* empty input region means no input support */
         bool need_bypassed = kind == XCB_SHAPE_SK_INPUT && !pixman_region32_not_empty(region);
-        if (buffer) {
-            ky_scene_node_set_bypassed(&buffer->node, need_bypassed);
-        }
-        xwayland_view->need_bypassed = need_bypassed;
+        ky_scene_node_set_bypassed(&buffer->node, need_bypassed);
     }
 
     return true;

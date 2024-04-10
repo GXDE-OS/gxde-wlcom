@@ -13,6 +13,7 @@
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
+#include "scene/surface.h"
 #include "security.h"
 #include "server.h"
 #include "xwayland_p.h"
@@ -56,11 +57,6 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = data;
     // wlr_xwayland_surface_ping(wlr_xwayland_surface);
-
-    if (xwayland->shape) {
-        xcb_shape_select_input(xwayland->xcb_conn, wlr_xwayland_surface->window_id, true);
-        xcb_flush(xwayland->xcb_conn);
-    }
 
     if (wlr_xwayland_surface->override_redirect) {
         xwayland_unmanaged_create(xwayland, wlr_xwayland_surface);
@@ -188,25 +184,85 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
     free(shape_reply);
 }
 
-static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
+void xwayland_surface_shape_select_input(struct wlr_xwayland_surface *surface, bool enabled)
+{
+    if (xwayland->shape) {
+        xcb_shape_select_input(xwayland->xcb_conn, surface->window_id, enabled);
+        xcb_flush(xwayland->xcb_conn);
+    }
+}
+
+static bool xwayland_get_shape_region(xcb_window_t window, xcb_shape_kind_t kind,
+                                      pixman_region32_t *region, int *count)
 {
     xcb_shape_get_rectangles_reply_t *reply = xcb_shape_get_rectangles_reply(
-        xwayland->xcb_conn,
-        xcb_shape_get_rectangles_unchecked(xwayland->xcb_conn, notify->affected_window,
-                                           notify->shape_kind),
+        xwayland->xcb_conn, xcb_shape_get_rectangles_unchecked(xwayland->xcb_conn, window, kind),
         NULL);
+    if (!reply) {
+        return false;
+    }
+
+    xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
+    int len = xcb_shape_get_rectangles_rectangles_length(reply);
+    if (region) {
+        for (int i = 0; i < len; i++) {
+            pixman_region32_union_rect(
+                region, region, xwayland_unscale(rects[i].x), xwayland_unscale(rects[i].y),
+                xwayland_unscale(rects[i].width), xwayland_unscale(rects[i].height));
+        }
+    }
+    if (count) {
+        *count = len;
+    }
+
+    free(reply);
+    return true;
+}
+
+void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface)
+{
+    if (!xwayland->shape) {
+        return;
+    }
+
+    xcb_shape_query_extents_reply_t *reply = xcb_shape_query_extents_reply(
+        xwayland->xcb_conn,
+        xcb_shape_query_extents_unchecked(xwayland->xcb_conn, surface->window_id), NULL);
     if (!reply) {
         return;
     }
 
-    xcb_rectangle_t *rects = xcb_shape_get_rectangles_rectangles(reply);
-    int count = xcb_shape_get_rectangles_rectangles_length(reply);
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface->surface);
     pixman_region32_t region;
     pixman_region32_init(&region);
-    for (int i = 0; i < count; i++) {
-        pixman_region32_union_rect(&region, &region, xwayland_unscale(rects[i].x),
-                                   xwayland_unscale(rects[i].y), xwayland_unscale(rects[i].width),
-                                   xwayland_unscale(rects[i].height));
+
+    if (reply->clip_shaped) {
+        if (xwayland_get_shape_region(surface->window_id, XCB_SHAPE_SK_CLIP, &region, NULL)) {
+            ky_scene_node_set_clip_region(&buffer->node, &region);
+        }
+    } else if (reply->bounding_shaped) {
+        if (xwayland_get_shape_region(surface->window_id, XCB_SHAPE_SK_BOUNDING, &region, NULL)) {
+            ky_scene_node_set_clip_region(&buffer->node, &region);
+            ky_scene_node_set_input_region(&buffer->node, &region);
+        }
+    }
+
+    int count = 0;
+    xwayland_get_shape_region(surface->window_id, XCB_SHAPE_SK_INPUT, NULL, &count);
+    ky_scene_node_set_bypassed(&buffer->node, count == 0);
+
+    pixman_region32_fini(&region);
+    free(reply);
+}
+
+static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
+{
+    pixman_region32_t region;
+    pixman_region32_init(&region);
+
+    if (!xwayland_get_shape_region(notify->affected_window, notify->shape_kind, &region, NULL)) {
+        pixman_region32_fini(&region);
+        return;
     }
 
     if (!xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
@@ -214,9 +270,7 @@ static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
         xwayland_view_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
                                        &region);
     }
-
     pixman_region32_fini(&region);
-    free(reply);
 }
 
 static int xwayland_event_handler(int fd, uint32_t mask, void *data)
@@ -319,7 +373,6 @@ static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
 {
     xcb_get_property_cookie_t cookie =
         xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_ANY, 0, 2048);
-
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (reply == NULL) {
         kywc_log(KYWC_ERROR, "Failed to get window property");

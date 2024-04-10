@@ -37,10 +37,6 @@ struct xwayland_unmanaged {
     struct wl_listener set_override_redirect;
 
     struct wlr_seat_pointer_grab pointer_grab;
-
-    pixman_region32_t clip_region;
-    pixman_region32_t input_region;
-    bool need_bypassed;
 };
 
 static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *node, double x,
@@ -329,20 +325,12 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
         ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
     unmanaged->surface_node = &scene_surface->buffer->node;
     ky_scene_node_set_enabled(unmanaged->surface_node, false);
-
-    if (pixman_region32_not_empty(&unmanaged->clip_region)) {
-        ky_scene_node_set_clip_region(unmanaged->surface_node, &unmanaged->clip_region);
-        pixman_region32_clear(&unmanaged->clip_region);
-    }
-    if (pixman_region32_not_empty(&unmanaged->input_region)) {
-        ky_scene_node_set_input_region(unmanaged->surface_node, &unmanaged->input_region);
-        pixman_region32_clear(&unmanaged->input_region);
-    }
-    ky_scene_node_set_bypassed(unmanaged->surface_node, unmanaged->need_bypassed);
-
     input_event_node_create(unmanaged->surface_node, &xwayland_unmanaged_event_node_impl,
                             xwayland_unmanaged_get_root, xwayland_unmanaged_get_toplevel,
                             unmanaged);
+
+    xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
+    xwayland_surface_apply_shape_region(wlr_xwayland_surface);
 
     unmanaged->precommit.notify = unmanaged_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &unmanaged->precommit);
@@ -377,8 +365,6 @@ static void unmanaged_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&unmanaged->dissociate.link);
     wl_list_remove(&unmanaged->destroy.link);
 
-    pixman_region32_fini(&unmanaged->clip_region);
-    pixman_region32_fini(&unmanaged->input_region);
     free(unmanaged);
 }
 
@@ -409,9 +395,6 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
     unmanaged->xwayland = xwayland;
     wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     unmanaged->wlr_xwayland_surface = wlr_xwayland_surface;
-
-    pixman_region32_init(&unmanaged->clip_region);
-    pixman_region32_init(&unmanaged->input_region);
 
     unmanaged->associate.notify = unmanaged_handle_associate;
     wl_signal_add(&wlr_xwayland_surface->events.associate, &unmanaged->associate);
@@ -464,29 +447,18 @@ bool xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_w
                                          xcb_shape_sk_t kind, const pixman_region32_t *region)
 {
     struct xwayland_unmanaged *unmanaged = xwayland_unmanaged_look_surface(xwayland, window_id);
-    if (!unmanaged) {
+    if (!unmanaged || !unmanaged->surface_node) {
         return false;
     }
 
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_CLIP) {
-        if (unmanaged->surface_node) {
-            ky_scene_node_set_clip_region(unmanaged->surface_node, region);
-        } else {
-            pixman_region32_copy(&unmanaged->clip_region, region);
-        }
+        ky_scene_node_set_clip_region(unmanaged->surface_node, region);
     }
     if (kind == XCB_SHAPE_SK_BOUNDING || kind == XCB_SHAPE_SK_INPUT) {
-        if (unmanaged->surface_node) {
-            ky_scene_node_set_input_region(unmanaged->surface_node, region);
-        } else {
-            pixman_region32_copy(&unmanaged->input_region, region);
-        }
+        ky_scene_node_set_input_region(unmanaged->surface_node, region);
         /* empty input region means no input support */
         bool need_bypassed = kind == XCB_SHAPE_SK_INPUT && !pixman_region32_not_empty(region);
-        if (unmanaged->surface_node) {
-            ky_scene_node_set_bypassed(unmanaged->surface_node, need_bypassed);
-        }
-        unmanaged->need_bypassed = need_bypassed;
+        ky_scene_node_set_bypassed(unmanaged->surface_node, need_bypassed);
     }
 
     return true;

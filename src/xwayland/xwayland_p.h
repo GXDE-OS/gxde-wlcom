@@ -86,6 +86,10 @@ bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface
 
 bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surface);
 
+void xwayland_surface_shape_select_input(struct wlr_xwayland_surface *surface, bool enabled);
+
+void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface);
+
 bool xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                          xcb_shape_sk_t kind, const pixman_region32_t *region);
 
