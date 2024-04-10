@@ -56,7 +56,6 @@ struct xwayland_view {
     // TODO: output changed
     struct wl_listener output_update_usable_area;
 
-    bool keep_above, keep_below;
     struct wl_list net_wm_icons; // from net_wm_icon
 
     pixman_region32_t clip_region;
@@ -623,12 +622,9 @@ void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool
         return;
     }
 
-    xwayland_view->keep_above = above;
-    xwayland_view->keep_below = below;
-
-    if (xwayland_view->keep_above) {
+    if (above) {
         kywc_view_set_kept_above(&xwayland_view->view.base, true);
-    } else if (xwayland_view->keep_below) {
+    } else if (below) {
         kywc_view_set_kept_below(&xwayland_view->view.base, true);
     }
 }
@@ -707,9 +703,6 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_xwayland_surface->events.set_decorations, &xwayland_view->set_decorations);
 
     xwayland_view_apply_type(xwayland_view);
-
-    xwayland_view_set_above_or_below(wlr_xwayland_surface, xwayland_view->keep_above,
-                                     xwayland_view->keep_below);
     view_set_shaded(&xwayland_view->view, xwayland_view->view.base.shadeable);
 
     /* we should stack above the new window always */
