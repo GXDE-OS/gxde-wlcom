@@ -170,10 +170,16 @@ static void toplevel_leave_workspace(struct ky_toplevel *toplevel, const char *w
     kywc_toplevel_v1_leave_workspace(kywc_toplevel_v1, workspace);
 }
 
-static void toplevel_send_to_output(struct ky_toplevel *toplevel, const char *output)
+static void toplevel_move_to_workspace(struct ky_toplevel *toplevel, const char *workspace)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
-    kywc_toplevel_v1_send_to_output(kywc_toplevel_v1, output);
+    kywc_toplevel_v1_move_to_workspace(kywc_toplevel_v1, workspace);
+}
+
+static void toplevel_move_to_output(struct ky_toplevel *toplevel, const char *output)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_move_to_output(kywc_toplevel_v1, output);
 }
 
 static void manager_handle_toplevel(void *data,
@@ -196,7 +202,8 @@ static void manager_handle_toplevel(void *data,
     toplevel->close = toplevel_close;
     toplevel->enter_workspace = toplevel_enter_workspace;
     toplevel->leave_workspace = toplevel_leave_workspace;
-    toplevel->send_to_output = toplevel_send_to_output;
+    toplevel->move_to_workspace = toplevel_move_to_workspace;
+    toplevel->move_to_output = toplevel_move_to_output;
     toplevel->destroy = toplevel_destroy;
 
     toplevel->data = kywc_toplevel_v1;

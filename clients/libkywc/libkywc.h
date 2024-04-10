@@ -239,7 +239,9 @@ void kywc_toplevel_enter_workspace(kywc_toplevel *toplevel, const char *workspac
 
 void kywc_toplevel_leave_workspace(kywc_toplevel *toplevel, const char *workspace);
 
-void kywc_toplevel_send_to_output(kywc_toplevel *toplevel, const char *output);
+void kywc_toplevel_move_to_workspace(kywc_toplevel *toplevel, const char *workspace);
+
+void kywc_toplevel_move_to_output(kywc_toplevel *toplevel, const char *output);
 
 void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data);
 

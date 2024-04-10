@@ -332,11 +332,19 @@ void kywc_toplevel_leave_workspace(kywc_toplevel *toplevel, const char *workspac
     }
 }
 
-void kywc_toplevel_send_to_output(kywc_toplevel *toplevel, const char *output)
+void kywc_toplevel_move_to_workspace(kywc_toplevel *toplevel, const char *workspace)
 {
     struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
-    if (ky_toplevel->send_to_output) {
-        ky_toplevel->send_to_output(ky_toplevel, output);
+    if (ky_toplevel->move_to_workspace) {
+        ky_toplevel->move_to_workspace(ky_toplevel, workspace);
+    }
+}
+
+void kywc_toplevel_move_to_output(kywc_toplevel *toplevel, const char *output)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->move_to_output) {
+        ky_toplevel->move_to_output(ky_toplevel, output);
     }
 }
 

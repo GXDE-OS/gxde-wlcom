@@ -206,7 +206,21 @@ static void toplevel_handle_leave_workspace(struct wl_client *client, struct wl_
     }
 }
 
-static void toplevel_handle_send_to_output(struct wl_client *client, struct wl_resource *resource,
+static void toplevel_handle_move_to_workspace(struct wl_client *client,
+                                              struct wl_resource *resource, const char *id)
+{
+    struct ky_toplevel *toplevel = wl_resource_get_user_data(resource);
+    if (!toplevel) {
+        return;
+    }
+
+    struct workspace *workspace = workspace_by_uuid(id);
+    if (workspace) {
+        view_set_workspace(view_from_kywc_view(toplevel->view), workspace);
+    }
+}
+
+static void toplevel_handle_move_to_output(struct wl_client *client, struct wl_resource *resource,
                                            const char *id)
 {
     struct ky_toplevel *toplevel = wl_resource_get_user_data(resource);
@@ -232,7 +246,8 @@ static const struct kywc_toplevel_v1_interface ky_toplevel_impl = {
     .close = toplevel_handle_close,
     .enter_workspace = toplevel_handle_enter_workspace,
     .leave_workspace = toplevel_handle_leave_workspace,
-    .send_to_output = toplevel_handle_send_to_output,
+    .move_to_workspace = toplevel_handle_move_to_workspace,
+    .move_to_output = toplevel_handle_move_to_output,
 };
 
 static void ky_toplevel_resource_destroy(struct wl_resource *resource)

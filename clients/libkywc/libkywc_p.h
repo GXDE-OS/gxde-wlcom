@@ -205,7 +205,8 @@ struct ky_toplevel {
     void (*close)(struct ky_toplevel *toplevel);
     void (*enter_workspace)(struct ky_toplevel *toplevel, const char *workspace);
     void (*leave_workspace)(struct ky_toplevel *toplevel, const char *workspace);
-    void (*send_to_output)(struct ky_toplevel *toplevel, const char *output);
+    void (*move_to_workspace)(struct ky_toplevel *toplevel, const char *workspace);
+    void (*move_to_output)(struct ky_toplevel *toplevel, const char *output);
     void (*destroy)(struct ky_toplevel *toplevel);
     void *data;
 

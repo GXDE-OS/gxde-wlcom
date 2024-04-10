@@ -249,8 +249,15 @@
       <arg name="id" type="string" summary="the workspace unique id"/>
     </request>
 
-    <request name="send_to_output">
-     <description summary="send toplevel to specified output">
+    <request name="move_to_workspace">
+     <description summary="move toplevel to specified workspace">
+        Requests this toplevel to be displayed only in a specific workspace.
+      </description>
+      <arg name="id" type="string" summary="the workspace unique id"/>
+    </request>
+
+    <request name="move_to_output">
+     <description summary="move toplevel to specified output">
         Requests this toplevel to be displayed in a specific output.
       </description>
       <arg name="id" type="string" summary="the output unique id"/>
