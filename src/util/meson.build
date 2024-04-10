@@ -2,6 +2,7 @@ crypto = dependency('openssl')
 wlcom_deps += crypto
 
 wlcom_sources += files(
+  'dir.c',
   'fscan.c',
   'global.c',
   'identifier.c',
