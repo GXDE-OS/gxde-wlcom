@@ -24,6 +24,9 @@ enum kywc_context_capability {
 };
 
 struct kywc_context_interface {
+    /* called when context is created sucessfully but before wayland roundtrip */
+    void (*create)(kywc_context *ctx, void *data);
+    void (*destroy)(kywc_context *ctx, void *data);
     void (*new_output)(kywc_context *ctx, kywc_output *output, void *data);
     void (*new_toplevel)(kywc_context *ctx, kywc_toplevel *toplevel, void *data);
     void (*new_workspace)(kywc_context *ctx, kywc_workspace *workspace, void *data);
@@ -39,6 +42,13 @@ kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
  */
 kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_t capabilities,
                                              const struct kywc_context_interface *impl, void *data);
+
+struct wl_display *kywc_context_get_display(kywc_context *ctx);
+
+void kywc_context_set_user_data(kywc_context *ctx, void *data);
+
+void *kywc_context_get_user_data(kywc_context *ctx);
+
 /**
  * Get the fd, work with kywc_context_process.
  */

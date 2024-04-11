@@ -60,6 +60,10 @@ kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_
     ctx->impl = impl;
     ctx->user_data = data;
 
+    if (impl->create) {
+        impl->create(ctx, data);
+    }
+
     // create managers with capabilities by context providers
     kywc_context_init_providers(ctx);
 
@@ -84,19 +88,36 @@ kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
     return kywc_context_create_by_display(display, capabilities, impl, data);
 }
 
+struct wl_display *kywc_context_get_display(kywc_context *ctx)
+{
+    return ctx ? ctx->display : NULL;
+}
+
+void kywc_context_set_user_data(kywc_context *ctx, void *data)
+{
+    if (ctx) {
+        ctx->user_data = data;
+    }
+}
+
+void *kywc_context_get_user_data(kywc_context *ctx)
+{
+    return ctx ? ctx->user_data : NULL;
+}
+
 int kywc_context_get_fd(kywc_context *ctx)
 {
-    if (!ctx->display) {
-        return -1;
-    }
-
-    return wl_display_get_fd(ctx->display);
+    return ctx ? wl_display_get_fd(ctx->display) : -1;
 }
 
 void kywc_context_destroy(kywc_context *ctx)
 {
     if (!ctx) {
         return;
+    }
+
+    if (ctx->impl && ctx->impl->destroy) {
+        ctx->impl->destroy(ctx, ctx->user_data);
     }
 
     struct ky_context_provider *provider, *tmp;
