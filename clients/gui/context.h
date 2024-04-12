@@ -9,9 +9,11 @@
 #include <QPoint>
 #include <QPointer>
 #include <QSize>
-#include <QSocketNotifier>
 
-#include "libkywc.h"
+typedef struct _kywc_context kywc_context;
+typedef struct _kywc_output kywc_output;
+typedef struct _kywc_toplevel kywc_toplevel;
+typedef struct _kywc_workspace kywc_workspace;
 
 class Workspace : public QObject
 {
@@ -27,7 +29,7 @@ class Workspace : public QObject
     explicit Workspace(QObject *parent = nullptr);
     ~Workspace();
 
-    void setup(kywc_workspace * workspace);
+    void setup(kywc_workspace *workspace);
     QString name() const;
     QString uuid() const;
     int position() const;
@@ -36,6 +38,7 @@ class Workspace : public QObject
     void setActivate();
     void move(int position);
     void remove();
+
   Q_SIGNALS:
     void stateUpdate(Workspace::Masks mask);
     void isDeleted();
@@ -134,6 +137,8 @@ class Toplevel : public QObject
         Workspace = 1 << 7,
         Parent = 1 << 8,
         Icon = 1 << 9,
+        Position = 1 << 10,
+        Size = 1 << 11,
     };
     Q_DECLARE_FLAGS(Masks, Mask)
 
@@ -148,6 +153,8 @@ class Toplevel : public QObject
     QPointer<Toplevel> parent() const;
     QString primaryOutput() const;
     QStringList workspaces() const;
+    QPoint point() const;
+    QSize size() const;
     Toplevel::Capabilities capabilities() const;
     bool isActivated() const;
     bool isMinimized() const;
@@ -194,25 +201,19 @@ class Context : public QObject
     Q_DECLARE_FLAGS(Capabilities, Capability)
 
     void init(struct wl_display *display, Capabilities caps);
-    void clean();
+    void destroy();
 
     void addWorkspace(uint32_t position);
     Workspace *findWorkspace(QString uuid);
     Output *findOutput(QString uuid);
     Toplevel *findToplevel(QString uuid);
 
-    void setActivate(kywc_workspace *workspace);
-    void setContextForEachWorkspace(kywc_workspace_iterator_func_t iterator, void *data);
-
-    void destroyWorkspace(const char *uuid);
-    void moveWorkspace(const char *uuid, uint32_t position);
-    void setActivate(const char *uuid);
-
-    void setContextForEachOutput(kywc_output_iterator_func_t iterator, void *data);
-
+    void dispatch();
   Q_SIGNALS:
     void aboutToTeardown();
 
+    void isCreated();
+    void isDestroyed();
     void workespaceIsAdded(Workspace *workspace);
     void outputIsAdded(Output *output);
     void toplevelIsAdded(Toplevel *toplevel);
@@ -223,8 +224,6 @@ class Context : public QObject
   private:
     class Private;
     Private *pri;
-    QSocketNotifier *notifier = nullptr;
-    kywc_context *ctx = nullptr;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(Context::Capabilities)

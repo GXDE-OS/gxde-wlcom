@@ -1,5 +1,5 @@
 #include "context.h"
-#include "libkywc.h"
+#include <libkywc.h>
 
 class Workspace::Private
 {

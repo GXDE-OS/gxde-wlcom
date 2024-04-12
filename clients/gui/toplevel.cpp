@@ -1,5 +1,5 @@
 #include "context.h"
-#include "libkywc.h"
+#include <libkywc.h>
 
 class Toplevel::Private
 {
@@ -14,6 +14,8 @@ class Toplevel::Private
     QPointer<Toplevel> parent;
     QString primary_output;
     QStringList workspaces;
+    QPoint point;
+    QSize size;
     Toplevel::Capabilities capabilities;
     bool activated, minimized, maximized, fullscreen;
 
@@ -95,6 +97,15 @@ void Toplevel::Private::stateHandle(kywc_toplevel *toplevel, uint32_t mask)
         t_toplevel->pri->icon = QString(toplevel->icon);
     }
 
+    if (mask & KYWC_TOPLEVEL_STATE_POSITION) {
+        t_mask |= Toplevel::Mask::Position;
+        t_toplevel->pri->point = QPoint(toplevel->x, toplevel->y);
+    }
+
+    if (mask & KYWC_TOPLEVEL_STATE_SIZE) {
+        t_mask |= Toplevel::Mask::Size;
+        t_toplevel->pri->size = QSize(toplevel->width, toplevel->height);
+    }
     emit t_toplevel->stateUpdate(t_mask);
 }
 
@@ -137,6 +148,8 @@ void Toplevel::Private::setup(kywc_toplevel *toplevel)
     minimized = toplevel->minimized;
     maximized = toplevel->maximized;
     fullscreen = toplevel->fullscreen;
+    point = QPoint(toplevel->x, toplevel->y);
+    size = QSize(toplevel->width, toplevel->height);
 
     kywc_toplevel_set_interface(toplevel, &toplevel_impl);
     kywc_toplevel_set_user_data(toplevel, t);
@@ -184,6 +197,16 @@ QString Toplevel::primaryOutput() const
 QStringList Toplevel::workspaces() const
 {
     return pri->workspaces;
+}
+
+QPoint Toplevel::point() const
+{
+    return pri->point;
+}
+
+QSize Toplevel::size() const
+{
+    return pri->size;
 }
 
 Toplevel::Capabilities Toplevel::capabilities() const

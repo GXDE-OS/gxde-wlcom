@@ -34,13 +34,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         return;
     }
 
-    context->init(display, Context::Capability::Output | Context::Capability::Toplevel |
+    context->init(NULL, Context::Capability::Output | Context::Capability::Toplevel |
                                Context::Capability::Workspace);
 }
 
 MainWindow::~MainWindow()
 {
-    context->clean();
+    context->destroy();
 }
 
 void MainWindow::init_workspace_widget(QWidget *widget)
@@ -180,6 +180,9 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
     col_list_lable << QString("title");
     col_list_lable << QString("app_id");
     col_list_lable << QString("icon");
+    col_list_lable << QString("position");
+    col_list_lable << QString("size");
+
     col_list_lable << QString("capabilities");
     col_list_lable << QString("parent");
     col_list_lable << QString("primary output");
@@ -427,34 +430,34 @@ void MainWindow::update_toplevel_item(Toplevel::Masks mask)
 
     if (mask & Toplevel::Mask::Activated) {
         if (toplevel->isActivated())
-            tableWidget_2->item(cur_row, 7)->setText("true");
-        else
-            tableWidget_2->item(cur_row, 7)->setText("false");
-    }
-
-    if (mask & Toplevel::Mask::Minimized) {
-        if (toplevel->isMinimized())
-            tableWidget_2->item(cur_row, 8)->setText("true");
-        else
-            tableWidget_2->item(cur_row, 8)->setText("false");
-    }
-
-    if (mask & Toplevel::Mask::Maximized) {
-        if (toplevel->isMaximized())
             tableWidget_2->item(cur_row, 9)->setText("true");
         else
             tableWidget_2->item(cur_row, 9)->setText("false");
     }
 
-    if (mask & Toplevel::Mask::Fullscreen) {
-        if (toplevel->isFullscreen())
+    if (mask & Toplevel::Mask::Minimized) {
+        if (toplevel->isMinimized())
             tableWidget_2->item(cur_row, 10)->setText("true");
         else
             tableWidget_2->item(cur_row, 10)->setText("false");
     }
 
+    if (mask & Toplevel::Mask::Maximized) {
+        if (toplevel->isMaximized())
+            tableWidget_2->item(cur_row, 11)->setText("true");
+        else
+            tableWidget_2->item(cur_row, 11)->setText("false");
+    }
+
+    if (mask & Toplevel::Mask::Fullscreen) {
+        if (toplevel->isFullscreen())
+            tableWidget_2->item(cur_row, 12)->setText("true");
+        else
+            tableWidget_2->item(cur_row, 12)->setText("false");
+    }
+
     if (mask & Toplevel::Mask::PrimaryOutput)
-        tableWidget_2->item(cur_row, 6)->setText(toplevel->primaryOutput());
+        tableWidget_2->item(cur_row, 8)->setText(toplevel->primaryOutput());
 
     if (mask & Toplevel::Mask::Workspace) {
         QStringList workspaces = toplevel->workspaces();
@@ -464,15 +467,26 @@ void MainWindow::update_toplevel_item(Toplevel::Masks mask)
                 comBox_mode->addItem(workspaces.at(i));
             }
         }
-        tableWidget_2->setCellWidget(cur_row, 11, comBox_mode);
+        tableWidget_2->setCellWidget(cur_row, 13, comBox_mode);
     }
 
     if (mask & Toplevel::Mask::Parent) {
         Toplevel *parent = toplevel->parent();
         if (parent)
-            tableWidget_2->item(cur_row, 5)->setText(parent->uuid());
+            tableWidget_2->item(cur_row, 7)->setText(parent->uuid());
         else
-            tableWidget_2->item(cur_row, 5)->setText("NULL");
+            tableWidget_2->item(cur_row, 7)->setText("NULL");
+    }
+
+    if (mask & Toplevel::Mask::Position) {
+        QString point = QString("%1 , %2").arg(toplevel->point().x()).arg(toplevel->point().y());
+        tableWidget_2->item(cur_row, 4)->setText(point);
+    }
+
+    if (mask & Toplevel::Mask::Size) {
+        QString size =
+            QString("%1 , %2").arg(toplevel->size().width()).arg(toplevel->size().height());
+        tableWidget_2->item(cur_row, 5)->setText(size);
     }
 
     if (mask & Toplevel::Mask::Icon)
@@ -494,37 +508,44 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
     }
 
     tableWidget_2->item(toplevel_count, 0)->setText(toplevel->uuid());
+
+    QString point = QString("%1 , %2").arg(toplevel->point().x()).arg(toplevel->point().y());
+    tableWidget_2->item(toplevel_count, 4)->setText(point);
+
+    QString size = QString("%1 , %2").arg(toplevel->size().width()).arg(toplevel->size().height());
+    tableWidget_2->item(toplevel_count, 5)->setText(size);
+
     QString caps;
     if (toplevel->capabilities() & Toplevel::Capability::Taskbar)
         caps += "taskbar ";
     if (toplevel->capabilities() & Toplevel::Capability::Switcher)
         caps += "switcher";
-    tableWidget_2->item(toplevel_count, 4)->setText(caps);
+    tableWidget_2->item(toplevel_count, 6)->setText(caps);
 
     tableWidget_2->item(toplevel_count, 2)->setText(toplevel->appId());
     tableWidget_2->item(toplevel_count, 1)->setText(toplevel->title());
 
     if (toplevel->isActivated())
-        tableWidget_2->item(toplevel_count, 7)->setText("true");
-    else
-        tableWidget_2->item(toplevel_count, 7)->setText("false");
-
-    if (toplevel->isMinimized())
-        tableWidget_2->item(toplevel_count, 8)->setText("true");
-    else
-        tableWidget_2->item(toplevel_count, 8)->setText("false");
-
-    if (toplevel->isMaximized())
         tableWidget_2->item(toplevel_count, 9)->setText("true");
     else
         tableWidget_2->item(toplevel_count, 9)->setText("false");
 
-    if (toplevel->isFullscreen())
+    if (toplevel->isMinimized())
         tableWidget_2->item(toplevel_count, 10)->setText("true");
     else
         tableWidget_2->item(toplevel_count, 10)->setText("false");
 
-    tableWidget_2->item(toplevel_count, 6)->setText(toplevel->primaryOutput());
+    if (toplevel->isMaximized())
+        tableWidget_2->item(toplevel_count, 11)->setText("true");
+    else
+        tableWidget_2->item(toplevel_count, 11)->setText("false");
+
+    if (toplevel->isFullscreen())
+        tableWidget_2->item(toplevel_count, 12)->setText("true");
+    else
+        tableWidget_2->item(toplevel_count, 12)->setText("false");
+
+    tableWidget_2->item(toplevel_count, 8)->setText(toplevel->primaryOutput());
 
     QStringList workspaces = toplevel->workspaces();
     QComboBox *comBox_mode = new QComboBox();
@@ -532,13 +553,13 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
         for (int i = 0; i < workspaces.size(); i++)
             comBox_mode->addItem(workspaces.at(i));
     }
-    tableWidget_2->setCellWidget(toplevel_count, 11, comBox_mode);
+    tableWidget_2->setCellWidget(toplevel_count, 13, comBox_mode);
 
     Toplevel *parent = toplevel->parent();
     if (parent)
-        tableWidget_2->item(toplevel_count, 5)->setText(parent->uuid());
+        tableWidget_2->item(toplevel_count, 7)->setText(parent->uuid());
     else
-        tableWidget_2->item(toplevel_count, 5)->setText("NULL");
+        tableWidget_2->item(toplevel_count, 7)->setText("NULL");
 
     tableWidget_2->item(toplevel_count, 3)->setText(toplevel->icon());
 
@@ -734,7 +755,7 @@ void MainWindow::show_menu(const QPoint pos)
 
     QMenu *leaveWorspaces = new QMenu();
     for (int i = 0; i < tableWidget_0->rowCount(); i++) {
-        QWidget *widget = tableWidget_2->cellWidget(row, 11);
+        QWidget *widget = tableWidget_2->cellWidget(row, 13);
         QComboBox *combox = (QComboBox *)widget;
         for (int j = 0; j < combox->count(); j++) {
             if (combox->itemText(j) == tableWidget_0->item(i, 0)->text()) {
@@ -752,7 +773,7 @@ void MainWindow::show_menu(const QPoint pos)
         connect(action, SIGNAL(triggered()), this, SLOT(toplevel_move_to_workspace()));
     }
 
-    QWidget *widget = tableWidget_2->cellWidget(row, 11);
+    QWidget *widget = tableWidget_2->cellWidget(row, 13);
     QComboBox *combox = (QComboBox *)widget;
     if (combox->count() != 0) {
         action9->setMenu(moreWorspace);

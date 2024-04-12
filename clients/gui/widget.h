@@ -8,10 +8,8 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QWidget>
-#include <libkywc.h>
 
 #include "context.h"
-#include <libkywc.h>
 
 class Context;
 
@@ -64,7 +62,6 @@ class MainWindow : public QMainWindow
     QTableWidget *tableWidget_1 = nullptr;
     QTableWidget *tableWidget_2 = nullptr;
     QLabel *pri_label = nullptr;
-    QList<kywc_toplevel *> toplevel_list;
     int workspace_count;
     int toplevel_count;
     int outputs_count;
