@@ -197,6 +197,7 @@ static void output_destroy(struct ky_output *output)
 {
     struct kywc_output_v1 *kywc_output_v1 = output->data;
     kywc_output_v1_destroy(kywc_output_v1);
+    wl_display_flush(output->manager->ctx->display);
 }
 
 static void manager_handle_output(void *data, struct kywc_output_manager_v1 *kywc_output_manager_v1,
@@ -232,7 +233,9 @@ static void manager_handle_done(void *data, struct kywc_output_manager_v1 *kywc_
 static void manager_handle_finished(void *data,
                                     struct kywc_output_manager_v1 *kywc_output_manager_v1)
 {
+    struct ky_output_manager *manager = data;
     kywc_output_manager_v1_destroy(kywc_output_manager_v1);
+    wl_display_flush(manager->ctx->display);
 }
 
 static const struct kywc_output_manager_v1_listener output_manager_listener = {
@@ -246,6 +249,7 @@ static void manager_destroy(struct ky_output_manager *manager)
 {
     struct kywc_output_manager_v1 *output_manager = manager->data;
     kywc_output_manager_v1_stop(output_manager);
+    wl_display_flush(manager->ctx->display);
 }
 
 static bool output_provider_bind(struct ky_context_provider *provider, struct wl_registry *registry,

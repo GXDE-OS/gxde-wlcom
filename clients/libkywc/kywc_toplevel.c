@@ -116,78 +116,91 @@ static void toplevel_destroy(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_destroy(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_set_maximized(struct ky_toplevel *toplevel, const char *output)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_set_maximized(kywc_toplevel_v1, output);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_unset_maximized(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_unset_maximized(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_set_minimized(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_set_minimized(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_unset_minimized(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_unset_minimized(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_set_fullscreen(struct ky_toplevel *toplevel, const char *output)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_set_fullscreen(kywc_toplevel_v1, output);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_unset_fullscreen(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_unset_fullscreen(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_activate(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_activate(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_close(struct ky_toplevel *toplevel)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_close(kywc_toplevel_v1);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_enter_workspace(kywc_toplevel_v1, workspace);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_leave_workspace(struct ky_toplevel *toplevel, const char *workspace)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_leave_workspace(kywc_toplevel_v1, workspace);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_move_to_workspace(struct ky_toplevel *toplevel, const char *workspace)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_move_to_workspace(kywc_toplevel_v1, workspace);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void toplevel_move_to_output(struct ky_toplevel *toplevel, const char *output)
 {
     struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
     kywc_toplevel_v1_move_to_output(kywc_toplevel_v1, output);
+    wl_display_flush(toplevel->manager->ctx->display);
 }
 
 static void manager_handle_toplevel(void *data,
@@ -221,7 +234,9 @@ static void manager_handle_toplevel(void *data,
 static void manager_handle_finished(void *data,
                                     struct kywc_toplevel_manager_v1 *kywc_toplevel_manager_v1)
 {
+    struct ky_toplevel_manager *manager = data;
     kywc_toplevel_manager_v1_destroy(kywc_toplevel_manager_v1);
+    wl_display_flush(manager->ctx->display);
 }
 
 static const struct kywc_toplevel_manager_v1_listener toplevel_manager_listener = {
@@ -233,6 +248,7 @@ static void manager_destroy(struct ky_toplevel_manager *manager)
 {
     struct kywc_toplevel_manager_v1 *toplevel_manager = manager->data;
     kywc_toplevel_manager_v1_stop(toplevel_manager);
+    wl_display_flush(manager->ctx->display);
 }
 
 static bool toplevel_provider_bind(struct ky_context_provider *provider,

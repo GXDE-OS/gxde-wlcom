@@ -55,24 +55,28 @@ static void workspace_destroy(struct ky_workspace *workspace)
 {
     struct kywc_workspace_v1 *kywc_workspace_v1 = workspace->data;
     kywc_workspace_v1_destroy(kywc_workspace_v1);
+    wl_display_flush(workspace->manager->ctx->display);
 }
 
 static void workspace_set_position(struct ky_workspace *workspace, uint32_t postion)
 {
     struct kywc_workspace_v1 *kywc_workspace_v1 = workspace->data;
     kywc_workspace_v1_set_position(kywc_workspace_v1, postion);
+    wl_display_flush(workspace->manager->ctx->display);
 }
 
 static void workspace_activate(struct ky_workspace *workspace)
 {
     struct kywc_workspace_v1 *kywc_workspace_v1 = workspace->data;
     kywc_workspace_v1_activate(kywc_workspace_v1);
+    wl_display_flush(workspace->manager->ctx->display);
 }
 
 static void workspace_remove(struct ky_workspace *workspace)
 {
     struct kywc_workspace_v1 *kywc_workspace_v1 = workspace->data;
     kywc_workspace_v1_remove(kywc_workspace_v1);
+    wl_display_flush(workspace->manager->ctx->display);
 }
 
 static void manager_handle_workspace(void *data,
@@ -118,12 +122,14 @@ static void manager_create_workspace(struct ky_workspace_manager *manager, const
 {
     struct kywc_workspace_manager_v1 *workspace_manager = manager->data;
     kywc_workspace_manager_v1_create_workspace(workspace_manager, name, position);
+    wl_display_flush(manager->ctx->display);
 }
 
 static void manager_destroy(struct ky_workspace_manager *manager)
 {
     struct kywc_workspace_manager_v1 *workspace_manager = manager->data;
     kywc_workspace_manager_v1_stop(workspace_manager);
+    wl_display_flush(manager->ctx->display);
 }
 
 static bool workspace_provider_bind(struct ky_context_provider *provider,
