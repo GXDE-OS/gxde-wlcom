@@ -47,6 +47,9 @@ struct ky_toplevel {
     struct wl_listener activate;
     struct wl_listener fullscreen;
 
+    struct wl_listener position;
+    struct wl_listener size;
+
     struct wl_listener output;
     struct wl_listener parent;
     struct wl_listener workspace_enter;
@@ -349,6 +352,12 @@ static void toplevel_send_details_to_toplevel_resource(struct ky_toplevel *tople
 
     kywc_toplevel_v1_send_icon(resource, toplevel->icon_name);
 
+    int32_t x = kywc_view->geometry.x - kywc_view->margin.off_x;
+    int32_t y = kywc_view->geometry.y - kywc_view->margin.off_y;
+    uint32_t width = kywc_view->geometry.width + kywc_view->margin.off_width;
+    uint32_t height = kywc_view->geometry.height + kywc_view->margin.off_height;
+    kywc_toplevel_v1_send_geometry(resource, x, y, width, height);
+
     kywc_toplevel_v1_send_done(resource);
 }
 
@@ -504,6 +513,42 @@ static void handle_toplevel_fullscreen(struct wl_listener *listener, void *data)
     toplevel_update_idle_source(toplevel);
 }
 
+static void handle_toplevel_position(struct wl_listener *listener, void *data)
+{
+    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, position);
+    struct kywc_view *view = toplevel->view;
+
+    int32_t x = view->geometry.x - view->margin.off_x;
+    int32_t y = view->geometry.y - view->margin.off_y;
+    uint32_t width = view->geometry.width + view->margin.off_width;
+    uint32_t height = view->geometry.height + view->margin.off_height;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &toplevel->resources) {
+        kywc_toplevel_v1_send_geometry(resource, x, y, width, height);
+    }
+
+    toplevel_update_idle_source(toplevel);
+}
+
+static void handle_toplevel_size(struct wl_listener *listener, void *data)
+{
+    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, size);
+    struct kywc_view *view = toplevel->view;
+
+    int32_t x = view->geometry.x - view->margin.off_x;
+    int32_t y = view->geometry.y - view->margin.off_y;
+    uint32_t width = view->geometry.width + view->margin.off_width;
+    uint32_t height = view->geometry.height + view->margin.off_height;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &toplevel->resources) {
+        kywc_toplevel_v1_send_geometry(resource, x, y, width, height);
+    }
+
+    toplevel_update_idle_source(toplevel);
+}
+
 static void handle_toplevel_output(struct wl_listener *listener, void *data)
 {
     struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, output);
@@ -587,6 +632,10 @@ static void handle_toplevel_map(struct wl_listener *listener, void *data)
     wl_signal_add(&toplevel->view->events.activate, &toplevel->activate);
     toplevel->fullscreen.notify = handle_toplevel_fullscreen;
     wl_signal_add(&toplevel->view->events.fullscreen, &toplevel->fullscreen);
+    toplevel->position.notify = handle_toplevel_position;
+    wl_signal_add(&toplevel->view->events.position, &toplevel->position);
+    toplevel->size.notify = handle_toplevel_size;
+    wl_signal_add(&toplevel->view->events.size, &toplevel->size);
 
     struct view *view = view_from_kywc_view(toplevel->view);
     toplevel->output.notify = handle_toplevel_output;
@@ -631,6 +680,8 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&toplevel->minimize.link);
     wl_list_remove(&toplevel->activate.link);
     wl_list_remove(&toplevel->fullscreen.link);
+    wl_list_remove(&toplevel->position.link);
+    wl_list_remove(&toplevel->size.link);
     wl_list_remove(&toplevel->output.link);
     wl_list_remove(&toplevel->parent.link);
     wl_list_remove(&toplevel->workspace_enter.link);

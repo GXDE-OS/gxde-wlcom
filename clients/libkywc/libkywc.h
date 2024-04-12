@@ -198,6 +198,9 @@ struct _kywc_toplevel {
     /* workspaces the toplevel on, simply use array here */
     const char *workspaces[MAX_WORKSPACES];
 
+    int32_t x, y;
+    uint32_t width, height;
+
     uint32_t capabilities;
     /* state */
     bool activated, minimized, maximized, fullscreen;
@@ -214,6 +217,8 @@ enum kywc_toplevel_state_mask {
     KYWC_TOPLEVEL_STATE_WORKSPACE = 1 << 7,
     KYWC_TOPLEVEL_STATE_PARENT = 1 << 8,
     KYWC_TOPLEVEL_STATE_ICON = 1 << 9,
+    KYWC_TOPLEVEL_STATE_POSITION = 1 << 10,
+    KYWC_TOPLEVEL_STATE_SIZE = 1 << 11,
 };
 
 struct kywc_toplevel_interface {

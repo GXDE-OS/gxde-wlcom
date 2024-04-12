@@ -90,6 +90,13 @@ static void toplevel_handle_icon(void *data, struct kywc_toplevel_v1 *kywc_tople
     ky_toplevel_update_icon(toplevel, name);
 }
 
+static void toplevel_handle_geometry(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1,
+                                     int32_t x, int32_t y, uint32_t width, uint32_t height)
+{
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_update_geometry(toplevel, x, y, width, height);
+}
+
 static const struct kywc_toplevel_v1_listener toplevel_listener = {
     .closed = toplevel_handle_closed,
     .done = toplevel_handle_done,
@@ -102,6 +109,7 @@ static const struct kywc_toplevel_v1_listener toplevel_listener = {
     .state = toplevel_handle_state,
     .parent = toplevel_handle_parent,
     .icon = toplevel_handle_icon,
+    .geometry = toplevel_handle_geometry,
 };
 
 static void toplevel_destroy(struct ky_toplevel *toplevel)

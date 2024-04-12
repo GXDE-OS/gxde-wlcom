@@ -167,6 +167,16 @@
       <arg name="name" type="string" summary="the new icon name"/>
     </event>
 
+    <event name="geometry">
+      <description summary="The geometry of this toplevel in absolute coordinates">
+        This event will be sent whenever the toplevel geometry changes.
+      </description>
+        <arg name="x" type="int" summary="x position of the toplevel"/>
+        <arg name="y" type="int" summary="y position of the toplevel"/>
+        <arg name="width" type="uint" summary="width of the toplevel"/>
+        <arg name="height" type="uint" summary="height of the toplevel"/>
+    </event>
+
     <request name="set_maximized">
       <description summary="requests that the toplevel be maximized">
         Requests that the toplevel be maximized. If the maximized state actually
