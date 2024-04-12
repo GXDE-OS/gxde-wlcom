@@ -95,6 +95,8 @@ void kywc_context_for_each_workspace(kywc_context *ctx, kywc_workspace_iterator_
 
 kywc_workspace *kywc_context_find_workspace(kywc_context *ctx, const char *uuid);
 
+kywc_context *kywc_workspace_get_context(kywc_workspace *workspace);
+
 void kywc_workspace_create(kywc_context *ctx, const char *name, uint32_t position);
 
 void kywc_workspace_remove(kywc_workspace *workspace);
@@ -168,6 +170,8 @@ typedef bool (*kywc_output_iterator_func_t)(kywc_output *output, void *data);
 void kywc_context_for_each_output(kywc_context *ctx, kywc_output_iterator_func_t iterator,
                                   void *data);
 
+kywc_context *kywc_output_get_context(kywc_output *output);
+
 kywc_output *kywc_context_find_output(kywc_context *ctx, const char *uuid);
 
 void kywc_output_set_user_data(kywc_output *output, void *data);
@@ -233,6 +237,8 @@ typedef bool (*kywc_toplevel_iterator_func_t)(kywc_toplevel *toplevel, void *dat
 
 void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_func_t iterator,
                                     void *data);
+
+kywc_context *kywc_toplevel_get_context(kywc_toplevel *toplevel);
 
 kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid);
 

@@ -268,6 +268,12 @@ void kywc_context_for_each_toplevel(kywc_context *ctx, kywc_toplevel_iterator_fu
     }
 }
 
+kywc_context *kywc_toplevel_get_context(kywc_toplevel *toplevel)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    return ky_toplevel->manager->ctx;
+}
+
 kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid)
 {
     if (!ctx->toplevel || !uuid) {

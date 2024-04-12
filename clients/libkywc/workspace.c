@@ -170,6 +170,12 @@ kywc_workspace *kywc_context_find_workspace(kywc_context *ctx, const char *uuid)
     return NULL;
 }
 
+kywc_context *kywc_workspace_get_context(kywc_workspace *workspace)
+{
+    struct ky_workspace *ky_workspace = workspace_from_kywc_workspace(workspace);
+    return ky_workspace->manager->ctx;
+}
+
 void kywc_workspace_create(kywc_context *ctx, const char *name, uint32_t position)
 {
     if (ctx && ctx->workspace && ctx->workspace->create_workspace) {

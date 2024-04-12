@@ -316,6 +316,12 @@ void kywc_context_for_each_output(kywc_context *ctx, kywc_output_iterator_func_t
     }
 }
 
+kywc_context *kywc_output_get_context(kywc_output *output)
+{
+    struct ky_output *ky_output = output_from_kywc_output(output);
+    return ky_output->manager->ctx;
+}
+
 kywc_output *kywc_context_find_output(kywc_context *ctx, const char *uuid)
 {
     if (!ctx->output || !uuid) {
