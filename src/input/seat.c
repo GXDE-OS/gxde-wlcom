@@ -104,7 +104,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     seat->wlr_seat = wlr_seat_create(input_manager->server->display, name);
     if (!seat->wlr_seat) {
         free(seat);
-        return false;
+        return NULL;
     }
 
     seat->wlr_seat->data = seat;
@@ -155,7 +155,7 @@ void seat_consider_destroy(struct seat *seat)
         }
     }
 
-    if (input->manager->default_seat == seat) {
+    if (seat->manager->default_seat == seat) {
         kywc_log(KYWC_WARN, "the default seat(seat0) can't be destroyed");
         return;
     }
