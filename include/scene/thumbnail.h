@@ -11,7 +11,7 @@ struct server;
 
 struct thumbnail_update_event {
     struct wlr_buffer *buffer;
-    struct wlr_box content;
+    bool buffer_changed;
 };
 
 bool thumbnail_manager_create(struct server *server);

@@ -78,9 +78,9 @@ static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, fl
 static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail, int width,
                                                     int height, struct wlr_allocator *allocator)
 {
-    bool need_create = !thumbnail->buffer || // no buffer or smaller than source
-                       (thumbnail->buffer->width < width || thumbnail->buffer->height < height);
-    if (!need_create) {
+    bool change = !thumbnail->buffer ||
+                  (thumbnail->buffer->width != width || thumbnail->buffer->height != height);
+    if (!change) {
         return thumbnail->buffer;
     }
 
@@ -146,16 +146,15 @@ static bool node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_o
     wlr_render_pass_submit(target.render_pass);
     pixman_region32_fini(&target.damage);
 
-    if (buffer != thumbnail->buffer) {
-        if (thumbnail->buffer) {
-            wlr_buffer_drop(thumbnail->buffer);
-        }
+    bool buffer_changed = buffer != thumbnail->buffer;
+    if (buffer_changed) {
+        wlr_buffer_drop(thumbnail->buffer);
         thumbnail->buffer = buffer;
     }
 
     struct thumbnail_update_event event = {
         .buffer = buffer,
-        .content = { 0, 0, buffer_width, buffer_height },
+        .buffer_changed = buffer_changed,
     };
     wl_signal_emit_mutable(&thumbnail->events.update, &event);
 

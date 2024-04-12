@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <kywc/identifier.h>
+#include <wlr/types/wlr_buffer.h>
 
 #include "config.h"
 #include "effect/capture.h"
@@ -161,10 +162,7 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     struct thumbnail_update_event *event = data;
 
     ky_scene_buffer_set_opacity(capture->buffer, 0.5);
-    ky_scene_buffer_set_source_box(
-        capture->buffer, &(struct wlr_fbox){ event->content.x, event->content.y,
-                                             event->content.width, event->content.height });
-    ky_scene_buffer_set_dest_size(capture->buffer, event->content.width, event->content.height);
+    ky_scene_buffer_set_dest_size(capture->buffer, event->buffer->width, event->buffer->height);
     ky_scene_buffer_set_buffer(capture->buffer, event->buffer);
 }
 #else
@@ -186,7 +184,7 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     free((void *)dir);
     free((void *)file);
 
-    capture_write_file(event->buffer, event->content.width, event->content.height, path,
+    capture_write_file(event->buffer, event->buffer->width, event->buffer->height, path,
                        capture_done, (void *)path);
 
     view_capture_destroy(capture);
