@@ -612,7 +612,8 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
     }
 
     xwayland_view->view.base.has_round_corner =
-        xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_NORMAL);
+        xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_NORMAL) ||
+        xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DIALOG);
 }
 
 void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above_or_below,
