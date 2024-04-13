@@ -109,6 +109,11 @@ static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbna
     struct wlr_box bounding_box = { 0 };
     source_node->impl.get_bounding_box(source_node, &bounding_box);
 
+    /* bounding_box become empty when some client is minimized */
+    if (wlr_box_empty(&bounding_box)) {
+        return NULL;
+    }
+
     int buffer_width = bounding_box.width * thumbnail_buffer->scale;
     int buffer_height = bounding_box.height * thumbnail_buffer->scale;
 
