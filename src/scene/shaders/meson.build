@@ -1,6 +1,8 @@
 shaders = [
   'decoration.vert',
   'decoration.frag',
+  'blur_tex_rgba.frag',
+  'blur_tex.vert',
 ]
 
 foreach name : shaders

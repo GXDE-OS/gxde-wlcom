@@ -8,6 +8,7 @@
 
 #include <wlr/types/wlr_output.h>
 
+#include "render/opengl.h"
 #include "render/pass.h"
 #include "scene_p.h"
 
@@ -172,13 +173,13 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
 
     struct ky_render_rect_options options = {
         .base = {
-			.box = dst_box,
-			.color = {
-				.r = rect->color[0],
-				.g = rect->color[1],
-				.b = rect->color[2],
-				.a = rect->color[3],
-			},
+            .box = dst_box,
+            .color = {
+                .r = rect->color[0],
+                .g = rect->color[1],
+                .b = rect->color[2],
+                .a = rect->color[3],
+            },
             .clip = &render_region,
             .blend_mode = rect->color[3] != 1 ? 
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
@@ -190,6 +191,9 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
             .lt = node->radius[3] * target->scale,
         },
     };
+
+    ky_scene_node_render_blur(node, target, lx, ly, &dst_box, &render_region, &options.radius);
+
     ky_render_pass_add_rect(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);

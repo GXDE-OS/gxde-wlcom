@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/region.h>
@@ -393,6 +392,9 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
             .lt = node->radius[3] * target->scale,
         },
     };
+
+    ky_scene_node_render_blur(node, target, lx, ly, &dst_box, &render_region, &options.radius);
+
     ky_render_pass_add_texture(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);

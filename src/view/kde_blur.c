@@ -49,6 +49,7 @@ static struct kde_blur_manager *manager = NULL;
 static void kde_blur_apply_state(struct kde_blur *blur)
 {
     if (!blur->scene_buffer) {
+        // TODO: kde_blur handle scene_buffer destory.
         blur->scene_buffer = ky_scene_buffer_try_from_surface(blur->wlr_surface);
     }
     if (!blur->scene_buffer) {

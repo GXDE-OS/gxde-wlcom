@@ -9,6 +9,7 @@
 
 #include <kywc/log.h>
 
+#include "render/pass.h"
 #include "scene/scene.h"
 
 enum ky_scene_render_option {
@@ -43,6 +44,11 @@ struct ky_scene_render_target {
 void ky_scene_render_box(struct wlr_box *box, struct ky_scene_render_target *target);
 
 void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target);
+
+void ky_scene_node_render_blur(struct ky_scene_node *node, struct ky_scene_render_target *target,
+                               int lx, int ly, const struct wlr_box *dst_box,
+                               const pixman_region32_t *clip,
+                               const struct ky_render_round_corner *radius);
 
 void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent);
 
