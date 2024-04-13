@@ -22,6 +22,8 @@ void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listen
 
 void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_listener *listener);
 
+void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants);
+
 void thumbnail_destroy(struct thumbnail *thumbnail);
 
 #endif /* _SCENE_THUMBNAIL_H_ */

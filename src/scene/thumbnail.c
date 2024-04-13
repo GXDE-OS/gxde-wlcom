@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#include <assert.h>
 #include <stdlib.h>
 
 #include <drm_fourcc.h>
@@ -14,24 +13,32 @@
 #include "server.h"
 
 struct thumbnail {
-    struct wlr_buffer *buffer;
-
-    float scale;
-    size_t ref_count;
-    bool need_refresh; // need refresh or redrawn
-    bool need_destroy; // need force destroyed
+    struct wl_list link;
+    struct thumbnail_buffer *buffer;
 
     struct {
         struct wl_signal update; // thumbnail_update_event
         struct wl_signal destroy;
     } events;
 
-    bool (*render)(struct thumbnail *thumbnail, struct ky_scene_output *output);
-    void (*destroy)(struct thumbnail *thumbnail);
+    bool newly_added, wants_update;
+};
+
+struct thumbnail_buffer {
+    struct wlr_buffer *buffer;
+    struct wl_list thumbnails;
+
+    float scale;
+    bool was_damaged;  // buffer is damaged
+    bool need_destroy; // need force destroyed
+    bool can_destroy;  // cannot be destroyed when render
+
+    struct wlr_buffer *(*render)(struct thumbnail_buffer *buffer, struct ky_scene_output *output);
+    void (*destroy)(struct thumbnail_buffer *buffer);
 };
 
 struct node_thumbnail {
-    struct thumbnail base;
+    struct thumbnail_buffer base;
     struct wl_list link;
 
     struct ky_scene_node *source_node;
@@ -54,14 +61,13 @@ static struct thumbnail_manager {
 
 static void thumbnail_manager_schedule_frame(void);
 
-static void thumbnail_init(struct thumbnail *thumbnail, float scale)
+static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale)
 {
-    thumbnail->scale = scale;
-    thumbnail->ref_count = 1;
-    thumbnail->need_refresh = true;
+    buffer->scale = scale;
+    buffer->was_damaged = true;
+    buffer->can_destroy = true;
 
-    wl_signal_init(&thumbnail->events.destroy);
-    wl_signal_init(&thumbnail->events.update);
+    wl_list_init(&buffer->thumbnails);
 }
 
 static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, float scale)
@@ -75,13 +81,14 @@ static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, fl
     return NULL;
 }
 
-static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail, int width,
-                                                    int height, struct wlr_allocator *allocator)
+static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail_buffer *thumbnail_buffer,
+                                                    int width, int height,
+                                                    struct wlr_allocator *allocator)
 {
-    bool change = !thumbnail->buffer ||
-                  (thumbnail->buffer->width != width || thumbnail->buffer->height != height);
+    bool change = !thumbnail_buffer->buffer || (thumbnail_buffer->buffer->width != width ||
+                                                thumbnail_buffer->buffer->height != height);
     if (!change) {
-        return thumbnail->buffer;
+        return thumbnail_buffer->buffer;
     }
 
     struct wlr_buffer *buffer = ky_renderer_create_buffer(
@@ -94,28 +101,28 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail *thumbnail,
     return buffer;
 }
 
-static bool node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_output *scene_output)
+static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbnail_buffer,
+                                                struct ky_scene_output *scene_output)
 {
-    struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail, node_thumbnail, base);
+    struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail_buffer, node_thumbnail, base);
     struct ky_scene_node *source_node = node_thumbnail->source_node;
     struct wlr_box bounding_box = { 0 };
     source_node->impl.get_bounding_box(source_node, &bounding_box);
 
-    // TODO: round ?
-    int buffer_width = bounding_box.width * thumbnail->scale;
-    int buffer_height = bounding_box.height * thumbnail->scale;
+    int buffer_width = bounding_box.width * thumbnail_buffer->scale;
+    int buffer_height = bounding_box.height * thumbnail_buffer->scale;
 
-    struct wlr_buffer *buffer = thumbnail_buffer_allocate(thumbnail, buffer_width, buffer_height,
-                                                          scene_output->output->allocator);
+    struct wlr_buffer *buffer = thumbnail_buffer_allocate(
+        thumbnail_buffer, buffer_width, buffer_height, scene_output->output->allocator);
     if (!buffer) {
-        return false;
+        return NULL;
     }
 
     struct wlr_render_pass *render_pass =
         wlr_renderer_begin_buffer_pass(scene_output->output->renderer, buffer, NULL);
     if (!render_pass) {
         wlr_buffer_drop(buffer);
-        return false;
+        return NULL;
     }
 
     /* clear the target buffer */
@@ -126,15 +133,12 @@ static bool node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_o
 
     struct ky_scene_render_target target = {
         .logical = { 0, 0, buffer_width, buffer_height },
-        .scale = thumbnail->scale,
-
+        .scale = thumbnail_buffer->scale,
         .trans_width = buffer_width,
         .trans_height = buffer_height,
-
         .buffer = buffer,
         .output = scene_output,
         .render_pass = render_pass,
-
         .options = KY_SCENE_RENDER_DISABLE_VISIBILITY,
     };
     pixman_region32_init_rect(&target.damage, 0, 0, bounding_box.width, bounding_box.height);
@@ -146,33 +150,38 @@ static bool node_thumbnail_render(struct thumbnail *thumbnail, struct ky_scene_o
     wlr_render_pass_submit(target.render_pass);
     pixman_region32_fini(&target.damage);
 
-    bool buffer_changed = buffer != thumbnail->buffer;
-    if (buffer_changed) {
-        wlr_buffer_drop(thumbnail->buffer);
-        thumbnail->buffer = buffer;
-    }
-
-    struct thumbnail_update_event event = {
-        .buffer = buffer,
-        .buffer_changed = buffer_changed,
-    };
-    wl_signal_emit_mutable(&thumbnail->events.update, &event);
-
-    return true;
+    return buffer;
 }
 
-static void node_thumbnail_destroy(struct thumbnail *thumbnail)
+static void node_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
 {
-    if (thumbnail->buffer) {
-        wlr_buffer_drop(thumbnail->buffer);
+    /* don't destroy if still have thumbnails */
+    if (!thumbnail_buffer->need_destroy && !wl_list_empty(&thumbnail_buffer->thumbnails)) {
+        return;
+    }
+    /* mark need_destroy if cannot be destroyed current */
+    if (!thumbnail_buffer->can_destroy) {
+        thumbnail_buffer->need_destroy = true;
+        return;
     }
 
-    struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail, node_thumbnail, base);
+    /* force destroy all thumbnails */
+    struct thumbnail *thumbnail, *tmp;
+    wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
+        thumbnail->buffer = NULL;
+        thumbnail_destroy(thumbnail);
+    }
+
+    if (thumbnail_buffer->buffer) {
+        wlr_buffer_drop(thumbnail_buffer->buffer);
+    }
+
+    struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail_buffer, node_thumbnail, base);
     wl_list_remove(&node_thumbnail->source_destroy.link);
     wl_list_remove(&node_thumbnail->source_damage.link);
     wl_list_remove(&node_thumbnail->link);
 
-    free(thumbnail);
+    free(node_thumbnail);
 }
 
 static void node_thumbnail_handle_source_destroy(struct wl_listener *listener, void *data)
@@ -181,27 +190,22 @@ static void node_thumbnail_handle_source_destroy(struct wl_listener *listener, v
         wl_container_of(listener, node_thumbnail, source_destroy);
     /* force destroyed when source node destroy */
     node_thumbnail->base.need_destroy = true;
-    thumbnail_destroy(&node_thumbnail->base);
+    node_thumbnail_destroy(&node_thumbnail->base);
 }
 
 static void node_thumbnail_handle_source_damage(struct wl_listener *listener, void *data)
 {
     struct node_thumbnail *node_thumbnail =
         wl_container_of(listener, node_thumbnail, source_damage);
-    node_thumbnail->base.need_refresh = true;
+    node_thumbnail->base.was_damaged = true;
     thumbnail_manager_schedule_frame();
 }
 
-struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale)
+static struct node_thumbnail *node_thumbnail_get_or_create(struct ky_scene_node *node, float scale)
 {
-    if (!manager) {
-        return NULL;
-    }
-
     struct node_thumbnail *node_thumbnail = find_node_thumbnail(node, scale);
     if (node_thumbnail) {
-        node_thumbnail->base.ref_count++;
-        return &node_thumbnail->base;
+        return node_thumbnail;
     }
 
     node_thumbnail = calloc(1, sizeof(*node_thumbnail));
@@ -209,7 +213,7 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
         return NULL;
     }
 
-    thumbnail_init(&node_thumbnail->base, scale);
+    thumbnail_buffer_init(&node_thumbnail->base, scale);
     node_thumbnail->base.render = node_thumbnail_render;
     node_thumbnail->base.destroy = node_thumbnail_destroy;
 
@@ -221,9 +225,35 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
 
     wl_list_insert(&manager->node_thumbnails, &node_thumbnail->link);
 
+    return node_thumbnail;
+}
+
+struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale)
+{
+    if (!manager) {
+        return NULL;
+    }
+
+    struct thumbnail *thumbnail = calloc(1, sizeof(*thumbnail));
+    if (!thumbnail) {
+        return NULL;
+    }
+
+    struct node_thumbnail *node_thumbnail = node_thumbnail_get_or_create(node, scale);
+    if (!node_thumbnail) {
+        free(thumbnail);
+        return NULL;
+    }
+
+    thumbnail->buffer = &node_thumbnail->base;
+    wl_list_insert(&node_thumbnail->base.thumbnails, &thumbnail->link);
+    wl_signal_init(&thumbnail->events.update);
+    wl_signal_init(&thumbnail->events.destroy);
+    thumbnail->newly_added = thumbnail->wants_update = true;
+    /* buffer update is needed */
     thumbnail_manager_schedule_frame();
 
-    return &node_thumbnail->base;
+    return thumbnail;
 }
 
 void thumbnail_destroy(struct thumbnail *thumbnail)
@@ -232,13 +262,15 @@ void thumbnail_destroy(struct thumbnail *thumbnail)
         return;
     }
 
-    assert(thumbnail->ref_count > 0);
-    thumbnail->ref_count--;
+    wl_signal_emit_mutable(&thumbnail->events.destroy, NULL);
+    wl_list_remove(&thumbnail->link);
 
-    if (thumbnail->ref_count == 0 || thumbnail->need_destroy) {
-        wl_signal_emit_mutable(&thumbnail->events.destroy, NULL);
-        thumbnail->destroy(thumbnail);
+    /* thumbnail_buffer may not be destroyed caused by can_destroy == false */
+    if (thumbnail->buffer) {
+        thumbnail->buffer->destroy(thumbnail->buffer);
     }
+
+    free(thumbnail);
 }
 
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener)
@@ -251,6 +283,90 @@ void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_liste
     wl_signal_add(&thumbnail->events.destroy, listener);
 }
 
+void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
+{
+    if (thumbnail->wants_update == wants) {
+        return;
+    }
+
+    thumbnail->wants_update = wants;
+    /* should send update if buffer was damaged */
+    if (wants) {
+        // thumbnail->newly_added = true; // send buffer again
+        thumbnail_manager_schedule_frame();
+    }
+}
+
+static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
+{
+    struct thumbnail *thumbnail, *tmp;
+
+    if (!thumbnail_buffer->was_damaged) {
+        /* must have a buffer because was_damaged == false */
+        struct thumbnail_update_event event = {
+            .buffer = thumbnail_buffer->buffer,
+            .buffer_changed = true,
+        };
+        /* thumbnail_buffer cannot be destroyed in here */
+        thumbnail_buffer->can_destroy = false;
+        wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
+            if (thumbnail->newly_added) {
+                thumbnail->newly_added = false;
+                wl_signal_emit_mutable(&thumbnail->events.update, &event);
+            }
+        }
+        /* thumbnail may need be destroyed in update */
+        thumbnail_buffer->can_destroy = true;
+        thumbnail_buffer->destroy(thumbnail_buffer);
+        return true;
+    }
+
+    bool has_wants_update = false;
+    wl_list_for_each(thumbnail, &thumbnail_buffer->thumbnails, link) {
+        has_wants_update |= thumbnail->wants_update;
+        if (has_wants_update) {
+            break;
+        }
+    }
+    /* skip rendering when no thumbnail want update */
+    if (!has_wants_update) {
+        return true;
+    }
+
+    struct wlr_buffer *buffer = thumbnail_buffer->render(thumbnail_buffer, manager->output);
+    /* destroy it when render failed */
+    if (!buffer) {
+        thumbnail_buffer->need_destroy = true;
+        thumbnail_buffer->destroy(thumbnail_buffer);
+        return false;
+    }
+
+    /* mark buffer is not damaged */
+    thumbnail_buffer->was_damaged = false;
+    /* drop the prev buffer */
+    bool buffer_changed = buffer != thumbnail_buffer->buffer;
+    if (buffer_changed) {
+        wlr_buffer_drop(thumbnail_buffer->buffer);
+        thumbnail_buffer->buffer = buffer;
+    }
+
+    struct thumbnail_update_event event = {
+        .buffer = buffer,
+        .buffer_changed = buffer_changed,
+    };
+    thumbnail_buffer->can_destroy = false;
+    wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
+        if (thumbnail->wants_update) {
+            thumbnail->newly_added = false;
+            wl_signal_emit_mutable(&thumbnail->events.update, &event);
+        }
+    }
+    thumbnail_buffer->can_destroy = true;
+    thumbnail_buffer->destroy(thumbnail_buffer);
+
+    return true;
+}
+
 static void thumbnail_manager_handle_output_frame(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->output_frame.link);
@@ -259,15 +375,7 @@ static void thumbnail_manager_handle_output_frame(struct wl_listener *listener, 
 
     struct node_thumbnail *node_thumbnail, *tmp;
     wl_list_for_each_safe(node_thumbnail, tmp, &manager->node_thumbnails, link) {
-        if (!node_thumbnail->base.need_refresh) {
-            continue;
-        }
-        node_thumbnail->base.need_refresh = false;
-        /* destroy it when render failed */
-        if (!node_thumbnail->base.render(&node_thumbnail->base, manager->output)) {
-            node_thumbnail->base.need_destroy = true;
-            thumbnail_destroy(&node_thumbnail->base);
-        }
+        thumbnail_buffer_render(&node_thumbnail->base);
     }
 }
 
