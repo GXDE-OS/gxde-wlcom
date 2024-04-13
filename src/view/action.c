@@ -6,6 +6,7 @@
 
 #include <kywc/identifier.h>
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_seat.h>
 
 #include "config.h"
 #include "effect/capture.h"
@@ -121,6 +122,7 @@ struct view_capture {
     struct wl_listener thumbnail_destroy;
 #if MIRROR_BUFFER_DEBUG
     struct ky_scene_buffer *buffer;
+    struct wl_event_source *timer;
 #endif
 };
 
@@ -134,6 +136,7 @@ static void view_capture_destroy(struct view_capture *capture)
     if (capture->buffer) {
         ky_scene_node_destroy(&capture->buffer->node);
     }
+    wl_event_source_remove(capture->timer);
 #endif
     if (capture->thumbnail) {
         thumbnail_destroy(capture->thumbnail);
@@ -164,6 +167,16 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     ky_scene_buffer_set_opacity(capture->buffer, 0.5);
     ky_scene_buffer_set_dest_size(capture->buffer, event->buffer->width, event->buffer->height);
     ky_scene_buffer_set_buffer(capture->buffer, event->buffer);
+
+    thumbnail_mark_wants_update(capture->thumbnail, false);
+    wl_event_source_timer_update(capture->timer, 250);
+}
+
+static int handle_capture(void *data)
+{
+    struct view_capture *capture = data;
+    thumbnail_mark_wants_update(capture->thumbnail, true);
+    return 0;
 }
 #else
 static void capture_done(const char *path, void *data)
@@ -191,7 +204,7 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
 }
 #endif
 
-static void window_capture_create(struct view *view)
+static void window_capture_create(struct view *view, struct seat *seat)
 {
     if (!view->base.mapped) {
         return;
@@ -213,6 +226,8 @@ static void window_capture_create(struct view *view)
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     capture->buffer = ky_scene_buffer_create(layer->tree, NULL);
     ky_scene_node_set_bypassed(&capture->buffer->node, true);
+    struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
+    capture->timer = wl_event_loop_add_timer(loop, handle_capture, capture);
 #endif
     capture->thumbnail_update.notify = capture_handle_thumbnail_update;
     thumbnail_add_update_listener(capture->thumbnail, &capture->thumbnail_update);
@@ -277,7 +292,7 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
         window_snap(view, action - WINDOW_ACTION_SNAP_TOP + 1);
         break;
     case WINDOW_ACTION_CAPTURE:
-        window_capture_create(view);
+        window_capture_create(view, seat);
         break;
     }
 }
