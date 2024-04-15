@@ -298,7 +298,7 @@ static void scene_push_damage(struct ky_scene_node *node, struct ky_scene_node *
     damage_type |= node->damage_type;
 
     assert(damage_type != KY_SCENE_DAMAGE_NONE);
-    if (damage_type == KY_SCENE_DAMAGE_HARMLESS) {
+    if (damage_type == KY_SCENE_DAMAGE_HARMLESS && damage_node->last_enabled) {
         assert(damage_node->type == KY_SCENE_NODE_RECT ||
                damage_node->type == KY_SCENE_NODE_BUFFER);
         pixman_region32_intersect(damage, damage, &damage_node->visible_region);
