@@ -23,10 +23,13 @@ if have_kde_virtual_desktop
   }
 endif
 
+egl = dependency('egl')
+glesv2 = dependency('glesv2')
+
 clients += {
   'monitor': {
-  'src': 'monitor.c',
-  'dep': libkywc,
+  'src': ['monitor.c', 'buffer.c'],
+  'dep': [libkywc, egl, glesv2],
   },
 }
 
