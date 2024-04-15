@@ -12,6 +12,7 @@ bool effect_manager_create(struct server *server)
     thumbnail_manager_create(server);
 
     capture_manager_create(server);
+    ky_capture_manager_create(server);
 
     return true;
 }

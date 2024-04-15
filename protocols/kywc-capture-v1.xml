@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="kywc_workspace_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+    SPDX-License-Identifier: MulanPSL-2.0
+  ]]></copyright>
+
+  <interface name="kywc_capture_manager_v1" version="1">
+    <description summary="manager to inform clients and begin get capturing">
+      This object is a manager which offers requests to start capturing from a source.
+    </description>
+
+    <request name="capture_output">
+      <description summary="capture an output">
+        Capture the next frame of an entire output.
+      </description>
+      <arg name="frame" type="new_id" interface="kywc_capture_frame_v1"/>
+      <arg name="overlay_cursor" type="int" summary="composite cursor onto the frame"/>
+      <arg name="output" type="string" summary="unique id for an output"/>
+    </request>
+
+    <request name="capture_workspace">
+      <description summary="capture a workspace">
+        Capture the next frame of an entire workspace in one output.
+      </description>
+      <arg name="frame" type="new_id" interface="kywc_capture_frame_v1"/>
+      <arg name="workspace" type="string" summary="unique id for workspace"/>
+      <arg name="output" type="string" summary="unique id for output"/>
+    </request>
+
+    <request name="capture_toplevel">
+      <description summary="capture a toplevel">
+        Capture the next frame of an entire toplevel.
+      </description>
+      <arg name="frame" type="new_id" interface="kywc_capture_frame_v1"/>
+      <arg name="toplevel" type="string" summary="unique id for toplevel"/>
+    </request>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the manager">
+        All objects created by the manager will still remain valid, until their
+        appropriate destroy request has been called.
+      </description>
+  </request>
+  </interface>
+
+  <interface name="kywc_capture_frame_v1" version="1">
+    <description summary="a frame ready for copy">
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="delete this object, used or not">
+        Destroys the frame. This request can be sent at any time by the client.
+      </description>
+    </request>
+
+    <event name="failed">
+      <description summary="frame copy failed">
+        This event indicates that the attempted frame copy has failed.
+        After receiving this event, the client should destroy the object.
+      </description>
+    </event>
+
+    <event name="cancelled">
+      <description summary="frame copy has been cancelled">
+        Sent if the compositor cancels the frame because the source has gone.
+        Upon receiving this event, the client should destroy this object.
+      </description>
+    </event>
+
+    <enum name="flags" bitfield="true">
+      <entry name="dmabuf" value="1" summary="buffer is a dmabuf"/>
+      <entry name="reused" value="2" summary="buffer is reused"/>
+    </enum>
+
+    <event name="buffer">
+      <description summary="buffer information">
+        Provides information about buffer parameters that need to be
+        used for this frame.
+      </description>
+      <arg name="fd" type="fd" summary="buffer file descriptor"/>
+      <arg name="format" type="uint" summary="DRM_FORMAT code"/>
+      <arg name="width" type="uint" summary="buffer width in pixels"/>
+      <arg name="height" type="uint" summary="buffer height in pixels"/>
+      <arg name="offset" type="uint" summary="buffer offset in bytes"/>
+      <arg name="stride" type="uint" summary="buffer stride in bytes"/>
+      <arg name="modifier_hi" type="uint" summary="high 32 bits of layout modifier"/>
+      <arg name="modifier_lo" type="uint" summary="low 32 bits of layout modifier"/>
+      <arg name="flags" type="uint" enum="flags" summary="buffer flags"/>
+    </event>
+
+    <request name="release_buffer">
+      <description summary="buffer is not used anymore">
+        Mark the buffer is not used by client. This request is sent after buffer event.
+      </description>
+      <arg name="want_buffer" type="uint" summary="request send buffer event when buffer is changed"/>
+    </request>
+  </interface>
+</protocol>

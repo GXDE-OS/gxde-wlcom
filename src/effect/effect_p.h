@@ -10,4 +10,6 @@
 
 bool capture_manager_create(struct server *server);
 
+bool ky_capture_manager_create(struct server *server);
+
 #endif /* _EFFECT_P_H_ */
