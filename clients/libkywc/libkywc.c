@@ -180,6 +180,11 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
             return false;
         }
         ctx->workspace = manager;
+    } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_THUMBNAIL) {
+        if (ctx->thumbnail) {
+            return false;
+        }
+        ctx->thumbnail = manager;
     }
 
     wl_list_insert(&ctx->providers, &provider->link);

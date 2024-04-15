@@ -16,11 +16,13 @@ typedef struct _kywc_context kywc_context;
 typedef struct _kywc_output kywc_output;
 typedef struct _kywc_toplevel kywc_toplevel;
 typedef struct _kywc_workspace kywc_workspace;
+typedef struct _kywc_thumbnail kywc_thumbnail;
 
 enum kywc_context_capability {
     KYWC_CONTEXT_CAPABILITY_OUTPUT = 1 << 0,
     KYWC_CONTEXT_CAPABILITY_TOPLEVEL = 1 << 1,
     KYWC_CONTEXT_CAPABILITY_WORKSPACE = 1 << 2,
+    KYWC_CONTEXT_CAPABILITY_THUMBNAIL = 1 << 3,
 };
 
 struct kywc_context_interface {
@@ -269,6 +271,74 @@ void kywc_toplevel_move_to_output(kywc_toplevel *toplevel, const char *output);
 void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data);
 
 void *kywc_toplevel_get_user_data(kywc_toplevel *toplevel);
+
+/**
+ * thumbnail for output, toplevel and workspace
+ */
+enum kywc_thumbnail_type {
+    KYWC_THUMBNAIL_TYPE_OUTPUT,
+    KYWC_THUMBNAIL_TYPE_TOPLEVEL,
+    KYWC_THUMBNAIL_TYPE_WORKSPACE,
+};
+
+struct _kywc_thumbnail {
+    enum kywc_thumbnail_type type;
+    const char *source_uuid;
+    const char *output_uuid; // only used when workspace
+};
+
+enum kywc_thumbnail_buffer_flag {
+    /**
+     * memfd: use mmap and munmap
+     * dmabuf: use egl import dmabuf is better, map can't work when has modifier
+     */
+    KYWC_THUMBNAIL_BUFFER_IS_DMABUF = 1 << 0,
+    /**
+     * buffer is resued, so we can skip the import sometimes
+     */
+    KYWC_THUMBNAIL_BUFFER_IS_REUSED = 1 << 1,
+};
+
+struct kywc_thumbnail_buffer {
+    int32_t fd;              // fd is closed in libkywc after buffer callback
+    uint32_t format;         // drm fourcc
+    uint32_t width, height;  // in pixels
+    uint32_t offset, stride; // in bytes
+    uint64_t modifier;       // only used when dmabuf
+    uint32_t flags;          // enum kywc_thumbnail_buffer_flag
+};
+
+struct kywc_thumbnail_interface {
+    /**
+     * return true if want buffer callback again when content is changed later,
+     * otherwise destroy callback is called to destroy this thumbnail.
+     */
+    bool (*buffer)(kywc_thumbnail *thumbnail, const struct kywc_thumbnail_buffer *buffer,
+                   void *data);
+    /**
+     * no need to call kywc_thumbnail_destroy
+     */
+    void (*destroy)(kywc_thumbnail *thumbnail, void *data);
+};
+
+/**
+ * output_uuid is needed when create a workspace thumbnail.
+ * buffer callback will be called by libkywc after kywc_thumbnail_create.
+ */
+kywc_thumbnail *kywc_thumbnail_create(kywc_context *ctx, enum kywc_thumbnail_type type,
+                                      const char *source_uuid, const char *output_uuid,
+                                      const struct kywc_thumbnail_interface *impl, void *data);
+
+kywc_context *kywc_thumbnail_get_context(kywc_thumbnail *thumbnail);
+
+void kywc_thumbnail_set_user_data(kywc_thumbnail *thumbnail, void *data);
+
+void *kywc_thumbnail_get_user_data(kywc_thumbnail *thumbnail);
+
+/**
+ * destroy callback will be called in kywc_thumbnail_destroy
+ */
+void kywc_thumbnail_destroy(kywc_thumbnail *thumbnail);
 
 #ifdef __cplusplus
 }

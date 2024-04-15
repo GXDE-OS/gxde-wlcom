@@ -30,6 +30,7 @@ struct _kywc_context {
     struct ky_workspace_manager *workspace;
     struct ky_output_manager *output;
     struct ky_toplevel_manager *toplevel;
+    struct ky_thumbnail_manager *thumbnail;
 };
 
 bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *provider,
@@ -250,5 +251,46 @@ void ky_toplevel_update_geometry(struct ky_toplevel *toplevel, int32_t x, int32_
 void ky_toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace);
 
 void ky_toplevel_leave_workspace(struct ky_toplevel *toplevel, const char *workspace);
+
+/**
+ * thumbnail
+ */
+struct ky_thumbnail;
+
+struct ky_thumbnail_manager {
+    kywc_context *ctx;
+    struct wl_list thumbnails;
+
+    void (*capture_output)(struct ky_thumbnail_manager *manager, struct ky_thumbnail *thumbnail,
+                           const char *uuid);
+    void (*capture_workspace)(struct ky_thumbnail_manager *manager, struct ky_thumbnail *thumbnail,
+                              const char *uuid, const char *output);
+    void (*capture_toplevel)(struct ky_thumbnail_manager *manager, struct ky_thumbnail *thumbnail,
+                             const char *uuid);
+    void (*destroy)(struct ky_thumbnail_manager *manager);
+    void *data;
+};
+
+struct ky_thumbnail {
+    kywc_thumbnail base;
+
+    struct ky_thumbnail_manager *manager;
+    struct wl_list link;
+
+    const struct kywc_thumbnail_interface *impl;
+    void *user_data;
+
+    void (*destroy)(struct ky_thumbnail *thumbnail);
+    void *data;
+};
+
+struct ky_thumbnail_manager *ky_thumbnail_manager_create(kywc_context *ctx);
+
+void ky_thumbnail_manager_destroy(struct ky_thumbnail_manager *manager);
+
+void ky_thumbnail_destroy(struct ky_thumbnail *thumbnail);
+
+void ky_thumbnail_update_buffer(struct ky_thumbnail *thumbnail,
+                                const struct kywc_thumbnail_buffer *buffer, bool *want_buffer);
 
 #endif /* _LIBKYWC_HEADER_P_H_ */

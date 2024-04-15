@@ -2,14 +2,17 @@ files_libkywc = files(
   'libkywc.c',
   'output.c',
   'toplevel.c',
+  'thumbnail.c',
   'workspace.c',
   # providers
+  'kywc_capture.c',
   'kywc_output.c',
   'kywc_toplevel.c',
   'kywc_workspace.c',
 )
 
 protos = [
+  'kywc-capture-manager-v1',
   'kywc-output-manager-v1', 
   'kywc-toplevel-manager-v1',
   'kywc-workspace-manager-v1',
