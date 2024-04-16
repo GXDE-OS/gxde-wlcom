@@ -344,7 +344,8 @@ void widget_set_font(struct widget *widget, const char *name, int size)
         widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
     }
 
-    if (widget->font_name && name && strcmp(widget->font_name, name) == 0) {
+    if ((!widget->font_name && !name) ||
+        (widget->font_name && name && strcmp(widget->font_name, name) == 0)) {
         return;
     }
 
