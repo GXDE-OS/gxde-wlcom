@@ -22,6 +22,8 @@ struct effect *effect_by_uuid(const char *uuid);
 
 struct effect *effect_by_name(const char *name);
 
+bool showfps_effect_create(struct effect_manager *manager);
+
 bool capture_manager_create(struct server *server);
 
 bool ky_capture_manager_create(struct server *server);
