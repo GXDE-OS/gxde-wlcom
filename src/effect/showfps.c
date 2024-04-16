@@ -65,8 +65,8 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
 {
     struct frame_output *output = wl_container_of(listener, output, frame);
 
-    char text[10];
-    snprintf(text, 10, "FPS: %3d", output->fps);
+    char text[4];
+    snprintf(text, 4, "%3d", output->fps);
 
     widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, false, false, false);
     widget_set_font(output->widget, NULL, 20);
