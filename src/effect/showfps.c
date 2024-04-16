@@ -67,13 +67,7 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
 
     char text[4];
     snprintf(text, 4, "%3d", output->fps);
-
     widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, false, false, false);
-    widget_set_font(output->widget, NULL, 20);
-    widget_set_max_size(output->widget, 500, 200);
-    widget_set_auto_resize(output->widget, AUTO_RESIZE_ONLY);
-    widget_set_front_color(output->widget, (float[4]){ 1, 0, 0, 1 });
-    widget_set_enabled(output->widget, true);
     widget_update(output->widget, true);
 
     ky_scene_node_set_position(ky_scene_node_from_widget(output->widget), output->output->x + 5,
@@ -119,6 +113,11 @@ static void frame_output_create(struct showfps_effect *effect, struct ky_scene_o
 
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     output->widget = widget_create(layer->tree);
+    widget_set_font(output->widget, NULL, 20);
+    widget_set_max_size(output->widget, 500, 200);
+    widget_set_auto_resize(output->widget, AUTO_RESIZE_ONLY);
+    widget_set_front_color(output->widget, (float[4]){ 1, 0, 0, 1 });
+    widget_set_enabled(output->widget, true);
 
     wlr_output_schedule_frame(output->output->output);
 }
