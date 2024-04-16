@@ -800,7 +800,7 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
 
     /* create scene tree here as we get surface here */
     struct ky_scene_tree *surface_tree =
-        ky_scene_subsurface_tree_create(xwayland_view->view.content, wlr_xwayland_surface->surface);
+        ky_scene_subsurface_tree_create(xwayland_view->view.tree, wlr_xwayland_surface->surface);
     /* event node will be destroyed when surface_node destroy */
     xwayland_view->surface_node = &surface_tree->node;
     input_event_node_create(xwayland_view->surface_node, &xwayland_view_event_node_impl,

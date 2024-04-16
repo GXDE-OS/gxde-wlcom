@@ -199,7 +199,6 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
     view->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&view->tree->node, false);
-    view->content = ky_scene_tree_create(view->tree);
 
     struct output *output = input_current_output(input_manager_get_default_seat());
     view->output = &output->base;

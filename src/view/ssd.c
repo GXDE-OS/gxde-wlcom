@@ -887,7 +887,7 @@ static void ssd_parts_create(struct ssd *ssd)
 
     struct kywc_view *kywc_view = ssd->kywc_view;
     struct view *view = view_from_kywc_view(kywc_view);
-    ssd->tree = ky_scene_tree_create(view->content);
+    ssd->tree = ky_scene_tree_create(view->tree);
     ky_scene_node_lower_to_bottom(&ssd->tree->node);
 
     ssd->view_size.notify = handle_view_size;
