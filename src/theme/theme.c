@@ -49,12 +49,8 @@ static struct theme light = {
         .resize_border = 13,
         .button_width = 30,
         .icon_size = 24,
-        .button_svg = button_light_svg_src,
-    },
-
-    .shadow = {
         .shadow_border = 30,
-        .corner_radius = 12,
+        .button_svg = button_light_svg_src,
     },
 
     .tooltip = {
@@ -110,12 +106,8 @@ static struct theme dark = {
         .resize_border = 13,
         .button_width = 30,
         .icon_size = 24,
-        .button_svg = button_dark_svg_src,
-    },
-
-    .shadow = {
         .shadow_border = 30,
-        .corner_radius = 12,
+        .button_svg = button_dark_svg_src,
     },
 
     .tooltip = {
@@ -292,25 +284,6 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
     return buffers;
 }
 
-static struct wlr_buffer *draw_shadow_buffer(struct theme *theme)
-{
-    int half = theme->shadow.shadow_border + theme->shadow.corner_radius + theme->ssd.border_width;
-    float fill_color[4] = { 0.0, 0.0, 0.0, 1.0 };
-
-    /* a blured circle */
-    struct draw_info info = {
-        .width = half * 2,
-        .height = half * 2,
-        .scale = 1.0,
-        .solid_rgba = fill_color,
-        .circle = CIRCLE_TYPE_CLEAR,
-        .corner_radius = theme->shadow.corner_radius + theme->ssd.border_width,
-        .blur_margin = half,
-    };
-
-    return painter_draw_buffer(&info);
-}
-
 static int32_t get_color_int(float *rgba);
 
 static void theme_override_config(struct theme *theme)
@@ -363,10 +336,6 @@ static struct theme *theme_create(const char *name, float scale)
     /* paint all buffers in scale */
     draw_theme_buffers(theme, scale);
 
-    /* draw shadow buffer */
-    theme->shadow.shadow = draw_shadow_buffer(theme);
-    // painter_buffer_to_file(theme->shadow->shadow, "shadow.png");
-
     return theme;
 }
 
@@ -386,8 +355,6 @@ static void theme_destroy(struct theme *theme)
     wl_list_for_each_safe(bufs, bufs_tmp, &theme->ssd.scaled_buffers, link) {
         destroy_theme_buffers(bufs);
     }
-
-    wlr_buffer_drop(theme->shadow.shadow);
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)

@@ -63,20 +63,13 @@ struct theme {
         int resize_border;
         int button_width;
         int icon_size;
+        int shadow_border;
 
         /* button svg string */
         const char *button_svg;
 
         struct wl_list scaled_buffers;
     } ssd;
-
-    struct {
-        int shadow_border;
-        int corner_radius;
-
-        /* shadow buffer */
-        struct wlr_buffer *shadow;
-    } shadow;
 
     struct {
         int border_width;
