@@ -38,6 +38,7 @@ static struct blur_tex_program {
     struct {
         GLint proj;
         GLint tex_proj;
+        GLint shape_proj;
         GLint tex;
         GLint alpha;
         GLint pixel_distance;
@@ -369,6 +370,7 @@ static struct blur_tex_program *get_blur_text_program(void)
         blur_tex_prog.id = prog;
         blur_tex_prog.shaders.proj = glGetUniformLocation(prog, "proj");
         blur_tex_prog.shaders.tex_proj = glGetUniformLocation(prog, "tex_proj");
+        blur_tex_prog.shaders.shape_proj = glGetUniformLocation(prog, "shape_proj");
         blur_tex_prog.shaders.tex = glGetUniformLocation(prog, "tex");
         blur_tex_prog.shaders.alpha = glGetUniformLocation(prog, "alpha");
         blur_tex_prog.shaders.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
@@ -581,7 +583,8 @@ static void render(const struct kywc_box *box, const pixman_region32_t *clip, GL
 
 static void blur_render(struct ky_opengl_render_pass *pass, const struct wlr_box *dst_box,
                         const pixman_region32_t *clip, const struct ky_render_round_corner *radius,
-                        const pixman_region32_t *blur, int blur_strength, float target_scale)
+                        const pixman_region32_t *blur, int blur_strength, float target_scale,
+                        enum wl_output_transform target_transform)
 {
     blur_options.renderer = pass->buffer->renderer;
 
@@ -654,9 +657,17 @@ static void blur_render(struct ky_opengl_render_pass *pass, const struct wlr_box
     glUniform1f(prog->shaders.alpha, 1.0f);
     set_proj_matrix(prog->shaders.proj, pass->projection_matrix, &buffer_cpy_box);
     set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
+    set_tex_matrix(prog->shaders.shape_proj, target_transform, &src_fbox);
 
-    glUniform1f(prog->shaders.aspect, dst_box->width / (float)dst_box->height);
-    float half_height = (float)dst_box->height * 0.5f; // shader distance scale
+    int width = dst_box->width;
+    int height = dst_box->height;
+    if (target_transform & WL_OUTPUT_TRANSFORM_90) {
+        width = dst_box->height;
+        height = dst_box->width;
+    }
+
+    glUniform1f(prog->shaders.aspect, width / (float)height);
+    float half_height = (float)height * 0.5f; // shader distance scale
     glUniform1f(prog->shaders.pixel_distance, 1.0 / half_height);
     glUniform4f(prog->shaders.rounded_corner_radius, radius->rb / half_height,
                 radius->rt / half_height, radius->lb / half_height, radius->lt / half_height);
@@ -688,7 +699,7 @@ void ky_scene_node_render_blur(struct ky_scene_node *node, struct ky_scene_rende
         ky_scene_render_region(&blur_region, target);
 
         blur_render(gl_pass, dst_box, clip, radius, &blur_region, node->blur_strength,
-                    target->scale);
+                    target->scale, target->transform);
         pixman_region32_fini(&blur_region);
     }
 }
