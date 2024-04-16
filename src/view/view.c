@@ -1407,7 +1407,6 @@ struct view_manager *view_manager_create(struct server *server)
     decoration_manager_create(view_manager);
     server_decoration_manager_create(view_manager);
     positioner_manager_create(view_manager);
-    // shadow_manager_create(view_manager);
     window_actions_create(view_manager);
     window_menu_manager_create(view_manager);
     view_manager_actions_create(view_manager);

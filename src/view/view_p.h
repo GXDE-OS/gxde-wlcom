@@ -75,8 +75,6 @@ bool positioner_manager_create(struct view_manager *view_manager);
 
 bool server_decoration_manager_create(struct view_manager *view_manager);
 
-bool shadow_manager_create(struct view_manager *view_manager);
-
 bool window_actions_create(struct view_manager *view_manager);
 
 bool view_manager_actions_create(struct view_manager *view_manager);

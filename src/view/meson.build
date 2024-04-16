@@ -4,7 +4,6 @@ wlcom_sources += files(
   'config.c',
   'interactive.c',
   'positioner.c',
-  'shadow.c',
   'ssd.c',
   'view.c',
   'window_menu.c',
