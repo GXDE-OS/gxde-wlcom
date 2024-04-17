@@ -174,17 +174,24 @@ static void widget_do_update(struct widget *widget)
         ky_scene_buffer_set_dest_size(widget->content.buffer, width, height);
         return;
     }
-}
 
-void widget_update(struct widget *widget, bool immediately)
-{
-    if (widget->pending_cause == WIDGET_UPDATE_CAUSE_NONE ||
-        (!widget->enabled && !(widget->pending_cause & WIDGET_UPDATE_CAUSE_ENABLED))) {
+    if (widget->pending_cause & WIDGET_UPDATE_CAUSE_FORCE) {
+        widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+        struct ky_scene_buffer *scene_buffer = widget->content.buffer;
+        ky_scene_buffer_set_buffer(scene_buffer, scene_buffer->buffer);
         return;
     }
+}
 
-    if (!immediately) {
-        // TODO: painter buffer when output frame
+void widget_update(struct widget *widget, bool partial)
+{
+    /* force update when partial update is not enabled */
+    if (!partial) {
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_FORCE;
+    }
+
+    if (widget->pending_cause == WIDGET_UPDATE_CAUSE_NONE ||
+        (!widget->enabled && !(widget->pending_cause & WIDGET_UPDATE_CAUSE_ENABLED))) {
         return;
     }
 

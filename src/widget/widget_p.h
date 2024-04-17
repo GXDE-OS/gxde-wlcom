@@ -14,6 +14,7 @@ enum widget_update_cause {
     WIDGET_UPDATE_CAUSE_HOVERED = 1 << 2,
     WIDGET_UPDATE_CAUSE_ENABLED = 1 << 3,
     WIDGET_UPDATE_CAUSE_SCALE = 1 << 4,
+    WIDGET_UPDATE_CAUSE_FORCE = 1 << 5,
 };
 
 struct widget {

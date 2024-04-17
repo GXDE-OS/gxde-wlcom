@@ -14,8 +14,7 @@ struct ky_scene_node *ky_scene_node_from_widget(struct widget *widget);
 
 void widget_destroy(struct widget *widget);
 
-/* the content is drawn immediately, or drawn before output commit */
-void widget_update(struct widget *widget, bool immediately);
+void widget_update(struct widget *widget, bool partial);
 
 void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked,
                      bool slant);
