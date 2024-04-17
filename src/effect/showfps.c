@@ -27,7 +27,7 @@ struct frame_output {
     int fps;
 
     struct ky_scene_output *output;
-    struct wl_listener present; // wl_output
+    struct wl_listener present; // wlr_output
     struct wl_listener frame;
     struct wl_listener destroy;
 };
@@ -68,7 +68,7 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
     char text[4];
     snprintf(text, 4, "%3d", output->fps);
     widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, false, false, false);
-    widget_update(output->widget, true);
+    widget_update(output->widget, false);
 
     ky_scene_node_set_position(ky_scene_node_from_widget(output->widget), output->output->x + 5,
                                output->output->y + 5);
