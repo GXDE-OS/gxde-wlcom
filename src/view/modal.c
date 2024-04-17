@@ -251,7 +251,7 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
 
 void modal_create(struct view *view, struct seat *seat)
 {
-    if (!view->base.modal || !view->parent) {
+    if (!view->base.modal || !view->parent || !view->parent->surface) {
         return;
     }
 
