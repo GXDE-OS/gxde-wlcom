@@ -11,10 +11,12 @@ class Context::Private
   public:
     Private(Context *context);
     ~Private();
-    kywc_context *setup(struct wl_display *display, uint32_t caps);
+    kywc_context *setup(uint32_t capability);
 
     kywc_context *k_context = nullptr;
     QSocketNotifier *notifier = nullptr;
+    struct wl_display *display = NULL;
+    Capabilities caps = Context::Capability::Output;
 
   private:
     Context *ctx;
@@ -33,44 +35,44 @@ Context::Private::~Private() {}
 void Context::Private::createHandle(kywc_context *context, void *data)
 {
     Context::Private *p = (Context::Private *)data;
-    emit p->ctx->isCreated();
+    emit p->ctx->created();
 }
 
 void Context::Private::destroyHandle(kywc_context *context, void *data)
 {
     Context::Private *p = (Context::Private *)data;
-    emit p->ctx->isDestroyed();
+    emit p->ctx->destroyed();
 }
 
 void Context::Private::newOutput(kywc_context *context, kywc_output *output, void *data)
 {
     Context::Private *p = (Context::Private *)data;
-    Output *o = new Output;
+    Output *o = new Output(p->ctx);
     o->setup(output);
-    emit p->ctx->outputIsAdded(o);
+    emit p->ctx->outputAdded(o);
 }
 
 void Context::Private::newToplevel(kywc_context *context, kywc_toplevel *toplevel, void *data)
 {
     Context::Private *p = (Context::Private *)data;
-    Toplevel *t = new Toplevel;
+    Toplevel *t = new Toplevel(p->ctx);
     t->setup(toplevel);
-    emit p->ctx->toplevelIsAdded(t);
+    emit p->ctx->toplevelAdded(t);
 }
 
 void Context::Private::newWorkspace(kywc_context *context, kywc_workspace *workspace, void *data)
 {
     Context::Private *p = (Context::Private *)data;
-    Workspace *w = new Workspace;
+    Workspace *w = new Workspace(p->ctx);
     w->setup(workspace);
-    emit p->ctx->workespaceIsAdded(w);
+    emit p->ctx->workespaceAdded(w);
 }
 
 struct kywc_context_interface Context::Private::context_impl = {
     createHandle, destroyHandle, newOutput, newToplevel, newWorkspace,
 };
 
-kywc_context *Context::Private::setup(struct wl_display *display, uint32_t capabilities)
+kywc_context *Context::Private::setup(uint32_t capabilities)
 {
     if (!display)
         k_context = kywc_context_create(NULL, capabilities, &context_impl, this);
@@ -79,23 +81,31 @@ kywc_context *Context::Private::setup(struct wl_display *display, uint32_t capab
     return k_context;
 }
 
-Context::Context(QObject *parent) : QObject{ parent }, pri(new Private(this)) {}
+Context::Context( struct wl_display *display, Capabilities caps, QObject *parent)
+    : QObject{parent}
+    , pri(new Private(this))
+{
+    pri->display = display;
+    pri->caps = caps;
+}
 
-Context::~Context() {}
+Context::~Context() {
+    kywc_context_destroy(pri->k_context);
+}
 
-void Context::init(struct wl_display *display, Capabilities caps)
+void Context::start()
 {
     kywc_context *ctx = NULL;
     uint32_t capabilities = 0;
-    if (caps & Context::Capability::Output)
+    if (pri->caps & Context::Capability::Output)
         capabilities |= KYWC_CONTEXT_CAPABILITY_OUTPUT;
-    if (caps & Context::Capability::Toplevel)
+    if (pri->caps & Context::Capability::Toplevel)
         capabilities |= KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
-    if (caps & Context::Capability::Workspace)
+    if (pri->caps & Context::Capability::Workspace)
         capabilities |= KYWC_CONTEXT_CAPABILITY_WORKSPACE;
 
-    if (!display) {
-        ctx = pri->setup(display, capabilities);
+    if (!pri->display) {
+        ctx = pri->setup(capabilities);
         if (!ctx) {
             return;
         }
@@ -104,7 +114,7 @@ void Context::init(struct wl_display *display, Capabilities caps)
 
         kywc_context_process(ctx);
     } else {
-        ctx = pri->setup(display, capabilities);
+        ctx = pri->setup(capabilities);
         if (!ctx) {
             return;
         }
@@ -118,11 +128,6 @@ void Context::onContextReady()
         emit aboutToTeardown();
         exit(-1);
     }
-}
-
-void Context::destroy()
-{
-    kywc_context_destroy(pri->k_context);
 }
 
 void Context::dispatch()

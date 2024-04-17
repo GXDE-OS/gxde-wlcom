@@ -17,9 +17,6 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
-    context = new Context;
-    init_form();
-
     struct wl_display *display = NULL;
 
     QPlatformNativeInterface *native = QGuiApplication::platformNativeInterface();
@@ -34,13 +31,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         return;
     }
 
-    context->init(NULL, Context::Capability::Output | Context::Capability::Toplevel |
+    context = new Context(display, Context::Capability::Output | Context::Capability::Toplevel |
                                Context::Capability::Workspace);
+    init_form();
+    context->start();
 }
 
 MainWindow::~MainWindow()
 {
-    context->destroy();
+    delete context;
 }
 
 void MainWindow::init_workspace_widget(QWidget *widget)
@@ -98,7 +97,7 @@ void MainWindow::init_workspace_widget(QWidget *widget)
     connect(activited_btn, SIGNAL(clicked()), this, SLOT(activited_btn_clicked()));
     workspace_count = 0;
 
-    connect(context, &Context::workespaceIsAdded, this, &MainWindow::add_workspace_item);
+    connect(context, &Context::workespaceAdded, this, &MainWindow::add_workspace_item);
 }
 
 void MainWindow::init_output_widget(QWidget *widget)
@@ -159,7 +158,7 @@ void MainWindow::init_output_widget(QWidget *widget)
     tableWidget_1->setMouseTracking(true);
     connect(tableWidget_1, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
 
-    connect(context, &Context::outputIsAdded, this, &MainWindow::add_output_item);
+    connect(context, &Context::outputAdded, this, &MainWindow::add_output_item);
 }
 
 void MainWindow::init_toplevel_widget(QWidget *widget)
@@ -210,7 +209,7 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
 
     tableWidget_2->setMouseTracking(true);
     connect(tableWidget_2, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
-    connect(context, &Context::toplevelIsAdded, this, &MainWindow::add_toplevel_item);
+    connect(context, &Context::toplevelAdded, this, &MainWindow::add_toplevel_item);
 }
 
 void MainWindow::ShowTooltip(QModelIndex index)
@@ -256,7 +255,7 @@ void MainWindow::update_output_item(Output::Masks mask)
         return;
 
     if (mask & Output::Mask::Enabled) {
-        if (output->isEnable())
+        if (output->isEnabled())
             tableWidget_1->item(cur_row, 13)->setText("yes");
         else
             tableWidget_1->item(cur_row, 13)->setText("no");
@@ -365,7 +364,7 @@ void MainWindow::add_output_item(Output *output)
     }
 
     tableWidget_1->setCellWidget(outputs_count, 8, comBox_mode);
-    if (output->isEnable())
+    if (output->isEnabled())
         tableWidget_1->item(outputs_count, 13)->setText("yes");
     else
         tableWidget_1->item(outputs_count, 13)->setText("no");
@@ -395,8 +394,8 @@ void MainWindow::add_output_item(Output *output)
     tableWidget_1->item(outputs_count, 15)->setText(QString("%1").arg(output->brightness()));
     tableWidget_1->item(outputs_count, 16)->setText(QString("%1").arg(output->colorTemp()));
 
-    connect(output, &Output::stateUpdate, this, &MainWindow::update_output_item);
-    connect(output, &Output::isDeleted, this, &MainWindow::delete_output_item);
+    connect(output, &Output::stateUpdated, this, &MainWindow::update_output_item);
+    connect(output, &Output::deleted, this, &MainWindow::delete_output_item);
     tableWidget_1->show();
 
     outputs_count++;
@@ -564,8 +563,8 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
     tableWidget_2->item(toplevel_count, 3)->setText(toplevel->icon());
 
     tableWidget_2->show();
-    connect(toplevel, &Toplevel::stateUpdate, this, &MainWindow::update_toplevel_item);
-    connect(toplevel, &Toplevel::isDeleted, this, &MainWindow::delete_toplevel_item);
+    connect(toplevel, &Toplevel::stateUpdated, this, &MainWindow::update_toplevel_item);
+    connect(toplevel, &Toplevel::deleted, this, &MainWindow::delete_toplevel_item);
     toplevel_count++;
 }
 
@@ -592,8 +591,8 @@ void MainWindow::add_workspace_item(Workspace *workspace)
     else
         tableWidget_0->item(workspace_count, 3)->setText("false");
 
-    connect(workspace, &Workspace::stateUpdate, this, &MainWindow::update_workspace_item);
-    connect(workspace, &Workspace::isDeleted, this, &MainWindow::delete_workspace_item);
+    connect(workspace, &Workspace::stateUpdated, this, &MainWindow::update_workspace_item);
+    connect(workspace, &Workspace::deleted, this, &MainWindow::delete_workspace_item);
     workspace_count++;
 }
 

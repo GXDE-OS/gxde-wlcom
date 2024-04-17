@@ -40,8 +40,8 @@ class Workspace : public QObject
     void remove();
 
   Q_SIGNALS:
-    void stateUpdate(Workspace::Masks mask);
-    void isDeleted();
+    void stateUpdated(Workspace::Masks mask);
+    void deleted();
 
   private:
     class Private;
@@ -98,15 +98,15 @@ class Output : public QObject
     QSize size() const;
     int transform() const;
     float scale() const;
-    bool isEnable() const;
+    bool isEnabled() const;
     bool isPower() const;
     bool isPrimary() const;
     uint32_t brightness() const;
     uint32_t colorTemp() const;
 
   Q_SIGNALS:
-    void stateUpdate(Output::Masks mask);
-    void isDeleted();
+    void stateUpdated(Output::Masks mask);
+    void deleted();
 
   private:
     class Private;
@@ -175,8 +175,8 @@ class Toplevel : public QObject
     void moveToOutput(QString output);
 
   Q_SIGNALS:
-    void stateUpdate(Toplevel::Masks mask);
-    void isDeleted();
+    void stateUpdated(Toplevel::Masks mask);
+    void deleted();
 
   private:
     class Private;
@@ -190,9 +190,6 @@ class Context : public QObject
 {
     Q_OBJECT
   public:
-    explicit Context(QObject *parent = nullptr);
-    ~Context();
-
     enum class Capability {
         Output = 1 << 0,
         Toplevel = 1 << 1,
@@ -200,8 +197,10 @@ class Context : public QObject
     };
     Q_DECLARE_FLAGS(Capabilities, Capability)
 
-    void init(struct wl_display *display, Capabilities caps);
-    void destroy();
+    explicit Context(struct wl_display *display, Capabilities caps, QObject *parent = nullptr);
+    ~Context();
+
+    void start();
 
     void addWorkspace(uint32_t position);
     Workspace *findWorkspace(QString uuid);
@@ -212,11 +211,11 @@ class Context : public QObject
   Q_SIGNALS:
     void aboutToTeardown();
 
-    void isCreated();
-    void isDestroyed();
-    void workespaceIsAdded(Workspace *workspace);
-    void outputIsAdded(Output *output);
-    void toplevelIsAdded(Toplevel *toplevel);
+    void created();
+    void destroyed();
+    void workespaceAdded(Workspace *workspace);
+    void outputAdded(Output *output);
+    void toplevelAdded(Toplevel *toplevel);
 
   private Q_SLOTS:
     void onContextReady();

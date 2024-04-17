@@ -41,13 +41,13 @@ void Workspace::Private::stateHandle(kywc_workspace *workspace, uint32_t mask)
     w->pri->position = workspace->position;
     w->pri->activated = workspace->activated;
 
-    emit w->stateUpdate(masks);
+    emit w->stateUpdated(masks);
 }
 
 void Workspace::Private::destroyHandle(kywc_workspace *workspace)
 {
     Workspace *w = (Workspace *)kywc_workspace_get_user_data(workspace);
-    emit w->isDeleted();
+    emit w->deleted();
 }
 
 struct kywc_workspace_interface Workspace::Private::workspace_impl = {

@@ -90,13 +90,13 @@ void Output::Private::stateHandle(kywc_output *output, uint32_t mask)
         masks |= Output::Mask::ColorTemp;
     }
 
-    emit o_output->stateUpdate(masks);
+    emit o_output->stateUpdated(masks);
 }
 
 void Output::Private::destroyHandle(kywc_output *output)
 {
     Output *o_output = (Output *)kywc_output_get_user_data(output);
-    emit o_output->isDeleted();
+    emit o_output->deleted();
 }
 
 struct kywc_output_interface Output::Private::output_impl {
@@ -221,7 +221,7 @@ float Output::scale() const
     return pri->scale;
 }
 
-bool Output::isEnable() const
+bool Output::isEnabled() const
 {
     return pri->enabled;
 }

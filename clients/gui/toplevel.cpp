@@ -106,13 +106,13 @@ void Toplevel::Private::stateHandle(kywc_toplevel *toplevel, uint32_t mask)
         t_mask |= Toplevel::Mask::Size;
         t_toplevel->pri->size = QSize(toplevel->width, toplevel->height);
     }
-    emit t_toplevel->stateUpdate(t_mask);
+    emit t_toplevel->stateUpdated(t_mask);
 }
 
 void Toplevel::Private::destroyHandle(kywc_toplevel *toplevel)
 {
     Toplevel *t_toplevel = (Toplevel *)kywc_toplevel_get_user_data(toplevel);
-    emit t_toplevel->isDeleted();
+    emit t_toplevel->deleted();
 }
 
 struct kywc_toplevel_interface Toplevel::Private::toplevel_impl {
