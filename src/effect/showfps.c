@@ -21,6 +21,7 @@ struct frame_output {
     struct showfps_effect *effect;
 
     struct widget *widget;
+    struct ky_scene_node *node;
 
     int frames[MAX_FRAMES];
     int frames_pos;
@@ -70,8 +71,7 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
     widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, false, false, false);
     widget_update(output->widget, false);
 
-    ky_scene_node_set_position(ky_scene_node_from_widget(output->widget), output->output->x + 5,
-                               output->output->y + 5);
+    ky_scene_node_set_position(output->node, output->output->x + 5, output->output->y + 5);
 }
 
 static void output_handle_present(struct wl_listener *listener, void *data)
@@ -118,6 +118,9 @@ static void frame_output_create(struct showfps_effect *effect, struct ky_scene_o
     widget_set_auto_resize(output->widget, AUTO_RESIZE_ONLY);
     widget_set_front_color(output->widget, (float[4]){ 1, 0, 0, 1 });
     widget_set_enabled(output->widget, true);
+
+    output->node = ky_scene_node_from_widget(output->widget);
+    ky_scene_node_set_bypassed(output->node, true);
 
     wlr_output_schedule_frame(output->output->output);
 }
