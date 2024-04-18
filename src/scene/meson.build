@@ -5,6 +5,7 @@ wlcom_sources += files(
   'decoration.c',
   'output.c',
   'rect.c',
+  'render.c',
   'scene.c',
   'surface.c',
   'subsurface.c',

@@ -444,27 +444,3 @@ out:
     pixman_region32_fini(&target.damage);
     return ok;
 }
-
-static int scale_length(int length, int offset, float scale)
-{
-    return round((offset + length) * scale) - round(offset * scale);
-}
-
-void ky_scene_render_box(struct wlr_box *box, struct ky_scene_render_target *target)
-{
-    box->width = scale_length(box->width, box->x, target->scale);
-    box->height = scale_length(box->height, box->y, target->scale);
-    box->x = round(box->x * target->scale);
-    box->y = round(box->y * target->scale);
-
-    enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
-    wlr_box_transform(box, box, transform, target->trans_width, target->trans_height);
-}
-
-void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_target *target)
-{
-    wlr_region_scale(region, region, target->scale);
-
-    enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
-    wlr_region_transform(region, region, transform, target->trans_width, target->trans_height);
-}
