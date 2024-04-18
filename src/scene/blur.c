@@ -22,6 +22,7 @@
 struct gl_texture {
     GLenum target;
     GLuint id;
+    GLuint fbo;
     int32_t width;
     int32_t height;
 };
@@ -135,6 +136,7 @@ const char *down_frag_source =
 
 static void gl_texture_destroy(struct gl_texture *tex)
 {
+    glDeleteFramebuffers(1, &tex->fbo);
     glDeleteTextures(1, &tex->id);
     free(tex);
 }
@@ -145,6 +147,9 @@ static struct gl_texture *gl_texture_create(int width, int height)
     if (!tex) {
         return NULL;
     }
+
+    GLint old_fbo;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
 
     glGenTextures(1, &tex->id);
     glBindTexture(GL_TEXTURE_2D, tex->id);
@@ -158,6 +163,20 @@ static struct gl_texture *gl_texture_create(int width, int height)
     tex->width = width;
     tex->height = height;
 
+    glGenFramebuffers(1, &tex->fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, tex->fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex->target, tex->id, 0);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        kywc_log(KYWC_ERROR, " Failed to create gl texture.");
+        glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
+        glDeleteTextures(1, &tex->id);
+        free(tex);
+        return NULL;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
     glBindTexture(GL_TEXTURE_2D, 0);
     return tex;
 }
@@ -184,11 +203,9 @@ static void gl_texture_copy(struct gl_texture *tex, struct ky_opengl_buffer *src
 {
     GLint old_fbo;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
-    GLuint new_fbo;
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
 
-    glGenFramebuffers(1, &new_fbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, new_fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tex->fbo);
     glBindTexture(GL_TEXTURE_2D, tex->id);
     glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->id, 0);
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -202,7 +219,6 @@ static void gl_texture_copy(struct gl_texture *tex, struct ky_opengl_buffer *src
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glDeleteFramebuffers(1, &new_fbo);
 
     glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
 }
@@ -426,9 +442,7 @@ static void render_iteration(struct gl_texture *in, struct gl_texture *out, int 
 
     gl_texture_update(out, width, height);
 
-    GLuint out_fbo;
-    glGenFramebuffers(1, &out_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, out_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, out->fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, out->target, out->id, 0);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -444,6 +458,9 @@ static void render_iteration(struct gl_texture *in, struct gl_texture *out, int 
 
     glBindTexture(GL_TEXTURE_2D, in->id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static void blur_fb0(struct blur_data *data)
@@ -605,17 +622,15 @@ static void blur_render(struct ky_opengl_render_pass *pass, const struct wlr_box
     if (buffer_cpy_box.width == 0 || buffer_cpy_box.height == 0) {
         return;
     }
-    struct gl_texture *texture = gl_texture_create(buffer_cpy_box.width, buffer_cpy_box.height);
-    if (!texture) {
+
+    blur_tex_data.tex[0] = blur_tex_data.tex[0]
+                               ? blur_tex_data.tex[0]
+                               : gl_texture_create(buffer_cpy_box.width, buffer_cpy_box.height);
+    if (!blur_tex_data.tex[0]) {
         return;
     }
-
-    gl_texture_copy(texture, pass->buffer, &buffer_cpy_box);
-
-    if (blur_tex_data.tex[0]) {
-        gl_texture_destroy(blur_tex_data.tex[0]);
-    }
-    blur_tex_data.tex[0] = texture;
+    gl_texture_update(blur_tex_data.tex[0], buffer_cpy_box.width, buffer_cpy_box.height);
+    gl_texture_copy(blur_tex_data.tex[0], pass->buffer, &buffer_cpy_box);
 
     blur_tex_data.tex[1] = blur_tex_data.tex[1]
                                ? blur_tex_data.tex[1]
@@ -630,7 +645,6 @@ static void blur_render(struct ky_opengl_render_pass *pass, const struct wlr_box
     } else {
         blur_tex_data.offset = blur_strength / 1000.f;
     }
-
     blur_fb0(&blur_tex_data);
     pixman_region32_fini(&blur_region);
 
@@ -641,7 +655,8 @@ static void blur_render(struct ky_opengl_render_pass *pass, const struct wlr_box
     glUseProgram(prog->id);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(texture->target, blur_tex_data.blur_tex->id);
+    struct gl_texture *texture = blur_tex_data.blur_tex;
+    glBindTexture(texture->target, texture->id);
 
     if (target_scale - floor(target_scale) > 0.001) {
         glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
