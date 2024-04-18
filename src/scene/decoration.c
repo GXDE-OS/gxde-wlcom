@@ -281,14 +281,13 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
         window_frame.height = window_box.height + title_height + border_thickness_2;
     }
 
-    struct ky_mat3 projection;
-    ky_mat3_framebuffer_to_ndc(&projection, target->buffer->width, target->buffer->height);
-    struct ky_mat3 uv2pos;
-    ky_mat3_identity(&uv2pos);
-    ky_mat3_scale(&uv2pos, box->width, box->height);
-    ky_mat3_translate(&uv2pos, box->x, box->y);
-    struct ky_mat3 uv2ndc;
-    ky_mat3_multiply(&projection, &uv2pos, &uv2ndc);
+    struct kywc_box dst_box = {
+        .x = box->x, .y = box->y,
+        .width = box->width,
+        .height = box->height,
+    };
+     struct ky_mat3 uv2ndc;
+     ky_mat3_uvofbox_to_ndc(&uv2ndc, target->buffer->width, target->buffer->height, 0, &dst_box);
 
     struct ky_mat3 inverseTransform;
     ky_mat3_invert_output_transform(&inverseTransform, target->transform);

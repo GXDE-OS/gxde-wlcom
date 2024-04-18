@@ -7,6 +7,8 @@
 
 #include <wayland-server-protocol.h>
 
+#include <kywc/boxes.h>
+
 // Column Major (base glsl)
 struct ky_mat3 {
     float matrix[9];
@@ -55,5 +57,11 @@ void ky_mat3_logic_to_ndc(struct ky_mat3 *mat3, int width, int height,
 
 // for invert rotate uv
 void ky_mat3_invert_output_transform(struct ky_mat3 *mat, enum wl_output_transform transform);
+
+void ky_mat3_uvofbox_to_ndc(struct ky_mat3 *uv2ndc, int buffer_w, int buffer_h,
+                            float rotation_angle, const struct kywc_box *box);
+
+void ky_mat3_uvofbox_to_texture(struct ky_mat3 *uv2tex, enum wl_output_transform trans,
+                                const struct kywc_fbox *box);
 
 #endif /* _UTIL_MATRIX_H_ */

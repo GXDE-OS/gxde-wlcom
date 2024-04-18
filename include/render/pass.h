@@ -14,12 +14,14 @@ struct ky_render_round_corner {
 struct ky_render_texture_options {
     struct wlr_render_texture_options base;
     struct ky_render_round_corner radius;
+    float rotation_angle;
     bool repeated;
 };
 
 struct ky_render_rect_options {
     struct wlr_render_rect_options base;
     struct ky_render_round_corner radius;
+    float rotation_angle;
 };
 
 struct ky_render_pass_impl {

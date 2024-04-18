@@ -794,31 +794,41 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     if (!renderer->shaders.quad.program) {
         goto error;
     }
-    renderer->shaders.quad.proj = glGetUniformLocation(prog, "proj");
+    renderer->shaders.quad.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.quad.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
-    renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.quad.uv_attrib = glGetAttribLocation(prog, "inUV");
+    renderer->shaders.quad.pixel_distance = 0;
+    renderer->shaders.quad.aspect = 0;
+    renderer->shaders.quad.round_corner_radius = 0;
 
     renderer->shaders.tex_rgba.program = prog =
         link_program(renderer, common_vert_str, tex_rgba_frag_str);
     if (!renderer->shaders.tex_rgba.program) {
         goto error;
     }
-    renderer->shaders.tex_rgba.proj = glGetUniformLocation(prog, "proj");
-    renderer->shaders.tex_rgba.tex_proj = glGetUniformLocation(prog, "tex_proj");
+    renderer->shaders.tex_rgba.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.tex_rgba.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
-    renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.tex_rgba.uv_attrib = glGetAttribLocation(prog, "inUV");
+    renderer->shaders.tex_rgba.pixel_distance = 0;
+    renderer->shaders.tex_rgba.aspect = 0;
+    renderer->shaders.tex_rgba.round_corner_radius = 0;
 
     renderer->shaders.tex_rgbx.program = prog =
         link_program(renderer, common_vert_str, tex_rgbx_frag_str);
     if (!renderer->shaders.tex_rgbx.program) {
         goto error;
     }
-    renderer->shaders.tex_rgbx.proj = glGetUniformLocation(prog, "proj");
-    renderer->shaders.tex_rgbx.tex_proj = glGetUniformLocation(prog, "tex_proj");
+    renderer->shaders.tex_rgbx.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.tex_rgbx.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgbx.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
-    renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.tex_rgbx.uv_attrib = glGetAttribLocation(prog, "inUV");
+    renderer->shaders.tex_rgbx.pixel_distance = 0;
+    renderer->shaders.tex_rgbx.aspect = 0;
+    renderer->shaders.tex_rgbx.round_corner_radius = 0;
 
     if (renderer->exts.OES_egl_image_external) {
         renderer->shaders.tex_ext.program = prog =
@@ -826,11 +836,14 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         if (!renderer->shaders.tex_ext.program) {
             goto error;
         }
-        renderer->shaders.tex_ext.proj = glGetUniformLocation(prog, "proj");
-        renderer->shaders.tex_ext.tex_proj = glGetUniformLocation(prog, "tex_proj");
+        renderer->shaders.tex_ext.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+        renderer->shaders.tex_ext.uv2tex = glGetUniformLocation(prog, "uv2tex");
         renderer->shaders.tex_ext.tex = glGetUniformLocation(prog, "tex");
         renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
-        renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");
+        renderer->shaders.tex_ext.uv_attrib = glGetAttribLocation(prog, "inUV");
+        renderer->shaders.tex_ext.pixel_distance = 0;
+        renderer->shaders.tex_ext.aspect = 0;
+        renderer->shaders.tex_ext.round_corner_radius = 0;
     }
 
     // round corner clip shader
@@ -839,44 +852,44 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     if (!renderer->shaders.quad_ex.program) {
         goto error;
     }
-    renderer->shaders.quad_ex.proj = glGetUniformLocation(prog, "proj");
-    renderer->shaders.quad_ex.tex_proj = glGetUniformLocation(prog, "tex_proj");
+    renderer->shaders.quad_ex.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.quad_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.quad_ex.color = glGetUniformLocation(prog, "color");
     renderer->shaders.quad_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.quad_ex.aspect = glGetUniformLocation(prog, "aspect");
-    renderer->shaders.quad_ex.rounded_corner_radius =
-        glGetUniformLocation(prog, "roundedCornerRadius");
-    renderer->shaders.quad_ex.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.quad_ex.round_corner_radius =
+        glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.quad_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     renderer->shaders.tex_rgba_ex.program = prog =
         link_program(renderer, common_vert_str, tex_rgba_ex_frag_str);
     if (!renderer->shaders.tex_rgba_ex.program) {
         goto error;
     }
-    renderer->shaders.tex_rgba_ex.proj = glGetUniformLocation(prog, "proj");
-    renderer->shaders.tex_rgba_ex.tex_proj = glGetUniformLocation(prog, "tex_proj");
+    renderer->shaders.tex_rgba_ex.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.tex_rgba_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgba_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgba_ex.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgba_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.tex_rgba_ex.aspect = glGetUniformLocation(prog, "aspect");
-    renderer->shaders.tex_rgba_ex.rounded_corner_radius =
-        glGetUniformLocation(prog, "roundedCornerRadius");
-    renderer->shaders.tex_rgba_ex.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.tex_rgba_ex.round_corner_radius =
+        glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.tex_rgba_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     renderer->shaders.tex_rgbx_ex.program = prog =
         link_program(renderer, common_vert_str, tex_rgbx_ex_frag_str);
     if (!renderer->shaders.tex_rgbx_ex.program) {
         goto error;
     }
-    renderer->shaders.tex_rgbx_ex.proj = glGetUniformLocation(prog, "proj");
-    renderer->shaders.tex_rgbx_ex.tex_proj = glGetUniformLocation(prog, "tex_proj");
+    renderer->shaders.tex_rgbx_ex.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+    renderer->shaders.tex_rgbx_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgbx_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgbx_ex.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgbx_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.tex_rgbx_ex.aspect = glGetUniformLocation(prog, "aspect");
-    renderer->shaders.tex_rgbx_ex.rounded_corner_radius =
-        glGetUniformLocation(prog, "roundedCornerRadius");
-    renderer->shaders.tex_rgbx_ex.pos_attrib = glGetAttribLocation(prog, "pos");
+    renderer->shaders.tex_rgbx_ex.round_corner_radius =
+        glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.tex_rgbx_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     if (renderer->exts.OES_egl_image_external) {
         renderer->shaders.tex_ext_ex.program = prog =
@@ -884,15 +897,15 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         if (!renderer->shaders.tex_ext.program) {
             goto error;
         }
-        renderer->shaders.tex_ext_ex.proj = glGetUniformLocation(prog, "proj");
-        renderer->shaders.tex_ext_ex.tex_proj = glGetUniformLocation(prog, "tex_proj");
+        renderer->shaders.tex_ext_ex.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
+        renderer->shaders.tex_ext_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
         renderer->shaders.tex_ext_ex.tex = glGetUniformLocation(prog, "tex");
         renderer->shaders.tex_ext_ex.alpha = glGetUniformLocation(prog, "alpha");
         renderer->shaders.tex_ext_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
         renderer->shaders.tex_ext_ex.aspect = glGetUniformLocation(prog, "aspect");
-        renderer->shaders.tex_ext_ex.rounded_corner_radius =
-            glGetUniformLocation(prog, "roundedCornerRadius");
-        renderer->shaders.tex_ext_ex.pos_attrib = glGetAttribLocation(prog, "pos");
+        renderer->shaders.tex_ext_ex.round_corner_radius =
+            glGetUniformLocation(prog, "roundCornerRadius");
+        renderer->shaders.tex_ext_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
     }
 
     ky_opengl_pop_debug(renderer);

@@ -16,6 +16,10 @@ struct kywc_box {
     int x, y, width, height;
 };
 
+struct kywc_fbox {
+    double x, y, width, height;
+};
+
 KYWC_API void kywc_box_adjust(struct kywc_box *box, int dx, int dy, int dw, int dh)
 {
     box->x += dx; box->y += dy; box->width += dw; box->height += dh;

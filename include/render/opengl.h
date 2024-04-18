@@ -16,25 +16,31 @@
 #include "egl.h"
 #include "pass.h"
 
-struct ky_opengl_tex_shader {
+struct ky_opengl_rect_ex_shader {
     GLuint program;
-    GLint proj;
-    GLint tex_proj;
-    GLint tex;
-    GLint alpha;
-    GLint pos_attrib;
+
+    GLint uv2ndc;
+    GLint uv2tex;
+    GLint uv_attrib;
+
+    GLint color;
+    GLint aspect;
+    GLint pixel_distance;
+    GLint round_corner_radius;
 };
 
 struct ky_opengl_tex_ex_shader {
     GLuint program;
-    GLint proj;
-    GLint tex_proj;
+
+    GLint uv2ndc;
+    GLint uv2tex;
+    GLint uv_attrib;
+
     GLint tex;
     GLint alpha;
-    GLint pixel_distance;
     GLint aspect;
-    GLint rounded_corner_radius;
-    GLint pos_attrib;
+    GLint pixel_distance;
+    GLint round_corner_radius;
 };
 
 struct ky_opengl_renderer {
@@ -58,26 +64,12 @@ struct ky_opengl_renderer {
     } exts;
 
     struct {
-        struct {
-            GLuint program;
-            GLint proj;
-            GLint color;
-            GLint pos_attrib;
-        } quad;
-        struct ky_opengl_tex_shader tex_rgba;
-        struct ky_opengl_tex_shader tex_rgbx;
-        struct ky_opengl_tex_shader tex_ext;
+        struct ky_opengl_rect_ex_shader quad;
+        struct ky_opengl_tex_ex_shader tex_rgba;
+        struct ky_opengl_tex_ex_shader tex_rgbx;
+        struct ky_opengl_tex_ex_shader tex_ext;
         // round corner clip shader
-        struct {
-            GLuint program;
-            GLint proj;
-            GLint tex_proj;
-            GLint color;
-            GLint pixel_distance;
-            GLint aspect;
-            GLint rounded_corner_radius;
-            GLint pos_attrib;
-        } quad_ex;
+        struct ky_opengl_rect_ex_shader quad_ex;
         struct ky_opengl_tex_ex_shader tex_rgba_ex;
         struct ky_opengl_tex_ex_shader tex_rgbx_ex;
         struct ky_opengl_tex_ex_shader tex_ext_ex;
@@ -189,5 +181,11 @@ bool wlr_texture_is_opengl(struct wlr_texture *wlr_texture);
 
 void ky_opengl_texture_get_attribs(struct wlr_texture *texture,
                                    struct ky_opengl_texture_attribs *attribs);
+
+void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
+                                       const struct ky_render_texture_options *options);
+
+void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
+                                    const struct ky_render_rect_options *options);
 
 #endif /* _RENDER_OPENGL_H_ */

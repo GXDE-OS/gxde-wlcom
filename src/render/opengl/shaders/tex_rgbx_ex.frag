@@ -12,23 +12,24 @@ uniform float alpha;
 
 uniform float pixelDistance; // 1px in distance
 uniform float aspect; // width / height
-uniform vec4 roundedCornerRadius;
+uniform vec4 roundCornerRadius;
 
-float sdRoundedBox( in vec2 p, in vec2 b, in vec4 r )
+float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r)
 {
-    r.xy = (p.x>0.0)?r.xy : r.zw;
-    r.x  = (p.y>0.0)?r.x  : r.y;
-    vec2 q = abs(p)-b+r.x;
-    return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
+    r.xy = (p.x >0.0) ? r.xy : r.zw;
+    r.x = (p.y > 0.0) ? r.x : r.y;
+    vec2 q = abs(p) - b + r.x;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
 }
 
-void main() {
-	vec2 st = v_texcoord * 2.0 - 1.0;
+void main()
+{
+    vec2 st = v_texcoord * 2.0 - 1.0;
     st.x *= aspect;
-	vec2 fullSize = vec2(aspect, 1.0);
+    vec2 fullSize = vec2(aspect, 1.0);
 
-	float dist = sdRoundedBox(st, fullSize, roundedCornerRadius);
+    float dist = sdRoundedBox(st, fullSize, roundCornerRadius);
     float shape = 1.0 - smoothstep(0.0, pixelDistance, dist);
-    vec4 texColor = vec4(texture2D(tex, v_texcoord).rgb, 1.0);
-	gl_FragColor = mix(vec4(0.0), texColor, shape);
+    vec4 texColor = vec4(texture2D(tex, v_texcoord).rgb, 1.0) * alpha;
+    gl_FragColor = mix(vec4(0.0), texColor, shape);
 }

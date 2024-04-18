@@ -180,3 +180,32 @@ void ky_mat3_invert_output_transform(struct ky_mat3 *mat, enum wl_output_transfo
     }
     ky_mat3_translate(mat, 0.5, 0.5);
 }
+
+void ky_mat3_uvofbox_to_ndc(struct ky_mat3 *uv2ndc, int buffer_w, int buffer_h,
+                            float rotation_angle, const struct kywc_box *dst_box)
+{
+    struct ky_mat3 projection;
+    ky_mat3_framebuffer_to_ndc(&projection, buffer_w, buffer_h);
+
+    struct ky_mat3 uv2pos;
+    ky_mat3_identity(&uv2pos);
+    ky_mat3_scale(&uv2pos, dst_box->width, dst_box->height);
+    ky_mat3_translate(&uv2pos, dst_box->x, dst_box->y);
+    ky_mat3_translate(&uv2pos, -buffer_w / 2.0, -buffer_h / 2.0);
+    ky_mat3_rotate(&uv2pos, -rotation_angle * M_PI / 180);
+    ky_mat3_translate(&uv2pos, buffer_w / 2.0, buffer_h / 2.0);
+    ky_mat3_multiply(&projection, &uv2pos, uv2ndc);
+}
+
+void ky_mat3_uvofbox_to_texture(struct ky_mat3 *uv2tex, enum wl_output_transform trans,
+                                const struct kywc_fbox *src_box)
+{
+    struct ky_mat3 tex_matrix;
+    ky_mat3_identity(&tex_matrix);
+    ky_mat3_scale(&tex_matrix, src_box->width, src_box->height);
+    ky_mat3_translate(&tex_matrix, src_box->x, src_box->y);
+
+    struct ky_mat3 rotation_m;
+    ky_mat3_invert_output_transform(&rotation_m, trans);
+    ky_mat3_multiply(&tex_matrix, &rotation_m, uv2tex);
+}
