@@ -28,4 +28,14 @@ bool capture_manager_create(struct server *server);
 
 bool ky_capture_manager_create(struct server *server);
 
+#if HAVE_UKUI_SCREENSHOT
+bool ukui_screenshot_create(struct effect_manager *effect_manager);
+#else
+static __attribute__((unused)) inline bool
+ukui_screenshot_create(struct effect_manager *effect_manager)
+{
+    return false;
+}
+#endif
+
 #endif /* _EFFECT_P_H_ */

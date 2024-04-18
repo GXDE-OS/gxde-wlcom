@@ -140,7 +140,6 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
     kde_input_manager_create(config_manager);
     kde_global_settings_create(config_manager);
     kde_nightcolor_manager_create(config_manager);
-    ukui_screenshot_create(config_manager);
     ukui_gsettings_create(config_manager);
 }
 

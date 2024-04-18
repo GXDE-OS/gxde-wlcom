@@ -65,16 +65,6 @@ kde_nightcolor_manager_create(struct config_manager *config_manager)
 }
 #endif
 
-#if HAVE_UKUI_SCREENSHOT
-bool ukui_screenshot_create(struct config_manager *config_manager);
-#else
-static __attribute__((unused)) inline bool
-ukui_screenshot_create(struct config_manager *config_manager)
-{
-    return false;
-}
-#endif
-
 #if HAVE_UKUI_GSETTINGS
 bool ukui_gsettings_create(struct config_manager *config_mananger);
 #else

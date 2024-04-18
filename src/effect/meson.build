@@ -8,3 +8,9 @@ wlcom_sources += files(
 wlcom_sources += files(
   'ky_capture.c',
 )
+
+if have_ukui_screenshot
+  wlcom_sources += files(
+    'ukui_screenshot.c',
+  )
+endif

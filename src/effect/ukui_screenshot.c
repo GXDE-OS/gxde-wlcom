@@ -10,8 +10,9 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
-#include "config_p.h"
+#include "config.h"
 #include "effect/capture.h"
+#include "effect_p.h"
 #include "server.h"
 
 static const char *registry_bus = "org.ukui.KWin";
@@ -177,7 +178,7 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
-bool ukui_screenshot_create(struct config_manager *config_manager)
+bool ukui_screenshot_create(struct effect_manager *effect_manager)
 {
     manager = calloc(1, sizeof(struct screenshot_manager));
     if (!manager) {
@@ -195,7 +196,7 @@ bool ukui_screenshot_create(struct config_manager *config_manager)
     config_manager_add_config(NULL, "org.kde.KWin", registry_path, "org.kde.kwin.Screenshot",
                               screenshot2_vtable, NULL);
 
-    manager->server = config_manager->server;
+    manager->server = effect_manager->server;
     manager->destroy.notify = handle_config_destroy;
     wl_signal_add(&config->events.destroy, &manager->destroy);
 

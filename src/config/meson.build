@@ -36,12 +36,6 @@ if have_kde_nightcolor
   )
 endif
 
-if have_ukui_screenshot
-  wlcom_sources += files(
-    'ukui_screenshot.c',
-  )
-endif
-
 if have_ukui_gsettings
   wlcom_sources += files(
     'ukui_gsettings.c',
