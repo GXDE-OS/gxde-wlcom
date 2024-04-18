@@ -172,6 +172,7 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&render_region, target);
 
+    bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
     struct ky_render_rect_options options = {
         .base = {
             .box = dst_box,
@@ -186,10 +187,10 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
         },
         .radius = {
-            .rb = node->radius[0] * target->scale,
-            .rt = node->radius[1] * target->scale,
-            .lb = node->radius[2] * target->scale,
-            .lt = node->radius[3] * target->scale,
+            .rb = render_with_radius ? node->radius[0] * target->scale : 0,
+            .rt = render_with_radius ? node->radius[1] * target->scale : 0,
+            .lb = render_with_radius ? node->radius[2] * target->scale : 0,
+            .lt = render_with_radius ? node->radius[3] * target->scale : 0,
         },
     };
 

@@ -6,6 +6,7 @@
 #define _SCENE_THUMBNAIL_H_
 
 #include "scene.h"
+#include "view/view.h"
 
 struct server;
 
@@ -14,9 +15,20 @@ struct thumbnail_update_event {
     bool buffer_changed;
 };
 
+enum thumbnail_option {
+    /* disable server decoration, include shadow */
+    THUMBNAIL_DISABLE_DECOR = 1 << 0,
+    /* disable shadow only if has it */
+    THUMBNAIL_DISABLE_SHADOW = 1 << 1,
+    /* disable round corners */
+    THUMBNAIL_DISABLE_ROUND_CORNER = 1 << 2,
+};
+
 bool thumbnail_manager_create(struct server *server);
 
 struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale);
+
+struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option, float scale);
 
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener);
 

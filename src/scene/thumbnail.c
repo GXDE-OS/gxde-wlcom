@@ -7,10 +7,13 @@
 #include <drm_fourcc.h>
 #include <wlr/types/wlr_output.h>
 
+#include <kywc/log.h>
+
 #include "render/renderer.h"
+#include "scene/render.h"
 #include "scene/thumbnail.h"
-#include "scene_p.h"
 #include "server.h"
+#include "theme.h"
 
 struct thumbnail {
     struct wl_list link;
@@ -46,8 +49,19 @@ struct node_thumbnail {
     struct wl_listener source_destroy;
 };
 
+struct view_thumbnail {
+    struct thumbnail_buffer base;
+    struct wl_list link;
+
+    struct view *view;
+    uint32_t option;
+    struct wl_listener view_unmap;
+    struct wl_listener source_damage;
+};
+
 static struct thumbnail_manager {
     struct wl_list node_thumbnails;
+    struct wl_list view_thumbnails;
 
     /* pick one output to render all thumbnails */
     struct ky_scene_output *output;
@@ -79,6 +93,51 @@ static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, fl
         }
     }
     return NULL;
+}
+
+static struct view_thumbnail *find_view_thumbnail(struct view *view, uint32_t option, float scale)
+{
+    struct view_thumbnail *view_thumbnail;
+    wl_list_for_each(view_thumbnail, &manager->view_thumbnails, link) {
+        if (view_thumbnail->view == view && view_thumbnail->option == option &&
+            view_thumbnail->base.scale == scale) {
+            return view_thumbnail;
+        }
+    }
+    return NULL;
+}
+
+static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct wlr_box *box)
+{
+    struct kywc_view *kywc_view = &view_thumbnail->view->base;
+
+    box->x = box->y = 0;
+    box->width = kywc_view->geometry.width;
+    box->height = kywc_view->geometry.height;
+
+    if (kywc_view->ssd == KYWC_SSD_NONE) {
+        box->x -= kywc_view->padding.left;
+        box->y -= kywc_view->padding.top;
+        box->width += kywc_view->padding.right;
+        box->height += kywc_view->padding.bottom;
+        return;
+    }
+
+    uint32_t option = view_thumbnail->option;
+    struct theme *theme = theme_manager_get_current();
+    if (option & THUMBNAIL_DISABLE_DECOR) {
+        return;
+    } else if (option & THUMBNAIL_DISABLE_SHADOW) {
+        box->x -= kywc_view->margin.off_x;
+        box->y -= kywc_view->margin.off_y;
+        box->width += kywc_view->margin.off_width * 2;
+        box->height += kywc_view->margin.off_height * 2;
+    } else if (option & THUMBNAIL_DISABLE_ROUND_CORNER || option == 0) {
+        box->x -= kywc_view->margin.off_x + theme->ssd.shadow_border;
+        box->y -= kywc_view->margin.off_y + theme->ssd.shadow_border;
+        box->width += kywc_view->margin.off_width + theme->ssd.shadow_border * 2;
+        box->height += kywc_view->margin.off_height + theme->ssd.shadow_border * 2;
+    }
 }
 
 static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail_buffer *thumbnail_buffer,
@@ -158,16 +217,73 @@ static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbna
     return buffer;
 }
 
-static void node_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
+static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbnail_buffer,
+                                                struct ky_scene_output *scene_output)
+{
+    struct view_thumbnail *view_thumbnail = wl_container_of(thumbnail_buffer, view_thumbnail, base);
+    struct wlr_box bounding_box = { 0 };
+
+    view_thumbnail_get_box(view_thumbnail, &bounding_box);
+
+    int buffer_width = bounding_box.width * thumbnail_buffer->scale;
+    int buffer_height = bounding_box.height * thumbnail_buffer->scale;
+
+    struct wlr_buffer *buffer = thumbnail_buffer_allocate(
+        thumbnail_buffer, buffer_width, buffer_height, scene_output->output->allocator);
+    if (!buffer) {
+        return NULL;
+    }
+
+    struct wlr_render_pass *render_pass =
+        wlr_renderer_begin_buffer_pass(scene_output->output->renderer, buffer, NULL);
+    if (!render_pass) {
+        wlr_buffer_drop(buffer);
+        return NULL;
+    }
+
+    /* clear the target buffer */
+    wlr_render_pass_add_rect(render_pass, &(struct wlr_render_rect_options){
+                                              .color = { 0, 0, 0, 0 },
+                                              .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                          });
+
+    struct ky_scene_render_target target = {
+        .logical = { 0, 0, buffer_width, buffer_height },
+        .scale = thumbnail_buffer->scale,
+        .trans_width = buffer_width,
+        .trans_height = buffer_height,
+        .buffer = buffer,
+        .output = scene_output,
+        .render_pass = render_pass,
+        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY,
+    };
+    if (view_thumbnail->option & THUMBNAIL_DISABLE_ROUND_CORNER) {
+        target.options |= KY_SCENE_RENDER_DISABLE_ROUND_CORNER;
+    }
+
+    pixman_region32_init_rect(&target.damage, 0, 0, bounding_box.width, bounding_box.height);
+
+    struct ky_scene_node *source_node = &view_thumbnail->view->tree->node;
+    bool old_state = source_node->enabled;
+    source_node->enabled = true;
+    source_node->impl.render(source_node, -bounding_box.x, -bounding_box.y, &target);
+    source_node->enabled = old_state;
+    wlr_render_pass_submit(target.render_pass);
+    pixman_region32_fini(&target.damage);
+
+    return buffer;
+}
+
+static bool thumbnail_buffer_destroy(struct thumbnail_buffer *thumbnail_buffer)
 {
     /* don't destroy if still have thumbnails */
     if (!thumbnail_buffer->need_destroy && !wl_list_empty(&thumbnail_buffer->thumbnails)) {
-        return;
+        return false;
     }
     /* mark need_destroy if cannot be destroyed current */
     if (!thumbnail_buffer->can_destroy) {
         thumbnail_buffer->need_destroy = true;
-        return;
+        return false;
     }
 
     /* force destroy all thumbnails */
@@ -181,12 +297,35 @@ static void node_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
         wlr_buffer_drop(thumbnail_buffer->buffer);
     }
 
+    return true;
+}
+
+static void node_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
+{
+    if (!thumbnail_buffer_destroy(thumbnail_buffer)) {
+        return;
+    }
+
     struct node_thumbnail *node_thumbnail = wl_container_of(thumbnail_buffer, node_thumbnail, base);
     wl_list_remove(&node_thumbnail->source_destroy.link);
     wl_list_remove(&node_thumbnail->source_damage.link);
     wl_list_remove(&node_thumbnail->link);
 
     free(node_thumbnail);
+}
+
+static void view_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
+{
+    if (!thumbnail_buffer_destroy(thumbnail_buffer)) {
+        return;
+    }
+
+    struct view_thumbnail *view_thumbnail = wl_container_of(thumbnail_buffer, view_thumbnail, base);
+    wl_list_remove(&view_thumbnail->view_unmap.link);
+    wl_list_remove(&view_thumbnail->source_damage.link);
+    wl_list_remove(&view_thumbnail->link);
+
+    free(view_thumbnail);
 }
 
 static void node_thumbnail_handle_source_destroy(struct wl_listener *listener, void *data)
@@ -198,11 +337,27 @@ static void node_thumbnail_handle_source_destroy(struct wl_listener *listener, v
     node_thumbnail_destroy(&node_thumbnail->base);
 }
 
+static void view_thumbnail_handle_source_destroy(struct wl_listener *listener, void *data)
+{
+    struct view_thumbnail *view_thumbnail = wl_container_of(listener, view_thumbnail, view_unmap);
+    /* force destroyed when source node destroy */
+    view_thumbnail->base.need_destroy = true;
+    view_thumbnail_destroy(&view_thumbnail->base);
+}
+
 static void node_thumbnail_handle_source_damage(struct wl_listener *listener, void *data)
 {
     struct node_thumbnail *node_thumbnail =
         wl_container_of(listener, node_thumbnail, source_damage);
     node_thumbnail->base.was_damaged = true;
+    thumbnail_manager_schedule_frame();
+}
+
+static void view_thumbnail_handle_source_damage(struct wl_listener *listener, void *data)
+{
+    struct view_thumbnail *view_thumbnail =
+        wl_container_of(listener, view_thumbnail, source_damage);
+    view_thumbnail->base.was_damaged = true;
     thumbnail_manager_schedule_frame();
 }
 
@@ -233,6 +388,36 @@ static struct node_thumbnail *node_thumbnail_get_or_create(struct ky_scene_node 
     return node_thumbnail;
 }
 
+static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, uint32_t option,
+                                                           float scale)
+{
+    struct view_thumbnail *view_thumbnail = find_view_thumbnail(view, option, scale);
+    if (view_thumbnail) {
+        return view_thumbnail;
+    }
+
+    view_thumbnail = calloc(1, sizeof(*view_thumbnail));
+    if (!view_thumbnail) {
+        return NULL;
+    }
+
+    thumbnail_buffer_init(&view_thumbnail->base, scale);
+    view_thumbnail->base.render = view_thumbnail_render;
+    view_thumbnail->base.destroy = view_thumbnail_destroy;
+
+    view_thumbnail->view = view;
+    view_thumbnail->option = option;
+
+    view_thumbnail->source_damage.notify = view_thumbnail_handle_source_damage;
+    wl_signal_add(&view->tree->node.events.damage, &view_thumbnail->source_damage);
+    view_thumbnail->view_unmap.notify = view_thumbnail_handle_source_destroy;
+    wl_signal_add(&view->base.events.unmap, &view_thumbnail->view_unmap);
+
+    wl_list_insert(&manager->view_thumbnails, &view_thumbnail->link);
+
+    return view_thumbnail;
+}
+
 struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale)
 {
     if (!manager) {
@@ -252,6 +437,34 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
 
     thumbnail->buffer = &node_thumbnail->base;
     wl_list_insert(&node_thumbnail->base.thumbnails, &thumbnail->link);
+    wl_signal_init(&thumbnail->events.update);
+    wl_signal_init(&thumbnail->events.destroy);
+    thumbnail->newly_added = thumbnail->wants_update = true;
+    /* buffer update is needed */
+    thumbnail_manager_schedule_frame();
+
+    return thumbnail;
+}
+
+struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option, float scale)
+{
+    if (!manager) {
+        return NULL;
+    }
+
+    struct thumbnail *thumbnail = calloc(1, sizeof(*thumbnail));
+    if (!thumbnail) {
+        return NULL;
+    }
+
+    struct view_thumbnail *view_thumbnail = view_thumbnail_get_or_create(view, option, scale);
+    if (!view_thumbnail) {
+        free(thumbnail);
+        return NULL;
+    }
+
+    thumbnail->buffer = &view_thumbnail->base;
+    wl_list_insert(&view_thumbnail->base.thumbnails, &thumbnail->link);
     wl_signal_init(&thumbnail->events.update);
     wl_signal_init(&thumbnail->events.destroy);
     thumbnail->newly_added = thumbnail->wants_update = true;
@@ -382,6 +595,11 @@ static void thumbnail_manager_handle_output_frame(struct wl_listener *listener, 
     wl_list_for_each_safe(node_thumbnail, tmp, &manager->node_thumbnails, link) {
         thumbnail_buffer_render(&node_thumbnail->base);
     }
+
+    struct view_thumbnail *view_thumbnail, *view_tmp;
+    wl_list_for_each_safe(view_thumbnail, view_tmp, &manager->view_thumbnails, link) {
+        thumbnail_buffer_render(&view_thumbnail->base);
+    }
 }
 
 static void thumbnail_manager_handle_output_destroy(struct wl_listener *listener, void *data)
@@ -438,6 +656,7 @@ bool thumbnail_manager_create(struct server *server)
     }
 
     wl_list_init(&manager->node_thumbnails);
+    wl_list_init(&manager->view_thumbnails);
     manager->output_frame.notify = thumbnail_manager_handle_output_frame;
     manager->output_destroy.notify = thumbnail_manager_handle_output_destroy;
 

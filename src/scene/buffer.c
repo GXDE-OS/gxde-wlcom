@@ -375,6 +375,7 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
     enum wl_output_transform transform = wlr_output_transform_invert(scene_buffer->transform);
     transform = wlr_output_transform_compose(transform, target->transform);
 
+    bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
     struct ky_render_texture_options options = {
         .base = {
             .texture = texture,
@@ -387,10 +388,10 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
         },
         .radius = {
-            .rb = node->radius[0] * target->scale,
-            .rt = node->radius[1] * target->scale,
-            .lb = node->radius[2] * target->scale,
-            .lt = node->radius[3] * target->scale,
+            .rb = render_with_radius ? node->radius[0] * target->scale : 0,
+            .rt = render_with_radius ? node->radius[1] * target->scale : 0,
+            .lb = render_with_radius ? node->radius[2] * target->scale : 0,
+            .lt = render_with_radius ? node->radius[3] * target->scale : 0,
         },
     };
 

@@ -192,16 +192,21 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     int title_height = round(deco->title_height * scale);
     float half_height = height * 0.5f; // shader distance scale
     float shadow_width = deco->shadow_width * scale;
-    float round_corner_radius[4] = {
-        deco->round_corner_radius[0] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
-                                         : 0.0f,
-        deco->round_corner_radius[1] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
-                                         : 0.0f,
-        deco->round_corner_radius[2] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
-                                         : 0.0f,
-        deco->round_corner_radius[3] > 0 ? deco->round_corner_radius[0] * scale + border_thickness
-                                         : 0.0f,
-    };
+    float round_corner_radius[4] = { 0 };
+    if (!(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER)) {
+        round_corner_radius[0] = deco->round_corner_radius[0] > 0
+                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     : 0.0f;
+        round_corner_radius[1] = deco->round_corner_radius[1] > 0
+                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     : 0.0f;
+        round_corner_radius[2] = deco->round_corner_radius[2] > 0
+                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     : 0.0f;
+        round_corner_radius[3] = deco->round_corner_radius[3] > 0
+                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     : 0.0f;
+    }
 
     // full rect logic coord to framebuffer coord
     struct wlr_box window_box = {
