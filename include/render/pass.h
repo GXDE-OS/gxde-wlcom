@@ -13,13 +13,11 @@ struct ky_render_round_corner {
 
 struct ky_render_texture_options {
     struct wlr_render_texture_options base;
-    const pixman_region32_t *blur;
     struct ky_render_round_corner radius;
 };
 
 struct ky_render_rect_options {
     struct wlr_render_rect_options base;
-    const pixman_region32_t *blur;
     struct ky_render_round_corner radius;
 };
 
