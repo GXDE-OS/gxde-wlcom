@@ -1,3 +1,4 @@
+wayland_client = dependency('wayland-client')
 files_libkywc = files(
   'libkywc.c',
   'output.c',

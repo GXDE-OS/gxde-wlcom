@@ -123,6 +123,7 @@ have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 have_ukui_gsettings = get_option('ukui_gsettings')
 have_kde_keystate = get_option('kde_keystate')
+have_libkywc = get_option('libkywc')
 
 add_project_arguments([
   '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
@@ -153,8 +154,11 @@ subdir('data')
 subdir('protocols')
 subdir('src')
 
+if have_libkywc
+  subdir('libkywc')
+endif
+
 if have_examples
-  subdir('clients')
   subdir('examples')
 endif
 
