@@ -113,6 +113,12 @@ void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol,
     scene_output_set_position(solo->scene_output, lo->x, lo->y);
 }
 
+void ky_scene_output_damage_whole(struct ky_scene_output *scene_output)
+{
+    wlr_damage_ring_add_whole(&scene_output->damage_ring);
+    wlr_output_schedule_frame(scene_output->output);
+}
+
 static void scene_output_layout_handle_layout_destroy(struct wl_listener *listener, void *data)
 {
     struct ky_scene_output_layout *sol = wl_container_of(listener, sol, layout_destroy);

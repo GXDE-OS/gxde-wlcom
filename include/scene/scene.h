@@ -285,6 +285,8 @@ struct ky_scene *ky_scene_create(void);
 
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 
+void ky_scene_damage_whole(struct ky_scene *scene);
+
 struct ky_scene_tree *ky_scene_tree_create(struct ky_scene_tree *parent);
 
 struct ky_scene_tree *ky_scene_tree_from_node(struct ky_scene_node *node);
@@ -368,6 +370,8 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
  */
 struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene,
                                                   struct wlr_output *output);
+
+void ky_scene_output_damage_whole(struct ky_scene_output *scene_output);
 
 struct ky_scene_output_layout *
 ky_scene_attach_output_layout(struct ky_scene *scene, struct wlr_output_layout *output_layout);

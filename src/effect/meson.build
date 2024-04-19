@@ -1,4 +1,5 @@
 wlcom_sources += files(
+  'blur.c',
   'capture.c',
   'config.c',
   'effect.c',
@@ -14,3 +15,5 @@ if have_ukui_screenshot
     'ukui_screenshot.c',
   )
 endif
+
+subdir('shaders')

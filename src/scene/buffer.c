@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/region.h>
 
+#include "effect/blur.h"
 #include "render/pass.h"
 #include "render/pixel_format.h"
 #include "scene_p.h"
@@ -393,7 +394,16 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         },
     };
 
-    ky_scene_node_render_blur(node, target, lx, ly, &dst_box, &render_region, &options.radius);
+    struct blur_render_options opts = {
+        .lx = lx,
+        .ly = ly,
+        .dst_box = &dst_box,
+        .clip = &render_region,
+        .radius = &options.radius,
+        .region = node->has_blur ? &node->blur_region : NULL,
+        .strength = node->blur_strength,
+    };
+    blur_render_with_target(target, &opts);
 
     ky_render_pass_add_texture(target->render_pass, &options);
 

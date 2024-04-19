@@ -38,4 +38,6 @@ ukui_screenshot_create(struct effect_manager *effect_manager)
 }
 #endif
 
+bool blur_effect_create(struct effect_manager *effect_manager);
+
 #endif /* _EFFECT_P_H_ */

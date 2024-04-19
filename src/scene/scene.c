@@ -366,6 +366,14 @@ struct ky_scene *ky_scene_from_node(struct ky_scene_node *node)
     return scene;
 }
 
+void ky_scene_damage_whole(struct ky_scene *scene)
+{
+    struct ky_scene_output *output;
+    wl_list_for_each(output,&scene->outputs, link) {
+        ky_scene_output_damage_whole(output);
+    }
+}
+
 struct ky_scene_tree *ky_scene_tree_create(struct ky_scene_tree *parent)
 {
     assert(parent);

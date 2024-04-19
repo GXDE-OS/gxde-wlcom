@@ -331,6 +331,7 @@ bool effect_manager_create(struct server *server)
     /* builtin effects */
     showfps_effect_create(manager);
     ukui_screenshot_create(manager);
+    blur_effect_create(manager);
 
     return true;
 }
