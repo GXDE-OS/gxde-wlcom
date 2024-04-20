@@ -97,6 +97,7 @@ struct view {
     struct wl_list view_proxies;
 
     struct ky_scene_tree *tree;
+    struct ky_scene_tree *surface_tree;
 
     // TODO: we may need update output when current output geometry/off/destroy changed
     // but something is done by positioner

@@ -22,8 +22,7 @@ struct xwayland_view {
     struct wl_list link;
     struct xwayland_server *xwayland;
     struct wlr_xwayland_surface *wlr_xwayland_surface;
-    struct ky_scene_node *surface_node;
-    struct wl_listener node_destroy;
+    struct wl_listener surface_tree_destroy;
 
     struct wl_listener precommit;
     struct wl_listener commit;
@@ -786,11 +785,12 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
     view_unmap(&xwayland_view->view);
 }
 
-static void xwayalnd_view_handle_node_destroy(struct wl_listener *listener, void *data)
+static void xwayalnd_view_handle_surface_tree_destroy(struct wl_listener *listener, void *data)
 {
-    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, node_destroy);
-    wl_list_remove(&xwayland_view->node_destroy.link);
-    xwayland_view->surface_node = NULL;
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, surface_tree_destroy);
+    wl_list_remove(&xwayland_view->surface_tree_destroy.link);
+    xwayland_view->view.surface_tree = NULL;
 }
 
 static void xwayland_view_handle_precommit(struct wl_listener *listener, void *data)
@@ -829,11 +829,10 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     wlr_xwayland_surface->surface->data = xwayland_view;
 
     /* create scene tree here as we get surface here */
-    struct ky_scene_tree *surface_tree =
+    xwayland_view->view.surface_tree =
         ky_scene_subsurface_tree_create(xwayland_view->view.tree, wlr_xwayland_surface->surface);
     /* event node will be destroyed when surface_node destroy */
-    xwayland_view->surface_node = &surface_tree->node;
-    input_event_node_create(xwayland_view->surface_node, &xwayland_view_event_node_impl,
+    input_event_node_create(&xwayland_view->view.surface_tree->node, &xwayland_view_event_node_impl,
                             xwayland_view_get_root, xwayland_view_get_toplevel, xwayland_view);
 
     xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
@@ -845,8 +844,9 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &xwayland_view->map);
     xwayland_view->unmap.notify = xwayland_view_handle_unmap;
     wl_signal_add(&wlr_xwayland_surface->surface->events.unmap, &xwayland_view->unmap);
-    xwayland_view->node_destroy.notify = xwayalnd_view_handle_node_destroy;
-    wl_signal_add(&xwayland_view->surface_node->events.destroy, &xwayland_view->node_destroy);
+    xwayland_view->surface_tree_destroy.notify = xwayalnd_view_handle_surface_tree_destroy;
+    wl_signal_add(&xwayland_view->view.surface_tree->node.events.destroy,
+                  &xwayland_view->surface_tree_destroy);
 }
 
 static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *data)
@@ -855,8 +855,8 @@ static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *
 
     xwayland_view->wlr_xwayland_surface->surface->data = NULL;
     xwayland_view->view.surface = NULL;
-    if (xwayland_view->surface_node) {
-        ky_scene_node_destroy(xwayland_view->surface_node);
+    if (xwayland_view->view.surface_tree) {
+        ky_scene_node_destroy(&xwayland_view->view.surface_tree->node);
     }
 
     wl_list_remove(&xwayland_view->precommit.link);

@@ -15,7 +15,6 @@
 struct xdg_view {
     struct view view;
     struct wlr_xdg_surface *wlr_xdg_surface;
-    struct ky_scene_tree *surface_tree;
 
     struct wl_listener commit;
 
@@ -284,7 +283,7 @@ static void xdg_view_handle_new_popup(struct wl_listener *listener, void *data)
         layer = LAYER_SCREEN_LOCK_NOTIFICATION;
     }
     struct view_layer *popup_layer = view_manager_get_layer(layer, false);
-    xdg_popup_create(wlr_xdg_popup, xdg_view->surface_tree, popup_layer);
+    xdg_popup_create(wlr_xdg_popup, xdg_view->view.surface_tree, popup_layer);
 }
 
 static void xdg_view_handle_request_move(struct wl_listener *listener, void *data)
@@ -483,9 +482,9 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     wlr_xdg_surface->surface->data = &xdg_view->view;
 
     /* create tree for surface and all sub-surfaces */
-    xdg_view->surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
+    xdg_view->view.surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
     /* event node will be destroyed when xdg_surface destroy */
-    input_event_node_create(&xdg_view->surface_tree->node, &xdg_view_event_node_impl,
+    input_event_node_create(&xdg_view->view.surface_tree->node, &xdg_view_event_node_impl,
                             xdg_view_get_root, xdg_view_get_toplevel, xdg_view);
 
     /* others will add in map and remove in unmap */
