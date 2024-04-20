@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
@@ -217,6 +218,7 @@ bool selection_manager_create(struct input_manager *input_manager)
     }
 
     wlr_data_device_manager_create(input_manager->server->display);
+    wlr_data_control_manager_v1_create(input_manager->server->display);
     wlr_primary_selection_v1_device_manager_create(input_manager->server->display);
 
     manager->new_seat.notify = handle_new_seat;
