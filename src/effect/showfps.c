@@ -168,7 +168,7 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 bool showfps_effect_create(struct effect_manager *manager)
 {
     struct showfps_effect *effect = calloc(1, sizeof(*effect));
-    if (!manager) {
+    if (!effect) {
         return false;
     }
 
