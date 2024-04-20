@@ -24,7 +24,7 @@ static struct ky_scene_node *rect_accpet_input(struct ky_scene_node *node, int l
                                                double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
-    if (!node->enabled || node->bypassed) {
+    if (!node->enabled || node->input_bypassed) {
         return NULL;
     }
 

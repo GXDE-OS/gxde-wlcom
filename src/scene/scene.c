@@ -138,7 +138,7 @@ static struct ky_scene_node *tree_accpet_input(struct ky_scene_node *node, int l
                                                double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
-    if (!node->enabled || node->bypassed) {
+    if (!node->enabled || node->input_bypassed) {
         return NULL;
     }
 
@@ -369,7 +369,7 @@ struct ky_scene *ky_scene_from_node(struct ky_scene_node *node)
 void ky_scene_damage_whole(struct ky_scene *scene)
 {
     struct ky_scene_output *output;
-    wl_list_for_each(output,&scene->outputs, link) {
+    wl_list_for_each(output, &scene->outputs, link) {
         ky_scene_output_damage_whole(output);
     }
 }
@@ -482,9 +482,9 @@ void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled)
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
-void ky_scene_node_set_bypassed(struct ky_scene_node *node, bool bypassed)
+void ky_scene_node_set_input_bypassed(struct ky_scene_node *node, bool bypassed)
 {
-    node->bypassed = bypassed;
+    node->input_bypassed = bypassed;
 }
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y)

@@ -83,7 +83,7 @@ static struct ky_scene_node *buffer_accpet_input(struct ky_scene_node *node, int
                                                  double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
-    if (!node->enabled || node->bypassed) {
+    if (!node->enabled || node->input_bypassed) {
         return NULL;
     }
 

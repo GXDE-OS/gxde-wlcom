@@ -253,7 +253,7 @@ void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface)
 
     int count = 0;
     xwayland_get_shape_region(surface->window_id, XCB_SHAPE_SK_INPUT, NULL, &count);
-    ky_scene_node_set_bypassed(&buffer->node, count == 0);
+    ky_scene_node_set_input_bypassed(&buffer->node, count == 0);
 
     pixman_region32_fini(&region);
     free(reply);

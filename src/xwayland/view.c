@@ -1025,7 +1025,7 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
         ky_scene_node_set_input_region(&buffer->node, region);
         /* empty input region means no input support */
         bool need_bypassed = kind == XCB_SHAPE_SK_INPUT && !pixman_region32_not_empty(region);
-        ky_scene_node_set_bypassed(&buffer->node, need_bypassed);
+        ky_scene_node_set_input_bypassed(&buffer->node, need_bypassed);
     }
 
     return true;

@@ -134,7 +134,9 @@ struct ky_scene_node {
         uint8_t prop;
     };
 
-    bool enabled, bypassed;
+    bool enabled;
+    bool input_bypassed;
+
     int x, y;
     /* round corner radius */
     int radius[4];
@@ -293,7 +295,7 @@ struct ky_scene_tree *ky_scene_tree_from_node(struct ky_scene_node *node);
 
 void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled);
 
-void ky_scene_node_set_bypassed(struct ky_scene_node *node, bool bypassed);
+void ky_scene_node_set_input_bypassed(struct ky_scene_node *node, bool bypassed);
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y);
 

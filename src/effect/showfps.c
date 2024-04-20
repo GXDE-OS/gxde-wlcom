@@ -120,7 +120,7 @@ static void frame_output_create(struct showfps_effect *effect, struct ky_scene_o
     widget_set_enabled(output->widget, true);
 
     output->node = ky_scene_node_from_widget(output->widget);
-    ky_scene_node_set_bypassed(output->node, true);
+    ky_scene_node_set_input_bypassed(output->node, true);
 
     wlr_output_schedule_frame(output->output->output);
 }

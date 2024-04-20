@@ -225,7 +225,7 @@ static void window_capture_create(struct view *view, struct seat *seat)
 #if MIRROR_BUFFER_DEBUG
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     capture->buffer = ky_scene_buffer_create(layer->tree, NULL);
-    ky_scene_node_set_bypassed(&capture->buffer->node, true);
+    ky_scene_node_set_input_bypassed(&capture->buffer->node, true);
     struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
     capture->timer = wl_event_loop_add_timer(loop, handle_capture, capture);
 #endif
