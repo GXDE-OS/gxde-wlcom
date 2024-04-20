@@ -9,21 +9,27 @@
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
+#if HAVE_XWAYLAND
+#include <wlr/xwayland.h>
+#endif
 
 #include <kywc/log.h>
 
+#include "config.h"
 #include "input_p.h"
 #include "scene/surface.h"
 #include "server.h"
 #include "view/view.h"
 
 struct selection_manager {
+    struct config *config;
     struct wl_listener new_seat;
     struct wl_listener server_destroy;
 };
 
 /* selection per seat */
 struct selection {
+    struct selection_manager *manager;
     struct seat *seat;
     struct wl_listener seat_destroy;
 
@@ -44,8 +50,131 @@ struct selection {
     struct wl_listener drag_icon_commit;
     struct wl_listener drag_icon_destroy;
 
+#if HAVE_KDE_CLIPBOARD
+    struct wl_listener set_selection;
+    struct wl_listener set_primary_selection;
+    int clipboard_selection_pid;
+    int primary_selection_pid;
+#endif
     bool draging;
 };
+
+#if HAVE_KDE_CLIPBOARD
+static const char *service_bus = "org.kde.KWin";
+static const char *service_path = "/Clipboard";
+static const char *service_interface = "org.kde.kwin.Clipboard";
+
+// SD_BUS_METHOD("getClipboardSelectionPid", "", "i", get_clipboard_selection_pid, 0),
+static int get_clipboard_selection_pid(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct seat *seat = input_manager_get_default_seat();
+    struct selection *selection = seat->selection;
+
+    return sd_bus_reply_method_return(msg, "i", selection->clipboard_selection_pid);
+}
+
+// SD_BUS_METHOD("getPrimarySelectionPid", "", "i", get_primary_selection_pid, 0),
+static int get_primary_selection_pid(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct seat *seat = input_manager_get_default_seat();
+    struct selection *selection = seat->selection;
+
+    return sd_bus_reply_method_return(msg, "i", selection->primary_selection_pid);
+}
+
+// SD_BUS_PROPERTY("GetClipboardSelectionPid", "i", get_selection_pid, 0,
+// SD_BUS_VTABLE_PROPERTY_CONST),
+static int get_selection_pid(sd_bus *bus, const char *path, const char *interface,
+                             const char *property, sd_bus_message *reply, void *userdata,
+                             sd_bus_error *ret_error)
+{
+    struct seat *seat = input_manager_get_default_seat();
+    struct selection *selection = seat->selection;
+
+    return sd_bus_message_append_basic(reply, 'i', &selection->clipboard_selection_pid);
+}
+
+// SD_BUS_PROPERTY("GetPrimarySelectionPid", "i", get_primary_pid, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+static int get_primary_pid(sd_bus *bus, const char *path, const char *interface,
+                           const char *property, sd_bus_message *reply, void *userdata,
+                           sd_bus_error *ret_error)
+{
+    struct seat *seat = input_manager_get_default_seat();
+    struct selection *selection = seat->selection;
+
+    return sd_bus_message_append_basic(reply, 'i', &selection->primary_selection_pid);
+}
+
+static const sd_bus_vtable clipboard_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("getClipboardSelectionPid", "", "i", get_clipboard_selection_pid, 0),
+    SD_BUS_METHOD("getPrimarySelectionPid", "", "i", get_primary_selection_pid, 0),
+    SD_BUS_PROPERTY("GetClipboardSelectionPid", "i", get_selection_pid, 0,
+                    SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+    SD_BUS_PROPERTY("GetPrimarySelectionPid", "i", get_primary_pid, 0,
+                    SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
+    SD_BUS_SIGNAL("clipboardSelectionPidChanged", "i", 0),
+    SD_BUS_SIGNAL("primarySelectionPidChanged", "i", 0),
+    SD_BUS_VTABLE_END,
+};
+
+static pid_t get_pid_by_wlr_surface(struct wlr_surface *surface)
+{
+    pid_t pid = 0;
+    if (!surface) {
+        return pid;
+    }
+#if HAVE_XWAYLAND
+    struct wlr_xwayland_surface *xwayland = wlr_xwayland_surface_try_from_wlr_surface(surface);
+    if (xwayland) {
+        return xwayland->pid;
+    }
+#endif
+    struct wl_client *client = wl_resource_get_client(surface->resource);
+    wl_client_get_credentials(client, &pid, NULL, NULL);
+    return pid;
+}
+
+static void send_selection_pid_changed(struct selection *selection, struct wlr_seat *seat,
+                                       bool is_primary)
+{
+    pid_t pid = 0, current_pid = 0;
+    char *signal_name = NULL;
+    struct wlr_surface *focused_surface = seat->keyboard_state.focused_surface;
+
+    pid = get_pid_by_wlr_surface(focused_surface);
+    if (!is_primary && pid != selection->clipboard_selection_pid) {
+        current_pid = pid;
+        selection->clipboard_selection_pid = pid;
+        signal_name = "clipboardSelectionPidChanged";
+    } else if (is_primary && pid != selection->primary_selection_pid) {
+        current_pid = pid;
+        selection->primary_selection_pid = pid;
+        signal_name = "primarySelectionPidChanged";
+    }
+
+    if (signal_name) {
+        sd_bus *bus = sd_bus_slot_get_bus(selection->manager->config->slot);
+        sd_bus_emit_signal(bus, service_path, service_interface, signal_name, "i", current_pid);
+    }
+}
+
+static void handle_set_selection(struct wl_listener *listener, void *data)
+{
+    struct selection *selection = wl_container_of(listener, selection, set_selection);
+    struct wlr_seat *seat = data;
+
+    send_selection_pid_changed(selection, seat, false);
+}
+
+static void handle_set_primary_selection(struct wl_listener *listener, void *data)
+{
+    struct selection *selection = wl_container_of(listener, selection, set_primary_selection);
+    struct wlr_seat *seat = data;
+
+    send_selection_pid_changed(selection, seat, true);
+}
+#endif
 
 static void handle_drag_icon_map(struct wl_listener *listener, void *data)
 {
@@ -168,6 +297,10 @@ static void handle_seat_destory(struct wl_listener *listener, void *data)
 
     wl_list_remove(&selection->request_start_drag.link);
     wl_list_remove(&selection->start_drag.link);
+#if HAVE_KDE_CLIPBOARD
+    wl_list_remove(&selection->set_selection.link);
+    wl_list_remove(&selection->set_primary_selection.link);
+#endif
     wl_list_remove(&selection->request_set_selection.link);
     wl_list_remove(&selection->request_set_primary_selection.link);
 
@@ -181,6 +314,8 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
         return;
     }
 
+    struct selection_manager *manager = wl_container_of(listener, manager, new_seat);
+    selection->manager = manager;
     struct seat *seat = data;
     selection->seat = seat;
     seat->selection = selection;
@@ -195,6 +330,12 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     selection->destroy_drag.notify = handle_destroy_drag;
     wl_list_init(&selection->destroy_drag.link);
 
+#if HAVE_KDE_CLIPBOARD
+    selection->set_selection.notify = handle_set_selection;
+    wl_signal_add(&seat->wlr_seat->events.set_selection, &selection->set_selection);
+    selection->set_primary_selection.notify = handle_set_primary_selection;
+    wl_signal_add(&seat->wlr_seat->events.set_primary_selection, &selection->set_primary_selection);
+#endif
     selection->request_set_selection.notify = handle_request_set_selection;
     wl_signal_add(&seat->wlr_seat->events.request_set_selection, &selection->request_set_selection);
     selection->request_set_primary_selection.notify = handle_request_set_primary_selection;
@@ -217,6 +358,14 @@ bool selection_manager_create(struct input_manager *input_manager)
         return false;
     }
 
+#if HAVE_KDE_CLIPBOARD
+    manager->config = config_manager_add_config(NULL, service_bus, service_path, service_interface,
+                                                clipboard_vtable, manager);
+    if (!manager->config) {
+        free(manager);
+        return false;
+    }
+#endif
     wlr_data_device_manager_create(input_manager->server->display);
     wlr_data_control_manager_v1_create(input_manager->server->display);
     wlr_primary_selection_v1_device_manager_create(input_manager->server->display);

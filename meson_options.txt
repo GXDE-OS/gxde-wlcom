@@ -17,3 +17,4 @@ option('ukui_screenshot', type: 'boolean', value: true, description: 'Enable uku
 option('ukui_gsettings', type: 'boolean', value: false, description: 'Enable ukui configuration gsettings support')
 option('kde_keystate', type: 'boolean', value: true, description: 'Enable kde keystate protocol support')
 option('libkywc', type: 'boolean', value: true, description: 'Build libkywc')
+option('kde_clipboard', type: 'boolean', value: true, description: 'Enable kde clipboard dbus')

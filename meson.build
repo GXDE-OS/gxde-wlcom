@@ -124,6 +124,7 @@ have_ukui_screenshot = get_option('ukui_screenshot')
 have_ukui_gsettings = get_option('ukui_gsettings')
 have_kde_keystate = get_option('kde_keystate')
 have_libkywc = get_option('libkywc')
+have_kde_clipboard = get_option('kde_clipboard')
 
 add_project_arguments([
   '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
@@ -141,6 +142,7 @@ add_project_arguments([
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
   '-DHAVE_UKUI_GSETTINGS=@0@'.format(have_ukui_gsettings.to_int()), 
   '-DHAVE_KDE_KEYSTATE=@0@'.format(have_kde_keystate.to_int()),
+  '-DHAVE_KDE_CLIPBOARD=@0@'.format(have_kde_clipboard.to_int()),
 ], language: 'c')
 
 msgfmt = find_program('msgfmt', required: get_option('nls'))
