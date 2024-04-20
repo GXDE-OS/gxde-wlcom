@@ -343,7 +343,8 @@ static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    frame->thumbnail = thumbnail_create_from_node(&view->tree->node, 1.0);
+    frame->thumbnail = thumbnail_create_from_view(
+        view, THUMBNAIL_DISABLE_SHADOW | THUMBNAIL_DISABLE_ROUND_CORNER, 1.0);
     if (!frame->thumbnail) {
         kywc_capture_frame_v1_send_failed(frame->resource);
         wl_resource_set_user_data(frame->resource, NULL);
