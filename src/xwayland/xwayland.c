@@ -49,6 +49,7 @@ static const char *const atom_map[ATOM_LAST] = {
     [KDE_NET_WM_STATE_SKIP_SWITCHER] = "_KDE_NET_WM_STATE_SKIP_SWITCHER",
 
     [NET_WM_ICON] = "_NET_WM_ICON",
+    [NET_WM_WINDOW_OPACITY] = "_NET_WM_WINDOW_OPACITY",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -451,6 +452,26 @@ static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
     return 1;
 }
 
+static int xwayland_handle_wm_window_opacity(xcb_property_notify_event_t *ev)
+{
+    xcb_get_property_cookie_t cookie =
+        xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
+    if (!reply || reply->value_len != 1 || reply->format != 32) {
+        free(reply);
+        return 0;
+    }
+
+    uint32_t *value = (uint32_t *)xcb_get_property_value(reply);
+    float opacity = value[0] == 0xffffffff ? 1.0 : value[0] * 1.0 / 0xffffffff;
+
+    if (!xwayland_unmanaged_set_opacity(xwayland, ev->window, opacity)) {
+        return xwayland_view_set_opacity(xwayland, ev->window, opacity);
+    }
+
+    return 1;
+}
+
 /* return 0 as we only handle few things */
 static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
 {
@@ -463,6 +484,8 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
         return xwayland_handle_wm_state(ev);
     } else if (ev->atom == xwayland->atoms[NET_WM_ICON]) {
         return xwayland_handle_wm_icon(ev);
+    } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
+        return xwayland_handle_wm_window_opacity(ev);
     }
 
     return 0;

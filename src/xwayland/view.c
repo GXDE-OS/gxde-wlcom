@@ -57,6 +57,7 @@ struct xwayland_view {
     struct wl_listener output_update_usable_area;
 
     struct wl_list net_wm_icons; // from net_wm_icon
+    float opacity;
 };
 
 struct net_wm_icon {
@@ -837,6 +838,8 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
 
     xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
     xwayland_surface_apply_shape_region(wlr_xwayland_surface);
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+    ky_scene_buffer_set_opacity(buffer, xwayland_view->opacity);
 
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
@@ -938,6 +941,7 @@ void xwayland_view_create(struct xwayland_server *xwayland,
         return;
     }
 
+    xwayland_view->opacity = 1.0;
     xwayland_view->xwayland = xwayland;
     wl_list_insert(&xwayland->surfaces, &xwayland_view->link);
     view_init(&xwayland_view->view, &xwl_surface_impl, xwayland_view);
@@ -1005,6 +1009,26 @@ void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_
     memcpy(icon->data, (unsigned char *)data, size);
 }
 
+bool xwayland_view_set_opacity(struct xwayland_server *xwayland, xcb_window_t window_id,
+                               float opacity)
+{
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
+    if (!surface) {
+        return false;
+    }
+
+    struct xwayland_view *xwayland_view = surface->data;
+    xwayland_view->opacity = opacity;
+
+    if (xwayland_view->view.surface) {
+        struct ky_scene_buffer *buffer =
+            ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
+        ky_scene_buffer_set_opacity(buffer, opacity);
+    }
+
+    return true;
+}
+
 bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                     xcb_shape_sk_t kind, const pixman_region32_t *region)
 {
@@ -1014,7 +1038,7 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
     }
     struct xwayland_view *xwayland_view = surface->data;
     if (!xwayland_view->view.surface) {
-        return false;
+        return true;
     }
 
     struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);

@@ -50,6 +50,7 @@ enum atom_name {
     KDE_NET_WM_STATE_SKIP_SWITCHER,
 
     NET_WM_ICON,
+    NET_WM_WINDOW_OPACITY,
 
     ATOM_LAST,
 };
@@ -93,6 +94,9 @@ void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface);
 bool xwayland_unmanaged_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                          xcb_shape_sk_t kind, const pixman_region32_t *region);
 
+bool xwayland_unmanaged_set_opacity(struct xwayland_server *xwayland, xcb_window_t window_id,
+                                    float opacity);
+
 bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window_t window_id,
                                     xcb_shape_sk_t kind, const pixman_region32_t *region);
 
@@ -109,6 +113,9 @@ struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *
 
 void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_t width,
                                    uint32_t height, uint32_t size, uint32_t *data);
+
+bool xwayland_view_set_opacity(struct xwayland_server *xwayland, xcb_window_t window_id,
+                               float opacity);
 
 void xwayland_update_seat(struct seat *seat);
 
