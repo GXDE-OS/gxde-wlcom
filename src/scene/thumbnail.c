@@ -52,10 +52,11 @@ struct node_thumbnail {
 struct view_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
+    uint32_t option;
 
     struct view *view;
-    uint32_t option;
     struct wl_listener view_unmap;
+    struct ky_scene_node *source_node;
     struct wl_listener source_damage;
 };
 
@@ -263,7 +264,7 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
 
     pixman_region32_init_rect(&target.damage, 0, 0, bounding_box.width, bounding_box.height);
 
-    struct ky_scene_node *source_node = &view_thumbnail->view->tree->node;
+    struct ky_scene_node *source_node = view_thumbnail->source_node;
     bool old_state = source_node->enabled;
     source_node->enabled = true;
     source_node->impl.render(source_node, -bounding_box.x, -bounding_box.y, &target);
@@ -402,16 +403,19 @@ static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, ui
     }
 
     thumbnail_buffer_init(&view_thumbnail->base, scale);
+    view_thumbnail->option = option;
     view_thumbnail->base.render = view_thumbnail_render;
     view_thumbnail->base.destroy = view_thumbnail_destroy;
 
     view_thumbnail->view = view;
-    view_thumbnail->option = option;
-
-    view_thumbnail->source_damage.notify = view_thumbnail_handle_source_damage;
-    wl_signal_add(&view->tree->node.events.damage, &view_thumbnail->source_damage);
     view_thumbnail->view_unmap.notify = view_thumbnail_handle_source_destroy;
     wl_signal_add(&view->base.events.unmap, &view_thumbnail->view_unmap);
+
+    /* use surface_tree if has no server decoration */
+    view_thumbnail->source_node =
+        option & THUMBNAIL_DISABLE_DECOR ? &view->surface_tree->node : &view->tree->node;
+    view_thumbnail->source_damage.notify = view_thumbnail_handle_source_damage;
+    wl_signal_add(&view_thumbnail->source_node->events.damage, &view_thumbnail->source_damage);
 
     wl_list_insert(&manager->view_thumbnails, &view_thumbnail->link);
 
