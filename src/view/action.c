@@ -114,9 +114,6 @@ static void window_snap(struct view *view, enum kywc_tile dir)
 #define MIRROR_BUFFER_DEBUG 0
 
 struct view_capture {
-    struct view *view;
-    struct wl_listener view_unmap;
-
     struct thumbnail *thumbnail;
     struct wl_listener thumbnail_update;
     struct wl_listener thumbnail_destroy;
@@ -128,7 +125,6 @@ struct view_capture {
 
 static void view_capture_destroy(struct view_capture *capture)
 {
-    wl_list_remove(&capture->view_unmap.link);
     wl_list_remove(&capture->thumbnail_update.link);
     wl_list_remove(&capture->thumbnail_destroy.link);
 
@@ -143,12 +139,6 @@ static void view_capture_destroy(struct view_capture *capture)
     }
 
     free(capture);
-}
-
-static void capture_handle_view_unmap(struct wl_listener *listener, void *data)
-{
-    struct view_capture *capture = wl_container_of(listener, capture, view_unmap);
-    view_capture_destroy(capture);
 }
 
 static void capture_handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -216,7 +206,7 @@ static void window_capture_create(struct view *view, struct seat *seat)
     }
 
     // struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
-    capture->thumbnail = thumbnail_create_from_node(&view->tree->node, 1.0);
+    capture->thumbnail = thumbnail_create_from_view(view, 0, 1.0);
     if (!capture->thumbnail) {
         free(capture);
         return;
@@ -233,10 +223,6 @@ static void window_capture_create(struct view *view, struct seat *seat)
     thumbnail_add_update_listener(capture->thumbnail, &capture->thumbnail_update);
     capture->thumbnail_destroy.notify = capture_handle_thumbnail_destroy;
     thumbnail_add_destroy_listener(capture->thumbnail, &capture->thumbnail_destroy);
-
-    capture->view = view;
-    capture->view_unmap.notify = capture_handle_view_unmap;
-    wl_signal_add(&view->base.events.unmap, &capture->view_unmap);
 }
 
 void window_action(struct view *view, struct seat *seat, enum window_action action)
