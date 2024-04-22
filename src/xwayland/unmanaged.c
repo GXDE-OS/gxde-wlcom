@@ -37,8 +37,6 @@ struct xwayland_unmanaged {
     struct wl_listener set_override_redirect;
 
     struct wlr_seat_pointer_grab pointer_grab;
-
-    float opacity;
 };
 
 static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *node, double x,
@@ -333,7 +331,7 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
 
     xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
     xwayland_surface_apply_shape_region(wlr_xwayland_surface);
-    ky_scene_buffer_set_opacity(scene_surface->buffer, unmanaged->opacity);
+    xwayland_read_wm_window_opacity(wlr_xwayland_surface->window_id);
 
     unmanaged->precommit.notify = unmanaged_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &unmanaged->precommit);
@@ -395,7 +393,6 @@ void xwayland_unmanaged_create(struct xwayland_server *xwayland,
         return;
     }
 
-    unmanaged->opacity = 1.0;
     unmanaged->xwayland = xwayland;
     wl_list_insert(&xwayland->unmanaged_surfaces, &unmanaged->link);
     unmanaged->wlr_xwayland_surface = wlr_xwayland_surface;
@@ -455,7 +452,6 @@ bool xwayland_unmanaged_set_opacity(struct xwayland_server *xwayland, xcb_window
         return false;
     }
 
-    unmanaged->opacity = opacity;
     if (unmanaged->surface_node) {
         ky_scene_buffer_set_opacity(ky_scene_buffer_from_node(unmanaged->surface_node), opacity);
     }

@@ -374,10 +374,10 @@ static bool xwayland_filter_global(const struct security_client *client, void *d
     return xwayland_check_client(client->client);
 }
 
-static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
+int xwayland_read_wm_state(xcb_window_t window_id)
 {
-    xcb_get_property_cookie_t cookie =
-        xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_ANY, 0, 2048);
+    xcb_get_property_cookie_t cookie = xcb_get_property(
+        xwayland->xcb_conn, 0, window_id, xwayland->atoms[NET_WM_STATE], XCB_ATOM_ANY, 0, 2048);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (reply == NULL) {
         kywc_log(KYWC_ERROR, "Failed to get window property");
@@ -390,22 +390,22 @@ static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
         return 1;
     }
 
-    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
     if (!surface) {
         free(reply);
         return 0;
     }
 
-    xcb_atom_t *atom = xcb_get_property_value(reply);
+    xcb_atom_t *atoms = xcb_get_property_value(reply);
     int ret = 1;
     for (uint32_t i = 0; i < reply->value_len; i++) {
-        if (atom[i] == xwayland->atoms[NET_WM_STATE_ABOVE]) {
+        if (atoms[i] == xwayland->atoms[NET_WM_STATE_ABOVE]) {
             xwayland_view_set_above_or_below(surface, true, false);
-        } else if (atom[i] == xwayland->atoms[NET_WM_STATE_BELOW]) {
+        } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_BELOW]) {
             xwayland_view_set_above_or_below(surface, false, true);
-        } else if (atom[i] == xwayland->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
+        } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
             xwayland_view_set_skip_taskbar(surface, true);
-        } else if (atom[i] == xwayland->atoms[KDE_NET_WM_STATE_SKIP_SWITCHER]) {
+        } else if (atoms[i] == xwayland->atoms[KDE_NET_WM_STATE_SKIP_SWITCHER]) {
             xwayland_view_set_skip_switcher(surface, true);
         } else {
             ret = 0;
@@ -416,17 +416,18 @@ static int xwayland_handle_wm_state(xcb_property_notify_event_t *ev)
     return ret;
 }
 
-static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
+int xwayland_read_wm_icon(xcb_window_t window_id)
 {
-    xcb_get_property_cookie_t cookie = xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom,
-                                                        XCB_ATOM_CARDINAL, 0, 0xffffffff);
+    xcb_get_property_cookie_t cookie =
+        xcb_get_property(xwayland->xcb_conn, 0, window_id, xwayland->atoms[NET_WM_ICON],
+                         XCB_ATOM_CARDINAL, 0, 0xffffffff);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (!reply || reply->value_len < 3 || reply->format != 32) {
         free(reply);
         return 0;
     }
 
-    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, ev->window);
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
     if (!surface) {
         free(reply);
         return 0;
@@ -452,10 +453,11 @@ static int xwayland_handle_wm_icon(xcb_property_notify_event_t *ev)
     return 1;
 }
 
-static int xwayland_handle_wm_window_opacity(xcb_property_notify_event_t *ev)
+int xwayland_read_wm_window_opacity(xcb_window_t window_id)
 {
     xcb_get_property_cookie_t cookie =
-        xcb_get_property(xwayland->xcb_conn, 0, ev->window, ev->atom, XCB_ATOM_CARDINAL, 0, 1);
+        xcb_get_property(xwayland->xcb_conn, 0, window_id, xwayland->atoms[NET_WM_WINDOW_OPACITY],
+                         XCB_ATOM_CARDINAL, 0, 1);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (!reply || reply->value_len != 1 || reply->format != 32) {
         free(reply);
@@ -465,8 +467,8 @@ static int xwayland_handle_wm_window_opacity(xcb_property_notify_event_t *ev)
     uint32_t *value = (uint32_t *)xcb_get_property_value(reply);
     float opacity = value[0] == 0xffffffff ? 1.0 : value[0] * 1.0 / 0xffffffff;
 
-    if (!xwayland_unmanaged_set_opacity(xwayland, ev->window, opacity)) {
-        return xwayland_view_set_opacity(xwayland, ev->window, opacity);
+    if (!xwayland_unmanaged_set_opacity(xwayland, window_id, opacity)) {
+        return xwayland_view_set_opacity(xwayland, window_id, opacity);
     }
 
     return 1;
@@ -481,11 +483,11 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
 
     xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
     if (ev->atom == xwayland->atoms[NET_WM_STATE]) {
-        return xwayland_handle_wm_state(ev);
+        return xwayland_read_wm_state(ev->window);
     } else if (ev->atom == xwayland->atoms[NET_WM_ICON]) {
-        return xwayland_handle_wm_icon(ev);
+        return xwayland_read_wm_icon(ev->window);
     } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
-        return xwayland_handle_wm_window_opacity(ev);
+        return xwayland_read_wm_window_opacity(ev->window);
     }
 
     return 0;

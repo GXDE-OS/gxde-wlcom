@@ -57,7 +57,6 @@ struct xwayland_view {
     struct wl_listener output_update_usable_area;
 
     struct wl_list net_wm_icons; // from net_wm_icon
-    float opacity;
 };
 
 struct net_wm_icon {
@@ -838,8 +837,11 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
 
     xwayland_surface_shape_select_input(wlr_xwayland_surface, true);
     xwayland_surface_apply_shape_region(wlr_xwayland_surface);
-    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(xwayland_view->view.surface);
-    ky_scene_buffer_set_opacity(buffer, xwayland_view->opacity);
+
+    // read all surface properties
+    xwayland_read_wm_state(wlr_xwayland_surface->window_id);
+    xwayland_read_wm_icon(wlr_xwayland_surface->window_id);
+    xwayland_read_wm_window_opacity(wlr_xwayland_surface->window_id);
 
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
@@ -941,7 +943,6 @@ void xwayland_view_create(struct xwayland_server *xwayland,
         return;
     }
 
-    xwayland_view->opacity = 1.0;
     xwayland_view->xwayland = xwayland;
     wl_list_insert(&xwayland->surfaces, &xwayland_view->link);
     view_init(&xwayland_view->view, &xwl_surface_impl, xwayland_view);
@@ -1018,8 +1019,6 @@ bool xwayland_view_set_opacity(struct xwayland_server *xwayland, xcb_window_t wi
     }
 
     struct xwayland_view *xwayland_view = surface->data;
-    xwayland_view->opacity = opacity;
-
     if (xwayland_view->view.surface) {
         struct ky_scene_buffer *buffer =
             ky_scene_buffer_try_from_surface(xwayland_view->view.surface);

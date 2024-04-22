@@ -119,4 +119,9 @@ bool xwayland_view_set_opacity(struct xwayland_server *xwayland, xcb_window_t wi
 
 void xwayland_update_seat(struct seat *seat);
 
+int xwayland_read_wm_state(xcb_window_t window_id);
+
+int xwayland_read_wm_icon(xcb_window_t window_id);
+
+int xwayland_read_wm_window_opacity(xcb_window_t window_id);
 #endif /* _XWAYLAND_P_H_ */
