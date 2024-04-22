@@ -67,7 +67,7 @@ static void set_shake_effect_animation_time(struct modal *modal, int time)
 
 static int get_shake_effect_pending_stage(enum shake_effect_stage stage)
 {
-    enum shake_effect_stage pending_stage;
+    enum shake_effect_stage pending_stage = SHAKE_EFFECT_ORIGIN;
     switch (stage) {
     case SHAKE_EFFECT_ORIGIN:
         pending_stage = SHAKE_EFFECT_LEFT_SIDE;
