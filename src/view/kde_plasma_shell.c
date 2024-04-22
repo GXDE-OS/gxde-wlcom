@@ -208,7 +208,14 @@ static void handle_panel_auto_hide_show(struct wl_client *client, struct wl_reso
 static void handle_set_panel_takes_focus(struct wl_client *client, struct wl_resource *resource,
                                          uint32_t takes_focus)
 {
-    // Not implemented yet
+    struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface || surface->role != ORG_KDE_PLASMA_SURFACE_ROLE_PANEL) {
+        return;
+    }
+
+    if (surface->view && surface->view->base.focusable != takes_focus) {
+        surface->view->base.focusable = surface->view->base.activatable = takes_focus;
+    }
 }
 
 static void handle_set_skip_switcher(struct wl_client *client, struct wl_resource *resource,
