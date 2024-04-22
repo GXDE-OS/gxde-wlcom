@@ -14,6 +14,12 @@ struct effect_interface {
     void (*entity_create)(struct effect_entity *entity);
     void (*entity_destroy)(struct effect_entity *entity);
     void (*entity_enable)(struct effect_entity *entity);
+
+    bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_post)(struct effect_entity *entity, struct ky_scene_output *output);
 };
 
 struct effect {
@@ -23,6 +29,7 @@ struct effect {
     const char *uuid, *name;
     int priority;
     bool enabled; // true default
+    uint32_t types;
 
     const struct effect_interface *impl;
 
@@ -48,6 +55,7 @@ struct effect_chain {
 
 struct effect_entity {
     struct effect_slot slot;
+    struct effect_slot frame_slot;
 
     struct effect *effect;
     struct wl_list effect_link;
@@ -75,8 +83,10 @@ void effect_destroy(struct effect *effect);
 
 void effect_set_enabled(struct effect *effect, bool enabled);
 
+void effect_entity_destroy(struct effect_entity *entity);
+
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect);
 
-void effect_entity_destroy(struct effect_entity *entity);
+struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effec);
 
 #endif /* _EFFECT_H_ */

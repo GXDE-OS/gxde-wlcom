@@ -13,8 +13,29 @@
 #include "scene/animation.h"
 #include "scene/thumbnail.h"
 
+enum effect_type {
+    EFFECT_TYPE_NONE = 0,
+    EFFECT_TYPE_NODE = 1 << 0,
+    EFFECT_TYPE_VIEW = 1 << 1,
+    EFFECT_TYPE_SCENE = 1 << 2,
+};
+
 static struct effect_manager *manager = NULL;
 static const struct wlr_addon_interface effect_addon_impl;
+
+static uint32_t get_effect_types(const struct effect_interface *impl)
+{
+    uint32_t types = 0;
+    if (!impl) {
+        return 0;
+    }
+    if (impl->frame_render || impl->frame_render_pre || impl->frame_render_begin ||
+        impl->frame_render_end || impl->frame_render_post) {
+        types |= EFFECT_TYPE_SCENE;
+    }
+
+    return types;
+}
 
 static struct node_effect_chain *node_effect_chain_from_node(struct ky_scene_node *node)
 {
@@ -94,10 +115,14 @@ void effect_entity_destroy(struct effect_entity *entity)
 {
     wl_list_remove(&entity->slot.link);
     wl_list_remove(&entity->slot.chain_destroy.link);
+    wl_list_remove(&entity->frame_slot.link);
+    wl_list_remove(&entity->frame_slot.chain_destroy.link);
+
     wl_list_remove(&entity->effect_link);
     wl_list_remove(&entity->effect_enable.link);
     wl_list_remove(&entity->effect_disable.link);
-    wl_list_remove(&entity->effect_disable.link);
+    wl_list_remove(&entity->effect_destroy.link);
+    entity->effect->impl->entity_destroy(entity);
 
     free(entity);
 }
@@ -173,6 +198,13 @@ static void entity_handle_effect_enable(struct wl_listener *listener, void *data
 
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect)
 {
+    bool is_root = node->parent == NULL;
+    if (is_root && !(effect->types & EFFECT_TYPE_SCENE)) {
+        return NULL;
+    } else if (!is_root && !(effect->types & EFFECT_TYPE_NODE)) {
+        return NULL;
+    }
+
     struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
     struct node_effect_chain *chain =
         addon ? wl_container_of(addon, chain, addon) : node_effec_chain_create(node);
@@ -187,7 +219,7 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
     struct effect_slot *slot;
     wl_list_for_each(slot, &chain->base.slots, link) {
         entity = wl_container_of(slot, entity, slot);
-        if (entity->effect == effect) {
+        if (entity->effect == effect && !is_root) {
             kywc_log(KYWC_WARN, "effect %s is already added", effect->name);
             return entity;
         }
@@ -198,15 +230,41 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         list = &slot->link;
     }
 
+    if ((effect->types & EFFECT_TYPE_SCENE) && !is_root) {
+        struct ky_scene *scene = ky_scene_from_node(node);
+        entity = ky_scene_add_effect(scene, effect);
+        if (!entity) {
+            return NULL;
+        }
+        if (effect->types & EFFECT_TYPE_NODE) {
+            entity->slot.chain = &chain->base;
+            wl_list_insert(list, &entity->slot.link);
+            entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
+            wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
+        }
+        return entity;
+    }
+
     entity = calloc(1, sizeof(*entity));
     if (!entity) {
         return NULL;
     }
 
-    entity->slot.chain = &chain->base;
-    wl_list_insert(list, &entity->slot.link);
-    entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
-    wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
+    if (!is_root) {
+        entity->slot.chain = &chain->base;
+        wl_list_insert(list, &entity->slot.link);
+        entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
+        wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
+        wl_list_init(&entity->frame_slot.link);
+        wl_list_init(&entity->frame_slot.chain_destroy.link);
+    } else {
+        wl_list_init(&entity->slot.link);
+        wl_list_init(&entity->slot.chain_destroy.link);
+        entity->frame_slot.chain = &chain->base;
+        wl_list_insert(list, &entity->frame_slot.link);
+        entity->frame_slot.chain_destroy.notify = entity_handle_chain_destroy;
+        wl_signal_add(&chain->base.events.destroy, &entity->frame_slot.chain_destroy);
+    }
 
     entity->effect = effect;
     wl_list_insert(&effect->entities, &entity->effect_link);
@@ -216,6 +274,8 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
     wl_signal_add(&effect->events.disable, &entity->effect_disable);
     entity->effect_destroy.notify = entity_handle_effect_destroy;
     wl_signal_add(&effect->events.destroy, &entity->effect_destroy);
+
+    effect->impl->entity_create(entity);
 
     return entity;
 }
@@ -262,6 +322,7 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
     effect->priority = priority;
     effect->impl = impl;
     effect->enabled = enabled;
+    effect->types = get_effect_types(impl);
 
     wl_list_init(&effect->entities);
     wl_signal_init(&effect->events.enable);
@@ -336,4 +397,9 @@ bool effect_manager_create(struct server *server)
     move_effect_create(manager);
 
     return true;
+}
+
+struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effect)
+{
+    return ky_scene_node_add_effect(&scene->tree.node, effect);
 }
