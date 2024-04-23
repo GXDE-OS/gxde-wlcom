@@ -393,6 +393,7 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
             .lb = render_with_radius ? node->radius[2] * target->scale : 0,
             .lt = render_with_radius ? node->radius[3] * target->scale : 0,
         },
+        .repeated = scene_buffer->repeated,
     };
 
     struct blur_render_options opts = {
@@ -642,7 +643,6 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
     }
 
     scene_buffer->transform = transform;
-
     ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
@@ -654,6 +654,16 @@ void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opa
 
     scene_buffer->opacity = opacity;
     ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+}
+
+void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool repeated)
+{
+    if (scene_buffer->repeated == repeated) {
+        return;
+    }
+
+    scene_buffer->repeated = repeated;
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
 void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *outputs,

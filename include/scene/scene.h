@@ -233,6 +233,7 @@ struct ky_scene_buffer {
     int dst_width, dst_height;
     enum wl_output_transform transform;
 
+    bool repeated;
     float opacity;
     pixman_region32_t opaque_region;
 
@@ -366,6 +367,8 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
 
 void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
                                    enum wl_output_transform transform);
+
+void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool repeated);
 
 /**
  * scene output

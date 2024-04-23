@@ -133,7 +133,7 @@ static void watermark_update_buffer(struct watermark *watermark)
         y += effect->info.y;
         break;
     case EXPAND_TYPE_REPEAT:
-        // TODO: add scene_buffer repeat support
+        ky_scene_buffer_set_repeated(watermark->scene_buffer, true);
         /* fallthrought to screen */
     case EXPAND_TYPE_SCREEN:
         wlr_output_effective_resolution(output->output, &width, &height);

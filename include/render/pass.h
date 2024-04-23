@@ -14,6 +14,7 @@ struct ky_render_round_corner {
 struct ky_render_texture_options {
     struct wlr_render_texture_options base;
     struct ky_render_round_corner radius;
+    bool repeated;
 };
 
 struct ky_render_rect_options {
