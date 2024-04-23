@@ -7,6 +7,7 @@
 
 #include "scene.h"
 #include "view/view.h"
+#include "view/workspace.h"
 
 struct server;
 
@@ -29,6 +30,9 @@ bool thumbnail_manager_create(struct server *server);
 struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale);
 
 struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option, float scale);
+
+struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
+                                                  struct kywc_output *output, float scale);
 
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener);
 
