@@ -85,6 +85,10 @@ static struct watermark_buffer *watermark_get_or_create_buffer(struct watermark_
         .png_path = effect->info.file,
     };
     buffer->buffer = painter_draw_buffer(&info);
+    if (!buffer->buffer) {
+        free(buffer);
+        return NULL;
+    }
 
     wl_list_insert(&effect->buffers, &buffer->link);
     return buffer;
@@ -118,6 +122,10 @@ static void watermark_update_buffer(struct watermark *watermark)
     struct ky_scene_output *output = watermark->output;
 
     struct watermark_buffer *buffer = watermark_get_or_create_buffer(effect, output);
+    if (!buffer) {
+        return;
+    }
+
     if (watermark->buffer != buffer) {
         ky_scene_buffer_set_buffer(watermark->scene_buffer, buffer->buffer);
         watermark->buffer = buffer;
