@@ -96,8 +96,8 @@ struct cairo_buffer *cairo_buffer_create_from_png(uint32_t width, uint32_t heigh
 
     buffer->cairo = cairo_create(buffer->surface);
 
-    buffer->width = width;
-    buffer->height = height;
+    buffer->width = width ? width : png_width;
+    buffer->height = height ? height : png_height;
 
     return buffer;
 }
@@ -123,8 +123,8 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
 
     buffer->cairo = cairo_create(buffer->surface);
 
-    buffer->width = width;
-    buffer->height = height;
+    buffer->width = width ? width : src_width;
+    buffer->height = height ? height : src_height;
 
     return buffer;
 }
