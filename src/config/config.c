@@ -118,10 +118,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
     struct config *config, *config_tmp;
     wl_list_for_each_safe(config, config_tmp, &config_manager->configs, link) {
-        wl_signal_emit_mutable(&config->events.destroy, NULL);
-        wl_list_remove(&config->link);
-        sd_bus_slot_unref(config->slot);
-        free(config);
+        config_destroy(config);
     }
 
     sd_bus_flush_close_unref(config_manager->bus);
@@ -236,4 +233,12 @@ void config_notify(const char *title, const char *body, const char *icon)
                              "/org/freedesktop/Notifications", "org.freedesktop.Notifications",
                              "Notify", NULL, NULL, "susssasa{sv}i", "kylin-wlcom", 0,
                              icon ? icon : "", title, body, 0, 0, 5000);
+}
+
+void config_destroy(struct config *config)
+{
+    wl_signal_emit_mutable(&config->events.destroy, NULL);
+    wl_list_remove(&config->link);
+    sd_bus_slot_unref(config->slot);
+    free(config);
 }
