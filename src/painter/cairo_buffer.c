@@ -70,8 +70,8 @@ struct cairo_buffer *cairo_buffer_create(uint32_t width, uint32_t height, float 
 
     buffer->cairo = cairo_create(buffer->surface);
 
-    buffer->width = width;
-    buffer->height = height;
+    buffer->dst_width = width;
+    buffer->dst_height = height;
 
     return buffer;
 }
@@ -90,14 +90,14 @@ struct cairo_buffer *cairo_buffer_create_from_png(uint32_t width, uint32_t heigh
         return NULL;
     }
 
-    int png_width = cairo_image_surface_get_width(buffer->surface);
-    int png_height = cairo_image_surface_get_height(buffer->surface);
+    uint32_t png_width = cairo_image_surface_get_width(buffer->surface);
+    uint32_t png_height = cairo_image_surface_get_height(buffer->surface);
     wlr_buffer_init(&buffer->base, &cairo_buffer_impl, png_width, png_height);
 
     buffer->cairo = cairo_create(buffer->surface);
 
-    buffer->width = width ? width : png_width;
-    buffer->height = height ? height : png_height;
+    buffer->dst_width = width ? width : png_width;
+    buffer->dst_height = height ? height : png_height;
 
     return buffer;
 }
@@ -123,8 +123,8 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
 
     buffer->cairo = cairo_create(buffer->surface);
 
-    buffer->width = width ? width : src_width;
-    buffer->height = height ? height : src_height;
+    buffer->dst_width = width ? width : src_width;
+    buffer->dst_height = height ? height : src_height;
 
     return buffer;
 }

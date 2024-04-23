@@ -89,7 +89,7 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
 
 bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info);
 
-void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height);
+void painter_buffer_dest_size(struct wlr_buffer *buffer, int *width, int *height);
 
 void painter_buffer_size(struct wlr_buffer *buffer, int *width, int *height);
 

@@ -505,7 +505,7 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
 
     int width, height;
     if (type > BUTTON_CLOSE) {
-        painter_buffer_unscaled_size(buf, &width, &height);
+        painter_buffer_dest_size(buf, &width, &height);
     } else {
         width = height = theme->ssd.button_width;
     }
@@ -532,7 +532,7 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
     }
 
     int width, height;
-    painter_buffer_unscaled_size(buf, &width, &height);
+    painter_buffer_dest_size(buf, &width, &height);
     ky_scene_buffer_set_dest_size(buffer, width, height);
 }
 

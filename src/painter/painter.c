@@ -321,19 +321,19 @@ bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info)
     }
 
     /* fix size to buffer unscaled size */
-    info->width = buf->width;
-    info->height = buf->height;
+    info->width = buf->dst_width;
+    info->height = buf->dst_height;
     return painter_draw(buf, info, true);
 }
 
-void painter_buffer_unscaled_size(struct wlr_buffer *buffer, int *width, int *height)
+void painter_buffer_dest_size(struct wlr_buffer *buffer, int *width, int *height)
 {
     struct cairo_buffer *buf = cairo_buffer_from_wlr_buffer(buffer);
     if (buf && width) {
-        *width = buf->width;
+        *width = buf->dst_width;
     }
     if (buf && height) {
-        *height = buf->height;
+        *height = buf->dst_height;
     }
 }
 

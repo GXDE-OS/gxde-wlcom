@@ -19,9 +19,9 @@ struct cairo_buffer {
     cairo_t *cairo;
     cairo_surface_t *surface;
 
-    /* unscaled size */
-    uint32_t width;
-    uint32_t height;
+    /* unscaled size or dest size */
+    uint32_t dst_width;
+    uint32_t dst_height;
 };
 
 struct cairo_buffer *cairo_buffer_create(uint32_t width, uint32_t height, float scale);
