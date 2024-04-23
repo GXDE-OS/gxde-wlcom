@@ -729,7 +729,6 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         return false;
     }
     effect->scene = effect_manager->server->scene;
-    effect->effect->enabled = true;
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);
