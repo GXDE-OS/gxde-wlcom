@@ -575,7 +575,14 @@ static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, s
         view_get_tiled_geometry(&xwayland_view->view, geo, kywc_output, kywc_view->tiled);
     } else if (wl_list_empty(&xwayland_view->output_update_usable_area.link)) {
         struct output *output = output_from_kywc_output(kywc_output);
-        window_move_constraints(kywc_view, output, &geo->x, &geo->y);
+        if (kywc_view->has_initial_position) {
+            int min_x = output->usable_area.x + kywc_view->margin.off_x;
+            int min_y = output->usable_area.y + kywc_view->margin.off_y;
+            geo->x = geo->x <= min_x ? min_x : geo->x;
+            geo->y = geo->y <= min_y ? min_y : geo->y;
+        } else {
+            window_move_constraints(kywc_view, output, &geo->x, &geo->y);
+        }
     }
 }
 
