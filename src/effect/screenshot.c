@@ -178,7 +178,7 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
-bool ukui_screenshot_create(struct effect_manager *effect_manager)
+bool screenshot_effect_create(struct effect_manager *effect_manager)
 {
     manager = calloc(1, sizeof(struct screenshot_manager));
     if (!manager) {

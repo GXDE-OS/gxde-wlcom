@@ -24,22 +24,30 @@ struct effect *effect_by_name(const char *name);
 
 bool showfps_effect_create(struct effect_manager *manager);
 
-bool watermark_effect_create(struct effect_manager *manager);
-
 bool capture_manager_create(struct server *server);
 
 bool ky_capture_manager_create(struct server *server);
 
+bool blur_effect_create(struct effect_manager *effect_manager);
+
 #if HAVE_UKUI_SCREENSHOT
-bool ukui_screenshot_create(struct effect_manager *effect_manager);
+bool screenshot_effect_create(struct effect_manager *effect_manager);
 #else
 static __attribute__((unused)) inline bool
-ukui_screenshot_create(struct effect_manager *effect_manager)
+screenshot_effect_create(struct effect_manager *effect_manager)
 {
     return false;
 }
 #endif
 
-bool blur_effect_create(struct effect_manager *effect_manager);
+#if HAVE_UKUI_WATERMARK
+bool watermark_effect_create(struct effect_manager *manager);
+#else
+static __attribute__((unused)) inline bool
+watermark_effect_create(struct effect_manager *effect_manager)
+{
+    return false;
+}
+#endif
 
 #endif /* _EFFECT_P_H_ */

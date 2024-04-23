@@ -4,7 +4,6 @@ wlcom_sources += files(
   'config.c',
   'effect.c',
   'showfps.c',
-  'watermark.c',
 )
 
 wlcom_sources += files(
@@ -13,7 +12,13 @@ wlcom_sources += files(
 
 if have_ukui_screenshot
   wlcom_sources += files(
-    'ukui_screenshot.c',
+    'screenshot.c',
+  )
+endif
+
+if have_ukui_watermark
+  wlcom_sources += files(
+    'watermark.c',
   )
 endif
 
