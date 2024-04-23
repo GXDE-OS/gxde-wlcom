@@ -619,12 +619,7 @@ static void kde_input_destroy(struct kde_input *input)
 {
     wl_list_remove(&input->link);
     wl_list_remove(&input->destroy.link);
-    wl_list_remove(&input->config->link);
-
-    wl_signal_emit_mutable(&input->config->events.destroy, NULL);
-    sd_bus_slot_unref(input->config->slot);
-
-    free(input->config);
+    config_destroy(input->config);
     free(input->sys_name);
     free(input);
 }
