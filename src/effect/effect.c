@@ -403,3 +403,101 @@ struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect 
 {
     return ky_scene_node_add_effect(&scene->tree.node, effect);
 }
+
+enum interface_name {
+    RENDER_PRE,
+    RENDER_BEGIN,
+    RENDER,
+    RENDER_END,
+    RENDER_POST,
+};
+
+#define scene_effect_run(entity, scene_output, interface_name) \
+if (entity->effect->impl->frame_##interface_name && \
+    !entity->effect->impl->frame_##interface_name (entity, scene_output)) { \
+    return; \
+}
+
+static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum interface_name name,
+                                   struct ky_scene_render_target *target)
+{
+    struct ky_scene *scene = scene_output->scene;
+    struct ky_scene_node *node = &scene->tree.node;
+    struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
+    struct node_effect_chain *chain =  wl_container_of(addon, chain, addon);
+    if (!chain || !addon) {
+        return ;
+    }
+
+    struct effect_entity *entity;
+    struct effect_slot *slot, *temp_slot;
+    wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, frame_slot);
+        switch (name)
+        {
+        case RENDER_PRE:
+            scene_effect_run(entity, scene_output, render_pre);
+            break;
+        case RENDER_BEGIN:
+            scene_effect_run(entity, scene_output, render_begin);
+            break;
+        case RENDER:
+            break;
+        case RENDER_END:
+            if (entity->effect->impl->frame_render_end &&
+                !entity->effect->impl->frame_render_end(entity, target)) {
+                return; 
+            }
+            break;
+        case RENDER_POST:
+            scene_effect_run(entity, scene_output, render_post);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void ky_scene_output_render_pre(struct ky_scene_output *scene_output)
+{
+    scene_outut_run_effect(scene_output, RENDER_PRE, NULL);
+}
+
+void ky_scene_output_render_begin(struct ky_scene_output *scene_output)
+{
+    scene_outut_run_effect(scene_output, RENDER_BEGIN, NULL);
+}
+
+bool ky_scene_output_render(struct ky_scene_render_target *target)
+{
+    struct ky_scene *scene = target->output->scene;
+    struct ky_scene_node *node = &scene->tree.node;
+    struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
+    struct node_effect_chain *chain =  wl_container_of(addon, chain, addon);
+    if (!chain || !addon) {
+        return false;
+    }
+
+    bool has_rendered = false;
+    struct effect_entity *entity;
+    struct effect_slot *slot, *temp_slot;
+    wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, frame_slot);
+        if (entity->effect->impl->frame_render){
+            has_rendered = true;
+            entity->effect->impl->frame_render(entity, target);
+            return has_rendered;
+        }
+    }
+    return has_rendered;
+}
+
+void ky_scene_output_render_end(struct ky_scene_render_target *target)
+{
+    scene_outut_run_effect(target->output, RENDER_END, target);
+}
+
+void ky_scene_output_render_post(struct ky_scene_output *scene_output)
+{
+    scene_outut_run_effect(scene_output, RENDER_POST, NULL);
+}

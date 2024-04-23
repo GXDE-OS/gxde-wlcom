@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/region.h>
 
+#include "effect/effect.h"
 #include "output.h"
 #include "scene_p.h"
 
@@ -388,6 +389,8 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     wlr_output_state_set_buffer(state, buffer);
     wlr_buffer_unlock(buffer);
 
+    ky_scene_output_render_post(scene_output);
+
     return true;
 }
 
@@ -396,6 +399,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 {
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&scene_output->events.frame, NULL);
+
+    ky_scene_output_render_pre(scene_output);
 
     struct wlr_output *output = scene_output->output;
     struct ky_scene_render_target target = {

@@ -6,6 +6,7 @@
 #define _EFFECT_H_
 
 #include "scene/scene.h"
+#include "scene/render.h"
 
 struct server;
 struct effect_entity;
@@ -17,8 +18,8 @@ struct effect_interface {
 
     bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_output *output);
     bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_output *output);
-    bool (*frame_render)(struct effect_entity *entity, struct ky_scene_output *output);
-    bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_output *output);
+    void (*frame_render)(struct effect_entity *entity, struct ky_scene_render_target *target);
+    bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_post)(struct effect_entity *entity, struct ky_scene_output *output);
 };
 
@@ -88,5 +89,15 @@ void effect_entity_destroy(struct effect_entity *entity);
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect);
 
 struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effec);
+
+void ky_scene_output_render_pre(struct ky_scene_output *scene_output);
+
+void ky_scene_output_render_begin(struct ky_scene_output *scene_output);
+
+bool ky_scene_output_render(struct ky_scene_render_target *target);
+
+void ky_scene_output_render_end(struct ky_scene_render_target *target);
+
+void ky_scene_output_render_post(struct ky_scene_output *scene_output);
 
 #endif /* _EFFECT_H_ */
