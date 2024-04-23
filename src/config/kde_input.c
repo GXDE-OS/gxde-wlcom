@@ -10,6 +10,7 @@
 
 #include "config_p.h"
 #include "input/input.h"
+#include "kywc/output.h"
 
 static const char *service_path = "/org/kde/KWin/InputDevice";
 static const char *kde_input_path = "/org/kde/KWin/InputDevice/";
@@ -91,6 +92,14 @@ static int is_touchpad(sd_bus *bus, const char *path, const char *interface, con
     return sd_bus_message_append_basic(reply, 'b', &is_touchpad);
 }
 
+static int is_touch(sd_bus *bus, const char *path, const char *interface, const char *property,
+                    sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t is_touch = input->input->prop.type == WLR_INPUT_DEVICE_TOUCH;
+    return sd_bus_message_append_basic(reply, 'b', &is_touch);
+}
+
 static int is_tablet_tool(sd_bus *bus, const char *path, const char *interface,
                           const char *property, sd_bus_message *reply, void *userdata,
                           sd_bus_error *ret_error)
@@ -136,6 +145,14 @@ static int product(sd_bus *bus, const char *path, const char *interface, const c
     struct kde_input *input = userdata;
     uint32_t product = input->input->prop.product;
     return sd_bus_message_append_basic(reply, 'i', &product);
+}
+
+static int vendor(sd_bus *bus, const char *path, const char *interface, const char *property,
+                  sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    uint32_t vendor = input->input->prop.vendor;
+    return sd_bus_message_append_basic(reply, 'i', &vendor);
 }
 
 static int supports_disable_events(sd_bus *bus, const char *path, const char *interface,
@@ -537,17 +554,57 @@ static int set_disable_while_typing(sd_bus *bus, const char *path, const char *i
     return sd_bus_reply_method_return(reply, NULL);
 }
 
+static int get_mapped_output(sd_bus *bus, const char *path, const char *interface,
+                             const char *property, sd_bus_message *reply, void *userdata,
+                             sd_bus_error *ret_error)
+{
+    struct kde_input *input = userdata;
+    const char *mapped_to_output = input->input->state.mapped_to_output;
+    return sd_bus_message_append_basic(reply, 's', mapped_to_output ? mapped_to_output : "none");
+}
+
+static int set_mapped_output(sd_bus *bus, const char *path, const char *interface,
+                             const char *property, sd_bus_message *reply, void *userdata,
+                             sd_bus_error *ret_error)
+{
+    const char *output_name = NULL;
+    CK(sd_bus_message_read(reply, "s", &output_name));
+
+    bool none_output = !strcmp(output_name, "none");
+    if (!none_output) {
+        struct kywc_output *kywc_output = kywc_output_by_name(output_name);
+        if (!kywc_output || !kywc_output->state.enabled) {
+            const sd_bus_error error =
+                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild output or disabled.");
+            return sd_bus_reply_method_error(reply, &error);
+        }
+    }
+
+    struct kde_input *input = userdata;
+    const char *current = input->input->mapped_output ? input->input->state.mapped_to_output
+                                                      : input->input->desired_mapped_output;
+
+    if (input->input->prop.support_mapped_to_output && (!current || strcmp(current, output_name))) {
+        struct input_state state = input->input->state;
+        state.mapped_to_output = none_output ? NULL : output_name;
+        input_set_state(input->input, &state);
+    }
+    return sd_bus_reply_method_return(reply, NULL);
+}
+
 static const sd_bus_vtable input_vtable[] = {
     SD_BUS_VTABLE_START(0),
     KDE_PROP("pointer", "b", is_pointer),
     KDE_PROP("keyboard", "b", is_keyboard),
     KDE_PROP("touchpad", "b", is_touchpad),
+    KDE_PROP("touch", "b", is_touch),
     KDE_PROP("tabletTool", "b", is_tablet_tool),
     KDE_PROP("tabletPad", "b", is_tablet_pad),
     KDE_PROP("switchDevice", "b", is_switch),
     KDE_PROP("name", "s", name),
     KDE_PROP("sysName", "s", sys_name),
     KDE_PROP("product", "i", product),
+    KDE_PROP("vendor", "i", vendor),
     KDE_PROP("supportsDisableEvents", "b", supports_disable_events),
     KDE_PROP("supportsDisableEventsOnExternalMouse", "b",
              supports_disable_events_on_external_mouse),
@@ -587,6 +644,8 @@ static const sd_bus_vtable input_vtable[] = {
     KDE_PROP("disableWhileTypingEnabledByDefault", "b", disable_while_typing_enabled_by_default),
     KDE_WPROP("disableWhileTyping", "b", get_disable_while_typing, set_disable_while_typing),
 
+    KDE_WPROP("mapToOutput", "s", get_mapped_output, set_mapped_output),
+
     SD_BUS_VTABLE_END,
 };
 
@@ -615,8 +674,29 @@ static const sd_bus_vtable ukui_kwin_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
+static void kde_input_notify_destroy(struct kde_input *input)
+{
+    if (!input->config) {
+        return;
+    }
+
+    sd_bus *bus = sd_bus_slot_get_bus(input->config->slot);
+    sd_bus_emit_signal(bus, service_path, service_interface, "deviceRemoved", "s", input->sys_name);
+}
+
+static void kde_input_notify_create(struct kde_input *input)
+{
+    if (!input->config) {
+        return;
+    }
+
+    sd_bus *bus = sd_bus_slot_get_bus(input->config->slot);
+    sd_bus_emit_signal(bus, service_path, service_interface, "deviceAdded", "s", input->sys_name);
+}
+
 static void kde_input_destroy(struct kde_input *input)
 {
+    kde_input_notify_destroy(input);
     wl_list_remove(&input->link);
     wl_list_remove(&input->destroy.link);
     config_destroy(input->config);
@@ -656,6 +736,7 @@ static void handle_new_kde_input(struct wl_listener *listener, void *data)
     kde_input->config =
         config_manager_add_config(NULL, NULL, path, kde_input_interface, input_vtable, kde_input);
     free(path);
+    kde_input_notify_create(kde_input);
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data)
