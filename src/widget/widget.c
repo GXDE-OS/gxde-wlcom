@@ -209,6 +209,12 @@ void widget_set_round_coner(struct widget *widget, uint32_t mask, float radius)
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
+void widget_set_opacity(struct widget *widget, float opacity)
+{
+    /* no need to redraw the buffer */
+    ky_scene_buffer_set_opacity(widget->content.buffer, opacity);
+}
+
 void widget_set_border(struct widget *widget, const float color[static 4], uint32_t mask,
                        float width)
 {
