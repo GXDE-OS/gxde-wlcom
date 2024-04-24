@@ -333,6 +333,7 @@ bool effect_manager_create(struct server *server)
     blur_effect_create(manager);
     screenshot_effect_create(manager);
     watermark_effect_create(manager);
+    move_effect_create(manager);
 
     return true;
 }

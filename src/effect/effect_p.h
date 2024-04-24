@@ -28,6 +28,8 @@ bool capture_manager_create(struct server *server);
 
 bool ky_capture_manager_create(struct server *server);
 
+bool move_effect_create(struct effect_manager *effect_manager);
+
 bool blur_effect_create(struct effect_manager *effect_manager);
 
 #if HAVE_UKUI_SCREENSHOT
