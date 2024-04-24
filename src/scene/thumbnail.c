@@ -131,8 +131,8 @@ static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct
     } else if (option & THUMBNAIL_DISABLE_SHADOW) {
         box->x -= kywc_view->margin.off_x;
         box->y -= kywc_view->margin.off_y;
-        box->width += kywc_view->margin.off_width * 2;
-        box->height += kywc_view->margin.off_height * 2;
+        box->width += kywc_view->margin.off_width;
+        box->height += kywc_view->margin.off_height;
     } else if (option & THUMBNAIL_DISABLE_ROUND_CORNER || option == 0) {
         box->x -= kywc_view->margin.off_x + theme->ssd.shadow_border;
         box->y -= kywc_view->margin.off_y + theme->ssd.shadow_border;
