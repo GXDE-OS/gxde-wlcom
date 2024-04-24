@@ -5,21 +5,30 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <wlr/types/wlr_buffer.h>
+
 #include "effect/move.h"
 #include "effect_p.h"
 #include "scene/box.h"
+#include "scene/thumbnail.h"
 
 enum move_effect_type {
     MOVE_EFFECT_BORDER = 0, // no window content shown
-    MOVE_EFFECT_OPACITY,    // TODO: support this
+    MOVE_EFFECT_OPACITY,
 };
 
 struct move_proxy {
     struct wl_list link;
 
     struct view *view;
-    struct ky_scene_box *box;
     struct ky_scene_node *node;
+    /* MOVE_EFFECT_BORDER */
+    struct ky_scene_box *box;
+    /* MOVE_EFFECT_OPACITY */
+    struct ky_scene_buffer *buffer;
+    struct thumbnail *thumbnail;
+    struct wl_listener thumbnail_update;
+    struct wl_listener thumbnail_destroy;
 
     struct {
         struct wl_signal destroy;
@@ -39,12 +48,42 @@ static struct move_effect {
     enum move_effect_type type;
 } *effect = NULL;
 
-static void proxy_create_box(struct move_proxy *proxy)
+static void proxy_handle_thumbnail_update(struct wl_listener *listener, void *data)
+{
+    struct move_proxy *proxy = wl_container_of(listener, proxy, thumbnail_update);
+    struct thumbnail_update_event *event = data;
+    ky_scene_buffer_set_dest_size(proxy->buffer, event->buffer->width, event->buffer->height);
+    ky_scene_buffer_set_buffer(proxy->buffer, event->buffer);
+}
+
+static void proxy_handle_thumbnail_destroy(struct wl_listener *listener, void *data)
+{
+    struct move_proxy *proxy = wl_container_of(listener, proxy, thumbnail_destroy);
+    proxy->thumbnail = NULL;
+    move_proxy_destroy(proxy);
+}
+
+static void proxy_create_node(struct move_proxy *proxy)
 {
     struct ky_scene_tree *tree = proxy->view->tree->node.parent;
-    float color[4] = { 1.0, 1.0, 1.0, 1.0 };
-    proxy->box = ky_scene_box_create(tree, proxy->width, proxy->height, color, 1);
-    proxy->node = ky_scene_node_from_box(proxy->box);
+
+    if (effect->type == MOVE_EFFECT_BORDER) {
+        float color[4] = { 0.5, 0.5, 0.5, 1.0 };
+        proxy->box = ky_scene_box_create(tree, proxy->width, proxy->height, color, 1);
+        proxy->node = ky_scene_node_from_box(proxy->box);
+    } else if (effect->type == MOVE_EFFECT_OPACITY) {
+        proxy->buffer = ky_scene_buffer_create(tree, NULL);
+        proxy->node = &proxy->buffer->node;
+        ky_scene_buffer_set_opacity(proxy->buffer, 0.5);
+
+        proxy->thumbnail = thumbnail_create_from_view(proxy->view, THUMBNAIL_DISABLE_SHADOW, 1.0);
+        proxy->thumbnail_update.notify = proxy_handle_thumbnail_update;
+        thumbnail_add_update_listener(proxy->thumbnail, &proxy->thumbnail_update);
+        proxy->thumbnail_destroy.notify = proxy_handle_thumbnail_destroy;
+        thumbnail_add_destroy_listener(proxy->thumbnail, &proxy->thumbnail_destroy);
+        // FIXME: thumbnail update is disable here, using node effect instead
+        ky_scene_node_set_enabled(&proxy->view->tree->node, false);
+    }
 }
 
 void move_proxy_move(struct move_proxy *proxy, int x, int y)
@@ -52,8 +91,8 @@ void move_proxy_move(struct move_proxy *proxy, int x, int y)
     proxy->x = x;
     proxy->y = y;
 
-    if (!proxy->box) {
-        proxy_create_box(proxy);
+    if (!proxy->node) {
+        proxy_create_node(proxy);
     }
 
     ky_scene_node_set_position(proxy->node, x - proxy->view->base.margin.off_x,
@@ -73,11 +112,19 @@ void move_proxy_resize(struct move_proxy *proxy, int width, int height)
 void move_proxy_destroy(struct move_proxy *proxy)
 {
     wl_signal_emit_mutable(&proxy->events.destroy, NULL);
-    wl_list_remove(&proxy->link);
 
-    if (proxy->box) {
+    wl_list_remove(&proxy->link);
+    wl_list_remove(&proxy->thumbnail_update.link);
+    wl_list_remove(&proxy->thumbnail_destroy.link);
+
+    if (proxy->node) {
         kywc_view_move(&proxy->view->base, proxy->x, proxy->y);
         ky_scene_node_destroy(proxy->node);
+    }
+
+    if (proxy->thumbnail) {
+        thumbnail_destroy(proxy->thumbnail);
+        ky_scene_node_set_enabled(&proxy->view->tree->node, true);
     }
 
     free(proxy);
@@ -98,6 +145,8 @@ struct move_proxy *move_proxy_create(struct view *view, int width, int height)
     proxy->width = width;
     proxy->height = height;
     wl_signal_init(&proxy->events.destroy);
+    wl_list_init(&proxy->thumbnail_update.link);
+    wl_list_init(&proxy->thumbnail_destroy.link);
     wl_list_insert(&effect->proxies, &proxy->link);
 
     return proxy;
