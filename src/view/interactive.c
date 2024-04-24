@@ -8,6 +8,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_seat.h>
 
+#include "effect/move.h"
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
@@ -64,6 +65,10 @@ struct interactive_grab {
     enum kywc_tile snap_mode;
     struct wl_event_source *filter;
     bool filter_enabled;
+
+    /* move effect */
+    struct move_proxy *proxy;
+    struct wl_listener proxy_destroy;
 };
 
 static enum kywc_tile get_kywc_tile_mode(struct interactive_grab *grab)
@@ -253,6 +258,11 @@ static void interactivate_done_move(struct interactive_grab *grab)
 
 static void interactive_done(struct interactive_grab *grab)
 {
+    if (grab->proxy) {
+        wl_list_remove(&grab->proxy_destroy.link);
+        move_proxy_destroy(grab->proxy);
+    }
+
     /* for snap to edge */
     if (grab->view->base.mapped && grab->ongoing && grab->mode == INTERACTIVE_MODE_MOVE) {
         interactivate_done_move(grab);
@@ -326,12 +336,23 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
         } else {
             kywc_view_set_tiled(kywc_view, KYWC_TILE_NONE, NULL);
         }
+
+        if (grab->proxy) {
+            int width = kywc_view->margin.off_width + saved->width;
+            int height = kywc_view->margin.off_height + saved->height;
+            move_proxy_resize(grab->proxy, width, height);
+        }
     }
 
     int nx = grab->geo.x + x - grab->cursor_x;
     int ny = grab->geo.y + y - grab->cursor_y;
     window_move_constraints(&grab->view->base, grab->output, &nx, &ny);
-    kywc_view_move(kywc_view, nx, ny);
+
+    if (grab->proxy) {
+        move_proxy_move(grab->proxy, nx, ny);
+    } else {
+        kywc_view_move(kywc_view, nx, ny);
+    }
 
     interactive_move_show_snap_box(grab, x, y);
 }
@@ -593,6 +614,13 @@ static void handle_view_unmap(struct wl_listener *listener, void *data)
     interactive_done(grab);
 }
 
+static void handle_move_proxy_destroy(struct wl_listener *listener, void *data)
+{
+    struct interactive_grab *grab = wl_container_of(listener, grab, proxy_destroy);
+    wl_list_remove(&grab->proxy_destroy.link);
+    grab->proxy = NULL;
+}
+
 static void interactive_grab_add(struct view *view, enum interactive_mode mode, uint32_t edges,
                                  struct seat *seat)
 {
@@ -623,6 +651,14 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     /* set the default cursor */
     if (mode == INTERACTIVE_MODE_MOVE) {
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
+        /* create a move proxy for move effect */
+        int width = view->base.geometry.width + view->base.margin.off_width;
+        int height = view->base.geometry.height + view->base.margin.off_height;
+        grab->proxy = move_proxy_create(view, width, height);
+        if (grab->proxy) {
+            grab->proxy_destroy.notify = handle_move_proxy_destroy;
+            move_proxy_add_destroy_listener(grab->proxy, &grab->proxy_destroy);
+        }
     } else if (mode == INTERACTIVE_MODE_RESIZE) {
         cursor_set_resize_image(seat->cursor, edges);
     }
