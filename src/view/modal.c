@@ -4,7 +4,6 @@
 
 #include <stdlib.h>
 
-#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "input/event.h"
@@ -25,6 +24,7 @@ struct modal {
     struct wl_listener view_minimized;
     struct wl_listener view_position;
     struct wl_listener view_activate;
+    struct wl_listener unset_modal;
 
     /* attributes used for the shake effect. */
     struct {
@@ -186,6 +186,7 @@ static void modal_destroy(struct modal *modal)
         modal->view->parent->base.fullscreenable = modal->parent_fullscreenable;
     }
 
+    wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
     wl_list_remove(&modal->view_minimized.link);
     wl_list_remove(&modal->view_position.link);
@@ -222,6 +223,12 @@ static void handle_view_activate(struct wl_listener *listener, void *data)
     modal_shake_effect_init(modal);
 }
 
+static void handle_unset_modal(struct wl_listener *listener, void *data)
+{
+    struct modal *modal = wl_container_of(listener, modal, unset_modal);
+    modal_destroy(modal);
+}
+
 static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct view *view)
 {
     struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
@@ -249,7 +256,7 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
     ky_scene_node_set_radius(&modal_box->node, radius);
 }
 
-void modal_create(struct view *view, struct seat *seat)
+void modal_create(struct view *view)
 {
     if (!view->base.modal || !view->parent || !view->parent->surface) {
         return;
@@ -295,6 +302,8 @@ void modal_create(struct view *view, struct seat *seat)
 
     modal->view_unmap.notify = handle_view_unmap;
     wl_signal_add(&view->base.events.unmap, &modal->view_unmap);
+    modal->unset_modal.notify = handle_unset_modal;
+    wl_signal_add(&view->base.events.unset_modal, &modal->unset_modal);
     /* The gray area is hidden when the desktop is displayed */
     modal->view_minimized.notify = handle_view_minimized;
     wl_signal_add(&kywc_view->events.minimize, &modal->view_minimized);
@@ -306,6 +315,7 @@ void modal_create(struct view *view, struct seat *seat)
     wl_signal_add(&kywc_view->events.activate, &modal->view_activate);
 
     /* create timer for modal shake effect*/
+    struct seat *seat = input_manager_get_default_seat();
     struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
     modal->timer = wl_event_loop_add_timer(loop, handle_modal_shake_effect, modal);
 }

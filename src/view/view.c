@@ -169,6 +169,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.size);
     wl_signal_init(&kywc_view->events.decoration);
     wl_signal_init(&kywc_view->events.shadow);
+    wl_signal_init(&kywc_view->events.unset_modal);
 
     view->impl = impl;
     view->data = data;
@@ -380,7 +381,7 @@ void view_map(struct view *view)
     kywc_view_activate(kywc_view);
     seat_focus_surface(input_manager_get_default_seat(), view->surface);
 
-    modal_create(view, input_manager_get_default_seat());
+    modal_create(view);
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
@@ -1424,6 +1425,7 @@ struct view_manager *view_manager_create(struct server *server)
     kde_plasma_shell_create(server);
     kde_plasma_window_management_create(server);
     kde_blur_manager_create(server);
+    xdg_dialog_create(server);
 
     return view_manager;
 }

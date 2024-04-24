@@ -140,6 +140,8 @@ struct kywc_view {
         struct wl_signal decoration;
         /* emit when view's drop-shadow mode has changed */
         struct wl_signal shadow;
+        /* emit when view unset modal */
+        struct wl_signal unset_modal;
     } events;
 };
 

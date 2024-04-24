@@ -10,6 +10,7 @@ wlcom_sources += files(
   'view.c',
   'window_menu.c',
   'workspace.c',
+  'xdg_dialog.c',
   'xdg_popup.c',
   'xdg_shell.c',
 )
