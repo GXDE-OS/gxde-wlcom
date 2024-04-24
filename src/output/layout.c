@@ -282,6 +282,12 @@ static void output_manager_handle_configured(struct wl_listener *listener, void 
 
 bool output_manager_layout_init(struct output_manager *output_manager)
 {
+    char *env = getenv("KYWC_USE_LAYOUT_MANAGER");
+    bool use_layout = env && strcmp(env, "1") == 0;
+    if (!use_layout) {
+        return false;
+    }
+
     output_manager->layout_config =
         config_manager_add_config("layouts", NULL, NULL, NULL, NULL, output_manager);
     /* listener output configured signal */
