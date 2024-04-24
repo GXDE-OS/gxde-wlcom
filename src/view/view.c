@@ -397,6 +397,7 @@ void view_map(struct view *view)
 void view_unmap(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
+    kywc_view->mapped = false;
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
 
@@ -409,7 +410,6 @@ void view_unmap(struct view *view)
 
     kywc_view->title = kywc_view->app_id = NULL;
     ky_scene_node_set_enabled(&view->tree->node, false);
-    kywc_view->mapped = false;
 
     if (view->pending.configure_timeout) {
         wl_event_source_remove(view->pending.configure_timeout);
