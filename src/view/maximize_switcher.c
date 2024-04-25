@@ -669,6 +669,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&switcher->server_destroy.link);
+    wl_list_remove(&switcher->theme_update.link);
     ky_scene_node_destroy(&switcher->tree->node);
 
     free(switcher);

@@ -254,6 +254,7 @@ static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *
 {
     struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, seat_destroy);
     wl_list_remove(&tooltip->seat_destroy.link);
+    wl_list_remove(&tooltip->theme_update.link);
     wl_list_remove(&tooltip->link);
 
     widget_destroy(tooltip->icon);
