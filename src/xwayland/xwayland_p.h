@@ -52,6 +52,10 @@ enum atom_name {
     NET_WM_ICON,
     NET_WM_WINDOW_OPACITY,
 
+    UTF8_STRING,
+    NET_WM_NAME,
+    NET_SUPPORTING_WM_CHECK,
+
     ATOM_LAST,
 };
 

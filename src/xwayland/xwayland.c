@@ -50,6 +50,10 @@ static const char *const atom_map[ATOM_LAST] = {
 
     [NET_WM_ICON] = "_NET_WM_ICON",
     [NET_WM_WINDOW_OPACITY] = "_NET_WM_WINDOW_OPACITY",
+
+    [UTF8_STRING] = "UTF8_STRING",
+    [NET_WM_NAME] = "_NET_WM_NAME",
+    [NET_SUPPORTING_WM_CHECK] = "_NET_SUPPORTING_WM_CHECK"
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -168,6 +172,19 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
     xcb_prefetch_extension_data(xcb_conn, &xcb_shape_id);
 
     xwayland_get_atoms(xcb_conn);
+
+    /**
+     * workaround to fix java apps show blank window
+     * wlcom is not a reparenting window manager
+     * or set _JAVA_AWT_WM_NONREPARENTING=1
+     */
+    const char name[] = "LG3D";
+    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        xwayland->atoms[NET_SUPPORTING_WM_CHECK], XCB_ATOM_WINDOW, 32, 1,
+                        &screen->root);
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root, xwayland->atoms[NET_WM_NAME],
+                        xwayland->atoms[UTF8_STRING], 8, strlen(name), name);
 
     xwayland->shape = xcb_get_extension_data(xcb_conn, &xcb_shape_id);
     if (!xwayland->shape || !xwayland->shape->present) {
