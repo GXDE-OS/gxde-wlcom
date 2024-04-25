@@ -1,0 +1,1 @@
+SUBSYSTEM=="graphics", GROUP="video", MODE="0666"

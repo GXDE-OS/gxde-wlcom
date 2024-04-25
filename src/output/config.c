@@ -140,7 +140,8 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
 void output_write_config(struct output *output)
 {
     struct output_manager *om = output->manager;
-    if (!om->config || !om->config->json || output->base.prop.is_virtual) {
+    if (!om->config || !om->config->json || output->base.prop.is_virtual ||
+        output->base.prop.is_fbdev) {
         return;
     }
 

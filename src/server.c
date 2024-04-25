@@ -28,6 +28,7 @@
 
 #include <kywc/log.h>
 
+#include "backend/backend.h"
 #include "config.h"
 #include "effect/effect.h"
 #include "input/input.h"
@@ -145,7 +146,7 @@ static bool wlroots_server_init(struct server *server)
     /* verbosity is not used when we replaced log_callback */
     wlr_log_init(WLR_DEBUG, kywc_log_callback);
 
-    server->backend = wlr_backend_autocreate(server->display, &server->session);
+    server->backend = ky_backend_autocreate(server->display, &server->session);
     if (!server->backend) {
         kywc_log(KYWC_FATAL, "unable to create backend");
         return false;

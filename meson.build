@@ -77,6 +77,7 @@ cairo = dependency('cairo')
 pango = dependency('pango')
 pangocairo = dependency('pangocairo')
 rsvg  = dependency('librsvg-2.0', version: '>=2.46')
+udev = dependency('libudev')
 
 plugindir = get_option('plugin_directory')
 if plugindir == ''
@@ -88,7 +89,7 @@ wlcom_sources = []
 
 wlcom_deps = [
   wayland_server, wayland_protos,
-  wlroots, xkbcommon, drm, input,
+  wlroots, xkbcommon, drm, input, udev,
   pixman, xcb, jsonc, sdbus,
   math, dl, thread,
   cairo, pango, pangocairo, rsvg,

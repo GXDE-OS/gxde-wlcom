@@ -17,6 +17,7 @@
 
 #include <kywc/log.h>
 
+#include "backend/fbdev.h"
 #include "output_p.h"
 #include "util/quirks.h"
 #include "xwayland.h"
@@ -124,8 +125,6 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
 {
     struct wlr_output *wlr_output = output->wlr_output;
 
-    prop->capabilities = KYWC_OUTPUT_CAPABILITY_POWER | KYWC_OUTPUT_CAPABILITY_BRIGHTNESS |
-                         KYWC_OUTPUT_CAPABILITY_COLOR_TEMP;
     prop->phys_width = wlr_output->phys_width;
     prop->phys_height = wlr_output->phys_height;
     prop->make = wlr_output->make;
@@ -133,8 +132,14 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->serial = wlr_output->serial;
     prop->desc = wlr_output->description;
     prop->is_virtual = wlr_output_is_headless(wlr_output);
+    prop->is_fbdev = wlr_output_is_fbdev(wlr_output);
     prop->brightness_support = output_support_brightness(output);
     prop->gamma_size = wlr_output_get_gamma_size(wlr_output);
+
+    prop->capabilities = KYWC_OUTPUT_CAPABILITY_POWER;
+    if (!prop->is_fbdev) {
+        prop->capabilities |= KYWC_OUTPUT_CAPABILITY_BRIGHTNESS | KYWC_OUTPUT_CAPABILITY_COLOR_TEMP;
+    }
 
     /* fix zero mode in some backend, like wayland */
     if (wl_list_empty(&wlr_output->modes)) {

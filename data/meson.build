@@ -1,5 +1,6 @@
 udev_backlight = files('udev-rules/90-backlight.rules')
-install_data(udev_backlight, install_dir: '/usr/lib/udev/rules.d')
+udev_framebuffer = files('udev-rules/90-framebuffer.rules')
+install_data(udev_backlight, udev_framebuffer, install_dir: '/usr/lib/udev/rules.d') 
 
 session = files('kylin-wlcom.desktop')
 install_data(session, install_dir: '/usr/share/wayland-sessions')

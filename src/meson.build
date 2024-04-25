@@ -6,6 +6,7 @@ wlcom_sources += files(
   'plugin/plugin.c',
 )
 
+subdir('backend')
 subdir('config')
 subdir('effect')
 subdir('input')

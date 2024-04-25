@@ -18,3 +18,4 @@ ForEachMacros:
   - 'json_object_object_foreach'
   - 'xorg_list_for_each_entry'
   - 'xorg_list_for_each_entry_safe'
+  - 'udev_list_entry_foreach'
