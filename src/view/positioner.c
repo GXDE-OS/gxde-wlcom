@@ -637,7 +637,7 @@ static void child_view_fix_geometry(struct view *view, int *lx, int *ly)
     if (need_resize) {
         geo.width -= kywc_view->margin.off_width;
         geo.height -= kywc_view->margin.off_height;
-        kywc_view_resize(kywc_view, &geo);
+        view_do_resize(view, &geo);
     }
 }
 
@@ -829,7 +829,7 @@ void positioner_add_new_view(struct view *view)
     }
 
 done:
-    kywc_view_move(kywc_view, lx, ly);
+    view_do_move(view, lx, ly);
     place_insert_entry(place, entry, slot);
 }
 

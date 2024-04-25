@@ -7,6 +7,7 @@ wlcom_sources += files(
   'modal.c',
   'positioner.c',
   'ssd.c',
+  'stack_mode.c',
   'view.c',
   'window_menu.c',
   'workspace.c',

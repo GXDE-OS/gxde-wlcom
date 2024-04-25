@@ -157,6 +157,10 @@ bool view_read_config(struct view_manager *view_manager)
     if (json_object_object_get_ex(view_manager->config->json, "csd_round_corner", &data)) {
         view_manager->state.csd_round_corner = json_object_get_boolean(data);
     }
+    if (json_object_object_get_ex(view_manager->config->json, "view_mode", &data)) {
+        const char *name = json_object_get_string(data);
+        view_manager->mode = view_manager_mode_from_name(name);
+    }
 
     return true;
 }
@@ -173,4 +177,6 @@ void view_write_config(struct view_manager *view_manager)
                            json_object_new_int(view_manager->state.view_adsorption));
     json_object_object_add(view_manager->config->json, "csd_round_corner",
                            json_object_new_boolean(view_manager->state.csd_round_corner));
+    json_object_object_add(view_manager->config->json, "view_mode",
+                           json_object_new_string(view_manager->mode->impl->name));
 }

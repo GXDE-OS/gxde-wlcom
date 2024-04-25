@@ -73,6 +73,11 @@ static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, d
                                 uint32_t time, bool first, bool hold, void *data)
 {
     struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    struct xwayland_view *xwayland_view = data;
+
+    if (first) {
+        view_hover(seat, &xwayland_view->view);
+    }
 
     xwayland_update_seat(seat);
     xwayland_update_hovered_surface(surface);
@@ -82,7 +87,6 @@ static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, d
         return false;
     }
 
-    struct xwayland_view *xwayland_view = data;
     double sx = x - xwayland_view->view.base.geometry.x;
     double sy = y - xwayland_view->view.base.geometry.y;
     seat_notify_motion(seat, surface, time, xwayland_scale(sx), xwayland_scale(sy), first);
@@ -101,10 +105,8 @@ static void xwayland_view_click(struct seat *seat, struct ky_scene_node *node, u
         return;
     }
 
-    /* only activate and focus top surface */
     struct xwayland_view *xwayland_view = data;
-    kywc_view_activate(&xwayland_view->view.base);
-    seat_focus_surface(seat, xwayland_view->wlr_xwayland_surface->surface);
+    view_click(seat, &xwayland_view->view, button, pressed, state);
 }
 
 static void xwayland_view_leave(struct seat *seat, struct ky_scene_node *node, bool last,
@@ -684,7 +686,7 @@ static void xwayland_view_fixup_position(struct xwayland_view *xwayland_view)
     }
     if (xwayland_view->view.base.has_initial_position) {
         xwayland_view_adjust_geometry(xwayland_view, &geo);
-        kywc_view_move(&xwayland_view->view.base, geo.x, geo.y);
+        view_do_move(&xwayland_view->view, geo.x, geo.y);
     }
 }
 

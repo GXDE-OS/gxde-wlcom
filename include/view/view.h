@@ -7,6 +7,7 @@
 
 #include <kywc/view.h>
 
+#include "input/event.h"
 #include "scene/scene.h"
 
 struct server;
@@ -167,6 +168,23 @@ struct view_impl {
 
     struct wlr_buffer *(*get_icon_buffer)(struct view *view, float scale);
 };
+
+void view_click(struct seat *seat, struct view *view, uint32_t button, bool pressed,
+                enum click_state state);
+
+void view_hover(struct seat *seat, struct view *view);
+
+void view_do_move(struct view *view, int x, int y);
+
+void view_do_resize(struct view *view, struct kywc_box *geometry);
+
+void view_do_minimized(struct view *view, bool minimized);
+
+void view_do_maximized(struct view *view, bool maximized, struct kywc_output *kywc_output);
+
+void view_do_fullscreen(struct view *view, bool fullscreen, struct kywc_output *kywc_output);
+
+void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output);
 
 struct view_manager *view_manager_create(struct server *server);
 

@@ -64,7 +64,7 @@ static void handle_set_output(struct wl_client *client, struct wl_resource *reso
 static void kde_plasma_surface_apply_position(struct kde_plasma_surface *surface)
 {
     if (surface->view) {
-        kywc_view_move(&surface->view->base, surface->x, surface->y);
+        view_do_move(surface->view, surface->x, surface->y);
     } else if (surface->buffer) {
         struct ky_scene_node *node = &surface->buffer->node;
         int lx, ly;
@@ -216,7 +216,7 @@ static void handle_open_under_cursor(struct wl_client *client, struct wl_resourc
 
     if (surface->view) {
         struct seat *seat = surface->view->base.focused_seat;
-        kywc_view_move(&surface->view->base, seat->cursor->lx, seat->cursor->ly);
+        view_do_move(surface->view, seat->cursor->lx, seat->cursor->ly);
     }
 }
 
@@ -400,7 +400,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     if (surface->open_under_cursor) {
         struct seat *seat = surface->view->base.focused_seat;
         surface->view->base.has_initial_position = true;
-        kywc_view_move(&surface->view->base, seat->cursor->lx, seat->cursor->ly);
+        view_do_move(surface->view, seat->cursor->lx, seat->cursor->ly);
     }
 
     /* apply set_position called before map */

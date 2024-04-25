@@ -10,6 +10,37 @@
 #include "server.h"
 #include "view/view.h"
 
+struct view_mode_interface {
+    const char *name;
+
+    void (*view_map)(struct view *view);
+    void (*view_unmap)(struct view *view);
+
+    void (*view_request_move)(struct view *view, int x, int y);
+    void (*view_request_resize)(struct view *view, struct kywc_box *geometry);
+    void (*view_request_minimized)(struct view *view, bool minimized);
+    void (*view_request_maximized)(struct view *view, bool maximized,
+                                   struct kywc_output *kywc_output);
+    void (*view_request_fullscreen)(struct view *view, bool fullscreen,
+                                    struct kywc_output *kywc_output);
+    void (*view_request_tiled)(struct view *view, enum kywc_tile tile,
+                               struct kywc_output *kywc_output);
+
+    void (*view_click)(struct seat *seat, struct view *view, uint32_t button, bool pressed,
+                       enum click_state state);
+    void (*view_hover)(struct seat *seat, struct view *view);
+
+    void (*view_mode_enter)(void);
+    void (*view_mode_leave)(void);
+
+    void (*mode_destroy)(void);
+};
+
+struct view_mode {
+    struct wl_list link;
+    const struct view_mode_interface *impl;
+};
+
 struct view_manager {
     struct server *server;
     struct wl_list views;
@@ -48,6 +79,9 @@ struct view_manager {
     bool show_desktop_enabled;
     bool show_activte_only_enabled;
     bool switcher_shown;
+
+    struct wl_list view_modes; // struct view_mode.link
+    struct view_mode *mode;
 };
 
 struct view_show_window_menu_event {
@@ -109,6 +143,14 @@ bool ky_toplevel_manager_create(struct server *server);
 bool xdg_dialog_create(struct server *server);
 
 bool xdg_activation_create(struct server *server);
+
+struct view_mode *view_manager_mode_from_name(const char *name);
+
+struct view_mode *view_manager_mode_register(const struct view_mode_interface *impl);
+
+void view_manager_mode_unregister(struct view_mode *mode);
+
+void stack_mode_register(struct view_manager *view_manager);
 
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);

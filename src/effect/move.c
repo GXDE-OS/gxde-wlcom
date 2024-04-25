@@ -119,7 +119,7 @@ void move_proxy_destroy(struct move_proxy *proxy)
     wl_list_remove(&proxy->thumbnail_destroy.link);
 
     if (proxy->node) {
-        kywc_view_move(&proxy->view->base, proxy->x, proxy->y);
+        view_do_move(proxy->view, proxy->x, proxy->y);
         ky_scene_node_destroy(proxy->node);
     }
 

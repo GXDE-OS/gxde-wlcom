@@ -162,7 +162,7 @@ static void modal_leave(struct seat *seat, struct ky_scene_node *node, bool last
 static void modal_shake_effect_init(struct modal *modal)
 {
     if (modal->shake_effect.enabled) {
-        kywc_view_move(&modal->view->base, modal->geo.x, modal->geo.y);
+        view_do_move(modal->view, modal->geo.x, modal->geo.y);
     }
 
     modal->geo = modal->view->base.geometry;

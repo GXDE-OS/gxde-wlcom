@@ -129,7 +129,7 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
 
     if (kywc_view->fullscreen) {
         view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
-        kywc_view_resize(kywc_view, &dst->geometry);
+        view_do_resize(view, &dst->geometry);
         return;
     }
 
@@ -137,7 +137,7 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
         struct kywc_box geo;
         view_get_tiled_geometry(view, &geo, kywc_output, KYWC_TILE_ALL);
         view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
-        kywc_view_resize(kywc_view, &geo);
+        view_do_resize(view, &geo);
         return;
     }
 
@@ -145,7 +145,7 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
         struct kywc_box geo;
         view_get_tiled_geometry(view, &geo, kywc_output, kywc_view->tiled);
         view_fix_geometry_position(view, &view->saved.geometry, src_box, dst_box);
-        kywc_view_resize(kywc_view, &geo);
+        view_do_resize(view, &geo);
         return;
     }
 
@@ -156,7 +156,7 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
     struct kywc_box geo = kywc_view->geometry;
     view_fix_geometry_position(view, &geo, src_box, dst_box);
     /* move to dst */
-    kywc_view_move(kywc_view, geo.x, geo.y);
+    view_do_move(view, geo.x, geo.y);
 }
 
 void view_init(struct view *view, const struct view_impl *impl, void *data)
@@ -367,7 +367,9 @@ void view_map(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     view->icon = theme_icon_from_app_id(view->icon_name ? view->icon_name : kywc_view->app_id);
-    positioner_add_new_view(view);
+    if (view_manager->mode->impl->view_map) {
+        view_manager->mode->impl->view_map(view);
+    }
     /* assume that request_minimize may emited before map */
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
 
@@ -428,6 +430,10 @@ void view_unmap(struct view *view)
     }
 
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
+
+    if (view_manager->mode->impl->view_unmap) {
+        view_manager->mode->impl->view_unmap(view);
+    }
 
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
@@ -893,28 +899,38 @@ void kywc_view_close(struct kywc_view *kywc_view)
     }
 }
 
-void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
+void view_do_move(struct view *view, int x, int y)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
-
     view->pending.action |= VIEW_ACTION_MOVE;
     view->pending.geometry.x = x;
     view->pending.geometry.y = y;
 
-    if (kywc_view->mapped && view->impl->configure) {
+    if (view->base.mapped && view->impl->configure) {
+        view->impl->configure(view);
+    }
+}
+
+void kywc_view_move(struct kywc_view *kywc_view, int x, int y)
+{
+    if (view_manager->mode->impl->view_request_move) {
+        view_manager->mode->impl->view_request_move(view_from_kywc_view(kywc_view), x, y);
+    }
+}
+
+void view_do_resize(struct view *view, struct kywc_box *geometry)
+{
+    view->pending.action |= VIEW_ACTION_RESIZE;
+    view->pending.geometry = *geometry;
+
+    if (view->base.mapped && view->impl->configure) {
         view->impl->configure(view);
     }
 }
 
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
-
-    view->pending.action |= VIEW_ACTION_RESIZE;
-    view->pending.geometry = *geometry;
-
-    if (kywc_view->mapped && view->impl->configure) {
-        view->impl->configure(view);
+    if (view_manager->mode->impl->view_request_resize) {
+        view_manager->mode->impl->view_request_resize(view_from_kywc_view(kywc_view), geometry);
     }
 }
 
@@ -1100,13 +1116,9 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 }
 
-void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
-                         struct kywc_output *kywc_output)
+void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
-    if (!view_is_resizable(view)) {
-        return;
-    }
+    struct kywc_view *kywc_view = &view->base;
 
     /* tiled mode may switch between outputs */
     if (kywc_view->tiled == tile && (!kywc_output || kywc_output == view->output)) {
@@ -1137,10 +1149,19 @@ void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
     }
 }
 
-void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
+void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
+                         struct kywc_output *kywc_output)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
-    if (kywc_view->minimized == minimized || !view_is_minimizable(view)) {
+    if (view_manager->mode->impl->view_request_tiled) {
+        view_manager->mode->impl->view_request_tiled(view_from_kywc_view(kywc_view), tile,
+                                                     kywc_output);
+    }
+}
+
+void view_do_minimized(struct view *view, bool minimized)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (kywc_view->minimized == minimized) {
         return;
     }
 
@@ -1169,20 +1190,25 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     input_rebase_all_cursor();
 }
 
+void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
+{
+    if (view_manager->mode->impl->view_request_minimized) {
+        view_manager->mode->impl->view_request_minimized(view_from_kywc_view(kywc_view), minimized);
+    }
+}
+
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view)
 {
     kywc_view_set_minimized(kywc_view, !kywc_view->minimized);
 }
 
-void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
-                             struct kywc_output *kywc_output)
+void view_do_maximized(struct view *view, bool maximized, struct kywc_output *kywc_output)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
+    struct kywc_view *kywc_view = &view->base;
 
     /* tiled to unmaximized after tiled from maximized */
-    if ((!kywc_view->tiled && kywc_view->maximized == maximized &&
-         (!kywc_output || kywc_output == view->output)) ||
-        !view_is_maximizable(view)) {
+    if (!kywc_view->tiled && kywc_view->maximized == maximized &&
+        (!kywc_output || kywc_output == view->output)) {
         return;
     }
 
@@ -1210,6 +1236,15 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
 
     if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
+    }
+}
+
+void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
+                             struct kywc_output *kywc_output)
+{
+    if (view_manager->mode->impl->view_request_maximized) {
+        view_manager->mode->impl->view_request_maximized(view_from_kywc_view(kywc_view), maximized,
+                                                         kywc_output);
     }
 }
 
@@ -1244,13 +1279,11 @@ static void view_reparent_fullscreen(struct view *view, bool active)
     }
 }
 
-void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
-                              struct kywc_output *kywc_output)
+void view_do_fullscreen(struct view *view, bool fullscreen, struct kywc_output *kywc_output)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
+    struct kywc_view *kywc_view = &view->base;
 
-    if ((kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output)) ||
-        !view_is_fullscreenable(view)) {
+    if (kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output)) {
         return;
     }
 
@@ -1277,6 +1310,15 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
 
     if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
+    }
+}
+
+void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
+                              struct kywc_output *kywc_output)
+{
+    if (view_manager->mode->impl->view_request_fullscreen) {
+        view_manager->mode->impl->view_request_fullscreen(view_from_kywc_view(kywc_view),
+                                                          fullscreen, kywc_output);
     }
 }
 
@@ -1767,6 +1809,14 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&view_manager->theme_update.link);
     wl_list_remove(&view_manager->theme_icon_update.link);
 
+    struct view_mode *mode, *tmp;
+    wl_list_for_each_safe(mode, tmp, &view_manager->view_modes, link) {
+        if (mode->impl->mode_destroy) {
+            mode->impl->mode_destroy();
+        }
+        view_manager_mode_unregister(mode);
+    }
+
     for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
         ky_scene_node_destroy(&view_manager->layers[layer].tree->node);
     }
@@ -1810,6 +1860,60 @@ void view_manager_set_switcher_shown(bool shown)
     view_manager->switcher_shown = shown;
 }
 
+void view_click(struct seat *seat, struct view *view, uint32_t button, bool pressed,
+                enum click_state state)
+{
+    if (view_manager->mode->impl->view_click) {
+        view_manager->mode->impl->view_click(seat, view, button, pressed, state);
+    }
+}
+
+void view_hover(struct seat *seat, struct view *view)
+{
+    if (view_manager->mode->impl->view_hover) {
+        view_manager->mode->impl->view_hover(seat, view);
+    }
+}
+
+struct view_mode *view_manager_mode_from_name(const char *name)
+{
+    if (!name || !*name) {
+        return NULL;
+    }
+
+    struct view_mode *mode;
+    wl_list_for_each(mode, &view_manager->view_modes, link) {
+        if (mode->impl->name && strcmp(mode->impl->name, name) == 0) {
+            return mode;
+        }
+    }
+    return NULL;
+}
+
+struct view_mode *view_manager_mode_register(const struct view_mode_interface *impl)
+{
+    struct view_mode *mode = malloc(sizeof(struct view_mode));
+    if (!mode) {
+        return NULL;
+    }
+
+    wl_list_insert(&view_manager->view_modes, &mode->link);
+    mode->impl = impl;
+    return mode;
+}
+
+void view_manager_mode_unregister(struct view_mode *mode)
+{
+    wl_list_remove(&mode->link);
+    free(mode);
+}
+
+static void view_manager_modes_register(struct view_manager *view_manager)
+{
+    wl_list_init(&view_manager->view_modes);
+    stack_mode_register(view_manager);
+}
+
 struct view_manager *view_manager_create(struct server *server)
 {
     view_manager = calloc(1, sizeof(struct view_manager));
@@ -1843,12 +1947,19 @@ struct view_manager *view_manager_create(struct server *server)
         view_manager->layers[layer].tree->node.role = KY_SCENE_NODE_LAYER;
     }
 
+    view_manager_modes_register(view_manager);
     view_manager_config_init(view_manager);
 
     view_manager->state.num_workspaces = 4;
     view_manager->state.view_adsorption = VIEW_ADSORPTION_ALL;
     view_read_config(view_manager);
 
+    if (!view_manager->mode) {
+        view_manager->mode = view_manager_mode_from_name("stack_mode");
+    }
+    if (view_manager->mode->impl->view_mode_enter) {
+        view_manager->mode->impl->view_mode_enter();
+    }
     workspace_manager_create(view_manager);
     decoration_manager_create(view_manager);
     server_decoration_manager_create(view_manager);

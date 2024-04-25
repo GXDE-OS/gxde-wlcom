@@ -39,7 +39,10 @@ static bool xdg_view_hover(struct seat *seat, struct ky_scene_node *node, double
                            uint32_t time, bool first, bool hold, void *data)
 {
     struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    struct xdg_view *xdg_view = data;
+
     if (first) {
+        view_hover(seat, &xdg_view->view);
         kywc_log(KYWC_DEBUG, "first hover surface %p (%f %f)", surface, x, y);
     }
 
@@ -48,9 +51,7 @@ static bool xdg_view_hover(struct seat *seat, struct ky_scene_node *node, double
         return false;
     }
 
-    struct xdg_view *xdg_view = data;
     struct kywc_box *geometry = &xdg_view->view.base.geometry;
-
     double sx = x - geometry->x;
     double sy = y - geometry->y;
     // sx = sx < 0 ? 0 : (sx > geometry->width ? geometry->width : sx);
@@ -72,10 +73,8 @@ static void xdg_view_click(struct seat *seat, struct ky_scene_node *node, uint32
         return;
     }
 
-    /* only activate and focus top surface */
     struct xdg_view *xdg_view = data;
-    kywc_view_activate(&xdg_view->view.base);
-    seat_focus_surface(seat, xdg_view->wlr_xdg_surface->surface);
+    view_click(seat, &xdg_view->view, button, pressed, state);
 }
 
 static void xdg_view_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data)
