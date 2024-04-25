@@ -412,11 +412,11 @@ enum interface_name {
     RENDER_POST,
 };
 
-#define scene_effect_run(entity, scene_output, interface_name) \
-if (entity->effect->impl->frame_##interface_name && \
-    !entity->effect->impl->frame_##interface_name (entity, scene_output)) { \
-    return; \
-}
+#define scene_effect_run(entity, scene_output, interface_name)                                     \
+    if (entity->effect->impl->frame_##interface_name &&                                            \
+        !entity->effect->impl->frame_##interface_name(entity, scene_output)) {                     \
+        return;                                                                                    \
+    }
 
 static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum interface_name name,
                                    struct ky_scene_render_target *target)
@@ -424,17 +424,17 @@ static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum in
     struct ky_scene *scene = scene_output->scene;
     struct ky_scene_node *node = &scene->tree.node;
     struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
-    struct node_effect_chain *chain =  wl_container_of(addon, chain, addon);
-    if (!chain || !addon) {
-        return ;
+    if (!addon) {
+        return;
     }
+
+    struct node_effect_chain *chain = wl_container_of(addon, chain, addon);
 
     struct effect_entity *entity;
     struct effect_slot *slot, *temp_slot;
     wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
         entity = wl_container_of(slot, entity, frame_slot);
-        switch (name)
-        {
+        switch (name) {
         case RENDER_PRE:
             scene_effect_run(entity, scene_output, render_pre);
             break;
@@ -446,7 +446,7 @@ static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum in
         case RENDER_END:
             if (entity->effect->impl->frame_render_end &&
                 !entity->effect->impl->frame_render_end(entity, target)) {
-                return; 
+                return;
             }
             break;
         case RENDER_POST:
@@ -473,17 +473,18 @@ bool ky_scene_output_render(struct ky_scene_render_target *target)
     struct ky_scene *scene = target->output->scene;
     struct ky_scene_node *node = &scene->tree.node;
     struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
-    struct node_effect_chain *chain =  wl_container_of(addon, chain, addon);
-    if (!chain || !addon) {
+    if (!addon) {
         return false;
     }
 
+    struct node_effect_chain *chain = wl_container_of(addon, chain, addon);
     bool has_rendered = false;
+
     struct effect_entity *entity;
     struct effect_slot *slot, *temp_slot;
     wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
         entity = wl_container_of(slot, entity, frame_slot);
-        if (entity->effect->impl->frame_render){
+        if (entity->effect->impl->frame_render) {
             has_rendered = true;
             entity->effect->impl->frame_render(entity, target);
             return has_rendered;
