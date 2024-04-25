@@ -294,6 +294,9 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     if (!kywc_output->prop.is_virtual) {
         if (!output_manager->has_layout_manager) {
             output_manager_add_output_pending_state(output, &pending);
+            if (pending.primary) {
+                output_set_pending_primary(output);
+            }
         } else {
             output_manager_get_layout_configs(output_manager);
             /* copy colortemp and brightness to pending */
