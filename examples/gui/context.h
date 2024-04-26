@@ -14,6 +14,7 @@ typedef struct _kywc_context kywc_context;
 typedef struct _kywc_output kywc_output;
 typedef struct _kywc_toplevel kywc_toplevel;
 typedef struct _kywc_workspace kywc_workspace;
+typedef struct _kywc_thumbnail kywc_thumbnail;
 
 class Workspace : public QObject
 {
@@ -186,6 +187,64 @@ class Toplevel : public QObject
 Q_DECLARE_OPERATORS_FOR_FLAGS(Toplevel::Capabilities)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Toplevel::Masks)
 
+class Thumbnail : public QObject
+{
+    Q_OBJECT
+  public:
+    enum class Type{
+        Output,
+        Toplevel,
+        Workspace,
+    };
+    Q_DECLARE_FLAGS(Types, Type);
+
+    enum BufferFlag {
+        Dmabuf = 1 << 0,
+        Reused = 1 << 1,
+    };
+    Q_DECLARE_FLAGS(BufferFlags, BufferFlag);
+
+    explicit Thumbnail(QObject *parent = nullptr);
+    ~Thumbnail();
+
+    struct t_thumbnail {
+        Types type;
+        QString source_uuid;
+        QString output_uuid;
+    };
+
+    struct Buffer {
+        int32_t fd;
+        uint32_t format;
+        QSize size;
+        uint32_t offset;
+        uint32_t stride;
+        uint64_t modifier;
+        BufferFlags flags;
+    };
+
+    void setup(kywc_context *ctx, const char* uuid);
+
+    int32_t fd() const;
+    uint32_t format() const;
+    QSize size() const;
+    uint32_t offset() const;
+    uint32_t stride() const;
+    uint64_t modifier() const;
+    Thumbnail::BufferFlags flags() const;
+
+  Q_SIGNALS:
+    void bufferUpdate();
+    void deleted();
+
+  private:
+    class Private;
+    Private *pri;
+};
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Thumbnail::Types)
+Q_DECLARE_OPERATORS_FOR_FLAGS(Thumbnail::BufferFlags)
+
 class Context : public QObject
 {
     Q_OBJECT
@@ -194,6 +253,7 @@ class Context : public QObject
         Output = 1 << 0,
         Toplevel = 1 << 1,
         Workspace = 1 << 2,
+        Thumbnail = 1 << 3,
     };
     Q_DECLARE_FLAGS(Capabilities, Capability)
 
@@ -208,6 +268,7 @@ class Context : public QObject
     Toplevel *findToplevel(QString uuid);
 
     void dispatch();
+    Thumbnail *thumbnail_init(const char* uuid);
   Q_SIGNALS:
     void aboutToTeardown();
 
@@ -216,6 +277,9 @@ class Context : public QObject
     void workespaceAdded(Workspace *workspace);
     void outputAdded(Output *output);
     void toplevelAdded(Toplevel *toplevel);
+
+    // void thumbnailBufferUpdate();
+    // void thumbnailDeleted();
 
   private Q_SLOTS:
     void onContextReady();

@@ -12,11 +12,12 @@ class Context::Private
     Private(Context *context);
     ~Private();
     kywc_context *setup(uint32_t capability);
+    // void thumbnail_create(const char* uuid);
 
     kywc_context *k_context = nullptr;
     QSocketNotifier *notifier = nullptr;
     struct wl_display *display = NULL;
-    Capabilities caps = Context::Capability::Output;
+    uint32_t capabilities = 0;
 
   private:
     Context *ctx;
@@ -26,6 +27,11 @@ class Context::Private
     static void newToplevel(kywc_context *context, kywc_toplevel *toplevel, void *data);
     static void newWorkspace(kywc_context *context, kywc_workspace *workspace, void *data);
     static struct kywc_context_interface context_impl;
+
+    static bool bufferHandle(kywc_thumbnail *thumbnail, const struct kywc_thumbnail_buffer *buffer,
+                   void *data);
+    static void destroyHandle(kywc_thumbnail *thumbnail, void *data);
+    static struct kywc_thumbnail_interface thumbnail_impl;
 };
 
 Context::Private::Private(Context *context) : ctx(context) {}
@@ -86,7 +92,17 @@ Context::Context( struct wl_display *display, Capabilities caps, QObject *parent
     , pri(new Private(this))
 {
     pri->display = display;
-    pri->caps = caps;
+
+    uint32_t capabilities = 0;
+    if (caps & Context::Capability::Output)
+        capabilities |= KYWC_CONTEXT_CAPABILITY_OUTPUT;
+    if (caps & Context::Capability::Toplevel)
+        capabilities |= KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
+    if (caps & Context::Capability::Workspace)
+        capabilities |= KYWC_CONTEXT_CAPABILITY_WORKSPACE;
+    if (caps & Context::Capability::Thumbnail)
+        capabilities |= KYWC_CONTEXT_CAPABILITY_THUMBNAIL;
+    pri->capabilities = capabilities;
 }
 
 Context::~Context() {
@@ -96,16 +112,9 @@ Context::~Context() {
 void Context::start()
 {
     kywc_context *ctx = NULL;
-    uint32_t capabilities = 0;
-    if (pri->caps & Context::Capability::Output)
-        capabilities |= KYWC_CONTEXT_CAPABILITY_OUTPUT;
-    if (pri->caps & Context::Capability::Toplevel)
-        capabilities |= KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
-    if (pri->caps & Context::Capability::Workspace)
-        capabilities |= KYWC_CONTEXT_CAPABILITY_WORKSPACE;
 
     if (!pri->display) {
-        ctx = pri->setup(capabilities);
+        ctx = pri->setup(pri->capabilities);
         if (!ctx) {
             return;
         }
@@ -114,7 +123,7 @@ void Context::start()
 
         kywc_context_process(ctx);
     } else {
-        ctx = pri->setup(capabilities);
+        ctx = pri->setup(pri->capabilities);
         if (!ctx) {
             return;
         }
@@ -162,4 +171,34 @@ Toplevel *Context::findToplevel(QString uuid)
     char *str = qByteArray.data();
     kywc_toplevel *toplevel = kywc_context_find_toplevel(pri->k_context, str);
     return (Toplevel *)kywc_toplevel_get_user_data(toplevel);
+}
+
+Thumbnail *Context::thumbnail_init(const char *uuid)
+{
+    kywc_context *ctx = NULL;
+    pri->display = NULL;
+
+    ctx = pri->setup(pri->capabilities);
+    //k_context = kywc_context_create(NULL, capabilities, &context_impl, this);
+   // kywc_context *ctx = kywc_context_create(NULL, pri->capabilities, &context_impl, NULL);
+    if (!ctx) {
+        return NULL;
+    }
+
+    // QByteArray qByteArray = uuid.toUtf8();
+    // char *str = qByteArray.data();
+
+    kywc_toplevel *toplevel = kywc_context_find_toplevel(ctx, uuid);
+    Thumbnail *thum = NULL;
+    if (toplevel) {
+        thum = new Thumbnail(this);
+        thum->setup(ctx, toplevel->uuid);
+        //printf("start get thumbnail for toplevel %s\n", toplevel->app_id);
+        // kywc_thumbnail *thumbnail = pri->thumbnail_create(toplevel->uuid);
+        // kywc_thumbnail_set_user_data(thumbnail, this);
+    }
+
+    kywc_context_dispatch(ctx);
+    //kywc_context_destroy(ctx);
+    return thum;
 }
