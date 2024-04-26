@@ -242,15 +242,10 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
     /* set top corner if has ssd title */
     struct kywc_view *kywc_view = &view->base;
     if (kywc_view->ssd & KYWC_SSD_TITLE) {
-        bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen;
-        bool need_right_top = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
-                                              kywc_view->tiled == KYWC_TILE_BOTTOM_LEFT);
-        bool need_left_top = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
-                                             kywc_view->tiled == KYWC_TILE_BOTTOM_RIGHT);
-
+        bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
         struct theme *theme = theme_manager_get_current();
-        radius[KY_SCENE_ROUND_CORNER_RT] = need_right_top ? theme->ssd.corner_radius : 0;
-        radius[KY_SCENE_ROUND_CORNER_LT] = need_left_top ? theme->ssd.corner_radius : 0;
+        radius[KY_SCENE_ROUND_CORNER_RT] = need_corner ? theme->ssd.corner_radius : 0;
+        radius[KY_SCENE_ROUND_CORNER_LT] = need_corner ? theme->ssd.corner_radius : 0;
     }
 
     ky_scene_node_set_radius(&modal_box->node, radius);

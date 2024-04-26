@@ -698,13 +698,13 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         } else if (view->tiled == KYWC_TILE_RIGHT) {
             shadow_mask = SHADOW_MASK_LEFT;
         } else if (view->tiled == KYWC_TILE_TOP_LEFT) {
-            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_BOTTOM_RIGHT | SHADOW_MASK_BOTTOM;
+            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_BOTTOM;
         } else if (view->tiled == KYWC_TILE_BOTTOM_LEFT) {
-            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_TOP_RIGHT | SHADOW_MASK_TOP;
+            shadow_mask = SHADOW_MASK_RIGHT | SHADOW_MASK_TOP;
         } else if (view->tiled == KYWC_TILE_TOP_RIGHT) {
-            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_BOTTOM_LEFT | SHADOW_MASK_BOTTOM;
+            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_BOTTOM;
         } else if (view->tiled == KYWC_TILE_BOTTOM_RIGHT) {
-            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_TOP_LEFT | SHADOW_MASK_TOP;
+            shadow_mask = SHADOW_MASK_LEFT | SHADOW_MASK_TOP;
         }
         ky_scene_decoration_set_shadow_mask(frame, shadow_mask);
     }

@@ -333,25 +333,14 @@ static void view_update_round_corner(struct view *view)
 
     /* don't draw top round corner if ssd has title */
     struct theme *theme = theme_manager_get_current();
-    bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen;
-    bool need_top_corner = !(kywc_view->ssd & KYWC_SSD_TITLE);
-
-    bool need_right_bottom = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
-                                             kywc_view->tiled == KYWC_TILE_TOP_LEFT);
-    bool need_left_bottom = need_corner && (kywc_view->tiled == KYWC_TILE_NONE ||
-                                            kywc_view->tiled == KYWC_TILE_TOP_RIGHT);
-    bool need_right_top =
-        need_corner && need_top_corner &&
-        (kywc_view->tiled == KYWC_TILE_NONE || kywc_view->tiled == KYWC_TILE_BOTTOM_LEFT);
-    bool need_left_top =
-        need_corner && need_top_corner &&
-        (kywc_view->tiled == KYWC_TILE_NONE || kywc_view->tiled == KYWC_TILE_BOTTOM_RIGHT);
+    bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
+    bool need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
 
     int radius[4] = { 0 };
-    radius[KY_SCENE_ROUND_CORNER_RB] = need_right_bottom ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_RT] = need_right_top ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_LB] = need_left_bottom ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_LT] = need_left_top ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_RT] = need_top_corner ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LB] = need_corner ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LT] = need_top_corner ? theme->ssd.corner_radius : 0;
     ky_scene_node_set_radius(&buffer->node, radius);
 }
 
