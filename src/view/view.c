@@ -401,7 +401,7 @@ void view_unmap(struct view *view)
     kywc_view->mapped = false;
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
-
+    input_rebase_all_cursor();
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
     struct view_proxy *proxy;
@@ -427,8 +427,6 @@ void view_unmap(struct view *view)
         wl_list_init(&child->parent_link);
         child->parent = NULL;
     }
-
-    input_rebase_all_cursor();
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
