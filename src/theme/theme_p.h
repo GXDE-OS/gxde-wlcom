@@ -70,6 +70,7 @@ struct theme_override {
     int32_t font_size;
     /* default to -1 */
     int32_t accent_color;
+    int32_t ssd_radius;
 };
 
 struct desktop_info {

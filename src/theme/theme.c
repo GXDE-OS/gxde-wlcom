@@ -323,6 +323,10 @@ static void theme_override_config(struct theme *theme)
         theme->accent_color[2] = (float)(override->accent_color & 0xff) / 255;
         theme->accent_color[3] = 1.0;
     }
+
+    if (override->ssd_radius >= 0) {
+        theme->ssd.corner_radius = override->ssd_radius;
+    }
 }
 
 static struct theme *theme_create(const char *name, float scale)
@@ -635,6 +639,24 @@ bool theme_manager_set_accent_color(int32_t color)
     }
 
     override->accent_color = color;
+    theme_override_config(current);
+    wl_signal_emit_mutable(&manager->events.update, current);
+
+    theme_manager_write_config(manager, NULL);
+    return true;
+}
+
+bool theme_manager_set_ssd_radius(int32_t radius)
+{
+    struct theme_override *override = &manager->override;
+    struct theme *current = manager->current;
+
+    int32_t current_radius = current->ssd.corner_radius;
+    if (radius == current_radius) {
+        return true;
+    }
+
+    override->ssd_radius = radius;
     theme_override_config(current);
     wl_signal_emit_mutable(&manager->events.update, current);
 

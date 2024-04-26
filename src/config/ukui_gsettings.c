@@ -7,8 +7,22 @@
 #include "config_p.h"
 #include "input/input.h"
 #include "server.h"
+#include "theme.h"
 
 #define EVENT_TIMEOUT (1000)
+
+static struct kwin_accent_color {
+    char *name;
+    float accent_color[4];
+} kwin_accent_colors[] = {
+    { "daybreakBlue", { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 } },
+    { "jamPurple", { 114.0 / 255, 46.0 / 255, 209.0 / 255, 1.0 } },
+    { "magenta", { 235.0 / 255, 48.0 / 255, 150.0 / 255, 1.0 } },
+    { "sunRed", { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 } },
+    { "sunsetOrange", { 246.0 / 255, 140.0 / 255, 39.0 / 255, 1.0 } },
+    { "dustGold", { 255.0 / 255, 217.0 / 255, 102.0 / 255, 1.0 } },
+    { "polarGreen", { 82.0 / 255, 196.0 / 255, 41.0 / 255, 1.0 } },
+};
 
 struct ukui_settings {
     struct {
@@ -24,6 +38,7 @@ struct ukui_settings {
         char *accent_color;
         char *font_name;
         char *font_size;
+        int window_radius;
     } style;
 
     struct wl_event_source *timer;
@@ -40,6 +55,7 @@ static const char *icon_theme_key = "icon-theme-name";
 static const char *font_name_key = "system-font";
 static const char *font_size_key = "system-font-size";
 static const char *accent_color_key = "theme-color";
+static const char *window_radius_key = "window-radius";
 
 static struct ukui_settings *settings = NULL;
 
@@ -57,6 +73,7 @@ static bool is_schema_installed(const char *schema_id)
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
+    wl_list_remove(&settings->destroy.link);
     wl_event_source_remove(settings->timer);
 
     g_object_unref(settings->cursor.settings);
@@ -94,33 +111,81 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key, vo
     input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
 }
 
-static void handle_style_settings_changed(GSettings *style, const char *key, void *data)
+static void style_name_changed(GSettings *style, const char *key)
 {
-    if (strcmp(key, style_name_key) == 0) {
-        free(settings->style.style_name);
-        settings->style.style_name = g_settings_get_string(style, key);
-    } else if (strcmp(key, icon_theme_key) == 0) {
-        free(settings->style.icon_theme);
-        settings->style.icon_theme = g_settings_get_string(style, key);
-    } else if (strcmp(key, font_name_key) == 0) {
+    free(settings->style.style_name);
+    settings->style.style_name = g_settings_get_string(style, key);
+    theme_manager_set_theme(settings->style.style_name);
+}
+
+static void icon_theme_changed(GSettings *style, const char *key)
+{
+    free(settings->style.icon_theme);
+    settings->style.icon_theme = g_settings_get_string(style, key);
+    theme_manager_set_icon_theme(settings->style.icon_theme);
+}
+
+static void font_style_changed(GSettings *style, const char *key)
+{
+    if (strcmp(key, font_name_key) == 0) {
         free(settings->style.font_name);
         settings->style.font_name = g_settings_get_string(style, key);
-    } else if (strcmp(key, font_size_key) == 0) {
+    } else {
         free(settings->style.font_size);
         settings->style.font_size = g_settings_get_string(style, key);
-    } else if (strcmp(key, accent_color_key) == 0) {
-        free(settings->style.accent_color);
-        settings->style.accent_color = g_settings_get_string(style, key);
+    }
+    theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
+}
+
+static int32_t get_color_int(float *rgba)
+{
+    int32_t color = (int)(rgba[0] * 255) << 16;
+    color |= (int)(rgba[1] * 255) << 8;
+    color |= (int)(rgba[2] * 255);
+    return color;
+}
+
+static void accent_color_effect(void)
+{
+    for (size_t i = 0; i < sizeof(kwin_accent_colors) / sizeof(struct kwin_accent_color); i++) {
+        if (strcmp(settings->style.accent_color, kwin_accent_colors[i].name) == 0) {
+            uint32_t color = get_color_int(kwin_accent_colors[i].accent_color);
+            theme_manager_set_accent_color(color);
+            return;
+        }
     }
 }
 
-bool ukui_gsettings_create(struct config_manager *config_manager)
+static void accent_color_changed(GSettings *style, const char *key)
 {
-    settings = calloc(1, sizeof(struct ukui_settings));
-    if (!settings) {
-        return false;
-    }
+    free(settings->style.accent_color);
+    settings->style.accent_color = g_settings_get_string(style, key);
+    accent_color_effect();
+}
 
+static void window_radius_changed(GSettings *style, const char *key)
+{
+    settings->style.window_radius = g_settings_get_int(style, key);
+    theme_manager_set_ssd_radius(settings->style.window_radius);
+}
+
+static void handle_style_settings_changed(GSettings *style, const char *key, void *data)
+{
+    if (strcmp(key, style_name_key) == 0) {
+        style_name_changed(style, key);
+    } else if (strcmp(key, icon_theme_key) == 0) {
+        icon_theme_changed(style, key);
+    } else if (strcmp(key, font_name_key) == 0 || strcmp(key, font_size_key) == 0) {
+        font_style_changed(style, key);
+    } else if (strcmp(key, accent_color_key) == 0) {
+        accent_color_changed(style, key);
+    } else if (strcmp(key, window_radius_key) == 0) {
+        window_radius_changed(style, key);
+    }
+}
+
+static bool cursor_schema_settings(void)
+{
     bool has_cursor = is_schema_installed(cursor_schema);
     if (has_cursor) {
         settings->cursor.settings = g_settings_new(cursor_schema);
@@ -131,7 +196,30 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
         settings->cursor.size = g_settings_get_int(settings->cursor.settings, cursor_size_key);
         input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
     }
+    return has_cursor;
+}
 
+static void style_schema_config_effect(void)
+{
+    if (settings->style.style_name) {
+        theme_manager_set_theme(settings->style.style_name);
+    }
+    if (settings->style.icon_theme) {
+        theme_manager_set_icon_theme(settings->style.icon_theme);
+    }
+    if (settings->style.accent_color) {
+        theme_manager_set_theme(settings->style.style_name);
+    }
+    if (settings->style.font_name && settings->style.font_size) {
+        accent_color_effect();
+    }
+    if (settings->style.window_radius >= 0) {
+        theme_manager_set_ssd_radius(settings->style.window_radius);
+    }
+}
+
+static bool style_schema_settings(void)
+{
     bool has_style = is_schema_installed(style_schema);
     if (has_style) {
         settings->style.settings = g_settings_new(style_schema);
@@ -146,9 +234,23 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
             g_settings_get_string(settings->style.settings, accent_color_key);
         settings->style.font_name = g_settings_get_string(settings->style.settings, font_name_key);
         settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
+        settings->style.window_radius = g_settings_get_int(settings->style.settings, window_radius_key);
+        style_schema_config_effect();
+    }
+    return has_style;
+}
+
+bool ukui_gsettings_create(struct config_manager *config_manager)
+{
+    settings = calloc(1, sizeof(struct ukui_settings));
+    if (!settings) {
+        return false;
     }
 
-    if (!has_cursor && !has_style) {
+    bool has_gsettings = cursor_schema_settings();
+    has_gsettings |= style_schema_settings();
+
+    if (!has_gsettings) {
         free(settings);
         settings = NULL;
         return false;

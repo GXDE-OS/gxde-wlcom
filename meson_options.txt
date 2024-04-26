@@ -14,7 +14,7 @@ option('kde_plasma_window_management', type: 'boolean', value: true, description
 option('kde_blur', type: 'boolean', value: true, description: 'Enable kde blur protocol support')
 option('kde_global_settings', type: 'boolean', value: true, description: 'Enable kde global settings dbus server support')
 option('ukui_screenshot', type: 'boolean', value: true, description: 'Enable ukui screenshot dbus server support')
-option('ukui_gsettings', type: 'boolean', value: false, description: 'Enable ukui configuration gsettings support')
+option('ukui_gsettings', type: 'boolean', value: true, description: 'Enable ukui configuration gsettings support')
 option('kde_keystate', type: 'boolean', value: true, description: 'Enable kde keystate protocol support')
 option('libkywc', type: 'boolean', value: true, description: 'Build libkywc')
 option('kde_clipboard', type: 'boolean', value: true, description: 'Enable kde clipboard dbus')
