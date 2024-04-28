@@ -122,7 +122,10 @@ void effect_entity_destroy(struct effect_entity *entity)
     wl_list_remove(&entity->effect_enable.link);
     wl_list_remove(&entity->effect_disable.link);
     wl_list_remove(&entity->effect_destroy.link);
-    entity->effect->impl->entity_destroy(entity);
+
+    if (entity->effect->impl->entity_destroy) {
+        entity->effect->impl->entity_destroy(entity);
+    }
 
     free(entity);
 }
@@ -275,7 +278,9 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
     entity->effect_destroy.notify = entity_handle_effect_destroy;
     wl_signal_add(&effect->events.destroy, &entity->effect_destroy);
 
-    effect->impl->entity_create(entity);
+    if (effect->impl->entity_create) {
+        effect->impl->entity_create(entity);
+    }
 
     return entity;
 }
