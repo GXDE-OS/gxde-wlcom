@@ -74,7 +74,7 @@ add_project_arguments(
 )
 
 wayland_server = dependency('wayland-server', version: '>=1.19.0')
-wayland_protos = dependency('wayland-protocols')
+wayland_protos = dependency('wayland-protocols', version: '>=1.34')
 xkbcommon = dependency('xkbcommon')
 drm = dependency('libdrm')
 input = dependency('libinput', version: '>=1.14')
