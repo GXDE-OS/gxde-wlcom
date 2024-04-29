@@ -73,6 +73,8 @@ struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *
 
 bool positioner_manager_create(struct view_manager *view_manager);
 
+void positioner_add_new_view(struct view *view);
+
 bool server_decoration_manager_create(struct view_manager *view_manager);
 
 bool window_actions_create(struct view_manager *view_manager);

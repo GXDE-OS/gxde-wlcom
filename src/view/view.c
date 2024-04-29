@@ -350,6 +350,7 @@ void view_map(struct view *view)
 
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
+    positioner_add_new_view(view);
     /* assume that request_minimize may emited before map */
     view_update_round_corner(view);
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
