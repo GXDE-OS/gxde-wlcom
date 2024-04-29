@@ -616,17 +616,21 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
         xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_NORMAL);
 }
 
-void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below)
+void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above_or_below,
+                                      bool state, bool toggle)
 {
     struct xwayland_view *xwayland_view = surface->data;
     if (!xwayland_view) {
         return;
     }
 
-    if (above) {
-        kywc_view_set_kept_above(&xwayland_view->view.base, true);
-    } else if (below) {
-        kywc_view_set_kept_below(&xwayland_view->view.base, true);
+    bool new_state;
+    if (above_or_below) {
+        new_state = toggle ? !xwayland_view->view.base.kept_above : state;
+        kywc_view_set_kept_above(&xwayland_view->view.base, new_state);
+    } else {
+        new_state = toggle ? !xwayland_view->view.base.kept_below : state;
+        kywc_view_set_kept_below(&xwayland_view->view.base, new_state);
     }
 }
 

@@ -417,9 +417,9 @@ int xwayland_read_wm_state(xcb_window_t window_id)
     int ret = 1;
     for (uint32_t i = 0; i < reply->value_len; i++) {
         if (atoms[i] == xwayland->atoms[NET_WM_STATE_ABOVE]) {
-            xwayland_view_set_above_or_below(surface, true, false);
+            xwayland_view_set_above_or_below(surface, true, true, false);
         } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_BELOW]) {
-            xwayland_view_set_above_or_below(surface, false, true);
+            xwayland_view_set_above_or_below(surface, false, true, false);
         } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
             xwayland_view_set_skip_taskbar(surface, true);
         } else if (atoms[i] == xwayland->atoms[KDE_NET_WM_STATE_SKIP_SWITCHER]) {
@@ -491,20 +491,50 @@ int xwayland_read_wm_window_opacity(xcb_window_t window_id)
     return 1;
 }
 
-/* return 0 as we only handle few things */
-static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
+static int xwayland_handle_wm_state_message(xcb_client_message_event_t *client_message)
 {
-    if ((event->response_type & 0x7f) != XCB_PROPERTY_NOTIFY) {
+    struct wlr_xwayland_surface *surface =
+        xwayland_view_look_surface(xwayland, client_message->window);
+    if (!surface || client_message->format != 32) {
         return 0;
     }
 
-    xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
-    if (ev->atom == xwayland->atoms[NET_WM_STATE]) {
-        return xwayland_read_wm_state(ev->window);
-    } else if (ev->atom == xwayland->atoms[NET_WM_ICON]) {
-        return xwayland_read_wm_icon(ev->window);
-    } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
-        return xwayland_read_wm_window_opacity(ev->window);
+    int ret = 0;
+    uint32_t action = client_message->data.data32[0];
+    bool state = action;
+    bool toggle = action == 2 ? true : false;
+
+    for (size_t i = 0; i < 2; i++) {
+        xcb_atom_t property = client_message->data.data32[1 + i];
+        if (property == xwayland->atoms[NET_WM_STATE_ABOVE]) {
+            xwayland_view_set_above_or_below(surface, true, state, toggle);
+            ret = 1;
+        } else if (property == xwayland->atoms[NET_WM_STATE_BELOW]) {
+            xwayland_view_set_above_or_below(surface, false, state, toggle);
+            ret = 1;
+        }
+    }
+
+    return ret;
+}
+
+/* return 0 as we only handle few things */
+static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
+{
+    if ((event->response_type & 0x7f) == XCB_PROPERTY_NOTIFY) {
+        xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
+        if (ev->atom == xwayland->atoms[NET_WM_STATE]) {
+            return xwayland_read_wm_state(ev->window);
+        } else if (ev->atom == xwayland->atoms[NET_WM_ICON]) {
+            return xwayland_read_wm_icon(ev->window);
+        } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
+            return xwayland_read_wm_window_opacity(ev->window);
+        }
+    } else if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE) {
+        xcb_client_message_event_t *ev = (xcb_client_message_event_t *)event;
+        if (ev->type == xwayland->atoms[NET_WM_STATE]) {
+            return xwayland_handle_wm_state_message((xcb_client_message_event_t *)event);
+        }
     }
 
     return 0;

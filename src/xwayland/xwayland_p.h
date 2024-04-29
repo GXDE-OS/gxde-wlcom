@@ -106,7 +106,8 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
 
 void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface);
 
-void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above, bool below);
+void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above_or_below,
+                                      bool state, bool toggle);
 
 void xwayland_view_set_skip_taskbar(struct wlr_xwayland_surface *surface, bool skip_taskbar);
 
