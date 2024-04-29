@@ -649,14 +649,56 @@ bool output_manager_configure_outputs(void)
         }
     }
 
+    /* only one output and coord is not zero */
+    if (!have_zero_coord && wl_list_length(&output_manager->outputs) == 1) {
+        struct kywc_output *kywc_output = &pending_config->output->base;
+        kywc_log(KYWC_WARN, "Fixup output %s coord to zero", kywc_output->name);
+        pending_config->state.lx = pending_config->state.ly = 0;
+        have_zero_coord = true;
+    }
+
     if (!have_zero_coord && auto_coord_outputs == wl_list_length(&output_manager->output_configs)) {
         have_zero_coord = true;
-        pending_config->state.lx = pending_config->state.ly = 0;
     }
 
     if (!have_enabled_output || (!have_zero_coord && !have_auto_coord)) {
         kywc_log(KYWC_WARN, "All outputs will be disabled or no zero coord, reject this configure");
         goto failed;
+    }
+
+    struct kywc_output_state *zero_coord_state = NULL;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (get_output_pending_config(output)) {
+            continue;
+        }
+        struct kywc_output_state *state = &output->base.state;
+        bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
+        if (is_zero_coord) {
+            zero_coord_state = state;
+            break;
+        }
+    }
+
+    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        struct kywc_output_state *state = &pending_config->state;
+        struct kywc_output *kywc_output = &pending_config->output->base;
+        bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
+        if (!is_zero_coord) {
+            continue;
+        }
+
+        if (!zero_coord_state) {
+            zero_coord_state = state;
+            continue;
+        }
+
+        if (zero_coord_state->width != state->width || zero_coord_state->height != state->height ||
+            zero_coord_state->scale != state->scale ||
+            zero_coord_state->transform != state->transform) {
+            kywc_log(KYWC_WARN, "Fixup output %s coord to auto", kywc_output->name);
+            state->lx = -1;
+            state->ly = -1;
+        }
     }
 
     /* 2.config outputs */
