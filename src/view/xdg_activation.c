@@ -100,7 +100,7 @@ static void token_handle_view_premap(struct wl_listener *listener, void *data)
         view_set_workspace(view, token->workspace);
     }
 
-    seat_focus_surface(token->seat ? token->seat : input_manager_get_default_seat(), view->surface);
+    view->base.focused_seat = token->seat ? token->seat : input_manager_get_default_seat();
 
     token->view = NULL;
     xdg_activation_token_destroy(token);

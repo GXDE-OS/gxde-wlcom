@@ -194,6 +194,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->shadeable = true;
     kywc_view->has_round_corner = true;
     kywc_view->uuid = kywc_identifier_uuid_generate();
+    kywc_view->focused_seat = input_manager_get_default_seat();
     wl_list_insert(&view_manager->views, &view->link);
 
     /* create view tree and disable it */
@@ -369,7 +370,7 @@ void view_map(struct view *view)
 
     kywc_view->has_initial_position = false;
     kywc_view_activate(kywc_view);
-    seat_focus_surface(input_manager_get_default_seat(), view->surface);
+    seat_focus_surface(kywc_view->focused_seat, view->surface);
 
     modal_create(view);
 

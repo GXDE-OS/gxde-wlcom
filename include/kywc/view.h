@@ -104,6 +104,9 @@ struct kywc_view {
     /* app_id: class when xwayland shell */
     const char *title, *app_id;
 
+    /* need focused by this seat when map */
+    struct seat *focused_seat;
+
     struct {
         /* emit before map for position, ssd ... */
         struct wl_signal premap;
