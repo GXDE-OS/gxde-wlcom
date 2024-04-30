@@ -33,6 +33,9 @@ static uint32_t get_effect_types(const struct effect_interface *impl)
         impl->frame_render_end || impl->frame_render_post) {
         types |= EFFECT_TYPE_SCENE;
     }
+    if (impl->node_render) {
+        types |= EFFECT_TYPE_NODE;
+    }
 
     return types;
 }
@@ -64,20 +67,27 @@ static void node_chain_collect_damage(struct ky_scene_node *node, int lx, int ly
                                       pixman_region32_t *damage, pixman_region32_t *invisible,
                                       pixman_region32_t *affected)
 {
+    bool is_root = node->parent == NULL;
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    if (wl_list_empty(&chain->base.slots)) {
+    if (wl_list_empty(&chain->base.slots) || is_root) {
         chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
                                    affected);
+        return;
     }
+    chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
+                               affected);
 }
 
 static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
                                    uint32_t damage_type, pixman_region32_t *damage)
 {
+    bool is_root = node->parent == NULL;
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    if (wl_list_empty(&chain->base.slots)) {
+    if (wl_list_empty(&chain->base.slots) || is_root) {
         chain->impl.push_damage(node, damage_node, damage_type, damage);
+        return;
     }
+    chain->impl.push_damage(node, damage_node, damage_type, damage);
 }
 
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
@@ -89,10 +99,23 @@ static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_b
 static void node_chain_render(struct ky_scene_node *node, int lx, int ly,
                               struct ky_scene_render_target *target)
 {
+    bool skip_node_effect =
+        (node->parent == NULL) || (target->options & KY_SCENE_RENDER_DISABLE_EFFECT);
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    if (wl_list_empty(&chain->base.slots)) {
+    if (wl_list_empty(&chain->base.slots) || skip_node_effect) {
         chain->impl.render(node, lx, ly, target);
+        return;
     }
+    struct effect_entity *entity;
+    struct effect_slot *slot, *temp_slot;
+    wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (entity->effect->impl->node_render &&
+            !entity->effect->impl->node_render(entity, lx, ly, target)) {
+            return;
+        }
+    }
+    chain->impl.render(node, lx, ly, target);
 }
 
 static void node_chain_destroy(struct ky_scene_node *node)

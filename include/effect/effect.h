@@ -5,8 +5,8 @@
 #ifndef _EFFECT_H_
 #define _EFFECT_H_
 
-#include "scene/scene.h"
 #include "scene/render.h"
+#include "scene/scene.h"
 
 struct server;
 struct effect_entity;
@@ -15,6 +15,9 @@ struct effect_interface {
     void (*entity_create)(struct effect_entity *entity);
     void (*entity_destroy)(struct effect_entity *entity);
     void (*entity_enable)(struct effect_entity *entity);
+
+    bool (*node_render)(struct effect_entity *entity, int lx, int ly,
+                        struct ky_scene_render_target *target);
 
     bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_output *output);
     bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_output *output);
