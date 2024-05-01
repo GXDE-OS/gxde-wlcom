@@ -52,4 +52,6 @@ watermark_effect_create(struct effect_manager *effect_manager)
 }
 #endif
 
+bool scale_effect_create(struct effect_manager *manager);
+
 #endif /* _EFFECT_P_H_ */

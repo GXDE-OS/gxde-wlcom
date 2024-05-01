@@ -5,6 +5,7 @@ wlcom_sources += files(
   'effect.c',
   'move.c',
   'showfps.c',
+  'scale.c',
 )
 
 wlcom_sources += files(

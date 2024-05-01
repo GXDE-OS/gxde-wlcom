@@ -423,6 +423,7 @@ bool effect_manager_create(struct server *server)
     screenshot_effect_create(manager);
     watermark_effect_create(manager);
     move_effect_create(manager);
+    scale_effect_create(manager);
 
     return true;
 }
