@@ -304,7 +304,7 @@ void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[stati
 
     memcpy(rect->color, color, sizeof(rect->color));
 
-    bool harmful = (rect->color[3] != 1 && color[3] == 1) || (rect->color[1] == 1 && color[3] != 1);
+    bool harmful = (rect->color[3] != 1 && color[3] == 1) || (rect->color[3] == 1 && color[3] != 1);
     ky_scene_node_push_damage(&rect->node,
                               harmful ? KY_SCENE_DAMAGE_HARMFUL : KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
