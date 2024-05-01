@@ -112,6 +112,7 @@ enum ky_scene_damage_type {
     KY_SCENE_DAMAGE_HARMLESS = 1 << 0,
     /* the damage will affect the visible region of the node */
     KY_SCENE_DAMAGE_HARMFUL = 1 << 1,
+    KY_SCENE_DAMAGE_BOTH = (1 << 2) - 1,
 };
 
 enum ky_scene_round_corner {

@@ -282,7 +282,7 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
 
     bool update_later = false;
     if ((rect->width > width || rect->height > height)) {
-        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
     if (rect->width < width || rect->height < height) {
         update_later = true;
@@ -292,7 +292,7 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
     rect->height = height;
 
     if (update_later) {
-        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+        ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
 }
 
@@ -306,5 +306,5 @@ void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[stati
 
     bool harmful = (rect->color[3] != 1 && color[3] == 1) || (rect->color[3] == 1 && color[3] != 1);
     ky_scene_node_push_damage(&rect->node,
-                              harmful ? KY_SCENE_DAMAGE_HARMFUL : KY_SCENE_DAMAGE_HARMLESS, NULL);
+                              harmful ? KY_SCENE_DAMAGE_BOTH : KY_SCENE_DAMAGE_HARMLESS, NULL);
 }

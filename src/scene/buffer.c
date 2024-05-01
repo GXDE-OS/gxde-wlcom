@@ -540,7 +540,13 @@ void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer
                                             const pixman_region32_t *damage)
 {
     assert(buffer || !damage);
+    /* do nothing when still no buffer */
+    if (!scene_buffer->buffer && !buffer) {
+        return;
+    }
+
     int old_width, old_height, new_width, new_height;
+    bool get_or_lost_buffer = !scene_buffer->buffer || !buffer;
 
     wlr_texture_destroy(scene_buffer->texture);
     scene_buffer->texture = NULL;
@@ -552,26 +558,28 @@ void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer
 
     /* return early if the scene buffer output no need to update */
     if (old_width == new_width && old_height == new_height) {
-        if (damage && pixman_region32_not_empty(damage)) {
-            pixman_region32_t region;
-            pixman_region32_init(&region);
+        pixman_region32_t region;
+        pixman_region32_init_rect(&region, 0, 0, new_width, new_height);
+        if (get_or_lost_buffer) {
+            ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, &region);
+        } else if (damage && pixman_region32_not_empty(damage)) {
             buffer_get_scene_damage(scene_buffer, &region, damage);
             ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, &region);
-            pixman_region32_fini(&region);
         } else {
-            ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
+            ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, &region);
         }
+        pixman_region32_fini(&region);
         return;
     }
 
     if (old_width > new_width || old_height > new_height) {
         pixman_region32_t region;
         pixman_region32_init_rect(&region, 0, 0, old_width, old_height);
-        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, &region);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, &region);
         pixman_region32_fini(&region);
     }
     if (old_width < new_width || old_height < new_height) {
-        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
 
     // buffer update outputs, leave active outputs when no buffer
@@ -618,7 +626,7 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
 
     bool update_later = false;
     if (scene_buffer->dst_width > width || scene_buffer->dst_height > height) {
-        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
     if (scene_buffer->dst_width < width || scene_buffer->dst_height < height) {
         update_later = true;
@@ -628,7 +636,7 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
     scene_buffer->dst_height = height;
 
     if (update_later) {
-        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
 
     ky_scene_node_update_outputs(&scene_buffer->node, NULL, NULL, NULL);
@@ -641,13 +649,14 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
         return;
     }
 
-    // buffer size is used
-    if (scene_buffer->dst_width <= 0 || scene_buffer->dst_height <= 0) {
-        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
-    }
-
+    /* size not changed when has dest size */
+    bool use_dest_size = scene_buffer->dst_width > 0 && scene_buffer->dst_height > 0;
+    ky_scene_node_push_damage(
+        &scene_buffer->node, use_dest_size ? KY_SCENE_DAMAGE_HARMLESS : KY_SCENE_DAMAGE_BOTH, NULL);
     scene_buffer->transform = transform;
-    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
+    if (!use_dest_size) {
+        ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_BOTH, NULL);
+    }
 }
 
 void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opacity)
@@ -657,7 +666,10 @@ void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opa
     }
 
     scene_buffer->opacity = opacity;
-    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+    bool harmful = scene_buffer->opacity == 1 || opacity == 1;
+    /* push damage return early when has no buffer */
+    ky_scene_node_push_damage(&scene_buffer->node,
+                              harmful ? KY_SCENE_DAMAGE_BOTH : KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
 void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool repeated)

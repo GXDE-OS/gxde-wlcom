@@ -477,11 +477,11 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
     }
 
     if (pending_cause == DECO_UPDATE_CAUSE_SHADOW_MASK) {
-        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_HARMFUL, &deco->shadow_region);
+        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_BOTH, &deco->shadow_region);
     }
 
     if (pending_cause == DECO_UPDATE_CAUSE_MARGIN_COLOR) {
-        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_HARMFUL,
+        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_BOTH,
                                   &deco->rect.node.clip_region);
     }
 

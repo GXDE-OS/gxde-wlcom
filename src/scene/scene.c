@@ -68,7 +68,7 @@ static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *d
     assert(node->parent);
 
     /* emit damage when node content damaged or children damaged */
-    if ((node == damage_node && node->damage_type == KY_SCENE_DAMAGE_HARMLESS) ||
+    if ((node == damage_node && node->damage_type & KY_SCENE_DAMAGE_HARMLESS) ||
         node != damage_node) {
         wl_signal_emit_mutable(&node->events.damage, NULL);
     }
@@ -633,7 +633,7 @@ void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_regi
         return;
     }
     pixman_region32_copy(&node->clip_region, region);
-    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_BOTH, NULL);
 }
 
 void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_region32_t *region)
@@ -661,7 +661,6 @@ void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_regi
         pixman_region32_copy(&node->blur_region, region);
     }
 
-    // TODO: add damage in blur region
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
@@ -688,13 +687,36 @@ void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[stati
     }
 
     memcpy(node->radius, radius, sizeof(node->radius));
-    // TODO: add damage in corners
-    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+    ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_BOTH, NULL);
+}
+
+static bool ky_scene_node_is_visible(struct ky_scene_node *node)
+{
+    if (!node->enabled) {
+        return false;
+    }
+
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        return !wl_list_empty(&tree->children);
+    } else if (node->type == KY_SCENE_NODE_RECT) {
+        struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
+        return rect->color[3] != 0;
+    } else if (node->type == KY_SCENE_NODE_BUFFER) {
+        struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(node);
+        return buffer->buffer && buffer->opacity != 0;
+    }
+
+    return false;
 }
 
 void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
                                const pixman_region32_t *damage)
 {
+    if (!ky_scene_node_is_visible(node)) {
+        return;
+    }
+
     pixman_region32_t damage_region;
     pixman_region32_init(&damage_region);
 
