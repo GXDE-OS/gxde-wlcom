@@ -435,22 +435,16 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
-    bool ok = false;
     struct wlr_output_state state;
     struct output *_output = output_from_wlr_output(output);
     wlr_output_state_init(&state);
     output_state_attempt_gamma(_output, &state);
 
-    if (!scene_output_render(scene_output, &state, &target)) {
-        goto out;
+    bool ok = false;
+    if (scene_output_render(scene_output, &state, &target)) {
+        ok = wlr_output_commit_state(scene_output->output, &state);
     }
 
-    ok = wlr_output_commit_state(scene_output->output, &state);
-    if (!ok) {
-        goto out;
-    }
-
-out:
     wlr_output_state_finish(&state);
     pixman_region32_fini(&target.damage);
     return ok;
