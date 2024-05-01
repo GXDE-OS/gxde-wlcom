@@ -252,7 +252,8 @@ static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbna
         .buffer = buffer,
         .output = scene_output,
         .render_pass = render_pass,
-        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY | KY_SCENE_RENDER_DISABLE_BLUR,
+        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY | KY_SCENE_RENDER_DISABLE_BLUR |
+                   KY_SCENE_RENDER_DISABLE_EFFECT,
     };
     pixman_region32_init_rect(&target.damage, 0, 0, bounding_box.width, bounding_box.height);
 
@@ -304,7 +305,8 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
         .buffer = buffer,
         .output = scene_output,
         .render_pass = render_pass,
-        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY | KY_SCENE_RENDER_DISABLE_BLUR,
+        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY | KY_SCENE_RENDER_DISABLE_BLUR |
+                   KY_SCENE_RENDER_DISABLE_EFFECT,
     };
     if (view_thumbnail->option & THUMBNAIL_DISABLE_ROUND_CORNER) {
         target.options |= KY_SCENE_RENDER_DISABLE_ROUND_CORNER;
