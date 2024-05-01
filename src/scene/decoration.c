@@ -8,6 +8,7 @@
 #include "decoration_vert.h"
 #include "render/opengl.h"
 #include "scene/decoration.h"
+#include "scene/render.h"
 #include "scene_p.h"
 #include "util/matrix.h"
 
