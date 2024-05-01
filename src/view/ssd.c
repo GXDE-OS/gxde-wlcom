@@ -687,11 +687,14 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_MAXIMIZE) {
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node, view->maximizable);
         if (view->maximizable) {
-            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node, 0, 0);
             /* set maximize and restore  */
             ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], false);
-        } else {
-            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node, button_w, 0);
+        }
+
+        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MINIMIZE].node, !view->modal);
+        if (!view->modal) {
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node,
+                                       view->maximizable ? 0 : button_w, 0);
         }
     }
 }
