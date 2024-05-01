@@ -53,6 +53,8 @@ void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_
 void ky_scene_corner_region(pixman_region32_t *region, int width, int height,
                             const int radius[static 4]);
 
+bool ky_scene_node_is_visible(struct ky_scene_node *node);
+
 void ky_scene_log_region(enum kywc_log_level level, const char *desc,
                          const pixman_region32_t *region);
 

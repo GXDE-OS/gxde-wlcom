@@ -205,7 +205,7 @@ static void tree_render(struct ky_scene_node *node, int lx, int ly,
 static void tree_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
-    if (!node->enabled || wl_list_empty(&tree->children)) {
+    if (wl_list_empty(&tree->children)) {
         *box = (struct wlr_box){ 0 };
         return;
     }
@@ -216,6 +216,10 @@ static void tree_get_bounding_box(struct ky_scene_node *node, struct wlr_box *bo
     struct wlr_box child_box;
     struct ky_scene_node *child;
     wl_list_for_each(child, &tree->children, link) {
+        if (!ky_scene_node_is_visible(child)) {
+            continue;
+        }
+
         child->impl.get_bounding_box(child, &child_box);
         child_box.x += child->x;
         child_box.y += child->y;
@@ -690,7 +694,7 @@ void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[stati
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_BOTH, NULL);
 }
 
-static bool ky_scene_node_is_visible(struct ky_scene_node *node)
+bool ky_scene_node_is_visible(struct ky_scene_node *node)
 {
     if (!node->enabled) {
         return false;

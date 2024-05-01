@@ -424,12 +424,7 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
 static void buffer_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
-    if (!node->enabled || !scene_buffer->buffer || scene_buffer->opacity == 0) {
-        *box = (struct wlr_box){ 0 };
-        return;
-    }
-
-    box->x = 0, box->y = 0;
+    box->x = box->y = 0;
     buffer_get_dest_size(scene_buffer, &box->width, &box->height);
 }
 

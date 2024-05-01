@@ -215,11 +215,6 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
 static void rect_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
-    if (!node->enabled || rect->color[3] == 0) {
-        *box = (struct wlr_box){ 0 };
-        return;
-    }
-
     *box = (struct wlr_box){ 0, 0, rect->width, rect->height };
 }
 
