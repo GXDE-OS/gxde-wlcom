@@ -324,8 +324,9 @@ static void theme_override_config(struct theme *theme)
         theme->accent_color[3] = 1.0;
     }
 
-    if (override->ssd_radius >= 0) {
-        theme->ssd.corner_radius = override->ssd_radius;
+    if (override->corner_radius >= 0) {
+        theme->ssd.corner_radius = override->corner_radius;
+        // TODO: sync all corner radius config ?
     }
 }
 
@@ -646,7 +647,7 @@ bool theme_manager_set_accent_color(int32_t color)
     return true;
 }
 
-bool theme_manager_set_ssd_radius(int32_t radius)
+bool theme_manager_set_corner_radius(int32_t radius)
 {
     struct theme_override *override = &manager->override;
     struct theme *current = manager->current;
@@ -656,7 +657,7 @@ bool theme_manager_set_ssd_radius(int32_t radius)
         return true;
     }
 
-    override->ssd_radius = radius;
+    override->corner_radius = radius;
     theme_override_config(current);
     wl_signal_emit_mutable(&manager->events.update, current);
 

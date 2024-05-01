@@ -166,7 +166,7 @@ static void accent_color_changed(GSettings *style, const char *key)
 static void window_radius_changed(GSettings *style, const char *key)
 {
     settings->style.window_radius = g_settings_get_int(style, key);
-    theme_manager_set_ssd_radius(settings->style.window_radius);
+    theme_manager_set_corner_radius(settings->style.window_radius);
 }
 
 static void handle_style_settings_changed(GSettings *style, const char *key, void *data)
@@ -214,7 +214,7 @@ static void style_schema_config_effect(void)
         accent_color_effect();
     }
     if (settings->style.window_radius >= 0) {
-        theme_manager_set_ssd_radius(settings->style.window_radius);
+        theme_manager_set_corner_radius(settings->style.window_radius);
     }
 }
 
@@ -234,7 +234,8 @@ static bool style_schema_settings(void)
             g_settings_get_string(settings->style.settings, accent_color_key);
         settings->style.font_name = g_settings_get_string(settings->style.settings, font_name_key);
         settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
-        settings->style.window_radius = g_settings_get_int(settings->style.settings, window_radius_key);
+        settings->style.window_radius =
+            g_settings_get_int(settings->style.settings, window_radius_key);
         style_schema_config_effect();
     }
     return has_style;

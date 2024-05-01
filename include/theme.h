@@ -127,7 +127,7 @@ bool theme_manager_set_accent_color(int32_t color);
 
 bool theme_manager_set_icon_theme(const char *icon_theme_name);
 
-bool theme_manager_set_ssd_radius(int32_t radius);
+bool theme_manager_set_corner_radius(int32_t radius);
 
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);

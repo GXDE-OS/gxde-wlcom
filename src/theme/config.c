@@ -117,11 +117,10 @@ const char *theme_manager_read_config(struct theme_manager *manager)
         manager->override.accent_color = -1;
     }
 
-    if (json_object_object_get_ex(manager->config->json, "ssd", &data)) {
-        json_object *ssd;
-        if (json_object_object_get_ex(data, "corner_radius", &ssd)) {
-            manager->override.ssd_radius = json_object_get_int(ssd);
-        }
+    if (json_object_object_get_ex(manager->config->json, "corner_radius", &data)) {
+        manager->override.corner_radius = json_object_get_int(data);
+    } else {
+        manager->override.corner_radius = -1;
     }
 
     if (json_object_object_get_ex(manager->config->json, "name", &data)) {
@@ -152,11 +151,9 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
                                json_object_new_int(manager->override.accent_color));
     }
 
-    if (manager->override.ssd_radius >= 0) {
-        json_object *ssd = json_object_new_object();
-        json_object_object_add(manager->config->json, "ssd", ssd);
-        json_object_object_add(ssd, "corner_radius",
-                               json_object_new_int(manager->override.ssd_radius));
+    if (manager->override.corner_radius >= 0) {
+        json_object_object_add(manager->config->json, "corner_radius",
+                               json_object_new_int(manager->override.corner_radius));
     }
 }
 
