@@ -194,16 +194,18 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
         },
     };
 
-    struct blur_render_options opts = {
-        .lx = lx,
-        .ly = ly,
-        .dst_box = &dst_box,
-        .clip = &render_region,
-        .radius = &options.radius,
-        .region = node->has_blur ? &node->blur_region : NULL,
-        .strength = node->blur_strength,
-    };
-    blur_render_with_target(target, &opts);
+    if (!(target->options & KY_SCENE_RENDER_DISABLE_BLUR)) {
+        struct blur_render_options opts = {
+            .lx = lx,
+            .ly = ly,
+            .dst_box = &dst_box,
+            .clip = &render_region,
+            .radius = &options.radius,
+            .region = node->has_blur ? &node->blur_region : NULL,
+            .strength = node->blur_strength,
+        };
+        blur_render_with_target(target, &opts);
+    }
 
     ky_render_pass_add_rect(target->render_pass, &options);
 
