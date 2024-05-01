@@ -569,7 +569,8 @@ void ky_scene_buffer_set_buffer_with_damage(struct ky_scene_buffer *scene_buffer
         pixman_region32_init_rect(&region, 0, 0, old_width, old_height);
         ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, &region);
         pixman_region32_fini(&region);
-    } else if (old_width < new_width || old_height < new_height) {
+    }
+    if (old_width < new_width || old_height < new_height) {
         ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
     }
 
@@ -618,7 +619,8 @@ void ky_scene_buffer_set_dest_size(struct ky_scene_buffer *scene_buffer, int wid
     bool update_later = false;
     if (scene_buffer->dst_width > width || scene_buffer->dst_height > height) {
         ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
-    } else if (scene_buffer->dst_width < width || scene_buffer->dst_height < height) {
+    }
+    if (scene_buffer->dst_width < width || scene_buffer->dst_height < height) {
         update_later = true;
     }
 

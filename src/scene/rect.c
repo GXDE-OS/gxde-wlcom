@@ -283,7 +283,8 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height)
     bool update_later = false;
     if ((rect->width > width || rect->height > height)) {
         ky_scene_node_push_damage(&rect->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
-    } else if (rect->width < width || rect->height < height) {
+    }
+    if (rect->width < width || rect->height < height) {
         update_later = true;
     }
 
