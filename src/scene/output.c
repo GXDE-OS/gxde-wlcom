@@ -279,8 +279,6 @@ struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wl
 
     scene_output_update_geometry(scene_output, false);
 
-    wl_signal_emit_mutable(&scene->events.new_output, scene_output);
-
     return scene_output;
 }
 

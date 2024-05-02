@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_output.h>
 
 #include "effect_p.h"
+#include "output.h"
 #include "painter.h"
 #include "scene/scene.h"
 #include "view/view.h"
@@ -35,7 +36,7 @@ struct frame_output {
 
 struct showfps_effect {
     struct wl_list outputs;
-    struct wl_listener new_output;
+    struct wl_listener new_enabled_output;
 
     struct effect *effect;
     struct wl_listener enable;
@@ -125,11 +126,11 @@ static void frame_output_create(struct showfps_effect *effect, struct ky_scene_o
     wlr_output_schedule_frame(output->output->output);
 }
 
-static void handle_new_output(struct wl_listener *listener, void *data)
+static void handle_new_enabled_output(struct wl_listener *listener, void *data)
 {
-    struct showfps_effect *effect = wl_container_of(listener, effect, new_output);
-    struct ky_scene_output *output = data;
-    frame_output_create(effect, output);
+    struct showfps_effect *effect = wl_container_of(listener, effect, new_enabled_output);
+    struct kywc_output *output = data;
+    frame_output_create(effect, output_from_kywc_output(output)->scene_output);
 }
 
 static void handle_effect_enable(struct wl_listener *listener, void *data)
@@ -143,14 +144,14 @@ static void handle_effect_enable(struct wl_listener *listener, void *data)
         frame_output_create(effect, output);
     }
 
-    effect->new_output.notify = handle_new_output;
-    wl_signal_add(&scene->events.new_output, &effect->new_output);
+    effect->new_enabled_output.notify = handle_new_enabled_output;
+    kywc_output_add_new_enabled_listener(&effect->new_enabled_output);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct showfps_effect *effect = wl_container_of(listener, effect, disable);
-    wl_list_remove(&effect->new_output.link);
+    wl_list_remove(&effect->new_enabled_output.link);
 
     struct frame_output *output, *tmp;
     wl_list_for_each_safe(output, tmp, &effect->outputs, link) {
@@ -180,7 +181,7 @@ bool showfps_effect_create(struct effect_manager *manager)
 
     effect->manager = manager;
     wl_list_init(&effect->outputs);
-    wl_list_init(&effect->new_output.link);
+    wl_list_init(&effect->new_enabled_output.link);
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);

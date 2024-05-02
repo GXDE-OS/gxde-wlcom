@@ -327,6 +327,10 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 
+    if (output->base.state.enabled) {
+        wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
+    }
+
     return output;
 }
 
@@ -794,6 +798,7 @@ struct output_manager *output_manager_create(struct server *server)
     wl_list_init(&output_manager->outputs);
     wl_list_init(&output_manager->output_configs);
     wl_signal_init(&output_manager->events.new_output);
+    wl_signal_init(&output_manager->events.new_enabled_output);
     wl_signal_init(&output_manager->events.primary_output);
     wl_signal_init(&output_manager->events.configured);
     wl_signal_init(&output_manager->events.damage);
@@ -867,6 +872,11 @@ struct kywc_output *kywc_output_get_primary(void)
 void kywc_output_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&output_manager->events.new_output, listener);
+}
+
+void kywc_output_add_new_enabled_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&output_manager->events.new_enabled_output, listener);
 }
 
 void kywc_output_add_primary_listener(struct wl_listener *listener)

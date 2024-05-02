@@ -182,10 +182,6 @@ struct ky_scene {
 
     struct wl_list outputs;
 
-    struct {
-        struct wl_signal new_output; // ky_scene_output
-    } events;
-
     /* damage regon after collect_damage based in node's visible region */
     pixman_region32_t collected_damage;
     /* invisible region after collect_damage */

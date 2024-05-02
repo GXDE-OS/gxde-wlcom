@@ -347,7 +347,6 @@ struct ky_scene *ky_scene_create(void)
 
     wl_list_init(&scene->outputs);
     wl_list_init(&scene->presentation_destroy.link);
-    wl_signal_init(&scene->events.new_output);
 
     pixman_region32_init(&scene->collected_damage);
     pixman_region32_init(&scene->collected_invisible);

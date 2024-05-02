@@ -23,6 +23,7 @@ struct output_manager {
 
     struct {
         struct wl_signal new_output;
+        struct wl_signal new_enabled_output;
         struct wl_signal primary_output;
         struct wl_signal configured;
         struct wl_signal damage;
