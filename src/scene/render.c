@@ -5,8 +5,8 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/region.h>
 
-#include "scene/render.h"
 #include "effect/effect.h"
+#include "scene/render.h"
 
 static int scale_length(int length, int offset, float scale)
 {
@@ -57,7 +57,7 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
                                                   });
     pixman_region32_fini(&background);
 
-    if(!ky_scene_output_render(target)) {
+    if (!ky_scene_output_render(target)) {
         struct ky_scene_node *root = &scene->tree.node;
         // render each node with damage region and visible region
         root->impl.render(root, root->x, root->y, target);
