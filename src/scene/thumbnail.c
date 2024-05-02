@@ -25,7 +25,7 @@ struct thumbnail {
         struct wl_signal destroy;
     } events;
 
-    bool newly_added, wants_update;
+    bool force_update, wants_update;
 };
 
 struct thumbnail_buffer {
@@ -824,7 +824,7 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
     wl_list_insert(&node_thumbnail->base.thumbnails, &thumbnail->link);
     wl_signal_init(&thumbnail->events.update);
     wl_signal_init(&thumbnail->events.destroy);
-    thumbnail->newly_added = thumbnail->wants_update = true;
+    thumbnail->force_update = thumbnail->wants_update = true;
     /* buffer update is needed */
     thumbnail_manager_schedule_frame();
 
@@ -852,7 +852,7 @@ struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option,
     wl_list_insert(&view_thumbnail->base.thumbnails, &thumbnail->link);
     wl_signal_init(&thumbnail->events.update);
     wl_signal_init(&thumbnail->events.destroy);
-    thumbnail->newly_added = thumbnail->wants_update = true;
+    thumbnail->force_update = thumbnail->wants_update = true;
     /* buffer update is needed */
     thumbnail_manager_schedule_frame();
 
@@ -882,7 +882,7 @@ struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
     wl_list_insert(&workspace_thumbnail->base.thumbnails, &thumbnail->link);
     wl_signal_init(&thumbnail->events.update);
     wl_signal_init(&thumbnail->events.destroy);
-    thumbnail->newly_added = thumbnail->wants_update = true;
+    thumbnail->force_update = thumbnail->wants_update = true;
     /* buffer update is needed */
     thumbnail_manager_schedule_frame();
 
@@ -925,10 +925,10 @@ void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
     struct thumbnail_buffer *thumbnail_buffer = thumbnail->buffer;
     if (thumbnail_buffer->render == workspace_thumbnail_render &&
         thumbnail_buffer->destroy == workspace_thumbnail_destroy) {
-        struct workspace_thumbnail_entry *entry;
         struct workspace_thumbnail *workspace_thumbnail =
             wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
 
+        struct workspace_thumbnail_entry *entry;
         wl_list_for_each(entry, &workspace_thumbnail->entries, link) {
             if (entry->thumbnail) {
                 entry->thumbnail->wants_update = wants;
@@ -940,7 +940,6 @@ void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
 
     /* should send update if buffer was damaged */
     if (wants) {
-        // thumbnail->newly_added = true; // send buffer again
         thumbnail_manager_schedule_frame();
     }
 }
@@ -958,8 +957,8 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
         /* thumbnail_buffer cannot be destroyed in here */
         thumbnail_buffer->can_destroy = false;
         wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
-            if (thumbnail->newly_added) {
-                thumbnail->newly_added = false;
+            if (thumbnail->force_update) {
+                thumbnail->force_update = false;
                 wl_signal_emit_mutable(&thumbnail->events.update, &event);
             }
         }
@@ -998,15 +997,15 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
         thumbnail_buffer->buffer = buffer;
     }
 
-    struct thumbnail_update_event event = {
-        .buffer = buffer,
-        .buffer_changed = buffer_changed,
-    };
+    struct thumbnail_update_event event = { .buffer = buffer };
     thumbnail_buffer->can_destroy = false;
     wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
         if (thumbnail->wants_update) {
-            thumbnail->newly_added = false;
+            event.buffer_changed = buffer_changed || thumbnail->force_update;
+            thumbnail->force_update = false;
             wl_signal_emit_mutable(&thumbnail->events.update, &event);
+        } else {
+            thumbnail->force_update |= buffer_changed;
         }
     }
     thumbnail_buffer->can_destroy = true;
@@ -1079,6 +1078,7 @@ static void thumbnail_manager_schedule_frame(void)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
+    wl_list_remove(&manager->destroy.link);
     free(manager);
     manager = NULL;
 }
