@@ -20,3 +20,5 @@ option('kde_keystate', type: 'boolean', value: true, description: 'Enable kde ke
 option('libkywc', type: 'boolean', value: true, description: 'Build libkywc')
 option('kde_clipboard', type: 'boolean', value: true, description: 'Enable kde clipboard dbus')
 option('ukui_watermark', type: 'boolean', value: true, description: 'Enable ukui watermark dbus')
+option('ukui_shell', type: 'boolean', value: true, description: 'Enable ukui shell protocol support')
+option('ukui_window_management', type: 'boolean', value: true, description: 'Enable ukui window management protocol support')

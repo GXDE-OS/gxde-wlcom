@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="ukui_shell">
+  <copyright><![CDATA[
+      SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+      SPDX-FileCopyrightText: 2024 Hongfei Shang
+
+      SPDX-License-Identifier: MulanPSL-2.0
+    ]]>
+  </copyright>
+
+  <interface name="ukui_shell" version="1">
+    <description summary="create ukui shell windows and helpers">
+      This interface is used by kylin powered Wayland shells to communicate with the compositor and
+      can only be bound one time.
+    </description>
+
+    <!-- Surfaces -->
+
+    <request name="create_surface">
+      <description summary="create a shell surface from a surface">
+        Create a shell surface for an existing surface.
+
+        Only one shell surface can be associated with a given surface.
+      </description>
+      <arg name="id" type="new_id" interface="ukui_surface"/>
+      <arg name="surface" type="object" interface="wl_surface"/>
+    </request>
+
+  </interface>
+
+  <interface name="ukui_surface" version="1">
+    <description summary="metadata interface">
+      An interface that may be implemented by a wl_surface, for implementations that provide the
+      shell user interface.
+
+      It provides requests to set surface roles, assign an output or set the position in output
+      coordinates.
+
+      On the server side the object is automatically destroyed when the related wl_surface is
+      destroyed. On client side, ukui_surface.destroy() must be called before destroying the
+      wl_surface object.
+    </description>
+
+    <!-- Destructor -->
+
+    <request name="destroy" type="destructor">
+      <description summary="remove ukui_surface interface">
+        The ukui_surface interface is removed from the wl_surface object that was turned into a
+        shell surface with the ukui_shell.get_surface request. The shell surface role is lost
+        and wl_surface is unmapped.
+      </description>
+    </request>
+
+    <!-- Output and position -->
+
+    <request name="set_output">
+      <description summary="assign an output to this shell surface">
+        Assign an output to this shell surface. The compositor will use this information to set the
+        position when ukui_surface.set_position request is called.
+      </description>
+      <arg name="output" type="object" interface="wl_output"/>
+    </request>
+
+    <request name="set_position">
+      <description summary="change the shell surface position">
+        Move the surface to new coordinates.
+
+        Coordinates are global, for example 50,50 for a 1920,0+1920x1080 output is 1970,50 in global
+        coordinates space.
+      </description>
+      <arg name="x" type="int" summary="x coordinate in global space"/>
+      <arg name="y" type="int" summary="y coordinate in global space"/>
+    </request>
+
+    <!-- Skip taskbar-->
+
+    <request name="set_skip_taskbar">
+      <description summary="make the window skip the taskbar">
+        Setting this bit to the window, will make it say it prefers to not be listed in the taskbar.
+        Taskbar implementations may or may not follow this hint.
+      </description>
+      <arg name="skip" type="uint" summary="Boolean value that sets whether to skip the taskbar"/>
+    </request>
+
+    <!-- Skip switcher -->
+
+    <request name="set_skip_switcher">
+      <description summary="make the window not appear in a switcher">
+        Setting this bit will indicate that the window prefers not to be listed in a switcher.
+      </description>
+      <arg name="skip" type="uint"
+        summary="Boolean value that sets whether to skip the window switcher."/>
+    </request>
+
+    <enum name="property">
+      <entry name="no_titlebar" value="0"/>
+      <entry name="theme" value="1"/>
+      <entry name="window_radius" value="2"/>
+      <entry name="border_width" value="3"/>
+      <entry name="border_color" value="4"/>
+      <entry name="shadow_radius" value="5"/>
+      <entry name="shadow_offset" value="6"/>
+      <entry name="shadow_color" value="7"/>
+    </enum>
+
+    <request name="set_property">
+      <description summary="set window property">
+        Set window property.
+
+        Values for property argument are described by ukui_shell.property
+        and can be used together in a bitfield. The flags bitfield describes which property are
+        supposed to be set.
+      </description>
+      <arg name="property" type="uint" enum="property" summary="property type"/>
+      <arg name="value" type="uint" summary="property value"/>
+    </request>
+
+    <!-- 窗口角色/类型 -->
+
+    <enum name="role">
+      <entry name="normal" value="0"/>
+      <entry name="desktop" value="1"/>
+      <entry name="panel" value="2"/>
+      <entry name="onscreendisplay" value="3"/>
+      <entry name="notification" value="4"/>
+      <entry name="tooltip" value="5"/>
+      <entry name="criticalnotification" value="6"/>
+      <entry name="appletpopup" value="7"/>
+      <entry name="screenlock" value="8"/>
+      <entry name="watermark" value="9"/>
+      <entry name="systemwindow" value="10"/>
+      <entry name="inputpanel" value="11"/>
+      <entry name="logout" value="12"/>
+      <entry name="screenlocknotification" value="13"/>
+      <entry name="switcher" value="14"/>
+    </enum>
+
+    <request name="set_role">
+      <description summary="assign a role to this surface">
+        Assign a role to a shell surface.
+
+        The compositor handles surfaces depending on their role. See the explanation below.
+
+        This request fails if the surface already has a role, this means the surface role may be
+        assigned only once.
+      </description>
+      <arg name="role" type="uint"/>
+    </request>
+
+    <request name="set_panel_auto_hide">
+      <description summary="auto hide the panel ">
+        Setting this bit will indicate that the panel area not to be calculate in output usable area.
+      </description>
+      <arg name="hide" type="uint" summary="Boolean value that sets whether to hide the panel"/>
+    </request>
+
+    <request name="open_under_cursor">
+      <description summary="open under cursor">
+        Request the initial position of this surface to be under the current cursor position. Has to
+        be called before attaching any buffer to this surface.
+      </description>
+    </request>
+
+    <request name="set_panel_takes_focus">
+      <description summary="Whether a panel takes focus">
+          By default various ukui_surface roles do not take focus and cannot be activated.
+          With this request the compositor can be instructed to pass focus also to this ukui_surface.
+      </description>
+      <arg name="takes_focus" type="uint" summary="Boolean value that sets whether the panel takes focus"/>
+    </request>
+
+    <request name="grab_keyboard">
+      <description summary="make the surface take keyboard grab">
+        This request makes the created surface take an explicit keyboard grab.
+        This keyboard grab will be dismissed when the client destroys the surface.
+        Grab all keyboard when seat is set to null.
+      </description>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true"
+           summary="the seat for which the keyboard should be grabbed"/>
+    </request>
+
+  </interface>
+</protocol>

@@ -785,6 +785,7 @@ void view_set_parent(struct view *view, struct view *parent)
     kywc_log(KYWC_DEBUG, "view %p set parent to %p", view, parent);
 
     view->parent = parent;
+
     wl_signal_emit_mutable(&view->events.parent, NULL);
 }
 
@@ -1276,6 +1277,79 @@ bool view_is_resizable(struct view *view)
     return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
 }
 
+void view_apply_role(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    struct view_layer *layer = NULL;
+    switch (kywc_view->role) {
+    case KYWC_VIEW_ROLE_NORMAL:
+        layer = view_manager_get_layer(LAYER_NORMAL, true);
+        break;
+    case KYWC_VIEW_ROLE_DESKTOP:
+        layer = view_manager_get_layer(LAYER_DESKTOP, false);
+        break;
+    case KYWC_VIEW_ROLE_PANEL:
+    case KYWC_VIEW_ROLE_APPLETPOPUP:
+        layer = view_manager_get_layer(LAYER_DOCK, false);
+        break;
+    case KYWC_VIEW_ROLE_ONSCREENDISPLAY:
+        layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
+        break;
+    case KYWC_VIEW_ROLE_NOTIFICATION:
+        layer = view_manager_get_layer(LAYER_NOTIFICATION, false);
+        break;
+    case KYWC_VIEW_ROLE_TOOLTIP:
+        layer = view_manager_get_layer(LAYER_POPUP, false);
+        break;
+    case KYWC_VIEW_ROLE_CRITICALNOTIFICATION:
+        layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+        break;
+    case KYWC_VIEW_ROLE_SYSTEMWINDOW:
+    case KYWC_VIEW_ROLE_SWITCHER:
+        layer = view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
+        break;
+    case KYWC_VIEW_ROLE_INPUTPANEL:
+        layer = view_manager_get_layer(LAYER_INPUT_PANEL, false);
+        break;
+    case KYWC_VIEW_ROLE_LOGOUT:
+        layer = view_manager_get_layer(LAYER_LOGOUT, false);
+        break;
+    case KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION:
+        layer = view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
+        break;
+    case KYWC_VIEW_ROLE_WATERMARK:
+        layer = view_manager_get_layer(LAYER_WATERMARK, false);
+        break;
+    case KYWC_VIEW_ROLE_SCREENLOCK:
+        layer = view_manager_get_layer(LAYER_SCREEN_LOCK, false);
+        break;
+    }
+
+    if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+        view_set_workspace(view_from_kywc_view(kywc_view), workspace_manager_get_current());
+    } else {
+        view_unset_workspace(view_from_kywc_view(kywc_view), layer);
+    }
+
+    kywc_view->minimizable = kywc_view->maximizable = kywc_view->fullscreenable =
+        kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
+    kywc_view->closeable = kywc_view->role != KYWC_VIEW_ROLE_DESKTOP &&
+                           kywc_view->role != KYWC_VIEW_ROLE_PANEL;
+    kywc_view->movable = kywc_view->resizable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
+    kywc_view->activatable = kywc_view->role != KYWC_VIEW_ROLE_PANEL &&
+                             kywc_view->role != KYWC_VIEW_ROLE_TOOLTIP &&
+                             kywc_view->role != KYWC_VIEW_ROLE_WATERMARK;
+    kywc_view->focusable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
+                           kywc_view->role == KYWC_VIEW_ROLE_DESKTOP ||
+                           kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
+                           kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK;
+    kywc_view->shadeable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
+
+    kywc_view->has_round_corner = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
+
+    view_update_round_corner(view_from_kywc_view(kywc_view));
+}
+
 void view_update_size(struct view *view, int width, int height, int min_width, int min_height,
                       int max_width, int max_height)
 {
@@ -1477,6 +1551,8 @@ struct view_manager *view_manager_create(struct server *server)
     kde_slide_manager_create(server);
     xdg_dialog_create(server);
     xdg_activation_create(server);
+    ukui_shell_create(server);
+    ukui_window_management_create(server);
 
     return view_manager;
 }

@@ -102,6 +102,10 @@ bool xdg_dialog_create(struct server *server);
 
 bool xdg_activation_create(struct server *server);
 
+bool ukui_window_management_create(struct server *server);
+
+bool ukui_shell_create(struct server *server);
+
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);
 #else
@@ -163,6 +167,24 @@ static __attribute__((unused)) inline bool kde_blur_manager_create(struct server
 bool kde_slide_manager_create(struct server *server);
 #else
 static __attribute__((unused)) inline bool kde_slide_manager_create(struct server *server)
+{
+    return false;
+}
+#endif
+
+#if HAVE_UKUI_SHELL
+bool ukui_shell_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool ukui_shell_create(struct server *server)
+{
+    return false;
+}
+#endif
+
+#if HAVE_UKUI_WINDOW_MANAGEMENT
+bool ukui_window_management_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool ukui_window_management_create(struct server *server)
 {
     return false;
 }

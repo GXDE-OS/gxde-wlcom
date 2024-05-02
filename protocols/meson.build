@@ -78,6 +78,18 @@ if have_kde_keystate
   }
 endif
 
+if have_ukui_shell
+  protocols += {
+    'ukui-shell': 'ukui-shell.xml',
+  }
+endif
+
+if have_ukui_window_management
+  protocols += {
+    'ukui-window-management': 'ukui-window-management.xml',
+  }
+endif
+
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}

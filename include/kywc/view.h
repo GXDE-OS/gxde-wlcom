@@ -58,6 +58,8 @@ enum kywc_view_role {
     KYWC_VIEW_ROLE_SCREENLOCK,
     KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION,
     KYWC_VIEW_ROLE_WATERMARK,
+    KYWC_VIEW_ROLE_APPLETPOPUP,
+    KYWC_VIEW_ROLE_SWITCHER,
 };
 
 struct kywc_view {
@@ -75,6 +77,10 @@ struct kywc_view {
     struct {
         int top, bottom, left, right;
     } padding;
+
+    struct {
+        int x, y, width, height;
+    } minimized_geometry;
 
     /* minimize size client set or default */
     int32_t min_width, min_height;

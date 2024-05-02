@@ -62,3 +62,15 @@ if have_kde_slide
     'kde_slide.c',
   )
 endif
+
+if have_ukui_shell
+  wlcom_sources += files(
+    'ukui_shell.c',
+  )
+endif
+
+if have_ukui_window_management
+  wlcom_sources += files(
+    'ukui_window.c',
+  )
+endif

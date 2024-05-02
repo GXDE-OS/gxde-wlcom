@@ -215,6 +215,8 @@ bool view_is_resizable(struct view *view);
 void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
                              struct kywc_output *kywc_output, enum kywc_tile tile);
 
+void view_apply_role(struct view *view);
+
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
 
 #endif /* __VIEW_H_ */
