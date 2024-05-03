@@ -957,7 +957,7 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
         /* thumbnail_buffer cannot be destroyed in here */
         thumbnail_buffer->can_destroy = false;
         wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
-            if (thumbnail->force_update) {
+            if (thumbnail->wants_update && thumbnail->force_update) {
                 thumbnail->force_update = false;
                 wl_signal_emit_mutable(&thumbnail->events.update, &event);
             }
