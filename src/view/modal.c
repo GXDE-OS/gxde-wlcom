@@ -55,6 +55,8 @@ struct modal {
     struct wl_event_source *timer;
 };
 
+static int handle_modal_shake_effect(void *data);
+
 static void modal_shake_effect_set_enabled(struct modal *modal, bool enabled)
 {
     if (modal->shake_effect.enabled == enabled) {
@@ -63,8 +65,10 @@ static void modal_shake_effect_set_enabled(struct modal *modal, bool enabled)
 
     modal->shake_effect.enabled = enabled;
 
-    if (wl_event_source_timer_update(modal->timer, enabled ? 1 : 0) < 0) {
-        kywc_log(KYWC_DEBUG, "failed to set key modal timer");
+    if (enabled) {
+        handle_modal_shake_effect(modal);
+    } else if (wl_event_source_timer_update(modal->timer, 0) < 0) {
+        kywc_log(KYWC_DEBUG, "failed to stop modal timer");
     }
 }
 
