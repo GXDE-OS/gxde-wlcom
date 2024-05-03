@@ -166,6 +166,36 @@ if have_examples
   subdir('examples')
 endif
 
+summary({
+  'prefix': get_option('prefix'),
+  'plugin': plugindir,
+  },
+  section: 'Directories')
+
+summary({
+  'examples': have_examples,
+  'nls': msgfmt.found(),
+  'kde_output': have_kde_output,
+  'kde_virtual_desktop': have_kde_virtual_desktop,
+  'wlr_output': have_wlr_output,
+  'wlr_foreign_toplevel': have_wlr_foreign_toplevel,
+  'wlr_layer_shell': have_wlr_layer_shell,
+  'kde_global_accel': have_kde_global_accel,
+  'kde_input': have_kde_input,
+  'kde_nightcolor': have_kde_nightcolor,
+  'kde_plasma_shell': have_kde_plasma_shell,
+  'kde_plasma_window_management': have_kde_plasma_window_management,
+  'kde_blur': have_kde_blur,
+  'kde_global_settings': have_kde_global_settings,
+  'ukui_screenshot': have_ukui_screenshot,
+  'ukui_gsettings': have_ukui_gsettings,
+  'kde_keystate': have_kde_keystate,
+  'libkywc': have_libkywc,
+  'kde_clipboard': have_kde_clipboard,
+  'ukui_watermark': have_ukui_watermark,
+  },
+  section: 'Configuration', bool_yn: true)
+
 symbols_file = 'wlcom.syms'
 symbols_flag = '-Wl,--version-script,@0@/@1@'.format(
   meson.current_source_dir(), symbols_file)
