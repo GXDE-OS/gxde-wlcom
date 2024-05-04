@@ -319,6 +319,7 @@ done:
     org_kde_plasma_virtual_desktop_management_destroy(manager.management);
 
     wl_registry_destroy(registry);
+    wl_display_flush(display);
     wl_display_disconnect(display);
 
     return 0;

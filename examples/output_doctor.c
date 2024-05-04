@@ -1094,6 +1094,7 @@ done:
     free(manager.primary_output_name);
 
     wl_registry_destroy(registry);
+    wl_display_flush(display);
     wl_display_disconnect(display);
 
     return 0;
