@@ -57,8 +57,10 @@ struct ssd_tooltip {
     struct seat *seat;
     struct wl_listener seat_destroy;
 
-    struct wl_event_source *timer;
     struct ssd_part *hovered_part;
+    struct wl_listener hovered_view_unmap;
+
+    struct wl_event_source *timer;
     bool timer_triggered, timer_for_hidden;
 };
 
@@ -163,7 +165,11 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
         wl_event_source_timer_update(tooltip->timer, 0);
         tooltip->timer_triggered = false;
         tooltip->timer_for_hidden = false;
+
         tooltip->hovered_part = NULL;
+        wl_list_remove(&tooltip->hovered_view_unmap.link);
+        wl_list_init(&tooltip->hovered_view_unmap.link);
+
         /* make sure restore and maximize widgets both are disabled */
         if (part->type == SSD_BUTTON_MAXIMIZE) {
             widget_set_enabled(tooltip->restore, false);
@@ -179,8 +185,11 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
 
     if (!tooltip->timer_triggered) {
         wl_event_source_timer_update(tooltip->timer, 500);
-        tooltip->hovered_part = part;
         tooltip->timer_for_hidden = false;
+
+        tooltip->hovered_part = part;
+        wl_list_remove(&tooltip->hovered_view_unmap.link);
+        wl_signal_add(&part->ssd->kywc_view->events.unmap, &tooltip->hovered_view_unmap);
         return;
     }
 
@@ -255,6 +264,7 @@ static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *
     struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, seat_destroy);
     wl_list_remove(&tooltip->seat_destroy.link);
     wl_list_remove(&tooltip->theme_update.link);
+    wl_list_remove(&tooltip->hovered_view_unmap.link);
     wl_list_remove(&tooltip->link);
 
     widget_destroy(tooltip->icon);
@@ -267,12 +277,27 @@ static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *
     free(tooltip);
 }
 
+static void ssd_tooltip_handle_hoverd_view_unmap(struct wl_listener *listener, void *data)
+{
+    struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, hovered_view_unmap);
+
+    wl_list_remove(&tooltip->hovered_view_unmap.link);
+    wl_list_init(&tooltip->hovered_view_unmap.link);
+
+    if (tooltip->hovered_part) {
+        ssd_tooltip_show(tooltip->seat, tooltip->hovered_part, false);
+    }
+}
+
 static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
 {
     struct ssd_tooltip *tooltip = calloc(1, sizeof(struct ssd_tooltip));
     if (!tooltip) {
         return NULL;
     }
+
+    tooltip->hovered_view_unmap.notify = ssd_tooltip_handle_hoverd_view_unmap;
+    wl_list_init(&tooltip->hovered_view_unmap.link);
 
     tooltip->seat = seat;
     tooltip->seat_destroy.notify = ssd_tooltip_handle_seat_destroy;
