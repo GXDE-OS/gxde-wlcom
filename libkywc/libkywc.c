@@ -116,16 +116,16 @@ void kywc_context_destroy(kywc_context *ctx)
         return;
     }
 
-    if (ctx->impl && ctx->impl->destroy) {
-        ctx->impl->destroy(ctx, ctx->user_data);
-    }
-
     struct ky_context_provider *provider, *tmp;
     wl_list_for_each_safe(provider, tmp, &ctx->providers, link) {
         wl_list_remove(&provider->link);
         if (provider->destroy) {
             provider->destroy(provider);
         }
+    }
+
+    if (ctx->impl && ctx->impl->destroy) {
+        ctx->impl->destroy(ctx, ctx->user_data);
     }
 
     wl_registry_destroy(ctx->registry);
