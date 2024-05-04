@@ -43,7 +43,7 @@ struct watermark {
 
     struct output *output;
     struct wl_listener output_geometry;
-    struct wl_listener output_destroy; // ky_scene_output
+    struct wl_listener output_disable;
 };
 
 struct watermark_effect {
@@ -104,15 +104,15 @@ static void watermark_buffer_destroy(struct watermark_buffer *buffer)
 static void watermark_destroy(struct watermark *watermark)
 {
     wl_list_remove(&watermark->link);
-    wl_list_remove(&watermark->output_destroy.link);
+    wl_list_remove(&watermark->output_disable.link);
     wl_list_remove(&watermark->output_geometry.link);
     ky_scene_node_destroy(&watermark->scene_buffer->node);
     free(watermark);
 }
 
-static void watermark_handle_output_destroy(struct wl_listener *listener, void *data)
+static void watermark_handle_output_disable(struct wl_listener *listener, void *data)
 {
-    struct watermark *watermark = wl_container_of(listener, watermark, output_destroy);
+    struct watermark *watermark = wl_container_of(listener, watermark, output_disable);
     watermark_destroy(watermark);
 }
 
@@ -184,8 +184,8 @@ static struct watermark *watermark_create(struct watermark_effect *effect, struc
     wl_list_insert(&effect->watermarks, &watermark->link);
 
     watermark->output = output;
-    watermark->output_destroy.notify = watermark_handle_output_destroy;
-    wl_signal_add(&output->scene_output->events.destroy, &watermark->output_destroy);
+    watermark->output_disable.notify = watermark_handle_output_disable;
+    wl_signal_add(&output->events.disable, &watermark->output_disable);
     watermark->output_geometry.notify = watermark_handle_output_geometry;
     wl_signal_add(&output->events.geometry, &watermark->output_geometry);
 
@@ -265,7 +265,7 @@ static void effect_create_watermarks(struct watermark_effect *effect, struct wat
     }
 
     effect->new_enabled_output.notify = handle_new_enabled_output;
-    kywc_output_add_new_enabled_listener(&effect->new_enabled_output);
+    output_manager_add_new_enabled_listener(&effect->new_enabled_output);
 }
 
 static int watermark_update(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)

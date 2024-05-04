@@ -244,6 +244,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     wl_signal_init(&kywc_output->events.color_temp);
     wl_signal_init(&kywc_output->events.destroy);
 
+    wl_signal_init(&output->events.disable);
     wl_signal_init(&output->events.geometry);
     wl_signal_init(&output->events.usable_area);
     wl_signal_init(&output->events.update_usable_area);
@@ -421,6 +422,7 @@ static void output_destroy(struct output *output)
     struct kywc_output *kywc_output = &output->base;
 
     kywc_output->destroying = true;
+    wl_signal_emit_mutable(&output->events.disable, NULL);
     wl_signal_emit_mutable(&kywc_output->events.destroy, NULL);
 
     wl_list_remove(&output->link);
@@ -874,11 +876,6 @@ void kywc_output_add_new_listener(struct wl_listener *listener)
     wl_signal_add(&output_manager->events.new_output, listener);
 }
 
-void kywc_output_add_new_enabled_listener(struct wl_listener *listener)
-{
-    wl_signal_add(&output_manager->events.new_enabled_output, listener);
-}
-
 void kywc_output_add_primary_listener(struct wl_listener *listener)
 {
     wl_signal_add(&output_manager->events.primary_output, listener);
@@ -899,6 +896,11 @@ void output_manager_add_damage_listener(struct wl_listener *listener)
     wl_signal_add(&output_manager->events.damage, listener);
 
     output_damage_set_enabled(true);
+}
+
+void output_manager_add_new_enabled_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&output_manager->events.new_enabled_output, listener);
 }
 
 float kywc_output_preferred_scale(struct kywc_output *kywc_output, int width, int height)
@@ -1221,10 +1223,12 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     if (current->enabled != old.enabled) {
         if (!current->enabled) {
             wl_signal_emit_mutable(&kywc_output->events.off, NULL);
+            wl_signal_emit_mutable(&output->events.disable, NULL);
             output_write_config(output);
             return true;
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, NULL);
+            wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
         }
     }
 

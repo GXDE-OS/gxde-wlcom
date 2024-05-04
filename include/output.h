@@ -33,6 +33,8 @@ struct output {
     bool gamma_changed;
 
     struct {
+        /* emit when output is disabled: off or destroy */
+        struct wl_signal disable;
         /* emit when output geometry changed */
         struct wl_signal geometry;
         /* emit when output usable area changed */
@@ -60,6 +62,8 @@ struct output_manager *output_manager_create(struct server *server);
 void output_manager_add_configured_listener(struct wl_listener *listener);
 
 void output_manager_add_damage_listener(struct wl_listener *listener);
+
+void output_manager_add_new_enabled_listener(struct wl_listener *listener);
 
 void output_manager_emit_configured(void);
 

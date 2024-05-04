@@ -145,7 +145,7 @@ static void handle_effect_enable(struct wl_listener *listener, void *data)
     }
 
     effect->new_enabled_output.notify = handle_new_enabled_output;
-    kywc_output_add_new_enabled_listener(&effect->new_enabled_output);
+    output_manager_add_new_enabled_listener(&effect->new_enabled_output);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)

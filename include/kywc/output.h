@@ -77,8 +77,6 @@ struct kywc_output {
 
 void kywc_output_add_new_listener(struct wl_listener *listener);
 
-void kywc_output_add_new_enabled_listener(struct wl_listener *listener);
-
 void kywc_output_add_primary_listener(struct wl_listener *listener);
 
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state);
