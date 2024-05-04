@@ -380,7 +380,8 @@ static void handle_window_menu(struct wl_listener *listener, void *data)
     }
 
     window_menu->view = event->view;
-    window_menu->x = event->x;
+    /* workaround: menu is too close to the menu */
+    window_menu->x = event->x + 8;
     window_menu->y = event->y;
     window_menu_set_enabled(window_menu, true);
 }
