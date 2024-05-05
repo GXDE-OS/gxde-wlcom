@@ -5,21 +5,39 @@
 #ifndef _EFFECT_CAPTURE_H_
 #define _EFFECT_CAPTURE_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "output.h"
 
-struct wlr_buffer;
-struct wlr_box;
+struct capture_update_event {
+    struct wlr_buffer *buffer;
+    bool buffer_changed;
+};
 
-typedef void (*capture_done_func_t)(struct wlr_buffer *buffer, int width, int height, void *data);
+enum capture_option {
+    CAPTURE_NEED_NONE = 0,
+    /* use buffer coord */
+    CAPTURE_NEED_UNSCALED = 1 << 0,
+    /**
+     * embed cursor into buffer.
+     * there is no guarantee the cursor will be embeded or not,
+     * caused by hardware cursor is not support or
+     * other capture request is different in cursor option.
+     */
+    CAPTURE_NEED_CURSOR = 1 << 1,
+};
 
-bool capture_area(struct wlr_box *rect, bool unscaled, bool cursor, capture_done_func_t done,
-                  void *data);
+struct capture *capture_create_from_output(struct output *output, uint32_t options);
 
-bool capture_output(const char *name, bool unscaled, bool cursor, capture_done_func_t done,
-                    void *data);
+struct capture *capture_create_from_area(struct wlr_box *rect, uint32_t options);
 
-bool capture_fullscreen(bool unscaled, bool cursor, capture_done_func_t done, void *data);
+struct capture *capture_create_from_fullscreen(uint32_t options);
+
+void capture_add_update_listener(struct capture *capture, struct wl_listener *listener);
+
+void capture_add_destroy_listener(struct capture *capture, struct wl_listener *listener);
+
+void capture_mark_wants_update(struct capture *capture, bool wants);
+
+void capture_destroy(struct capture *capture);
 
 void capture_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t stride,
                          struct wlr_box *box, void *data);

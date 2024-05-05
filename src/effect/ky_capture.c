@@ -12,6 +12,7 @@
 
 #include "kywc-capture-v1-protocol.h"
 
+#include "effect/capture.h"
 #include "effect_p.h"
 #include "scene/thumbnail.h"
 #include "view/workspace.h"
@@ -39,7 +40,6 @@ struct ky_capture_frame {
     union {
         struct {
             struct kywc_output *output;
-            bool overlay_cursor;
         } output;
         struct {
             struct workspace *workspace;
@@ -52,24 +52,31 @@ struct ky_capture_frame {
 
     /* buffer from thumbnail or capture */
     struct wlr_buffer *buffer;
-
-    struct thumbnail *thumbnail;
-    struct wl_listener thumbnail_update;
-    struct wl_listener thumbnail_destroy;
+    union {
+        struct capture *capture;
+        struct thumbnail *thumbnail;
+        void *data;
+    };
+    struct wl_listener buffer_update;
+    struct wl_listener buffer_destroy;
 };
 
 static void ky_capture_frame_destroy(struct ky_capture_frame *frame)
 {
     wl_resource_set_user_data(frame->resource, NULL);
 
-    wl_list_remove(&frame->thumbnail_update.link);
-    wl_list_remove(&frame->thumbnail_destroy.link);
+    wl_list_remove(&frame->buffer_update.link);
+    wl_list_remove(&frame->buffer_destroy.link);
 
     if (frame->buffer) {
         wlr_buffer_unlock(frame->buffer);
     }
-    if (frame->thumbnail) {
-        thumbnail_destroy(frame->thumbnail);
+    if (frame->data) {
+        if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
+            capture_destroy(frame->capture);
+        } else {
+            thumbnail_destroy(frame->thumbnail);
+        }
     }
 
     wl_list_remove(&frame->link);
@@ -88,7 +95,11 @@ static void frame_handle_release_buffer(struct wl_client *client, struct wl_reso
     frame->buffer = NULL;
 
     if (want_buffer) {
-        thumbnail_mark_wants_update(frame->thumbnail, true);
+        if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
+            capture_mark_wants_update(frame->capture, true);
+        } else {
+            thumbnail_mark_wants_update(frame->thumbnail, true);
+        }
     }
 }
 
@@ -110,25 +121,34 @@ static void frame_handle_resource_destroy(struct wl_resource *resource)
     }
 }
 
-static void frame_handle_thumbnail_destroy(struct wl_listener *listener, void *data)
+static void frame_handle_buffer_destroy(struct wl_listener *listener, void *data)
 {
-    struct ky_capture_frame *frame = wl_container_of(listener, frame, thumbnail_destroy);
+    struct ky_capture_frame *frame = wl_container_of(listener, frame, buffer_destroy);
     kywc_capture_frame_v1_send_cancelled(frame->resource);
-    frame->thumbnail = NULL;
+    frame->data = NULL;
     ky_capture_frame_destroy(frame);
 }
 
-static void frame_handle_thumbnail_update(struct wl_listener *listener, void *data)
+static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
 {
-    struct ky_capture_frame *frame = wl_container_of(listener, frame, thumbnail_update);
-    struct thumbnail_update_event *event = data;
-    struct wlr_buffer *buffer = event->buffer;
+    struct ky_capture_frame *frame = wl_container_of(listener, frame, buffer_update);
+    struct wlr_buffer *buffer = NULL;
+    uint32_t flags = 0;
+
+    if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
+        struct capture_update_event *event = data;
+        buffer = event->buffer;
+        flags = event->buffer_changed ? 0 : KYWC_CAPTURE_FRAME_V1_FLAGS_REUSED;
+    } else {
+        struct thumbnail_update_event *event = data;
+        buffer = event->buffer;
+        flags = event->buffer_changed ? 0 : KYWC_CAPTURE_FRAME_V1_FLAGS_REUSED;
+    }
 
     struct wlr_dmabuf_attributes dmabuf;
     struct wlr_shm_attributes shm;
     uint32_t format, stride, offset;
     uint64_t modifier = 0;
-    uint32_t flags = event->buffer_changed ? 0 : KYWC_CAPTURE_FRAME_V1_FLAGS_REUSED;
     int fd;
 
     if (wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
@@ -156,7 +176,11 @@ static void frame_handle_thumbnail_update(struct wl_listener *listener, void *da
                                       offset, stride, mod_high, mod_low, flags);
 
     /* enable update if client wants buffer again in release_buffer */
-    thumbnail_mark_wants_update(frame->thumbnail, false);
+    if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
+        capture_mark_wants_update(frame->capture, false);
+    } else {
+        thumbnail_mark_wants_update(frame->thumbnail, false);
+    }
 }
 
 static void manager_handle_capture_output(struct wl_client *client, struct wl_resource *resource,
@@ -189,15 +213,26 @@ static void manager_handle_capture_output(struct wl_client *client, struct wl_re
         return;
     }
 
+    uint32_t options = overlay_cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+    frame->capture = capture_create_from_output(output_from_kywc_output(kywc_output), options);
+    if (!frame->capture) {
+        kywc_capture_frame_v1_send_failed(frame->resource);
+        wl_resource_set_user_data(frame->resource, NULL);
+        free(frame);
+        return;
+    }
+
     struct ky_capture_manager *manager = wl_resource_get_user_data(resource);
     frame->manager = manager;
     wl_list_insert(&manager->frames, &frame->link);
 
     frame->type = KY_CAPTURE_FRAME_TYPE_OUTPUT;
-    frame->output.overlay_cursor = overlay_cursor;
     frame->output.output = kywc_output;
 
-    // TODO: start capturing ?
+    frame->buffer_update.notify = frame_handle_buffer_update;
+    capture_add_update_listener(frame->capture, &frame->buffer_update);
+    frame->buffer_destroy.notify = frame_handle_buffer_destroy;
+    capture_add_destroy_listener(frame->capture, &frame->buffer_destroy);
 }
 
 static void manager_handle_capture_workspace(struct wl_client *client, struct wl_resource *resource,
@@ -247,10 +282,10 @@ static void manager_handle_capture_workspace(struct wl_client *client, struct wl
     frame->workspace.workspace = ws;
     frame->workspace.output = kywc_output;
 
-    frame->thumbnail_update.notify = frame_handle_thumbnail_update;
-    thumbnail_add_update_listener(frame->thumbnail, &frame->thumbnail_update);
-    frame->thumbnail_destroy.notify = frame_handle_thumbnail_destroy;
-    thumbnail_add_destroy_listener(frame->thumbnail, &frame->thumbnail_destroy);
+    frame->buffer_update.notify = frame_handle_buffer_update;
+    thumbnail_add_update_listener(frame->thumbnail, &frame->buffer_update);
+    frame->buffer_destroy.notify = frame_handle_buffer_destroy;
+    thumbnail_add_destroy_listener(frame->thumbnail, &frame->buffer_destroy);
 }
 
 static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_resource *resource,
@@ -300,10 +335,10 @@ static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_
     frame->type = KY_CAPTURE_FRAME_TYPE_TOPLEVEL;
     frame->toplevel.view = kywc_view;
 
-    frame->thumbnail_update.notify = frame_handle_thumbnail_update;
-    thumbnail_add_update_listener(frame->thumbnail, &frame->thumbnail_update);
-    frame->thumbnail_destroy.notify = frame_handle_thumbnail_destroy;
-    thumbnail_add_destroy_listener(frame->thumbnail, &frame->thumbnail_destroy);
+    frame->buffer_update.notify = frame_handle_buffer_update;
+    thumbnail_add_update_listener(frame->thumbnail, &frame->buffer_update);
+    frame->buffer_destroy.notify = frame_handle_buffer_destroy;
+    thumbnail_add_destroy_listener(frame->thumbnail, &frame->buffer_destroy);
 }
 
 static void manager_handle_destroy(struct wl_client *client, struct wl_resource *resource)

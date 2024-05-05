@@ -23,27 +23,63 @@ static struct screenshot_manager {
     struct server *server;
     struct wl_listener destroy;
 
+    struct capture *capture;
+    struct wl_listener capture_update;
+    struct wl_listener capture_destroy;
+
     sd_bus_message *msg;
     bool taking_screenshot;
 } *manager = NULL;
 
 static void screenshot_finish(const char *path, void *data)
 {
-    sd_bus_reply_method_return(manager->msg, "s", path);
+    if (path) {
+        sd_bus_reply_method_return(manager->msg, "s", path);
+        kywc_log(KYWC_DEBUG, "screenshot done, send reply %s", path);
+    } else {
+        const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            "org.ukui.kwin.Screenshot.Error.Cancelled", "Screenshot got cancelled");
+        sd_bus_reply_method_error(manager->msg, &error);
+    }
+
     sd_bus_message_unref(manager->msg);
     manager->msg = NULL;
 
     manager->taking_screenshot = false;
-    kywc_log(KYWC_DEBUG, "screenshot done, send reply %s", path);
 }
 
-static void screenshot_done(struct wlr_buffer *buffer, int width, int height, void *data)
+static void manager_destroy_capture(void)
 {
+    wl_list_remove(&manager->capture_destroy.link);
+    wl_list_remove(&manager->capture_update.link);
+
+    if (manager->capture) {
+        capture_destroy(manager->capture);
+        manager->capture = NULL;
+    }
+}
+
+static void handle_capture_update(struct wl_listener *listener, void *data)
+{
+    struct capture_update_event *event = data;
+
     char path[32];
     snprintf(path, 32, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
     kywc_identifier_rand_generate(path, 4);
 
-    capture_write_file(buffer, width, height, path, screenshot_finish, NULL);
+    capture_write_file(event->buffer, event->buffer->width, event->buffer->height, path,
+                       screenshot_finish, NULL);
+
+    manager_destroy_capture();
+}
+
+static void handle_capture_destroy(struct wl_listener *listener, void *data)
+{
+    manager->capture = NULL;
+    manager_destroy_capture();
+
+    /* capture failed, send a error to client */
+    screenshot_finish(NULL, NULL);
 }
 
 static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
@@ -54,9 +90,13 @@ static int screenshot_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_err
         return sd_bus_reply_method_error(msg, &error);
     }
 
-    if (!capture_fullscreen(false, false, screenshot_done, NULL)) {
+    manager->capture = capture_create_from_fullscreen(CAPTURE_NEED_NONE);
+    if (!manager->capture) {
         return 0;
     }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
 
     manager->msg = sd_bus_message_ref(msg);
     manager->taking_screenshot = true;
@@ -75,9 +115,15 @@ static int screenshot2_fullscreen(sd_bus_message *msg, void *userdata, sd_bus_er
     uint32_t cursor = 0;
     CK(sd_bus_message_read(msg, "b", &cursor));
 
-    if (!capture_fullscreen(false, cursor, screenshot_done, NULL)) {
+    uint32_t options = cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+
+    manager->capture = capture_create_from_fullscreen(options);
+    if (!manager->capture) {
         return 0;
     }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
 
     manager->msg = sd_bus_message_ref(msg);
     manager->taking_screenshot = true;
@@ -96,9 +142,16 @@ static int screenshot_full(sd_bus_message *msg, void *userdata, sd_bus_error *re
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "bb", &unscaled, &cursor));
 
-    if (!capture_fullscreen(unscaled, cursor, screenshot_done, NULL)) {
+    uint32_t options = unscaled ? CAPTURE_NEED_UNSCALED : CAPTURE_NEED_NONE;
+    options |= cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+
+    manager->capture = capture_create_from_fullscreen(options);
+    if (!manager->capture) {
         return 0;
     }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
 
     manager->msg = sd_bus_message_ref(msg);
     manager->taking_screenshot = true;
@@ -118,9 +171,23 @@ static int screenshot_output(sd_bus_message *msg, void *userdata, sd_bus_error *
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "sbb", &name, &unscaled, &cursor));
 
-    if (!capture_output(name, unscaled, cursor, screenshot_done, NULL)) {
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output) {
+        const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            "org.ukui.kwin.Screenshot.Error.InvalidOutput", "Invalid output requested");
+        return sd_bus_reply_method_error(msg, &error);
+    }
+
+    uint32_t options = unscaled ? CAPTURE_NEED_UNSCALED : CAPTURE_NEED_NONE;
+    options |= cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+
+    manager->capture = capture_create_from_output(output_from_kywc_output(output), options);
+    if (!manager->capture) {
         return 0;
     }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
 
     manager->msg = sd_bus_message_ref(msg);
     manager->taking_screenshot = true;
@@ -140,10 +207,16 @@ static int screenshot_area(sd_bus_message *msg, void *userdata, sd_bus_error *re
     uint32_t unscaled, cursor;
     CK(sd_bus_message_read(msg, "iiiibb", &x, &y, &width, &height, &unscaled, &cursor));
 
-    if (!capture_area(&(struct wlr_box){ x, y, width, height }, unscaled, cursor, screenshot_done,
-                      NULL)) {
+    uint32_t options = unscaled ? CAPTURE_NEED_UNSCALED : CAPTURE_NEED_NONE;
+    options |= cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+
+    manager->capture = capture_create_from_area(&(struct wlr_box){ x, y, width, height }, options);
+    if (!manager->capture) {
         return 0;
     }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
 
     manager->msg = sd_bus_message_ref(msg);
     manager->taking_screenshot = true;
@@ -199,6 +272,9 @@ bool screenshot_effect_create(struct effect_manager *effect_manager)
     manager->server = effect_manager->server;
     manager->destroy.notify = handle_config_destroy;
     wl_signal_add(&config->events.destroy, &manager->destroy);
+
+    manager->capture_update.notify = handle_capture_update;
+    manager->capture_destroy.notify = handle_capture_destroy;
 
     return true;
 }
