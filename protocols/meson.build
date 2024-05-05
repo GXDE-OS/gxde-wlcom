@@ -8,6 +8,7 @@ protocols = {
   'xdg-output-unstable-v1': wl_protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',
   'zwp-tablet-manager-v2': wl_protocol_dir / 'unstable/tablet/tablet-unstable-v2.xml',
   'zwp-text-input-v1': wl_protocol_dir / 'unstable/text-input/text-input-unstable-v1.xml',
+  'xdg-decoration': wl_protocol_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
   'org-kde-kwin-idle': 'idle.xml',
   'xdg-dialog': 'xdg-dialog-v1.xml',
 }

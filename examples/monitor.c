@@ -128,13 +128,16 @@ static bool thumbnail_handle_buffer(kywc_thumbnail *thumbnail,
     kywc_thumbnail_set_user_data(thumbnail, kywc_buffer);
     kywc_toplevel *toplevel = kywc_context_find_toplevel(ctx, thumbnail->source_uuid);
 
+#if 0
     static int index = 0;
     char path[256];
     // files are named with YUView format
     snprintf(path, 256, "%s-%d_%dx%d_bgra.rgba", toplevel->app_id, index++, buffer->width,
              buffer->height);
     kywc_buffer_write_to_file(kywc_buffer, path);
-
+#else
+    kywc_buffer_show_in_window(kywc_buffer, toplevel->app_id);
+#endif
     // return false if oneshot
     return true;
 }

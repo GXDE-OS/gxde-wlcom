@@ -13,6 +13,10 @@
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <wayland-egl.h>
+
+#include "xdg-decoration-unstable-v1-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
 
 #include "buffer.h"
 
@@ -21,6 +25,7 @@ struct kywc_buffer_helper {
     struct wl_list buffers;
 
     EGLDisplay display;
+    EGLConfig config;
     EGLContext context;
 
     struct {
@@ -37,6 +42,25 @@ struct kywc_buffer_helper {
         PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
         PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
     } procs;
+
+    struct wl_display *wl_display;
+    struct wl_compositor *wl_compositor;
+    struct xdg_wm_base *xdg_wm_base;
+    struct zxdg_decoration_manager_v1 *xdg_deco_manager;
+
+    GLuint shader_program;
+    GLint tex;
+};
+
+struct kywc_window {
+    struct wl_surface *wl_surface;
+    struct xdg_surface *xdg_surface;
+    struct xdg_toplevel *xdg_toplevel;
+    struct zxdg_toplevel_decoration_v1 *xdg_deco;
+
+    struct wl_egl_window *native;
+    EGLSurface surface;
+    struct kywc_buffer *buffer;
 };
 
 struct kywc_buffer {
@@ -47,12 +71,241 @@ struct kywc_buffer {
     size_t size;
 
     EGLImageKHR image;
-    GLuint tex;
-    GLuint fbo;
+    GLuint tex, fbo;
 
     kywc_thumbnail *thumbnail;
     struct kywc_thumbnail_buffer buffer;
+
+    struct kywc_window *window;
 };
+
+static const char *vertex_source = "\
+precision highp float;\
+attribute vec4 position;\
+varying vec2 texcoord;\
+\
+void main() {\
+  gl_Position = vec4(position.xy, 0, 1);\
+  texcoord = position.zw;\
+}\
+";
+
+static const char *fragment_source = "\
+precision highp float;\
+varying vec2 texcoord;\
+uniform sampler2D tex;\
+\
+void main() {\
+  gl_FragColor = texture2D(tex, texcoord);\
+}\
+";
+
+// clang-format off
+static const float vertices[] = {
+    -1.f,  1.f, 0.f, 0.f,
+    -1.f, -1.f, 0.f, 1.f,
+    1.f, -1.f, 1.f, 1.f,
+    1.f, 1.f, 1.f, 0.f,
+};
+// clang-format on
+
+static void xdg_wm_base_ping(void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial)
+{
+    xdg_wm_base_pong(xdg_wm_base, serial);
+}
+
+static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+    .ping = xdg_wm_base_ping,
+};
+
+static void registry_handle_global(void *data, struct wl_registry *registry, uint32_t id,
+                                   const char *interface, uint32_t version)
+{
+    struct kywc_buffer_helper *helper = data;
+
+    if (strcmp(interface, wl_compositor_interface.name) == 0) {
+        helper->wl_compositor = wl_registry_bind(registry, id, &wl_compositor_interface, 1);
+    } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
+        helper->xdg_wm_base = wl_registry_bind(registry, id, &xdg_wm_base_interface, 1);
+        xdg_wm_base_add_listener(helper->xdg_wm_base, &xdg_wm_base_listener, helper);
+    } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+        helper->xdg_deco_manager =
+            wl_registry_bind(registry, id, &zxdg_decoration_manager_v1_interface, 1);
+    }
+}
+
+static void registry_handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
+{
+    // do nothing
+}
+
+static const struct wl_registry_listener registry_listener = {
+    .global = registry_handle_global,
+    .global_remove = registry_handle_global_remove,
+};
+
+static void window_helper_init(struct kywc_buffer_helper *helper)
+{
+    struct wl_registry *registry = wl_display_get_registry(helper->wl_display);
+    wl_registry_add_listener(registry, &registry_listener, helper);
+    wl_display_roundtrip(helper->wl_display);
+    wl_registry_destroy(registry);
+
+    if (!helper->xdg_wm_base) {
+        return;
+    }
+
+    /* build shaders for texture */
+    eglMakeCurrent(helper->display, EGL_NO_SURFACE, EGL_NO_SURFACE, helper->context);
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    glCompileShader(vertex_shader);
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glCompileShader(fragment_shader);
+
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+
+    glDetachShader(shader_program, vertex_shader);
+    glDetachShader(shader_program, fragment_shader);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    GLint ok;
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        fprintf(stderr, "Failed to link shader\n");
+        glDeleteProgram(shader_program);
+        return;
+    }
+
+    glBindAttribLocation(shader_program, 0, "position");
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+    helper->shader_program = shader_program;
+    helper->tex = glGetUniformLocation(shader_program, "tex");
+
+    eglMakeCurrent(helper->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+}
+
+static void kywc_window_draw(struct kywc_window *window)
+{
+    struct kywc_buffer_helper *helper = window->buffer->helper;
+
+    eglMakeCurrent(helper->display, window->surface, window->surface, helper->context);
+
+    glUseProgram(helper->shader_program);
+    glEnableVertexAttribArray(0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, window->buffer->tex);
+    glUniform1i(helper->tex, 0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    eglSwapBuffers(helper->display, window->surface);
+}
+
+static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface, uint32_t serial)
+{
+    xdg_surface_ack_configure(xdg_surface, serial);
+}
+
+static const struct xdg_surface_listener xdg_surface_listener = {
+    .configure = xdg_surface_configure,
+};
+
+static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel, int32_t width,
+                                   int32_t height, struct wl_array *states)
+{
+    if (width == 0 || height == 0) {
+        return;
+    }
+
+    struct kywc_window *window = data;
+    wl_egl_window_resize(window->native, width, height, 0, 0);
+    glViewport(0, 0, width, height);
+    kywc_window_draw(window);
+}
+
+static void kywc_window_destroy(struct kywc_window *window)
+{
+    EGLDisplay display = window->buffer->helper->display;
+
+    eglDestroySurface(display, window->surface);
+    wl_egl_window_destroy(window->native);
+    zxdg_toplevel_decoration_v1_destroy(window->xdg_deco);
+    xdg_toplevel_destroy(window->xdg_toplevel);
+    xdg_surface_destroy(window->xdg_surface);
+
+    window->buffer->window = NULL;
+    free(window);
+}
+
+static void xdg_toplevel_close(void *data, struct xdg_toplevel *toplevel)
+{
+    struct kywc_window *window = data;
+    kywc_window_destroy(window);
+}
+
+static const struct xdg_toplevel_listener xdg_toplevel_listener = {
+    .configure = xdg_toplevel_configure,
+    .close = xdg_toplevel_close,
+};
+
+static void toplevel_decoration_configure(
+    void *data, struct zxdg_toplevel_decoration_v1 *zxdg_toplevel_decoration_v1, uint32_t mode)
+{
+    // do nothing
+}
+
+static const struct zxdg_toplevel_decoration_v1_listener xdg_toplevel_decoration_listener = {
+    .configure = toplevel_decoration_configure,
+};
+
+static struct kywc_window *kywc_window_create(struct kywc_buffer *buffer, const char *title)
+{
+    struct kywc_buffer_helper *helper = buffer->helper;
+    if (!helper->xdg_wm_base) {
+        return NULL;
+    }
+    struct kywc_window *window = calloc(1, sizeof(*window));
+    if (!window) {
+        return NULL;
+    }
+
+    window->wl_surface = wl_compositor_create_surface(helper->wl_compositor);
+    window->xdg_surface = xdg_wm_base_get_xdg_surface(helper->xdg_wm_base, window->wl_surface);
+    xdg_surface_add_listener(window->xdg_surface, &xdg_surface_listener, window);
+
+    window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
+    xdg_toplevel_add_listener(window->xdg_toplevel, &xdg_toplevel_listener, window);
+    window->xdg_deco = zxdg_decoration_manager_v1_get_toplevel_decoration(helper->xdg_deco_manager,
+                                                                          window->xdg_toplevel);
+    zxdg_toplevel_decoration_v1_add_listener(window->xdg_deco, &xdg_toplevel_decoration_listener,
+                                             window);
+    zxdg_toplevel_decoration_v1_set_mode(window->xdg_deco,
+                                         ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    xdg_toplevel_set_app_id(window->xdg_toplevel, "kywc-monitor");
+    xdg_toplevel_set_title(window->xdg_toplevel, title);
+    wl_surface_commit(window->wl_surface);
+
+    int width = buffer->buffer.width / 2;
+    int height = buffer->buffer.height / 2;
+    window->native = wl_egl_window_create(window->wl_surface, width, height);
+    window->surface = eglCreateWindowSurface(helper->display, helper->config,
+                                             (EGLNativeWindowType)window->native, NULL);
+    wl_display_roundtrip(helper->wl_display);
+
+    window->buffer = buffer;
+    return window;
+}
 
 static bool check_ext(const char *exts, const char *ext)
 {
@@ -114,12 +367,11 @@ static void dmabuf_helper_init(struct kywc_buffer_helper *helper)
 
     EGLDisplay egl_display = EGL_NO_DISPLAY;
     /* get egl display */
-    struct wl_display *wl_display = kywc_context_get_display(helper->ctx);
     if (helper->exts.EXT_platform_wayland) {
-        egl_display =
-            helper->procs.eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, wl_display, NULL);
+        egl_display = helper->procs.eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT,
+                                                             helper->wl_display, NULL);
     } else {
-        egl_display = eglGetDisplay(wl_display);
+        egl_display = eglGetDisplay(helper->wl_display);
     }
 
     if (egl_display == EGL_NO_DISPLAY) {
@@ -155,10 +407,22 @@ static void dmabuf_helper_init(struct kywc_buffer_helper *helper)
     // fprintf(stdout, "Supported EGL display extensions: %s\n", display_exts_str);
     // fprintf(stdout, "EGL vendor: %s\n", eglQueryString(helper->display, EGL_VENDOR));
 
+    // clang-format off
+    EGLint config_attribs[] = {
+        EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,  EGL_NONE
+    };
+    // clang-format on
+    EGLint num_configs = 0;
+    if (!eglChooseConfig(egl_display, config_attribs, &helper->config, 1, &num_configs) ||
+        !num_configs) {
+        fprintf(stderr, "Failed to choose a config\n");
+        return;
+    }
+
     /* using opengles 2 */
     const EGLint attribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-    EGLContext egl_context =
-        eglCreateContext(egl_display, EGL_NO_CONFIG_KHR, EGL_NO_CONTEXT, attribs);
+    EGLContext egl_context = eglCreateContext(egl_display, helper->config, EGL_NO_CONTEXT, attribs);
     if (egl_display == EGL_NO_CONTEXT) {
         fprintf(stderr, "Failed to create EGL context\n");
         return;
@@ -201,8 +465,13 @@ struct kywc_buffer_helper *kywc_buffer_helper_create(kywc_context *ctx)
     }
 
     helper->ctx = ctx;
+    helper->wl_display = kywc_context_get_display(ctx);
     wl_list_init(&helper->buffers);
+
     dmabuf_helper_init(helper);
+    if (helper->display) {
+        window_helper_init(helper);
+    }
 
     return helper;
 }
@@ -216,6 +485,12 @@ void kywc_buffer_helper_destroy(struct kywc_buffer_helper *helper)
     struct kywc_buffer *buffer, *tmp;
     wl_list_for_each_safe(buffer, tmp, &helper->buffers, link) {
         kywc_buffer_destroy(buffer);
+    }
+
+    if (helper->xdg_wm_base) {
+        xdg_wm_base_destroy(helper->xdg_wm_base);
+        wl_compositor_destroy(helper->wl_compositor);
+        wl_display_flush(helper->wl_display);
     }
 
     if (helper->display) {
@@ -290,6 +565,8 @@ static bool kywc_buffer_import_dmabuf(struct kywc_buffer *kywc_buffer,
     glBindTexture(GL_TEXTURE_2D, kywc_buffer->tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     helper->procs.glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, kywc_buffer->image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -423,6 +700,10 @@ void kywc_buffer_destroy(struct kywc_buffer *buffer)
 
     wl_list_remove(&buffer->link);
 
+    if (buffer->window) {
+        kywc_window_destroy(buffer->window);
+    }
+
     if (buffer->image) {
         struct kywc_buffer_helper *helper = buffer->helper;
         eglMakeCurrent(helper->display, EGL_NO_SURFACE, EGL_NO_SURFACE, helper->context);
@@ -468,6 +749,26 @@ bool kywc_buffer_write_to_file(struct kywc_buffer *buffer, const char *path)
     fflush(fp);
     fclose(fp);
     free(data);
+
+    return true;
+}
+
+bool kywc_buffer_show_in_window(struct kywc_buffer *buffer, const char *title)
+{
+    struct kywc_buffer_helper *helper = buffer->helper;
+    /* only support dmabuf now */
+    if (!helper->xdg_wm_base || !buffer->image) {
+        return false;
+    }
+
+    if (!buffer->window) {
+        buffer->window = kywc_window_create(buffer, title);
+        if (!buffer->window) {
+            return false;
+        }
+    }
+
+    kywc_window_draw(buffer->window);
 
     return true;
 }

@@ -17,6 +17,8 @@ struct kywc_buffer *kywc_buffer_hepler_import_thumbnail(struct kywc_buffer_helpe
 
 bool kywc_buffer_write_to_file(struct kywc_buffer *buffer, const char *path);
 
+bool kywc_buffer_show_in_window(struct kywc_buffer *buffer, const char *title);
+
 void kywc_buffer_destroy(struct kywc_buffer *buffer);
 
 #endif /* _CLIENT_BUFFER_H_ */

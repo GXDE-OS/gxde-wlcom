@@ -23,11 +23,13 @@ endif
 
 egl = dependency('egl')
 glesv2 = dependency('glesv2')
+wayland_egl = dependency('wayland-egl')
 
 examples += {
   'monitor': {
   'src': ['monitor.c', 'buffer.c'],
-  'dep': [libkywc, egl, glesv2],
+  'proto': ['xdg-shell', 'xdg-decoration'],
+  'dep': [libkywc, egl, glesv2, wayland_egl],
   },
 }
 
