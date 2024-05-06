@@ -490,8 +490,12 @@ static void view_thumbnail_get_position(struct view *view, struct wlr_box *dst_b
 static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *thumbnail_buffer,
                                                      struct ky_scene_output *scene_output)
 {
-    int buffer_width = scene_output->output->width * thumbnail_buffer->scale;
-    int buffer_height = scene_output->output->height * thumbnail_buffer->scale;
+    struct workspace_thumbnail *workspace_thumbnail =
+        wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
+    struct output *output = output_from_kywc_output(workspace_thumbnail->output);
+    /* use output effective size */
+    int buffer_width = output->geometry.width * thumbnail_buffer->scale;
+    int buffer_height = output->geometry.height * thumbnail_buffer->scale;
     struct wlr_buffer *buffer = thumbnail_buffer_allocate(
         thumbnail_buffer, buffer_width, buffer_height, scene_output->output->allocator);
     if (!buffer) {
@@ -505,38 +509,17 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
         return NULL;
     }
 
-    struct wlr_output *wlr_output = scene_output->output;
-    struct ky_scene_render_target target = {
-        .logical = { scene_output->x, scene_output->y, buffer_width, buffer_height },
-        .scale = wlr_output->scale * thumbnail_buffer->scale,
-        .output = scene_output,
-        .render_pass = render_pass,
-        .buffer = buffer,
-        .transform = scene_output->output->transform,
-    };
-
-    wlr_output_transformed_resolution(wlr_output, &target.trans_width, &target.trans_height);
-    target.trans_width *= thumbnail_buffer->scale;
-    target.trans_height *= thumbnail_buffer->scale;
-    target.logical.width = target.trans_width / wlr_output->scale;
-    target.logical.height = target.trans_height / wlr_output->scale;
-
-    pixman_region32_init_rect(&target.damage, 0, 0, buffer->width, buffer->height);
     /* clear the target buffer */
-    wlr_render_pass_add_rect(target.render_pass, &(struct wlr_render_rect_options){
-                                                     .color = { 0, 0, 0, 0 },
-                                                     .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
-                                                 });
-
-    struct workspace_thumbnail *workspace_thumbnail =
-        wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
-    struct workspace *workspace = workspace_thumbnail->workspace;
-    struct output *output = output_from_wlr_output(scene_output->output);
+    wlr_render_pass_add_rect(render_pass, &(struct wlr_render_rect_options){
+                                              .color = { 0, 0, 0, 0 },
+                                              .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                          });
 
     struct view_thumbnail *view_thumbnail;
     struct view_proxy *view_proxy;
-    wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
-        if (view_proxy->view->output != &output->base) {
+    wl_list_for_each_reverse(view_proxy, &workspace_thumbnail->workspace->view_proxies,
+                             workspace_link) {
+        if (view_proxy->view->output != workspace_thumbnail->output) {
             continue;
         }
 
@@ -552,25 +535,21 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
         }
 
         struct wlr_box dst_box = {
-            .width = view_thumbnail->base.buffer->width,
-            .height = view_thumbnail->base.buffer->height,
+            .width = view_thumbnail->base.buffer->width * thumbnail_buffer->scale,
+            .height = view_thumbnail->base.buffer->height * thumbnail_buffer->scale,
         };
         view_thumbnail_get_position(view_proxy->view, &dst_box);
-        dst_box.x -= target.logical.x;
-        dst_box.y -= target.logical.y;
-        ky_scene_render_box(&dst_box, &target);
+        dst_box.x = (dst_box.x - output->geometry.x) * thumbnail_buffer->scale;
+        dst_box.y = (dst_box.y - output->geometry.y) * thumbnail_buffer->scale;
 
         struct wlr_render_texture_options options = {
             .texture = tex,
             .dst_box = dst_box,
-            .clip = &target.damage,
-            .transform = scene_output->output->transform,
         };
-        wlr_render_pass_add_texture(target.render_pass, &options);
+        wlr_render_pass_add_texture(render_pass, &options);
         wlr_texture_destroy(tex);
     }
-    wlr_render_pass_submit(target.render_pass);
-    pixman_region32_fini(&target.damage);
+    wlr_render_pass_submit(render_pass);
 
     return buffer;
 }
@@ -746,10 +725,9 @@ static void workspace_thumbnail_create_entry(struct workspace_thumbnail *workspa
 
     wl_list_insert(&workspace_thumbnail->entries, &entry->link);
 
-    if (kywc_output != view->output) {
-        return;
+    if (kywc_output == view->output) {
+        workspace_thumbnail_entry_create_thumbnail(entry);
     }
-    workspace_thumbnail_entry_create_thumbnail(entry);
 }
 
 static void workspace_thumbnail_create_entries(struct workspace_thumbnail *workspace_thumbnail,
