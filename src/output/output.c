@@ -601,7 +601,7 @@ bool output_manager_configure_outputs(void)
                 continue;
             }
             output_manager->pending_primary = output_manager->primary_output;
-            kywc_log(KYWC_WARN, "pending_primay is null set as the primary_output:%s",
+            kywc_log(KYWC_WARN, "Fixup primary output to %s when no pending_primary",
                      output_manager->primary_output->name);
             break;
         }
@@ -1228,7 +1228,9 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
             return true;
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, NULL);
-            wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
+            if (output->modeset) {
+                wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
+            }
         }
     }
 
