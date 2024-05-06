@@ -292,7 +292,7 @@ static struct kywc_window *kywc_window_create(struct kywc_buffer *buffer, const 
                                              window);
     zxdg_toplevel_decoration_v1_set_mode(window->xdg_deco,
                                          ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    xdg_toplevel_set_app_id(window->xdg_toplevel, "kywc-monitor");
+    xdg_toplevel_set_app_id(window->xdg_toplevel, "kywc-thumbnail");
     xdg_toplevel_set_title(window->xdg_toplevel, title);
     wl_surface_commit(window->wl_surface);
 

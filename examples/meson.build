@@ -27,7 +27,14 @@ wayland_egl = dependency('wayland-egl')
 
 examples += {
   'monitor': {
-  'src': ['monitor.c', 'buffer.c'],
+  'src': 'monitor.c',
+  'dep': libkywc,
+  },
+}
+
+examples += {
+  'thumbnail': {
+  'src': ['thumbnail.c', 'buffer.c'],
   'proto': ['xdg-shell', 'xdg-decoration'],
   'dep': [libkywc, egl, glesv2, wayland_egl],
   },

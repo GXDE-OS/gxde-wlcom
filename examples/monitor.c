@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "buffer.h"
+#include <libkywc.h>
 
 static void print_workspace(kywc_workspace *workspace)
 {
@@ -40,9 +40,12 @@ static void print_output(kywc_output *output)
 {
     printf("output \"%s\"\n", output->uuid);
     printf("  name: %s\n", output->name);
-    printf("  mode: %d x %d @ %d\n", output->mode->width, output->mode->height,
-           output->mode->refresh / 1000);
-    printf("  position: %d, %d\n", output->x, output->y);
+    printf("  enabled: %s\n", output->enabled ? "true" : "false");
+    if (output->enabled) {
+        printf("  mode: %d x %d @ %d\n", output->mode->width, output->mode->height,
+               output->mode->refresh / 1000);
+        printf("  position: %d, %d\n", output->x, output->y);
+    }
     printf("\n");
 }
 
@@ -100,85 +103,13 @@ static struct kywc_toplevel_interface toplevel_impl = {
     .destroy = toplevel_handle_destroy,
 };
 
-static bool thumbnail_handle_buffer(kywc_thumbnail *thumbnail,
-                                    const struct kywc_thumbnail_buffer *buffer, void *data)
-{
-    printf("thumbnail %d \"%s\"\n", thumbnail->type, thumbnail->source_uuid);
-    printf("  %s: %d reused: %s\n",
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_DMABUF ? "dmabuf" : "memfd", buffer->fd,
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_REUSED ? "yes" : "no");
-    printf("  format: 0x%x\n", buffer->format);
-    printf("  size: %d x %d\n", buffer->width, buffer->height);
-    printf("  offset: %d  stride:  %d\n", buffer->offset, buffer->stride);
-    printf("  modifier: 0x%lx\n", buffer->modifier);
-    printf("\n");
-
-    kywc_context *ctx = kywc_thumbnail_get_context(thumbnail);
-    struct kywc_buffer_helper *helper = kywc_context_get_user_data(ctx);
-    if (!helper) {
-        return false;
-    }
-
-    struct kywc_buffer *kywc_buffer =
-        kywc_buffer_hepler_import_thumbnail(helper, thumbnail, buffer);
-    if (!kywc_buffer) {
-        return false;
-    }
-
-    kywc_thumbnail_set_user_data(thumbnail, kywc_buffer);
-    kywc_toplevel *toplevel = kywc_context_find_toplevel(ctx, thumbnail->source_uuid);
-
-#if 0
-    static int index = 0;
-    char path[256];
-    // files are named with YUView format
-    snprintf(path, 256, "%s-%d_%dx%d_bgra.rgba", toplevel->app_id, index++, buffer->width,
-             buffer->height);
-    kywc_buffer_write_to_file(kywc_buffer, path);
-#else
-    kywc_buffer_show_in_window(kywc_buffer, toplevel->app_id);
-#endif
-    // return false if oneshot
-    return true;
-}
-
-static void thumbnail_handle_destroy(kywc_thumbnail *thumbnail, void *data)
-{
-    printf("thumbnail for %s is gone\n", thumbnail->source_uuid);
-    struct kywc_buffer *kywc_buffer = kywc_thumbnail_get_user_data(thumbnail);
-    kywc_buffer_destroy(kywc_buffer);
-}
-
-static struct kywc_thumbnail_interface thumbnail_impl = {
-    .buffer = thumbnail_handle_buffer,
-    .destroy = thumbnail_handle_destroy,
-};
-
 static void handle_new_toplevel(kywc_context *context, kywc_toplevel *toplevel, void *data)
 {
     print_toplevel(toplevel);
     kywc_toplevel_set_interface(toplevel, &toplevel_impl);
 }
 
-static void handle_destroy(kywc_context *ctx, void *data)
-{
-    struct kywc_buffer_helper *helper = data;
-    kywc_buffer_helper_destroy(helper);
-}
-
-static void handle_create(kywc_context *ctx, void *data)
-{
-    struct kywc_buffer_helper *helper = kywc_buffer_helper_create(ctx);
-    if (!helper) {
-        return;
-    }
-
-    kywc_context_set_user_data(ctx, helper);
-}
-
 static struct kywc_context_interface context_impl = {
-    .create = handle_create,
-    .destroy = handle_destroy,
     .new_output = handle_new_output,
     .new_toplevel = handle_new_toplevel,
     .new_workspace = handle_new_workspace,
@@ -187,20 +118,10 @@ static struct kywc_context_interface context_impl = {
 int main(int argc, char *argv[])
 {
     uint32_t caps = KYWC_CONTEXT_CAPABILITY_WORKSPACE | KYWC_CONTEXT_CAPABILITY_OUTPUT |
-                    KYWC_CONTEXT_CAPABILITY_TOPLEVEL | KYWC_CONTEXT_CAPABILITY_THUMBNAIL;
+                    KYWC_CONTEXT_CAPABILITY_TOPLEVEL;
     kywc_context *ctx = kywc_context_create(NULL, caps, &context_impl, NULL);
     if (!ctx) {
         return -1;
-    }
-
-    /* we got all toplevels here */
-    if (argc > 1) {
-        kywc_toplevel *toplevel = kywc_context_find_toplevel(ctx, argv[1]);
-        if (toplevel) {
-            printf("start get thumbnail for toplevel %s\n", toplevel->app_id);
-            kywc_thumbnail_create(ctx, KYWC_THUMBNAIL_TYPE_TOPLEVEL, toplevel->uuid, NULL,
-                                  &thumbnail_impl, NULL);
-        }
     }
 
     kywc_context_dispatch(ctx);
