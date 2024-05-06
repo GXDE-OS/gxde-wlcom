@@ -687,7 +687,8 @@ bool output_manager_configure_outputs(void)
 
     wl_list_for_each(pending_config, &output_manager->output_configs, link) {
         struct kywc_output_state *state = &pending_config->state;
-        struct kywc_output *kywc_output = &pending_config->output->base;
+        struct output *output = pending_config->output;
+
         bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
         if (!is_zero_coord) {
             continue;
@@ -698,10 +699,14 @@ bool output_manager_configure_outputs(void)
             continue;
         }
 
+        if (output->modeset) {
+            continue;
+        }
+
         if (zero_coord_state->width != state->width || zero_coord_state->height != state->height ||
             zero_coord_state->scale != state->scale ||
             zero_coord_state->transform != state->transform) {
-            kywc_log(KYWC_WARN, "Fixup output %s coord to auto", kywc_output->name);
+            kywc_log(KYWC_WARN, "Fixup output %s coord to auto", output->base.name);
             state->lx = -1;
             state->ly = -1;
         }
