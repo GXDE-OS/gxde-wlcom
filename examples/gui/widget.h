@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef WIDGET_H
+#define WIDGET_H
 
 #include <QLabel>
 #include <QMainWindow>

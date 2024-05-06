@@ -12,7 +12,6 @@ class Context::Private
     Private(Context *context);
     ~Private();
     kywc_context *setup(uint32_t capability);
-    // void thumbnail_create(const char* uuid);
 
     kywc_context *k_context = nullptr;
     QSocketNotifier *notifier = nullptr;
@@ -27,11 +26,6 @@ class Context::Private
     static void newToplevel(kywc_context *context, kywc_toplevel *toplevel, void *data);
     static void newWorkspace(kywc_context *context, kywc_workspace *workspace, void *data);
     static struct kywc_context_interface context_impl;
-
-    static bool bufferHandle(kywc_thumbnail *thumbnail, const struct kywc_thumbnail_buffer *buffer,
-                   void *data);
-    static void destroyHandle(kywc_thumbnail *thumbnail, void *data);
-    static struct kywc_thumbnail_interface thumbnail_impl;
 };
 
 Context::Private::Private(Context *context) : ctx(context) {}
@@ -77,6 +71,7 @@ void Context::Private::newWorkspace(kywc_context *context, kywc_workspace *works
 struct kywc_context_interface Context::Private::context_impl = {
     createHandle, destroyHandle, newOutput, newToplevel, newWorkspace,
 };
+
 
 kywc_context *Context::Private::setup(uint32_t capabilities)
 {
@@ -173,32 +168,7 @@ Toplevel *Context::findToplevel(QString uuid)
     return (Toplevel *)kywc_toplevel_get_user_data(toplevel);
 }
 
-Thumbnail *Context::thumbnail_init(const char *uuid)
+void Context::thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid, QString output_uuid)
 {
-    kywc_context *ctx = NULL;
-    pri->display = NULL;
-
-    ctx = pri->setup(pri->capabilities);
-    //k_context = kywc_context_create(NULL, capabilities, &context_impl, this);
-   // kywc_context *ctx = kywc_context_create(NULL, pri->capabilities, &context_impl, NULL);
-    if (!ctx) {
-        return NULL;
-    }
-
-    // QByteArray qByteArray = uuid.toUtf8();
-    // char *str = qByteArray.data();
-
-    kywc_toplevel *toplevel = kywc_context_find_toplevel(ctx, uuid);
-    Thumbnail *thum = NULL;
-    if (toplevel) {
-        thum = new Thumbnail(this);
-        thum->setup(ctx, toplevel->uuid);
-        //printf("start get thumbnail for toplevel %s\n", toplevel->app_id);
-        // kywc_thumbnail *thumbnail = pri->thumbnail_create(toplevel->uuid);
-        // kywc_thumbnail_set_user_data(thumbnail, this);
-    }
-
-    kywc_context_dispatch(ctx);
-    //kywc_context_destroy(ctx);
-    return thum;
+    thumbnail->setup(pri->k_context, type, uuid, output_uuid);
 }

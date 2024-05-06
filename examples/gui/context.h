@@ -191,12 +191,11 @@ class Thumbnail : public QObject
 {
     Q_OBJECT
   public:
-    enum class Type{
+    enum Type{
         Output,
         Toplevel,
         Workspace,
     };
-    Q_DECLARE_FLAGS(Types, Type);
 
     enum BufferFlag {
         Dmabuf = 1 << 0,
@@ -207,23 +206,7 @@ class Thumbnail : public QObject
     explicit Thumbnail(QObject *parent = nullptr);
     ~Thumbnail();
 
-    struct t_thumbnail {
-        Types type;
-        QString source_uuid;
-        QString output_uuid;
-    };
-
-    struct Buffer {
-        int32_t fd;
-        uint32_t format;
-        QSize size;
-        uint32_t offset;
-        uint32_t stride;
-        uint64_t modifier;
-        BufferFlags flags;
-    };
-
-    void setup(kywc_context *ctx, const char* uuid);
+    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid);
 
     int32_t fd() const;
     uint32_t format() const;
@@ -242,7 +225,6 @@ class Thumbnail : public QObject
     Private *pri;
 };
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(Thumbnail::Types)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Thumbnail::BufferFlags)
 
 class Context : public QObject
@@ -261,6 +243,7 @@ class Context : public QObject
     ~Context();
 
     void start();
+    void thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid, QString output_uuid);
 
     void addWorkspace(uint32_t position);
     Workspace *findWorkspace(QString uuid);
@@ -268,7 +251,6 @@ class Context : public QObject
     Toplevel *findToplevel(QString uuid);
 
     void dispatch();
-    Thumbnail *thumbnail_init(const char* uuid);
   Q_SIGNALS:
     void aboutToTeardown();
 
@@ -277,9 +259,6 @@ class Context : public QObject
     void workespaceAdded(Workspace *workspace);
     void outputAdded(Output *output);
     void toplevelAdded(Toplevel *toplevel);
-
-    // void thumbnailBufferUpdate();
-    // void thumbnailDeleted();
 
   private Q_SLOTS:
     void onContextReady();

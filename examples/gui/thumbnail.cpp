@@ -1,12 +1,13 @@
-#include <libkywc.h>
+
 #include "context.h"
+#include <libkywc.h>
 
 class Thumbnail::Private
 {
   public:
     Private(Thumbnail *thumbnail);
     ~Private();
-    void setup(kywc_context *ctx, const char* uuid);
+    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid);
 
     int32_t fd;
     uint32_t format;
@@ -16,47 +17,39 @@ class Thumbnail::Private
     uint64_t modifier;
     Thumbnail::BufferFlags flags;
 
-    Types type;
+    Type type;
     QString source_uuid;
     QString output_uuid;
 
     kywc_thumbnail *k_thumbnail;
+
   private:
     Thumbnail *t;
     static bool bufferHandle(kywc_thumbnail *thumbnail, const struct kywc_thumbnail_buffer *buffer,
-                   void *data);
+                             void *data);
     static void destroyHandle(kywc_thumbnail *thumbnail, void *data);
     static struct kywc_thumbnail_interface thumbnail_impl;
 };
 
-Thumbnail::Private::Private(Thumbnail *thumbnail) : t(thumbnail) {
-
-}
+Thumbnail::Private::Private(Thumbnail *thumbnail) : t(thumbnail) {}
 
 Thumbnail::Private::~Private() {}
 
-
-bool Thumbnail::Private::bufferHandle(kywc_thumbnail *thumbnail, const struct kywc_thumbnail_buffer *buffer,
-                   void *data)
+bool Thumbnail::Private::bufferHandle(kywc_thumbnail *thumbnail,
+                                      const struct kywc_thumbnail_buffer *buffer, void *data)
 {
-
-    printf("  %s: %d reused: %s\n",
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_DMABUF ? "dmabuf" : "memfd", buffer->fd,
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_REUSED ? "yes" : "no");
-    printf("  format: 0x%x\n", buffer->format);
-    printf("  size: %d x %d\n", buffer->width, buffer->height);
-    printf("  offset: %d  stride:  %d\n", buffer->offset, buffer->stride);
-    printf("  modifier: 0x%lx\n", buffer->modifier);
-    printf("\n");
-
     Thumbnail *thum = (Thumbnail *)data;
 
-    if (thumbnail->type == KYWC_THUMBNAIL_TYPE_OUTPUT) {
+    switch (thumbnail->type) {
+    case KYWC_THUMBNAIL_TYPE_OUTPUT:
         thum->pri->type = Thumbnail::Type::Output;
-    } else if (thumbnail->type == KYWC_THUMBNAIL_TYPE_TOPLEVEL) {
+        break;
+    case KYWC_THUMBNAIL_TYPE_TOPLEVEL:
         thum->pri->type = Thumbnail::Type::Toplevel;
-    } else if (thumbnail->type == KYWC_THUMBNAIL_TYPE_WORKSPACE) {
+        break;
+    case KYWC_THUMBNAIL_TYPE_WORKSPACE:
         thum->pri->type = Thumbnail::Type::Workspace;
+        break;
     }
 
     thum->pri->source_uuid = QString(thumbnail->source_uuid);
@@ -77,10 +70,9 @@ bool Thumbnail::Private::bufferHandle(kywc_thumbnail *thumbnail, const struct ky
 
     thum->pri->format = buffer->format;
     thum->pri->modifier = buffer->modifier;
-    // thum->pri->format = QString("%x").arg(buffer->format);
-    // thum->pri->modifier = QString("%lx").arg(buffer->modifier);
 
     emit thum->bufferUpdate();
+    return true;
 }
 
 void Thumbnail::Private::destroyHandle(kywc_thumbnail *thumbnail, void *data)
@@ -93,21 +85,38 @@ struct kywc_thumbnail_interface Thumbnail::Private::thumbnail_impl {
     bufferHandle, destroyHandle,
 };
 
-void Thumbnail::Private::setup(kywc_context *ctx, const char* uuid)
+void Thumbnail::Private::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid,
+                               QString output_uuid)
 {
-    kywc_thumbnail *thumbnail = kywc_thumbnail_create(ctx, KYWC_THUMBNAIL_TYPE_TOPLEVEL, uuid, NULL,
-                                &thumbnail_impl, this->t);
+    enum kywc_thumbnail_type flag;
+    switch (type) {
+    case Thumbnail::Type::Output:
+        flag = KYWC_THUMBNAIL_TYPE_OUTPUT;
+        break;
+    case Thumbnail::Type::Toplevel:
+        flag = KYWC_THUMBNAIL_TYPE_TOPLEVEL;
+        break;
+    case Thumbnail::Type::Workspace:
+        flag = KYWC_THUMBNAIL_TYPE_WORKSPACE;
+        break;
+    }
+    QByteArray qByteArray_uuid = uuid.toUtf8();
+    char *str = qByteArray_uuid.data();
+
+    QByteArray qByteArray = output_uuid.toUtf8();
+    char *output = qByteArray.data();
+    kywc_thumbnail *thumbnail =
+        kywc_thumbnail_create(ctx, flag, str, output, &thumbnail_impl, this->t);
     k_thumbnail = thumbnail;
-    // kywc_thumbnail_set_user_data(thumbnail, t);
 }
 
 Thumbnail::Thumbnail(QObject *parent) : pri(new Private(this)) {}
 
 Thumbnail::~Thumbnail() {}
 
-void Thumbnail::setup(kywc_context *ctx, const char* uuid)
+void Thumbnail::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid)
 {
-    pri->setup(ctx, uuid);
+    pri->setup(ctx, type, uuid, output_uuid);
 }
 
 int32_t Thumbnail::fd() const
