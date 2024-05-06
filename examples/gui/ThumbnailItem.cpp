@@ -117,7 +117,7 @@ void ThumbnailItem::createEglImage(Thumbnail *thumbnail)
     }
 
     if (m_image) {
-        if (bufferIsReused & Thumbnail::BufferFlag::Reused)
+        if ((thumFlags & Thumbnail::BufferFlag::Dmabuf) && (thumFlags & Thumbnail::BufferFlag::Reused))
             return;
         static auto eglDestroyImageKHR =
             (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
@@ -155,7 +155,7 @@ void ThumbnailItem::BufferImportDmabuf()
     Thumbnail *thum = qobject_cast<Thumbnail *>(sender());
     createEglImage(thum);
     format = thumbnail->format();
-    bufferIsReused = thumbnail->flags();
+    thumFlags = thumbnail->flags();
     update();
 }
 

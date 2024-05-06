@@ -40,7 +40,7 @@ class ThumbnailItem : public QQuickItem
     Context *context = nullptr;
     Thumbnail *thumbnail = nullptr;
     ThumInfo *mThumInfo = nullptr;
-    Thumbnail::BufferFlags bufferIsReused = Thumbnail::BufferFlag::Dmabuf;
+    Thumbnail::BufferFlags thumFlags = Thumbnail::BufferFlag::Dmabuf;
 };
 
 #endif // ThumbnailItem_H
