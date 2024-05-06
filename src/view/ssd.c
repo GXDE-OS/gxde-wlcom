@@ -234,7 +234,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_backgrond_color(widget, theme->inactive_bg_color);
     widget_set_front_color(widget, theme->active_text_color);
     widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, theme->border_width);
-    widget_set_round_coner(widget, CORNER_MASK_ALL, theme->corner_radius);
+    widget_set_round_corner(widget, CORNER_MASK_ALL, theme->corner_radius);
     widget_update(widget, true);
 }
 

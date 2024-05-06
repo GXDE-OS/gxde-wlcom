@@ -43,7 +43,7 @@ void widget_set_hovered_color(struct widget *widget, const float color[static 4]
 void widget_set_border(struct widget *widget, const float color[static 4], uint32_t mask,
                        float width);
 
-void widget_set_round_coner(struct widget *widget, uint32_t mask, float radius);
+void widget_set_round_corner(struct widget *widget, uint32_t mask, float radius);
 
 void widget_set_opacity(struct widget *widget, float opacity);
 

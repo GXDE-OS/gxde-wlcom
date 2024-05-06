@@ -198,7 +198,7 @@ void widget_update(struct widget *widget, bool partial)
     widget_do_update(widget);
 }
 
-void widget_set_round_coner(struct widget *widget, uint32_t mask, float radius)
+void widget_set_round_corner(struct widget *widget, uint32_t mask, float radius)
 {
     if (widget->corner_mask == mask && widget->corner_radius == radius) {
         return;

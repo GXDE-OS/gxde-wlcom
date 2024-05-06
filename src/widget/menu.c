@@ -54,7 +54,7 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_hovered_color(item->content, theme->accent_color);
 
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
-    widget_set_round_coner(item->content, corner_mask, theme->corner_radius);
+    widget_set_round_corner(item->content, corner_mask, theme->corner_radius);
 
     widget_update(item->content, true);
 }
