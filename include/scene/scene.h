@@ -287,6 +287,8 @@ struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 
 void ky_scene_damage_whole(struct ky_scene *scene);
 
+void ky_scene_add_damage(struct ky_scene *scene, const pixman_region32_t *damage);
+
 struct ky_scene_tree *ky_scene_tree_create(struct ky_scene_tree *parent);
 
 struct ky_scene_tree *ky_scene_tree_from_node(struct ky_scene_node *node);
