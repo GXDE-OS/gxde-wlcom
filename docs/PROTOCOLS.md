@@ -42,7 +42,8 @@ wayland协议支持情况
 | wp_security_context_manager_v1    |    no    | 1     |
 | wp_single_pixel_buffer_manager_v1 |    no    | 1     |
 | wp_tearing_control_manager_v1     |    no    | 1     |
-| xdg_activation_v1                 |    no    | 1     |
+| xdg_activation_v1                 |    1     |       |
+| xdg_wm_dialog_v1                  |    1     |       |
 | xwayland_shell_v1                 |    1     |       |
 
 ### unstable
@@ -105,7 +106,7 @@ wayland协议支持情况
 | kde_output_order_v1                            |    no    | 1     |
 | kde_primary_output_v1                          |    2     |       |
 | kde_screen_edge_manager_v1                     |    no    | 1     |
-| org_kde_kwin_keystate                          |    no    | 4     |
+| org_kde_kwin_keystate                          |    4     |       |
 | org_kde_plasma_virtual_desktop_management      |    2     | check |
 | org_kde_kwin_outputmanagement                  |    -     | 4 v2  |
 | org_kde_kwin_outputdevice                      |    -     | 4 v2  |
