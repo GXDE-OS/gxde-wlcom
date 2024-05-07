@@ -546,7 +546,7 @@ static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view,
         xwayland_view->output_update_usable_area.notify =
             xwayland_view_handle_output_update_usable_area;
         output_add_update_usable_area_listener(xwayland_view->view.output,
-                                               &xwayland_view->output_update_usable_area, true);
+                                               &xwayland_view->output_update_usable_area, false);
     }
 
     kywc_output_update_usable_area(xwayland_view->view.output);

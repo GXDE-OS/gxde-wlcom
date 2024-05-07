@@ -306,7 +306,7 @@ static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surfac
     if (!had_area) {
         surface->output_update_usable_area.notify = surface_handle_output_update_usable_area;
         output_add_update_usable_area_listener(surface->view->output,
-                                               &surface->output_update_usable_area, true);
+                                               &surface->output_update_usable_area, false);
     }
 
     kywc_output_update_usable_area(surface->view->output);
