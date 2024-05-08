@@ -83,48 +83,10 @@ struct gl_shader_location {
 };
 static struct gl_shader_location gl_locations;
 
-static int scene_decoration_create_opengl_shader(void)
+static int scene_decoration_create_opengl_shader(struct ky_opengl_renderer *renderer)
 {
-    GLint ok = GL_TRUE;
-    GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
-    const GLchar *vert_src = decoration_vert;
-    glShaderSource(vert_shader, 1, &vert_src, NULL);
-    glCompileShader(vert_shader);
-    glGetShaderiv(vert_shader, GL_COMPILE_STATUS, &ok);
-    if (ok == GL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to compile vert shader");
-        glDeleteShader(vert_shader);
-        return -1;
-    }
-
-    GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    const GLchar *frag_src = decoration_frag;
-    glShaderSource(frag_shader, 1, &frag_src, NULL);
-    glCompileShader(frag_shader);
-    glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &ok);
-    if (ok == GL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to compile frag shader");
-        glDeleteShader(vert_shader);
-        glDeleteShader(frag_shader);
-        return -1;
-    }
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vert_shader);
-    glAttachShader(prog, frag_shader);
-    glLinkProgram(prog);
-
-    glDetachShader(prog, vert_shader);
-    glDetachShader(prog, frag_shader);
-    glDeleteShader(vert_shader);
-    glDeleteShader(frag_shader);
-
-    glGetProgramiv(prog, GL_LINK_STATUS, &ok);
-    if (ok == GL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to link shader program");
-        glDeleteProgram(prog);
-        glDeleteShader(frag_shader);
-        glDeleteShader(vert_shader);
+    GLuint prog = ky_opengl_create_program(renderer, decoration_vert, decoration_frag);
+    if (prog <= 0) {
         return -1;
     }
 
@@ -282,12 +244,13 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     }
 
     struct kywc_box dst_box = {
-        .x = box->x, .y = box->y,
+        .x = box->x,
+        .y = box->y,
         .width = box->width,
         .height = box->height,
     };
-     struct ky_mat3 uv2ndc;
-     ky_mat3_uvofbox_to_ndc(&uv2ndc, target->buffer->width, target->buffer->height, 0, &dst_box);
+    struct ky_mat3 uv2ndc;
+    ky_mat3_uvofbox_to_ndc(&uv2ndc, target->buffer->width, target->buffer->height, 0, &dst_box);
 
     struct ky_mat3 inverseTransform;
     ky_mat3_invert_output_transform(&inverseTransform, target->transform);
@@ -607,7 +570,9 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
     // try opengl render if opengl is used
     if (gl_shader >= 0 && wlr_renderer_is_opengl(target->output->output->renderer)) {
         if (gl_shader == 0) {
-            gl_shader = scene_decoration_create_opengl_shader();
+            struct ky_opengl_renderer *renderer =
+                ky_opengl_renderer_from_wlr_renderer(target->output->output->renderer);
+            gl_shader = scene_decoration_create_opengl_shader(renderer);
         }
         if (gl_shader > 0) {
             ky_scene_render_region(&render_region, target);
