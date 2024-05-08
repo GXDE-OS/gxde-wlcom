@@ -87,11 +87,11 @@ static void menu_render_items(struct menu *menu, bool force)
     width = max_width * 2;
     height = max_height * 1.75;
 
-    if (width > menu->width) {
+    if (width != menu->width) {
         menu->width = width;
         force = true;
     }
-    if (height > menu->item_height) {
+    if (height != menu->item_height) {
         menu->item_height = height;
         force = true;
     }
