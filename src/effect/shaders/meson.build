@@ -4,6 +4,8 @@ shaders = [
   'blur.vert',
   'blur_up.frag',
   'blur_down.frag',
+  'touchclick.vert',
+  'touchclick.frag',
 ]
 
 foreach name : shaders

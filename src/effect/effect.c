@@ -424,6 +424,7 @@ bool effect_manager_create(struct server *server)
     watermark_effect_create(manager);
     move_effect_create(manager);
     scale_effect_create(manager);
+    touchclick_effect_create(manager);
 
     return true;
 }

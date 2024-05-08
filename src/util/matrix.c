@@ -17,6 +17,19 @@ void ky_mat3_identity(struct ky_mat3 *mat3)
     memcpy(mat3, identity, sizeof(identity));
 }
 
+void ky_mat3_init_scale_translate(struct ky_mat3 *mat3, float sx, float sy, float tx, float ty)
+{
+    mat3->matrix[0] = sx;
+    mat3->matrix[1] = 0.f;
+    mat3->matrix[2] = 0.f;
+    mat3->matrix[3] = 0.f;
+    mat3->matrix[4] = sy;
+    mat3->matrix[5] = 0.f;
+    mat3->matrix[6] = tx;
+    mat3->matrix[7] = ty;
+    mat3->matrix[8] = 1.f;
+}
+
 void ky_mat3_multiply(struct ky_mat3 *a_mat, struct ky_mat3 *b_mat, struct ky_mat3 *result)
 {
     float *r = result->matrix;

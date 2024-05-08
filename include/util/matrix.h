@@ -16,6 +16,8 @@ struct ky_mat3 {
 
 void ky_mat3_identity(struct ky_mat3 *mat3);
 
+void ky_mat3_init_scale_translate(struct ky_mat3 *mat3, float sx, float sy, float tx, float ty);
+
 // Right Multiplication
 void ky_mat3_multiply(struct ky_mat3 *a_mat, struct ky_mat3 *b_mat, struct ky_mat3 *result);
 
