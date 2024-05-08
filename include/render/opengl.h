@@ -188,4 +188,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
                                     const struct ky_render_rect_options *options);
 
+GLuint ky_opengl_create_program(struct ky_opengl_renderer *renderer, const GLchar *vert_src,
+                                const GLchar *frag_src);
+
 #endif /* _RENDER_OPENGL_H_ */

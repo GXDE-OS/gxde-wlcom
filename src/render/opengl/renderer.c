@@ -660,8 +660,8 @@ static GLuint compile_shader(struct ky_opengl_renderer *renderer, GLenum type, c
     return shader;
 }
 
-static GLuint link_program(struct ky_opengl_renderer *renderer, const GLchar *vert_src,
-                           const GLchar *frag_src)
+GLuint ky_opengl_create_program(struct ky_opengl_renderer *renderer, const GLchar *vert_src,
+                                const GLchar *frag_src)
 {
     ky_opengl_push_debug(renderer);
 
@@ -790,7 +790,8 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     ky_opengl_push_debug(renderer);
 
     GLuint prog;
-    renderer->shaders.quad.program = prog = link_program(renderer, common_vert_str, quad_frag_str);
+    renderer->shaders.quad.program = prog =
+        ky_opengl_create_program(renderer, common_vert_str, quad_frag_str);
     if (!renderer->shaders.quad.program) {
         goto error;
     }
@@ -803,7 +804,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.quad.round_corner_radius = 0;
 
     renderer->shaders.tex_rgba.program = prog =
-        link_program(renderer, common_vert_str, tex_rgba_frag_str);
+        ky_opengl_create_program(renderer, common_vert_str, tex_rgba_frag_str);
     if (!renderer->shaders.tex_rgba.program) {
         goto error;
     }
@@ -817,7 +818,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba.round_corner_radius = 0;
 
     renderer->shaders.tex_rgbx.program = prog =
-        link_program(renderer, common_vert_str, tex_rgbx_frag_str);
+        ky_opengl_create_program(renderer, common_vert_str, tex_rgbx_frag_str);
     if (!renderer->shaders.tex_rgbx.program) {
         goto error;
     }
@@ -832,7 +833,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 
     if (renderer->exts.OES_egl_image_external) {
         renderer->shaders.tex_ext.program = prog =
-            link_program(renderer, common_vert_str, tex_external_frag_str);
+            ky_opengl_create_program(renderer, common_vert_str, tex_external_frag_str);
         if (!renderer->shaders.tex_ext.program) {
             goto error;
         }
@@ -848,7 +849,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 
     // round corner clip shader
     renderer->shaders.quad_ex.program = prog =
-        link_program(renderer, common_vert_str, quad_ex_frag_str);
+        ky_opengl_create_program(renderer, common_vert_str, quad_ex_frag_str);
     if (!renderer->shaders.quad_ex.program) {
         goto error;
     }
@@ -857,12 +858,11 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.quad_ex.color = glGetUniformLocation(prog, "color");
     renderer->shaders.quad_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.quad_ex.aspect = glGetUniformLocation(prog, "aspect");
-    renderer->shaders.quad_ex.round_corner_radius =
-        glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.quad_ex.round_corner_radius = glGetUniformLocation(prog, "roundCornerRadius");
     renderer->shaders.quad_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     renderer->shaders.tex_rgba_ex.program = prog =
-        link_program(renderer, common_vert_str, tex_rgba_ex_frag_str);
+        ky_opengl_create_program(renderer, common_vert_str, tex_rgba_ex_frag_str);
     if (!renderer->shaders.tex_rgba_ex.program) {
         goto error;
     }
@@ -877,7 +877,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     renderer->shaders.tex_rgbx_ex.program = prog =
-        link_program(renderer, common_vert_str, tex_rgbx_ex_frag_str);
+        ky_opengl_create_program(renderer, common_vert_str, tex_rgbx_ex_frag_str);
     if (!renderer->shaders.tex_rgbx_ex.program) {
         goto error;
     }
@@ -893,7 +893,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 
     if (renderer->exts.OES_egl_image_external) {
         renderer->shaders.tex_ext_ex.program = prog =
-            link_program(renderer, common_vert_str, tex_external_ex_frag_str);
+            ky_opengl_create_program(renderer, common_vert_str, tex_external_ex_frag_str);
         if (!renderer->shaders.tex_ext.program) {
             goto error;
         }
