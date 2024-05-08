@@ -89,16 +89,21 @@ struct workspace_thumbnail {
     struct wl_listener output_destroy;
 };
 
+struct thumbnail_output {
+    struct wl_list link;
+
+    struct ky_scene_output *output;
+    struct wl_listener frame;
+    struct wl_listener destroy;
+};
+
 static struct thumbnail_manager {
     struct wl_list node_thumbnails;
     struct wl_list view_thumbnails;
     struct wl_list workspace_thumbnails;
 
-    /* pick one output to render all thumbnails */
-    struct ky_scene_output *output;
-    struct wl_listener output_frame;
-    struct wl_listener output_destroy;
-    bool frame_pending;
+    struct wl_list outputs;
+    struct wl_listener new_enabled_output;
 
     struct server *server;
     struct wl_listener destroy;
@@ -109,7 +114,13 @@ static void workspace_thumbnail_create_entry(struct workspace_thumbnail *workspa
 
 static void workspace_thumbnail_entry_create_thumbnail(struct workspace_thumbnail_entry *entry);
 
-static void thumbnail_manager_schedule_frame(void);
+static void thumbnail_manager_schedule_frame(void)
+{
+    struct thumbnail_output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        wlr_output_schedule_frame(output->output->output);
+    }
+}
 
 static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale)
 {
@@ -922,7 +933,8 @@ void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
     }
 }
 
-static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
+static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer,
+                                    struct thumbnail_output *output)
 {
     struct thumbnail *thumbnail, *tmp;
 
@@ -958,7 +970,7 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
         return true;
     }
 
-    struct wlr_buffer *buffer = thumbnail_buffer->render(thumbnail_buffer, manager->output);
+    struct wlr_buffer *buffer = thumbnail_buffer->render(thumbnail_buffer, output->output);
     /* destroy it when render failed */
     if (!buffer) {
         thumbnail_buffer->need_destroy = true;
@@ -992,66 +1004,50 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer)
     return true;
 }
 
-static void thumbnail_manager_handle_output_frame(struct wl_listener *listener, void *data)
+static void thumbnail_output_handle_frame(struct wl_listener *listener, void *data)
 {
-    wl_list_remove(&manager->output_frame.link);
-    wl_list_init(&manager->output_frame.link);
-    manager->frame_pending = false;
+    struct thumbnail_output *output = wl_container_of(listener, output, frame);
 
     struct node_thumbnail *node_thumbnail, *tmp;
     wl_list_for_each_safe(node_thumbnail, tmp, &manager->node_thumbnails, link) {
-        thumbnail_buffer_render(&node_thumbnail->base);
+        thumbnail_buffer_render(&node_thumbnail->base, output);
     }
 
     struct view_thumbnail *view_thumbnail, *view_tmp;
     wl_list_for_each_safe(view_thumbnail, view_tmp, &manager->view_thumbnails, link) {
-        thumbnail_buffer_render(&view_thumbnail->base);
+        thumbnail_buffer_render(&view_thumbnail->base, output);
     }
 
     struct workspace_thumbnail *workspace_thumbnail, *_tmp;
     wl_list_for_each_safe(workspace_thumbnail, _tmp, &manager->workspace_thumbnails, link) {
-        thumbnail_buffer_render(&workspace_thumbnail->base);
+        thumbnail_buffer_render(&workspace_thumbnail->base, output);
     }
 }
 
-static void thumbnail_manager_handle_output_destroy(struct wl_listener *listener, void *data)
+static void thumbnail_output_handle_destroy(struct wl_listener *listener, void *data)
 {
-    wl_list_remove(&manager->output_destroy.link);
-    wl_list_remove(&manager->output_frame.link);
-    manager->output = NULL;
-    manager->frame_pending = false;
-
-    thumbnail_manager_schedule_frame();
+    struct thumbnail_output *output = wl_container_of(listener, output, destroy);
+    wl_list_remove(&output->destroy.link);
+    wl_list_remove(&output->frame.link);
+    wl_list_remove(&output->link);
+    free(output);
 }
 
-static void thumbnail_manager_update_output(void)
+static void handle_new_enabled_output(struct wl_listener *listener, void *data)
 {
-    struct ky_scene *scene = manager->server->scene;
-    if (wl_list_empty(&scene->outputs)) {
+    struct thumbnail_output *thumbnail_output = calloc(1, sizeof(*thumbnail_output));
+    if (!thumbnail_output) {
         return;
     }
 
-    manager->output = wl_container_of(scene->outputs.next, manager->output, link);
-    wl_list_init(&manager->output_frame.link);
-    wl_signal_add(&manager->output->events.destroy, &manager->output_destroy);
-}
+    struct kywc_output *kywc_output = data;
+    thumbnail_output->output = output_from_kywc_output(kywc_output)->scene_output;
+    thumbnail_output->frame.notify = thumbnail_output_handle_frame;
+    wl_signal_add(&thumbnail_output->output->events.frame, &thumbnail_output->frame);
+    thumbnail_output->destroy.notify = thumbnail_output_handle_destroy;
+    wl_signal_add(&thumbnail_output->output->events.destroy, &thumbnail_output->destroy);
 
-static void thumbnail_manager_schedule_frame(void)
-{
-    if (manager->frame_pending) {
-        return;
-    }
-
-    if (manager->output == NULL) {
-        thumbnail_manager_update_output();
-        if (manager->output == NULL) {
-            return;
-        }
-    }
-
-    manager->frame_pending = true;
-    wl_signal_add(&manager->output->events.frame, &manager->output_frame);
-    wlr_output_schedule_frame(manager->output->output);
+    wl_list_insert(&manager->outputs, &thumbnail_output->link);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -1071,8 +1067,10 @@ bool thumbnail_manager_create(struct server *server)
     wl_list_init(&manager->node_thumbnails);
     wl_list_init(&manager->view_thumbnails);
     wl_list_init(&manager->workspace_thumbnails);
-    manager->output_frame.notify = thumbnail_manager_handle_output_frame;
-    manager->output_destroy.notify = thumbnail_manager_handle_output_destroy;
+
+    wl_list_init(&manager->outputs);
+    manager->new_enabled_output.notify = handle_new_enabled_output;
+    output_manager_add_new_enabled_listener(&manager->new_enabled_output);
 
     manager->server = server;
     manager->destroy.notify = handle_server_destroy;
