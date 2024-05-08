@@ -294,6 +294,16 @@ static void handle_new_virtual_keyboard(struct wl_listener *listener, void *data
     wl_signal_add(&wlr_input->events.destroy, &input->destroy);
 }
 
+uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data)
+{
+    uint32_t index = 0;
+    struct seat *seat;
+    wl_list_for_each(seat, &input_manager->seats, link) {
+        iterator(seat, index++, data);
+    }
+    return index;
+}
+
 struct input_manager *input_manager_create(struct server *server)
 {
     input_manager = calloc(1, sizeof(struct input_manager));
@@ -522,4 +532,9 @@ struct seat *seat_by_name(const char *seat_name)
         }
     }
     return NULL;
+}
+
+void seat_add_new_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&input_manager->events.new_seat, listener);
 }

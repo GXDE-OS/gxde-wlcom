@@ -131,6 +131,10 @@ struct input {
     struct wl_listener destroy;
 };
 
+typedef void (*seat_iterator_func_t)(struct seat *seat, int index, void *data);
+
+uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data);
+
 struct input_manager *input_manager_create(struct server *server);
 
 struct seat *input_manager_get_default_seat(void);
@@ -150,5 +154,7 @@ void input_set_seat(struct input *input, const char *seat);
 void input_rebase_all_cursor(void);
 
 void input_set_all_cursor(const char *cursor_theme, uint32_t cursor_size);
+
+void seat_add_new_listener(struct wl_listener *listener);
 
 #endif /* _INPUT_H_ */
