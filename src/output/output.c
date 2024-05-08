@@ -435,6 +435,23 @@ static void output_destroy(struct output *output)
         pending_config->state.brightness = state->brightness;
         pending_config->state.color_temp = state->color_temp;
     }
+
+    /* fix primary output that is being destoryed */
+    if (output_manager->primary_output == &output->base) {
+        output_manager->primary_output = NULL;
+
+        if (wl_list_empty(&output_manager->output_configs) &&
+            !wl_list_empty(&output_manager->outputs)) {
+            struct output *output;
+            wl_list_for_each(output, &output_manager->outputs, link) {
+                if (!output->base.state.enabled) {
+                    continue;
+                }
+                kywc_output_set_primary(&output->base);
+            }
+        }
+    }
+
     output_manager_configure_outputs();
 
     if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
