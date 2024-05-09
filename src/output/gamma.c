@@ -321,18 +321,19 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
     kywc_log(KYWC_DEBUG, "output:%s set gamma lut colr_tempe: %d", wlr_output->name, color_temp);
 }
 
-void output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
+bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
 {
     if (!kywc_output->state.enabled) {
-        return;
+        return false;
     }
 
     if (kywc_output->prop.gamma_size <= 1) {
         kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
-        return;
+        return false;
     }
 
     struct kywc_output_state state = kywc_output->state;
     state.color_temp = COLORTEMP_CLAMP(color_temp);
     kywc_output_set_state(kywc_output, &state);
+    return true;
 }

@@ -793,6 +793,7 @@ static void kde_dpms_set(struct wl_client *client, struct wl_resource *resource,
     state.power = mode == ORG_KDE_KWIN_DPMS_MODE_OFF ? false : true;
 
     kywc_output_set_state(output_device->kywc_output, &state);
+    output_manager_emit_configured();
 }
 
 static void kde_dpms_release(struct wl_client *client, struct wl_resource *resource)

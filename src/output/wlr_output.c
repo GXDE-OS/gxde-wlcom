@@ -159,6 +159,7 @@ static void handle_power_set_mode(struct wl_listener *listener, void *data)
     state.power = event->mode == ZWLR_OUTPUT_POWER_V1_MODE_OFF ? false : true;
 
     kywc_output_set_state(&output->base, &state);
+    output_manager_emit_configured();
 }
 
 bool wlr_output_management_create(struct server *server)

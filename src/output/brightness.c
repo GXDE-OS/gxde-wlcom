@@ -152,13 +152,14 @@ bool output_get_backlight(struct kywc_output *kywc_output, uint32_t *brightness)
     return brightness_get(brightness);
 }
 
-void output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
+bool output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
 {
     if (!kywc_output->state.enabled) {
-        return;
+        return false;
     }
 
     struct kywc_output_state state = kywc_output->state;
     state.brightness = BRIGHTNESS_CLAMP(brightness);
     kywc_output_set_state(kywc_output, &state);
+    return true;
 }

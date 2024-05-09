@@ -530,6 +530,7 @@ void output_manager_power_outputs(bool power)
         struct kywc_output_state state = output->base.state;
         state.power = power;
         kywc_output_set_state(&output->base, &state);
+        output_manager_emit_configured();
     }
 }
 

@@ -37,7 +37,9 @@ static int set_brightness(sd_bus_message *m, void *userdata, sd_bus_error *ret_e
 
     struct kywc_output *kywc_output = kywc_output_by_name(name);
     if (kywc_output) {
-        output_set_brightness(kywc_output, value);
+        if (output_set_brightness(kywc_output, value)) {
+            output_manager_emit_configured();
+        }
     }
 
     return sd_bus_reply_method_return(m, NULL);
@@ -51,7 +53,9 @@ static int set_colortemp(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 
     struct kywc_output *kywc_output = kywc_output_by_name(name);
     if (kywc_output) {
-        output_set_colortemp(kywc_output, value);
+        if (output_set_colortemp(kywc_output, value)) {
+            output_manager_emit_configured();
+        }
     }
     return sd_bus_reply_method_return(m, NULL);
 }
