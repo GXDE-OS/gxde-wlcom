@@ -20,10 +20,10 @@ struct effect_interface {
                         struct ky_scene_render_target *target);
 
     bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_output *output);
-    bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_render_target *target);
     void (*frame_render)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_render_target *target);
-    bool (*frame_render_post)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_post)(struct effect_entity *entity, struct ky_scene_render_target *target);
 };
 
 struct effect {
@@ -95,12 +95,12 @@ struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect 
 
 void ky_scene_output_render_pre(struct ky_scene_output *scene_output);
 
-void ky_scene_output_render_begin(struct ky_scene_output *scene_output);
+void ky_scene_output_render_begin(struct ky_scene_render_target *target);
 
 bool ky_scene_output_render(struct ky_scene_render_target *target);
 
 void ky_scene_output_render_end(struct ky_scene_render_target *target);
 
-void ky_scene_output_render_post(struct ky_scene_output *scene_output);
+void ky_scene_output_render_post(struct ky_scene_render_target *target);
 
 #endif /* _EFFECT_H_ */

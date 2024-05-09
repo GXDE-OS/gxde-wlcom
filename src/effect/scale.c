@@ -78,7 +78,7 @@ static void effect_scale_destroy_params(struct effect_entity *entity)
 }
 
 static bool effect_scale_render_post(struct effect_entity *entity,
-                                     struct ky_scene_output *scene_output);
+                                     struct ky_scene_render_target *target);
 
 static bool effect_scale_render(struct effect_entity *entity, int lx, int ly,
                                 struct ky_scene_render_target *target)
@@ -95,12 +95,12 @@ static bool effect_scale_render_pre(struct effect_entity *entity,
         effect_entity_destroy(entity);
     }
     test_count--;
-    effect_scale_render_post(entity, scene_output);
+    effect_scale_render_post(entity, NULL);
     return true;
 }
 
 static bool effect_scale_render_post(struct effect_entity *entity,
-                                     struct ky_scene_output *scene_output)
+                                     struct ky_scene_render_target *target)
 {
     pixman_region32_t damage_region;
     pixman_region32_init_rect(&damage_region, 0, 0, 1920, 1080);

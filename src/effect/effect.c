@@ -442,9 +442,9 @@ enum interface_name {
     RENDER_POST,
 };
 
-#define scene_effect_run(entity, scene_output, interface_name)                                     \
+#define scene_effect_run(entity, target, interface_name)                                           \
     if (entity->effect->impl->frame_##interface_name &&                                            \
-        !entity->effect->impl->frame_##interface_name(entity, scene_output)) {                     \
+        !entity->effect->impl->frame_##interface_name(entity, target)) {                           \
         return;                                                                                    \
     }
 
@@ -466,21 +466,21 @@ static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum in
         entity = wl_container_of(slot, entity, frame_slot);
         switch (name) {
         case RENDER_PRE:
-            scene_effect_run(entity, scene_output, render_pre);
+            if (entity->effect->impl->frame_render_pre &&
+                !entity->effect->impl->frame_render_pre(entity, scene_output)) {
+                return;
+            }
             break;
         case RENDER_BEGIN:
-            scene_effect_run(entity, scene_output, render_begin);
+            scene_effect_run(entity, target, render_begin);
             break;
         case RENDER:
             break;
         case RENDER_END:
-            if (entity->effect->impl->frame_render_end &&
-                !entity->effect->impl->frame_render_end(entity, target)) {
-                return;
-            }
+            scene_effect_run(entity, target, render_end);
             break;
         case RENDER_POST:
-            scene_effect_run(entity, scene_output, render_post);
+            scene_effect_run(entity, target, render_post);
             break;
         default:
             break;
@@ -493,9 +493,9 @@ void ky_scene_output_render_pre(struct ky_scene_output *scene_output)
     scene_outut_run_effect(scene_output, RENDER_PRE, NULL);
 }
 
-void ky_scene_output_render_begin(struct ky_scene_output *scene_output)
+void ky_scene_output_render_begin(struct ky_scene_render_target *target)
 {
-    scene_outut_run_effect(scene_output, RENDER_BEGIN, NULL);
+    scene_outut_run_effect(target->output, RENDER_BEGIN, target);
 }
 
 bool ky_scene_output_render(struct ky_scene_render_target *target)
@@ -528,7 +528,7 @@ void ky_scene_output_render_end(struct ky_scene_render_target *target)
     scene_outut_run_effect(target->output, RENDER_END, target);
 }
 
-void ky_scene_output_render_post(struct ky_scene_output *scene_output)
+void ky_scene_output_render_post(struct ky_scene_render_target *target)
 {
-    scene_outut_run_effect(scene_output, RENDER_POST, NULL);
+    scene_outut_run_effect(target->output, RENDER_POST, target);
 }

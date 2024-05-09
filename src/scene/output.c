@@ -371,26 +371,29 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
 
     ky_scene_render_damage_in_target(scene_output->scene, target);
 
+    pixman_region32_t frame_damage;
+    pixman_region32_init(&frame_damage);
+    pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
+    wlr_damage_ring_rotate(&scene_output->damage_ring);
+
+    ky_scene_output_render_post(target);
+
     if (!wlr_render_pass_submit(render_pass)) {
         wlr_buffer_unlock(buffer);
+        pixman_region32_fini(&frame_damage);
+        wlr_damage_ring_add_whole(&scene_output->damage_ring);
         return false;
     }
 
-    pixman_region32_t frame_damage;
-    pixman_region32_init(&frame_damage);
-    if (pixman_region32_not_empty(&scene_output->damage_ring.current)) {
-        pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
+    if (pixman_region32_not_empty(&frame_damage)) {
         ky_scene_render_region(&frame_damage, target);
     }
     /* set damage even if frame damage is empty */
     wlr_output_state_set_damage(state, &frame_damage);
-    pixman_region32_fini(&frame_damage);
-
-    wlr_damage_ring_rotate(&scene_output->damage_ring);
     wlr_output_state_set_buffer(state, buffer);
-    wlr_buffer_unlock(buffer);
 
-    ky_scene_output_render_post(scene_output);
+    wlr_buffer_unlock(buffer);
+    pixman_region32_fini(&frame_damage);
 
     return true;
 }
