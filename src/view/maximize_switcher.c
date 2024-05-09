@@ -23,10 +23,35 @@
 #include "widget/scaled_buffer.h"
 #include "widget/widget.h"
 
+#define SELECT_WIDTH_GAP (5)
+#define SELECT_HEIGHT_GAP (8)
+#define ICON_RATIO (0.4)
+#define ITEM_HEIGHT (48)
+#define MAX_DISPLAY_VIEW (25)
+#define MIN_DISPLAY_VIEW (4)
+
 enum set_dir {
     NONE = 0,
     BOTTOM,
     TOP,
+};
+
+struct maximize_switcher_color {
+    float background_color[4];
+    float border_color[4];
+    float select_color[4];
+};
+
+static struct maximize_switcher_color light = {
+    .background_color = { 1.0, 1.0, 1.0, 1.0 },
+    .border_color = { 25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
+    .select_color = { 16.0 / 255, 43.0 / 255.0, 75.0 / 255, 0.3 },
+};
+
+static struct maximize_switcher_color dark = {
+    .background_color = { 25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
+    .border_color = { 1.0, 1.0, 1.0, 1.0 },
+    .select_color = { 73.0 / 255, 10.0 / 255.0, 13.0 / 255, 0.3 },
 };
 
 struct item_view {
@@ -53,6 +78,7 @@ static struct maximize_switcher {
     struct ky_scene_rect *background;
 
     struct item_view *active;
+    struct maximize_switcher_color *color;
 
     /* border */
     struct {
@@ -269,15 +295,15 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
 static void update_title_text(struct item_view *item_view)
 {
     struct theme *theme = theme_manager_get_current();
-    int select_width_gap = theme->maxswitcher.select_width_gap * 2;
-    int max_width = switcher->max_width - theme->maxswitcher.icon_area_width - select_width_gap;
+    int select_width_gap = SELECT_WIDTH_GAP * 2;
+    int max_width = switcher->max_width - theme->button_width - select_width_gap;
     widget_set_text(item_view->title_text, item_view->text, JUSTIFY_CENTER, false, false,
                     item_view->kywc_view->minimized);
 
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
     widget_set_front_color(item_view->title_text, theme->active_text_color);
 
-    widget_set_max_size(item_view->title_text, max_width, theme->maxswitcher.item_height);
+    widget_set_max_size(item_view->title_text, max_width, ITEM_HEIGHT);
     widget_set_auto_resize(item_view->title_text, AUTO_RESIZE_ONLY);
 
     widget_set_enabled(item_view->title_text, true);
@@ -287,10 +313,10 @@ static void update_title_text(struct item_view *item_view)
     widget_get_size(item_view->title_text, &text_width, &text_height);
 
     if (text_width > max_width) {
-        switcher->width = max_width + theme->maxswitcher.icon_area_width + select_width_gap;
+        switcher->width = max_width + theme->button_width + select_width_gap;
     } else if (text_width >
-               switcher->width - theme->maxswitcher.icon_area_width - select_width_gap) {
-        switcher->width = text_width + theme->maxswitcher.icon_area_width + select_width_gap;
+               switcher->width - theme->button_width - select_width_gap) {
+        switcher->width = text_width + theme->button_width + select_width_gap;
     }
 
     item_view->text_width = text_width;
@@ -404,11 +430,10 @@ static void get_maximize_views(int *num_views)
 
 static void update_item_view(struct item_view *item_view)
 {
-    struct theme *theme = theme_manager_get_current();
-    int select_width_gap = theme->maxswitcher.select_width_gap;
-    int select_height_gap = theme->maxswitcher.select_height_gap;
+    int select_width_gap = SELECT_WIDTH_GAP;
+    int select_height_gap = SELECT_HEIGHT_GAP;
     int width = switcher->width - select_width_gap * 2 - 2;
-    int height = theme->maxswitcher.item_height - select_height_gap * 2;
+    int height = ITEM_HEIGHT - select_height_gap * 2;
     ky_scene_rect_set_size(item_view->background, width, height);
     ky_scene_node_set_position(&item_view->background->node, select_width_gap + 1,
                                select_height_gap);
@@ -427,8 +452,7 @@ static void set_select_item_view(int index, struct item_view *current, struct it
     }
 
     ky_scene_node_set_enabled(new->border_node, true);
-    struct theme *theme = theme_manager_get_current();
-    ky_scene_rect_set_color(new->background, theme->maxswitcher.select_color);
+    ky_scene_rect_set_color(new->background, switcher->color->select_color);
     set_icon_buffer(new, 1);
 }
 
@@ -444,10 +468,10 @@ static void hide_all_items(void)
 static void show_current_page_items(int index)
 {
     struct theme *theme = theme_manager_get_current();
-    int icon_width = theme->maxswitcher.icon_area_width;
-    int select_width_gap = theme->maxswitcher.select_width_gap;
-    int icon_x = (icon_width - theme->maxswitcher.icon_size) / 2 + select_width_gap;
-    int icon_y = (theme->maxswitcher.item_height - theme->maxswitcher.icon_size) / 2;
+    int icon_width = theme->button_width;
+    int select_width_gap = SELECT_WIDTH_GAP;
+    int icon_x = (icon_width - theme->icon_size) / 2 + select_width_gap;
+    int icon_y = (ITEM_HEIGHT - theme->icon_size) / 2;
 
     int temp_x = icon_width + select_width_gap;
 
@@ -466,7 +490,7 @@ static void show_current_page_items(int index)
         item_view = switcher->item_views[i];
         ky_scene_node_set_enabled(&item_view->tree->node, true);
         ky_scene_node_set_position(&item_view->tree->node, 0,
-                                   start_i * theme->maxswitcher.item_height);
+                                   start_i * ITEM_HEIGHT);
 
         /* set icon position */
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
@@ -474,7 +498,7 @@ static void show_current_page_items(int index)
         int text_x =
             temp_x +
             (switcher->width - icon_width - item_view->text_width - select_width_gap * 2) / 2;
-        int text_y = (theme->maxswitcher.item_height - item_view->text_height) / 2;
+        int text_y = (ITEM_HEIGHT - item_view->text_height) / 2;
         ky_scene_node_set_position(item_view->text_node, text_x, text_y);
 
         update_item_view(item_view);
@@ -542,7 +566,6 @@ static void hide_maximize_switcher(void)
 
 static bool show_maximize_switcher(void)
 {
-    struct theme *theme = theme_manager_get_current();
     struct output *output = input_current_output(input_manager_get_default_seat());
     struct kywc_box *usable_area = &output->usable_area;
 
@@ -556,20 +579,20 @@ static bool show_maximize_switcher(void)
         return false;
     }
 
-    if (num_view >= theme->maxswitcher.max_display_view) {
-        switcher->height = theme->maxswitcher.item_height * theme->maxswitcher.max_display_view;
-    } else if (num_view <= theme->maxswitcher.min_display_view) {
-        switcher->height = theme->maxswitcher.item_height * theme->maxswitcher.min_display_view;
+    if (num_view >= MAX_DISPLAY_VIEW) {
+        switcher->height = ITEM_HEIGHT * MAX_DISPLAY_VIEW;
+    } else if (num_view <= MIN_DISPLAY_VIEW) {
+        switcher->height = ITEM_HEIGHT * MIN_DISPLAY_VIEW;
     } else {
-        switcher->height = theme->maxswitcher.item_height * num_view;
+        switcher->height = ITEM_HEIGHT * num_view;
     }
 
     if (switcher->height > switcher->max_height) {
-        int max_num = switcher->max_height / theme->maxswitcher.item_height;
+        int max_num = switcher->max_height / ITEM_HEIGHT;
         switcher->views_control = max_num;
-        switcher->height = max_num * theme->maxswitcher.item_height;
+        switcher->height = max_num * ITEM_HEIGHT;
     } else {
-        switcher->views_control = theme->maxswitcher.max_display_view;
+        switcher->views_control = MAX_DISPLAY_VIEW;
     }
 
     switcher->num_view = num_view;
@@ -656,14 +679,14 @@ static void switcher_register_shortcuts(void)
 
 static void handle_theme_update(struct wl_listener *listener, void *data)
 {
-    struct maximize_switcher *switcher = wl_container_of(listener, switcher, theme_update);
     struct theme *theme = theme_manager_get_current();
-    ky_scene_rect_set_color(switcher->background, theme->maxswitcher.background_color);
+    switcher->color = strcmp(theme->theme_name, "builtin-light") ? &dark : &light;
+    ky_scene_rect_set_color(switcher->background, switcher->color->background_color);
 
-    ky_scene_rect_set_color(switcher->border.left, theme->maxswitcher.border_color);
-    ky_scene_rect_set_color(switcher->border.top, theme->maxswitcher.border_color);
-    ky_scene_rect_set_color(switcher->border.right, theme->maxswitcher.border_color);
-    ky_scene_rect_set_color(switcher->border.bottom, theme->maxswitcher.border_color);
+    ky_scene_rect_set_color(switcher->border.left, switcher->color->border_color);
+    ky_scene_rect_set_color(switcher->border.top, switcher->color->border_color);
+    ky_scene_rect_set_color(switcher->border.right, switcher->color->border_color);
+    ky_scene_rect_set_color(switcher->border.bottom, switcher->color->border_color);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -683,22 +706,24 @@ bool maximize_switcher_create(struct view_manager *view_manager)
         return false;
     }
 
+    struct theme *theme = theme_manager_get_current();
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     switcher->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&switcher->tree->node, false);
 
-    struct theme *theme = theme_manager_get_current();
-    switcher->icon_ratio = theme->maxswitcher.icon_ratio;
+    switcher->color = strcmp(theme->theme_name, "builtin-light") ? &dark : &light;
+
+    switcher->icon_ratio = ICON_RATIO;
     switcher->background =
-        ky_scene_rect_create(switcher->tree, 0, 0, theme->maxswitcher.background_color);
+        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->background_color);
     switcher->border.left =
-        ky_scene_rect_create(switcher->tree, 0, 0, theme->maxswitcher.border_color);
+        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
     switcher->border.top =
-        ky_scene_rect_create(switcher->tree, 0, 0, theme->maxswitcher.border_color);
+        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
     switcher->border.right =
-        ky_scene_rect_create(switcher->tree, 0, 0, theme->maxswitcher.border_color);
+        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
     switcher->border.bottom =
-        ky_scene_rect_create(switcher->tree, 0, 0, theme->maxswitcher.border_color);
+        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
 
     switcher->pointer_grab.data = switcher;
     switcher->pointer_grab.interface = &pointer_grab_impl;

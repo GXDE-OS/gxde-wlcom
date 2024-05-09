@@ -19,6 +19,8 @@
 #include "widget/menu.h"
 #include "widget_p.h"
 
+#define SUB_MENU_GAP (2)
+
 static void menu_draw_item(struct menu_item *item, bool force)
 {
     if (!force && !item->redraw) {
@@ -52,8 +54,8 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_hovered_color(item->content, theme->accent_color);
 
     widget_set_border(item->content, theme->inactive_bg_color, border_mask,
-                      theme->menu.border_width);
-    widget_set_round_coner(item->content, corner_mask, theme->menu.corner_radius);
+                      theme->border_width);
+    widget_set_round_coner(item->content, corner_mask, theme->corner_radius);
 
     widget_update(item->content, true);
 }
@@ -160,7 +162,6 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
 
 static void menu_set_position(struct menu *menu, int x, int y)
 {
-    struct theme *theme = theme_manager_get_current();
     /* use (x, y) when root-menu, otherwise use parent item pos */
     int lx = x, ly = y;
     if (menu->parent) {
@@ -185,7 +186,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
     } else {
         /* default menu position */
         struct menu_item *parent = menu->parent;
-        x = parent->menu->width + theme->menu.sub_menu_gap;
+        x = parent->menu->width + SUB_MENU_GAP;
         y = 0;
 
         if (lx + parent->menu->width + menu->width > max_x) {

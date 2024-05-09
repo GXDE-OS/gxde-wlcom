@@ -338,10 +338,10 @@ static void view_update_round_corner(struct view *view)
     bool need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
 
     int radius[4] = { 0 };
-    radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_RT] = need_top_corner ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_LB] = need_corner ? theme->ssd.corner_radius : 0;
-    radius[KY_SCENE_ROUND_CORNER_LT] = need_top_corner ? theme->ssd.corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? theme->corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_RT] = need_top_corner ? theme->corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LB] = need_corner ? theme->corner_radius : 0;
+    radius[KY_SCENE_ROUND_CORNER_LT] = need_top_corner ? theme->corner_radius : 0;
     ky_scene_node_set_radius(&buffer->node, radius);
 }
 

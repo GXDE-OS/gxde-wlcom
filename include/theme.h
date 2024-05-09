@@ -37,6 +37,7 @@ struct theme {
     const char *theme_name;
     bool builtin;
 
+    int corner_radius;
     /* font */
     const char *font_name;
     int font_size;
@@ -56,59 +57,19 @@ struct theme {
 
     float accent_color[4];
 
-    struct {
-        int border_width;
-        int corner_radius;
-        int title_height;
-        int resize_border;
-        int button_width;
-        int icon_size;
-        int shadow_border;
+    /* icon size */
+    int button_width;
+    int icon_size;
 
-        /* button svg string */
-        const char *button_svg;
+    /* not changed or ignored parameter */
+    int border_width;
+    int title_height;
+    int shadow_border;
 
-        struct wl_list scaled_buffers;
-    } ssd;
+    /* button svg string */
+    const char *button_svg;
 
-    struct {
-        int border_width;
-        int corner_radius;
-    } tooltip;
-
-    struct {
-        int border_width;
-        int corner_radius;
-        int sub_menu_gap;
-    } menu;
-
-    struct {
-        float background_color[4];
-    } snapbox;
-
-    struct {
-        float background_color[4];
-        float border_color[4];
-        float select_color[4];
-        int select_width_gap;
-        int select_height_gap;
-        float icon_ratio;
-        int item_height;
-        int max_display_view;
-        int min_display_view;
-        int icon_size;
-        int icon_area_width;
-    } maxswitcher;
-
-    struct {
-        float color[4];
-        /* An animation time */
-        int shake_effect_period;
-        /* offset distance */
-        int shake_effect_offset;
-        /* Run times */
-        int shake_effect_times;
-    } modal;
+    struct wl_list scaled_buffers;
 };
 
 struct theme_manager *theme_manager_create(struct server *server);

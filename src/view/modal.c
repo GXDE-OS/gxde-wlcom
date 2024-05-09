@@ -12,6 +12,16 @@
 #include "theme.h"
 #include "view_p.h"
 
+/* An animation time */
+#define SHAKE_EFFECT_PERIOD (50)
+/* offset distance */
+#define SHAKE_EFFECT_OFFSET (5)
+/* Run times */
+#define SHAKE_EFFECT_TIMES (2)
+
+static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 };
+
+
 enum shake_effect_stage {
     SHAKE_EFFECT_ORIGIN = 0,
     SHAKE_EFFECT_LEFT_SIDE,
@@ -244,8 +254,8 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
     if (kywc_view->ssd & KYWC_SSD_TITLE) {
         bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
         struct theme *theme = theme_manager_get_current();
-        radius[KY_SCENE_ROUND_CORNER_RT] = need_corner ? theme->ssd.corner_radius : 0;
-        radius[KY_SCENE_ROUND_CORNER_LT] = need_corner ? theme->ssd.corner_radius : 0;
+        radius[KY_SCENE_ROUND_CORNER_RT] = need_corner ? theme->corner_radius : 0;
+        radius[KY_SCENE_ROUND_CORNER_LT] = need_corner ? theme->corner_radius : 0;
     }
 
     ky_scene_node_set_radius(&modal_box->node, radius);
@@ -278,16 +288,15 @@ void modal_create(struct view *view)
         .height = kywc_view->geometry.height + kywc_view->margin.off_height,
     };
 
-    struct theme *theme = theme_manager_get_current();
     /* An animation time */
-    modal->shake_effect.period = theme->modal.shake_effect_period;
+    modal->shake_effect.period = SHAKE_EFFECT_PERIOD;
     /* offset distance */
-    modal->shake_effect.offset = theme->modal.shake_effect_offset;
+    modal->shake_effect.offset = SHAKE_EFFECT_OFFSET;
     /* Run times */
-    modal->shake_effect.times = theme->modal.shake_effect_times;
+    modal->shake_effect.times = SHAKE_EFFECT_TIMES;
 
     modal->modal_box =
-        ky_scene_rect_create(view->tree->node.parent, geo.width, geo.height, theme->modal.color);
+        ky_scene_rect_create(view->tree->node.parent, geo.width, geo.height, modal_color);
     ky_scene_node_lower_to_bottom(&modal->modal_box->node);
     ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
     modal_box_set_round_corner(modal->modal_box, view->parent);
