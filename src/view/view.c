@@ -324,7 +324,7 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 static void view_update_round_corner(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    if (!kywc_view->has_round_corner) {
+    if (!kywc_view->has_round_corner || !kywc_view->mapped) {
         return;
     }
     struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
@@ -352,7 +352,6 @@ void view_map(struct view *view)
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
     positioner_add_new_view(view);
-    view_update_round_corner(view);
     /* assume that request_minimize may emited before map */
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
 
@@ -372,6 +371,7 @@ void view_map(struct view *view)
     kywc_view_activate(kywc_view);
     seat_focus_surface(kywc_view->focused_seat, view->surface);
 
+    view_update_round_corner(view);
     modal_create(view);
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
@@ -593,6 +593,7 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd)
     }
 
     kywc_view->ssd = ssd;
+    view_update_round_corner(view);
     kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, ssd);
 
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
@@ -1381,6 +1382,7 @@ uint32_t view_manager_get_adsorption(void)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
+    wl_list_remove(&view_manager->theme_update.link);
 
     free(view_manager);
     view_manager = NULL;
@@ -1390,6 +1392,18 @@ static void handle_server_terminate(struct wl_listener *listener, void *data)
 {
     view_manager->state.num_workspaces = workspace_manager_get_count();
     view_write_config(view_manager);
+}
+
+static void handle_theme_update(struct wl_listener *listener, void *data)
+{
+    struct theme_update_event *update_event = data;
+    if (!(update_event->update_mask & THEME_UPDATE_MASK_CORNER_RADIUS)) {
+        return;
+    }
+    struct view *view;
+    wl_list_for_each(view, &view_manager->views, link) {
+        view_update_round_corner(view);
+    }
 }
 
 struct view_manager *view_manager_create(struct server *server)
@@ -1406,6 +1420,8 @@ struct view_manager *view_manager_create(struct server *server)
     wl_signal_init(&view_manager->events.window_menu);
     wl_signal_init(&view_manager->events.show_desktop);
 
+    view_manager->theme_update.notify = handle_theme_update;
+    theme_manager_add_update_listener(&view_manager->theme_update);
     view_manager->server_terminate.notify = handle_server_terminate;
     wl_signal_add(&server->events.terminate, &view_manager->server_terminate);
     view_manager->server_destroy.notify = handle_server_destroy;

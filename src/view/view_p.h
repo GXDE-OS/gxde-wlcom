@@ -38,6 +38,7 @@ struct view_manager {
         uint32_t view_adsorption;
     } state;
 
+    struct wl_listener theme_update;
     struct wl_listener new_xdg_surface;
     struct wl_listener server_terminate;
     struct wl_listener server_destroy;
