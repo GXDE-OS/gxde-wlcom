@@ -1,4 +1,5 @@
 wlcom_sources += files(
+  'animator.c',
   'blur.c',
   'capture.c',
   'config.c',
