@@ -182,6 +182,7 @@ static void handle_new_token(struct wl_listener *listener, void *data)
     wl_signal_add(&seat->events.destroy, &token->workspace_destroy);
 
     wl_list_init(&token->view_premap.link);
+    wl_list_init(&token->view_destroy.link);
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data)
