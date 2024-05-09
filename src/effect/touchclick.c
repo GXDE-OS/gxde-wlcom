@@ -167,7 +167,7 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     return true;
 }
 
-static bool frame_render_post(struct effect_entity *entity, struct ky_scene_output *output)
+static bool frame_render_post(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
     struct touchclick_effect *effect = entity->usr_data;
     // add damage to trigger render event
