@@ -202,16 +202,17 @@ static void entity_handle_effect_disable(struct wl_listener *listener, void *dat
     struct effect_entity *entity = wl_container_of(listener, entity, effect_disable);
     wl_list_remove(&entity->slot.link);
     wl_list_init(&entity->slot.link);
+    wl_list_remove(&entity->frame_slot.link);
+    wl_list_init(&entity->frame_slot.link);
 }
 
-static void entity_handle_effect_enable(struct wl_listener *listener, void *data)
+static struct wl_list *find_insertion_location(struct effect_entity *entity, struct effect_chain *chain)
 {
-    struct effect_entity *entity = wl_container_of(listener, entity, effect_enable);
-    struct wl_list *list = &entity->slot.chain->slots;
 
+    struct wl_list *list = &chain->slots;
     struct effect_entity *_entity;
     struct effect_slot *slot;
-    wl_list_for_each(slot, &entity->slot.chain->slots, link) {
+    wl_list_for_each(slot, &chain->slots, link) {
         _entity = wl_container_of(slot, _entity, slot);
         if (_entity->effect->priority < entity->effect->priority) {
             break;
@@ -219,7 +220,20 @@ static void entity_handle_effect_enable(struct wl_listener *listener, void *data
         list = &slot->link;
     }
 
+    return list;
+}
+
+static void entity_handle_effect_enable(struct wl_listener *listener, void *data)
+{
+    struct effect_entity *entity = wl_container_of(listener, entity, effect_enable);
+
+    struct effect_chain *chain = entity->slot.chain;
+    struct wl_list *list = find_insertion_location(entity, chain);
     wl_list_insert(list, &entity->slot.link);
+
+    chain = entity->frame_slot.chain;
+    list = find_insertion_location(entity, chain);
+    wl_list_insert(list, &entity->frame_slot.link);
 }
 
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect)
