@@ -97,4 +97,6 @@ struct kywc_output *kywc_output_by_name(const char *name);
 
 struct kywc_output *kywc_output_by_uuid(const char *uuid);
 
+bool kywc_output_use_hardware_gamma(struct kywc_output *kywc_output);
+
 #endif /* _KYWC_OUTPUT_H_ */

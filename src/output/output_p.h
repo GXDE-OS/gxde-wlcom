@@ -41,6 +41,7 @@ struct output_manager {
     char outputs_layout[UUID_SIZE];
     bool has_layout_manager;
     bool damage_enabled;
+    bool force_software_gamma;
 };
 
 bool output_manager_config_init(struct output_manager *output_manager);

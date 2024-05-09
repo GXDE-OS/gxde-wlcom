@@ -851,6 +851,9 @@ struct output_manager *output_manager_create(struct server *server)
     kde_output_management_create(server);
     wlr_output_management_create(server);
 
+    char *env = getenv("KYWC_SOFTWARE_GAMMA");
+    output_manager->force_software_gamma = (env && strcmp(env, "1") == 0);
+    
     return output_manager;
 }
 
@@ -1026,10 +1029,6 @@ static bool output_mode_changed(struct output *output, const struct kywc_output_
 static bool output_gamma_changed(struct output *output, const struct kywc_output_state *state)
 {
     struct kywc_output_state *current_state = &output->base.state;
-    if (output->base.prop.gamma_size < 1) {
-        return false;
-    }
-
     return current_state->color_temp != state->color_temp ||
            (!output->base.prop.brightness_support &&
             current_state->brightness != state->brightness);
@@ -1049,9 +1048,18 @@ static bool output_compare_state(struct output *output, const struct kywc_output
     return changed;
 }
 
+bool kywc_output_use_hardware_gamma(struct kywc_output *kywc_output)
+{
+    return kywc_output->prop.gamma_size > 0 && !output_manager->force_software_gamma;
+}
+
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state)
 {
     if (!output->gamma_changed) {
+        return false;
+    }
+
+    if (!kywc_output_use_hardware_gamma(&output->base)) {
         return false;
     }
 
@@ -1121,7 +1129,14 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 
     if (enabled && output_gamma_changed(output, state)) {
         output->gamma_changed = true;
-        wlr_output_schedule_frame(output->wlr_output);
+        if (kywc_output_use_hardware_gamma(&output->base)) {
+            wlr_output_schedule_frame(output->wlr_output);
+        } else {
+            // software gamma need update render damage and cursor buffer
+            if (output->scene_output) {
+                ky_scene_output_damage_whole(output->scene_output);
+            }
+        }
     }
 
     /* set brightness of backlight */
