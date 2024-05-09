@@ -439,6 +439,7 @@ bool effect_manager_create(struct server *server)
     move_effect_create(manager);
     scale_effect_create(manager);
     touchclick_effect_create(manager);
+    soft_gamma_effect_create(manager);
 
     return true;
 }

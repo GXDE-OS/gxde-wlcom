@@ -337,3 +337,16 @@ bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
     kywc_output_set_state(kywc_output, &state);
     return true;
 }
+
+void colortemp_get_rgb(float *rgb, uint32_t color_temp)
+{
+    // map 1000~25100 to 0~241
+    int input = COLORTEMP_CLAMP(color_temp);
+    int output_min = 0;
+    int output_max = 241;
+    int index = (input - 1000) * (output_max - output_min) / (25100 - 1000) + output_min;
+    
+    rgb[0] = blackbody_color[index * 3 + 0];
+    rgb[1] = blackbody_color[index * 3 + 1];
+    rgb[2] = blackbody_color[index * 3 + 2];
+}

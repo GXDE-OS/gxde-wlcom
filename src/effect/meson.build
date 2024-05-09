@@ -7,6 +7,7 @@ wlcom_sources += files(
   'showfps.c',
   'scale.c',
   'touchclick.c',
+  'soft_gamma.c',
 )
 
 wlcom_sources += files(
