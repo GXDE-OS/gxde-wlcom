@@ -492,7 +492,8 @@ static void cursor_handle_touch_motion(struct wl_listener *listener, void *data)
 
     touch_handle_motion(event, !cursor->touch_simulation_pointer);
 
-    if (cursor->touch_simulation_pointer && cursor->pointer_touch_id == event->touch_id) {
+    if ((cursor->seat->pointer_grab || cursor->touch_simulation_pointer) &&
+        cursor->pointer_touch_id == event->touch_id) {
         cursor_feed_motion(cursor, event->time_msec);
     }
 }
