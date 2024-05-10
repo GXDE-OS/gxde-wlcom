@@ -113,8 +113,8 @@ static void gl_render_finger_effect(struct touchclick_effect *effect, struct tou
     };
 
     struct wlr_box box = {
-        .x = finger->x,
-        .y = finger->y,
+        .x = finger->x - target->logical.x,
+        .y = finger->y - target->logical.y,
         .width = effect->config.shape_width,
         .height = effect->config.shape_height,
     };
