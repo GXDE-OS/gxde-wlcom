@@ -729,8 +729,10 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
 
     /* restore to the orig geometry */
     if (key == KEY_ESC) {
-        kywc_view_resize(&grab->view->base, &grab->geo);
+        struct kywc_view *kywc_view = &grab->view->base;
+        struct kywc_box geo = grab->geo;
         interactive_done(grab);
+        kywc_view_resize(kywc_view, &geo);
         return false;
     }
     if (key == KEY_ENTER) {
