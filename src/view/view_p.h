@@ -16,6 +16,7 @@ struct view_manager {
 
     struct {
         struct wl_signal new_view;
+        struct wl_signal new_mapped_view;
         struct wl_signal window_menu;
         struct wl_signal show_desktop;
     } events;

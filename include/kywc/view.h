@@ -155,6 +155,8 @@ void kywc_view_add_show_desktop_listener(struct wl_listener *listener);
 
 void kywc_view_add_new_listener(struct wl_listener *listener);
 
+void kywc_view_add_new_mapped_listener(struct wl_listener *listener);
+
 void kywc_view_close(struct kywc_view *kywc_view);
 void kywc_view_move(struct kywc_view *kywc_view, int x, int y);
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry);

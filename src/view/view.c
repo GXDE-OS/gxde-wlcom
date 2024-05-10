@@ -376,6 +376,7 @@ void view_map(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
+    wl_signal_emit_mutable(&view_manager->events.new_mapped_view, kywc_view);
 
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
@@ -778,6 +779,11 @@ void view_set_parent(struct view *view, struct view *parent)
 void kywc_view_add_new_listener(struct wl_listener *listener)
 {
     wl_signal_add(&view_manager->events.new_view, listener);
+}
+
+void kywc_view_add_new_mapped_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&view_manager->events.new_mapped_view, listener);
 }
 
 struct kywc_view *kywc_view_by_uuid(const char *uuid)
@@ -1396,6 +1402,7 @@ struct view_manager *view_manager_create(struct server *server)
     view_manager->server = server;
     wl_list_init(&view_manager->views);
     wl_signal_init(&view_manager->events.new_view);
+    wl_signal_init(&view_manager->events.new_mapped_view);
     wl_signal_init(&view_manager->events.window_menu);
     wl_signal_init(&view_manager->events.show_desktop);
 
