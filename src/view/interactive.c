@@ -391,6 +391,47 @@ static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct
     }
 }
 
+static void window_adsorb_edges_constraints(struct kywc_view *kywc_view, struct kywc_box *pending,
+                                            struct output *output, uint32_t *gap_x, uint32_t *gap_y)
+{
+    struct kywc_box *usable = &output->usable_area;
+    struct kywc_box *current = &kywc_view->geometry;
+
+    /* actual window box */
+    struct kywc_box s_box = {
+        .x = pending->x - kywc_view->margin.off_x,
+        .y = pending->y - kywc_view->margin.off_y,
+        .width = pending->width + kywc_view->margin.off_width,
+        .height = pending->height + kywc_view->margin.off_height,
+    };
+    /* actual view coord */
+    int x1 = s_box.x;
+    int y1 = s_box.y;
+    int x2 = s_box.x + s_box.width;
+    int y2 = s_box.y + s_box.height;
+    /* usable coord */
+    int ux1 = usable->x;
+    int uy1 = usable->y;
+    int ux2 = usable->x + usable->width;
+    int uy2 = usable->y + usable->height;
+
+    /* window edge adsorption in left, right */
+    if (abs(ux1 - x1) < *gap_x) {
+        *gap_x = abs(ux1 - x1);
+        pending->x = ux1 + kywc_view->margin.off_x;
+    } else if (abs(x2 - ux2) < *gap_x) {
+        *gap_x = abs(x2 - ux2);
+        pending->x = ux2 - current->width - kywc_view->margin.off_width + kywc_view->margin.off_x;
+    }
+    /* top and bottom */
+    if (abs(uy1 - y1) < *gap_y) {
+        *gap_y = abs(uy1 - y1);
+        pending->y = uy1 + kywc_view->margin.off_y;
+    } else if (abs(y2 - uy2) < *gap_y) {
+        pending->y = uy2 - current->height - kywc_view->margin.off_height + kywc_view->margin.off_y;
+    }
+}
+
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y)
 {
     /* get current seat constraints output */
@@ -401,7 +442,6 @@ void window_move_constraints(struct kywc_view *kywc_view, struct output *output,
     int x1 = *x - kywc_view->margin.off_x;
     int y1 = *y - kywc_view->margin.off_y;
     int x2 = x1 + current->width + kywc_view->margin.off_width;
-    int y2 = y1 + current->height + kywc_view->margin.off_height;
 
     struct kywc_box pending = {
         .x = *x,
@@ -417,24 +457,14 @@ void window_move_constraints(struct kywc_view *kywc_view, struct output *output,
     edges |= *y != kywc_view->geometry.y ? KYWC_EDGE_TOP | KYWC_EDGE_BOTTOM : KYWC_EDGE_NONE;
     window_adsorb_window_constraints(kywc_view, &pending, &gap_x, &gap_y, edges,
                                      INTERACTIVE_MODE_MOVE);
+    gap_x = gap_x < EDGE_OFFSET ? gap_x : VIEW_EDGE_GAP;
+    gap_y = gap_y < EDGE_OFFSET ? gap_y : VIEW_EDGE_GAP;
+    window_adsorb_edges_constraints(kywc_view, &pending, output, &gap_x, &gap_y);
     *x = pending.x;
     *y = pending.y;
 
     int ux2 = usable->x + usable->width;
     int uy2 = usable->y + usable->height;
-
-    /* window edge adsorption in left, right */
-    if (abs(usable->x - x1) < VIEW_EDGE_GAP) {
-        *x = usable->x + kywc_view->margin.off_x;
-    } else if (abs(x2 - ux2) < VIEW_EDGE_GAP) {
-        *x = ux2 - current->width - kywc_view->margin.off_width + kywc_view->margin.off_x;
-    }
-    /* top and bottom */
-    if (abs(usable->y - y1) < VIEW_EDGE_GAP) {
-        *y = usable->y + kywc_view->margin.off_y;
-    } else if (abs(y2 - uy2) < VIEW_EDGE_GAP) {
-        *y = uy2 - current->height - kywc_view->margin.off_height + kywc_view->margin.off_y;
-    }
 
     /* constraints when moving to top and bottom */
     if (output_at_layout_edge(output, LAYOUT_EDGE_TOP) && y1 < usable->y) {
