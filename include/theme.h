@@ -7,6 +7,12 @@
 
 #include <wayland-server-core.h>
 
+enum theme_type {
+    THEME_TYPE_DEFAULT = 0,
+    THEME_TYPE_LIGHT = THEME_TYPE_DEFAULT,
+    THEME_TYPE_DARK,
+};
+
 enum justification {
     JUSTIFY_LEFT = 0,
     JUSTIFY_CENTER,
@@ -28,9 +34,34 @@ enum theme_buffer_type {
     CORNER_TOP_RIGHT_INACTIVE,
 };
 
+enum theme_update_mask {
+    THEME_UPDATE_MASK_NONE = 0,
+    /* font_name, font_size or text color changed */
+    THEME_UPDATE_MASK_FONT = 1 << 0,
+    /* text_justify changed */
+    THEME_UPDATE_MASK_TEXT_POS = 1 << 1,
+    /* border_color changed */
+    THEME_UPDATE_MASK_BORDER_COLOR = 1 << 2,
+    /* background_color changed */
+    THEME_UPDATE_MASK_BACKGROUND_COLOR = 1 << 3,
+    /* accent_color changed */
+    THEME_UPDATE_MASK_ACCENT_COLOR = 1 << 4,
+    /* corner_radius changed */
+    THEME_UPDATE_MASK_CORNER_RADIUS = 1 << 5,
+    /* icon_size, button_width changed */
+    THEME_UPDATE_MASK_ICON_SIZE = 1 << 6,
+    /* theme_name changed */
+    THEME_UPDATE_MASK_ALL = (1 << 7) - 1,
+};
+
 struct server;
 struct wlr_fbox;
 struct wlr_buffer;
+
+struct theme_update_event {
+    enum theme_type theme_name;
+    uint32_t update_mask;
+};
 
 struct theme {
     struct wl_list link;

@@ -250,7 +250,12 @@ static void ssd_tooltip_draw_widgets(struct ssd_tooltip *tooltip)
 static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, theme_update);
-    ssd_tooltip_draw_widgets(tooltip);
+    struct theme_update_event *update_event = data;
+    int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
+                       THEME_UPDATE_MASK_CORNER_RADIUS;
+    if (update_event->update_mask & allowed_mask) {
+        ssd_tooltip_draw_widgets(tooltip);
+    }
 }
 
 static int handle_tooltip(void *data)
@@ -859,8 +864,14 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
 static void handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, theme_update);
-    ssd_update_margin(ssd);
-    ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);
+    struct theme_update_event *update_event = data;
+    int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_TEXT_POS |
+                       THEME_UPDATE_MASK_BACKGROUND_COLOR | THEME_UPDATE_MASK_BORDER_COLOR |
+                       THEME_UPDATE_MASK_CORNER_RADIUS;
+    if (update_event->update_mask & allowed_mask) {
+        ssd_update_margin(ssd);
+        ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);
+    }
 }
 
 static void handle_icon_update(struct wl_listener *listener, void *data)

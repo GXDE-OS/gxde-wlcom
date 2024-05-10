@@ -217,8 +217,8 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
     buffers->scale = scale;
     wl_list_insert(&theme->scaled_buffers, &buffers->link);
 
-    buffers->buf[BUTTONS_BUFFER] = draw_svg(theme->button_svg, theme->button_width * 4,
-                                            theme->button_width * 2, scale);
+    buffers->buf[BUTTONS_BUFFER] =
+        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 2, scale);
 
     draw_theme_corner(theme, scale, buffers);
     return buffers;
@@ -508,7 +508,12 @@ bool theme_manager_set_theme(const char *name)
 
     /* apply the new theme */
     manager->current = new;
-    wl_signal_emit_mutable(&manager->events.update, new);
+
+    struct theme_update_event update_event = {
+        .theme_name = strcmp(name, DEFAULT_THEME) ? THEME_TYPE_DARK : THEME_TYPE_LIGHT,
+        .update_mask = THEME_UPDATE_MASK_ALL,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
 
     if (old) {
         theme_destroy(old);
@@ -540,7 +545,10 @@ bool theme_manager_set_font(const char *name, int size)
     }
 
     theme_override_config(current);
-    wl_signal_emit_mutable(&manager->events.update, current);
+    struct theme_update_event update_event = {
+        .update_mask = THEME_UPDATE_MASK_FONT,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
 
     theme_manager_write_config(manager, NULL);
     return true;
@@ -566,7 +574,10 @@ bool theme_manager_set_accent_color(int32_t color)
 
     override->accent_color = color;
     theme_override_config(current);
-    wl_signal_emit_mutable(&manager->events.update, current);
+    struct theme_update_event update_event = {
+        .update_mask = THEME_UPDATE_MASK_ACCENT_COLOR,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
 
     theme_manager_write_config(manager, NULL);
     return true;
@@ -584,7 +595,10 @@ bool theme_manager_set_corner_radius(int32_t radius)
 
     override->corner_radius = radius;
     theme_override_config(current);
-    wl_signal_emit_mutable(&manager->events.update, current);
+    struct theme_update_event update_event = {
+        .update_mask = THEME_UPDATE_MASK_CORNER_RADIUS,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
 
     theme_manager_write_config(manager, NULL);
     return true;

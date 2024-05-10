@@ -53,8 +53,7 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_front_color(item->content, theme->active_text_color);
     widget_set_hovered_color(item->content, theme->accent_color);
 
-    widget_set_border(item->content, theme->inactive_bg_color, border_mask,
-                      theme->border_width);
+    widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
     widget_set_round_coner(item->content, corner_mask, theme->corner_radius);
 
     widget_update(item->content, true);
@@ -640,9 +639,13 @@ static void menu_handle_destroy(struct wl_listener *listener, void *data)
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct menu *menu = wl_container_of(listener, menu, theme_update);
-
-    /* force update all items */
-    menu_render_items(menu, true);
+    struct theme_update_event *update_event = data;
+    uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
+                            THEME_UPDATE_MASK_ACCENT_COLOR;
+    if (update_event->update_mask & allowed_mask) {
+        /* force update all items */
+        menu_render_items(menu, true);
+    }
 }
 
 struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_item)

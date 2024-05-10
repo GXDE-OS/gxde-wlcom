@@ -112,8 +112,8 @@ static struct maximize_switcher {
 
     struct wlr_output *output;
     struct wl_listener output_frame;
-    struct wl_listener server_destroy;
     struct wl_listener theme_update;
+    struct wl_listener server_destroy;
 } *switcher = NULL;
 
 static struct shortcut {
@@ -314,8 +314,7 @@ static void update_title_text(struct item_view *item_view)
 
     if (text_width > max_width) {
         switcher->width = max_width + theme->button_width + select_width_gap;
-    } else if (text_width >
-               switcher->width - theme->button_width - select_width_gap) {
+    } else if (text_width > switcher->width - theme->button_width - select_width_gap) {
         switcher->width = text_width + theme->button_width + select_width_gap;
     }
 
@@ -489,8 +488,7 @@ static void show_current_page_items(int index)
 
         item_view = switcher->item_views[i];
         ky_scene_node_set_enabled(&item_view->tree->node, true);
-        ky_scene_node_set_position(&item_view->tree->node, 0,
-                                   start_i * ITEM_HEIGHT);
+        ky_scene_node_set_position(&item_view->tree->node, 0, start_i * ITEM_HEIGHT);
 
         /* set icon position */
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
@@ -679,8 +677,11 @@ static void switcher_register_shortcuts(void)
 
 static void handle_theme_update(struct wl_listener *listener, void *data)
 {
-    struct theme *theme = theme_manager_get_current();
-    switcher->color = strcmp(theme->theme_name, "builtin-light") ? &dark : &light;
+    struct theme_update_event *update_event = data;
+    if (update_event->update_mask != THEME_UPDATE_MASK_ALL) {
+        return;
+    }
+    switcher->color = update_event->theme_name == THEME_TYPE_LIGHT ? &light : &dark;
     ky_scene_rect_set_color(switcher->background, switcher->color->background_color);
 
     ky_scene_rect_set_color(switcher->border.left, switcher->color->border_color);
