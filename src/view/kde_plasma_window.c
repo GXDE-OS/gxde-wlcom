@@ -44,6 +44,8 @@ struct kde_plasma_window {
     struct wl_listener view_maximize;
     struct wl_listener view_fullscreen;
     struct wl_listener view_capabilities;
+    struct wl_listener view_position;
+    struct wl_listener view_size;
 
     /* The internal window id and uuid */
     uint32_t id;
@@ -383,6 +385,38 @@ static void window_handle_view_capabilities(struct wl_listener *listener, void *
     kde_plasma_window_send_state(window, NULL, false);
 }
 
+static void window_handle_view_position(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_window *window = wl_container_of(listener, window, view_position);
+    struct kywc_view *view = window->kywc_view;
+
+    int32_t x = view->geometry.x - view->margin.off_x;
+    int32_t y = view->geometry.y - view->margin.off_y;
+    uint32_t width = view->geometry.width + view->margin.off_width;
+    uint32_t height = view->geometry.height + view->margin.off_height;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_geometry(resource, x, y, width, height);
+    }
+}
+
+static void window_handle_view_size(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_window *window = wl_container_of(listener, window, view_size);
+    struct kywc_view *view = window->kywc_view;
+
+    int32_t x = view->geometry.x - view->margin.off_x;
+    int32_t y = view->geometry.y - view->margin.off_y;
+    uint32_t width = view->geometry.width + view->margin.off_width;
+    uint32_t height = view->geometry.height + view->margin.off_height;
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_geometry(resource, x, y, width, height);
+    }
+}
+
 static void kde_plasma_window_send_state(struct kde_plasma_window *window,
                                          struct wl_resource *resource, bool force)
 {
@@ -458,8 +492,11 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
         org_kde_plasma_window_send_pid_changed(resource, view->pid);
     }
 
-    org_kde_plasma_window_send_geometry(resource, kywc_view->geometry.x, kywc_view->geometry.y,
-                                        kywc_view->geometry.width, kywc_view->geometry.height);
+    int32_t x = kywc_view->geometry.x - kywc_view->margin.off_x;
+    int32_t y = kywc_view->geometry.y - kywc_view->margin.off_y;
+    uint32_t width = kywc_view->geometry.width + kywc_view->margin.off_width;
+    uint32_t height = kywc_view->geometry.height + kywc_view->margin.off_height;
+    org_kde_plasma_window_send_geometry(resource, x, y, width, height);
 
     // org_kde_plasma_window_send_parent_window
     // org_kde_plasma_window_send_virtual_desktop_changed
@@ -588,6 +625,8 @@ static void window_handle_view_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_maximize.link);
     wl_list_remove(&window->view_fullscreen.link);
     wl_list_remove(&window->view_capabilities.link);
+    wl_list_remove(&window->view_position.link);
+    wl_list_remove(&window->view_size.link);
     wl_list_remove(&window->link);
 
     struct wl_resource *resource, *tmp;
@@ -638,6 +677,10 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.fullscreen, &window->view_fullscreen);
     window->view_capabilities.notify = window_handle_view_capabilities;
     wl_signal_add(&kywc_view->events.capabilities, &window->view_capabilities);
+    window->view_position.notify = window_handle_view_position;
+    wl_signal_add(&kywc_view->events.position, &window->view_position);
+    window->view_size.notify = window_handle_view_size;
+    wl_signal_add(&kywc_view->events.size, &window->view_size);
 }
 
 static void handle_shown_desktop(struct wl_listener *listener, void *data)
