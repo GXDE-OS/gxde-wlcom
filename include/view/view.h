@@ -68,6 +68,13 @@ enum view_action {
     VIEW_ACTION_MOVE = 1 << 6,
 };
 
+enum view_adsorption {
+    VIEW_ADSORPTION_NONE = 0,
+    VIEW_ADSORPTION_WINDOW_EDGES = 1 << 0,
+    VIEW_ADSORPTION_SCREEN_EDGES = 1 << 1,
+    VIEW_ADSORPTION_ALL = (1 << 2) - 1,
+};
+
 #define view_action_change_size(action)                                                            \
     (action & ~(VIEW_ACTION_ACTIVATE | VIEW_ACTION_MINIMIZE | VIEW_ACTION_MOVE))
 
@@ -152,6 +159,8 @@ struct view *view_manager_get_activated(void);
 void view_manager_show_desktop(bool enabled, bool apply);
 
 bool view_manager_get_show_desktop(void);
+
+uint32_t view_manager_get_adsorption(void);
 
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);
 

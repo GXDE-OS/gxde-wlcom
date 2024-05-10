@@ -1351,6 +1351,11 @@ bool view_manager_get_show_desktop(void)
     return view_manager->show_desktop_enabled;
 }
 
+uint32_t view_manager_get_adsorption(void)
+{
+    return view_manager->state.view_adsorption;
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
@@ -1395,6 +1400,7 @@ struct view_manager *view_manager_create(struct server *server)
     view_manager_config_init(view_manager);
 
     view_manager->state.num_workspaces = 1;
+    view_manager->state.view_adsorption = VIEW_ADSORPTION_ALL;
     view_read_config(view_manager);
 
     workspace_manager_create(view_manager);

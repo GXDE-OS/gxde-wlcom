@@ -348,6 +348,10 @@ static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct
                                              uint32_t *gap_x, uint32_t *gap_y,
                                              enum kywc_edges edges, enum interactive_mode mode)
 {
+    if ((view_manager_get_adsorption() & VIEW_ADSORPTION_WINDOW_EDGES) == 0) {
+        return;
+    }
+
     /* actual window box */
     struct kywc_box s_box = {
         .x = pending->x - kywc_view->margin.off_x,
@@ -394,6 +398,10 @@ static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct
 static void window_adsorb_edges_constraints(struct kywc_view *kywc_view, struct kywc_box *pending,
                                             struct output *output, uint32_t *gap_x, uint32_t *gap_y)
 {
+    if ((view_manager_get_adsorption() & VIEW_ADSORPTION_SCREEN_EDGES) == 0) {
+        return;
+    }
+
     struct kywc_box *usable = &output->usable_area;
     struct kywc_box *current = &kywc_view->geometry;
 

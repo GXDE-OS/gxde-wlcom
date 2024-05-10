@@ -34,6 +34,7 @@ struct view_manager {
 
     struct {
         uint32_t num_workspaces;
+        uint32_t view_adsorption;
     } state;
 
     struct wl_listener new_xdg_surface;
