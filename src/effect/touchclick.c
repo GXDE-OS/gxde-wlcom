@@ -26,7 +26,6 @@
 struct touch_finger {
     struct wl_list link;
     int32_t id, x, y;
-    bool animating;
     uint32_t start_time;
     float radius;
     float attenuation;
@@ -232,7 +231,6 @@ static void handle_touch_down(struct wl_listener *listener, void *data)
         finger->id = event->touch_id;
         finger->x = x - effect->config.shape_width * 0.5f;
         finger->y = y - effect->config.shape_height * 0.5f;
-        finger->animating = true;
         finger->start_time = current_time_msec();
         wl_list_insert(&effect->touch_points, &finger->link);
     }
