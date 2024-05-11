@@ -144,6 +144,6 @@ wayland协议支持情况
 | wl_eglstream_controller |    no    | 2    |
 | zwp_input_method_v2     |    1     |      |
 | zwp_virtual_keyboard_v1 |    1     |      |
-| zwp_text_input_v2       |    no    | 1    |
+| zwp_text_input_v2       |    1     |      |
 | qt_surface_extension    |    no    | 1    |
 | gtk_shell1              |    no    | 5    |

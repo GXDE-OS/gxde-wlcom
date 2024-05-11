@@ -18,6 +18,7 @@
 #include "scene/surface.h"
 #include "server.h"
 #include "text_input_v1.h"
+#include "text_input_v2.h"
 #include "view/view.h"
 
 /* most codes are copied from sway text_input.c */
@@ -28,6 +29,9 @@ struct input_method_manager {
 
     struct text_input_manager_v1 *text_input_v1;
     struct wl_listener new_text_input_v1;
+
+    struct text_input_manager_v2 *text_input_v2;
+    struct wl_listener new_text_input_v2;
 
     struct wl_listener new_seat;
     struct wl_listener server_destroy;
@@ -54,6 +58,7 @@ struct input_method_relay {
 
 struct text_input {
     struct text_input_v1 *text_input_v1;
+    struct text_input_v2 *text_input_v2;
     struct wlr_text_input_v3 *text_input_v3;
 
     struct input_method_relay *relay;
@@ -86,6 +91,8 @@ static struct wlr_surface *text_input_focused_surface(struct text_input *text_in
 {
     if (text_input->text_input_v1) {
         return text_input->text_input_v1->surface;
+    } else if (text_input->text_input_v2) {
+        return text_input->text_input_v2->surface;
     } else {
         return text_input->text_input_v3->focused_surface;
     }
@@ -135,9 +142,14 @@ static void input_popup_update(struct input_popup *popup, struct seat *seat)
     parent_box.width = focused_surface->current.width;
     parent_box.height = focused_surface->current.height;
 
-    struct wlr_box cursor_box = text_input->text_input_v3
-                                    ? text_input->text_input_v3->current.cursor_rectangle
-                                    : text_input->text_input_v1->cursor_rectangle;
+    struct wlr_box cursor_box = { 0 };
+    if (text_input->text_input_v3) {
+        cursor_box = text_input->text_input_v3->current.cursor_rectangle;
+    } else if (text_input->text_input_v2) {
+        cursor_box = text_input->text_input_v2->cursor_rectangle;
+    } else {
+        cursor_box = text_input->text_input_v1->cursor_rectangle;
+    }
     int surface_width = popup->popup_surface->surface->current.width;
     int surface_height = popup->popup_surface->surface->current.height;
 
@@ -181,6 +193,19 @@ static void relay_send_input_method_state(struct input_method_relay *relay,
             wlr_input_method_v2_send_content_type(
                 input_method, text_input->text_input_v3->current.content_type.hint,
                 text_input->text_input_v3->current.content_type.purpose);
+        }
+    } else if (text_input->text_input_v2) {
+        if (text_input->text_input_v2->surrounding.pending) {
+            wlr_input_method_v2_send_surrounding_text(
+                input_method, text_input->text_input_v2->surrounding.text,
+                text_input->text_input_v2->surrounding.cursor,
+                text_input->text_input_v2->surrounding.anchor);
+        }
+        wlr_input_method_v2_send_text_change_cause(input_method, 0);
+        if (text_input->text_input_v2->content_type.pending) {
+            wlr_input_method_v2_send_content_type(input_method,
+                                                  text_input->text_input_v2->content_type.hint,
+                                                  text_input->text_input_v2->content_type.purpose);
         }
     } else {
         if (text_input->text_input_v1->surrounding.pending) {
@@ -231,6 +256,8 @@ static bool text_input_is_enabeld(struct text_input *text_input)
 {
     if (text_input->text_input_v3) {
         return text_input->text_input_v3->current_enabled;
+    } else if (text_input->text_input_v2) {
+        return text_input->text_input_v2->enabled;
     } else {
         return text_input->text_input_v1->activated;
     }
@@ -384,6 +411,33 @@ static void handle_new_text_input_v1(struct wl_listener *listener, void *data)
     wl_list_init(&text_input->pending_focused_surface_destroy.link);
 }
 
+static void handle_new_text_input_v2(struct wl_listener *listener, void *data)
+{
+    struct text_input *text_input = calloc(1, sizeof(struct text_input));
+    if (!text_input) {
+        return;
+    }
+
+    struct text_input_v2 *text_input_v2 = data;
+    text_input->text_input_v2 = text_input_v2;
+
+    struct seat *seat = seat_from_wlr_seat(text_input_v2->seat);
+    text_input->relay = seat->relay;
+    wl_list_insert(&text_input->relay->text_inputs, &text_input->link);
+
+    text_input->text_input_enable.notify = handle_text_input_enable;
+    wl_signal_add(&text_input_v2->events.enable, &text_input->text_input_enable);
+    text_input->text_input_commit.notify = handle_text_input_commit;
+    wl_signal_add(&text_input_v2->events.commit, &text_input->text_input_commit);
+    text_input->text_input_disable.notify = handle_text_input_disable;
+    wl_signal_add(&text_input_v2->events.disable, &text_input->text_input_disable);
+    text_input->text_input_destroy.notify = handle_text_input_destroy;
+    wl_signal_add(&text_input_v2->events.destroy, &text_input->text_input_destroy);
+
+    text_input->pending_focused_surface_destroy.notify = handle_pending_focused_surface_destroy;
+    wl_list_init(&text_input->pending_focused_surface_destroy.link);
+}
+
 static void handle_input_method_commit(struct wl_listener *listener, void *data)
 {
     struct input_method_relay *relay = wl_container_of(listener, relay, input_method_commit);
@@ -411,6 +465,18 @@ static void handle_input_method_commit(struct wl_listener *listener, void *data)
                                                            context->current.delete.after_length);
         }
         wlr_text_input_v3_send_done(text_input->text_input_v3);
+    } else if (text_input->text_input_v2) {
+        text_input_v2_send_preedit_string(text_input->text_input_v2, context->current.preedit.text,
+                                          context->current.preedit.cursor_begin);
+        if (context->current.commit_text) {
+            text_input_v2_send_commit_string(text_input->text_input_v2,
+                                             context->current.commit_text);
+        }
+        if (context->current.delete.before_length || context->current.delete.after_length) {
+            text_input_v2_send_delete_surrounding_text(
+                text_input->text_input_v2, context->current.preedit.text,
+                context->current.delete.before_length, context->current.delete.after_length);
+        }
     } else {
         text_input_v1_send_preedit_string(text_input->text_input_v1, context->current.preedit.text,
                                           context->current.preedit.cursor_begin);
@@ -472,6 +538,8 @@ static void handle_input_method_destroy(struct wl_listener *listener, void *data
         text_input_set_pending_focused_surface(text_input, focused_surface);
         if (text_input->text_input_v3) {
             wlr_text_input_v3_send_leave(text_input->text_input_v3);
+        } else if (text_input->text_input_v2) {
+            text_input_v2_send_leave(text_input->text_input_v2);
         } else {
             text_input_v1_send_leave(text_input->text_input_v1);
         }
@@ -614,6 +682,9 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
         if (text_input->text_input_v3) {
             wlr_text_input_v3_send_enter(text_input->text_input_v3,
                                          text_input->pending_focused_surface);
+        } else if (text_input->text_input_v2) {
+            text_input_v2_send_enter(text_input->text_input_v2,
+                                     text_input->pending_focused_surface);
         } else {
             text_input_v1_send_enter(text_input->text_input_v1,
                                      text_input->pending_focused_surface);
@@ -677,6 +748,10 @@ bool input_method_manager_create(struct input_manager *input_manager)
     manager->input_method = wlr_input_method_manager_v2_create(input_manager->server->display);
     manager->text_input_v3 = wlr_text_input_manager_v3_create(input_manager->server->display);
 
+    manager->text_input_v2 = text_input_manager_v2_create(input_manager->server->display);
+    manager->new_text_input_v2.notify = handle_new_text_input_v2;
+    wl_signal_add(&manager->text_input_v2->events.text_input, &manager->new_text_input_v2);
+
     /* no seat in text_input_v1 create_text_input request */
     manager->text_input_v1 = text_input_manager_v1_create(input_manager->server->display);
     manager->new_text_input_v1.notify = handle_new_text_input_v1;
@@ -695,6 +770,9 @@ static bool text_input_match_surface(struct text_input *text_input, struct wlr_s
 {
     if (text_input->text_input_v3) {
         return wl_resource_get_client(text_input->text_input_v3->resource) ==
+               wl_resource_get_client(surface->resource);
+    } else if (text_input->text_input_v2) {
+        return wl_resource_get_client(text_input->text_input_v2->resource) ==
                wl_resource_get_client(surface->resource);
     } else {
         return wl_resource_get_client(text_input->text_input_v1->resource) ==
@@ -722,6 +800,8 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
                 relay_disable_text_input(relay, text_input);
                 if (text_input->text_input_v3) {
                     wlr_text_input_v3_send_leave(text_input->text_input_v3);
+                } else if (text_input->text_input_v2) {
+                    text_input_v2_send_leave(text_input->text_input_v2);
                 } else {
                     text_input_v1_send_leave(text_input->text_input_v1);
                 }
@@ -735,6 +815,8 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
             if (relay->wlr_input_method) {
                 if (text_input->text_input_v3) {
                     wlr_text_input_v3_send_enter(text_input->text_input_v3, surface);
+                } else if (text_input->text_input_v2) {
+                    text_input_v2_send_enter(text_input->text_input_v2, surface);
                 } else {
                     text_input_v1_send_enter(text_input->text_input_v1, surface);
                 }
