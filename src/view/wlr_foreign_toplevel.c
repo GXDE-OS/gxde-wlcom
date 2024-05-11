@@ -12,7 +12,7 @@
 
 struct wlr_foreign_manager {
     struct wlr_foreign_toplevel_manager_v1 *manager;
-    struct wl_listener new_view;
+    struct wl_listener new_mapped_view;
     struct wl_listener destroy;
 };
 
@@ -21,9 +21,7 @@ struct wlr_foreign {
     struct wlr_foreign_toplevel_handle_v1 *toplevel_handle;
     struct kywc_view *toplevel_view;
 
-    struct wl_listener view_map;
     struct wl_listener view_unmap;
-    struct wl_listener view_destroy;
 
     struct wl_listener view_maximize;
     struct wl_listener view_minimize;
@@ -187,6 +185,9 @@ static void handle_view_unmap(struct wl_listener *listener, void *data)
         wlr_foreign_toplevel_handle_v1_destroy(foreign->toplevel_handle);
         foreign->toplevel_handle = NULL;
     }
+
+    wl_list_remove(&foreign->view_unmap.link);
+    free(foreign);
 }
 
 static bool foreign_toplevel_create(struct wlr_foreign *foreign)
@@ -229,16 +230,26 @@ static bool foreign_toplevel_create(struct wlr_foreign *foreign)
     return true;
 }
 
-static void handle_view_map(struct wl_listener *listener, void *data)
+static void handle_new_mapped_view(struct wl_listener *listener, void *data)
 {
-    struct wlr_foreign *foreign = wl_container_of(listener, foreign, view_map);
+    struct wlr_foreign *foreign = calloc(1, sizeof(struct wlr_foreign));
+    if (!foreign) {
+        return;
+    }
+
+    struct wlr_foreign_manager *manager = wl_container_of(listener, manager, new_mapped_view);
+    foreign->manager = manager;
+
+    struct kywc_view *view = data;
+    foreign->toplevel_view = view;
+    foreign->view_unmap.notify = handle_view_unmap;
+    wl_signal_add(&view->events.unmap, &foreign->view_unmap);
+
     if (!foreign_toplevel_create(foreign)) {
         return;
     }
 
     struct wlr_foreign_toplevel_handle_v1 *toplevel = foreign->toplevel_handle;
-    struct kywc_view *view = foreign->toplevel_view;
-
     /* set toplevel state */
     // struct wlr_output *output = view_most_output(view);
     // wlr_foreign_toplevel_handle_v1_output_enter(toplevel, output);
@@ -259,41 +270,12 @@ static void handle_view_map(struct wl_listener *listener, void *data)
     wlr_foreign_toplevel_handle_v1_set_activated(toplevel, view->activated);
 }
 
-static void handle_view_destroy(struct wl_listener *listener, void *data)
-{
-    struct wlr_foreign *foreign = wl_container_of(listener, foreign, view_destroy);
-    wl_list_remove(&foreign->view_destroy.link);
-    wl_list_remove(&foreign->view_map.link);
-    wl_list_remove(&foreign->view_unmap.link);
-    free(foreign);
-}
-
-static void handle_new_view(struct wl_listener *listener, void *data)
-{
-    struct wlr_foreign *foreign = calloc(1, sizeof(struct wlr_foreign));
-    if (!foreign) {
-        return;
-    }
-
-    struct wlr_foreign_manager *manager = wl_container_of(listener, manager, new_view);
-    foreign->manager = manager;
-
-    struct kywc_view *view = data;
-    foreign->toplevel_view = view;
-    foreign->view_map.notify = handle_view_map;
-    foreign->view_unmap.notify = handle_view_unmap;
-    foreign->view_destroy.notify = handle_view_destroy;
-    wl_signal_add(&view->events.map, &foreign->view_map);
-    wl_signal_add(&view->events.unmap, &foreign->view_unmap);
-    wl_signal_add(&view->events.destroy, &foreign->view_destroy);
-}
-
 static void handle_destroy(struct wl_listener *listener, void *data)
 {
     struct wlr_foreign_manager *manager = wl_container_of(listener, manager, destroy);
 
     wl_list_remove(&manager->destroy.link);
-    wl_list_remove(&manager->new_view.link);
+    wl_list_remove(&manager->new_mapped_view.link);
     free(manager);
 }
 
@@ -310,9 +292,9 @@ bool wlr_foreign_toplevel_manager_create(struct server *server)
         return false;
     }
 
-    /* monitor new view */
-    manager->new_view.notify = handle_new_view;
-    kywc_view_add_new_listener(&manager->new_view);
+    /* monitor new mapped view */
+    manager->new_mapped_view.notify = handle_new_mapped_view;
+    kywc_view_add_new_mapped_listener(&manager->new_mapped_view);
 
     manager->destroy.notify = handle_destroy;
     wl_signal_add(&manager->manager->events.destroy, &manager->destroy);
