@@ -96,7 +96,7 @@ static void frame_handle_release_buffer(struct wl_client *client, struct wl_reso
 
     if (want_buffer) {
         if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
-            capture_mark_wants_update(frame->capture, true);
+            capture_mark_wants_update(frame->capture, true, false);
         } else {
             thumbnail_mark_wants_update(frame->thumbnail, true);
         }
@@ -177,7 +177,7 @@ static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
 
     /* enable update if client wants buffer again in release_buffer */
     if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
-        capture_mark_wants_update(frame->capture, false);
+        capture_mark_wants_update(frame->capture, false, false);
     } else {
         thumbnail_mark_wants_update(frame->thumbnail, false);
     }

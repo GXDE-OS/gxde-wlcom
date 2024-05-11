@@ -747,7 +747,7 @@ void capture_add_destroy_listener(struct capture *capture, struct wl_listener *l
     wl_signal_add(&capture->events.destroy, listener);
 }
 
-void capture_mark_wants_update(struct capture *capture, bool wants)
+void capture_mark_wants_update(struct capture *capture, bool wants, bool force)
 {
     if (capture->wants_update == wants) {
         return;
@@ -757,6 +757,7 @@ void capture_mark_wants_update(struct capture *capture, bool wants)
 
     /* should send update if buffer was damaged */
     if (wants) {
+        capture->force_update |= force;
         capture_manager_schedule_frame();
     }
 }

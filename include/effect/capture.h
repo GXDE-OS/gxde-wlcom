@@ -35,7 +35,7 @@ void capture_add_update_listener(struct capture *capture, struct wl_listener *li
 
 void capture_add_destroy_listener(struct capture *capture, struct wl_listener *listener);
 
-void capture_mark_wants_update(struct capture *capture, bool wants);
+void capture_mark_wants_update(struct capture *capture, bool wants, bool force);
 
 void capture_destroy(struct capture *capture);
 
