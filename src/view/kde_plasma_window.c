@@ -20,7 +20,7 @@ struct kde_plasma_window_management {
     struct wl_list resources;
     struct wl_list windows;
 
-    struct wl_listener new_view;
+    struct wl_listener new_mapped_view;
     struct wl_listener show_desktop;
     struct wl_listener display_destroy;
     struct wl_listener server_destroy;
@@ -34,9 +34,7 @@ struct kde_plasma_window {
     struct kde_plasma_window_management *management;
 
     struct kywc_view *kywc_view;
-    struct wl_listener view_map;
     struct wl_listener view_unmap;
-    struct wl_listener view_destroy;
     struct wl_listener view_title;
     struct wl_listener view_app_id;
     struct wl_listener view_activate;
@@ -292,16 +290,6 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
     wl_list_remove(&resource->link);
 }
 
-static void window_handle_view_unmap(struct wl_listener *listener, void *data)
-{
-    struct kde_plasma_window *window = wl_container_of(listener, window, view_unmap);
-
-    struct wl_resource *resource;
-    wl_resource_for_each(resource, &window->resources) {
-        org_kde_plasma_window_send_unmapped(resource);
-    }
-}
-
 static void window_handle_view_title(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window *window = wl_container_of(listener, window, view_title);
@@ -485,9 +473,6 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     if (kywc_view->app_id) {
         org_kde_plasma_window_send_app_id_changed(resource, kywc_view->app_id);
     }
-    if (!kywc_view->mapped) {
-        org_kde_plasma_window_send_unmapped(resource);
-    }
     if (view->pid) {
         org_kde_plasma_window_send_pid_changed(resource, view->pid);
     }
@@ -585,9 +570,6 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
 
     struct kde_plasma_window *window;
     wl_list_for_each(window, &management->windows, link) {
-        if (!window->kywc_view->mapped) {
-            continue;
-        }
         if (version >= ORG_KDE_PLASMA_WINDOW_MANAGEMENT_WINDOW_WITH_UUID_SINCE_VERSION) {
             org_kde_plasma_window_management_send_window_with_uuid(resource, window->id,
                                                                    window->uuid);
@@ -599,24 +581,15 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
     // TODO: stacking_order_changed, stacking_order_uuid_changed
 }
 
-static void window_handle_view_map(struct wl_listener *listener, void *data)
+static void window_handle_view_unmap(struct wl_listener *listener, void *data)
 {
-    struct kde_plasma_window *window = wl_container_of(listener, window, view_map);
-    struct kde_plasma_window_management *management = window->management;
+    struct kde_plasma_window *window = wl_container_of(listener, window, view_unmap);
 
     struct wl_resource *resource;
-    wl_resource_for_each(resource, &management->resources) {
-        // org_kde_plasma_window_management_send_window(resource, window->id);
-        org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
+    wl_resource_for_each(resource, &window->resources) {
+        org_kde_plasma_window_send_unmapped(resource);
     }
-}
 
-static void window_handle_view_destroy(struct wl_listener *listener, void *data)
-{
-    struct kde_plasma_window *window = wl_container_of(listener, window, view_destroy);
-
-    wl_list_remove(&window->view_destroy.link);
-    wl_list_remove(&window->view_map.link);
     wl_list_remove(&window->view_unmap.link);
     wl_list_remove(&window->view_title.link);
     wl_list_remove(&window->view_app_id.link);
@@ -629,7 +602,7 @@ static void window_handle_view_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_size.link);
     wl_list_remove(&window->link);
 
-    struct wl_resource *resource, *tmp;
+    struct wl_resource *tmp;
     wl_resource_for_each_safe(resource, tmp, &window->resources) {
         window_handle_resource_destroy(resource);
     }
@@ -638,10 +611,10 @@ static void window_handle_view_destroy(struct wl_listener *listener, void *data)
     free(window);
 }
 
-static void handle_new_view(struct wl_listener *listener, void *data)
+static void handle_new_mapped_view(struct wl_listener *listener, void *data)
 {
     struct kde_plasma_window_management *management =
-        wl_container_of(listener, management, new_view);
+        wl_container_of(listener, management, new_mapped_view);
     struct kywc_view *kywc_view = data;
 
     struct kde_plasma_window *window = calloc(1, sizeof(struct kde_plasma_window));
@@ -657,12 +630,8 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     window->uuid = kywc_identifier_uuid_generate();
 
     window->kywc_view = kywc_view;
-    window->view_map.notify = window_handle_view_map;
-    wl_signal_add(&kywc_view->events.map, &window->view_map);
     window->view_unmap.notify = window_handle_view_unmap;
     wl_signal_add(&kywc_view->events.unmap, &window->view_unmap);
-    window->view_destroy.notify = window_handle_view_destroy;
-    wl_signal_add(&kywc_view->events.destroy, &window->view_destroy);
     window->view_title.notify = window_handle_view_title;
     wl_signal_add(&kywc_view->events.title, &window->view_title);
     window->view_app_id.notify = window_handle_view_app_id;
@@ -681,6 +650,12 @@ static void handle_new_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.position, &window->view_position);
     window->view_size.notify = window_handle_view_size;
     wl_signal_add(&kywc_view->events.size, &window->view_size);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &management->resources) {
+        // org_kde_plasma_window_management_send_window(resource, window->id);
+        org_kde_plasma_window_management_send_window_with_uuid(resource, window->id, window->uuid);
+    }
 }
 
 static void handle_shown_desktop(struct wl_listener *listener, void *data)
@@ -702,7 +677,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     struct kde_plasma_window_management *management =
         wl_container_of(listener, management, display_destroy);
     wl_list_remove(&management->display_destroy.link);
-    wl_list_remove(&management->new_view.link);
+    wl_list_remove(&management->new_mapped_view.link);
     wl_list_remove(&management->show_desktop.link);
     wl_global_destroy(management->global);
 }
@@ -741,8 +716,8 @@ bool kde_plasma_window_management_create(struct server *server)
     management->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &management->display_destroy);
 
-    management->new_view.notify = handle_new_view;
-    kywc_view_add_new_listener(&management->new_view);
+    management->new_mapped_view.notify = handle_new_mapped_view;
+    kywc_view_add_new_mapped_listener(&management->new_mapped_view);
     management->show_desktop.notify = handle_shown_desktop;
     kywc_view_add_show_desktop_listener(&management->show_desktop);
 
