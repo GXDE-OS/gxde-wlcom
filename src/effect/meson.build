@@ -6,8 +6,9 @@ wlcom_sources += files(
   'move.c',
   'showfps.c',
   'scale.c',
-  'touchclick.c',
   'soft_gamma.c',
+  'touchclick.c',
+  'long_touch.c',
 )
 
 wlcom_sources += files(
