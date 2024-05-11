@@ -21,7 +21,7 @@ struct ky_toplevel_manager {
     struct wl_list resources;
     struct wl_list toplevels;
 
-    struct wl_listener new_toplevel;
+    struct wl_listener new_mapped_toplevel;
     struct wl_listener display_destroy;
     struct wl_listener server_destroy;
 };
@@ -36,9 +36,7 @@ struct ky_toplevel {
     const char *icon_name;
 
     struct kywc_view *view;
-    struct wl_listener map;
     struct wl_listener unmap;
-    struct wl_listener destroy;
 
     struct wl_listener title;
     struct wl_listener app_id;
@@ -394,15 +392,9 @@ static void ky_toplevel_manager_bind(struct wl_client *client, void *data, uint3
     /* send all toplevels and details */
     struct ky_toplevel *toplevel, *tmp;
     wl_list_for_each_reverse_safe(toplevel, tmp, &manager->toplevels, link) {
-        if (!toplevel->view->mapped) {
-            continue;
-        }
         create_toplevel_resource_for_resource(toplevel, resource);
     }
     wl_list_for_each_reverse_safe(toplevel, tmp, &manager->toplevels, link) {
-        if (!toplevel->view->mapped) {
-            continue;
-        }
         struct wl_resource *toplevel_resource =
             wl_resource_find_for_client(&toplevel->resources, client);
         toplevel_send_details_to_toplevel_resource(toplevel, toplevel_resource);
@@ -616,9 +608,25 @@ static void handle_toplevel_workspace_leave(struct wl_listener *listener, void *
     toplevel_update_idle_source(toplevel);
 }
 
-static void handle_toplevel_map(struct wl_listener *listener, void *data)
+static void handle_toplevel_unmap(struct wl_listener *listener, void *data);
+
+static void handle_new_mapped_toplevel(struct wl_listener *listener, void *data)
 {
-    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, map);
+    struct ky_toplevel *toplevel = calloc(1, sizeof(*toplevel));
+    if (!toplevel) {
+        return;
+    }
+
+    struct ky_toplevel_manager *manager = wl_container_of(listener, manager, new_mapped_toplevel);
+    toplevel->manager = manager;
+    wl_list_init(&toplevel->resources);
+    wl_list_insert(&manager->toplevels, &toplevel->link);
+
+    struct kywc_view *kywc_view = data;
+    toplevel->view = kywc_view;
+
+    toplevel->unmap.notify = handle_toplevel_unmap;
+    wl_signal_add(&kywc_view->events.unmap, &toplevel->unmap);
 
     toplevel->title.notify = handle_toplevel_title;
     wl_signal_add(&toplevel->view->events.title, &toplevel->title);
@@ -689,39 +697,10 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data)
 
     free((void *)toplevel->icon_name);
     toplevel->icon_name = NULL;
-}
 
-static void handle_toplevel_destroy(struct wl_listener *listener, void *data)
-{
-    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, destroy);
-    wl_list_remove(&toplevel->map.link);
     wl_list_remove(&toplevel->unmap.link);
-    wl_list_remove(&toplevel->destroy.link);
     wl_list_remove(&toplevel->link);
     free(toplevel);
-}
-
-static void handle_new_toplevel(struct wl_listener *listener, void *data)
-{
-    struct ky_toplevel *ky_toplevel = calloc(1, sizeof(*ky_toplevel));
-    if (!ky_toplevel) {
-        return;
-    }
-
-    struct ky_toplevel_manager *manager = wl_container_of(listener, manager, new_toplevel);
-    ky_toplevel->manager = manager;
-    wl_list_init(&ky_toplevel->resources);
-    wl_list_insert(&manager->toplevels, &ky_toplevel->link);
-
-    struct kywc_view *kywc_view = data;
-    ky_toplevel->view = kywc_view;
-
-    ky_toplevel->map.notify = handle_toplevel_map;
-    wl_signal_add(&kywc_view->events.map, &ky_toplevel->map);
-    ky_toplevel->unmap.notify = handle_toplevel_unmap;
-    wl_signal_add(&kywc_view->events.unmap, &ky_toplevel->unmap);
-    ky_toplevel->destroy.notify = handle_toplevel_destroy;
-    wl_signal_add(&kywc_view->events.destroy, &ky_toplevel->destroy);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -734,7 +713,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     struct ky_toplevel_manager *manager = wl_container_of(listener, manager, display_destroy);
-    wl_list_remove(&manager->new_toplevel.link);
+    wl_list_remove(&manager->new_mapped_toplevel.link);
     wl_list_remove(&manager->display_destroy.link);
     wl_global_destroy(manager->global);
 }
@@ -764,8 +743,8 @@ bool ky_toplevel_manager_create(struct server *server)
     manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &manager->display_destroy);
 
-    manager->new_toplevel.notify = handle_new_toplevel;
-    kywc_view_add_new_listener(&manager->new_toplevel);
+    manager->new_mapped_toplevel.notify = handle_new_mapped_toplevel;
+    kywc_view_add_new_mapped_listener(&manager->new_mapped_toplevel);
 
     return true;
 }
