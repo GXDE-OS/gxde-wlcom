@@ -1306,6 +1306,22 @@ void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
     wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
 }
 
+static bool view_has_modal_property(struct view *view)
+{
+    if (view->base.modal) {
+        return true;
+    }
+
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        if (child->base.modal) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void view_manager_show_desktop(bool enabled, bool apply)
 {
     if (view_manager->show_desktop_enabled == enabled) {
@@ -1329,7 +1345,7 @@ void view_manager_show_desktop(bool enabled, bool apply)
         /* true only the view is not minimized when going show desktop */
         view->minimized_when_show_desktop = enabled && !view->base.minimized;
         /* don't restoring views if the state is breaked */
-        if (apply) {
+        if (apply || view_has_modal_property(view)) {
             kywc_view_set_minimized(&view->base, enabled);
         }
     }
