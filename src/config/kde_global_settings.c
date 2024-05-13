@@ -17,10 +17,10 @@ static int slot_theme_change(sd_bus_message *msg, void *userdata, sd_bus_error *
     switch (theme) {
     case Light:
     case Default:
-        theme_manager_set_theme("builtin-light");
+        theme_manager_set_theme(THEME_TYPE_LIGHT);
         break;
     case Dark:
-        theme_manager_set_theme("builtin-dark");
+        theme_manager_set_theme(THEME_TYPE_DARK);
         break;
     }
     return 0;

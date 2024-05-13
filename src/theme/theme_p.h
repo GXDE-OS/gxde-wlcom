@@ -118,6 +118,8 @@ const char *theme_manager_read_icon_config(struct theme_manager *manager);
 
 void theme_manager_write_icon_config(struct theme_manager *manager, const char *name);
 
+const char *theme_name_from_theme_type(enum theme_type theme_type);
+
 struct icon_theme *icon_theme_load(const char *name);
 
 struct icon *icon_fallback_create(void);

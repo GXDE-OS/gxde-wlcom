@@ -22,7 +22,7 @@ static int list_themes(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
 
     struct theme *theme;
     wl_list_for_each(theme, &manager->themes, link) {
-        sd_bus_message_append(reply, "s", theme->theme_name);
+        sd_bus_message_append(reply, "s", theme_name_from_theme_type(theme->theme_type));
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -34,14 +34,21 @@ static int list_themes(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
 static int current_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     struct theme_manager *manager = userdata;
-    return sd_bus_reply_method_return(msg, "s", manager->current->theme_name);
+    return sd_bus_reply_method_return(msg, "s",
+                                      theme_name_from_theme_type(manager->current->theme_type));
 }
 
 static int set_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     char *theme = NULL;
     CK(sd_bus_message_read(msg, "s", &theme));
-    int32_t ret = theme_manager_set_theme(theme);
+    enum theme_type theme_type = THEME_TYPE_DEFAULT;
+    if (!strcmp(theme, WLCOM_THEME_LIGHT)) {
+        theme_type = THEME_TYPE_LIGHT;
+    } else if (!strcmp(theme, WLCOM_THEME_DARK)) {
+        theme_type = THEME_TYPE_DARK;
+    }
+    int32_t ret = theme_manager_set_theme(theme_type);
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 

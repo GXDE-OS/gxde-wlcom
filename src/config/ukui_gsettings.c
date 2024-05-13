@@ -45,6 +45,9 @@ struct ukui_settings {
     struct wl_listener destroy;
 };
 
+#define UKUI_THEME_LIGHT "ukui-light"
+#define UKUI_THEME_DARK "ukui-dark"
+
 static const char *cursor_schema = "org.ukui.peripherals-mouse";
 static const char *cursor_theme_key = "cursor-theme";
 static const char *cursor_size_key = "cursor-size";
@@ -115,7 +118,11 @@ static void style_name_changed(GSettings *style, const char *key)
 {
     free(settings->style.style_name);
     settings->style.style_name = g_settings_get_string(style, key);
-    theme_manager_set_theme(settings->style.style_name);
+    if (!strcmp(settings->style.style_name, UKUI_THEME_LIGHT)) {
+        theme_manager_set_theme(THEME_TYPE_LIGHT);
+    } else if (!strcmp(settings->style.style_name, UKUI_THEME_DARK)) {
+        theme_manager_set_theme(THEME_TYPE_DARK);
+    }
 }
 
 static void icon_theme_changed(GSettings *style, const char *key)
@@ -202,7 +209,11 @@ static bool cursor_schema_settings(void)
 static void style_schema_config_effect(void)
 {
     if (settings->style.style_name) {
-        theme_manager_set_theme(settings->style.style_name);
+        if (!strcmp(settings->style.style_name, UKUI_THEME_LIGHT)) {
+            theme_manager_set_theme(THEME_TYPE_LIGHT);
+        } else if (!strcmp(settings->style.style_name, UKUI_THEME_DARK)) {
+            theme_manager_set_theme(THEME_TYPE_DARK);
+        }
     }
     if (settings->style.icon_theme) {
         theme_manager_set_icon_theme(settings->style.icon_theme);

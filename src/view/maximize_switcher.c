@@ -681,7 +681,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     if (update_event->update_mask != THEME_UPDATE_MASK_ALL) {
         return;
     }
-    switcher->color = update_event->theme_name == THEME_TYPE_LIGHT ? &light : &dark;
+    switcher->color = update_event->theme_type == THEME_TYPE_LIGHT ? &light : &dark;
     ky_scene_rect_set_color(switcher->background, switcher->color->background_color);
 
     ky_scene_rect_set_color(switcher->border.left, switcher->color->border_color);
@@ -712,7 +712,14 @@ bool maximize_switcher_create(struct view_manager *view_manager)
     switcher->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&switcher->tree->node, false);
 
-    switcher->color = strcmp(theme->theme_name, "builtin-light") ? &dark : &light;
+    switch (theme->theme_type) {
+    case THEME_TYPE_LIGHT:
+        switcher->color = &light;
+        break;
+    case THEME_TYPE_DARK:
+        switcher->color = &dark;
+        break;
+    }
 
     switcher->icon_ratio = ICON_RATIO;
     switcher->background =

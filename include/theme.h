@@ -7,6 +7,9 @@
 
 #include <wayland-server-core.h>
 
+#define WLCOM_THEME_LIGHT "builtin-light"
+#define WLCOM_THEME_DARK "builtin-dark"
+
 enum theme_type {
     THEME_TYPE_DEFAULT = 0,
     THEME_TYPE_LIGHT = THEME_TYPE_DEFAULT,
@@ -50,7 +53,7 @@ enum theme_update_mask {
     THEME_UPDATE_MASK_CORNER_RADIUS = 1 << 5,
     /* icon_size, button_width changed */
     THEME_UPDATE_MASK_ICON_SIZE = 1 << 6,
-    /* theme_name changed */
+    /* theme_type changed */
     THEME_UPDATE_MASK_ALL = (1 << 7) - 1,
 };
 
@@ -59,13 +62,13 @@ struct wlr_fbox;
 struct wlr_buffer;
 
 struct theme_update_event {
-    enum theme_type theme_name;
+    enum theme_type theme_type;
     uint32_t update_mask;
 };
 
 struct theme {
     struct wl_list link;
-    const char *theme_name;
+    enum theme_type theme_type;
     bool builtin;
 
     int corner_radius;
@@ -111,7 +114,7 @@ void theme_manager_add_icon_update_listener(struct wl_listener *listener);
 
 struct theme *theme_manager_get_current(void);
 
-bool theme_manager_set_theme(const char *name);
+bool theme_manager_set_theme(enum theme_type theme_type);
 
 bool theme_manager_set_font(const char *name, int size);
 
