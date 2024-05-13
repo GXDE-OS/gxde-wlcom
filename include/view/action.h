@@ -35,6 +35,8 @@ void window_begin_move(struct view *view, struct seat *seat);
 
 void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
 
+void window_begin_tile(struct view *view, uint32_t key, struct seat *seat);
+
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y);
 
 #endif

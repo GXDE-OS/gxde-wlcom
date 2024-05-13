@@ -35,6 +35,42 @@ enum interactive_mode {
     INTERACTIVE_MODE_NONE = 0,
     INTERACTIVE_MODE_MOVE,
     INTERACTIVE_MODE_RESIZE,
+    INTERACTIVE_MODE_TILE,
+};
+
+enum tile_state {
+    TILE_NONE = 0,
+    TILE_TOP,
+    TILE_BOTTOM,
+    TILE_LEFT,
+    TILE_RIGHT,
+    TILE_TOP_LEFT,
+    TILE_BOTTOM_LEFT,
+    TILE_TOP_RIGHT,
+    TILE_BOTTOM_RIGHT,
+    TILE_MINIMIZE,
+    TILE_MAXIMIZE,
+};
+
+struct interactive_tile_state {
+    int key_up;
+    int key_down;
+    int key_left;
+    int key_right;
+};
+
+const struct interactive_tile_state tile_states[] = {
+    { TILE_MAXIMIZE, TILE_MINIMIZE, TILE_LEFT, TILE_RIGHT },            // TILE_NONE
+    { TILE_TOP, TILE_NONE, TILE_TOP_LEFT, TILE_TOP_RIGHT },             // TILE_TOP
+    { TILE_NONE, TILE_MINIMIZE, TILE_BOTTOM_LEFT, TILE_BOTTOM_RIGHT },  // TILE_BOTTOM
+    { TILE_TOP_LEFT, TILE_BOTTOM_LEFT, TILE_RIGHT, TILE_NONE },         // TILE_LEFT
+    { TILE_TOP_RIGHT, TILE_BOTTOM_RIGHT, TILE_NONE, TILE_LEFT },        // TILE_RIGHT
+    { TILE_MAXIMIZE, TILE_LEFT, TILE_TOP_RIGHT, TILE_TOP_RIGHT },       // TILE_TOP_LEFT
+    { TILE_LEFT, TILE_MINIMIZE, TILE_BOTTOM_RIGHT, TILE_BOTTOM_RIGHT }, // TILE_BOTTOM_LEFT
+    { TILE_MAXIMIZE, TILE_RIGHT, TILE_TOP_LEFT, TILE_TOP_LEFT },        // TILE_TOP_RIGHT
+    { TILE_RIGHT, TILE_MINIMIZE, TILE_BOTTOM_LEFT, TILE_BOTTOM_LEFT },  // TILE_BOTTOM_RIGHT
+    { TILE_NONE, TILE_MINIMIZE, TILE_MINIMIZE, TILE_MINIMIZE },         // TILE_MINIMIZE
+    { TILE_TOP, TILE_NONE, TILE_LEFT, TILE_RIGHT },                     // TILE_MAXIMIZE
 };
 
 struct interactive_grab {
@@ -72,6 +108,11 @@ struct interactive_grab {
     /* move effect */
     struct move_proxy *proxy;
     struct wl_listener proxy_destroy;
+
+    /* action tiled */
+    enum tile_state current;
+    float save_x_ratio;
+    float save_y_ratio;
 };
 
 static enum kywc_tile get_kywc_tile_mode(struct interactive_grab *grab)
@@ -663,6 +704,246 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     kywc_view_resize(kywc_view, &pending);
 }
 
+static void interactive_tile_search_output(struct interactive_grab *grab,
+                                           enum layout_edge layout_edge)
+{
+    struct output *near_left = NULL, *far_left = NULL;
+    struct output *near_right = NULL, *far_right = NULL;
+    struct output *near_top = NULL, *far_top = NULL;
+    struct output *near_bottom = NULL, *far_bottom = NULL;
+
+    struct wlr_box box = { 0 };
+    wlr_output_layout_get_box(grab->seat->layout, NULL, &box);
+    int min_left = box.width;
+    int max_left = 0;
+    int min_right = box.width;
+    int max_right = 0;
+
+    int min_top = box.height;
+    int max_top = 0;
+    int min_bottom = box.height;
+    int max_bottom = 0;
+
+    struct ky_scene_output *scene_output;
+    wl_list_for_each(scene_output, &grab->seat->scene->outputs, link) {
+        struct output *tmp = output_from_wlr_output(scene_output->output);
+        if (tmp == grab->output) {
+            continue;
+        }
+        int gap = tmp->geometry.x - grab->output->geometry.x;
+        /**
+         * The nearest and farthest output on the left side of the X-axis is obtained.
+         * If the distance is the same, the Y-axis is used to judge. The smaller the y,
+         * the farther the output will be; the larger the y, the closer the output will be.
+         */
+        if (gap < 0) {
+            gap = -gap;
+            if (gap < min_left) {
+                min_left = gap;
+                near_left = tmp;
+            }
+            if (gap > max_left) {
+                max_left = gap;
+                far_left = tmp;
+            }
+
+            if (gap == min_left) {
+                near_left = tmp->geometry.y > near_left->geometry.y ? tmp : near_left;
+            }
+            if (gap == max_left) {
+                far_left = tmp->geometry.y < far_left->geometry.y ? tmp : far_left;
+            }
+            /**
+             * The nearest and farthest output to the right of the X-axis is obtained.
+             * If the distance is the same, the Y-axis is used to judge. The larger the y is,
+             * the farther the output is; the smaller the y is, the closer the output is.
+             */
+        } else if (gap > 0) {
+            if (gap < min_right) {
+                min_right = gap;
+                near_right = tmp;
+            }
+            if (gap > max_right) {
+                max_right = gap;
+                far_right = tmp;
+            }
+
+            if (gap == min_right) {
+                near_right = tmp->geometry.y < near_right->geometry.y ? tmp : near_right;
+            }
+            if (gap == max_right) {
+                far_right = tmp->geometry.y > far_right->geometry.y ? tmp : far_right;
+            }
+        } else if (gap == 0) {
+            int gap_y = tmp->geometry.y - grab->output->geometry.y;
+            if (gap_y < 0) {
+                gap_y = -gap_y;
+                if (gap_y < min_top) {
+                    min_top = gap_y;
+                    near_top = tmp;
+                }
+                if (gap_y > max_top) {
+                    max_top = gap_y;
+                    far_top = tmp;
+                }
+            } else if (gap_y > 0) {
+                if (min_bottom > gap_y) {
+                    min_bottom = gap_y;
+                    near_bottom = tmp;
+                }
+                if (max_bottom < gap_y) {
+                    max_bottom = gap_y;
+                    far_bottom = tmp;
+                }
+            }
+        }
+    }
+
+    struct output *output = NULL;
+    if (layout_edge == LAYOUT_EDGE_LEFT) {
+        /* near_top > near_left > far_right > near_right > far_bottom > near_bottom */
+        if (near_top) {
+            output = near_top;
+        } else if (near_left) {
+            output = near_left;
+        } else if (far_right) {
+            output = far_right;
+        } else if (near_right) {
+            output = near_right;
+        } else if (far_bottom) {
+            output = far_bottom;
+        } else if (near_bottom) {
+            output = near_bottom;
+        }
+    } else if (layout_edge == LAYOUT_EDGE_RIGHT) {
+        /* near_bottom > near_right > far_left > near_left > far_top > near_top */
+        if (near_bottom) {
+            output = near_bottom;
+        } else if (near_right) {
+            output = near_right;
+        } else if (far_left) {
+            output = far_left;
+        } else if (near_left) {
+            output = near_left;
+        } else if (far_top) {
+            output = far_top;
+        } else if (near_top) {
+            output = near_top;
+        }
+    }
+
+    if (output) {
+        grab->output = output;
+    }
+}
+
+static void interactive_tile_output_update(struct interactive_grab *grab, int key)
+{
+    grab->output = output_from_kywc_output(grab->view->output);
+    if (wl_list_length(&grab->seat->scene->outputs) == 1) {
+        return;
+    }
+
+    enum layout_edge layout_edge = LAYOUT_EDGE_TOP;
+    if (key == KEY_LEFT) {
+        if (grab->current == TILE_LEFT || grab->current == TILE_TOP_LEFT ||
+            grab->current == TILE_BOTTOM_LEFT) {
+            layout_edge = LAYOUT_EDGE_LEFT;
+        }
+    } else if (key == KEY_RIGHT) {
+        if (grab->current == TILE_RIGHT || grab->current == TILE_TOP_RIGHT ||
+            grab->current == TILE_BOTTOM_RIGHT) {
+            layout_edge = LAYOUT_EDGE_RIGHT;
+        }
+    }
+
+    if (layout_edge == LAYOUT_EDGE_TOP) {
+        return;
+    }
+
+    interactive_tile_search_output(grab, layout_edge);
+}
+
+static void interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
+{
+    if (state == TILE_MINIMIZE) {
+        kywc_view_set_minimized(&grab->view->base, true);
+        return;
+    }
+
+    if (state == TILE_MAXIMIZE) {
+        kywc_view_set_maximized(&grab->view->base, true, NULL);
+        return;
+    }
+
+    /**
+     * Processing when the original position of the saved view is
+     * no longer on the current screen when the shortcut keys are tiled.
+     */
+    struct kywc_box *saved_geo = &grab->view->saved.geometry;
+    int x1 = saved_geo->x - grab->view->base.margin.off_x;
+    int y1 = saved_geo->y - grab->view->base.margin.off_y;
+    int x2 = x1 + saved_geo->width + grab->view->base.margin.off_width;
+    int y2 = y1 + saved_geo->height + grab->view->base.margin.off_height;
+    struct kywc_box *usable_area = &output->usable_area;
+    /* The original size of the view is completely not on the current screen. */
+    if (x2 < usable_area->x || y2 < usable_area->y || x1 > usable_area->x + usable_area->width ||
+        y1 > usable_area->y + usable_area->height) {
+        saved_geo->x = usable_area->x + grab->save_x_ratio * usable_area->width;
+        saved_geo->y = usable_area->y + grab->save_y_ratio * usable_area->height;
+    } else {
+        /* Part of the original size of the view is on the current screen. */
+        if (x2 > usable_area->x + usable_area->width || x1 < usable_area->x) {
+            saved_geo->x = usable_area->x + grab->view->base.margin.off_x;
+        }
+        if (y2 > usable_area->y + usable_area->height || y1 < usable_area->y) {
+            saved_geo->y = usable_area->y + grab->view->base.margin.off_y;
+        }
+    }
+
+    if (saved_geo->width + grab->view->base.margin.off_width > usable_area->width) {
+        saved_geo->width = usable_area->width - grab->view->base.margin.off_width;
+    }
+    if (saved_geo->height + grab->view->base.margin.off_height > usable_area->height) {
+        saved_geo->height = usable_area->height - grab->view->base.margin.off_height;
+    }
+
+    if (grab->view->base.maximized && !state) {
+        kywc_view_set_maximized(&grab->view->base, false, NULL);
+        return;
+    }
+
+    if (grab->view->base.minimized) {
+        /* kywc_view_activate will call the minimize restore interface. */
+        kywc_view_activate(&grab->view->base);
+        seat_focus_surface(grab->view->base.focused_seat, grab->view->surface);
+    } else {
+        kywc_view_set_tiled(&grab->view->base, state, &output->base);
+    }
+}
+
+static void interactive_process_tile(struct interactive_grab *grab, int key)
+{
+    if (key != KEY_UP && key != KEY_DOWN && key != KEY_LEFT && key != KEY_RIGHT) {
+        return;
+    }
+
+    enum tile_state pending_state = TILE_NONE;
+    if (key == KEY_UP) {
+        pending_state = tile_states[grab->current].key_up;
+    } else if (key == KEY_DOWN) {
+        pending_state = tile_states[grab->current].key_down;
+    } else if (key == KEY_LEFT) {
+        pending_state = tile_states[grab->current].key_left;
+    } else if (key == KEY_RIGHT) {
+        pending_state = tile_states[grab->current].key_right;
+    }
+
+    interactive_tile_output_update(grab, key);
+    interactive_tile_update(grab, grab->output, pending_state);
+    grab->current = pending_state;
+}
+
 static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
                                 double ly)
 {
@@ -717,11 +998,24 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
                               bool pressed, uint32_t modifiers)
 {
+    struct interactive_grab *grab = keyboard_grab->data;
     if (!pressed) {
+        if (key != KEY_LEFTMETA && key != KEY_RIGHTMETA) {
+            return true;
+        }
+
+        if (grab->mode == INTERACTIVE_MODE_TILE) {
+            interactive_done(grab);
+            /* TODO: thumbnail */
+            return true;
+        }
+    }
+
+    if (grab->mode == INTERACTIVE_MODE_TILE) {
+        interactive_process_tile(grab, key);
         return true;
     }
 
-    struct interactive_grab *grab = keyboard_grab->data;
     int step = grab->mode == INTERACTIVE_MODE_MOVE ? VIEW_MOVE_STEP : VIEW_RESIZE_STEP;
     int dx = key == KEY_RIGHT ? step : (key == KEY_LEFT ? -step : 0);
     int dy = key == KEY_DOWN ? step : (key == KEY_UP ? -step : 0);
@@ -846,6 +1140,28 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
         }
     } else if (mode == INTERACTIVE_MODE_RESIZE) {
         cursor_set_resize_image(seat->cursor, edges);
+    } else if (mode == INTERACTIVE_MODE_TILE) {
+        int key = 0;
+        if (edges == WINDOW_ACTION_SNAP_TOP) {
+            key = KEY_UP;
+        } else if (edges == WINDOW_ACTION_SNAP_BOTTOM) {
+            key = KEY_DOWN;
+        } else if (edges == WINDOW_ACTION_SNAP_LEFT) {
+            key = KEY_LEFT;
+        } else if (edges == WINDOW_ACTION_SNAP_RIGHT) {
+            key = KEY_RIGHT;
+        }
+        if (grab->view->base.maximized) {
+            grab->current = TILE_MAXIMIZE;
+        } else {
+            grab->current =
+                grab->view->base.tiled < KYWC_TILE_CENTER ? grab->view->base.tiled : TILE_NONE;
+        }
+
+        interactive_process_tile(grab, key);
+        struct kywc_box *usable_area = &grab->output->usable_area;
+        grab->save_x_ratio = 1.0 * (view->saved.geometry.x - usable_area->x) / usable_area->width;
+        grab->save_y_ratio = 1.0 * (view->saved.geometry.y - usable_area->y) / usable_area->height;
     }
 
     struct wl_event_loop *loop = wl_display_get_event_loop(seat->wlr_seat->display);
@@ -866,4 +1182,9 @@ void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
         return;
     }
     interactive_grab_add(view, INTERACTIVE_MODE_RESIZE, edges, seat);
+}
+
+void window_begin_tile(struct view *view, uint32_t key, struct seat *seat)
+{
+    interactive_grab_add(view, INTERACTIVE_MODE_TILE, key, seat);
 }
