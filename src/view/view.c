@@ -1474,6 +1474,7 @@ struct view_manager *view_manager_create(struct server *server)
     kde_plasma_shell_create(server);
     kde_plasma_window_management_create(server);
     kde_blur_manager_create(server);
+    kde_slide_manager_create(server);
     xdg_dialog_create(server);
     xdg_activation_create(server);
 

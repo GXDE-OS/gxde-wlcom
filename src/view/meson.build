@@ -56,3 +56,9 @@ if have_kde_blur
     'kde_blur.c',
   )
 endif
+
+if have_kde_slide
+  wlcom_sources += files(
+    'kde_slide.c',
+  )
+endif

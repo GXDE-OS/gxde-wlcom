@@ -119,6 +119,7 @@ have_kde_nightcolor = get_option('kde_nightcolor')
 have_kde_plasma_shell = get_option('kde_plasma_shell')
 have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
+have_kde_slide = get_option('kde_slide')
 have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 have_ukui_gsettings = get_option('ukui_gsettings')
@@ -139,6 +140,7 @@ add_project_arguments([
   '-DHAVE_KDE_PLASMA_SHELL=@0@'.format(have_kde_plasma_shell.to_int()),
   '-DHAVE_KDE_PLASMA_WINDOW_MANAGEMENT=@0@'.format(have_kde_plasma_window_management.to_int()),
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
+  '-DHAVE_KDE_SLIDE=@0@'.format(have_kde_slide.to_int()),
   '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
   '-DHAVE_UKUI_GSETTINGS=@0@'.format(have_ukui_gsettings.to_int()), 
@@ -186,6 +188,7 @@ summary({
   'kde_plasma_shell': have_kde_plasma_shell,
   'kde_plasma_window_management': have_kde_plasma_window_management,
   'kde_blur': have_kde_blur,
+  'kde_slide': have_kde_slide,
   'kde_global_settings': have_kde_global_settings,
   'ukui_screenshot': have_ukui_screenshot,
   'ukui_gsettings': have_ukui_gsettings,
