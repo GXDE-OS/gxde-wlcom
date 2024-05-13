@@ -329,23 +329,6 @@ static struct shortcut {
     { "win+m", "minimize all view", MINIMIZE_ALL_VIEW },
 };
 
-static void view_manager_minimize_all_view(void)
-{
-    /* minimize all view in current workspace */
-    struct workspace *workspace = workspace_manager_get_current();
-    struct view *view;
-    struct view_proxy *view_proxy;
-    wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
-        view = view_proxy->view;
-        /* skip views not mapped */
-        if (!view->base.mapped) {
-            continue;
-        }
-
-        kywc_view_set_minimized(&view->base, true);
-    }
-}
-
 static void shortcuts_action(struct key_binding *binding, void *data)
 {
     struct shortcut *shortcut = data;
@@ -355,13 +338,11 @@ static void shortcuts_action(struct key_binding *binding, void *data)
         view_manager_show_desktop(!view_manager_get_show_desktop(), true);
         break;
     case DO_SHOW_DESKTOP:
+    case MINIMIZE_ALL_VIEW:
         view_manager_show_desktop(true, true);
         break;
     case DO_RESTORE_DESKTOP:
         view_manager_show_desktop(false, true);
-        break;
-    case MINIMIZE_ALL_VIEW:
-        view_manager_minimize_all_view();
         break;
     }
 }
