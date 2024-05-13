@@ -790,12 +790,10 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
     wl_list_for_each(text_input, &relay->text_inputs, link) {
         focused_surface = text_input_focused_surface(text_input);
         if (text_input->pending_focused_surface) {
-            assert(focused_surface == NULL);
             if (surface != text_input->pending_focused_surface) {
                 text_input_set_pending_focused_surface(text_input, NULL);
             }
         } else if (focused_surface) {
-            assert(text_input->pending_focused_surface == NULL);
             if (surface != focused_surface) {
                 relay_disable_text_input(relay, text_input);
                 if (text_input->text_input_v3) {

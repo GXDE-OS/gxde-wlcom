@@ -39,6 +39,7 @@ static void text_input_enable(struct wl_client *client, struct wl_resource *reso
         return;
     }
 
+    assert(text_input->surface == NULL);
     text_input->surface = wlr_surface_from_resource(surface);
     wl_signal_add(&text_input->surface->events.destroy, &text_input->surface_destroy);
 
@@ -168,7 +169,9 @@ static void text_input_resource_destroy(struct wl_resource *resource)
 static void text_input_handle_surface_destroy(struct wl_listener *listener, void *data)
 {
     struct text_input_v2 *text_input = wl_container_of(listener, text_input, surface_destroy);
-    text_input_destroy(text_input);
+    wl_list_remove(&text_input->surface_destroy.link);
+    wl_list_init(&text_input->surface_destroy.link);
+    text_input->surface = NULL;
 }
 
 static void text_input_handle_seat_destroy(struct wl_listener *listener, void *data)
