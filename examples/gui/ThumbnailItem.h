@@ -1,16 +1,11 @@
 #ifndef THUMBNAILITEM_H
 #define THUMBNAILITEM_H
 
-#include <QAbstractListModel>
-#include <QList>
-#include <QModelIndex>
 #include <QQuickItem>
 #include <QQuickWindow>
 
-#include "context.h"
 #include "ThumInfo.h"
-
-typedef void *EGLImage;
+#include "context.h"
 
 class ThumbnailItem : public QQuickItem
 {
@@ -21,7 +16,7 @@ class ThumbnailItem : public QQuickItem
     explicit ThumbnailItem(QQuickItem *parent = nullptr);
     ~ThumbnailItem();
 
-    ThumInfo *thumInfo() const { return mThumInfo; }
+    ThumInfo *thumInfo() const;
     void setThumInfo(ThumInfo *info);
 
   signals:
@@ -30,17 +25,14 @@ class ThumbnailItem : public QQuickItem
   protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
 
-  private:
-    void createEglImage(Thumbnail *thumbnail);
+  private Q_SLOTS:
     void BufferImportDmabuf();
 
   private:
-    EGLImage m_image;
-    uint32_t format;
+    class Private;
+    Private *pri;
     Context *context = nullptr;
     Thumbnail *thumbnail = nullptr;
-    ThumInfo *mThumInfo = nullptr;
-    Thumbnail::BufferFlags thumFlags = Thumbnail::BufferFlag::Dmabuf;
 };
 
 #endif // ThumbnailItem_H

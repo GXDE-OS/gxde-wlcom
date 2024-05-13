@@ -13,6 +13,8 @@
 #include <QDebug>
 #include <qpa/qplatformnativeinterface.h>
 
+#include <QProcess>
+
 #include "widget.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -32,7 +34,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     }
 
     context = new Context(display, Context::Capability::Output | Context::Capability::Toplevel |
-                               Context::Capability::Workspace);
+                                       Context::Capability::Workspace);
     init_form();
     context->start();
 }
@@ -713,6 +715,7 @@ void MainWindow::show_menu(const QPoint pos)
     QAction *action10 = new QAction("leave_workspace", tableWidget_2);
     QAction *action11 = new QAction("toplevel_move_to_workspace", tableWidget_2);
     QAction *action12 = new QAction("send_to_output", tableWidget_2);
+    QAction *action13 = new QAction("show thumbnail", tableWidget_2);
 
     menu->addAction(action1);
     menu->addAction(action2);
@@ -726,6 +729,7 @@ void MainWindow::show_menu(const QPoint pos)
     menu->addAction(action10);
     menu->addAction(action11);
     menu->addAction(action12);
+    menu->addAction(action13);
 
     menu->move(cursor().pos());
     menu->show();
@@ -738,6 +742,7 @@ void MainWindow::show_menu(const QPoint pos)
     connect(action6, SIGNAL(triggered()), this, SLOT(toplevel_unset_fullscreen()));
     connect(action7, SIGNAL(triggered()), this, SLOT(toplevel_set_activate()));
     connect(action8, SIGNAL(triggered()), this, SLOT(toplevel_close()));
+    connect(action13, SIGNAL(triggered()), this, SLOT(show_thumbnail()));
 
     // 获得鼠标点击的x，y坐标点
     int x = pos.x();
@@ -918,4 +923,17 @@ void MainWindow::toplevel_send_to_output()
             toplevel->moveToOutput(output);
         }
     }
+}
+
+void MainWindow::show_thumbnail()
+{
+    int row = tableWidget_2->currentRow();
+    QString uuid = tableWidget_2->item(row, 0)->text();
+
+    QString programDir = QCoreApplication::applicationDirPath();
+
+    QProcess *process = new QProcess();
+    QStringList list;
+    list << "toplevel" << uuid;
+    process->start(programDir + "/thumbnail", list);
 }

@@ -6,34 +6,54 @@
 #include <QWidget>
 
 #include "ThumbnailItem.h"
-#include "ThumInfo.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    QStringList arguments = QApplication::arguments();
+    QTextStream out(stdout);
+
+    for (int i = 0; i < arguments.size(); ++i) {
+        out << "type " << i << ":" << arguments.at(i) << endl;
+    }
+
     qmlRegisterType<ThumbnailItem>("MyComponents", 1, 0, "ThumbnailItem");
 
     ThumInfo thum;
-    // thum.setType(Type::Toplevel);
-    // thum.setSourceUuid("b3f98194-2e2e-40ee-94e3-07611b378a87");
-    // thum.setOutputUuid("");
+    if (arguments.at(1) == "output") {
+        thum.setType(Thumbnail::Type::Output);
+        thum.setSourceUuid(arguments.at(2));
+    } else if (arguments.at(1) == "toplevel") {
+        thum.setType(Thumbnail::Type::Toplevel);
+        thum.setSourceUuid(arguments.at(2));
+    } else if (arguments.at(1) == "workspace") {
+        if (arguments.size() != 4) {
+            qWarning() << "please input workspace id and output id both";
+            return -1;
+        }
+        thum.setType(Thumbnail::Type::Workspace);
+        thum.setSourceUuid(arguments.at(2));
+        thum.setOutputUuid(arguments.at(3));
+    } else {
+        qWarning() << "please input either output, toplvel or workspace";
+        return -1;
+    }
 
-    // thum.setType(Type::Workspace);
-    // thum.setSourceUuid("302d4158-9491-4e99-bea8-4572af8ac4b5");
-    // thum.setOutputUuid("d4d40b7b-5e2e-396a-eaa2-7b5efea5a3ec");
-
-    thum.setType(Type::Output);
-    thum.setSourceUuid("d4d40b7b-5e2e-396a-eaa2-7b5efea5a3ec");
-    thum.setOutputUuid("");
+    QWidget widget;
+    widget.setGeometry(100, 100, 800, 600);
+    QVBoxLayout layout(&widget);
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QQuickView view;
     view.setResizeMode(QQuickView::SizeRootObjectToView);
-    view.resize(800, 600);
-
     view.rootContext()->setContextProperty("dataInfo", &thum);
     view.setSource(url);
-    view.show();
+    // view.show();
+
+    QWidget *quickWidget = QWidget::createWindowContainer(&view, &widget);
+    layout.addWidget(quickWidget);
+    widget.show();
 
     // QQmlApplicationEngine engine;
     // engine.load(QUrl(QStringLiteral("qrc:/main.qml")));

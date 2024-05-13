@@ -3,11 +3,7 @@
 
 #include <QObject>
 
-enum Type {
-    Output,
-    Toplevel,
-    Workspace,
-};
+#include "context.h"
 
 class ThumInfo : public QObject
 {
@@ -17,38 +13,20 @@ class ThumInfo : public QObject
     explicit ThumInfo(QObject *parent = nullptr) {}
     ~ThumInfo() {}
 
-    Type type() const { return mType; }
-    void setType(Type typeId)
-    {
-        if (mType != typeId) {
-            mType = typeId;
-            emit thumInfoChanged();
-        }
-    }
+    Thumbnail::Type type() const;
+    void setType(Thumbnail::Type typeId);
 
-    QString sourceUuid() const { return mSource; }
-    void setSourceUuid(const QString &sourceId)
-    {
-        if (mSource != sourceId) {
-            mSource = sourceId;
-            emit thumInfoChanged();
-        }
-    }
+    QString sourceUuid() const;
+    void setSourceUuid(const QString &sourceId);
 
-    QString outputUuid() const { return mOutput; }
-    void setOutputUuid(const QString &outputId)
-    {
-        if (mOutput != outputId) {
-            mOutput = outputId;
-            emit thumInfoChanged();
-        }
-    }
+    QString outputUuid() const;
+    void setOutputUuid(const QString &outputId);
 
   signals:
     void thumInfoChanged();
 
   private:
-    Type mType = Output;
+    Thumbnail::Type mType = Thumbnail::Type::Output;
     QString mSource;
     QString mOutput;
 };

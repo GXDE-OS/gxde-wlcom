@@ -11,8 +11,6 @@
 
 #include "context.h"
 
-class Context;
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -55,6 +53,8 @@ class MainWindow : public QMainWindow
 
     void show_menu(const QPoint pos);
     void ShowTooltip(QModelIndex index);
+
+    void show_thumbnail();
 
   private:
     Context *context = nullptr;

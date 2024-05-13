@@ -15,11 +15,34 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+class ThumbnailItem::Private
+{
+  public:
+    Private(ThumbnailItem *item);
+    ~Private();
+
+    void createEglImage(Thumbnail *thumbnail);
+    void imageFromMemfd(Thumbnail *thumbnail);
+
+    EGLImage m_image;
+    uint32_t format;
+    ThumInfo *mThumInfo = nullptr;
+    void *mem_ptr = nullptr;
+    Thumbnail::BufferFlags thumFlags = Thumbnail::BufferFlag::Dmabuf;
+
+  private:
+    ThumbnailItem *t;
+};
+
+ThumbnailItem::Private::Private(ThumbnailItem *item) : t(item) {}
+
+ThumbnailItem::Private::~Private() {}
+
 QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 {
     QSGTexture *texture = NULL;
 
-    if (!m_image) {
+    if (!pri->m_image) {
         QImage image(200, 200, QImage::Format_ARGB32_Premultiplied);
         image.fill(Qt::blue);
         texture = window()->createTextureFromImage(image, QQuickWindow::TextureIsOpaque);
@@ -41,7 +64,7 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
             return NULL;
         }
         m_texture->bind();
-        s_glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)m_image);
+        s_glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)pri->m_image);
 
         m_texture->setWrapMode(QOpenGLTexture::ClampToEdge);
         m_texture->setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
@@ -50,7 +73,7 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 
         int textureId = m_texture->textureId();
 
-        QQuickWindow::CreateTextureOption textureOption = format == DRM_FORMAT_ARGB8888
+        QQuickWindow::CreateTextureOption textureOption = pri->format == DRM_FORMAT_ARGB8888
                                                               ? QQuickWindow::TextureHasAlphaChannel
                                                               : QQuickWindow::TextureIsOpaque;
         texture = window()->createTextureFromNativeObject(QQuickWindow::NativeObjectTexture,
@@ -73,7 +96,7 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
     return textureNode;
 }
 
-ThumbnailItem::ThumbnailItem(QQuickItem *parent) : QQuickItem(parent)
+ThumbnailItem::ThumbnailItem(QQuickItem *parent) : QQuickItem(parent), pri(new Private(this))
 {
     setFlag(ItemHasContents, true); // 必须设置，表明这个Item有内容需要绘制
 
@@ -105,7 +128,7 @@ ThumbnailItem::~ThumbnailItem() {}
         attribs[num_attribs] = EGL_NONE;                                                           \
     } while (0)
 
-void ThumbnailItem::createEglImage(Thumbnail *thumbnail)
+void ThumbnailItem::Private::createEglImage(Thumbnail *thumbnail)
 {
     EGLDisplay display = EGL_NO_DISPLAY;
     display = static_cast<EGLDisplay>(
@@ -117,7 +140,8 @@ void ThumbnailItem::createEglImage(Thumbnail *thumbnail)
     }
 
     if (m_image) {
-        if ((thumFlags & Thumbnail::BufferFlag::Dmabuf) && (thumFlags & Thumbnail::BufferFlag::Reused))
+        if ((thumFlags & Thumbnail::BufferFlag::Dmabuf) &&
+            (thumFlags & Thumbnail::BufferFlag::Reused))
             return;
         static auto eglDestroyImageKHR =
             (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
@@ -150,21 +174,32 @@ void ThumbnailItem::createEglImage(Thumbnail *thumbnail)
     }
 }
 
+void ThumbnailItem::Private::imageFromMemfd(Thumbnail *thumbnail) {}
+
 void ThumbnailItem::BufferImportDmabuf()
 {
     Thumbnail *thum = qobject_cast<Thumbnail *>(sender());
-    createEglImage(thum);
-    format = thumbnail->format();
-    thumFlags = thumbnail->flags();
+    if (thum->flags() & Thumbnail::BufferFlag::Dmabuf)
+        pri->createEglImage(thum);
+    else
+        pri->imageFromMemfd(thum);
+
+    pri->format = thumbnail->format();
+    pri->thumFlags = thumbnail->flags();
     update();
 }
 
 void ThumbnailItem::setThumInfo(ThumInfo *info)
 {
-    if (info && mThumInfo != info) {
+    if (info && pri->mThumInfo != info) {
         context->thumbnail_init(thumbnail, (Thumbnail::Type)info->type(), info->sourceUuid(),
                                 info->outputUuid());
-        mThumInfo = info;
+        pri->mThumInfo = info;
         emit thumInfoChanged();
     }
+}
+
+ThumInfo *ThumbnailItem::thumInfo() const
+{
+    return pri->mThumInfo;
 }
