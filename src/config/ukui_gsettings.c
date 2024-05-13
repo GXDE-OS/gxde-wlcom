@@ -11,10 +11,10 @@
 
 #define EVENT_TIMEOUT (1000)
 
-static struct kwin_accent_color {
+static struct ukui_accent_color {
     char *name;
     float accent_color[4];
-} kwin_accent_colors[] = {
+} ukui_accent_colors[] = {
     { "daybreakBlue", { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 } },
     { "jamPurple", { 114.0 / 255, 46.0 / 255, 209.0 / 255, 1.0 } },
     { "magenta", { 235.0 / 255, 48.0 / 255, 150.0 / 255, 1.0 } },
@@ -152,11 +152,11 @@ static int32_t get_color_int(float *rgba)
     return color;
 }
 
-static void accent_color_effect(void)
+static void theme_manager_apply_accent_color(void)
 {
-    for (size_t i = 0; i < sizeof(kwin_accent_colors) / sizeof(struct kwin_accent_color); i++) {
-        if (strcmp(settings->style.accent_color, kwin_accent_colors[i].name) == 0) {
-            uint32_t color = get_color_int(kwin_accent_colors[i].accent_color);
+    for (size_t i = 0; i < sizeof(ukui_accent_colors) / sizeof(struct ukui_accent_color); i++) {
+        if (strcmp(settings->style.accent_color, ukui_accent_colors[i].name) == 0) {
+            uint32_t color = get_color_int(ukui_accent_colors[i].accent_color);
             theme_manager_set_accent_color(color);
             return;
         }
@@ -167,7 +167,7 @@ static void accent_color_changed(GSettings *style, const char *key)
 {
     free(settings->style.accent_color);
     settings->style.accent_color = g_settings_get_string(style, key);
-    accent_color_effect();
+    theme_manager_apply_accent_color();
 }
 
 static void window_radius_changed(GSettings *style, const char *key)
@@ -219,10 +219,10 @@ static void style_schema_config_effect(void)
         theme_manager_set_icon_theme(settings->style.icon_theme);
     }
     if (settings->style.accent_color) {
-        theme_manager_set_theme(settings->style.style_name);
+        theme_manager_apply_accent_color();
     }
     if (settings->style.font_name && settings->style.font_size) {
-        accent_color_effect();
+        theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
     }
     if (settings->style.window_radius >= 0) {
         theme_manager_set_corner_radius(settings->style.window_radius);
