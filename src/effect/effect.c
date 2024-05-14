@@ -227,13 +227,18 @@ static void entity_handle_effect_enable(struct wl_listener *listener, void *data
 {
     struct effect_entity *entity = wl_container_of(listener, entity, effect_enable);
 
+    struct wl_list *list;
     struct effect_chain *chain = entity->slot.chain;
-    struct wl_list *list = find_insertion_location(entity, chain);
-    wl_list_insert(list, &entity->slot.link);
+    if (chain) {
+        list = find_insertion_location(entity, chain);
+        wl_list_insert(list, &entity->slot.link);
+    }
 
     chain = entity->frame_slot.chain;
-    list = find_insertion_location(entity, chain);
-    wl_list_insert(list, &entity->frame_slot.link);
+    if (chain) {
+        list = find_insertion_location(entity, chain);
+        wl_list_insert(list, &entity->frame_slot.link);
+    }
 }
 
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect)
