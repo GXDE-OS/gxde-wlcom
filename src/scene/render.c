@@ -38,10 +38,10 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
         return;
     }
 
-    ky_scene_output_render_begin(target);
-
     // to scene layout coord
     pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
+
+    ky_scene_output_render_begin(target);
 
     // clear current output buffer damage region
     pixman_region32_t background;
