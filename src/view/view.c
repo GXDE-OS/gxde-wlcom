@@ -1080,8 +1080,9 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* tiled to unmaximized after tiled from maximized */
-    if (!kywc_view->maximizable || (!kywc_view->tiled && kywc_view->maximized == maximized &&
-                                    (!kywc_output || kywc_output == view->output))) {
+    if (!kywc_view->maximizable || kywc_view->fullscreen ||
+        (!kywc_view->tiled && kywc_view->maximized == maximized &&
+         (!kywc_output || kywc_output == view->output))) {
         return;
     }
 
