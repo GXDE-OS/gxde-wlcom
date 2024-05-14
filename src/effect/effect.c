@@ -463,7 +463,7 @@ enum interface_name {
         return;                                                                                    \
     }
 
-static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum interface_name name,
+static void scene_output_run_effect(struct ky_scene_output *scene_output, enum interface_name name,
                                    struct ky_scene_render_target *target)
 {
     struct ky_scene *scene = scene_output->scene;
@@ -505,12 +505,12 @@ static void scene_outut_run_effect(struct ky_scene_output *scene_output, enum in
 
 void ky_scene_output_render_pre(struct ky_scene_output *scene_output)
 {
-    scene_outut_run_effect(scene_output, RENDER_PRE, NULL);
+    scene_output_run_effect(scene_output, RENDER_PRE, NULL);
 }
 
 void ky_scene_output_render_begin(struct ky_scene_render_target *target)
 {
-    scene_outut_run_effect(target->output, RENDER_BEGIN, target);
+    scene_output_run_effect(target->output, RENDER_BEGIN, target);
 }
 
 bool ky_scene_output_render(struct ky_scene_render_target *target)
@@ -540,10 +540,10 @@ bool ky_scene_output_render(struct ky_scene_render_target *target)
 
 void ky_scene_output_render_end(struct ky_scene_render_target *target)
 {
-    scene_outut_run_effect(target->output, RENDER_END, target);
+    scene_output_run_effect(target->output, RENDER_END, target);
 }
 
 void ky_scene_output_render_post(struct ky_scene_render_target *target)
 {
-    scene_outut_run_effect(target->output, RENDER_POST, target);
+    scene_output_run_effect(target->output, RENDER_POST, target);
 }
