@@ -25,7 +25,7 @@
 
 #define SELECT_WIDTH_GAP (5)
 #define SELECT_HEIGHT_GAP (8)
-#define ICON_RATIO (0.4)
+#define ICON_OPACIPY (0.4)
 #define ITEM_HEIGHT (48)
 #define MAX_DISPLAY_VIEW (25)
 #define MIN_DISPLAY_VIEW (4)
@@ -108,7 +108,7 @@ static struct maximize_switcher {
     int last_position;
 
     bool enable;
-    float icon_ratio;
+    float icon_opacity;
 
     struct wlr_output *output;
     struct wl_listener output_frame;
@@ -322,7 +322,7 @@ static void update_title_text(struct item_view *item_view)
     item_view->text_height = text_height;
 }
 
-static void set_icon_buffer(struct item_view *item_view, float scale)
+static void set_icon_buffer(struct item_view *item_view, float opacity)
 {
     struct kywc_view *kywc_view = item_view->kywc_view;
     struct view *view = view_from_kywc_view(kywc_view);
@@ -340,7 +340,7 @@ static void set_icon_buffer(struct item_view *item_view, float scale)
     }
 
     int width, height;
-    ky_scene_buffer_set_opacity(buffer, scale);
+    ky_scene_buffer_set_opacity(buffer, opacity);
     painter_buffer_dest_size(buf, &width, &height);
     ky_scene_buffer_set_dest_size(buffer, width, height);
 }
@@ -350,7 +350,7 @@ static void update_buffer(struct ky_scene_buffer *buffer, float scale, void *dat
     struct item_view *item_view = data;
     item_view->scale = scale;
     /* update scene_buffer with new buffer */
-    set_icon_buffer(item_view, switcher->icon_ratio);
+    set_icon_buffer(item_view, switcher->icon_opacity);
 }
 
 static void destroy_buffer(struct ky_scene_buffer *buffer, void *data)
@@ -414,7 +414,7 @@ static void get_maximize_views(int *num_views)
             item_view->tree, view->output->state.scale, update_buffer, destroy_buffer, item_view);
         item_view->icon_node = &buf->node;
         /* update */
-        set_icon_buffer(item_view, switcher->icon_ratio);
+        set_icon_buffer(item_view, switcher->icon_opacity);
         update_title_text(item_view);
         /* draw border */
         item_view->border_box = ky_scene_box_create(item_view->tree, 0, 0, theme->accent_color, 1);
@@ -447,7 +447,7 @@ static void set_select_item_view(int index, struct item_view *current, struct it
     if (current) {
         ky_scene_rect_set_color(current->background, color);
         ky_scene_node_set_enabled(current->border_node, false);
-        set_icon_buffer(current, switcher->icon_ratio);
+        set_icon_buffer(current, switcher->icon_opacity);
     }
 
     ky_scene_node_set_enabled(new->border_node, true);
@@ -721,7 +721,7 @@ bool maximize_switcher_create(struct view_manager *view_manager)
         break;
     }
 
-    switcher->icon_ratio = ICON_RATIO;
+    switcher->icon_opacity = ICON_OPACIPY;
     switcher->background =
         ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->background_color);
     switcher->border.left =
