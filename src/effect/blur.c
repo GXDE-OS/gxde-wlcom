@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <wlr/types/wlr_matrix.h>
+#include <wlr/util/region.h>
 
 #include <kywc/boxes.h>
 #include <kywc/log.h>
@@ -16,9 +17,12 @@
 #include "blur_tex_vert.h"
 #include "blur_up_frag.h"
 #include "blur_vert.h"
+
 #include "effect/blur.h"
+#include "effect/effect.h"
 #include "effect_p.h"
 #include "render/opengl.h"
+#include "scene/scene.h"
 
 struct gl_texture {
     GLenum target;
@@ -55,7 +59,22 @@ struct blur_program {
     } shaders;
 };
 
+struct blur_output_data {
+    struct wl_list link;
+    pixman_region32_t unaffected_region;
+
+    struct ky_scene_output *output;
+    struct wl_listener output_destroy;
+
+    struct wlr_buffer *output_buffer;
+    struct wl_listener buffer_destroy;
+};
+
 static struct blur_data {
+    struct blur_effect *effect;
+    struct wl_list output_datas;
+    struct blur_output_data *current_output_data;
+
     float offset;
 
     struct gl_texture *tex[2];
@@ -88,6 +107,13 @@ struct blur_effect {
 };
 
 #define MAX_QUADS 86 // 4kb
+
+static void blur_output_data_destroy(struct blur_output_data *data);
+
+static int calculate_blur_radius(int iterations, float offset)
+{
+    return pow(2, iterations + 1) * offset;
+}
 
 static void gl_texture_destroy(struct gl_texture *tex)
 {
@@ -182,7 +208,7 @@ static void gl_texture_copy(struct gl_texture *tex, struct ky_opengl_buffer *src
 static void save_texture_to_rgba(GLuint texture_id, int width, int height, const char *prefix)
 {
     char path[50] = { 0 };
-    snprintf(path, 50, "/tmp/ky_%s_w%d_h%d_%s", prefix, width, height, ".rgb");
+    snprintf(path, 50, "/tmp/ky_w%d_h%d_%s%s", width, height, prefix, ".rgb");
     mkstemps(path, 4);
 
     int fileszie = width * height * 4;
@@ -375,6 +401,11 @@ static void blur_data_destroy(struct blur_data *data)
     }
     if (data->blur_tex_prog.id > 0) {
         glDeleteProgram(data->blur_tex_prog.id);
+    }
+
+    struct blur_output_data *output_data, *tmp;
+    wl_list_for_each_safe(output_data, tmp, &data->output_datas, link) {
+        blur_output_data_destroy(output_data);
     }
 }
 
@@ -687,6 +718,222 @@ void blur_render_with_target(struct ky_scene_render_target *target,
     pixman_region32_fini(&blur_region);
 }
 
+static void node_for_each_blur_region(struct ky_scene_node *node,
+                                      struct ky_scene_render_target *target, int lx, int ly,
+                                      struct blur_data *data, pixman_region32_t *half_expand_damage)
+{
+    lx += node->x, ly += node->y;
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *node;
+        wl_list_for_each(node, &tree->children, link) {
+            node_for_each_blur_region(node, target, lx, ly, data, half_expand_damage);
+        }
+        return;
+    }
+
+    if (!node->has_blur) {
+        return;
+    }
+
+    pixman_region32_t blur_region;
+    pixman_region32_init(&blur_region);
+    if (pixman_region32_not_empty(&node->blur_region)) {
+        pixman_region32_copy(&blur_region, &node->blur_region);
+        pixman_region32_translate(&blur_region, lx, ly);
+        /* visible in scene */
+        pixman_region32_intersect(&blur_region, &blur_region, &node->visible_region);
+    } else {
+        pixman_region32_copy(&blur_region, &node->visible_region);
+    }
+    pixman_region32_intersect(&blur_region, &blur_region, &target->damage);
+
+    if (!pixman_region32_not_empty(&blur_region)) {
+        return;
+    }
+    int offset;
+    if ((int)node->blur_strength == -1) {
+        offset = 4.f;
+    } else {
+        offset = node->blur_strength / 1000.f;
+    }
+    int distance = calculate_blur_radius(blur_config.iterations, offset);
+    distance = ceil(distance / target->scale);
+    wlr_region_expand(&blur_region, &blur_region, distance / 2);
+    pixman_region32_union(half_expand_damage, &blur_region, half_expand_damage);
+
+    wlr_region_expand(&blur_region, &blur_region, distance - distance / 2);
+    pixman_region32_union(&target->damage, &blur_region, &target->damage);
+
+    pixman_region32_fini(&blur_region);
+}
+
+static bool blur_frame_render_pre(struct effect_entity *entity,
+                                  struct ky_scene_output *scene_output)
+{
+    struct blur_data *data = entity->usr_data;
+
+    struct blur_output_data *output_data = NULL, *exits_data;
+    wl_list_for_each(exits_data, &data->output_datas, link) {
+        if (exits_data->output == scene_output) {
+            output_data = exits_data;
+            break;
+        }
+    }
+    data->current_output_data = output_data;
+    return true;
+}
+
+static bool blur_frame_render_begin(struct effect_entity *entity,
+                                    struct ky_scene_render_target *target)
+{
+    struct blur_data *data = entity->usr_data;
+    struct blur_output_data *output_data = data->current_output_data;
+    if (!output_data) {
+        return true;
+    }
+    pixman_region32_clear(&output_data->unaffected_region);
+
+    int width, height;
+    pixman_region32_t output_region;
+    struct wlr_output *output = target->output->output;
+    wlr_output_effective_resolution(output, &width, &height);
+    pixman_region32_init_rect(&output_region, target->logical.x, target->logical.y, width, height);
+
+    if (!pixman_region32_not_empty(&target->damage) ||
+        pixman_region32_equal(&target->damage, &output_region)) {
+        pixman_region32_fini(&output_region);
+        return true;
+    }
+
+    pixman_region32_t half_expand_damage;
+    pixman_region32_init(&half_expand_damage);
+    pixman_region32_copy(&half_expand_damage, &target->damage);
+
+    struct ky_scene_node *node = &data->effect->scene->tree.node;
+    node_for_each_blur_region(node, target, 0, 0, data, &half_expand_damage);
+
+    pixman_region32_intersect(&target->damage, &target->damage, &output_region);
+
+    pixman_region32_subtract(&output_data->unaffected_region, &target->damage, &half_expand_damage);
+    pixman_region32_fini(&half_expand_damage);
+    pixman_region32_fini(&output_region);
+
+    return true;
+}
+
+static bool blur_frame_render_end(struct effect_entity *entity,
+                                  struct ky_scene_render_target *target)
+{
+    struct blur_data *data = entity->usr_data;
+    struct blur_output_data *output_data = data->current_output_data;
+    if (!output_data || !output_data->output_buffer ||
+        !pixman_region32_not_empty(&output_data->unaffected_region)) {
+        return true;
+    }
+
+    pixman_region32_translate(&output_data->unaffected_region, -target->logical.x,
+                              -target->logical.y);
+    ky_scene_render_region(&output_data->unaffected_region, target);
+
+    struct wlr_texture *texture =
+        wlr_texture_from_buffer(target->output->output->renderer, output_data->output_buffer);
+    struct wlr_box dst_box = {
+        .x = 0,
+        .y = 0,
+        .width = texture->width,
+        .height = texture->height,
+    };
+    struct ky_render_texture_options options = {
+        .base = {
+            .texture = texture,
+            .dst_box = dst_box,
+            .transform = WL_OUTPUT_TRANSFORM_NORMAL,
+            .clip = &output_data->unaffected_region,
+            .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+        },
+        .radius = { 0 },
+        .repeated = false,
+    };
+    ky_render_pass_add_texture(target->render_pass, &options);
+
+    wlr_texture_destroy(texture);
+
+    return true;
+}
+
+static void blur_output_data_buffer_destroy(struct blur_output_data *data)
+{
+    if (!data->output_buffer) {
+        return;
+    }
+    wl_list_remove(&data->buffer_destroy.link);
+    wl_list_init(&data->buffer_destroy.link);
+    data->output_buffer = NULL;
+}
+
+static void blur_output_data_destroy(struct blur_output_data *data)
+{
+    wl_list_remove(&data->output_destroy.link);
+
+    blur_output_data_buffer_destroy(data);
+
+    pixman_region32_fini(&data->unaffected_region);
+    wl_list_remove(&data->link);
+    free(data);
+}
+
+static void handle_output_buffer_destroy(struct wl_listener *listener, void *data)
+{
+    struct blur_output_data *_data = wl_container_of(listener, _data, buffer_destroy);
+    blur_output_data_buffer_destroy(_data);
+}
+
+static void handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct blur_output_data *_data = wl_container_of(listener, _data, output_destroy);
+    blur_output_data_destroy(_data);
+}
+
+static bool blur_frame_render_post(struct effect_entity *entity,
+                                   struct ky_scene_render_target *target)
+{
+    struct blur_data *data = entity->usr_data;
+    struct wlr_buffer *buffer = target->buffer;
+    struct blur_output_data *output_data = NULL, *exits_data;
+    wl_list_for_each(exits_data, &data->output_datas, link) {
+        if (exits_data->output == target->output) {
+            output_data = exits_data;
+            break;
+        }
+    }
+    if (output_data) {
+        if (output_data->output_buffer == buffer) {
+            return true;
+        }
+        wl_list_remove(&output_data->buffer_destroy.link);
+        output_data->output_buffer = buffer;
+        wl_signal_add(&buffer->events.destroy, &output_data->buffer_destroy);
+        return true;
+    }
+
+    output_data = calloc(1, sizeof(*output_data));
+    if (!output_data) {
+        return true;
+    }
+    wl_list_insert(&data->output_datas, &output_data->link);
+
+    pixman_region32_init(&output_data->unaffected_region);
+    output_data->output = target->output;
+    output_data->output_destroy.notify = handle_output_destroy;
+    wl_signal_add(&target->output->events.destroy, &output_data->output_destroy);
+
+    output_data->output_buffer = buffer;
+    output_data->buffer_destroy.notify = handle_output_buffer_destroy;
+    wl_signal_add(&buffer->events.destroy, &output_data->buffer_destroy);
+    return true;
+}
+
 static void handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct blur_effect *effect = wl_container_of(listener, effect, enable);
@@ -708,6 +955,13 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     free(effect);
 }
 
+static const struct effect_interface blur_impl = {
+    .frame_render_pre = blur_frame_render_pre,
+    .frame_render_begin = blur_frame_render_begin,
+    .frame_render_end = blur_frame_render_end,
+    .frame_render_post = blur_frame_render_post,
+};
+
 bool blur_effect_create(struct effect_manager *effect_manager)
 {
     /* check blur if opengl renderer support */
@@ -723,7 +977,8 @@ bool blur_effect_create(struct effect_manager *effect_manager)
     if (!effect) {
         return false;
     }
-    effect->effect = effect_create("blur", 0, true, NULL);
+    /* the priority very hight, ensure correct display befor other effect paint. */
+    effect->effect = effect_create("blur", 0, true, &blur_impl);
     if (!effect->effect) {
         free(effect);
         return false;
@@ -736,5 +991,16 @@ bool blur_effect_create(struct effect_manager *effect_manager)
     wl_signal_add(&effect->effect->events.disable, &effect->disable);
     effect->destroy.notify = handle_effect_destroy;
     wl_signal_add(&effect->effect->events.destroy, &effect->destroy);
+
+    effect_blur_data.effect = effect;
+    wl_list_init(&effect_blur_data.output_datas);
+
+    struct effect_entity *entity = ky_scene_add_effect(effect->scene, effect->effect);
+    if (!entity) {
+        effect_destroy(effect->effect);
+        return false;
+    }
+    entity->usr_data = &effect_blur_data;
+
     return true;
 }
