@@ -49,12 +49,21 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     color_rgb[0] *= brightness * 0.01f;
     color_rgb[1] *= brightness * 0.01f;
     color_rgb[2] *= brightness * 0.01f;
+
+    pixman_region32_t damage;
+    pixman_region32_init(&damage);
+    pixman_region32_copy(&damage, &target->damage);
+    pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
+    ky_scene_render_region(&damage, target);
+
     wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
         .box = { .width = target->buffer->width, .height = target->buffer->height },
         .color = { .r = color_rgb[0], .g = color_rgb[1], .b = color_rgb[2], .a = 0.999999f },
-        .clip = &target->damage,
+        .clip = &damage,
         .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
     });
+
+    pixman_region32_fini(&damage);
 
     // defalut blend function - premul alpha
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
