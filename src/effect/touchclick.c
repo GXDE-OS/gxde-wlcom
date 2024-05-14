@@ -323,6 +323,10 @@ static const struct effect_interface effect_impl = {
 
 bool touchclick_effect_create(struct effect_manager *manager)
 {
+    if (!wlr_renderer_is_opengl(manager->server->renderer)) {
+        return false;
+    }
+    
     struct touchclick_effect *effect = calloc(1, sizeof(*effect));
     if (!effect) {
         return false;
