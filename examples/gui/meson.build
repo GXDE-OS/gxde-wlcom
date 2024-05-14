@@ -4,7 +4,7 @@ endif
 
 qt5 = import('qt5')
 
-qt5dep = dependency('qt5', modules: ['Core', 'Gui', 'Widgets', 'Qml', 'Quick','QuickWidgets'], private_headers: true, required: false)
+qt5dep = dependency('qt5', modules: ['Core', 'Gui', 'Widgets', 'Qml', 'Quick', 'QuickWidgets'], private_headers: true, required: false)
 if not qt5dep.found()
   subdir_done()
 endif

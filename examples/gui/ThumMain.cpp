@@ -14,10 +14,6 @@ int main(int argc, char *argv[])
     QStringList arguments = QApplication::arguments();
     QTextStream out(stdout);
 
-    for (int i = 0; i < arguments.size(); ++i) {
-        out << "type " << i << ":" << arguments.at(i) << endl;
-    }
-
     qmlRegisterType<ThumbnailItem>("MyComponents", 1, 0, "ThumbnailItem");
 
     ThumInfo thum;
@@ -49,15 +45,10 @@ int main(int argc, char *argv[])
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     view.rootContext()->setContextProperty("dataInfo", &thum);
     view.setSource(url);
-    // view.show();
 
     QWidget *quickWidget = QWidget::createWindowContainer(&view, &widget);
     layout.addWidget(quickWidget);
     widget.show();
-
-    // QQmlApplicationEngine engine;
-    // engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    // engine.rootContext()->setContextProperty("dataInfo", &thum);
 
     return app.exec();
 }

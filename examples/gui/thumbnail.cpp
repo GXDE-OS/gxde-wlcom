@@ -88,7 +88,7 @@ struct kywc_thumbnail_interface Thumbnail::Private::thumbnail_impl {
 void Thumbnail::Private::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid,
                                QString output_uuid)
 {
-    enum kywc_thumbnail_type flag;
+    enum kywc_thumbnail_type flag = KYWC_THUMBNAIL_TYPE_TOPLEVEL;
     switch (type) {
     case Thumbnail::Type::Output:
         flag = KYWC_THUMBNAIL_TYPE_OUTPUT;
