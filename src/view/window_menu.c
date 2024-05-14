@@ -45,6 +45,12 @@ struct window_menu {
     struct menu_item *add_to;
     struct menu_item *move_to;
 
+    struct menu_item *maximize;
+    struct menu_item *minimize;
+    struct menu_item *keep_above;
+    struct menu_item *keep_below;
+    struct menu_item *fullscreen;
+
     struct seat *seat;
     struct wl_listener seat_destroy;
 
@@ -256,6 +262,17 @@ static void window_menu_update_screen(struct window_menu *window_menu)
     }
 }
 
+static void window_menu_update_view_action(struct window_menu *window_menu)
+{
+    struct kywc_view *kywc_view = &window_menu->view->base;
+
+    menu_item_set_checked(window_menu->maximize, kywc_view->maximized);
+    menu_item_set_checked(window_menu->minimize, kywc_view->minimized);
+    menu_item_set_checked(window_menu->keep_above, kywc_view->kept_above);
+    menu_item_set_checked(window_menu->keep_below, kywc_view->kept_below);
+    menu_item_set_checked(window_menu->fullscreen, kywc_view->fullscreen);
+}
+
 static void window_menu_set_enabled(struct window_menu *window_menu, bool enabled)
 {
     if (window_menu->enabled == enabled) {
@@ -273,6 +290,7 @@ static void window_menu_set_enabled(struct window_menu *window_menu, bool enable
     ky_scene_node_raise_to_top(&manager->tree->node);
     wl_signal_add(&window_menu->view->base.events.destroy, &window_menu->view_destroy);
 
+    window_menu_update_view_action(window_menu);
     window_menu_update_screen(window_menu);
     window_menu_update_desktop(window_menu);
     menu_show_root(window_menu->root, window_menu->seat, window_menu->x, window_menu->y);
@@ -324,22 +342,27 @@ static struct window_menu *window_menu_create(struct seat *seat)
     window_menu->move_to = menu_add_item(window_menu->desktop, tr("Move To New Desktop(M)"), KEY_M,
                                          window_menu_action, window_menu);
 
-    menu_add_item(window_menu->root, tr("Maximize(X)"), KEY_X, window_menu_action, window_menu);
+    window_menu->maximize =
+        menu_add_item(window_menu->root, tr("Maximize(X)"), KEY_X, window_menu_action, window_menu);
 
     struct menu_item *screen =
         menu_add_item(window_menu->root, tr("Move To Screen(S)"), KEY_S, NULL, NULL);
     window_menu->screen = menu_create(NULL, screen);
 
-    menu_add_item(window_menu->root, tr("Minimize(N)"), KEY_N, window_menu_action, window_menu);
+    window_menu->minimize =
+        menu_add_item(window_menu->root, tr("Minimize(N)"), KEY_N, window_menu_action, window_menu);
 
     /* create the more action submenu */
     struct menu_item *more = menu_add_item(window_menu->root, tr("More(M)"), KEY_M, NULL, NULL);
     window_menu->more = menu_create(NULL, more);
     menu_add_item(window_menu->more, tr("Move(M)"), KEY_M, window_menu_action, window_menu);
     menu_add_item(window_menu->more, tr("Resize(R)"), KEY_R, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("Keep-Above(A)"), KEY_A, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("Keep-Below(B)"), KEY_B, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("Fullscreen(F)"), KEY_F, window_menu_action, window_menu);
+    window_menu->keep_above = menu_add_item(window_menu->more, tr("Keep-Above(A)"), KEY_A,
+                                            window_menu_action, window_menu);
+    window_menu->keep_below = menu_add_item(window_menu->more, tr("Keep-Below(B)"), KEY_B,
+                                            window_menu_action, window_menu);
+    window_menu->fullscreen = menu_add_item(window_menu->more, tr("Fullscreen(F)"), KEY_F,
+                                            window_menu_action, window_menu);
 
     menu_add_item(window_menu->root, tr("Close(C)"), KEY_C, window_menu_action, window_menu);
 
