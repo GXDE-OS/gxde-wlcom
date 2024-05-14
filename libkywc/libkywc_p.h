@@ -20,6 +20,7 @@ struct ky_context_provider {
 struct _kywc_context {
     struct wl_display *display;
     struct wl_registry *registry;
+    bool own_display;
 
     uint32_t capabilities;
     const struct kywc_context_interface *impl;

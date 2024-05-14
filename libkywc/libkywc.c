@@ -85,7 +85,12 @@ kywc_context *kywc_context_create(const char *name, uint32_t capabilities,
         return NULL;
     }
 
-    return kywc_context_create_by_display(display, capabilities, impl, data);
+    kywc_context *ctx = kywc_context_create_by_display(display, capabilities, impl, data);
+    if (ctx) {
+        ctx->own_display = true;
+    }
+
+    return ctx;
 }
 
 struct wl_display *kywc_context_get_display(kywc_context *ctx)
@@ -130,7 +135,9 @@ void kywc_context_destroy(kywc_context *ctx)
 
     wl_registry_destroy(ctx->registry);
     wl_display_flush(ctx->display);
-    wl_display_disconnect(ctx->display);
+    if (ctx->own_display) {
+        wl_display_disconnect(ctx->display);
+    }
     free(ctx);
 }
 
