@@ -27,7 +27,7 @@
 
 struct touch_finger {
     struct wl_list link;
-    float raw_x, raw_y;
+    double raw_x, raw_y;
     int32_t x, y;
     uint32_t start_time;
     bool rendering;
@@ -246,7 +246,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data)
 
 static void handle_touch_up(struct wl_listener *listener, void *data)
 {
-    struct wlr_touch_down_event *event = data;
+    struct wlr_touch_up_event *event = data;
     // first finger touch
     if (event->touch_id != 0) {
         return;
@@ -258,7 +258,7 @@ static void handle_touch_up(struct wl_listener *listener, void *data)
 
 static void handle_touch_motion(struct wl_listener *listener, void *data)
 {
-    struct wlr_touch_down_event *event = data;
+    struct wlr_touch_motion_event *event = data;
     // first finger touch
     if (event->touch_id != 0) {
         return;
@@ -267,8 +267,8 @@ static void handle_touch_motion(struct wl_listener *listener, void *data)
     struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_motion);
     struct touch_finger *touch_finger = seat_touch->effect->touch_finger;
     float anti_acciden = seat_touch->effect->config.anti_acciden;
-    if (touch_finger &&
-        (fabsf(touch_finger->raw_x) > anti_acciden || fabsf(touch_finger->raw_y) > anti_acciden)) {
+    if (touch_finger && (fabs(touch_finger->raw_x - event->x) > anti_acciden ||
+                         fabs(touch_finger->raw_y - event->y) > anti_acciden)) {
         free_touch_finger(seat_touch->effect);
     }
 }
