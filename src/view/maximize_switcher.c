@@ -24,11 +24,13 @@
 #include "widget/widget.h"
 
 #define SELECT_WIDTH_GAP (5)
-#define SELECT_HEIGHT_GAP (8)
 #define ICON_OPACIPY (0.4)
 #define ITEM_HEIGHT (48)
 #define MAX_DISPLAY_VIEW (25)
 #define MIN_DISPLAY_VIEW (4)
+#define MAX_WIDTH_RATIO (0.8)
+#define MAX_HEIGHT_RATIO (0.8)
+#define MIN_WIDTH_RATIO (0.2)
 
 enum set_dir {
     NONE = 0,
@@ -38,20 +40,20 @@ enum set_dir {
 
 struct maximize_switcher_color {
     float background_color[4];
-    float border_color[4];
+    float font_color[4];
     float select_color[4];
 };
 
 static struct maximize_switcher_color light = {
-    .background_color = { 1.0, 1.0, 1.0, 1.0 },
-    .border_color = { 25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
-    .select_color = { 16.0 / 255, 43.0 / 255.0, 75.0 / 255, 0.3 },
+    .background_color = { 207.0 / 255.0, 207.0 / 255.0, 207.0 / 255.0, 1.0 },
+    .font_color = { 0, 0, 0, 1.0 },
+    .select_color = { 173.0 / 255.0, 216.0 / 255.0, 230.0 / 255.0, 1.0 },
 };
 
 static struct maximize_switcher_color dark = {
-    .background_color = { 25.0 / 255, 25.0 / 255, 25.0 / 255, 1.0 },
-    .border_color = { 1.0, 1.0, 1.0, 1.0 },
-    .select_color = { 73.0 / 255, 10.0 / 255.0, 13.0 / 255, 0.3 },
+    .background_color = { 54.0 / 255, 54.0 / 255, 54.0 / 255, 1.0 },
+    .font_color = { 1.0, 1.0, 1.0, 1.0 },
+    .select_color = { 173.0 / 255.0, 216.0 / 255.0, 230.0 / 255.0, 1.0 },
 };
 
 struct item_view {
@@ -62,9 +64,6 @@ struct item_view {
     struct ky_scene_rect *background;
     struct ky_scene_node *icon_node;
     struct ky_scene_node *text_node;
-
-    struct ky_scene_box *border_box;
-    struct ky_scene_node *border_node;
 
     int text_width, text_height;
     float scale;
@@ -79,14 +78,6 @@ static struct maximize_switcher {
 
     struct item_view *active;
     struct maximize_switcher_color *color;
-
-    /* border */
-    struct {
-        struct ky_scene_rect *left;
-        struct ky_scene_rect *top;
-        struct ky_scene_rect *right;
-        struct ky_scene_rect *bottom;
-    } border;
 
     struct item_view **item_views;
 
@@ -301,7 +292,7 @@ static void update_title_text(struct item_view *item_view)
                     item_view->kywc_view->minimized);
 
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
-    widget_set_front_color(item_view->title_text, theme->active_text_color);
+    widget_set_front_color(item_view->title_text, switcher->color->font_color);
 
     widget_set_max_size(item_view->title_text, max_width, ITEM_HEIGHT);
     widget_set_auto_resize(item_view->title_text, AUTO_RESIZE_ONLY);
@@ -371,7 +362,6 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
 
 static void get_maximize_views(int *num_views)
 {
-    struct theme *theme = theme_manager_get_current();
     struct workspace *workspace = workspace_manager_get_current();
     struct kywc_output *kywc_output = kywc_output_get_primary();
     float color[4] = { 0 };
@@ -416,10 +406,6 @@ static void get_maximize_views(int *num_views)
         /* update */
         set_icon_buffer(item_view, switcher->icon_opacity);
         update_title_text(item_view);
-        /* draw border */
-        item_view->border_box = ky_scene_box_create(item_view->tree, 0, 0, theme->accent_color, 1);
-        item_view->border_node = ky_scene_node_from_box(item_view->border_box);
-        ky_scene_node_set_enabled(item_view->border_node, false);
         /* add item_views */
         ensure_thumbnails_size(*num_views + 1);
         switcher->item_views[*num_views] = item_view;
@@ -427,41 +413,16 @@ static void get_maximize_views(int *num_views)
     }
 }
 
-static void update_item_view(struct item_view *item_view)
-{
-    int select_width_gap = SELECT_WIDTH_GAP;
-    int select_height_gap = SELECT_HEIGHT_GAP;
-    int width = switcher->width - select_width_gap * 2 - 2;
-    int height = ITEM_HEIGHT - select_height_gap * 2;
-    ky_scene_rect_set_size(item_view->background, width, height);
-    ky_scene_node_set_position(&item_view->background->node, select_width_gap + 1,
-                               select_height_gap);
-
-    ky_scene_node_set_position(item_view->border_node, select_width_gap, select_height_gap - 1);
-    ky_scene_box_set_size(item_view->border_box, width, height);
-}
-
 static void set_select_item_view(int index, struct item_view *current, struct item_view *new)
 {
-    float color[4] = { 0 };
     if (current) {
+        float color[4] = { 0 };
         ky_scene_rect_set_color(current->background, color);
-        ky_scene_node_set_enabled(current->border_node, false);
         set_icon_buffer(current, switcher->icon_opacity);
     }
 
-    ky_scene_node_set_enabled(new->border_node, true);
     ky_scene_rect_set_color(new->background, switcher->color->select_color);
     set_icon_buffer(new, 1);
-}
-
-static void hide_all_items(void)
-{
-    struct item_view *item_view;
-    for (int i = 0; i < switcher->num_view; i++) {
-        item_view = switcher->item_views[i];
-        ky_scene_node_set_enabled(&item_view->tree->node, false);
-    }
 }
 
 static void show_current_page_items(int index)
@@ -471,8 +432,6 @@ static void show_current_page_items(int index)
     int select_width_gap = SELECT_WIDTH_GAP;
     int icon_x = (icon_width - theme->icon_size) / 2 + select_width_gap;
     int icon_y = (ITEM_HEIGHT - theme->icon_size) / 2;
-
-    int temp_x = icon_width + select_width_gap;
 
     struct item_view *item_view;
     for (int i = 0; i < switcher->num_view; i++) {
@@ -494,12 +453,12 @@ static void show_current_page_items(int index)
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
         /* set text position */
         int text_x =
-            temp_x +
+            icon_width + select_width_gap +
             (switcher->width - icon_width - item_view->text_width - select_width_gap * 2) / 2;
         int text_y = (ITEM_HEIGHT - item_view->text_height) / 2;
         ky_scene_node_set_position(item_view->text_node, text_x, text_y);
 
-        update_item_view(item_view);
+        ky_scene_rect_set_size(item_view->background, switcher->width, ITEM_HEIGHT);
     }
 }
 
@@ -509,9 +468,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     int pending = switcher->pending;
 
     int i_index = 0;
-    if (num_view == 1) {
-        pending = 0;
-    } else if (pending >= num_view) {
+    if (num_view == 1 || pending >= num_view) {
         pending = 0;
     } else if (pending < 0) {
         pending = num_view - 1;
@@ -531,7 +488,11 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
 
     switcher->last_position = i_index;
 
-    hide_all_items();
+    /* hide all items */
+    for (int i = 0; i < switcher->num_view; i++) {
+        ky_scene_node_set_enabled(&switcher->item_views[i]->tree->node, false);
+    }
+
     show_current_page_items(i_index);
 
     /* select */
@@ -567,9 +528,9 @@ static bool show_maximize_switcher(void)
     struct output *output = input_current_output(input_manager_get_default_seat());
     struct kywc_box *usable_area = &output->usable_area;
 
-    switcher->max_width = usable_area->width / 3 * 2;
-    switcher->max_height = usable_area->height / 3 * 2;
-    switcher->width = usable_area->width / 3;
+    switcher->max_width = usable_area->width * MAX_WIDTH_RATIO;
+    switcher->max_height = usable_area->height * MAX_HEIGHT_RATIO;
+    switcher->width = usable_area->width * MIN_WIDTH_RATIO;
 
     int num_view = 0;
     get_maximize_views(&num_view);
@@ -600,20 +561,6 @@ static bool show_maximize_switcher(void)
     ky_scene_rect_set_size(switcher->background, switcher->width, switcher->height);
     ky_scene_node_set_position(&switcher->tree->node, x, y);
     ky_scene_node_set_enabled(&switcher->tree->node, true);
-
-    /* draw border */
-    /* left */
-    ky_scene_rect_set_size(switcher->border.left, 1, switcher->height);
-    ky_scene_node_set_position(&switcher->border.left->node, -1, 0);
-    /* top */
-    ky_scene_node_set_position(&switcher->border.top->node, -1, -1);
-    ky_scene_rect_set_size(switcher->border.top, switcher->width + 2, 1);
-    /* right */
-    ky_scene_rect_set_size(switcher->border.right, 1, switcher->height);
-    ky_scene_node_set_position(&switcher->border.right->node, switcher->width, 0);
-    /* bottom */
-    ky_scene_rect_set_size(switcher->border.bottom, switcher->width + 2, 1);
-    ky_scene_node_set_position(&switcher->border.bottom->node, -1, switcher->height);
 
     switcher->output_frame.notify = handle_output_frame;
     wl_signal_add(&output->scene_output->events.frame, &switcher->output_frame);
@@ -683,11 +630,6 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     }
     switcher->color = update_event->theme_type == THEME_TYPE_LIGHT ? &light : &dark;
     ky_scene_rect_set_color(switcher->background, switcher->color->background_color);
-
-    ky_scene_rect_set_color(switcher->border.left, switcher->color->border_color);
-    ky_scene_rect_set_color(switcher->border.top, switcher->color->border_color);
-    ky_scene_rect_set_color(switcher->border.right, switcher->color->border_color);
-    ky_scene_rect_set_color(switcher->border.bottom, switcher->color->border_color);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -724,14 +666,6 @@ bool maximize_switcher_create(struct view_manager *view_manager)
     switcher->icon_opacity = ICON_OPACIPY;
     switcher->background =
         ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->background_color);
-    switcher->border.left =
-        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
-    switcher->border.top =
-        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
-    switcher->border.right =
-        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
-    switcher->border.bottom =
-        ky_scene_rect_create(switcher->tree, 0, 0, switcher->color->border_color);
 
     switcher->pointer_grab.data = switcher;
     switcher->pointer_grab.interface = &pointer_grab_impl;
