@@ -55,6 +55,7 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     pixman_region32_copy(&damage, &target->damage);
     pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&damage, target);
+    pixman_region32_subtract(&damage, &damage, &target->excluded_damage);
 
     wlr_render_pass_add_rect(
         target->render_pass,

@@ -417,6 +417,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     target.logical.width = target.trans_width / output->scale;
     target.logical.height = target.trans_height / output->scale;
 
+    pixman_region32_init(&target.excluded_damage);
     // current scene damage in the output box
     pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
                               target.logical.width, target.logical.height);
@@ -434,6 +435,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     if (!scene_output->output->needs_frame &&
         !pixman_region32_not_empty(&scene_output->damage_ring.current)) {
         pixman_region32_fini(&target.damage);
+        pixman_region32_fini(&target.excluded_damage);
         return true;
     }
 
@@ -451,5 +453,6 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     wlr_output_state_finish(&state);
     pixman_region32_fini(&target.damage);
+    pixman_region32_fini(&target.excluded_damage);
     return ok;
 }

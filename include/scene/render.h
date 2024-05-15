@@ -27,7 +27,10 @@ struct ky_scene_render_target {
     struct ky_scene_output *output;
     struct wlr_render_pass *render_pass;
 
+    /* current layout damage in logical coord */
     pixman_region32_t damage;
+    /* excluded buffer damage */
+    pixman_region32_t excluded_damage;
 
     /* options when render to this target */
     uint32_t options;

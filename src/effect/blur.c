@@ -796,12 +796,10 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
 
     int width, height;
     pixman_region32_t output_region;
-    struct wlr_output *output = target->output->output;
-    wlr_output_effective_resolution(output, &width, &height);
+    wlr_output_effective_resolution(target->output->output, &width, &height);
     pixman_region32_init_rect(&output_region, target->logical.x, target->logical.y, width, height);
 
-    if (!pixman_region32_not_empty(&target->damage) ||
-        pixman_region32_equal(&target->damage, &output_region)) {
+    if (pixman_region32_equal(&target->damage, &output_region)) {
         pixman_region32_fini(&output_region);
         return true;
     }
@@ -814,8 +812,8 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
     node_for_each_blur_region(node, target, 0, 0, data, &half_expand_damage);
 
     pixman_region32_intersect(&target->damage, &target->damage, &output_region);
-
     pixman_region32_subtract(&output_data->unaffected_region, &target->damage, &half_expand_damage);
+
     pixman_region32_fini(&half_expand_damage);
     pixman_region32_fini(&output_region);
 
@@ -835,28 +833,17 @@ static bool blur_frame_render_end(struct effect_entity *entity,
     pixman_region32_translate(&output_data->unaffected_region, -target->logical.x,
                               -target->logical.y);
     ky_scene_render_region(&output_data->unaffected_region, target);
+    pixman_region32_union(&target->excluded_damage, &target->excluded_damage,
+                          &output_data->unaffected_region);
 
     struct wlr_texture *texture =
         wlr_texture_from_buffer(target->output->output->renderer, output_data->output_buffer);
-    struct wlr_box dst_box = {
-        .x = 0,
-        .y = 0,
-        .width = texture->width,
-        .height = texture->height,
+    struct wlr_render_texture_options options = {
+        .texture = texture,
+        .clip = &output_data->unaffected_region,
+        .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
     };
-    struct ky_render_texture_options options = {
-        .base = {
-            .texture = texture,
-            .dst_box = dst_box,
-            .transform = WL_OUTPUT_TRANSFORM_NORMAL,
-            .clip = &output_data->unaffected_region,
-            .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
-        },
-        .radius = { 0 },
-        .repeated = false,
-    };
-    ky_render_pass_add_texture(target->render_pass, &options);
-
+    wlr_render_pass_add_texture(target->render_pass, &options);
     wlr_texture_destroy(texture);
 
     return true;
