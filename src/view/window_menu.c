@@ -247,8 +247,9 @@ static void screen_update(struct kywc_output *output, int index, void *data)
 
     struct screen_item *screen = &window_menu->screen_items[index];
     snprintf(name, 64, "%s %d (%s)", tr("Screen"), index + 1, output->name);
+    uint32_t key = index < 9 ? KEY_1 + index : 0;
     if (!screen->item) {
-        screen->item = menu_add_item(window_menu->screen, name, 0, move_screen_action, screen);
+        screen->item = menu_add_item(window_menu->screen, name, key, move_screen_action, screen);
     } else {
         menu_item_update_text(screen->item, name);
     }
