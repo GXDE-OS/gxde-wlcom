@@ -324,11 +324,18 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 static void view_update_round_corner(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    if (!kywc_view->has_round_corner || !kywc_view->mapped) {
+    if (!kywc_view->mapped) {
         return;
     }
+
     struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
     if (!buffer) {
+        return;
+    }
+
+    int radius[4] = { 0 };
+    if (!kywc_view->has_round_corner) {
+        ky_scene_node_set_radius(&buffer->node, radius);
         return;
     }
 
@@ -337,7 +344,6 @@ static void view_update_round_corner(struct view *view)
     bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
     bool need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
 
-    int radius[4] = { 0 };
     radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? theme->corner_radius : 0;
     radius[KY_SCENE_ROUND_CORNER_RT] = need_top_corner ? theme->corner_radius : 0;
     radius[KY_SCENE_ROUND_CORNER_LB] = need_corner ? theme->corner_radius : 0;
