@@ -154,6 +154,18 @@ static bool move_desktop_action(struct menu_item *item, uint32_t key, void *data
     return true;
 }
 
+static void window_menu_update_desktop_item(struct window_menu *window_menu)
+{
+    uint32_t count = workspace_manager_get_count();
+    bool actived = count == MAX_WORKSPACES ? false : true;
+
+    menu_item_set_actived(window_menu->add_to, actived);
+    menu_item_set_actived(window_menu->move_to, actived);
+
+    menu_item_lower_to_bottom(window_menu->add_to);
+    menu_item_lower_to_bottom(window_menu->move_to);
+}
+
 static void window_menu_update_desktop(struct window_menu *window_menu)
 {
     uint32_t count = workspace_manager_get_count();
@@ -214,8 +226,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
         desktop->workspace = workspace_by_position(i);
     }
 
-    menu_item_lower_to_bottom(window_menu->add_to);
-    menu_item_lower_to_bottom(window_menu->move_to);
+    window_menu_update_desktop_item(window_menu);
 }
 
 static bool move_screen_action(struct menu_item *item, uint32_t key, void *data)

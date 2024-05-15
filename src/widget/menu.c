@@ -49,11 +49,12 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, item->menu->width, item->menu->item_height);
 
-    float *color = theme->active_bg_color;
+    float *backgrond_color = item->actived ? theme->active_bg_color : theme->inactive_bg_color;
+    float *front_color = item->actived ? theme->active_text_color : theme->inactive_text_color;
     widget_set_backgrond_color(item->content,
-                               (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
-
-    widget_set_front_color(item->content, theme->active_text_color);
+                               (float[4]){ backgrond_color[0], backgrond_color[1],
+                                           backgrond_color[2], theme->opacity / 100.0 });
+    widget_set_front_color(item->content, front_color);
     widget_set_hovered_color(item->content, theme->accent_color);
 
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
@@ -284,6 +285,10 @@ static bool menu_item_hover(struct seat *seat, struct ky_scene_node *node, doubl
 {
     struct menu_item *item = data;
 
+    if (!item->actived) {
+        return false;
+    }
+
     if (first) {
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
     } else if (item->menu->hovered == item) {
@@ -309,7 +314,7 @@ static void menu_item_leave(struct seat *seat, struct ky_scene_node *node, bool 
 {
     struct menu_item *item = data;
     /* don't if submenu is enabled */
-    if (item->submenu && item->submenu->enabled) {
+    if (!item->action || (item->submenu && item->submenu->enabled)) {
         return;
     }
 
@@ -325,7 +330,7 @@ static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint3
 {
     struct menu_item *item = data;
     /* do actions when released */
-    if (pressed) {
+    if (!item->actived || pressed) {
         return;
     }
 
@@ -533,6 +538,16 @@ void menu_item_set_separator(struct menu_item *item, bool separator)
     item->menu->redraw = true;
 }
 
+void menu_item_set_actived(struct menu_item *item, bool actived)
+{
+    if (item->actived == actived) {
+        return;
+    }
+    item->actived = actived;
+    item->redraw = true;
+    item->menu->redraw = true;
+}
+
 void menu_item_update_text(struct menu_item *item, const char *text)
 {
     if (strcmp(text, item->text) == 0) {
@@ -614,6 +629,7 @@ struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t ke
     item->menu->redraw = true;
     item->redraw = true;
     item->enabled = true;
+    item->actived = true;
 
     item->data = data;
     item->text = strdup(text);
