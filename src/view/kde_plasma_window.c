@@ -607,7 +607,6 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
         window_handle_resource_destroy(resource);
     }
 
-    free((void *)window->uuid);
     free(window);
 }
 
@@ -627,7 +626,7 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     wl_list_insert(&management->windows, &window->link);
 
     window->id = management->window_id_counter++;
-    window->uuid = kywc_identifier_uuid_generate();
+    window->uuid = kywc_view->uuid;
 
     window->kywc_view = kywc_view;
     window->view_unmap.notify = window_handle_view_unmap;
