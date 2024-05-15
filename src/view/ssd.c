@@ -231,7 +231,10 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_font(widget, theme->font_name, theme->font_size);
     widget_set_max_size(widget, width * 2, height * 2);
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
-    widget_set_backgrond_color(widget, theme->inactive_bg_color);
+
+    float *color = theme->inactive_bg_color;
+    widget_set_backgrond_color(widget,
+                               (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
     widget_set_front_color(widget, theme->active_text_color);
     widget_set_border(widget, theme->active_bg_color, BORDER_MASK_ALL, theme->border_width);
     widget_set_round_corner(widget, CORNER_MASK_ALL, theme->corner_radius);
@@ -252,7 +255,7 @@ static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *
     struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, theme_update);
     struct theme_update_event *update_event = data;
     int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                       THEME_UPDATE_MASK_CORNER_RADIUS;
+                       THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY;
     if (update_event->update_mask & allowed_mask) {
         ssd_tooltip_draw_widgets(tooltip);
     }
@@ -867,7 +870,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     struct theme_update_event *update_event = data;
     int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_TEXT_POS |
                        THEME_UPDATE_MASK_BACKGROUND_COLOR | THEME_UPDATE_MASK_BORDER_COLOR |
-                       THEME_UPDATE_MASK_CORNER_RADIUS;
+                       THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY;
     if (update_event->update_mask & allowed_mask) {
         ssd_update_margin(ssd);
         ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);

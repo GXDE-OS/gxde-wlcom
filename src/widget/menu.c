@@ -49,7 +49,10 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, item->menu->width, item->menu->item_height);
 
-    widget_set_backgrond_color(item->content, theme->active_bg_color);
+    float *color = theme->active_bg_color;
+    widget_set_backgrond_color(item->content,
+                               (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
+
     widget_set_front_color(item->content, theme->active_text_color);
     widget_set_hovered_color(item->content, theme->accent_color);
 
@@ -641,7 +644,7 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
     struct menu *menu = wl_container_of(listener, menu, theme_update);
     struct theme_update_event *update_event = data;
     uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                            THEME_UPDATE_MASK_ACCENT_COLOR;
+                            THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_OPACITY;
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);

@@ -39,6 +39,7 @@ struct ukui_settings {
         char *font_name;
         char *font_size;
         int window_radius;
+        int menu_transparency;
     } style;
 
     struct wl_event_source *timer;
@@ -59,6 +60,7 @@ static const char *font_name_key = "system-font";
 static const char *font_size_key = "system-font-size";
 static const char *accent_color_key = "theme-color";
 static const char *window_radius_key = "window-radius";
+static const char *menu_transparency_key = "menu-transparency";
 
 static struct ukui_settings *settings = NULL;
 
@@ -176,6 +178,12 @@ static void window_radius_changed(GSettings *style, const char *key)
     theme_manager_set_corner_radius(settings->style.window_radius);
 }
 
+static void menu_transparency_changed(GSettings *style, const char *key)
+{
+    settings->style.menu_transparency = g_settings_get_int(style, key);
+    theme_manager_set_opacity(settings->style.menu_transparency);
+}
+
 static void handle_style_settings_changed(GSettings *style, const char *key, void *data)
 {
     if (strcmp(key, style_name_key) == 0) {
@@ -188,6 +196,8 @@ static void handle_style_settings_changed(GSettings *style, const char *key, voi
         accent_color_changed(style, key);
     } else if (strcmp(key, window_radius_key) == 0) {
         window_radius_changed(style, key);
+    } else if (strcmp(key, menu_transparency_key) == 0) {
+        menu_transparency_changed(style, key);
     }
 }
 
@@ -227,6 +237,9 @@ static void style_schema_config_effect(void)
     if (settings->style.window_radius >= 0) {
         theme_manager_set_corner_radius(settings->style.window_radius);
     }
+    if (settings->style.menu_transparency >= 0) {
+        theme_manager_set_opacity(settings->style.menu_transparency);
+    }
 }
 
 static bool style_schema_settings(void)
@@ -247,6 +260,8 @@ static bool style_schema_settings(void)
         settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
         settings->style.window_radius =
             g_settings_get_int(settings->style.settings, window_radius_key);
+        settings->style.menu_transparency =
+            g_settings_get_int(settings->style.settings, menu_transparency_key);
         style_schema_config_effect();
     }
     return has_style;

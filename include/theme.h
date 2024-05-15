@@ -53,8 +53,10 @@ enum theme_update_mask {
     THEME_UPDATE_MASK_CORNER_RADIUS = 1 << 5,
     /* icon_size, button_width changed */
     THEME_UPDATE_MASK_ICON_SIZE = 1 << 6,
+    /* opacity changed */
+    THEME_UPDATE_MASK_OPACITY = 1 << 7,
     /* theme_type changed */
-    THEME_UPDATE_MASK_ALL = (1 << 7) - 1,
+    THEME_UPDATE_MASK_ALL = (1 << 8) - 1,
 };
 
 struct server;
@@ -72,6 +74,7 @@ struct theme {
     bool builtin;
 
     int corner_radius;
+    int opacity;
     /* font */
     const char *font_name;
     int font_size;
@@ -123,6 +126,8 @@ bool theme_manager_set_accent_color(int32_t color);
 bool theme_manager_set_icon_theme(const char *icon_theme_name);
 
 bool theme_manager_set_corner_radius(int32_t radius);
+
+bool theme_manager_set_opacity(int32_t opacity);
 
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);

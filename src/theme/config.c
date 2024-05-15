@@ -130,6 +130,12 @@ const char *theme_manager_read_config(struct theme_manager *manager)
         manager->override.corner_radius = -1;
     }
 
+    if (json_object_object_get_ex(manager->config->json, "opacity", &data)) {
+        manager->override.opacity = json_object_get_int(data);
+    } else {
+        manager->override.opacity = -1;
+    }
+
     if (json_object_object_get_ex(manager->config->json, "name", &data)) {
         return json_object_get_string(data);
     }
@@ -161,6 +167,11 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
     if (manager->override.corner_radius >= 0) {
         json_object_object_add(manager->config->json, "corner_radius",
                                json_object_new_int(manager->override.corner_radius));
+    }
+
+    if (manager->override.opacity >= 0) {
+        json_object_object_add(manager->config->json, "opacity",
+                               json_object_new_int(manager->override.opacity));
     }
 }
 

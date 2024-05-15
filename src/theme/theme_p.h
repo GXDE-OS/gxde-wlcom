@@ -71,6 +71,7 @@ struct theme_override {
     /* default to -1 */
     int32_t accent_color;
     int32_t corner_radius;
+    int32_t opacity;
 };
 
 struct desktop_info {

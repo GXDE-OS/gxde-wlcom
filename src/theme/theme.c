@@ -29,6 +29,7 @@ static struct theme light = {
     .font_name = "sans",
     .font_size = 11,
     .corner_radius = 12,
+    .opacity = 100,
     .active_border_color = { 1.0, 1.0, 1.0, 1.0 },
     .inactive_border_color = { 1.0, 1.0, 1.0, 1.0 },
     .active_bg_color = { 0xfc / 255.0, 0xfc / 255.0, 0xfc / 255.0, 1.0 },
@@ -56,6 +57,7 @@ static struct theme dark = {
     .font_name = "sans",
     .font_size = 11,
     .corner_radius = 12,
+    .opacity = 100,
     .active_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
     .inactive_border_color = { 0x1f / 255.0, 0x20 / 255.0, 0x22 / 255.0, 1.0 },
     .active_bg_color = { 0x23 / 255.0, 0x26 / 255.0, 0x29 / 255.0, 1.0 },
@@ -249,6 +251,10 @@ static void theme_override_config(struct theme *theme)
 
     if (override->corner_radius >= 0) {
         theme->corner_radius = override->corner_radius;
+    }
+
+    if (override->opacity >= 0) {
+        theme->opacity = override->opacity;
     }
 }
 
@@ -607,6 +613,27 @@ bool theme_manager_set_corner_radius(int32_t radius)
     theme_override_config(current);
     struct theme_update_event update_event = {
         .update_mask = THEME_UPDATE_MASK_CORNER_RADIUS,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
+
+    theme_manager_write_config(manager, NULL);
+    return true;
+}
+
+bool theme_manager_set_opacity(int32_t opacity)
+{
+    struct theme_override *override = &manager->override;
+    struct theme *current = manager->current;
+
+    int32_t current_opacity = current->opacity;
+    if (opacity == current_opacity) {
+        return true;
+    }
+
+    override->opacity = opacity;
+    theme_override_config(current);
+    struct theme_update_event update_event = {
+        .update_mask = THEME_UPDATE_MASK_OPACITY,
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
