@@ -14,6 +14,7 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <sys/mman.h>
 
 class ThumbnailItem::Private
 {
@@ -24,7 +25,8 @@ class ThumbnailItem::Private
     void createEglImage(Thumbnail *thumbnail);
     void imageFromMemfd(Thumbnail *thumbnail);
 
-    EGLImage m_image;
+    EGLImage m_image = EGL_NO_IMAGE_KHR;
+    QImage image;
     uint32_t format;
     ThumInfo *mThumInfo = nullptr;
     void *mem_ptr = nullptr;
@@ -42,43 +44,55 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 {
     QSGTexture *texture = NULL;
 
-    if (!pri->m_image) {
-        QImage image(200, 200, QImage::Format_ARGB32_Premultiplied);
-        image.fill(Qt::blue);
-        texture = window()->createTextureFromImage(image, QQuickWindow::TextureIsOpaque);
+    if (pri->thumFlags & Thumbnail::BufferFlag::Dmabuf) {
+        if (pri->m_image == EGL_NO_IMAGE_KHR) {
+            QImage q_image(200, 200, QImage::Format_ARGB32_Premultiplied);
+            q_image.fill(Qt::blue);
+            texture = window()->createTextureFromImage(q_image, QQuickWindow::TextureIsOpaque);
+        } else {
+            QOpenGLContext *context = window()->openglContext();
+            if (!context || !context->isValid()) {
+                qWarning() << "OpenGL context is not valid.";
+                return NULL;
+            }
+
+            QOpenGLTexture *m_texture = new QOpenGLTexture(QOpenGLTexture::Target2D);
+            bool created = m_texture->create();
+            Q_ASSERT(created);
+
+            static auto s_glEGLImageTargetTexture2DOES =
+                (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress(
+                    "glEGLImageTargetTexture2DOES");
+            if (!s_glEGLImageTargetTexture2DOES) {
+                qWarning() << "glEGLImageTargetTexture2DOES is not available" << window();
+                return NULL;
+            }
+            m_texture->bind();
+            s_glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)pri->m_image);
+
+            m_texture->setWrapMode(QOpenGLTexture::ClampToEdge);
+            m_texture->setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
+            m_texture->release();
+            m_texture->setSize(window()->size().width(), window()->size().height());
+
+            int textureId = m_texture->textureId();
+
+            QQuickWindow::CreateTextureOption textureOption =
+                pri->format == DRM_FORMAT_ARGB8888 ? QQuickWindow::TextureHasAlphaChannel
+                                                   : QQuickWindow::TextureIsOpaque;
+            texture = window()->createTextureFromNativeObject(QQuickWindow::NativeObjectTexture,
+                                                              &textureId, 0 /*a vulkan thing?*/,
+                                                              window()->size(), textureOption);
+        }
     } else {
-        QOpenGLContext *context = window()->openglContext();
-        if (!context || !context->isValid()) {
-            qWarning() << "OpenGL context is not valid.";
-            return NULL;
+        if (pri->image.isNull()) {
+            qWarning() << "image.isNull() " << strerror(errno);
+            QImage errorImage(200, 200, QImage::Format_ARGB32_Premultiplied);
+            errorImage.fill(Qt::red);
+            pri->image = errorImage;
         }
 
-        QOpenGLTexture *m_texture = new QOpenGLTexture(QOpenGLTexture::Target2D);
-        bool created = m_texture->create();
-        Q_ASSERT(created);
-
-        static auto s_glEGLImageTargetTexture2DOES =
-            (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
-        if (!s_glEGLImageTargetTexture2DOES) {
-            qWarning() << "glEGLImageTargetTexture2DOES is not available" << window();
-            return NULL;
-        }
-        m_texture->bind();
-        s_glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)pri->m_image);
-
-        m_texture->setWrapMode(QOpenGLTexture::ClampToEdge);
-        m_texture->setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
-        m_texture->release();
-        m_texture->setSize(window()->size().width(), window()->size().height());
-
-        int textureId = m_texture->textureId();
-
-        QQuickWindow::CreateTextureOption textureOption = pri->format == DRM_FORMAT_ARGB8888
-                                                              ? QQuickWindow::TextureHasAlphaChannel
-                                                              : QQuickWindow::TextureIsOpaque;
-        texture = window()->createTextureFromNativeObject(QQuickWindow::NativeObjectTexture,
-                                                          &textureId, 0 /*a vulkan thing?*/,
-                                                          window()->size(), textureOption);
+        texture = window()->createTextureFromImage(pri->image, QQuickWindow::TextureIsOpaque);
     }
 
     QSGImageNode *textureNode = static_cast<QSGImageNode *>(oldNode);
@@ -135,13 +149,12 @@ void ThumbnailItem::Private::createEglImage(Thumbnail *thumbnail)
         QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("egldisplay"));
 
     if (display == EGL_NO_DISPLAY) {
-        fprintf(stderr, "egl get display failed\n");
+        qWarning() << "egl get display failed ";
         return;
     }
 
     if (m_image) {
-        if ((thumFlags & Thumbnail::BufferFlag::Dmabuf) &&
-            (thumFlags & Thumbnail::BufferFlag::Reused))
+        if (thumFlags & Thumbnail::BufferFlag::Reused)
             return;
         static auto eglDestroyImageKHR =
             (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
@@ -170,11 +183,32 @@ void ThumbnailItem::Private::createEglImage(Thumbnail *thumbnail)
     Q_ASSERT(eglCreateImageKHR);
     m_image = eglCreateImageKHR(display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
     if (m_image == EGL_NO_IMAGE_KHR) {
-        qWarning() << "invalid image" << glGetError();
+        qWarning() << "invalid eglCreateImageKHR" << glGetError();
     }
 }
 
-void ThumbnailItem::Private::imageFromMemfd(Thumbnail *thumbnail) {}
+void ThumbnailItem::Private::imageFromMemfd(Thumbnail *thumbnail)
+{
+    if (thumFlags & Thumbnail::BufferFlag::Reused)
+        return;
+
+    size_t dataSize = thumbnail->size().height() * thumbnail->stride() + thumbnail->offset();
+    uint8_t *map =
+        static_cast<uint8_t *>(mmap(nullptr, dataSize, PROT_READ, MAP_PRIVATE, thumbnail->fd(), 0));
+
+    if (map == MAP_FAILED) {
+        qWarning() << "Failed to mmap the memory: " << strerror(errno);
+        return;
+    }
+    const QImage::Format qtFormat = thumbnail->stride() / thumbnail->size().width() == 3
+                                        ? QImage::Format_RGB888
+                                        : QImage::Format_ARGB32;
+
+    QImage img(map, thumbnail->size().width(), thumbnail->size().height(), thumbnail->stride(),
+               qtFormat);
+    image = img.copy();
+    munmap(map, dataSize);
+}
 
 void ThumbnailItem::BufferImportDmabuf()
 {

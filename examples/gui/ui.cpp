@@ -100,6 +100,9 @@ void MainWindow::init_workspace_widget(QWidget *widget)
     workspace_count = 0;
 
     connect(context, &Context::workespaceAdded, this, &MainWindow::add_workspace_item);
+    tableWidget_0->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tableWidget_0, SIGNAL(customContextMenuRequested(QPoint)), this,
+            SLOT(show_menu(QPoint)));
 }
 
 void MainWindow::init_output_widget(QWidget *widget)
@@ -161,6 +164,9 @@ void MainWindow::init_output_widget(QWidget *widget)
     connect(tableWidget_1, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
 
     connect(context, &Context::outputAdded, this, &MainWindow::add_output_item);
+    tableWidget_1->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tableWidget_1, SIGNAL(customContextMenuRequested(QPoint)), this,
+            SLOT(show_menu(QPoint)));
 }
 
 void MainWindow::init_toplevel_widget(QWidget *widget)
@@ -222,7 +228,7 @@ void MainWindow::ShowTooltip(QModelIndex index)
 
 void MainWindow::init_form()
 {
-    QTabWidget *tabWidget = new QTabWidget(this);
+    tabWidget = new QTabWidget(this);
     this->setCentralWidget(tabWidget);
 
     QWidget *pageWidget_0 = new QWidget;
@@ -390,8 +396,10 @@ void MainWindow::add_output_item(Output *output)
     else
         tableWidget_1->item(outputs_count, 14)->setText("off");
 
-    if (output->isPrimary())
+    if (output->isPrimary()) {
         pri_label->setText(output->name());
+        primaryOutput += output->uuid();
+    }
 
     tableWidget_1->item(outputs_count, 15)->setText(QString("%1").arg(output->brightness()));
     tableWidget_1->item(outputs_count, 16)->setText(QString("%1").arg(output->colorTemp()));
@@ -699,7 +707,7 @@ void MainWindow::add_btn_clicked()
     context->addWorkspace(workspace_count);
 }
 
-void MainWindow::show_menu(const QPoint pos)
+void MainWindow::toplevel_menu(const QPoint pos)
 {
     // 设置菜单选项
     QMenu *menu = new QMenu(tableWidget_2);
@@ -742,7 +750,7 @@ void MainWindow::show_menu(const QPoint pos)
     connect(action6, SIGNAL(triggered()), this, SLOT(toplevel_unset_fullscreen()));
     connect(action7, SIGNAL(triggered()), this, SLOT(toplevel_set_activate()));
     connect(action8, SIGNAL(triggered()), this, SLOT(toplevel_close()));
-    connect(action13, SIGNAL(triggered()), this, SLOT(show_thumbnail()));
+    connect(action13, SIGNAL(triggered()), this, SLOT(show_toplevel_thumbnail()));
 
     // 获得鼠标点击的x，y坐标点
     int x = pos.x();
@@ -792,6 +800,32 @@ void MainWindow::show_menu(const QPoint pos)
         connect(action, SIGNAL(triggered()), this, SLOT(toplevel_send_to_output()));
     }
     action12->setMenu(moreOutput);
+}
+
+void MainWindow::show_menu(const QPoint pos)
+{
+    int num = tabWidget->currentIndex();
+    switch (num) {
+    case 0: {
+        QMenu *menu = new QMenu(tableWidget_0);
+        QAction *action = new QAction("show thumbnail", tableWidget_0);
+        menu->addAction(action);
+        menu->move(cursor().pos());
+        menu->show();
+        connect(action, SIGNAL(triggered()), this, SLOT(show_workspace_thumbnail()));
+    } break;
+    case 1: {
+        QMenu *menu = new QMenu(tableWidget_1);
+        QAction *action = new QAction("show thumbnail", tableWidget_1);
+        menu->addAction(action);
+        menu->move(cursor().pos());
+        menu->show();
+        connect(action, SIGNAL(triggered()), this, SLOT(show_output_thumbnail()));
+    } break;
+    case 2:
+        toplevel_menu(pos);
+        break;
+    }
 }
 
 void MainWindow::toplevel_set_maximized()
@@ -925,7 +959,7 @@ void MainWindow::toplevel_send_to_output()
     }
 }
 
-void MainWindow::show_thumbnail()
+void MainWindow::show_toplevel_thumbnail()
 {
     int row = tableWidget_2->currentRow();
     QString uuid = tableWidget_2->item(row, 0)->text();
@@ -935,5 +969,31 @@ void MainWindow::show_thumbnail()
     QProcess *process = new QProcess();
     QStringList list;
     list << "toplevel" << uuid;
+    process->start(programDir + "/thumbnail", list);
+}
+
+void MainWindow::show_output_thumbnail()
+{
+    int row = tableWidget_1->currentRow();
+    QString uuid = tableWidget_1->item(row, 0)->text();
+
+    QString programDir = QCoreApplication::applicationDirPath();
+
+    QProcess *process = new QProcess();
+    QStringList list;
+    list << "output" << uuid;
+    process->start(programDir + "/thumbnail", list);
+}
+
+void MainWindow::show_workspace_thumbnail()
+{
+    int row = tableWidget_0->currentRow();
+    QString uuid = tableWidget_0->item(row, 0)->text();
+
+    QString programDir = QCoreApplication::applicationDirPath();
+
+    QProcess *process = new QProcess();
+    QStringList list;
+    list << "workspace" << uuid << primaryOutput;
     process->start(programDir + "/thumbnail", list);
 }

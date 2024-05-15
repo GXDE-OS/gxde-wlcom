@@ -52,16 +52,21 @@ class MainWindow : public QMainWindow
     void toplevel_move_to_workspace();
 
     void show_menu(const QPoint pos);
+    void toplevel_menu(const QPoint pos);
     void ShowTooltip(QModelIndex index);
 
-    void show_thumbnail();
+    void show_toplevel_thumbnail();
+    void show_output_thumbnail();
+    void show_workspace_thumbnail();
 
   private:
     Context *context = nullptr;
+    QTabWidget *tabWidget = nullptr;
     QTableWidget *tableWidget_0 = nullptr;
     QTableWidget *tableWidget_1 = nullptr;
     QTableWidget *tableWidget_2 = nullptr;
     QLabel *pri_label = nullptr;
+    QString primaryOutput = "";
     int workspace_count;
     int toplevel_count;
     int outputs_count;
