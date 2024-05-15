@@ -38,7 +38,7 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     if (kywc_output_use_hardware_gamma(&output->base)) {
         return true;
     }
-    
+
     // blend function - mul color
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 
@@ -56,12 +56,14 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&damage, target);
 
-    wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
-        .box = { .width = target->buffer->width, .height = target->buffer->height },
-        .color = { .r = color_rgb[0], .g = color_rgb[1], .b = color_rgb[2], .a = 0.999999f },
-        .clip = &damage,
-        .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
-    });
+    wlr_render_pass_add_rect(
+        target->render_pass,
+        &(struct wlr_render_rect_options){
+            .box = { .width = target->buffer->width, .height = target->buffer->height },
+            .color = { .r = color_rgb[0], .g = color_rgb[1], .b = color_rgb[2], .a = 0.999999f },
+            .clip = &damage,
+            .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
+        });
 
     pixman_region32_fini(&damage);
 
@@ -85,7 +87,8 @@ static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
     }
     cursor_buffer->buffer = buffer;
 
-    struct wlr_render_pass *render_pass = wlr_renderer_begin_buffer_pass(wlr_output->renderer, buffer, NULL);
+    struct wlr_render_pass *render_pass =
+        wlr_renderer_begin_buffer_pass(wlr_output->renderer, buffer, NULL);
     // blend function - mul color
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 
@@ -96,12 +99,14 @@ static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
     color_rgb[0] *= brightness * 0.01f;
     color_rgb[1] *= brightness * 0.01f;
     color_rgb[2] *= brightness * 0.01f;
-    
-    wlr_render_pass_add_rect(render_pass, &(struct wlr_render_rect_options){
-        .box = { .width = buffer->width, .height = buffer->height },
-        .color = { color_rgb[0], .g = color_rgb[1], .b = color_rgb[2], .a = 0.999999f },
-        .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
-    });
+
+    wlr_render_pass_add_rect(
+        render_pass,
+        &(struct wlr_render_rect_options){
+            .box = { .width = buffer->width, .height = buffer->height },
+            .color = { color_rgb[0], .g = color_rgb[1], .b = color_rgb[2], .a = 0.999999f },
+            .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
+        });
     wlr_render_pass_submit(render_pass);
 
     // defalut blend function - premul alpha
@@ -110,7 +115,8 @@ static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
 
 static void output_handle_precommit(struct wl_listener *listener, void *data)
 {
-    struct output_cursor_buffer *cursor_buffer = wl_container_of(listener, cursor_buffer, precommit);
+    struct output_cursor_buffer *cursor_buffer =
+        wl_container_of(listener, cursor_buffer, precommit);
     redraw_hardware_cursor(cursor_buffer);
 }
 
@@ -187,12 +193,12 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
     if (!wlr_renderer_is_opengl(manager->server->renderer)) {
         return false;
     }
-    
+
     struct soft_gamma_effect *effect = calloc(1, sizeof(*effect));
     if (!effect) {
         return false;
     }
-    
+
     effect->effect = effect_create("soft_gamma", 0, true, &effect_impl);
     if (!effect->effect) {
         free(effect);
@@ -212,9 +218,9 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
     if (effect->effect->enabled) {
         handle_effect_enable(&effect->enable, NULL);
     }
-    
+
     struct ky_scene *scene = effect->manager->server->scene;
-    struct effect_entity* entity = ky_scene_add_effect(scene, effect->effect);
+    struct effect_entity *entity = ky_scene_add_effect(scene, effect->effect);
     entity->usr_data = effect;
 
     return true;
