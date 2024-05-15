@@ -206,9 +206,9 @@ static void entity_handle_effect_disable(struct wl_listener *listener, void *dat
     wl_list_init(&entity->frame_slot.link);
 }
 
-static struct wl_list *find_insertion_location(struct effect_entity *entity, struct effect_chain *chain)
+static struct wl_list *find_insertion_location(struct effect_entity *entity,
+                                               struct effect_chain *chain)
 {
-
     struct wl_list *list = &chain->slots;
     struct effect_entity *_entity;
     struct effect_slot *slot;
@@ -263,7 +263,8 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
 
     struct effect_slot *slot;
     wl_list_for_each(slot, &chain->base.slots, link) {
-        entity = wl_container_of(slot, entity, slot);
+        entity = is_root ? wl_container_of(slot, entity, frame_slot)
+                         : wl_container_of(slot, entity, slot);
         if (entity->effect == effect && !is_root) {
             kywc_log(KYWC_WARN, "effect %s is already added", effect->name);
             return entity;
@@ -470,7 +471,7 @@ enum interface_name {
     }
 
 static void scene_output_run_effect(struct ky_scene_output *scene_output, enum interface_name name,
-                                   struct ky_scene_render_target *target)
+                                    struct ky_scene_render_target *target)
 {
     struct ky_scene *scene = scene_output->scene;
     struct ky_scene_node *node = &scene->tree.node;
