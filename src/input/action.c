@@ -406,16 +406,14 @@ static void action_call_send_button(struct action_button_data *data)
         return;
     }
 
-    uint32_t time = current_time_msec();
-
     if (cursor->touch_simulation_pointer && cursor->last_click_button == BTN_LEFT &&
         data->val == BTN_RIGHT) {
-        cursor_feed_button(cursor, BTN_LEFT, false, time, DEFAULT_DOUBLE_CLICK_TIME);
+        seat_feed_pointer_button(cursor->seat, BTN_LEFT, false);
         cursor->touch_simulation_pointer = false;
     }
 
-    cursor_feed_button(cursor, data->val, true, time, DEFAULT_DOUBLE_CLICK_TIME);
-    cursor_feed_button(cursor, data->val, false, time, DEFAULT_DOUBLE_CLICK_TIME);
+    seat_feed_pointer_button(cursor->seat, data->val, true);
+    seat_feed_pointer_button(cursor->seat, data->val, false);
 }
 
 static void action_call_send_key(struct action_key_data *data)
