@@ -6,6 +6,7 @@
 
 #include "decoration_frag.h"
 #include "decoration_vert.h"
+#include "effect/blur.h"
 #include "render/opengl.h"
 #include "scene/decoration.h"
 #include "scene/render.h"
@@ -20,6 +21,7 @@ enum deco_update_cause {
     DECO_UPDATE_CAUSE_SHADOW_MASK = 1 << 3,
     DECO_UPDATE_CAUSE_RESIZE_WIDTH = 1 << 4,
     DECO_UPDATE_CAUSE_CORNER_RADIUS = 1 << 5,
+    DECO_UPDATE_CAUSE_BLURRED = 1 << 6,
 };
 
 struct ky_scene_decoration {
@@ -31,6 +33,7 @@ struct ky_scene_decoration {
     /* window size */
     int window_width;
     int window_height;
+    bool blurred;
 
     /* margin */
     int border_thickness;
@@ -53,10 +56,11 @@ struct ky_scene_decoration {
 
     pixman_region32_t title_region;
     pixman_region32_t border_region;
-    pixman_region32_t shadow_region;
     pixman_region32_t round_corner_region;
     /* clip region without round_corner_region */
     pixman_region32_t pure_clip_region;
+    pixman_region32_t clip_region;
+    pixman_region32_t window_region;
 };
 
 // opengl render
@@ -81,7 +85,7 @@ struct gl_shader_location {
     GLint title_height;
     GLint title_color;
 };
-static struct gl_shader_location gl_locations;
+static struct gl_shader_location gl_locations = { 0 };
 
 static int scene_decoration_create_opengl_shader(struct ky_opengl_renderer *renderer)
 {
@@ -161,13 +165,13 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
                                      ? deco->round_corner_radius[0] * scale + border_thickness
                                      : 0.0f;
         round_corner_radius[1] = deco->round_corner_radius[1] > 0
-                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     ? deco->round_corner_radius[1] * scale + border_thickness
                                      : 0.0f;
         round_corner_radius[2] = deco->round_corner_radius[2] > 0
-                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     ? deco->round_corner_radius[2] * scale + border_thickness
                                      : 0.0f;
         round_corner_radius[3] = deco->round_corner_radius[3] > 0
-                                     ? deco->round_corner_radius[0] * scale + border_thickness
+                                     ? deco->round_corner_radius[3] * scale + border_thickness
                                      : 0.0f;
     }
 
@@ -342,40 +346,33 @@ static void scene_decoration_update_round_corner_region(struct ky_scene_decorati
     }
 }
 
-static void scene_decoration_update_clip_region(struct ky_scene_decoration *deco)
+static void scene_decoration_update_region(struct ky_scene_decoration *deco)
 {
     pixman_region32_clear(&deco->title_region);
     pixman_region32_clear(&deco->border_region);
-    pixman_region32_clear(&deco->shadow_region);
     pixman_region32_clear(&deco->pure_clip_region);
+    pixman_region32_clear(&deco->window_region);
 
-    int width = deco->window_width;
-    int height = deco->window_height;
-    int shadow = deco->shadow_width;
-    int title = deco->title_height;
-    int border = deco->border_thickness;
+    int width = deco->window_width, height = deco->window_height;
+    int shadow = deco->shadow_width, title = deco->title_height, border = deco->border_thickness;
+    int rect_w = deco->rect.width, rect_h = deco->rect.height;
 
-    pixman_region32_init_rect(&deco->pure_clip_region, 0, 0, deco->rect.width, deco->rect.height);
+    pixman_region32_init_rect(&deco->pure_clip_region, 0, 0, rect_w, rect_h);
 
     int x = shadow + border;
     int y = shadow + border + title;
     pixman_region32_init_rect(&deco->title_region, x, x, width, title);
 
-    pixman_region32_t reg1;
-    pixman_region32_init_rect(&reg1, shadow, shadow, deco->rect.width - 2 * shadow,
-                              deco->rect.height - 2 * shadow);
-    pixman_region32_subtract(&deco->shadow_region, &deco->pure_clip_region, &reg1);
-
-    pixman_region32_t reg2;
+    pixman_region32_t reg1, reg2;
+    pixman_region32_init_rect(&reg1, shadow, shadow, rect_w - 2 * shadow, rect_h - 2 * shadow);
     pixman_region32_init_rect(&reg2, x, x, width, title + height);
     pixman_region32_subtract(&deco->border_region, &reg1, &reg2);
     pixman_region32_fini(&reg1);
     pixman_region32_fini(&reg2);
 
-    pixman_region32_t region;
-    pixman_region32_init_rect(&region, x, y, width, height);
-    pixman_region32_subtract(&deco->pure_clip_region, &deco->pure_clip_region, &region);
-    pixman_region32_fini(&region);
+    pixman_region32_init_rect(&deco->window_region, x, y, width, height);
+    pixman_region32_subtract(&deco->pure_clip_region, &deco->pure_clip_region,
+                             &deco->window_region);
 }
 
 static void scene_decoration_update_input_region(struct ky_scene_decoration *scene_decoration)
@@ -411,6 +408,7 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
     }
 
     uint32_t pending_cause = deco->pending_cause | cause;
+    deco->pending_cause = DECO_UPDATE_CAUSE_NONE;
 
     if (pending_cause & (DECO_UPDATE_CAUSE_WINDOW_SIZE | DECO_UPDATE_CAUSE_MARGIN)) {
         int margin = 2 * (border + shadow);
@@ -419,36 +417,36 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
         if (rect_width != deco->rect.width || rect_height != deco->rect.height) {
             ky_scene_rect_set_size(&deco->rect, rect_width, rect_height);
         }
-        scene_decoration_update_clip_region(deco);
+        scene_decoration_update_region(deco);
     }
 
     if (pending_cause & (DECO_UPDATE_CAUSE_WINDOW_SIZE | DECO_UPDATE_CAUSE_MARGIN |
                          DECO_UPDATE_CAUSE_CORNER_RADIUS | DECO_UPDATE_CAUSE_SHADOW_MASK)) {
         scene_decoration_update_round_corner_region(deco);
         /* update clip region with corner region */
-        pixman_region32_t clip;
-        pixman_region32_init(&clip);
-        pixman_region32_copy(&clip, &deco->pure_clip_region);
-        pixman_region32_union(&clip, &clip, &deco->round_corner_region);
-        ky_scene_node_set_clip_region(&deco->rect.node, &clip);
-        pixman_region32_fini(&clip);
+        pixman_region32_clear(&deco->clip_region);
+        pixman_region32_union(&deco->clip_region, &deco->pure_clip_region,
+                              &deco->round_corner_region);
+    }
+
+    if (pending_cause & DECO_UPDATE_CAUSE_BLURRED) {
+        ky_scene_node_set_blur_region(&deco->rect.node,
+                                      deco->blurred ? &deco->window_region : NULL);
+        pending_cause &= ~DECO_UPDATE_CAUSE_BLURRED;
     }
 
     if (pending_cause & (DECO_UPDATE_CAUSE_WINDOW_SIZE | DECO_UPDATE_CAUSE_MARGIN |
                          DECO_UPDATE_CAUSE_RESIZE_WIDTH)) {
         scene_decoration_update_input_region(deco);
+        pending_cause &= ~DECO_UPDATE_CAUSE_RESIZE_WIDTH;
     }
 
-    if (pending_cause == DECO_UPDATE_CAUSE_SHADOW_MASK) {
-        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_BOTH, &deco->shadow_region);
-    }
-
-    if (pending_cause == DECO_UPDATE_CAUSE_MARGIN_COLOR) {
+    if (pending_cause != DECO_UPDATE_CAUSE_NONE) {
+        bool damage_whole =
+            pending_cause & ~(DECO_UPDATE_CAUSE_SHADOW_MASK | DECO_UPDATE_CAUSE_MARGIN_COLOR);
         ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_BOTH,
-                                  &deco->rect.node.clip_region);
+                                  damage_whole ? NULL : &deco->clip_region);
     }
-
-    deco->pending_cause = DECO_UPDATE_CAUSE_NONE;
 }
 
 struct ky_scene_decoration *ky_scene_decoration_from_node(struct ky_scene_node *node)
@@ -497,10 +495,8 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     pixman_region32_clear(&node->visible_region);
 
     if (node_enabled) {
-        // always have clip region
-        pixman_region32_intersect_rect(&node->visible_region, &node->clip_region, 0, 0,
-                                       deco->rect.width, deco->rect.height);
-        pixman_region32_translate(&node->visible_region, lx, ly);
+        pixman_region32_init_rect(&node->visible_region, lx, ly, deco->rect.width,
+                                  deco->rect.height);
         pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
 
         if (!no_damage) {
@@ -530,6 +526,49 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     node->damage_type = KY_SCENE_DAMAGE_NONE;
 }
 
+static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int lx, int ly,
+                                         struct ky_scene_render_target *target,
+                                         pixman_region32_t *clip)
+{
+    if (!deco->blurred || target->options & KY_SCENE_RENDER_DISABLE_BLUR) {
+        return;
+    }
+
+    pixman_region32_translate(clip, -target->logical.x, -target->logical.y);
+    ky_scene_render_region(clip, target);
+
+    struct wlr_box blur_box = {
+        .x = lx - target->logical.x + deco->window_region.extents.x1,
+        .y = ly - target->logical.y + deco->window_region.extents.y1,
+        .width = deco->window_width,
+        .height = deco->window_height,
+    };
+    ky_scene_render_box(&blur_box, target);
+
+    struct ky_render_round_corner round_corner_radius = { 0 };
+    if (!(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER)) {
+        round_corner_radius.rb =
+            deco->round_corner_radius[0] > 0 ? deco->round_corner_radius[0] * target->scale : 0.0f;
+        round_corner_radius.rt =
+            deco->round_corner_radius[1] > 0 ? deco->round_corner_radius[1] * target->scale : 0.0f;
+        round_corner_radius.lb =
+            deco->round_corner_radius[2] > 0 ? deco->round_corner_radius[2] * target->scale : 0.0f;
+        round_corner_radius.lt =
+            deco->round_corner_radius[3] > 0 ? deco->round_corner_radius[3] * target->scale : 0.0f;
+    }
+
+    struct blur_render_options opts = {
+        .lx = lx,
+        .ly = ly,
+        .dst_box = &blur_box,
+        .clip = clip,
+        .radius = &round_corner_radius,
+        .region = &deco->window_region,
+        .strength = deco->rect.node.blur_strength,
+    };
+    blur_render_with_target(target, &opts);
+}
+
 static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
                                     struct ky_scene_render_target *target)
 {
@@ -557,15 +596,24 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
 
     struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
 
+    /* actual render region exclude the blur region */
+    pixman_region32_t clip_region;
+    pixman_region32_init(&clip_region);
+    pixman_region32_copy(&clip_region, &deco->clip_region);
+    pixman_region32_translate(&clip_region, lx, ly);
+    pixman_region32_intersect(&clip_region, &clip_region, &render_region);
+
+    bool need_render = pixman_region32_not_empty(&clip_region);
     struct wlr_box dst_box = {
         .x = lx - target->logical.x,
         .y = ly - target->logical.y,
         .width = deco->rect.width,
         .height = deco->rect.height,
     };
-    ky_scene_render_box(&dst_box, target);
-
-    pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
+    if (need_render) {
+        ky_scene_render_box(&dst_box, target);
+        pixman_region32_translate(&clip_region, -target->logical.x, -target->logical.y);
+    }
 
     // try opengl render if opengl is used
     if (gl_shader >= 0 && wlr_renderer_is_opengl(target->output->output->renderer)) {
@@ -575,13 +623,23 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
             gl_shader = scene_decoration_create_opengl_shader(renderer);
         }
         if (gl_shader > 0) {
-            ky_scene_render_region(&render_region, target);
-            scene_decoration_opengl_render(deco, lx, ly, target, &dst_box, &render_region);
+            scene_decoration_blur_render(deco, lx, ly, target, &render_region);
+            if (need_render) {
+                ky_scene_render_region(&clip_region, target);
+                scene_decoration_opengl_render(deco, lx, ly, target, &dst_box, &clip_region);
+            }
             pixman_region32_fini(&render_region);
+            pixman_region32_fini(&clip_region);
             return;
         } else {
             gl_shader = -1;
         }
+    }
+
+    if (!need_render) {
+        pixman_region32_fini(&render_region);
+        pixman_region32_fini(&clip_region);
+        return;
     }
 
     /* draw border with border color */
@@ -590,7 +648,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         pixman_region32_init(&border);
         pixman_region32_copy(&border, &deco->border_region);
         pixman_region32_translate(&border, lx - target->logical.x, ly - target->logical.y);
-        pixman_region32_intersect(&border, &border, &render_region);
+        pixman_region32_intersect(&border, &border, &clip_region);
         ky_scene_render_region(&border, target);
 
         wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
@@ -614,7 +672,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         pixman_region32_init(&title);
         pixman_region32_copy(&title, &deco->title_region);
         pixman_region32_translate(&title, lx - target->logical.x, ly - target->logical.y);
-        pixman_region32_intersect(&title, &title, &render_region);
+        pixman_region32_intersect(&title, &title, &clip_region);
         ky_scene_render_region(&title, target);
 
         wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
@@ -633,6 +691,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
     }
 
     pixman_region32_fini(&render_region);
+    pixman_region32_fini(&clip_region);
 }
 
 static void scene_decoration_destroy(struct ky_scene_node *node)
@@ -644,9 +703,10 @@ static void scene_decoration_destroy(struct ky_scene_node *node)
     struct ky_scene_decoration *scene_decoration = ky_scene_decoration_from_node(node);
     pixman_region32_fini(&scene_decoration->title_region);
     pixman_region32_fini(&scene_decoration->border_region);
-    pixman_region32_fini(&scene_decoration->shadow_region);
     pixman_region32_fini(&scene_decoration->round_corner_region);
     pixman_region32_fini(&scene_decoration->pure_clip_region);
+    pixman_region32_fini(&scene_decoration->clip_region);
+    pixman_region32_fini(&scene_decoration->window_region);
 
     scene_decoration->node_destroy(node);
 }
@@ -658,7 +718,11 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
         return NULL;
     }
 
-    ky_scene_rect_init(&scene_decoration->rect, parent, 0, 0, (float[4]){ 0, 0, 0, 0.5 });
+    float color[4] = { 0, 0, 0, 0.5 };
+    ky_scene_rect_init(&scene_decoration->rect, parent, 0, 0, color);
+    memcpy(scene_decoration->title_color, color, sizeof(scene_decoration->title_color));
+    memcpy(scene_decoration->border_color, color, sizeof(scene_decoration->border_color));
+    memcpy(scene_decoration->shadow_color, color, sizeof(scene_decoration->shadow_color));
 
     scene_decoration->node_destroy = scene_decoration->rect.node.impl.destroy;
     scene_decoration->rect.node.impl.destroy = scene_decoration_destroy;
@@ -668,9 +732,10 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
 
     pixman_region32_init(&scene_decoration->title_region);
     pixman_region32_init(&scene_decoration->border_region);
-    pixman_region32_init(&scene_decoration->shadow_region);
     pixman_region32_init(&scene_decoration->round_corner_region);
     pixman_region32_init(&scene_decoration->pure_clip_region);
+    pixman_region32_init(&scene_decoration->clip_region);
+    pixman_region32_init(&scene_decoration->window_region);
 
     return scene_decoration;
 }
@@ -755,4 +820,14 @@ void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *scene_deco
 
     scene_decoration->resize_width = resize_with;
     scene_decoration_update(scene_decoration, DECO_UPDATE_CAUSE_RESIZE_WIDTH);
+}
+
+void ky_scene_decoration_set_blurred(struct ky_scene_decoration *scene_decoration, bool blurred)
+{
+    if (scene_decoration->blurred == blurred) {
+        return;
+    }
+
+    scene_decoration->blurred = blurred;
+    scene_decoration_update(scene_decoration, DECO_UPDATE_CAUSE_BLURRED);
 }
