@@ -16,39 +16,41 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     double height = box->height;
     double radius = info->corner_radius;
 
-    if (info->circle) {
-        cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
-    } else {
-        if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
-            cairo_arc(cairo, box->x + radius, box->y + radius, radius, ANGLE(-180), ANGLE(-90));
+    if (info->solid_rgba) {
+        if (info->circle) {
+            cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
         } else {
-            cairo_line_to(cairo, box->x, box->y);
+            if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
+                cairo_arc(cairo, box->x + radius, box->y + radius, radius, ANGLE(-180), ANGLE(-90));
+            } else {
+                cairo_line_to(cairo, box->x, box->y);
+            }
+            if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
+                cairo_arc(cairo, box->x + width - radius, box->y + radius, radius, ANGLE(-90),
+                          ANGLE(0));
+            } else {
+                cairo_line_to(cairo, box->x + width, box->y);
+            }
+            if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
+                cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius,
+                          ANGLE(0), ANGLE(90));
+            } else {
+                cairo_line_to(cairo, box->x + width, box->y + height);
+            }
+            if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
+                cairo_arc(cairo, box->x + radius, box->y + height - radius, radius, ANGLE(90),
+                          ANGLE(180));
+            } else {
+                cairo_line_to(cairo, box->x, box->y + height);
+            }
         }
-        if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
-            cairo_arc(cairo, box->x + width - radius, box->y + radius, radius, ANGLE(-90),
-                      ANGLE(0));
-        } else {
-            cairo_line_to(cairo, box->x + width, box->y);
-        }
-        if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
-            cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius, ANGLE(0),
-                      ANGLE(90));
-        } else {
-            cairo_line_to(cairo, box->x + width, box->y + height);
-        }
-        if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
-            cairo_arc(cairo, box->x + radius, box->y + height - radius, radius, ANGLE(90),
-                      ANGLE(180));
-        } else {
-            cairo_line_to(cairo, box->x, box->y + height);
-        }
-    }
 
-    cairo_close_path(cairo);
-    cairo_set_source_rgba(cairo, info->solid_rgba[0], info->solid_rgba[1], info->solid_rgba[2],
-                          info->solid_rgba[3]);
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_fill(cairo);
+        cairo_close_path(cairo);
+        cairo_set_source_rgba(cairo, info->solid_rgba[0], info->solid_rgba[1], info->solid_rgba[2],
+                              info->solid_rgba[3]);
+        cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+        cairo_fill(cairo);
+    }
 
     if (hover) {
         if (info->circle) {
@@ -209,14 +211,12 @@ static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bo
     }
 
     /* corner, solid and border */
-    if (info->solid_rgba) {
-        if (info->hover_rgba) {
-            int height = info->height / 2;
-            buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, height }, false);
-            buffer_draw(buffer, info, &(struct kywc_box){ 0, height, info->width, height }, true);
-        } else {
-            buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, info->height }, false);
-        }
+    if (info->hover_rgba) {
+        int height = info->height / 2;
+        buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, height }, false);
+        buffer_draw(buffer, info, &(struct kywc_box){ 0, height, info->width, height }, true);
+    } else {
+        buffer_draw(buffer, info, &(struct kywc_box){ 0, 0, info->width, info->height }, false);
     }
 
     /* text */
