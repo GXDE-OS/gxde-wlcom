@@ -100,6 +100,7 @@ static void menu_render_items(struct menu *menu, bool force)
     }
 
     menu->height = menu->item_height * item_count;
+    ky_scene_decoration_set_window_size(menu->deco, menu->width, menu->height);
 
     int index = 0;
     wl_list_for_each_reverse(item, &menu->items, link) {
@@ -638,6 +639,19 @@ static void menu_handle_destroy(struct wl_listener *listener, void *data)
     free(menu);
 }
 
+static void menu_update_decoration(struct menu *menu)
+{
+    struct theme *theme = theme_manager_get_current();
+    int radius = theme->corner_radius;
+    int shadow = theme->shadow_border;
+
+    ky_scene_decoration_set_margin(menu->deco, 0, 0, shadow);
+    ky_scene_decoration_set_round_corner_radius(menu->deco,
+                                                (int[4]){ radius, radius, radius, radius });
+    ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), -shadow, -shadow);
+    ky_scene_decoration_set_blurred(menu->deco, theme->opacity != 100);
+}
+
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct menu *menu = wl_container_of(listener, menu, theme_update);
@@ -648,6 +662,7 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);
+        menu_update_decoration(menu);
     }
 }
 
@@ -680,6 +695,11 @@ struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_
         menu->touch_grab.data = menu;
         menu->touch_grab.interface = &touch_grab_impl;
     }
+
+    /* create shadow and blur support */
+    menu->deco = ky_scene_decoration_create(menu->tree);
+    ky_scene_decoration_set_shadow_mask(menu->deco, SHADOW_MASK_ALL);
+    menu_update_decoration(menu);
 
     menu->theme_update.notify = menu_handle_theme_update;
     theme_manager_add_update_listener(&menu->theme_update);

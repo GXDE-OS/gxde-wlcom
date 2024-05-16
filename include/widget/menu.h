@@ -6,6 +6,7 @@
 #define _WIDGET_MENU_H_
 
 #include "input/seat.h"
+#include "scene/decoration.h"
 #include "widget.h"
 
 struct menu_item {
@@ -30,6 +31,9 @@ struct menu_item {
 struct menu {
     struct ky_scene_tree *tree;
     struct wl_listener destroy;
+
+    /* for shadow and blur */
+    struct ky_scene_decoration *deco;
 
     struct wl_list items;
     struct menu_item *parent; // NULL if root-menu
