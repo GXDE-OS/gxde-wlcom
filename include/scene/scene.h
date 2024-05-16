@@ -324,6 +324,8 @@ void ky_scene_node_set_blur_strength(struct ky_scene_node *node, uint32_t blur_s
 
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 
+bool ky_scene_node_is_visible(struct ky_scene_node *node);
+
 // TODO: is removed in wlroots
 struct wlr_presentation;
 void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *presentation);

@@ -648,12 +648,16 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
                                       struct ky_scene_render_target *target, int lx, int ly,
                                       struct blur_data *data, pixman_region32_t *half_expand_damage)
 {
-    lx += node->x, ly += node->y;
+    if (!ky_scene_node_is_visible(node)) {
+        return;
+    }
+
     if (node->type == KY_SCENE_NODE_TREE) {
         struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
-        struct ky_scene_node *node;
-        wl_list_for_each(node, &tree->children, link) {
-            node_for_each_blur_region(node, target, lx, ly, data, half_expand_damage);
+        struct ky_scene_node *child;
+        wl_list_for_each(child, &tree->children, link) {
+            node_for_each_blur_region(child, target, lx + child->x, ly + child->y, data,
+                                      half_expand_damage);
         }
         return;
     }
@@ -667,30 +671,23 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     if (pixman_region32_not_empty(&node->blur_region)) {
         pixman_region32_copy(&blur_region, &node->blur_region);
         pixman_region32_translate(&blur_region, lx, ly);
-        /* visible in scene */
         pixman_region32_intersect(&blur_region, &blur_region, &node->visible_region);
     } else {
         pixman_region32_copy(&blur_region, &node->visible_region);
     }
     pixman_region32_intersect(&blur_region, &blur_region, &target->damage);
-
     if (!pixman_region32_not_empty(&blur_region)) {
         return;
     }
-    int offset;
-    if ((int)node->blur_strength == -1) {
-        offset = 4.f;
-    } else {
-        offset = node->blur_strength / 1000.f;
-    }
+
+    int offset = ((int)node->blur_strength == -1) ? 4.f : node->blur_strength / 1000.f;
     int distance = calculate_blur_radius(blur_config.iterations, offset);
     distance = ceil(distance / target->scale);
+
     wlr_region_expand(&blur_region, &blur_region, distance / 2);
     pixman_region32_union(half_expand_damage, &blur_region, half_expand_damage);
-
     wlr_region_expand(&blur_region, &blur_region, distance - distance / 2);
     pixman_region32_union(&target->damage, &blur_region, &target->damage);
-
     pixman_region32_fini(&blur_region);
 }
 
