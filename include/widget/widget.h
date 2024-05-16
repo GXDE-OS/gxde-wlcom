@@ -47,6 +47,8 @@ void widget_set_round_corner(struct widget *widget, uint32_t mask, float radius)
 
 void widget_set_opacity(struct widget *widget, float opacity);
 
+void widget_set_blurred(struct widget *widget, bool blurred);
+
 void widget_get_size(struct widget *widget, int *width, int *height);
 
 #endif /* _WIDGET_H_ */

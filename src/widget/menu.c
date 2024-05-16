@@ -17,7 +17,6 @@
 #include "painter.h"
 #include "theme.h"
 #include "widget/menu.h"
-#include "widget_p.h"
 
 #define SUB_MENU_GAP (2)
 

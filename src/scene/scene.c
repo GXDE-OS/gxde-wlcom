@@ -98,6 +98,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
         .parent = parent,
         .enabled = true,
         .damage_type = KY_SCENE_DAMAGE_HARMFUL,
+        .blur_strength = -1,
         .impl = {
             .accpet_input = node_accpet_input,
             .update_outputs = node_update_outputs,

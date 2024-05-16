@@ -11,6 +11,7 @@
 
 #include "painter.h"
 #include "widget/scaled_buffer.h"
+#include "widget/widget.h"
 #include "widget_p.h"
 
 // TODO: support buffers for different scales ?
@@ -207,12 +208,51 @@ void widget_set_round_corner(struct widget *widget, uint32_t mask, float radius)
     widget->corner_mask = mask;
     widget->corner_radius = radius;
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+
+    if (!widget->blurred) {
+        return;
+    }
+    int round_radius[4] = {
+        mask & CORNER_MASK_BOTTOM_RIGHT ? radius : 0,
+        mask & CORNER_MASK_TOP_RIGHT ? radius : 0,
+        mask & CORNER_MASK_BOTTOM_LEFT ? radius : 0,
+        mask & CORNER_MASK_TOP_LEFT ? radius : 0,
+    };
+    ky_scene_node_set_radius(widget->content.node, round_radius);
 }
 
 void widget_set_opacity(struct widget *widget, float opacity)
 {
     /* no need to redraw the buffer */
     ky_scene_buffer_set_opacity(widget->content.buffer, opacity);
+}
+
+void widget_set_blurred(struct widget *widget, bool blurred)
+{
+    if (widget->blurred == blurred) {
+        return;
+    }
+    widget->blurred = blurred;
+
+    if (!blurred) {
+        ky_scene_node_set_blur_region(widget->content.node, NULL);
+        ky_scene_node_set_radius(widget->content.node, (int[4]){ 0, 0, 0, 0 });
+        return;
+    }
+
+    pixman_region32_t region;
+    pixman_region32_init(&region);
+    ky_scene_node_set_blur_region(widget->content.node, &region);
+    pixman_region32_fini(&region);
+
+    /* update radius by widget corner_mask and corner_radius */
+    int round_radius[4] = {
+        widget->corner_mask & CORNER_MASK_BOTTOM_RIGHT ? widget->corner_radius : 0,
+        widget->corner_mask & CORNER_MASK_TOP_RIGHT ? widget->corner_radius : 0,
+        widget->corner_mask & CORNER_MASK_BOTTOM_LEFT ? widget->corner_radius : 0,
+        widget->corner_mask & CORNER_MASK_TOP_LEFT ? widget->corner_radius : 0,
+    };
+    ky_scene_node_set_radius(widget->content.node, round_radius);
 }
 
 void widget_set_border(struct widget *widget, const float color[static 4], uint32_t mask,

@@ -5,7 +5,8 @@
 #ifndef _WIDGET_P_H_
 #define _WIDGET_P_H_
 
-#include "widget/widget.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 enum widget_update_cause {
     WIDGET_UPDATE_CAUSE_NONE = 0,
@@ -57,7 +58,8 @@ struct widget {
     int auto_resize;
     /* widget support hover state */
     bool hoverable;
-    bool enabled, hovered, submenu, checked;
+    bool enabled, hovered, blurred;
+    bool submenu, checked;
 };
 
 #endif /* _WIDGET_P_H_ */
