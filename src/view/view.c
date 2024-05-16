@@ -817,8 +817,11 @@ struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface)
 
 void kywc_view_close(struct kywc_view *kywc_view)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
+    if (!kywc_view->closeable) {
+        return;
+    }
 
+    struct view *view = view_from_kywc_view(kywc_view);
     /* it is not allowed to close a view that has children views */
     if (!wl_list_empty(&view->children)) {
         kywc_log(KYWC_WARN, "close a view that still have children views");
