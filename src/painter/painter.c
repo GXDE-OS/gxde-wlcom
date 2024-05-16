@@ -17,32 +17,28 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     double radius = info->corner_radius;
 
     if (info->solid_rgba) {
-        if (info->circle) {
-            cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
+        if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
+            cairo_arc(cairo, box->x + radius, box->y + radius, radius, ANGLE(-180), ANGLE(-90));
         } else {
-            if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
-                cairo_arc(cairo, box->x + radius, box->y + radius, radius, ANGLE(-180), ANGLE(-90));
-            } else {
-                cairo_line_to(cairo, box->x, box->y);
-            }
-            if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
-                cairo_arc(cairo, box->x + width - radius, box->y + radius, radius, ANGLE(-90),
-                          ANGLE(0));
-            } else {
-                cairo_line_to(cairo, box->x + width, box->y);
-            }
-            if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
-                cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius,
-                          ANGLE(0), ANGLE(90));
-            } else {
-                cairo_line_to(cairo, box->x + width, box->y + height);
-            }
-            if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
-                cairo_arc(cairo, box->x + radius, box->y + height - radius, radius, ANGLE(90),
-                          ANGLE(180));
-            } else {
-                cairo_line_to(cairo, box->x, box->y + height);
-            }
+            cairo_line_to(cairo, box->x, box->y);
+        }
+        if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
+            cairo_arc(cairo, box->x + width - radius, box->y + radius, radius, ANGLE(-90),
+                      ANGLE(0));
+        } else {
+            cairo_line_to(cairo, box->x + width, box->y);
+        }
+        if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
+            cairo_arc(cairo, box->x + width - radius, box->y + height - radius, radius, ANGLE(0),
+                      ANGLE(90));
+        } else {
+            cairo_line_to(cairo, box->x + width, box->y + height);
+        }
+        if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
+            cairo_arc(cairo, box->x + radius, box->y + height - radius, radius, ANGLE(90),
+                      ANGLE(180));
+        } else {
+            cairo_line_to(cairo, box->x, box->y + height);
         }
 
         cairo_close_path(cairo);
@@ -53,19 +49,16 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     }
 
     if (hover) {
-        if (info->circle) {
-            cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
-        } else {
-            double offset = box->width * 0.02;
-            double x = box->x + offset;
-            double y = box->y + offset;
-            double w = box->width - 2 * offset;
-            double h = box->height - 2 * offset;
-            cairo_arc(cairo, x + radius, y + radius, radius, ANGLE(-180), ANGLE(-90));
-            cairo_arc(cairo, x + w - radius, y + radius, radius, ANGLE(-90), ANGLE(0));
-            cairo_arc(cairo, x + w - radius, y + h - radius, radius, ANGLE(0), ANGLE(90));
-            cairo_arc(cairo, x + radius, y + h - radius, radius, ANGLE(90), ANGLE(180));
-        }
+        double offset = box->width * 0.02;
+        double x = box->x + offset;
+        double y = box->y + offset;
+        double w = box->width - 2 * offset;
+        double h = box->height - 2 * offset;
+        cairo_arc(cairo, x + radius, y + radius, radius, ANGLE(-180), ANGLE(-90));
+        cairo_arc(cairo, x + w - radius, y + radius, radius, ANGLE(-90), ANGLE(0));
+        cairo_arc(cairo, x + w - radius, y + h - radius, radius, ANGLE(0), ANGLE(90));
+        cairo_arc(cairo, x + radius, y + h - radius, radius, ANGLE(90), ANGLE(180));
+
         cairo_close_path(cairo);
         cairo_set_source_rgba(cairo, info->hover_rgba[0], info->hover_rgba[1], info->hover_rgba[2],
                               info->hover_rgba[3]);
@@ -73,7 +66,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
         cairo_fill(cairo);
     }
 
-    if (!info->border_rgba || !info->border_width || (!info->border_mask && !info->circle)) {
+    if (!info->border_rgba || !info->border_width || !info->border_mask) {
         cairo_surface_flush(surf);
         return;
     }
@@ -84,13 +77,6 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     cairo_set_source_rgba(cairo, info->border_rgba[0], info->border_rgba[1], info->border_rgba[2],
                           info->border_rgba[3]);
     cairo_set_line_width(cairo, info->border_width);
-
-    if (info->circle) {
-        cairo_arc(cairo, box->x + width / 2, box->y + height / 2, radius + half, 0, 2 * PI);
-        cairo_stroke(cairo);
-        cairo_surface_flush(surf);
-        return;
-    }
 
     if (info->border_mask & BORDER_MASK_TOP) {
         if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
@@ -187,20 +173,6 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     cairo_surface_flush(surf);
 }
 
-static void painter_clear_circle(struct cairo_buffer *buffer, struct kywc_box *box, float radius)
-{
-    cairo_t *cairo = buffer->cairo;
-    double width = box->width;
-    double height = box->height;
-
-    cairo_arc(buffer->cairo, box->x + width / 2, box->y + height / 2, radius, 0, 2 * PI);
-    cairo_close_path(cairo);
-
-    cairo_set_source_rgba(cairo, 0, 0, 0, 0);
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_fill(cairo);
-}
-
 static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bool clear)
 {
     /* clear the surface */
@@ -249,19 +221,6 @@ static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bo
     /* blur */
     if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin)) {
         return false;
-    }
-
-    if (info->circle == CIRCLE_TYPE_CLEAR) {
-        if (info->hover_rgba) {
-            int height = info->height / 2;
-            painter_clear_circle(buffer, &(struct kywc_box){ 0, 0, info->width, height },
-                                 info->corner_radius);
-            painter_clear_circle(buffer, &(struct kywc_box){ 0, height, info->width, height },
-                                 info->corner_radius);
-        } else {
-            painter_clear_circle(buffer, &(struct kywc_box){ 0, 0, info->width, info->height },
-                                 info->corner_radius);
-        }
     }
 
     return true;
