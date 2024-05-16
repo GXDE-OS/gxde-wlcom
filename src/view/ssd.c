@@ -870,7 +870,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     struct theme_update_event *update_event = data;
     int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_TEXT_POS |
                        THEME_UPDATE_MASK_BACKGROUND_COLOR | THEME_UPDATE_MASK_BORDER_COLOR |
-                       THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY;
+                       THEME_UPDATE_MASK_CORNER_RADIUS;
     if (update_event->update_mask & allowed_mask) {
         ssd_update_margin(ssd);
         ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);

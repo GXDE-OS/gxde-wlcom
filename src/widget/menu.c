@@ -644,7 +644,8 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
     struct menu *menu = wl_container_of(listener, menu, theme_update);
     struct theme_update_event *update_event = data;
     uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                            THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_OPACITY;
+                            THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS |
+                            THEME_UPDATE_MASK_OPACITY;
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);
