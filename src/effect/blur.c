@@ -253,84 +253,10 @@ failed:
 }
 #endif
 
-static void push_opengl_debug(void)
-{
-    ky_opengl_push_debug(blur_config.renderer);
-}
-
-static void pop_opengl_debug(void)
-{
-    ky_opengl_pop_debug(blur_config.renderer);
-}
-
-static GLuint compile_shader(const GLchar *source, GLenum type)
-{
-    push_opengl_debug();
-    GLuint shader = glCreateShader(type);
-
-    glShaderSource(shader, 1, &source, NULL);
-
-    int ok;
-    glCompileShader(shader);
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-
-    if (ok == GL_FALSE) {
-        char err_info[1024];
-        glGetShaderInfoLog(shader, 1024, NULL, err_info);
-        kywc_log(KYWC_ERROR, "Failed to load shader, Compiler output:%s", err_info);
-        kywc_log(KYWC_INFO, "glsl source: %s", source);
-        glDeleteShader(shader);
-        pop_opengl_debug();
-        return 0;
-    }
-
-    pop_opengl_debug();
-    return shader;
-}
-
-static GLuint opengl_generate_program(const char *vertex_source, const char *frag_source)
-{
-    push_opengl_debug();
-    GLuint vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER);
-    GLuint fragment_shader = compile_shader(frag_source, GL_FRAGMENT_SHADER);
-    if (fragment_shader == 0 || vertex_shader == 0) {
-        goto err;
-    }
-
-    GLuint result_program = glCreateProgram();
-    if (!result_program) {
-        goto err;
-    }
-
-    glAttachShader(result_program, vertex_shader);
-    glAttachShader(result_program, fragment_shader);
-    glLinkProgram(result_program);
-
-    glDetachShader(result_program, vertex_shader);
-    glDetachShader(result_program, fragment_shader);
-    /* Won't be really deleted until program is deleted as well */
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    GLint ok;
-    glGetProgramiv(result_program, GL_LINK_STATUS, &ok);
-    if (ok == GL_FALSE) {
-        kywc_log(KYWC_ERROR, "Failed to link shader");
-        glDeleteProgram(result_program);
-        goto err;
-    }
-    pop_opengl_debug();
-    return result_program;
-
-err:
-    pop_opengl_debug();
-    return 0;
-}
-
 static void blur_program_generate(struct blur_program *prog, const char *vertex_source,
                                   const char *frag_source)
 {
-    GLuint prog_id = opengl_generate_program(vertex_source, frag_source);
+    GLuint prog_id = ky_opengl_create_program(blur_config.renderer, vertex_source, frag_source);
     if (prog_id > 0) {
         prog->id = prog_id;
         prog->shaders.position = glGetAttribLocation(prog_id, "position");
@@ -364,7 +290,7 @@ static struct blur_tex_program *get_or_generate_blur_text_program(void)
     if (blur_tex_prog->id > 0) {
         return blur_tex_prog;
     }
-    GLuint prog = opengl_generate_program(blur_tex_vert, blur_tex_rgba_frag);
+    GLuint prog = ky_opengl_create_program(blur_config.renderer, blur_tex_vert, blur_tex_rgba_frag);
     if (prog > 0) {
         blur_tex_prog->id = prog;
         blur_tex_prog->shaders.proj = glGetUniformLocation(prog, "proj");
