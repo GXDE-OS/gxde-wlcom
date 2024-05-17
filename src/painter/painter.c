@@ -73,7 +73,6 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
 
     /* border line */
     double half = info->border_width / 2.0;
-    cairo_set_line_cap(cairo, CAIRO_LINE_CAP_ROUND);
     cairo_set_source_rgba(cairo, info->border_rgba[0], info->border_rgba[1], info->border_rgba[2],
                           info->border_rgba[3]);
     cairo_set_line_width(cairo, info->border_width);
