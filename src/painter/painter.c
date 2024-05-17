@@ -98,8 +98,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
 
     if (info->border_mask & BORDER_MASK_RIGHT) {
         if (info->corner_mask & CORNER_MASK_TOP_RIGHT) {
-            bool have_top_right = info->border_mask & BORDER_MASK_TOP;
-            if (have_top_right) {
+            if (info->border_mask & BORDER_MASK_TOP) {
                 cairo_move_to(cairo, box->x + width - half, box->y + radius);
             } else {
                 cairo_move_to(cairo, box->x + width - radius, box->y + half);
@@ -121,8 +120,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
 
     if (info->border_mask & BORDER_MASK_BOTTOM) {
         if (info->corner_mask & CORNER_MASK_BOTTOM_RIGHT) {
-            bool have_bottom_right = info->border_mask & BORDER_MASK_RIGHT;
-            if (have_bottom_right) {
+            if (info->border_mask & BORDER_MASK_RIGHT) {
                 cairo_move_to(cairo, box->x + width - radius, box->y + height - half);
             } else {
                 cairo_move_to(cairo, box->x + width - half, box->y + height - radius);
@@ -144,8 +142,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
 
     if (info->border_mask & BORDER_MASK_LEFT) {
         if (info->corner_mask & CORNER_MASK_BOTTOM_LEFT) {
-            bool have_bottom_left = info->border_mask & BORDER_MASK_BOTTOM;
-            if (have_bottom_left) {
+            if (info->border_mask & BORDER_MASK_BOTTOM) {
                 cairo_move_to(cairo, box->x + half, box->y + height - radius);
             } else {
                 cairo_move_to(cairo, box->x + radius, box->y + height - half);
@@ -156,8 +153,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
             cairo_move_to(cairo, box->x + half, box->y + height);
         }
         if (info->corner_mask & CORNER_MASK_TOP_LEFT) {
-            bool have_top_left = info->border_mask & BORDER_MASK_TOP;
-            if (have_top_left) {
+            if (info->border_mask & BORDER_MASK_TOP) {
                 cairo_line_to(cairo, box->x + half, box->y + radius);
             } else {
                 cairo_line_to(cairo, box->x + half, box->y + radius);
