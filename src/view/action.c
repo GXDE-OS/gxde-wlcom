@@ -17,7 +17,6 @@
 #include "scene/thumbnail.h"
 #include "util/dir.h"
 #include "view/action.h"
-#include "view/workspace.h"
 #include "view_p.h"
 
 static struct window_shortcut {

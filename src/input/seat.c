@@ -373,7 +373,6 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
     }
 }
 
-// TODO: set xwayland seat if surface is xwayland surface
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
     struct view *view = surface ? view_try_from_wlr_surface(surface) : NULL;
