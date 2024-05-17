@@ -684,9 +684,9 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     int distance = calculate_blur_radius(blur_config.iterations, offset);
     distance = ceil(distance / target->scale);
 
-    wlr_region_expand(&blur_region, &blur_region, distance / 2);
+    wlr_region_expand(&blur_region, &blur_region, distance);
     pixman_region32_union(half_expand_damage, &blur_region, half_expand_damage);
-    wlr_region_expand(&blur_region, &blur_region, distance - distance / 2);
+    wlr_region_expand(&blur_region, &blur_region, distance / 2);
     pixman_region32_union(&target->damage, &blur_region, &target->damage);
     pixman_region32_fini(&blur_region);
 }
