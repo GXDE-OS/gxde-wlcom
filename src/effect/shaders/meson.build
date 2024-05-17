@@ -6,6 +6,8 @@ shaders = [
   'blur_down.frag',
   'touchclick.vert',
   'touchclick.frag',
+  'touchtrail.vert',
+  'touchtrail.frag',
   'long_touch.vert',
   'long_touch.frag',
 ]

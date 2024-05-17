@@ -9,6 +9,7 @@ wlcom_sources += files(
   'scale.c',
   'soft_gamma.c',
   'touchclick.c',
+  'touchtrail.c',
   'long_touch.c',
 )
 

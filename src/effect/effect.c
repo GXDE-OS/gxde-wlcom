@@ -446,6 +446,7 @@ bool effect_manager_create(struct server *server)
     scale_effect_create(manager);
     soft_gamma_effect_create(manager);
     touchclick_effect_create(manager);
+    touchtrail_effect_create(manager);
     long_touch_effect_create(manager);
 
     return true;
