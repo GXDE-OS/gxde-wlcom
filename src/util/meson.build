@@ -9,6 +9,7 @@ wlcom_sources += files(
   'limit.c',
   'logger.c',
   'matrix.c',
+  'vec2.c',
   'queue.c',
   'spawn.c',
   'sysfs.c',
