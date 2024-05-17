@@ -53,7 +53,6 @@ class MainWindow : public QMainWindow
 
     void show_menu(const QPoint pos);
     void toplevel_menu(const QPoint pos);
-    void ShowTooltip(QModelIndex index);
 
     void show_toplevel_thumbnail();
     void show_output_thumbnail();

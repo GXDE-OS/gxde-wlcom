@@ -28,6 +28,7 @@ class ThumbnailItem::Private
     EGLImage m_image = EGL_NO_IMAGE_KHR;
     QImage image;
     uint32_t format;
+    QSize thum_size;
     ThumInfo *mThumInfo = nullptr;
     void *mem_ptr = nullptr;
     Thumbnail::BufferFlags thumFlags = Thumbnail::BufferFlag::Dmabuf;
@@ -73,7 +74,7 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
             m_texture->setWrapMode(QOpenGLTexture::ClampToEdge);
             m_texture->setMinMagFilters(QOpenGLTexture::Linear, QOpenGLTexture::Linear);
             m_texture->release();
-            m_texture->setSize(window()->size().width(), window()->size().height());
+            m_texture->setSize(pri->thum_size.width(), pri->thum_size.height());
 
             int textureId = m_texture->textureId();
 
@@ -82,7 +83,7 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
                                                    : QQuickWindow::TextureIsOpaque;
             texture = window()->createTextureFromNativeObject(QQuickWindow::NativeObjectTexture,
                                                               &textureId, 0 /*a vulkan thing?*/,
-                                                              window()->size(), textureOption);
+                                                              pri->thum_size, textureOption);
         }
     } else {
         if (pri->image.isNull()) {
@@ -220,6 +221,7 @@ void ThumbnailItem::BufferImportDmabuf()
 
     pri->format = thumbnail->format();
     pri->thumFlags = thumbnail->flags();
+    pri->thum_size = thumbnail->size();
     update();
 }
 

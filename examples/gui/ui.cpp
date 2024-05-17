@@ -7,7 +7,6 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSpinBox>
-#include <QToolTip>
 #include <QVBoxLayout>
 
 #include <QDebug>
@@ -91,7 +90,6 @@ void MainWindow::init_workspace_widget(QWidget *widget)
     widget->setLayout(layout);
 
     tableWidget_0->setMouseTracking(true);
-    connect(tableWidget_0, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
     connect(add_btn, SIGNAL(clicked()), this, SLOT(add_btn_clicked()));
     connect(move_up_btn, SIGNAL(clicked()), this, SLOT(move_up_btn_clicked()));
     connect(move_down_btn, SIGNAL(clicked()), this, SLOT(move_down_btn_clicked()));
@@ -161,7 +159,6 @@ void MainWindow::init_output_widget(QWidget *widget)
     outputs_count = 0;
 
     tableWidget_1->setMouseTracking(true);
-    connect(tableWidget_1, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
 
     connect(context, &Context::outputAdded, this, &MainWindow::add_output_item);
     tableWidget_1->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -216,14 +213,7 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
     toplevel_count = 0;
 
     tableWidget_2->setMouseTracking(true);
-    connect(tableWidget_2, SIGNAL(entered(QModelIndex)), this, SLOT(ShowTooltip(QModelIndex)));
     connect(context, &Context::toplevelAdded, this, &MainWindow::add_toplevel_item);
-}
-
-void MainWindow::ShowTooltip(QModelIndex index)
-{
-    QToolTip::showText(QCursor::pos(), index.data().toString());
-    return;
 }
 
 void MainWindow::init_form()
