@@ -16,8 +16,7 @@ void widget_destroy(struct widget *widget);
 
 void widget_update(struct widget *widget, bool partial);
 
-void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked,
-                     bool slant);
+void widget_set_text(struct widget *widget, const char *text, int align, uint32_t attr);
 
 void widget_set_font(struct widget *widget, const char *name, int size);
 

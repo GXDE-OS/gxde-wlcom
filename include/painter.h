@@ -34,6 +34,13 @@ enum text_align {
     TEXT_ALIGN_RIGHT,
 };
 
+enum text_attr {
+    TEXT_ATTR_NONE = 0,
+    TEXT_ATTR_SLANT = 1 << 0,
+    TEXT_ATTR_SUBMENU = 1 << 1, // ">"
+    TEXT_ATTR_CHECKED = 1 << 2, // "✓"
+};
+
 enum auto_resize {
     AUTO_RESIZE_NONE = 0,
     AUTO_RESIZE_ONLY,
@@ -50,10 +57,10 @@ struct draw_info {
 
     float *border_rgba;
     float border_width;
-    enum border_mask border_mask;
+    uint32_t border_mask;
 
     /* rounded rect */
-    enum corner_mask corner_mask;
+    uint32_t corner_mask;
     float corner_radius;
 
     const char *text;
@@ -62,9 +69,7 @@ struct draw_info {
     int font_size;
     enum text_align align;
     enum auto_resize auto_resize;
-    bool slant;
-    bool submenu; // ">"
-    bool checked; // "✓"
+    uint32_t text_attr;
 
     /* blur support */
     int blur_margin;

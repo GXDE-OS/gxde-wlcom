@@ -43,8 +43,9 @@ static void menu_draw_item(struct menu_item *item, bool force)
         border_mask |= BORDER_MASK_TOP;
     }
 
-    widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, !!item->submenu, item->checked,
-                    false);
+    uint32_t text_attr = item->checked ? TEXT_ATTR_CHECKED : TEXT_ATTR_NONE;
+    text_attr |= item->submenu ? TEXT_ATTR_SUBMENU : TEXT_ATTR_NONE;
+    widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, text_attr);
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, item->menu->width, item->menu->item_height);
 

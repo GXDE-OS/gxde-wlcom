@@ -238,7 +238,7 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
         if (height < info->height) {
             info->height = height;
         }
-        info->submenu = false;
+        info->text_attr &= ~(TEXT_ATTR_SUBMENU | TEXT_ATTR_CHECKED);
     }
 
     /* draw hover together */

@@ -39,11 +39,9 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .font_rgba = color_valid(widget->front_color) ? widget->front_color : NULL,
         .font = widget->font_name,
         .font_size = widget->font_size,
-        .slant = widget->slant,
         .align = widget->text_align,
-        .submenu = widget->submenu,
-        .checked = widget->checked,
         .auto_resize = widget->auto_resize,
+        .text_attr = widget->text_attr,
 
         .svg = widget->svg,
         .hover_svg = widget->hover_svg,
@@ -407,21 +405,10 @@ void widget_set_font(struct widget *widget, const char *name, int size)
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
-void widget_set_text(struct widget *widget, const char *text, int align, bool submenu, bool checked,
-                     bool slant)
+void widget_set_text(struct widget *widget, const char *text, int align, uint32_t attr)
 {
-    if (widget->slant != slant) {
-        widget->slant = slant;
-        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
-    }
-
-    if (widget->submenu != submenu) {
-        widget->submenu = submenu;
-        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
-    }
-
-    if (widget->checked != checked) {
-        widget->checked = checked;
+    if (widget->text_attr != attr) {
+        widget->text_attr = attr;
         widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
     }
 

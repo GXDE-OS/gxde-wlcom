@@ -288,8 +288,8 @@ static void update_title_text(struct item_view *item_view)
     struct theme *theme = theme_manager_get_current();
     int select_width_gap = SELECT_WIDTH_GAP * 2;
     int max_width = switcher->max_width - theme->button_width - select_width_gap;
-    widget_set_text(item_view->title_text, item_view->text, JUSTIFY_CENTER, false, false,
-                    item_view->kywc_view->minimized);
+    widget_set_text(item_view->title_text, item_view->text, JUSTIFY_CENTER,
+                    item_view->kywc_view->minimized ? TEXT_ATTR_SLANT : TEXT_ATTR_NONE);
 
     widget_set_font(item_view->title_text, theme->font_name, theme->font_size);
     widget_set_front_color(item_view->title_text, switcher->color->font_color);

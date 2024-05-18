@@ -69,7 +69,7 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
 
     char text[4];
     snprintf(text, 4, "%3d", output->fps);
-    widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, false, false, false);
+    widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, TEXT_ATTR_NONE);
     widget_update(output->widget, false);
 
     ky_scene_node_set_position(output->node, output->output->x + 5, output->output->y + 5);

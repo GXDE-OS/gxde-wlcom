@@ -35,7 +35,7 @@ struct widget {
     int font_size;
     int text_align;
     bool text_truncated;
-    bool slant;
+    uint32_t text_attr;
 
     /* color in this widget */
     float background_color[4];
@@ -59,7 +59,6 @@ struct widget {
     /* widget support hover state */
     bool hoverable;
     bool enabled, hovered, blurred;
-    bool submenu, checked;
 };
 
 #endif /* _WIDGET_P_H_ */
