@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-07 16:37+0800\n"
-"PO-Revision-Date: 2024-04-07 16:38+0800\n"
+"POT-Creation-Date: 2024-05-20 09:40+0800\n"
+"PO-Revision-Date: 2024-05-20 09:40+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
@@ -17,98 +17,98 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/action.c:172
+#: src/view/action.c:173
 msgid "Capture saved to"
 msgstr "捕获已保存为"
 
-#: src/view/ssd.c:232
+#: src/view/ssd.c:247
 msgid "More actions for this window"
 msgstr "此窗口的更多操作"
 
-#: src/view/ssd.c:233
+#: src/view/ssd.c:248
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/view/ssd.c:234
+#: src/view/ssd.c:249
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/view/ssd.c:235
+#: src/view/ssd.c:250
 msgid "Restore"
 msgstr "还原"
 
-#: src/view/ssd.c:236
+#: src/view/ssd.c:251
 msgid "Close"
 msgstr "关闭"
 
-#: src/view/window_menu.c:167
+#: src/view/window_menu.c:184
 msgid "Desktop"
 msgstr "桌面"
 
-#: src/view/window_menu.c:197
+#: src/view/window_menu.c:214
 msgid "Move To Desktop"
 msgstr "移动到桌面"
 
-#: src/view/window_menu.c:232
+#: src/view/window_menu.c:248
 msgid "Screen"
 msgstr "屏幕"
 
-#: src/view/window_menu.c:313
-msgid "Take Screenshot(S)"
-msgstr "截图(S)"
-
-#: src/view/window_menu.c:317
-msgid "Desktop(D)"
-msgstr "桌面(D)"
-
-#: src/view/window_menu.c:319
-msgid "All Desktop(A)"
-msgstr "全部桌面(A)"
-
-#: src/view/window_menu.c:321
-msgid "Add To New Desktop(N)"
-msgstr "添加到新桌面(N)"
-
-#: src/view/window_menu.c:324
-msgid "Move To New Desktop(M)"
-msgstr "移动到新桌面(M)"
-
-#: src/view/window_menu.c:327
-msgid "Maximize(X)"
-msgstr "最大化(X)"
-
-#: src/view/window_menu.c:330
-msgid "Move To Screen(S)"
-msgstr "移动到屏幕(S)"
-
-#: src/view/window_menu.c:333
-msgid "Minimize(N)"
-msgstr "最小化(N)"
-
-#: src/view/window_menu.c:336
-msgid "More(M)"
-msgstr "更多操作(M)"
-
-#: src/view/window_menu.c:338
-msgid "Move(M)"
-msgstr "移动(M)"
-
-#: src/view/window_menu.c:339
-msgid "Resize(R)"
-msgstr "调整大小(R)"
-
-#: src/view/window_menu.c:340
-msgid "Keep-Above(A)"
-msgstr "置于顶层(A)"
-
-#: src/view/window_menu.c:341
-msgid "Keep-Below(B)"
-msgstr "置于底层(B)"
-
 #: src/view/window_menu.c:342
-msgid "Fullscreen(F)"
-msgstr "全屏(F)"
+msgid "Take Screenshot(_T)"
+msgstr "截图(_T)"
 
-#: src/view/window_menu.c:344
-msgid "Close(C)"
-msgstr "关闭(C)"
+#: src/view/window_menu.c:346
+msgid "Desktop(_D)"
+msgstr "桌面(_D)"
+
+#: src/view/window_menu.c:348
+msgid "All Desktop(_A)"
+msgstr "全部桌面(_A)"
+
+#: src/view/window_menu.c:350
+msgid "Add To New Desktop(_N)"
+msgstr "添加到新桌面(_N)"
+
+#: src/view/window_menu.c:353
+msgid "Move To New Desktop(_M)"
+msgstr "移动到新桌面(_M)"
+
+#: src/view/window_menu.c:356
+msgid "Maximize(_X)"
+msgstr "最大化(_X)"
+
+#: src/view/window_menu.c:360
+msgid "Move To Screen(_S)"
+msgstr "移动到屏幕(_S)"
+
+#: src/view/window_menu.c:363
+msgid "Minimize(_N)"
+msgstr "最小化(_N)"
+
+#: src/view/window_menu.c:367
+msgid "More(_M)"
+msgstr "更多操作(_M)"
+
+#: src/view/window_menu.c:369
+msgid "Move(_M)"
+msgstr "移动(_M)"
+
+#: src/view/window_menu.c:370
+msgid "Resize(_R)"
+msgstr "调整大小(_R)"
+
+#: src/view/window_menu.c:371
+msgid "Keep-Above(_A)"
+msgstr "置于顶层(_A)"
+
+#: src/view/window_menu.c:373
+msgid "Keep-Below(_B)"
+msgstr "置于底层(_B)"
+
+#: src/view/window_menu.c:375
+msgid "Fullscreen(_F)"
+msgstr "全屏(_F)"
+
+#: src/view/window_menu.c:378
+msgid "Close(_C)"
+msgstr "关闭(_C)"
