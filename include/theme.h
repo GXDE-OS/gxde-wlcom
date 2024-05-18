@@ -42,7 +42,7 @@ enum theme_update_mask {
     /* font_name, font_size or text color changed */
     THEME_UPDATE_MASK_FONT = 1 << 0,
     /* text_justify changed */
-    THEME_UPDATE_MASK_TEXT_POS = 1 << 1,
+    THEME_UPDATE_MASK_TEXT_ALIGN = 1 << 1,
     /* border_color changed */
     THEME_UPDATE_MASK_BORDER_COLOR = 1 << 2,
     /* background_color changed */
