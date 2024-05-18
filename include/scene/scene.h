@@ -182,7 +182,7 @@ struct ky_scene {
 
     struct wl_list outputs;
 
-    /* damage regon after collect_damage based in node's visible region */
+    /* damage region after collect_damage based in node's visible region */
     pixman_region32_t collected_damage;
     /* invisible region after collect_damage */
     pixman_region32_t collected_invisible;
