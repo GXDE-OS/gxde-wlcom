@@ -39,6 +39,7 @@ enum text_attr {
     TEXT_ATTR_SLANT = 1 << 0,
     TEXT_ATTR_SUBMENU = 1 << 1, // ">"
     TEXT_ATTR_CHECKED = 1 << 2, // "✓"
+    TEXT_ATTR_ACCEL = 1 << 3, // "_"
 };
 
 enum auto_resize {

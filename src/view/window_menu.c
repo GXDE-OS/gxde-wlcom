@@ -181,8 +181,7 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
             }
             continue;
         }
-
-        snprintf(name, 64, "%s %d", tr("Desktop"), i + 1);
+        snprintf(name, 64, "%s%d %s %d", i < 9 ? "_" : "", i + 1, tr("Desktop"), i + 1);
         if (!desktop->item) {
             desktop->item =
                 menu_add_item(window_menu->desktop, name, key, add_desktop_action, desktop);
@@ -246,7 +245,7 @@ static void screen_update(struct kywc_output *output, int index, void *data)
     char name[64] = { 0 };
 
     struct screen_item *screen = &window_menu->screen_items[index];
-    snprintf(name, 64, "%s %d (%s)", tr("Screen"), index + 1, output->name);
+    snprintf(name, 64, "%s%s %d (%s)", index < 9 ? "_" : "", tr("Screen"), index + 1, output->name);
     uint32_t key = index < 9 ? KEY_1 + index : 0;
     if (!screen->item) {
         screen->item = menu_add_item(window_menu->screen, name, key, move_screen_action, screen);
@@ -340,43 +339,43 @@ static struct window_menu *window_menu_create(struct seat *seat)
     /* create the root menu: items and submenus */
     window_menu->root = menu_create(manager->tree, NULL);
 
-    menu_add_item(window_menu->root, tr("Take Screenshot(S)"), KEY_S, window_menu_action,
+    menu_add_item(window_menu->root, tr("Take Screenshot(_S)"), KEY_S, window_menu_action,
                   window_menu);
 
     struct menu_item *desktop =
-        menu_add_item(window_menu->root, tr("Desktop(D)"), KEY_D, NULL, NULL);
+        menu_add_item(window_menu->root, tr("Desktop(_D)"), KEY_D, NULL, NULL);
     window_menu->desktop = menu_create(NULL, desktop);
-    menu_add_item(window_menu->desktop, tr("All Desktop(A)"), KEY_A, window_menu_action,
+    menu_add_item(window_menu->desktop, tr("All Desktop(_A)"), KEY_A, window_menu_action,
                   window_menu);
-    window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To New Desktop(N)"), KEY_N,
+    window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To New Desktop(_N)"), KEY_N,
                                         window_menu_action, window_menu);
     menu_item_set_separator(window_menu->add_to, true);
-    window_menu->move_to = menu_add_item(window_menu->desktop, tr("Move To New Desktop(M)"), KEY_M,
+    window_menu->move_to = menu_add_item(window_menu->desktop, tr("Move To New Desktop(_M)"), KEY_M,
                                          window_menu_action, window_menu);
 
-    window_menu->maximize =
-        menu_add_item(window_menu->root, tr("Maximize(X)"), KEY_X, window_menu_action, window_menu);
+    window_menu->maximize = menu_add_item(window_menu->root, tr("Maximize(_X)"), KEY_X,
+                                          window_menu_action, window_menu);
 
     struct menu_item *screen =
-        menu_add_item(window_menu->root, tr("Move To Screen(S)"), KEY_S, NULL, NULL);
+        menu_add_item(window_menu->root, tr("Move To Screen(_S)"), KEY_S, NULL, NULL);
     window_menu->screen = menu_create(NULL, screen);
 
-    window_menu->minimize =
-        menu_add_item(window_menu->root, tr("Minimize(N)"), KEY_N, window_menu_action, window_menu);
+    window_menu->minimize = menu_add_item(window_menu->root, tr("Minimize(_N)"), KEY_N,
+                                          window_menu_action, window_menu);
 
     /* create the more action submenu */
-    struct menu_item *more = menu_add_item(window_menu->root, tr("More(M)"), KEY_M, NULL, NULL);
+    struct menu_item *more = menu_add_item(window_menu->root, tr("More(_M)"), KEY_M, NULL, NULL);
     window_menu->more = menu_create(NULL, more);
-    menu_add_item(window_menu->more, tr("Move(M)"), KEY_M, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("Resize(R)"), KEY_R, window_menu_action, window_menu);
-    window_menu->keep_above = menu_add_item(window_menu->more, tr("Keep-Above(A)"), KEY_A,
+    menu_add_item(window_menu->more, tr("Move(_M)"), KEY_M, window_menu_action, window_menu);
+    menu_add_item(window_menu->more, tr("Resize(_R)"), KEY_R, window_menu_action, window_menu);
+    window_menu->keep_above = menu_add_item(window_menu->more, tr("Keep-Above(_A)"), KEY_A,
                                             window_menu_action, window_menu);
-    window_menu->keep_below = menu_add_item(window_menu->more, tr("Keep-Below(B)"), KEY_B,
+    window_menu->keep_below = menu_add_item(window_menu->more, tr("Keep-Below(_B)"), KEY_B,
                                             window_menu_action, window_menu);
-    window_menu->fullscreen = menu_add_item(window_menu->more, tr("Fullscreen(F)"), KEY_F,
+    window_menu->fullscreen = menu_add_item(window_menu->more, tr("Fullscreen(_F)"), KEY_F,
                                             window_menu_action, window_menu);
 
-    menu_add_item(window_menu->root, tr("Close(C)"), KEY_C, window_menu_action, window_menu);
+    menu_add_item(window_menu->root, tr("Close(_C)"), KEY_C, window_menu_action, window_menu);
 
     return window_menu;
 }
