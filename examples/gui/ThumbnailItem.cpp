@@ -32,12 +32,9 @@ class ThumbnailItem::Private
     ThumInfo *mThumInfo = nullptr;
     void *mem_ptr = nullptr;
     Thumbnail::BufferFlags thumFlags = Thumbnail::BufferFlag::Dmabuf;
-
-  private:
-    ThumbnailItem *t;
 };
 
-ThumbnailItem::Private::Private(ThumbnailItem *item) : t(item) {}
+ThumbnailItem::Private::Private(ThumbnailItem *item) {}
 
 ThumbnailItem::Private::~Private() {}
 
