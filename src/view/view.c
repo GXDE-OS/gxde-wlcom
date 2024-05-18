@@ -466,6 +466,7 @@ void view_configure(struct view *view, uint32_t serial)
 
     view->pending.action = VIEW_ACTION_NOP;
     view->pending.geometry = (struct kywc_box){ 0 };
+    view->pending.geometry = view->base.geometry;
 
     if (serial == 0) {
         return;
@@ -513,6 +514,7 @@ void view_configured(struct view *view)
     view->pending.configure_serial = 0;
     view->pending.configure_action = VIEW_ACTION_NOP;
     view->pending.configure_geometry = (struct kywc_box){ 0 };
+    view->pending.geometry = (struct kywc_box){ 0 };
 }
 
 void view_proxy_destroy(struct view_proxy *view_proxy)
