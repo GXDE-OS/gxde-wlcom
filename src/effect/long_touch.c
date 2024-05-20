@@ -2,14 +2,11 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_touch.h>
-
-#include <kywc/log.h>
 
 #include "effect_p.h"
 #include "input/cursor.h"
@@ -170,7 +167,8 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     uint32_t time = current_time_msec();
     if (time > finger->start_time + effect->config.animate_delay) {
         uint32_t diff_time = time - effect->config.animate_delay - finger->start_time;
-        if (diff_time > effect->config.animate_duration) {
+        if (diff_time > effect->config.animate_duration &&
+            finger->angle > effect->config.end_angle) {
             free_touch_finger(effect);
         } else {
             finger->rendering = true;
@@ -369,7 +367,7 @@ bool long_touch_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("long_touch", 101, true, &effect_impl);
+    effect->effect = effect_create("long_touch", 102, true, &effect_impl);
     if (!effect->effect) {
         free(effect);
         return false;

@@ -341,7 +341,7 @@ bool touchclick_effect_create(struct effect_manager *manager)
     effect->manager = manager;
     effect->config.animate_duration = 500;
     effect->config.start_radius = 0.5f;
-    effect->config.end_radius = 0.3f;
+    effect->config.end_radius = 0.0f;
     effect->config.start_attenuation = 0.4f;
     effect->config.end_attenuation = 0.8f;
     effect->config.shape_width = 100;

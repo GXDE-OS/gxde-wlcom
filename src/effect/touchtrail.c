@@ -457,7 +457,7 @@ bool touchtrail_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("touchtrail", 102, true, &effect_impl);
+    effect->effect = effect_create("touchtrail", 101, true, &effect_impl);
     if (!effect->effect) {
         free(effect);
         return false;
