@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: MulanPSL-2.0
 
 #define _POSIX_C_SOURCE 200809L
+#include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <kywc/identifier.h>
 #include <kywc/log.h>
@@ -12,6 +12,9 @@
 #include "effect_p.h"
 #include "scene/animation.h"
 #include "scene/thumbnail.h"
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 enum effect_type {
     EFFECT_TYPE_NONE = 0,
@@ -38,6 +41,164 @@ static uint32_t get_effect_types(const struct effect_interface *impl)
     }
 
     return types;
+}
+
+static void entities_clip_region(struct node_effect_chain *chain, pixman_region32_t *region)
+{
+    if (wl_list_empty(&chain->base.slots)) {
+        return;
+    }
+
+    pixman_region32_clear(region);
+    pixman_region32_t clip_region;
+    pixman_region32_init(&clip_region);
+
+    struct effect_entity *entity;
+    struct effect_slot *slot;
+    wl_list_for_each_reverse(slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (!entity->effect->impl->entity_clip_region) {
+            continue;
+        }
+        bool ret = entity->effect->impl->entity_clip_region(entity, &clip_region);
+        pixman_region32_union(region, region, &clip_region);
+        if (!ret) {
+            break;
+        }
+    }
+
+    pixman_region32_fini(&clip_region);
+}
+
+static void entities_opaque_region(struct node_effect_chain *chain, pixman_region32_t *region)
+{
+    if (wl_list_empty(&chain->base.slots)) {
+        return;
+    }
+
+    pixman_region32_clear(region);
+    pixman_region32_t opaque_region;
+    pixman_region32_init(&opaque_region);
+
+    struct effect_entity *entity;
+    struct effect_slot *slot;
+    wl_list_for_each_reverse(slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (!entity->effect->impl->entity_opaque_region) {
+            continue;
+        }
+        bool ret = entity->effect->impl->entity_opaque_region(entity, &opaque_region);
+        pixman_region32_union(region, region, &opaque_region);
+        if (!ret) {
+            break;
+        }
+    }
+
+    pixman_region32_fini(&opaque_region);
+}
+
+static void entities_bounding_box(struct node_effect_chain *chain, struct wlr_box *box)
+{
+    if (wl_list_empty(&chain->base.slots)) {
+        *box = (struct wlr_box){ 0 };
+        return;
+    }
+
+    int min_x1 = INT_MAX, min_y1 = INT_MAX;
+    int max_x2 = INT_MIN, max_y2 = INT_MIN;
+
+    struct kywc_box child_box;
+    struct effect_entity *entity;
+    struct effect_slot *slot;
+    wl_list_for_each_reverse(slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (!entity->effect->impl->entity_bounding_box) {
+            continue;
+        }
+        bool ret = entity->effect->impl->entity_bounding_box(entity, &child_box);
+        min_x1 = MIN(min_x1, child_box.x);
+        min_y1 = MIN(min_y1, child_box.y);
+        max_x2 = MAX(max_x2, child_box.x + child_box.width);
+        max_y2 = MAX(max_y2, child_box.y + child_box.height);
+        if (!ret) {
+            break;
+        }
+    }
+
+    box->x = min_x1 == INT_MAX ? 0 : min_x1;
+    box->y = min_y1 == INT_MAX ? 0 : min_y1;
+    box->width = max_x2 == INT_MIN ? 0 : max_x2 - min_x1;
+    box->height = max_y2 == INT_MIN ? 0 : max_y2 - min_y1;
+}
+
+static void entities_collect_damage(struct node_effect_chain *chain, int lx, int ly,
+                                    bool parent_enabled, uint32_t damage_type,
+                                    pixman_region32_t *damage, pixman_region32_t *invisible,
+                                    pixman_region32_t *affected)
+{
+    struct wlr_box box;
+    entities_bounding_box(chain, &box);
+    struct ky_scene_node *node = chain->node;
+    if (wlr_box_empty(&box)) {
+        chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
+                                   affected);
+        return;
+    }
+
+    /* if node state is changed, it must in the affected region */
+    if (box.width > 0 && box.height > 0 &&
+        pixman_region32_contains_rectangle(
+            affected, &(pixman_box32_t){ lx + box.x, ly + box.y, lx + box.width,
+                                         ly + box.height }) == PIXMAN_REGION_OUT) {
+        return;
+    }
+
+    bool node_enabled = parent_enabled && node->enabled;
+    bool no_damage = node->last_enabled && node_enabled && damage_type == KY_SCENE_DAMAGE_NONE;
+    if (!no_damage) {
+        /* node last visible region is added to damgae */
+        if (node->last_enabled && (!node_enabled || (damage_type & KY_SCENE_DAMAGE_HARMFUL))) {
+            pixman_region32_union(damage, damage, &node->visible_region);
+        }
+    }
+
+    pixman_region32_clear(&node->visible_region);
+    pixman_region32_t opaque_region, clip_region;
+    pixman_region32_init(&opaque_region);
+    pixman_region32_init(&clip_region);
+    bool visible = node_enabled;
+    if (visible) {
+        entities_clip_region(chain, &clip_region);
+        bool has_clip_region = pixman_region32_not_empty(&clip_region);
+        if (has_clip_region) {
+            pixman_region32_intersect_rect(&node->visible_region, &clip_region, 0, 0, box.width,
+                                           box.height);
+            pixman_region32_translate(&node->visible_region, lx, ly);
+        } else {
+            pixman_region32_init_rect(&node->visible_region, lx + box.x, ly + box.y, box.width,
+                                      box.height);
+        }
+        pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
+        if (!no_damage) {
+            pixman_region32_union(damage, damage, &node->visible_region);
+        }
+
+        pixman_region32_t region;
+        pixman_region32_init(&region);
+        entities_opaque_region(chain, &opaque_region);
+        if (has_clip_region) {
+            pixman_region32_intersect(&region, &opaque_region, &clip_region);
+        }
+        pixman_region32_translate(&region, lx, ly);
+        pixman_region32_union(invisible, invisible, &region);
+        pixman_region32_fini(&region);
+    }
+
+    pixman_region32_fini(&opaque_region);
+    pixman_region32_fini(&clip_region);
+
+    node->last_enabled = node_enabled;
+    node->damage_type = KY_SCENE_DAMAGE_NONE;
 }
 
 static struct node_effect_chain *node_effect_chain_from_node(struct ky_scene_node *node)
@@ -74,8 +235,8 @@ static void node_chain_collect_damage(struct ky_scene_node *node, int lx, int ly
                                    affected);
         return;
     }
-    chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
-                               affected);
+    entities_collect_damage(chain, lx, ly, parent_enabled, damage_type, damage, invisible,
+                            affected);
 }
 
 static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
@@ -87,7 +248,27 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
         chain->impl.push_damage(node, damage_node, damage_type, damage);
         return;
     }
-    chain->impl.push_damage(node, damage_node, damage_type, damage);
+    damage_type |= node->damage_type;
+
+    struct effect_entity *entity;
+    struct effect_slot *slot, *temp_slot;
+    wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (entity->effect->impl->node_push_damage &&
+            !entity->effect->impl->node_push_damage(entity, damage_node, &damage_type, damage)) {
+            break;
+        }
+    }
+
+    /* emit damage when node content damaged or children damaged */
+    if ((node == damage_node && node->damage_type & KY_SCENE_DAMAGE_HARMLESS) ||
+        node != damage_node) {
+        wl_signal_emit_mutable(&node->events.damage, NULL);
+    }
+
+    pixman_region32_translate(damage, node->x, node->y);
+    node->parent->node.impl.push_damage(&node->parent->node, damage_node,
+                                        damage_type | node->damage_type, damage);
 }
 
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
@@ -106,6 +287,7 @@ static void node_chain_render(struct ky_scene_node *node, int lx, int ly,
         chain->impl.render(node, lx, ly, target);
         return;
     }
+
     struct effect_entity *entity;
     struct effect_slot *slot, *temp_slot;
     wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {

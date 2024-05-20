@@ -5,6 +5,8 @@
 #ifndef _EFFECT_H_
 #define _EFFECT_H_
 
+#include <kywc/boxes.h>
+
 #include "scene/render.h"
 #include "scene/scene.h"
 
@@ -15,6 +17,13 @@ struct effect_interface {
     void (*entity_create)(struct effect_entity *entity);
     void (*entity_destroy)(struct effect_entity *entity);
     void (*entity_enable)(struct effect_entity *entity);
+
+    bool (*entity_bounding_box)(struct effect_entity *entity, struct kywc_box *box);
+    bool (*entity_clip_region)(struct effect_entity *entity, pixman_region32_t *clip_region);
+    bool (*entity_opaque_region)(struct effect_entity *entity, pixman_region32_t *opaque_region);
+
+    bool (*node_push_damage)(struct effect_entity *entity, struct ky_scene_node *damage_node,
+                             uint32_t *damage_type, pixman_region32_t *damage);
 
     bool (*node_render)(struct effect_entity *entity, int lx, int ly,
                         struct ky_scene_render_target *target);
