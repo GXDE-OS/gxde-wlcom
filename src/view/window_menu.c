@@ -339,43 +339,41 @@ static struct window_menu *window_menu_create(struct seat *seat)
     /* create the root menu: items and submenus */
     window_menu->root = menu_create(manager->tree, NULL);
 
-    menu_add_item(window_menu->root, tr("Take Screenshot(_T)"), KEY_T, window_menu_action,
+    menu_add_item(window_menu->root, tr("_Take Screenshot"), KEY_T, window_menu_action,
                   window_menu);
 
-    struct menu_item *desktop =
-        menu_add_item(window_menu->root, tr("Desktop(_D)"), KEY_D, NULL, NULL);
+    struct menu_item *desktop = menu_add_item(window_menu->root, tr("_Desktop"), KEY_D, NULL, NULL);
     window_menu->desktop = menu_create(NULL, desktop);
-    menu_add_item(window_menu->desktop, tr("All Desktop(_A)"), KEY_A, window_menu_action,
-                  window_menu);
-    window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To New Desktop(_N)"), KEY_N,
+    menu_add_item(window_menu->desktop, tr("_All Desktop"), KEY_A, window_menu_action, window_menu);
+    window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To _New Desktop"), KEY_N,
                                         window_menu_action, window_menu);
     menu_item_set_separator(window_menu->add_to, true);
-    window_menu->move_to = menu_add_item(window_menu->desktop, tr("Move To New Desktop(_M)"), KEY_M,
+    window_menu->move_to = menu_add_item(window_menu->desktop, tr("_Move To New Desktop"), KEY_M,
                                          window_menu_action, window_menu);
 
-    window_menu->maximize = menu_add_item(window_menu->root, tr("Maximize(_X)"), KEY_X,
-                                          window_menu_action, window_menu);
+    window_menu->maximize =
+        menu_add_item(window_menu->root, tr("Ma_ximize"), KEY_X, window_menu_action, window_menu);
 
     struct menu_item *screen =
-        menu_add_item(window_menu->root, tr("Move To Screen(_S)"), KEY_S, NULL, NULL);
+        menu_add_item(window_menu->root, tr("Move To _Screen"), KEY_S, NULL, NULL);
     window_menu->screen = menu_create(NULL, screen);
 
-    window_menu->minimize = menu_add_item(window_menu->root, tr("Minimize(_N)"), KEY_N,
-                                          window_menu_action, window_menu);
+    window_menu->minimize =
+        menu_add_item(window_menu->root, tr("Mi_nimize"), KEY_N, window_menu_action, window_menu);
 
     /* create the more action submenu */
-    struct menu_item *more = menu_add_item(window_menu->root, tr("More(_M)"), KEY_M, NULL, NULL);
+    struct menu_item *more = menu_add_item(window_menu->root, tr("_More"), KEY_M, NULL, NULL);
     window_menu->more = menu_create(NULL, more);
-    menu_add_item(window_menu->more, tr("Move(_M)"), KEY_M, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("Resize(_R)"), KEY_R, window_menu_action, window_menu);
-    window_menu->keep_above = menu_add_item(window_menu->more, tr("Keep-Above(_A)"), KEY_A,
-                                            window_menu_action, window_menu);
-    window_menu->keep_below = menu_add_item(window_menu->more, tr("Keep-Below(_B)"), KEY_B,
-                                            window_menu_action, window_menu);
-    window_menu->fullscreen = menu_add_item(window_menu->more, tr("Fullscreen(_F)"), KEY_F,
-                                            window_menu_action, window_menu);
+    menu_add_item(window_menu->more, tr("_Move"), KEY_M, window_menu_action, window_menu);
+    menu_add_item(window_menu->more, tr("_Resize"), KEY_R, window_menu_action, window_menu);
+    window_menu->keep_above =
+        menu_add_item(window_menu->more, tr("Keep-_Above"), KEY_A, window_menu_action, window_menu);
+    window_menu->keep_below =
+        menu_add_item(window_menu->more, tr("Keep-_Below"), KEY_B, window_menu_action, window_menu);
+    window_menu->fullscreen =
+        menu_add_item(window_menu->more, tr("_Fullscreen"), KEY_F, window_menu_action, window_menu);
 
-    menu_add_item(window_menu->root, tr("Close(_C)"), KEY_C, window_menu_action, window_menu);
+    menu_add_item(window_menu->root, tr("_Close"), KEY_C, window_menu_action, window_menu);
 
     return window_menu;
 }

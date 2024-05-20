@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-20 09:40+0800\n"
-"PO-Revision-Date: 2024-05-20 09:40+0800\n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-05-20 13:39+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
@@ -54,61 +54,61 @@ msgid "Screen"
 msgstr "屏幕"
 
 #: src/view/window_menu.c:342
-msgid "Take Screenshot(_T)"
+msgid "_Take Screenshot"
 msgstr "截图(_T)"
 
 #: src/view/window_menu.c:346
-msgid "Desktop(_D)"
+msgid "_Desktop"
 msgstr "桌面(_D)"
 
 #: src/view/window_menu.c:348
-msgid "All Desktop(_A)"
+msgid "_All Desktop"
 msgstr "全部桌面(_A)"
 
 #: src/view/window_menu.c:350
-msgid "Add To New Desktop(_N)"
+msgid "Add To _New Desktop"
 msgstr "添加到新桌面(_N)"
 
 #: src/view/window_menu.c:353
-msgid "Move To New Desktop(_M)"
+msgid "_Move To New Desktop"
 msgstr "移动到新桌面(_M)"
 
 #: src/view/window_menu.c:356
-msgid "Maximize(_X)"
+msgid "Ma_ximize"
 msgstr "最大化(_X)"
 
 #: src/view/window_menu.c:360
-msgid "Move To Screen(_S)"
+msgid "Move To _Screen"
 msgstr "移动到屏幕(_S)"
 
 #: src/view/window_menu.c:363
-msgid "Minimize(_N)"
+msgid "Mi_nimize"
 msgstr "最小化(_N)"
 
 #: src/view/window_menu.c:367
-msgid "More(_M)"
+msgid "_More"
 msgstr "更多操作(_M)"
 
 #: src/view/window_menu.c:369
-msgid "Move(_M)"
+msgid "_Move"
 msgstr "移动(_M)"
 
 #: src/view/window_menu.c:370
-msgid "Resize(_R)"
+msgid "_Resize"
 msgstr "调整大小(_R)"
 
 #: src/view/window_menu.c:371
-msgid "Keep-Above(_A)"
+msgid "Keep-_Above"
 msgstr "置于顶层(_A)"
 
 #: src/view/window_menu.c:373
-msgid "Keep-Below(_B)"
+msgid "Keep-_Below"
 msgstr "置于底层(_B)"
 
 #: src/view/window_menu.c:375
-msgid "Fullscreen(_F)"
+msgid "_Fullscreen"
 msgstr "全屏(_F)"
 
 #: src/view/window_menu.c:378
-msgid "Close(_C)"
+msgid "_Close"
 msgstr "关闭(_C)"
