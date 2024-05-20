@@ -167,7 +167,7 @@ static const struct wlr_addon_interface effect_addon_impl = {
     .destroy = node_effect_chain_addon_destroy,
 };
 
-static struct node_effect_chain *node_effec_chain_create(struct ky_scene_node *node)
+static struct node_effect_chain *node_effect_chain_create(struct ky_scene_node *node)
 {
     struct node_effect_chain *chain = calloc(1, sizeof(*chain));
     if (!chain) {
@@ -252,7 +252,7 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
 
     struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
     struct node_effect_chain *chain =
-        addon ? wl_container_of(addon, chain, addon) : node_effec_chain_create(node);
+        addon ? wl_container_of(addon, chain, addon) : node_effect_chain_create(node);
     if (!chain) {
         return NULL;
     }
