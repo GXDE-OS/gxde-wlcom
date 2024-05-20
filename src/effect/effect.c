@@ -206,14 +206,16 @@ static void entity_handle_effect_disable(struct wl_listener *listener, void *dat
     wl_list_init(&entity->frame_slot.link);
 }
 
-static struct wl_list *find_insertion_location(struct effect_entity *entity,
-                                               struct effect_chain *chain)
+static struct wl_list *find_insertion_location(struct effect_entity *entity, bool frame)
 {
+    struct effect_chain *chain = frame ? entity->frame_slot.chain : entity->slot.chain;
     struct wl_list *list = &chain->slots;
+
     struct effect_entity *_entity;
     struct effect_slot *slot;
     wl_list_for_each(slot, &chain->slots, link) {
-        _entity = wl_container_of(slot, _entity, slot);
+        _entity = frame ? wl_container_of(slot, _entity, frame_slot)
+                        : wl_container_of(slot, _entity, slot);
         if (_entity->effect->priority < entity->effect->priority) {
             break;
         }
@@ -226,17 +228,15 @@ static struct wl_list *find_insertion_location(struct effect_entity *entity,
 static void entity_handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct effect_entity *entity = wl_container_of(listener, entity, effect_enable);
-
     struct wl_list *list;
-    struct effect_chain *chain = entity->slot.chain;
-    if (chain) {
-        list = find_insertion_location(entity, chain);
+
+    if (entity->slot.chain) {
+        list = find_insertion_location(entity, false);
         wl_list_insert(list, &entity->slot.link);
     }
 
-    chain = entity->frame_slot.chain;
-    if (chain) {
-        list = find_insertion_location(entity, chain);
+    if (entity->frame_slot.chain) {
+        list = find_insertion_location(entity, true);
         wl_list_insert(list, &entity->frame_slot.link);
     }
 }
