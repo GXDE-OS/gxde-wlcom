@@ -13,7 +13,6 @@
 #include "input/seat.h"
 #include "output.h"
 #include "scene/animation.h"
-#include "theme.h"
 #include "view/action.h"
 #include "view/workspace.h"
 
@@ -127,8 +126,7 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
 
     if (!grab->snap_rect) {
         struct ky_scene_node *sibling = &view->tree->node;
-        grab->snap_rect =
-            ky_scene_rect_create(sibling->parent, 0, 0, snap_background_color);
+        grab->snap_rect = ky_scene_rect_create(sibling->parent, 0, 0, snap_background_color);
         grab->snap_node = &grab->snap_rect->node;
         ky_scene_node_place_below(grab->snap_node, sibling);
         need_source_box = true;
@@ -276,7 +274,7 @@ static void interactive_done(struct interactive_grab *grab)
 }
 
 static void window_adsorption_top_or_bottom(struct kywc_box *s_box, const struct kywc_box *l_box,
-                                            uint32_t *offset, enum interactive_mode mode)
+                                            int *offset, enum interactive_mode mode)
 {
     int sx1 = s_box->x, sy1 = s_box->y, sx2 = s_box->x + s_box->width,
         sy2 = s_box->y + s_box->height;
@@ -288,7 +286,7 @@ static void window_adsorption_top_or_bottom(struct kywc_box *s_box, const struct
     }
 
     /* top adsorb bottom */
-    uint32_t temp = abs(ly2 - sy1);
+    int temp = abs(ly2 - sy1);
     if (temp < *offset) {
         *offset = temp;
         s_box->y = ly2;
@@ -311,7 +309,7 @@ static void window_adsorption_top_or_bottom(struct kywc_box *s_box, const struct
 }
 
 static void window_adsorption_left_or_right(struct kywc_box *s_box, const struct kywc_box *l_box,
-                                            uint32_t *offset, enum interactive_mode mode)
+                                            int *offset, enum interactive_mode mode)
 {
     int sx1 = s_box->x, sy1 = s_box->y, sx2 = s_box->x + s_box->width,
         sy2 = s_box->y + s_box->height;
@@ -323,7 +321,7 @@ static void window_adsorption_left_or_right(struct kywc_box *s_box, const struct
     }
 
     /* left adsorb right */
-    uint32_t temp = abs(lx2 - sx1);
+    int temp = abs(lx2 - sx1);
     if (temp < *offset) {
         *offset = temp;
         s_box->x = lx2;
@@ -346,8 +344,8 @@ static void window_adsorption_left_or_right(struct kywc_box *s_box, const struct
 }
 
 static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct kywc_box *pending,
-                                             uint32_t *gap_x, uint32_t *gap_y,
-                                             enum kywc_edges edges, enum interactive_mode mode)
+                                             int *gap_x, int *gap_y, uint32_t edges,
+                                             enum interactive_mode mode)
 {
     if ((view_manager_get_adsorption() & VIEW_ADSORPTION_WINDOW_EDGES) == 0) {
         return;
@@ -397,7 +395,7 @@ static void window_adsorb_window_constraints(struct kywc_view *kywc_view, struct
 }
 
 static void window_adsorb_edges_constraints(struct kywc_view *kywc_view, struct kywc_box *pending,
-                                            struct output *output, uint32_t *gap_x, uint32_t *gap_y)
+                                            struct output *output, int *gap_x, int *gap_y)
 {
     if ((view_manager_get_adsorption() & VIEW_ADSORPTION_SCREEN_EDGES) == 0) {
         return;
@@ -458,7 +456,7 @@ void window_move_constraints(struct kywc_view *kywc_view, struct output *output,
         .width = kywc_view->geometry.width,
         .height = kywc_view->geometry.height,
     };
-    uint32_t gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
+    int gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
     uint32_t edges = KYWC_EDGE_NONE;
     /* window edge adsorption in left, right */
     edges |= *x != kywc_view->geometry.x ? KYWC_EDGE_LEFT | KYWC_EDGE_RIGHT : KYWC_EDGE_NONE;
@@ -545,7 +543,7 @@ static void interactive_resize_constraints(struct interactive_grab *grab, struct
     int x2 = x1 + box->width + kywc_view->margin.off_width;
     int y2 = y1 + box->height + kywc_view->margin.off_height;
 
-    uint32_t gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
+    int gap_x = EDGE_OFFSET, gap_y = EDGE_OFFSET;
     window_adsorb_window_constraints(kywc_view, box, &gap_x, &gap_y, grab->resize_edges,
                                      INTERACTIVE_MODE_RESIZE);
 

@@ -8,6 +8,7 @@
 #include "view.h"
 
 struct seat;
+struct output;
 
 enum window_action {
     WINDOW_ACTION_NONE = 0,
