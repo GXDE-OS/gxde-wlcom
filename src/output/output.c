@@ -853,7 +853,7 @@ struct output_manager *output_manager_create(struct server *server)
 
     char *env = getenv("KYWC_SOFTWARE_GAMMA");
     output_manager->force_software_gamma = (env && strcmp(env, "1") == 0);
-    
+
     return output_manager;
 }
 
