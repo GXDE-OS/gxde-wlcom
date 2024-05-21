@@ -16,6 +16,7 @@
 #include <kywc/log.h>
 
 #include "render/egl.h"
+#include "util/quirks.h"
 
 #ifndef EGL_DRIVER_NAME_EXT
 #define EGL_DRIVER_NAME_EXT 0x335E
@@ -194,6 +195,7 @@ static void init_dmabuf_formats(struct ky_egl *egl)
 {
     char *env = getenv("KYWC_EGL_NO_MODIFIERS");
     bool no_modifiers = env && strcmp(env, "1") == 0;
+    no_modifiers = no_modifiers || egl->quirks & QUIRKS_MASK_NO_MODIFIFIERS;
     if (no_modifiers) {
         kywc_log(KYWC_INFO, "KYWC_EGL_NO_MODIFIERS set, disabling modifiers for EGL");
     }
@@ -675,7 +677,7 @@ static EGLDeviceEXT get_egl_device_from_drm_fd(struct ky_egl *egl, int drm_fd)
     return egl_device;
 }
 
-static bool preferred_drm_fd(int drm_fd)
+static bool preferred_drm_fd(struct ky_egl *egl, int drm_fd)
 {
     EGLDisplay display = EGL_NO_DISPLAY;
     bool use_drm_fd = false;
@@ -698,7 +700,8 @@ static bool preferred_drm_fd(int drm_fd)
     }
 
     const char *vendor = eglQueryString(display, EGL_VENDOR);
-    use_drm_fd = vendor && strcmp(vendor, "ARM") == 0;
+    egl->quirks = quirks_by_renderer(drm_fd, vendor);
+    use_drm_fd = egl->quirks & QUIRKS_MASK_MASTER_FD;
 
 out:
     if (display != EGL_NO_DISPLAY) {
@@ -711,9 +714,9 @@ out:
     return use_drm_fd;
 }
 
-static int open_render_node(int drm_fd)
+static int open_render_node(struct ky_egl *egl, int drm_fd)
 {
-    if (preferred_drm_fd(drm_fd)) {
+    if (preferred_drm_fd(egl, drm_fd)) {
         kywc_log(KYWC_INFO, "Preferred using drm fd to create GBM");
         return fcntl(drm_fd, F_DUPFD_CLOEXEC, 0);
     }
@@ -746,7 +749,7 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd)
         return NULL;
     }
 
-    int gbm_fd = open_render_node(drm_fd);
+    int gbm_fd = open_render_node(egl, drm_fd);
     if (gbm_fd < 0) {
         kywc_log(KYWC_ERROR, "Failed to open DRM render node");
         goto error;

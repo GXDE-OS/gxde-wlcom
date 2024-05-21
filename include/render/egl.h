@@ -46,6 +46,9 @@ struct ky_egl {
     struct wlr_drm_format_set dmabuf_texture_formats;
     struct wlr_drm_format_set dmabuf_render_formats;
     struct wlr_drm_format_set dmabuf_render_single_plane_formats;
+
+    /* renderer quirks */
+    uint32_t quirks;
 };
 
 struct ky_egl_context {

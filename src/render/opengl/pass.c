@@ -15,6 +15,7 @@
 
 #include "render/opengl.h"
 #include "util/matrix.h"
+#include "util/quirks.h"
 
 #define MAX_QUADS 86 // 4kb
 
@@ -53,7 +54,12 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
         clock_gettime(CLOCK_MONOTONIC, &timer->cpu_end);
     }
 
-    glFlush();
+    if (renderer->egl->quirks & QUIRKS_MASK_EXPLICIT_SYNC) {
+        glFinish();
+    } else {
+        glFlush();
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     ky_opengl_pop_debug(renderer);

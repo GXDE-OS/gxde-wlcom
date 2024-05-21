@@ -18,6 +18,7 @@
 #include <kywc/log.h>
 
 #include "output_p.h"
+#include "util/quirks.h"
 #include "xwayland.h"
 
 static struct output_manager *output_manager = NULL;
@@ -210,13 +211,13 @@ static void output_lock_software_cursors(struct output *output)
         return;
     }
 
-    int drm_fd = wlr_backend_get_drm_fd(output->wlr_output->backend);
-    drmVersion *version = drmGetVersion(drm_fd);
-    /* use software cursor, linear buffer is external only in nvidia driver */
-    if (version && strcmp(version->name, "nvidia-drm") == 0) {
+    int drm_fd = wlr_drm_backend_get_non_master_fd(output->wlr_output->backend);
+    uint32_t quirks = quirks_by_backend(drm_fd);
+    /*  using software curosr, depending on the qurks mask */
+    if (quirks & QUIRKS_MASK_SOFTWARE_CURSOR) {
         wlr_output_lock_software_cursors(output->wlr_output, true);
     }
-    drmFreeVersion(version);
+    close(drm_fd);
 }
 
 static void output_uuid_generate(struct kywc_output *kywc_output)
