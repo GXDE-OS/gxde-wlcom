@@ -10,6 +10,7 @@ wlcom_sources += files(
   'matrix.c',
   'vec2.c',
   'queue.c',
+  'quirks.c',
   'spawn.c',
   'sysfs.c',
   'time.c',
