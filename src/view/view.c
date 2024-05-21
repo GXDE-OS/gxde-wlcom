@@ -775,6 +775,9 @@ void view_set_parent(struct view *view, struct view *parent)
     wl_list_remove(&view->parent_link);
     if (parent) {
         wl_list_insert(&parent->children, &view->parent_link);
+        if (parent->base.kept_above) {
+            kywc_view_set_kept_above(&view->base, true);
+        }
     } else {
         wl_list_init(&view->parent_link);
     }
