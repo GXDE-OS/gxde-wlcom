@@ -560,7 +560,7 @@ static int get_mapped_output(sd_bus *bus, const char *path, const char *interfac
 {
     struct kde_input *input = userdata;
     const char *mapped_to_output = input->input->state.mapped_to_output;
-    return sd_bus_message_append_basic(reply, 's', mapped_to_output ? mapped_to_output : "none");
+    return sd_bus_message_append_basic(reply, 's', mapped_to_output ? mapped_to_output : "");
 }
 
 static int set_mapped_output(sd_bus *bus, const char *path, const char *interface,
@@ -570,7 +570,7 @@ static int set_mapped_output(sd_bus *bus, const char *path, const char *interfac
     const char *output_name = NULL;
     CK(sd_bus_message_read(reply, "s", &output_name));
 
-    bool none_output = !strcmp(output_name, "none");
+    bool none_output = !strcmp(output_name, "");
     if (!none_output) {
         struct kywc_output *kywc_output = kywc_output_by_name(output_name);
         if (!kywc_output || !kywc_output->state.enabled) {
@@ -644,7 +644,7 @@ static const sd_bus_vtable input_vtable[] = {
     KDE_PROP("disableWhileTypingEnabledByDefault", "b", disable_while_typing_enabled_by_default),
     KDE_WPROP("disableWhileTyping", "b", get_disable_while_typing, set_disable_while_typing),
 
-    KDE_WPROP("mapToOutput", "s", get_mapped_output, set_mapped_output),
+    KDE_WPROP("outputName", "s", get_mapped_output, set_mapped_output),
 
     SD_BUS_VTABLE_END,
 };
