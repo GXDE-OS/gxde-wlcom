@@ -93,11 +93,12 @@ static void manager_capture_workspace(struct ky_thumbnail_manager *manager,
 }
 
 static void manager_capture_toplevel(struct ky_thumbnail_manager *manager,
-                                     struct ky_thumbnail *thumbnail, const char *uuid)
+                                     struct ky_thumbnail *thumbnail, const char *uuid,
+                                     bool without_decoration)
 {
     struct kywc_capture_manager_v1 *thumbnail_manager = manager->data;
     struct kywc_capture_frame_v1 *frame =
-        kywc_capture_manager_v1_capture_toplevel(thumbnail_manager, uuid);
+        kywc_capture_manager_v1_capture_toplevel(thumbnail_manager, uuid, without_decoration);
     kywc_capture_frame_v1_add_listener(frame, &frame_listener, thumbnail);
     wl_display_flush(manager->ctx->display);
     thumbnail->destroy = frame_destroy;

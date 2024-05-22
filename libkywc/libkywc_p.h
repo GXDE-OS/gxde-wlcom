@@ -267,7 +267,7 @@ struct ky_thumbnail_manager {
     void (*capture_workspace)(struct ky_thumbnail_manager *manager, struct ky_thumbnail *thumbnail,
                               const char *uuid, const char *output);
     void (*capture_toplevel)(struct ky_thumbnail_manager *manager, struct ky_thumbnail *thumbnail,
-                             const char *uuid);
+                             const char *uuid, bool without_decoration);
     void (*destroy)(struct ky_thumbnail_manager *manager);
     void *data;
 };

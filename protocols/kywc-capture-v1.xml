@@ -34,6 +34,7 @@
       </description>
       <arg name="frame" type="new_id" interface="kywc_capture_frame_v1"/>
       <arg name="toplevel" type="string" summary="unique id for toplevel"/>
+      <arg name="without_decoration" type="uint" summary="no decoration"/>
     </request>
 
     <request name="destroy" type="destructor">

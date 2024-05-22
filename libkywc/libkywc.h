@@ -329,6 +329,20 @@ kywc_thumbnail *kywc_thumbnail_create(kywc_context *ctx, enum kywc_thumbnail_typ
                                       const char *source_uuid, const char *output_uuid,
                                       const struct kywc_thumbnail_interface *impl, void *data);
 
+kywc_thumbnail *kywc_thumbnail_create_from_output(kywc_context *ctx, const char *source_uuid,
+                                                  const struct kywc_thumbnail_interface *impl,
+                                                  void *data);
+
+kywc_thumbnail *kywc_thumbnail_create_from_toplevel(kywc_context *ctx, const char *source_uuid,
+                                                    bool without_decoration,
+                                                    const struct kywc_thumbnail_interface *impl,
+                                                    void *data);
+
+kywc_thumbnail *kywc_thumbnail_create_from_workspace(kywc_context *ctx, const char *source_uuid,
+                                                     const char *output_uuid,
+                                                     const struct kywc_thumbnail_interface *impl,
+                                                     void *data);
+
 kywc_context *kywc_thumbnail_get_context(kywc_thumbnail *thumbnail);
 
 void kywc_thumbnail_set_user_data(kywc_thumbnail *thumbnail, void *data);

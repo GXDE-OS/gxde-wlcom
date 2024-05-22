@@ -289,7 +289,8 @@ static void manager_handle_capture_workspace(struct wl_client *client, struct wl
 }
 
 static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_resource *resource,
-                                            uint32_t id, const char *toplevel)
+                                            uint32_t id, const char *toplevel,
+                                            uint32_t without_decoration)
 {
     struct ky_capture_frame *frame = calloc(1, sizeof(*frame));
     if (!frame) {
@@ -319,8 +320,9 @@ static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    frame->thumbnail = thumbnail_create_from_view(
-        view, THUMBNAIL_DISABLE_SHADOW | THUMBNAIL_DISABLE_ROUND_CORNER, 1.0);
+    uint32_t option = THUMBNAIL_DISABLE_ROUND_CORNER;
+    option |= without_decoration ? THUMBNAIL_DISABLE_DECOR : THUMBNAIL_DISABLE_SHADOW;
+    frame->thumbnail = thumbnail_create_from_view(view, option, 1.0);
     if (!frame->thumbnail) {
         kywc_capture_frame_v1_send_failed(frame->resource);
         wl_resource_set_user_data(frame->resource, NULL);
