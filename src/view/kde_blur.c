@@ -72,6 +72,10 @@ static struct kde_blur *kde_blur_from_wlr_surface(struct wlr_surface *wlr_surfac
 static void kde_blur_handle_commit(struct wl_client *client, struct wl_resource *resource)
 {
     struct kde_blur *blur = wl_resource_get_user_data(resource);
+    if (!blur) {
+        return;
+    }
+
     pixman_region32_copy(&blur->region, &blur->pending_region);
     blur->strength = blur->pending_strength;
 
@@ -86,12 +90,14 @@ static void kde_blur_handle_set_region(struct wl_client *client, struct wl_resou
                                        struct wl_resource *region_resource)
 {
     struct kde_blur *blur = wl_resource_get_user_data(resource);
+    if (!blur) {
+        return;
+    }
 
     if (region_resource) {
         const pixman_region32_t *region = wlr_region_from_resource(region_resource);
         pixman_region32_copy(&blur->pending_region, region);
     } else {
-        // TODO: allow null, remove blur region ?
         pixman_region32_clear(&blur->pending_region);
     }
 
@@ -102,6 +108,10 @@ static void kde_blur_handle_set_strength(struct wl_client *client, struct wl_res
                                          uint32_t strength)
 {
     struct kde_blur *blur = wl_resource_get_user_data(resource);
+    if (!blur) {
+        return;
+    }
+
     blur->pending_strength = strength;
     blur->pending_mask |= KDE_BLUR_STATE_STRENGTH;
 }
@@ -127,6 +137,7 @@ static void kde_blur_destroy(struct kde_blur *blur)
     /* clear destructor when surface destroyed before blur resources */
     struct wl_resource *resource;
     wl_resource_for_each(resource, &blur->resources) {
+        wl_resource_set_user_data(resource, NULL);
         wl_resource_set_destructor(resource, NULL);
     }
     wl_list_remove(&blur->link);
