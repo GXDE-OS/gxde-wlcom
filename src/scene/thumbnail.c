@@ -1027,6 +1027,15 @@ static void thumbnail_output_handle_frame(struct wl_listener *listener, void *da
     }
 }
 
+void thumbnail_update(struct thumbnail *thumbnail)
+{
+    struct thumbnail_output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        thumbnail_output_handle_frame(&output->frame, NULL);
+        break;
+    }
+}
+
 static void thumbnail_output_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct thumbnail_output *output = wl_container_of(listener, output, destroy);

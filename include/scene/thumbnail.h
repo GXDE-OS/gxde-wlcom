@@ -40,6 +40,8 @@ void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_liste
 
 void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants);
 
+void thumbnail_update(struct thumbnail *thumbnail);
+
 void thumbnail_destroy(struct thumbnail *thumbnail);
 
 #endif /* _SCENE_THUMBNAIL_H_ */
