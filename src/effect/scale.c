@@ -2,119 +2,355 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
+#include <string.h>
 
-#include <kywc/log.h>
+#include <kywc/boxes.h>
+#include <kywc/output.h>
 
-#include "effect/effect.h"
+#include "effect/animator.h"
 #include "effect/scale.h"
 #include "effect_p.h"
+#include "render/opengl.h"
+#include "scene/render.h"
 #include "scene/scene.h"
-#include "view/view.h"
+#include "scene/thumbnail.h"
+#include "theme.h"
+#include "util/time.h"
 
-static const int priority = 1;
-
-static const char *effect_name = "scale";
-
-enum kywc_effects_state {
-    EFFECTS_END = 0,
-    EFFECTS_ZOOMING = 1 << 0,
+struct padding {
+    int top, bottom, left, right;
 };
 
-struct effect_scale_data {
-    struct view *view;
+struct scale_effect_data {
+    struct animator *animator;
+    struct animation_data current;
 
-    struct kywc_box last_box;
-    struct kywc_box dst_box;
+    struct kywc_box start_geometry, end_geometry;
+    struct kywc_box render_box;
+    float start_alpha, end_alpha;
+    int64_t start_time;
+
+    enum scale_action action;
+
+    struct ky_scene_node *node;
+    struct view *view;
+    struct wl_listener view_size;
+    struct wl_listener view_position;
+
+    struct thumbnail *thumbnail;
+    struct wlr_texture *thumbnail_texture;
+    struct wl_listener thumbnail_update;
+    struct wl_listener thumbnail_destroy;
 };
 
 struct scale_effect {
     struct effect *effect;
-    struct wl_listener destroy;
-
     struct ky_scene *scene;
     struct effect_manager *manager;
+    struct wlr_renderer *renderer;
+
+    int duration;
+
+    struct wl_listener destroy;
 };
 
-static struct scale_effect *scale;
-
-static int test_count = 0;
+static struct scale_effect *scale = NULL;
 
 static void calc_view_box(struct kywc_view *view, struct kywc_box *geometry_box,
-                          struct kywc_box *render_box)
+                          struct kywc_box *box)
 {
-    render_box->x = geometry_box->x - view->margin.off_x;
-    render_box->y = geometry_box->y - view->margin.off_y;
-    render_box->width = geometry_box->width + view->margin.off_width;
-    render_box->height = geometry_box->height + view->margin.off_height;
+    box->x = geometry_box->x - view->margin.off_x;
+    box->y = geometry_box->y - view->margin.off_y;
+    box->width = geometry_box->width + view->margin.off_width;
+    box->height = geometry_box->height + view->margin.off_height;
 }
 
-static void maximize_view_box_init(struct effect_scale_data *data)
+static void scale_calc_shadow(struct kywc_view *view, struct padding *shadow)
+{
+    struct theme *theme = theme_manager_get_current();
+    if (view->ssd == KYWC_SSD_NONE) {
+        memcpy(shadow, &view->padding, sizeof(struct padding));
+    } else {
+        shadow->top = shadow->bottom = theme->shadow_border;
+        shadow->left = shadow->right = theme->shadow_border;
+    }
+}
+
+static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
+{
+    struct view *view = data->view;
+    struct kywc_view *kywc_view = &view->base;
+
+    /* calc maximize start and end geometry */
+    if (data->action == SCALE_MAXIMIZE) {
+        if (current_time_msec() > data->start_time + scale->duration) {
+            calc_view_box(kywc_view, &view->pending.geometry, &data->start_geometry);
+        }
+        calc_view_box(kywc_view, &kywc_view->geometry, &data->end_geometry);
+    } else {
+        /* calc minimize start and end geometry */
+        struct kywc_box end_box = {
+            .x = kywc_view->geometry.x + kywc_view->geometry.width / 2,
+            .y = kywc_view->geometry.y + kywc_view->geometry.height / 2,
+            .width = 10,
+            .height = 10,
+        };
+        if (current_time_msec() > data->start_time + scale->duration) {
+            struct kywc_box start_geometry = kywc_view->minimized ? kywc_view->geometry : end_box;
+            calc_view_box(kywc_view, &start_geometry, &data->start_geometry);
+        }
+        struct kywc_box end_geometry = kywc_view->minimized ? end_box : kywc_view->geometry;
+        calc_view_box(kywc_view, &end_geometry, &data->end_geometry);
+    }
+
+    /* calc start geometry when scale effect interrupted */
+    if (current_time_msec() <= data->start_time + scale->duration) {
+        data->start_geometry = data->current.geometry;
+    }
+}
+
+static void scale_calc_render_box(struct scale_effect_data *data, struct padding *padding)
 {
     struct kywc_view *view = &data->view->base;
+    /* shadow */
+    struct kywc_box *geometry = &data->current.geometry;
+    float width_scale, height_scale;
+    width_scale = 1.0 * geometry->width / (view->geometry.width + view->margin.off_width);
+    height_scale = 1.0 * geometry->height / (view->geometry.height + view->margin.off_height);
+    struct padding shadow = {
+        .left = width_scale * padding->left,
+        .right = width_scale * padding->right,
+        .top = ceil(height_scale * padding->top),
+        .bottom = ceil(height_scale * padding->bottom),
+    };
 
-    if (view->maximized) {
-        calc_view_box(view, &data->view->saved.geometry, &data->last_box);
-    } else {
-        data->last_box = data->dst_box;
+    /* render box */
+    struct kywc_box *render_box = &data->render_box;
+    render_box->x = geometry->x - shadow.left;
+    render_box->y = geometry->y - shadow.right;
+    render_box->width = geometry->width + shadow.top + shadow.left;
+    render_box->height = geometry->height + shadow.bottom + shadow.right;
+}
+
+static void scale_entity_destroy(struct effect_entity *entity)
+{
+    struct scale_effect_data *data = entity->usr_data;
+    if (data->thumbnail) {
+        wl_list_remove(&data->thumbnail_update.link);
+        wl_list_remove(&data->thumbnail_destroy.link);
+        thumbnail_destroy(data->thumbnail);
     }
-    calc_view_box(view, &view->geometry, &data->dst_box);
-}
-
-static void effect_scale_create_params(struct effect_entity *entity)
-{
-    struct effect_scale_data *scale_data = malloc(sizeof(*scale_data));
-    if (!scale_data) {
-        return;
+    if (data->thumbnail_texture) {
+        wlr_texture_destroy(data->thumbnail_texture);
     }
-    entity->usr_data = scale_data;
+    if (data->animator) {
+        animator_destroy(data->animator);
+    }
+
+    struct view *view = data->view;
+    if (view->base.minimized) {
+        ky_scene_node_set_enabled(&view->tree->node, false);
+        view->current_proxy ? ky_scene_node_lower_to_bottom(&view->current_proxy->tree->node)
+                            : ky_scene_node_lower_to_bottom(&view->tree->node);
+    }
+
+    wl_list_remove(&data->view_position.link);
+    wl_list_remove(&data->view_size.link);
+    free(data);
 }
 
-static void effect_scale_destroy_params(struct effect_entity *entity)
+static bool scale_node_render(struct effect_entity *entity, int lx, int ly,
+                              struct ky_scene_render_target *target)
 {
-    struct effect_scale_data *scale_data = entity->usr_data;
-    free(scale_data);
-}
+    struct scale_effect_data *data = entity->usr_data;
+    if (!target->output || !data->thumbnail_texture) {
+        return false;
+    }
 
-static bool effect_scale_render_post(struct effect_entity *entity,
-                                     struct ky_scene_render_target *target);
-
-static bool effect_scale_render(struct effect_entity *entity, int lx, int ly,
-                                struct ky_scene_render_target *target)
-{
-    kywc_log(KYWC_INFO, "scale view box rener");
+    struct padding shadow = { 0 };
+    scale_calc_shadow(&data->view->base, &shadow);
+    scale_calc_render_box(data, &shadow);
+    data->current.geometry = data->render_box;
+    animator_render_texture(&data->current, target, data->thumbnail_texture);
 
     return false;
 }
 
-static bool effect_scale_render_pre(struct effect_entity *entity,
-                                    struct ky_scene_output *scene_output)
+static void scale_init_alpha_and_geometry(struct scale_effect_data *scale_data)
 {
-    if (test_count < 0) {
-        effect_entity_destroy(entity);
+    struct kywc_view *view = &scale_data->view->base;
+    scale_calc_start_and_end_geometry(scale_data);
+    if (scale_data->action == SCALE_MAXIMIZE) {
+        scale_data->start_alpha = scale_data->end_alpha = 1.0;
+    } else {
+        scale_data->start_alpha = view->minimized ? 1 : 0;
+        scale_data->end_alpha = view->minimized ? 0 : 1;
     }
-    test_count--;
-    effect_scale_render_post(entity, NULL);
+}
+
+static bool scale_entity_bouding_box(struct effect_entity *entity, struct kywc_box *box)
+{
+    struct scale_effect_data *scale_data = entity->usr_data;
+    *box = scale_data->render_box;
+
+    struct effect_chain *chain = entity->slot.chain;
+    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
+    struct wlr_box node_box;
+    if (box->width <= 0 || box->height <= 0) {
+        node_chain->impl.get_bounding_box(node_chain->node, &node_box);
+        box->x = node_box.x;
+        box->y = node_box.y;
+        box->width = node_box.width;
+        box->height = node_box.height;
+        return false;
+    }
+
+    int lx, ly;
+    ky_scene_node_coords(scale_data->node, &lx, &ly);
+    box->x -= lx;
+    box->y -= ly;
+    return false;
+}
+
+static bool scale_node_push_damage(struct effect_entity *entity, struct ky_scene_node *damage_node,
+                                   uint32_t *damage_type, pixman_region32_t *damage)
+{
+    struct kywc_box box;
+    scale_entity_bouding_box(entity, &box);
+    pixman_region32_union_rect(damage, damage, box.x, box.y, box.width, box.height);
+    return false;
+}
+
+static void handle_view_positon(struct wl_listener *listener, void *data)
+{
+    struct scale_effect_data *scale_data = wl_container_of(listener, scale_data, view_position);
+    scale_calc_start_and_end_geometry(scale_data);
+    animator_set_position(scale_data->animator, scale_data->end_geometry.x,
+                          scale_data->end_geometry.y);
+}
+
+static void handle_view_size(struct wl_listener *listener, void *data)
+{
+    struct scale_effect_data *scale_data = wl_container_of(listener, scale_data, view_size);
+    scale_calc_start_and_end_geometry(scale_data);
+    animator_set_size(scale_data->animator, scale_data->end_geometry.width,
+                      scale_data->end_geometry.height);
+}
+
+static void handle_thumbnail_update(struct wl_listener *listener, void *data)
+{
+    struct scale_effect_data *scale_data = wl_container_of(listener, scale_data, thumbnail_update);
+    struct thumbnail_update_event *event = data;
+    if (!event->buffer_changed) {
+        return;
+    }
+
+    if (scale_data->thumbnail_texture) {
+        wlr_texture_destroy(scale_data->thumbnail_texture);
+    }
+    scale_data->thumbnail_texture = wlr_texture_from_buffer(scale->renderer, event->buffer);
+}
+
+static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
+{
+    struct scale_effect_data *scale_data = wl_container_of(listener, scale_data, thumbnail_destroy);
+    wl_list_remove(&scale_data->thumbnail_destroy.link);
+    wl_list_remove(&scale_data->thumbnail_update.link);
+    scale_data->thumbnail = NULL;
+}
+
+static bool scale_effect_data_create_thumbnail(struct scale_effect_data *data)
+{
+    data->thumbnail = thumbnail_create_from_view(data->view, 0, 1.0f);
+    if (!data->thumbnail) {
+        return false;
+    }
+
+    data->thumbnail_update.notify = handle_thumbnail_update;
+    thumbnail_add_update_listener(data->thumbnail, &data->thumbnail_update);
+    data->thumbnail_destroy.notify = handle_thumbnail_destroy;
+    thumbnail_add_destroy_listener(data->thumbnail, &data->thumbnail_destroy);
+
     return true;
 }
 
-static bool effect_scale_render_post(struct effect_entity *entity,
-                                     struct ky_scene_render_target *target)
+static void scale_effect_data_set_animator(struct scale_effect_data *data)
 {
-    pixman_region32_t damage_region;
-    pixman_region32_init_rect(&damage_region, 0, 0, 1920, 1080);
-    ky_scene_add_damage(scale->scene, &damage_region);
-    pixman_region32_fini(&damage_region);
+    animator_set_position(data->animator, data->end_geometry.x, data->end_geometry.y);
+    animator_set_size(data->animator, data->end_geometry.width, data->end_geometry.height);
+    animator_set_alpha(data->animator, data->end_alpha);
+}
+
+static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct view *view,
+                                   enum scale_action action)
+{
+    scale_data->view = view;
+    scale_data->node = &view->tree->node;
+    scale_data->action = action;
+    scale_init_alpha_and_geometry(scale_data);
+    scale_data->start_time = current_time_msec();
+
+    struct animation_data start_data = {
+        .alpha = scale_data->start_alpha,
+        .angle = 0,
+        .geometry = scale_data->start_geometry,
+    };
+    struct animator *animator = animator_create(&start_data, scale_data->start_time,
+                                                scale_data->start_time + scale->duration);
+    if (!animator) {
+        return false;
+    }
+
+    scale_data->animator = animator;
+    scale_effect_data_set_animator(scale_data);
+
+    if (!scale_effect_data_create_thumbnail(scale_data)) {
+        animator_destroy(scale_data->animator);
+        free(scale_data);
+        return false;
+    }
+
+    scale_data->view_position.notify = handle_view_positon;
+    wl_signal_add(&view->base.events.position, &scale_data->view_position);
+    scale_data->view_size.notify = handle_view_size;
+    wl_signal_add(&view->base.events.size, &scale_data->view_size);
+
+    return true;
+}
+
+static bool scale_frame_render_pre(struct effect_entity *entity,
+                                   struct ky_scene_output *scene_output)
+{
+    struct scale_effect_data *data = entity->usr_data;
+    if (current_time_msec() > data->start_time + scale->duration) {
+        effect_entity_destroy(entity);
+        return true;
+    }
+
+    const struct animation_data *animation_data =
+        animator_value(data->animator, current_time_msec());
+    data->current = *animation_data;
+    ky_scene_node_push_damage(data->node, KY_SCENE_DAMAGE_BOTH, NULL);
+
+    return true;
+}
+
+static bool scale_frame_render_post(struct effect_entity *entity,
+                                    struct ky_scene_render_target *target)
+{
+    struct scale_effect_data *data = entity->usr_data;
+    ky_scene_node_push_damage(data->node, KY_SCENE_DAMAGE_BOTH, NULL);
     return true;
 }
 
 static const struct effect_interface scale_effect_impl = {
-    .entity_create = effect_scale_create_params,
-    .entity_destroy = effect_scale_destroy_params,
-    .node_render = effect_scale_render,
-    .frame_render_pre = effect_scale_render_pre,
-    .frame_render_post = effect_scale_render_post,
+    .entity_destroy = scale_entity_destroy,
+    .entity_bounding_box = scale_entity_bouding_box,
+    .node_push_damage = scale_node_push_damage,
+    .node_render = scale_node_render,
+    .frame_render_pre = scale_frame_render_pre,
+    .frame_render_post = scale_frame_render_post,
 };
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
@@ -130,42 +366,76 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 
 bool scale_effect_create(struct effect_manager *manager)
 {
-    struct scale_effect *effect = calloc(1, sizeof(*effect));
-    if (!effect) {
+    scale = calloc(1, sizeof(*scale));
+    if (!scale) {
         return false;
     }
 
-    effect->effect = effect_create(effect_name, priority, true, &scale_effect_impl);
-    if (!effect->effect) {
-        free(effect);
+    scale->effect = effect_create("scale", 2, true, &scale_effect_impl);
+    if (!scale->effect) {
+        free(scale);
         return false;
     }
 
-    effect->manager = manager;
-    effect->scene = manager->server->scene;
+    scale->manager = manager;
+    scale->scene = manager->server->scene;
+    scale->renderer = manager->server->renderer;
+    scale->duration = 300;
 
-    effect->destroy.notify = handle_effect_destroy;
-    wl_signal_add(&effect->effect->events.destroy, &effect->destroy);
+    scale->destroy.notify = handle_effect_destroy;
+    wl_signal_add(&scale->effect->events.destroy, &scale->destroy);
 
-    scale = effect;
     return true;
 }
 
-bool view_add_maximize_effect(struct view *view)
+static struct scale_effect_data *
+scale_effect_data_create(struct effect_entity *entity, struct view *view, enum scale_action action)
+{
+    struct scale_effect_data *scale_data = calloc(1, sizeof(*scale_data));
+    if (!scale_data) {
+        effect_entity_destroy(entity);
+        return NULL;
+    }
+
+    if (!scale_effect_data_init(scale_data, view, action)) {
+        free(scale_data);
+        effect_entity_destroy(entity);
+        return NULL;
+    }
+
+    return scale_data;
+}
+
+bool view_add_scale_effect(struct view *view, enum scale_action action)
 {
     if (!scale || !scale->effect->enabled) {
         return false;
     }
-    struct ky_scene_tree *tree = view->tree;
-    struct effect_entity *entity = ky_scene_node_add_effect(&tree->node, scale->effect);
+
+    struct effect_entity *entity = ky_scene_node_add_effect(&view->tree->node, scale->effect);
     if (!entity) {
         return false;
     }
 
-    struct effect_scale_data *scale_data = entity->usr_data;
-    scale_data->view = view;
+    /* scale effect interrupted */
+    if (entity->usr_data) {
+        if (view->base.minimized) {
+            ky_scene_node_set_enabled(&view->tree->node, true);
+        }
+        struct scale_effect_data *scale_data = entity->usr_data;
+        scale_data->action = action;
+        scale_init_alpha_and_geometry(scale_data);
+        scale_effect_data_set_animator(scale_data);
+        return true;
+    }
 
-    maximize_view_box_init(scale_data);
-    test_count = 0;
+    entity->usr_data = scale_effect_data_create(entity, view, action);
+
+    if (view->base.minimized) {
+        ky_scene_node_set_enabled(&view->tree->node, true);
+        ky_scene_node_raise_to_top(view->current_proxy ? &view->current_proxy->tree->node
+                                                       : &view->tree->node);
+    }
+
     return true;
 }

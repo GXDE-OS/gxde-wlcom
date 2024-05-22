@@ -7,6 +7,11 @@
 
 #include "view/view.h"
 
-bool view_add_maximize_effect(struct view *view);
+enum scale_action {
+    SCALE_MAXIMIZE = 0,
+    SCALE_MINIMIZE,
+};
+
+bool view_add_scale_effect(struct view *view, enum scale_action action);
 
 #endif /* _EFFECT_SCALE_H_ */

@@ -9,6 +9,7 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
+#include "effect/scale.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
@@ -487,6 +488,7 @@ void view_configured(struct view *view)
     }
 
     if (view->pending.configure_action & VIEW_ACTION_MAXIMIZE) {
+        view_add_scale_effect(view, SCALE_MAXIMIZE);
         wl_signal_emit_mutable(&kywc_view->events.maximize, NULL);
     }
 
@@ -1061,6 +1063,7 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
 
     /* if view is the activated view, process it in activated.minimize listener */
     input_rebase_all_cursor();
+    view_add_scale_effect(view, SCALE_MINIMIZE);
     wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
 
     if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
