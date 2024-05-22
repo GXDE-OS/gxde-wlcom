@@ -10,7 +10,6 @@
 #include <kywc/log.h>
 
 #include "effect/animator.h"
-#include "effect_p.h"
 #include "render/opengl.h"
 #include "scene/render.h"
 #include "util/time.h"
@@ -175,6 +174,15 @@ void animator_destroy(struct animator *animator)
     free(animator);
 }
 
+static void animator_update_animation_value(struct animator *animator, int current_time)
+{
+    animator->current_time = current_time;
+    int64_t delta_time = animator->current_time - animator->start_time;
+    int64_t delta_max_time = animator->end_time - animator->start_time;
+    animator->animation_value =
+        animation_value(animator->animation, delta_time * 1.0f / delta_max_time);
+}
+
 void animator_set_time(struct animator *animator, int64_t end_time)
 {
     int64_t current_time = current_time_msec();
@@ -182,6 +190,7 @@ void animator_set_time(struct animator *animator, int64_t end_time)
         return;
     }
     animator->end_time = end_time;
+    animator_update_animation_value(animator, current_time);
 }
 
 void animator_set_angle(struct animator *animator, float end_angle)
@@ -241,11 +250,7 @@ void animator_set_size(struct animator *animator, int end_width, int end_height)
 
 const struct animation_data *animator_value(struct animator *animator, int64_t current_time)
 {
-    animator->current_time = current_time;
-    int64_t delta_time = animator->current_time - animator->start_time;
-    int64_t delta_max_time = animator->end_time - animator->start_time;
-    animator->animation_value =
-        animation_value(animator->animation, delta_time * 1.0f / delta_max_time);
+    animator_update_animation_value(animator, current_time);
     float value = animator->animation_value;
     if (animator->masks & ANIMATOR_ANGLE) {
         animator->current.angle = value * animator->angle_func.k + animator->angle_func.b;
