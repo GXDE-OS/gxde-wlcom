@@ -35,7 +35,7 @@ struct soft_gamma_effect {
 static bool frame_render_post(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
     struct output *output = output_from_wlr_output(target->output->output);
-    if (kywc_output_use_hardware_gamma(&output->base)) {
+    if (output_use_hardware_gamma(output)) {
         return true;
     }
 
@@ -132,7 +132,7 @@ static void output_handle_destroy(struct wl_listener *listener, void *data)
 
 static void cursor_buffer_create(struct soft_gamma_effect *effect, struct output *output)
 {
-    if (kywc_output_use_hardware_gamma(&output->base)) {
+    if (output_use_hardware_gamma(output)) {
         return;
     }
 

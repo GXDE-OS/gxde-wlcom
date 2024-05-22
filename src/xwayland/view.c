@@ -537,7 +537,7 @@ static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view,
         if (had_area) {
             wl_list_remove(&xwayland_view->output_update_usable_area.link);
             wl_list_init(&xwayland_view->output_update_usable_area.link);
-            kywc_output_update_usable_area(xwayland_view->view.output);
+            output_update_usable_area(xwayland_view->view.output);
         }
         return;
     }
@@ -549,7 +549,7 @@ static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view,
                                                &xwayland_view->output_update_usable_area, false);
     }
 
-    kywc_output_update_usable_area(xwayland_view->view.output);
+    output_update_usable_area(xwayland_view->view.output);
 }
 
 static void xwayland_view_handle_set_strut_partial(struct wl_listener *listener, void *data)

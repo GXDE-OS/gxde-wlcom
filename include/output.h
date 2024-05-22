@@ -83,7 +83,7 @@ void colortemp_get_rgb(float *rgb, uint32_t color_temp);
 void output_manager_add_output_pending_state(struct output *output,
                                              struct kywc_output_state *state);
 
-struct kywc_output *kywc_output_from_resource(struct wl_resource *resource);
+struct output *output_from_resource(struct wl_resource *resource);
 
 struct output *output_from_kywc_output(struct kywc_output *kywc_output);
 
@@ -92,7 +92,7 @@ struct output *output_from_wlr_output(struct wlr_output *wlr_output);
 void output_add_update_usable_area_listener(struct kywc_output *kywc_output,
                                             struct wl_listener *listener, bool late);
 
-void kywc_output_update_usable_area(struct kywc_output *kywc_output);
+void output_update_usable_area(struct kywc_output *kywc_output);
 
 enum layout_edge {
     LAYOUT_EDGE_TOP,
@@ -105,9 +105,9 @@ bool output_at_layout_edge(struct output *output, enum layout_edge edge);
 
 struct output *output_adjacent_output(struct output *output, enum layout_edge edge);
 
-struct kywc_output *kywc_output_at_point(double lx, double ly);
-
 struct wlr_output_state;
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state);
+
+bool output_use_hardware_gamma(struct output *output);
 
 #endif /* _OUTPUT_H_ */

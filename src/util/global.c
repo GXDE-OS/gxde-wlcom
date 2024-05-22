@@ -37,7 +37,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *_data)
     destroy_global(data);
 }
 
-void kywc_global_destroy_safe(struct wl_global *global)
+void wl_global_destroy_safe(struct wl_global *global)
 {
     // Don't destroy the global immediately. If the global has been created
     // recently, clients might try to bind to it after we've destroyed it.

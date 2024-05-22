@@ -151,20 +151,19 @@ bool scale_effect_create(struct effect_manager *manager)
     return true;
 }
 
-bool kywc_view_add_maximize_effect(struct kywc_view *view)
+bool view_add_maximize_effect(struct view *view)
 {
     if (!scale || !scale->effect->enabled) {
         return false;
     }
-    struct view *_view = view_from_kywc_view(view);
-    struct ky_scene_tree *tree = _view->tree;
+    struct ky_scene_tree *tree = view->tree;
     struct effect_entity *entity = ky_scene_node_add_effect(&tree->node, scale->effect);
     if (!entity) {
         return false;
     }
 
     struct effect_scale_data *scale_data = entity->usr_data;
-    scale_data->view = _view;
+    scale_data->view = view;
 
     maximize_view_box_init(scale_data);
     test_count = 0;

@@ -160,6 +160,8 @@ void view_manager_show_desktop(bool enabled, bool apply);
 
 bool view_manager_get_show_desktop(void);
 
+void view_add_show_desktop_listener(struct wl_listener *listener);
+
 uint32_t view_manager_get_adsorption(void);
 
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);

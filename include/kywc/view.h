@@ -151,21 +151,23 @@ struct kywc_view {
 /**
  * listen new_view signal for xdg-shell and xwayland-shell
  */
-void kywc_view_add_show_desktop_listener(struct wl_listener *listener);
-
 void kywc_view_add_new_listener(struct wl_listener *listener);
 
 void kywc_view_add_new_mapped_listener(struct wl_listener *listener);
 
 void kywc_view_close(struct kywc_view *kywc_view);
+
 void kywc_view_move(struct kywc_view *kywc_view, int x, int y);
+
 void kywc_view_resize(struct kywc_view *kywc_view, struct kywc_box *geometry);
+
 void kywc_view_activate(struct kywc_view *kywc_view);
 
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
                          struct kywc_output *kywc_output);
 
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized);
+
 void kywc_view_toggle_minimized(struct kywc_view *kywc_view);
 
 void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
@@ -177,9 +179,11 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
 void kywc_view_toggle_fullscreen(struct kywc_view *kywc_view);
 
 void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above);
+
 void kywc_view_toggle_kept_above(struct kywc_view *kywc_view);
 
 void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below);
+
 void kywc_view_toggle_kept_below(struct kywc_view *kywc_view);
 
 struct kywc_view *kywc_view_by_uuid(const char *uuid);

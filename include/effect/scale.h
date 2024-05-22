@@ -5,8 +5,8 @@
 #ifndef _EFFECT_SCALE_H_
 #define _EFFECT_SCALE_H_
 
-struct kywc_view;
+#include "view/view.h"
 
-bool kywc_view_add_maximize_effect(struct kywc_view *view);
+bool view_add_maximize_effect(struct view *view);
 
 #endif /* _EFFECT_SCALE_H_ */

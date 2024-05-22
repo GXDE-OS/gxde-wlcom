@@ -567,7 +567,7 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     }
 
     /* global destroy when output destroy */
-    kywc_global_destroy_safe(output_device->global);
+    wl_global_destroy_safe(output_device->global);
 
     free(output_device);
 }
@@ -813,14 +813,14 @@ static void kde_dpms_handle_resource_destroy(struct wl_resource *resource)
 
 static struct kde_output_device *output_device_from_resource(struct wl_resource *resource)
 {
-    struct kywc_output *kywc_output = kywc_output_from_resource(resource);
-    if (!kywc_output) {
+    struct output *output = output_from_resource(resource);
+    if (!output) {
         return NULL;
     }
 
     struct kde_output_device *output_device;
     wl_list_for_each(output_device, &management->output_devices, link) {
-        if (output_device->kywc_output == kywc_output) {
+        if (output_device->kywc_output == &output->base) {
             return output_device;
         }
     }

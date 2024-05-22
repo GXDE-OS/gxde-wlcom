@@ -265,7 +265,7 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
 
     if (committed) {
         layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
-        kywc_output_update_usable_area(&output->base);
+        output_update_usable_area(&output->base);
     }
 }
 
@@ -279,7 +279,7 @@ static void layer_shell_handle_map(struct wl_listener *listener, void *data)
 
     if (layer_surface->current.exclusive_zone > 0) {
         struct output *output = output_from_wlr_output(layer_surface->output);
-        kywc_output_update_usable_area(&output->base);
+        output_update_usable_area(&output->base);
     }
 
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
@@ -295,7 +295,7 @@ static void layer_shell_handle_unmap(struct wl_listener *listener, void *data)
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
 
     if (layer_surface->output && layer_surface->current.exclusive_zone > 0) {
-        kywc_output_update_usable_area(&output_from_wlr_output(layer_surface->output)->base);
+        output_update_usable_area(&output_from_wlr_output(layer_surface->output)->base);
     }
 }
 

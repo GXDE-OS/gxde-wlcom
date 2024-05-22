@@ -971,12 +971,10 @@ struct kywc_output_mode *kywc_output_preferred_mode(struct kywc_output *kywc_out
     return wl_container_of(kywc_output->prop.modes.prev, mode, link);
 }
 
-struct kywc_output *kywc_output_from_resource(struct wl_resource *resource)
+struct output *output_from_resource(struct wl_resource *resource)
 {
     struct wlr_output *wlr_output = wl_resource_get_user_data(resource);
-    struct output *output = output_from_wlr_output(wlr_output);
-
-    return output ? &output->base : NULL;
+    return output_from_wlr_output(wlr_output);
 }
 
 static void output_find_best_mode(struct wlr_output *wlr_output, int32_t width, int32_t height,
@@ -1048,9 +1046,9 @@ static bool output_compare_state(struct output *output, const struct kywc_output
     return changed;
 }
 
-bool kywc_output_use_hardware_gamma(struct kywc_output *kywc_output)
+bool output_use_hardware_gamma(struct output *output)
 {
-    return kywc_output->prop.gamma_size > 0 && !output_manager->force_software_gamma;
+    return output->base.prop.gamma_size > 0 && !output_manager->force_software_gamma;
 }
 
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state)
@@ -1059,7 +1057,7 @@ bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *
         return false;
     }
 
-    if (!kywc_output_use_hardware_gamma(&output->base)) {
+    if (!output_use_hardware_gamma(output)) {
         return false;
     }
 
@@ -1129,7 +1127,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
 
     if (enabled && output_gamma_changed(output, state)) {
         output->gamma_changed = true;
-        if (kywc_output_use_hardware_gamma(&output->base)) {
+        if (output_use_hardware_gamma(output)) {
             wlr_output_schedule_frame(output->wlr_output);
         } else {
             // software gamma need update render damage and cursor buffer
@@ -1196,14 +1194,14 @@ static void output_update_geometry(struct output *output, struct kywc_box *box)
     box->height /= state->scale;
 }
 
-static void output_update_usable_area(struct output *output, struct kywc_box *usable)
+static void output_do_update_usable_area(struct output *output, struct kywc_box *usable)
 {
     *usable = output->geometry;
     wl_signal_emit_mutable(&output->events.update_usable_area, usable);
     wl_signal_emit_mutable(&output->events.update_late_usable_area, usable);
 }
 
-void kywc_output_update_usable_area(struct kywc_output *kywc_output)
+void output_update_usable_area(struct kywc_output *kywc_output)
 {
     /* no need to update usable area when disabled or destroyed */
     if (!kywc_output || kywc_output->destroying || !kywc_output->state.enabled) {
@@ -1213,7 +1211,7 @@ void kywc_output_update_usable_area(struct kywc_output *kywc_output)
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box usable_area;
 
-    output_update_usable_area(output, &usable_area);
+    output_do_update_usable_area(output, &usable_area);
     if (kywc_box_equal(&output->usable_area, &usable_area)) {
         return;
     }
@@ -1249,7 +1247,7 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         geometry_changed = !kywc_box_equal(&geo, &output->geometry);
         /* only update usable area when geometry changed */
         if (!old.enabled || geometry_changed) {
-            output_update_usable_area(output, &geo);
+            output_do_update_usable_area(output, &geo);
             if (!kywc_box_equal(&geo, &output->usable_area)) {
                 output->usable_area = geo;
                 usable_area_changed = true;

@@ -298,7 +298,7 @@ static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surfac
         if (had_area) {
             wl_list_remove(&surface->output_update_usable_area.link);
             wl_list_init(&surface->output_update_usable_area.link);
-            kywc_output_update_usable_area(surface->view->output);
+            output_update_usable_area(surface->view->output);
         }
         return;
     }
@@ -309,7 +309,7 @@ static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surfac
                                                &surface->output_update_usable_area, false);
     }
 
-    kywc_output_update_usable_area(surface->view->output);
+    output_update_usable_area(surface->view->output);
 }
 
 static void surface_handle_view_minimize(struct wl_listener *listener, void *data)
@@ -338,7 +338,7 @@ static void surface_handle_view_output(struct wl_listener *listener, void *data)
     if (!wl_list_empty(&surface->output_update_usable_area.link)) {
         wl_list_remove(&surface->output_update_usable_area.link);
         wl_list_init(&surface->output_update_usable_area.link);
-        kywc_output_update_usable_area(old_output);
+        output_update_usable_area(old_output);
     }
 
     kde_plasma_surface_set_usable_area(surface, true);

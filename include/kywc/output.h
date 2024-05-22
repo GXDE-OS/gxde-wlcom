@@ -93,10 +93,10 @@ void kywc_output_effective_geometry(struct kywc_output *kywc_output, struct kywc
 
 bool kywc_output_contains_point(struct kywc_output *kywc_output, int x, int y);
 
+struct kywc_output *kywc_output_at_point(double lx, double ly);
+
 struct kywc_output *kywc_output_by_name(const char *name);
 
 struct kywc_output *kywc_output_by_uuid(const char *uuid);
-
-bool kywc_output_use_hardware_gamma(struct kywc_output *kywc_output);
 
 #endif /* _KYWC_OUTPUT_H_ */
