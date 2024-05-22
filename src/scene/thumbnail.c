@@ -213,7 +213,7 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail_buffer *thu
     struct wlr_buffer *buffer = ky_renderer_create_buffer(
         manager->server->renderer, manager->server->allocator, width, height, DRM_FORMAT_ARGB8888);
     if (!buffer) {
-        kywc_log(KYWC_ERROR, "failed create wlr buffer");
+        kywc_log(KYWC_ERROR, "failed create wlr buffer with %d x %d", width, height);
         return NULL;
     }
 
@@ -530,7 +530,8 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
     struct view_proxy *view_proxy;
     wl_list_for_each_reverse(view_proxy, &workspace_thumbnail->workspace->view_proxies,
                              workspace_link) {
-        if (view_proxy->view->output != workspace_thumbnail->output) {
+        if (!view_proxy->view->base.mapped ||
+            view_proxy->view->output != workspace_thumbnail->output) {
             continue;
         }
 
@@ -747,7 +748,9 @@ static void workspace_thumbnail_create_entries(struct workspace_thumbnail *works
     struct view_proxy *view_proxy;
     struct workspace *workspace = workspace_thumbnail->workspace;
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
-        workspace_thumbnail_create_entry(workspace_thumbnail, kywc_output, view_proxy->view);
+        if (view_proxy->view->base.mapped) {
+            workspace_thumbnail_create_entry(workspace_thumbnail, kywc_output, view_proxy->view);
+        }
     }
 }
 
