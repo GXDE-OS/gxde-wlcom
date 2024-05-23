@@ -13,8 +13,8 @@
 
 #include <kywc/log.h>
 
-#include "button_dark_svg_src.h"
-#include "button_light_svg_src.h"
+#include "base_dark_svg_src.h"
+#include "base_light_svg_src.h"
 
 #include "config.h"
 #include "painter.h"
@@ -48,7 +48,7 @@ static struct theme light = {
     .title_height = 38,
     .shadow_border = 30,
 
-    .button_svg = button_light_svg_src,
+    .button_svg = base_light_svg_src,
 };
 
 /* default dark theme from ukui-dark */
@@ -76,7 +76,7 @@ static struct theme dark = {
     .title_height = 38,
     .shadow_border = 30,
 
-    .button_svg = button_dark_svg_src,
+    .button_svg = base_dark_svg_src,
 };
 
 static int handle_manager_timer(void *data)
@@ -155,45 +155,6 @@ static int handle_manager_timer(void *data)
     return 0;
 }
 
-static void destroy_theme_buffers(struct theme_buffer *bufs)
-{
-    for (int i = 0; i < THEME_BUFFER_COUNT; i++) {
-        wlr_buffer_drop(bufs->buf[i]);
-    }
-    wl_list_remove(&bufs->link);
-    free(bufs);
-}
-
-static void draw_theme_corner(struct theme *theme, float scale, struct theme_buffer *buffers)
-{
-    struct draw_info info = { 0 };
-    info.width = theme->button_width + theme->border_width;
-    info.height = theme->title_height + theme->border_width;
-    info.scale = scale;
-    info.border_width = theme->border_width;
-    info.corner_radius = theme->corner_radius;
-
-    /* draw top-left corner */
-    info.corner_mask = CORNER_MASK_TOP_LEFT;
-    info.border_mask = BORDER_MASK_LEFT | BORDER_MASK_TOP;
-    info.solid_rgba = theme->active_bg_color;
-    info.border_rgba = theme->active_border_color;
-    buffers->buf[CORNER_TOP_LEFT_ACTIVE_BUFFER] = painter_draw_buffer(&info);
-    info.solid_rgba = theme->inactive_bg_color;
-    info.border_rgba = theme->inactive_border_color;
-    buffers->buf[CORNER_TOP_LEFT_INACTIVE_BUFFER] = painter_draw_buffer(&info);
-
-    /* draw top-right corner */
-    info.corner_mask = CORNER_MASK_TOP_RIGHT;
-    info.border_mask = BORDER_MASK_TOP | BORDER_MASK_RIGHT;
-    info.solid_rgba = theme->active_bg_color;
-    info.border_rgba = theme->active_border_color;
-    buffers->buf[CORNER_TOP_RIGHT_ACTIVE_BUFFER] = painter_draw_buffer(&info);
-    info.solid_rgba = theme->inactive_bg_color;
-    info.border_rgba = theme->inactive_border_color;
-    buffers->buf[CORNER_TOP_RIGHT_INACTIVE_BUFFER] = painter_draw_buffer(&info);
-}
-
 static struct wlr_buffer *draw_svg(const char *svg, int width, int height, float scale)
 {
     struct draw_info info = {
@@ -216,10 +177,9 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
     buffers->scale = scale;
     wl_list_insert(&theme->scaled_buffers, &buffers->link);
 
-    buffers->buf[BUTTONS_BUFFER] =
-        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 2, scale);
+    buffers->buf =
+        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 3, scale);
 
-    draw_theme_corner(theme, scale, buffers);
     return buffers;
 }
 
@@ -296,7 +256,9 @@ static void theme_destroy(struct theme *theme)
     /* destroy all theme buffers */
     struct theme_buffer *bufs, *bufs_tmp;
     wl_list_for_each_safe(bufs, bufs_tmp, &theme->scaled_buffers, link) {
-        destroy_theme_buffers(bufs);
+        wlr_buffer_drop(bufs->buf);
+        wl_list_remove(&bufs->link);
+        free(bufs);
     }
 }
 
@@ -453,21 +415,14 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
         return NULL;
     }
 
-    int buffer_index = type <= BUTTON_CLOSE ? BUTTONS_BUFFER : (type - BUTTON_CLOSE);
-    if (!src) {
-        return bufs->buf[buffer_index];
-    }
-
-    if (buffer_index == BUTTONS_BUFFER) {
+    if (src) {
         src->width = theme->button_width * scale;
         src->height = theme->button_width * scale;
         src->x = src->width * (type % 4);
         src->y = src->height * (int)(type / 4);
-    } else {
-        src->width = src->height = 0;
     }
 
-    return bufs->buf[buffer_index];
+    return bufs->buf;
 }
 
 bool theme_manager_set_icon_theme(const char *icon_theme_name)

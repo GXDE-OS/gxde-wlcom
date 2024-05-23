@@ -540,13 +540,7 @@ static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_t
         return;
     }
 
-    int width, height;
-    if (type > BUTTON_CLOSE) {
-        painter_buffer_dest_size(buf, &width, &height);
-    } else {
-        width = height = theme->button_width;
-    }
-    ky_scene_buffer_set_dest_size(buffer, width, height);
+    ky_scene_buffer_set_dest_size(buffer, theme->button_width, theme->button_width);
     ky_scene_buffer_set_source_box(buffer, &src);
 }
 

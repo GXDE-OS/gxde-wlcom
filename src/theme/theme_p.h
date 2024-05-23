@@ -13,19 +13,10 @@
 
 #define DEFAULT_ICON_THEME_NAME "hicolor"
 
-enum {
-    BUTTONS_BUFFER = 0,
-    CORNER_TOP_LEFT_ACTIVE_BUFFER,
-    CORNER_TOP_LEFT_INACTIVE_BUFFER,
-    CORNER_TOP_RIGHT_ACTIVE_BUFFER,
-    CORNER_TOP_RIGHT_INACTIVE_BUFFER,
-    THEME_BUFFER_COUNT,
-};
-
 struct theme_buffer {
     struct wl_list link;
     float scale;
-    struct wlr_buffer *buf[THEME_BUFFER_COUNT];
+    struct wlr_buffer *buf;
 };
 
 struct icon_buffer {
