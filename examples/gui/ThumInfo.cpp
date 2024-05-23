@@ -17,6 +17,7 @@ QString ThumInfo::sourceUuid() const
 {
     return mSource;
 }
+
 void ThumInfo::setSourceUuid(const QString &sourceId)
 {
     if (mSource != sourceId) {
@@ -29,10 +30,24 @@ QString ThumInfo::outputUuid() const
 {
     return mOutput;
 }
+
 void ThumInfo::setOutputUuid(const QString &outputId)
 {
     if (mOutput != outputId) {
         mOutput = outputId;
+        emit thumInfoChanged();
+    }
+}
+
+QString ThumInfo::removeDecorations() const
+{
+    return without_decoration;
+}
+
+void ThumInfo::setRemoveDecorations(const QString &flag)
+{
+    if (without_decoration != flag) {
+        without_decoration = flag;
         emit thumInfoChanged();
     }
 }

@@ -22,6 +22,9 @@ class ThumInfo : public QObject
     QString outputUuid() const;
     void setOutputUuid(const QString &outputId);
 
+    QString removeDecorations() const;
+    void setRemoveDecorations(const QString &flag);
+
   signals:
     void thumInfoChanged();
 
@@ -29,6 +32,7 @@ class ThumInfo : public QObject
     Thumbnail::Type mType = Thumbnail::Type::Output;
     QString mSource;
     QString mOutput;
+    QString without_decoration;
 };
 
 #endif

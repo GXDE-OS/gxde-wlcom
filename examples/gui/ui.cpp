@@ -740,7 +740,6 @@ void MainWindow::toplevel_menu(const QPoint pos)
     connect(action6, SIGNAL(triggered()), this, SLOT(toplevel_unset_fullscreen()));
     connect(action7, SIGNAL(triggered()), this, SLOT(toplevel_set_activate()));
     connect(action8, SIGNAL(triggered()), this, SLOT(toplevel_close()));
-    connect(action13, SIGNAL(triggered()), this, SLOT(show_toplevel_thumbnail()));
 
     // 获得鼠标点击的x，y坐标点
     int x = pos.x();
@@ -790,6 +789,15 @@ void MainWindow::toplevel_menu(const QPoint pos)
         connect(action, SIGNAL(triggered()), this, SLOT(toplevel_send_to_output()));
     }
     action12->setMenu(moreOutput);
+
+    QMenu *decoration = new QMenu();
+    QAction *action14 = new QAction("without_decoration");
+    decoration->addAction(action14);
+    QAction *action15 = new QAction("decoration");
+    decoration->addAction(action15);
+    connect(action14, SIGNAL(triggered()), this, SLOT(show_toplevel_thumbnail()));
+    connect(action15, SIGNAL(triggered()), this, SLOT(show_toplevel_thumbnail()));
+    action13->setMenu(decoration);
 }
 
 void MainWindow::show_menu(const QPoint pos)
@@ -951,6 +959,8 @@ void MainWindow::toplevel_send_to_output()
 
 void MainWindow::show_toplevel_thumbnail()
 {
+    QAction *action = qobject_cast<QAction *>(sender());
+
     int row = tableWidget_2->currentRow();
     QString uuid = tableWidget_2->item(row, 0)->text();
 
@@ -959,6 +969,12 @@ void MainWindow::show_toplevel_thumbnail()
     QProcess *process = new QProcess();
     QStringList list;
     list << "toplevel" << uuid;
+    if (action->text() == "without_decoration") {
+        list << "true";
+    } else if (action->text() == "decoration") {
+        list << "false";
+    }
+
     process->start(programDir + "/thumbnail", list);
 }
 

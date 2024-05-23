@@ -226,9 +226,11 @@ void ThumbnailItem::setThumInfo(ThumInfo *info)
 {
     if (info && pri->mThumInfo != info) {
         context->thumbnail_init(thumbnail, (Thumbnail::Type)info->type(), info->sourceUuid(),
-                                info->outputUuid());
+                                info->outputUuid(), info->removeDecorations());
         pri->mThumInfo = info;
         emit thumInfoChanged();
+    } else {
+        qWarning() << "Failed to set thumbnail info ." << strerror(errno);
     }
 }
 

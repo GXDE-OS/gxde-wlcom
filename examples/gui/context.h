@@ -191,7 +191,7 @@ class Thumbnail : public QObject
 {
     Q_OBJECT
   public:
-    enum Type{
+    enum Type {
         Output,
         Toplevel,
         Workspace,
@@ -206,7 +206,8 @@ class Thumbnail : public QObject
     explicit Thumbnail(QObject *parent = nullptr);
     ~Thumbnail();
 
-    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid);
+    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid,
+               QString decoration);
 
     int32_t fd() const;
     uint32_t format() const;
@@ -243,7 +244,8 @@ class Context : public QObject
     ~Context();
 
     void start();
-    void thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid, QString output_uuid);
+    void thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid,
+                        QString output_uuid, QString decoration);
 
     void addWorkspace(uint32_t position);
     Workspace *findWorkspace(QString uuid);

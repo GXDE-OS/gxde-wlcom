@@ -7,7 +7,8 @@ class Thumbnail::Private
   public:
     Private(Thumbnail *thumbnail);
     ~Private();
-    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid);
+    void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid,
+               QString decoration);
 
     int32_t fd;
     uint32_t format;
@@ -86,27 +87,33 @@ struct kywc_thumbnail_interface Thumbnail::Private::thumbnail_impl {
 };
 
 void Thumbnail::Private::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid,
-                               QString output_uuid)
+                               QString output_uuid, QString decoration)
 {
-    enum kywc_thumbnail_type flag = KYWC_THUMBNAIL_TYPE_TOPLEVEL;
-    switch (type) {
-    case Thumbnail::Type::Output:
-        flag = KYWC_THUMBNAIL_TYPE_OUTPUT;
-        break;
-    case Thumbnail::Type::Toplevel:
-        flag = KYWC_THUMBNAIL_TYPE_TOPLEVEL;
-        break;
-    case Thumbnail::Type::Workspace:
-        flag = KYWC_THUMBNAIL_TYPE_WORKSPACE;
-        break;
-    }
     QByteArray qByteArray_uuid = uuid.toUtf8();
     char *str = qByteArray_uuid.data();
 
-    QByteArray qByteArray = output_uuid.toUtf8();
-    char *output = qByteArray.data();
-    kywc_thumbnail *thumbnail =
-        kywc_thumbnail_create(ctx, flag, str, output, &thumbnail_impl, this->t);
+    kywc_thumbnail *thumbnail = NULL;
+
+    switch (type) {
+    case Thumbnail::Type::Output:
+        thumbnail = kywc_thumbnail_create_from_output(ctx, str, &thumbnail_impl, this->t);
+        break;
+    case Thumbnail::Type::Toplevel: {
+        bool without_decoration = false;
+        if (decoration == QLatin1String("true")) {
+            without_decoration = true;
+        }
+        thumbnail = kywc_thumbnail_create_from_toplevel(ctx, str, without_decoration,
+                                                        &thumbnail_impl, this->t);
+    } break;
+    case Thumbnail::Type::Workspace: {
+        QByteArray qByteArray_uuid = output_uuid.toUtf8();
+        char *output = qByteArray_uuid.data();
+        thumbnail =
+            kywc_thumbnail_create_from_workspace(ctx, str, output, &thumbnail_impl, this->t);
+    } break;
+    }
+
     k_thumbnail = thumbnail;
 }
 
@@ -114,9 +121,10 @@ Thumbnail::Thumbnail(QObject *parent) : pri(new Private(this)) {}
 
 Thumbnail::~Thumbnail() {}
 
-void Thumbnail::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid)
+void Thumbnail::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid,
+                      QString decoration)
 {
-    pri->setup(ctx, type, uuid, output_uuid);
+    pri->setup(ctx, type, uuid, output_uuid, decoration);
 }
 
 int32_t Thumbnail::fd() const

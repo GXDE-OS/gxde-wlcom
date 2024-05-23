@@ -72,7 +72,6 @@ struct kywc_context_interface Context::Private::context_impl = {
     createHandle, destroyHandle, newOutput, newToplevel, newWorkspace,
 };
 
-
 kywc_context *Context::Private::setup(uint32_t capabilities)
 {
     if (!display)
@@ -82,9 +81,8 @@ kywc_context *Context::Private::setup(uint32_t capabilities)
     return k_context;
 }
 
-Context::Context( struct wl_display *display, Capabilities caps, QObject *parent)
-    : QObject{parent}
-    , pri(new Private(this))
+Context::Context(struct wl_display *display, Capabilities caps, QObject *parent)
+    : QObject{ parent }, pri(new Private(this))
 {
     pri->display = display;
 
@@ -100,7 +98,8 @@ Context::Context( struct wl_display *display, Capabilities caps, QObject *parent
     pri->capabilities = capabilities;
 }
 
-Context::~Context() {
+Context::~Context()
+{
     kywc_context_destroy(pri->k_context);
 }
 
@@ -168,7 +167,8 @@ Toplevel *Context::findToplevel(QString uuid)
     return (Toplevel *)kywc_toplevel_get_user_data(toplevel);
 }
 
-void Context::thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid, QString output_uuid)
+void Context::thumbnail_init(Thumbnail *thumbnail, Thumbnail::Type type, QString uuid,
+                             QString output_uuid, QString decoration)
 {
-    thumbnail->setup(pri->k_context, type, uuid, output_uuid);
+    thumbnail->setup(pri->k_context, type, uuid, output_uuid, decoration);
 }

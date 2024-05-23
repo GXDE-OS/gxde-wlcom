@@ -21,8 +21,13 @@ int main(int argc, char *argv[])
         thum.setType(Thumbnail::Type::Output);
         thum.setSourceUuid(arguments.at(2));
     } else if (arguments.at(1) == "toplevel") {
+        if (arguments.size() != 4) {
+            qWarning() << "please input toplevel id and decoration id both";
+            return -1;
+        }
         thum.setType(Thumbnail::Type::Toplevel);
         thum.setSourceUuid(arguments.at(2));
+        thum.setRemoveDecorations(arguments.at(3));
     } else if (arguments.at(1) == "workspace") {
         if (arguments.size() != 4) {
             qWarning() << "please input workspace id and output id both";
