@@ -97,11 +97,12 @@ static void entities_opaque_region(struct node_effect_chain *chain, pixman_regio
     pixman_region32_fini(&opaque_region);
 }
 
-static void entities_bounding_box(struct node_effect_chain *chain, struct wlr_box *box)
+static bool entities_bounding_box(struct node_effect_chain *chain, struct wlr_box *box)
 {
+    bool valid_box = false;
     if (wl_list_empty(&chain->base.slots)) {
         *box = (struct wlr_box){ 0 };
-        return;
+        return valid_box;
     }
 
     int min_x1 = INT_MAX, min_y1 = INT_MAX;
@@ -115,6 +116,7 @@ static void entities_bounding_box(struct node_effect_chain *chain, struct wlr_bo
         if (!entity->effect->impl->entity_bounding_box) {
             continue;
         }
+        valid_box = true;
         bool ret = entity->effect->impl->entity_bounding_box(entity, &child_box);
         min_x1 = MIN(min_x1, child_box.x);
         min_y1 = MIN(min_y1, child_box.y);
@@ -129,6 +131,7 @@ static void entities_bounding_box(struct node_effect_chain *chain, struct wlr_bo
     box->y = min_y1 == INT_MAX ? 0 : min_y1;
     box->width = max_x2 == INT_MIN ? 0 : max_x2 - min_x1;
     box->height = max_y2 == INT_MIN ? 0 : max_y2 - min_y1;
+    return valid_box;
 }
 
 static void entities_collect_damage(struct node_effect_chain *chain, int lx, int ly,
@@ -140,11 +143,6 @@ static void entities_collect_damage(struct node_effect_chain *chain, int lx, int
     struct ky_scene_node *node = chain->node;
     /* node_chain_get_bounding_box */
     node->impl.get_bounding_box(node, &box);
-    if (wlr_box_empty(&box)) {
-        chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
-                                   affected);
-        return;
-    }
 
     /* if node state is changed, it must in the affected region */
     if (box.width > 0 && box.height > 0 &&
@@ -275,8 +273,7 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    entities_bounding_box(chain, box);
-    if (wlr_box_empty(box)) {
+    if (!entities_bounding_box(chain, box)) {
         chain->impl.get_bounding_box(node, box);
     }
 }
@@ -307,6 +304,9 @@ static void node_chain_render(struct ky_scene_node *node, int lx, int ly,
 static void node_chain_destroy(struct ky_scene_node *node)
 {
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
+
+    ky_scene_add_damage(ky_scene_from_node(node), &node->visible_region);
+
     chain->impl.destroy(node);
 }
 
@@ -332,6 +332,20 @@ void effect_entity_destroy(struct effect_entity *entity)
     wl_list_remove(&entity->effect_disable.link);
     wl_list_remove(&entity->effect_destroy.link);
 
+    struct effect_chain *chain = entity->slot.chain;
+    if (chain) {
+        struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
+        /**
+         * add the region which include effect entity region to collected damage,
+         * otherwise the effect entity region will destroy.
+         */
+        ky_scene_add_damage(ky_scene_from_node(node_chain->node),
+                            &node_chain->node->visible_region);
+        /* after removing effect entity, the node may cause damage in other locations */
+        ky_scene_node_push_damage(node_chain->node, KY_SCENE_DAMAGE_BOTH, NULL);
+    }
+
+    /* if effects just use on scene root node, damage added in entity destroy function */
     if (entity->effect->impl->entity_destroy) {
         entity->effect->impl->entity_destroy(entity);
     }

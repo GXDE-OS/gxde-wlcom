@@ -326,6 +326,9 @@ void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[stati
 
 bool ky_scene_node_is_visible(struct ky_scene_node *node);
 
+void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
+                               const pixman_region32_t *damage);
+
 // TODO: is removed in wlroots
 struct wlr_presentation;
 void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *presentation);
