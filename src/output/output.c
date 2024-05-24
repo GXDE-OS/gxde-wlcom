@@ -320,7 +320,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     if (kywc_output == output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
         fallback_output_set_state(kywc_output, true);
         kywc_output_set_primary(kywc_output);
-        output_manager_emit_configured();
+        output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
     }
     output->modeset = true;
 
@@ -457,7 +457,7 @@ static void output_destroy(struct output *output)
     if (output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
         fallback_output_set_state(output_manager->fallback_output, true);
         kywc_output_set_primary(output_manager->fallback_output);
-        output_manager_emit_configured();
+        output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
     }
 
     struct kywc_output_mode *mode, *tmp_mode;
@@ -530,7 +530,7 @@ void output_manager_power_outputs(bool power)
         struct kywc_output_state state = output->base.state;
         state.power = power;
         kywc_output_set_state(&output->base, &state);
-        output_manager_emit_configured();
+        output_manager_emit_configured(CONFIGURE_TYPE_NONE);
     }
 }
 
@@ -774,7 +774,7 @@ bool output_manager_configure_outputs(void)
 
     ret = true;
 error:
-    output_manager_emit_configured();
+    output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
 failed:
     output_manager->pending_primary = NULL;
 
@@ -912,9 +912,10 @@ void output_manager_add_configured_listener(struct wl_listener *listener)
     wl_signal_add(&output_manager->events.configured, listener);
 }
 
-void output_manager_emit_configured(void)
+void output_manager_emit_configured(enum configure_type type)
 {
-    wl_signal_emit_mutable(&output_manager->events.configured, NULL);
+    struct configure_event event = { .type = type };
+    wl_signal_emit_mutable(&output_manager->events.configured, &event);
 }
 
 void output_manager_add_damage_listener(struct wl_listener *listener)

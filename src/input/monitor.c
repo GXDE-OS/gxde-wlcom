@@ -70,23 +70,23 @@ static struct kywc_output *seat_pick_mapped_output(struct seat *seat)
     return NULL;
 }
 
-static void seat_rebase_cursor(struct seat *seat)
+static void seat_rebase_cursor(struct seat *seat, bool moved)
 {
     /* prefer to move cursor to mapped output */
     struct kywc_output *output = seat_pick_mapped_output(seat);
     output = output ? output : kywc_output_get_primary();
-    if (output && !output->destroying) {
+    if (moved && output && !output->destroying) {
         cursor_move_to_output_center(seat->cursor, output);
     }
 
     cursor_rebase(seat->cursor);
 }
 
-static void output_rebase_cursor(struct input_monitor *input_monitor)
+static void output_rebase_cursor(struct input_monitor *input_monitor, bool moved)
 {
     struct seat *seat;
     wl_list_for_each(seat, &input_monitor->input_manager->seats, link) {
-        seat_rebase_cursor(seat);
+        seat_rebase_cursor(seat, moved);
     }
 }
 
@@ -133,8 +133,13 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 
 static void handle_configured(struct wl_listener *listener, void *data)
 {
+    struct configure_event *event = data;
+    if (event->type == CONFIGURE_TYPE_NONE) {
+        return;
+    }
+
     struct input_monitor *input_monitor = wl_container_of(listener, input_monitor, configured);
-    output_rebase_cursor(input_monitor);
+    output_rebase_cursor(input_monitor, event->type == CONFIGURE_TYPE_UPDATE ? true : false);
 }
 
 static void handle_seat_idle(struct idle *idle, void *data){};
@@ -149,7 +154,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     struct input_monitor *input_monitor = wl_container_of(listener, input_monitor, new_seat);
     struct seat *seat = data;
 
-    seat_rebase_cursor(seat);
+    seat_rebase_cursor(seat, true);
     idle_manager_add_idle(seat, false, 0, handle_seat_idle, handle_seat_resume, NULL, NULL);
 }
 

@@ -9,6 +9,16 @@
 
 #include "server.h"
 
+enum configure_type {
+    CONFIGURE_TYPE_NONE = 0,
+    CONFIGURE_TYPE_REMAIN,
+    CONFIGURE_TYPE_UPDATE,
+};
+
+struct configure_event {
+    enum configure_type type;
+};
+
 struct output_pending_config {
     struct output *output;
     struct kywc_output_state state;
@@ -65,7 +75,7 @@ void output_manager_add_damage_listener(struct wl_listener *listener);
 
 void output_manager_add_new_enabled_listener(struct wl_listener *listener);
 
-void output_manager_emit_configured(void);
+void output_manager_emit_configured(enum configure_type type);
 
 bool output_manager_configure_outputs(void);
 
