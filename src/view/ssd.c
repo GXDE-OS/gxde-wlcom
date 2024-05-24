@@ -39,6 +39,12 @@ enum {
     SSD_PART_COUNT,
 };
 
+enum button_state {
+    BUTTON_STATE_NONE = 0,
+    BUTTON_STATE_HOVER,
+    BUTTON_STATE_CLICKED,
+};
+
 enum ssd_update_cause {
     SSD_UPDATE_CAUSE_NONE = 0,
     SSD_UPDATE_CAUSE_SIZE = 1 << 0,
@@ -371,7 +377,33 @@ static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
     return resize_edges;
 }
 
-static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change);
+static void ssd_part_set_button_buffer(struct ssd_part *part, enum button_state state)
+{
+    enum theme_buffer_type type = BUTTON_MINIMIZE;
+    if (part->type == SSD_BUTTON_MAXIMIZE) {
+        type = part->ssd->kywc_view->maximized ? BUTTON_RESTORE : BUTTON_MAXIMIZE;
+    } else if (part->type == SSD_BUTTON_CLOSE) {
+        type = BUTTON_CLOSE;
+    }
+
+    struct theme *theme = theme_manager_get_current();
+    /* get actual type by current state */
+    type += state * 4;
+
+    struct wlr_fbox src;
+    struct wlr_buffer *buf = theme_buffer_load(theme, part->scale, type, &src);
+    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
+    if (buffer->buffer != buf) {
+        ky_scene_buffer_set_buffer(buffer, buf);
+    }
+    /* shortcut here if set_buffer triggered scaled buffer update */
+    if (buffer->buffer != buf) {
+        return;
+    }
+
+    ky_scene_buffer_set_dest_size(buffer, theme->button_width, theme->button_width);
+    ky_scene_buffer_set_source_box(buffer, &src);
+}
 
 static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
                       uint32_t time, bool first, bool hold, void *data)
@@ -386,7 +418,7 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
     // kywc_log(KYWC_DEBUG, "ssd hover %s", ssd_part_name[part->type]);
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
-        ssd_part_update_theme_buffer(part, true);
+        ssd_part_set_button_buffer(part, BUTTON_STATE_HOVER);
         // fallthrough to icon
     case SSD_TITLE_ICON:
         ssd_tooltip_show(seat, part, true);
@@ -411,7 +443,7 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
     // kywc_log(KYWC_ERROR, "ssd leave %s", ssd_part_name[part->type]);
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
-        ssd_part_update_theme_buffer(part, false);
+        ssd_part_set_button_buffer(part, BUTTON_STATE_NONE);
         // fallthrough to icon
     case SSD_TITLE_ICON:
         ssd_tooltip_show(seat, part, false);
@@ -435,6 +467,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
 
     if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_TITLE_ICON) {
         ssd_tooltip_show(seat, part, false);
+    }
+
+    if (LEFT_BUTTON_PRESSED(button, pressed) && part->type <= SSD_BUTTON_CLOSE) {
+        ssd_part_set_button_buffer(part, BUTTON_STATE_CLICKED);
     }
 
     if (CLICK_STATE_DOUBLE == state) {
@@ -525,25 +561,6 @@ static const struct input_event_node_impl ssd_impl = {
     .click = ssd_click,
 };
 
-static void ssd_part_set_theme_buffer(struct ssd_part *part, enum theme_buffer_type type)
-{
-    struct theme *theme = theme_manager_get_current();
-
-    struct wlr_fbox src;
-    struct wlr_buffer *buf = theme_buffer_load(theme, part->scale, type, &src);
-    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(part->node);
-    if (buffer->buffer != buf) {
-        ky_scene_buffer_set_buffer(buffer, buf);
-    }
-    /* shortcut here if set_buffer triggered scaled buffer update */
-    if (buffer->buffer != buf) {
-        return;
-    }
-
-    ky_scene_buffer_set_dest_size(buffer, theme->button_width, theme->button_width);
-    ky_scene_buffer_set_source_box(buffer, &src);
-}
-
 static void ssd_part_set_icon_buffer(struct ssd_part *part)
 {
     struct kywc_view *kywc_view = part->ssd->kywc_view;
@@ -565,27 +582,6 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
     int width, height;
     painter_buffer_dest_size(buf, &width, &height);
     ky_scene_buffer_set_dest_size(buffer, width, height);
-}
-
-static void ssd_part_update_theme_buffer(struct ssd_part *part, bool change)
-{
-    switch (part->type) {
-    case SSD_BUTTON_MINIMIZE:
-        ssd_part_set_theme_buffer(part, change ? BUTTON_MINIMIZE_HOVER : BUTTON_MINIMIZE);
-        break;
-    case SSD_BUTTON_MAXIMIZE:;
-        struct kywc_view *view = part->ssd->kywc_view;
-        int index = change ? (view->maximized ? BUTTON_RESTORE_HOVER : BUTTON_MAXIMIZE_HOVER)
-                           : (view->maximized ? BUTTON_RESTORE : BUTTON_MAXIMIZE);
-        ssd_part_set_theme_buffer(part, index);
-        break;
-    case SSD_BUTTON_CLOSE:
-        ssd_part_set_theme_buffer(part, change ? BUTTON_CLOSE_HOVER : BUTTON_CLOSE);
-        break;
-    case SSD_TITLE_ICON:
-        ssd_part_set_icon_buffer(part);
-        break;
-    }
 }
 
 static void ssd_update_title_icon(struct ssd *ssd)
@@ -678,8 +674,8 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MAXIMIZE].node, button_w, 0);
         ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 2 * button_w, 0);
-        ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_MINIMIZE], false);
-        ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_CLOSE], false);
+        ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MINIMIZE], BUTTON_STATE_NONE);
+        ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_CLOSE], BUTTON_STATE_NONE);
     }
 
     if (cause & (SSD_UPDATE_CAUSE_TITLE | SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_SIZE)) {
@@ -693,7 +689,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node, view->maximizable);
         if (view->maximizable) {
             /* set maximize and restore  */
-            ssd_part_update_theme_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], false);
+            ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], BUTTON_STATE_NONE);
         }
 
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MINIMIZE].node, !view->modal);
@@ -801,7 +797,7 @@ static void ssd_update_buffer(struct ky_scene_buffer *buffer, float scale, void 
     /* update scene_buffer with new buffer */
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
-        ssd_part_update_theme_buffer(part, false);
+        ssd_part_set_button_buffer(part, BUTTON_STATE_NONE);
         break;
     case SSD_TITLE_ICON:
         ssd_part_set_icon_buffer(part);
@@ -847,7 +843,11 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
                 /* set_buffer will emit output_enter,
                  * otherwise we cannot get initial output the view in.
                  */
-                ssd_part_update_theme_buffer(&ssd->parts[i], false);
+                if (i == SSD_TITLE_ICON) {
+                    ssd_part_set_icon_buffer(&ssd->parts[i]);
+                } else {
+                    ssd_part_set_button_buffer(&ssd->parts[i], BUTTON_STATE_NONE);
+                }
             }
         } else {
             struct ky_scene_decoration *frame = ky_scene_decoration_create(parent);
@@ -875,7 +875,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
 static void handle_icon_update(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, icon_update);
-    ssd_part_update_theme_buffer(&ssd->parts[SSD_TITLE_ICON], false);
+    ssd_part_set_icon_buffer(&ssd->parts[SSD_TITLE_ICON]);
 }
 
 static void handle_view_activate(struct wl_listener *listener, void *data)
