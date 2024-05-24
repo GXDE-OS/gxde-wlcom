@@ -137,8 +137,9 @@ static void entities_collect_damage(struct node_effect_chain *chain, int lx, int
                                     pixman_region32_t *affected)
 {
     struct wlr_box box;
-    entities_bounding_box(chain, &box);
     struct ky_scene_node *node = chain->node;
+    /* node_chain_get_bounding_box */
+    node->impl.get_bounding_box(node, &box);
     if (wlr_box_empty(&box)) {
         chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
                                    affected);
@@ -148,8 +149,8 @@ static void entities_collect_damage(struct node_effect_chain *chain, int lx, int
     /* if node state is changed, it must in the affected region */
     if (box.width > 0 && box.height > 0 &&
         pixman_region32_contains_rectangle(
-            affected, &(pixman_box32_t){ lx + box.x, ly + box.y, lx + box.width,
-                                         ly + box.height }) == PIXMAN_REGION_OUT) {
+            affected, &(pixman_box32_t){ lx + box.x, ly + box.y, lx + box.x + box.width,
+                                         ly + box.y + box.height }) == PIXMAN_REGION_OUT) {
         return;
     }
 
@@ -274,7 +275,10 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    chain->impl.get_bounding_box(node, box);
+    entities_bounding_box(chain, box);
+    if (wlr_box_empty(box)) {
+        chain->impl.get_bounding_box(node, box);
+    }
 }
 
 static void node_chain_render(struct ky_scene_node *node, int lx, int ly,
