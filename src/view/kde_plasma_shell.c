@@ -455,6 +455,7 @@ static void handle_get_surface(struct wl_client *client, struct wl_resource *she
     surface->surface_destroy.notify = surface_handle_destroy;
     wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
 
+    surface->view = view_try_from_wlr_surface(surface->wlr_surface);
     /* workaround to fix this request is behind surface map */
     if (surface->wlr_surface->mapped) {
         surface_handle_map(&surface->surface_map, NULL);
