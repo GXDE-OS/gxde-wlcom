@@ -1333,8 +1333,8 @@ void view_apply_role(struct view *view)
 
     kywc_view->minimizable = kywc_view->maximizable = kywc_view->fullscreenable =
         kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
-    kywc_view->closeable = kywc_view->role != KYWC_VIEW_ROLE_DESKTOP &&
-                           kywc_view->role != KYWC_VIEW_ROLE_PANEL;
+    kywc_view->closeable =
+        kywc_view->role != KYWC_VIEW_ROLE_DESKTOP && kywc_view->role != KYWC_VIEW_ROLE_PANEL;
     kywc_view->movable = kywc_view->resizable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
     kywc_view->activatable = kywc_view->role != KYWC_VIEW_ROLE_PANEL &&
                              kywc_view->role != KYWC_VIEW_ROLE_TOOLTIP &&

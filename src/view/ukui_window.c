@@ -6,12 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <wlr/types/wlr_compositor.h>
 #include <kywc/identifier.h>
+#include <wlr/types/wlr_compositor.h>
 
 #include "input/seat.h"
-#include "ukui-window-management-protocol.h"
 #include "theme.h"
+#include "ukui-window-management-protocol.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
@@ -79,8 +79,7 @@ enum state_flag {
     STATE_FLAG_LAST,
 };
 
-static void ukui_window_set_state(struct ukui_window *window, enum state_flag flag,
-                                        bool state)
+static void ukui_window_set_state(struct ukui_window *window, enum state_flag flag, bool state)
 {
     switch (flag) {
     case STATE_FLAG_ACTIVE:
@@ -149,8 +148,8 @@ static void ukui_window_set_state(struct ukui_window *window, enum state_flag fl
     }
 }
 
-static void ukui_window_send_state(struct ukui_window *window,
-                                         struct wl_resource *resource, bool force);
+static void ukui_window_send_state(struct ukui_window *window, struct wl_resource *resource,
+                                   bool force);
 
 static void handle_set_state(struct wl_client *client, struct wl_resource *resource, uint32_t flags,
                              uint32_t state)
@@ -176,8 +175,10 @@ static void handle_set_startup_geometry(struct wl_client *client, struct wl_reso
 static void handle_panel_surface_destroy(struct wl_listener *listener, void *data)
 {
     struct ukui_window *window = wl_container_of(listener, window, panel_surface_destroy);
-    window->kywc_view->minimized_geometry.x = window->kywc_view->geometry.x + window->kywc_view->geometry.width / 2;
-    window->kywc_view->minimized_geometry.y = window->kywc_view->geometry.y + window->kywc_view->geometry.height / 2;
+    window->kywc_view->minimized_geometry.x =
+        window->kywc_view->geometry.x + window->kywc_view->geometry.width / 2;
+    window->kywc_view->minimized_geometry.y =
+        window->kywc_view->geometry.y + window->kywc_view->geometry.height / 2;
     window->kywc_view->minimized_geometry.width = 10;
     window->kywc_view->minimized_geometry.height = 10;
     wl_list_remove(&window->panel_surface_destroy.link);
@@ -296,8 +297,8 @@ static const struct ukui_window_interface ukui_window_impl = {
     .send_to_output = handle_send_to_output,
 };
 
-static struct ukui_window *
-ukui_window_from_uuid(struct ukui_window_management *management, const char *uuid)
+static struct ukui_window *ukui_window_from_uuid(struct ukui_window_management *management,
+                                                 const char *uuid)
 {
     struct ukui_window *window;
     wl_list_for_each(window, &management->windows, link) {
@@ -343,9 +344,9 @@ static void window_handle_view_app_id(struct wl_listener *listener, void *data)
 
 #define set_state(states, prop, state)                                                             \
     if (prop) {                                                                                    \
-        states |= UKUI_WINDOW_STATE_##state;                                  \
+        states |= UKUI_WINDOW_STATE_##state;                                                       \
     } else {                                                                                       \
-        states &= ~UKUI_WINDOW_STATE_##state;                                 \
+        states &= ~UKUI_WINDOW_STATE_##state;                                                      \
     }
 
 static void window_handle_view_activate(struct wl_listener *listener, void *data)
@@ -429,8 +430,8 @@ static void window_handle_view_size(struct wl_listener *listener, void *data)
     }
 }
 
-static void ukui_window_send_state(struct ukui_window *window,
-                                         struct wl_resource *resource, bool force)
+static void ukui_window_send_state(struct ukui_window *window, struct wl_resource *resource,
+                                   bool force)
 {
     struct kywc_view *kywc_view = window->kywc_view;
     uint32_t states = window->states;
@@ -473,12 +474,11 @@ static void ukui_window_send_state(struct ukui_window *window,
 #undef set_state
 
 static void ukui_window_add_resource(struct ukui_window *window,
-                                           struct wl_resource *management_resource, uint32_t id)
+                                     struct wl_resource *management_resource, uint32_t id)
 {
     struct wl_client *client = wl_resource_get_client(management_resource);
     uint32_t version = wl_resource_get_version(management_resource);
-    struct wl_resource *resource =
-        wl_resource_create(client, &ukui_window_interface, version, id);
+    struct wl_resource *resource = wl_resource_create(client, &ukui_window_interface, version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;
@@ -538,13 +538,11 @@ static void ukui_window_add_resource(struct ukui_window *window,
     }
 }
 
-static void handle_create_window(struct wl_client *client, struct wl_resource *management_resource, uint32_t id,
-                                 const char *internal_window_uuid)
+static void handle_create_window(struct wl_client *client, struct wl_resource *management_resource,
+                                 uint32_t id, const char *internal_window_uuid)
 {
-    struct ukui_window_management *management =
-        wl_resource_get_user_data(management_resource);
-    struct ukui_window *window =
-        ukui_window_from_uuid(management, internal_window_uuid);
+    struct ukui_window_management *management = wl_resource_get_user_data(management_resource);
+    struct ukui_window *window = ukui_window_from_uuid(management, internal_window_uuid);
 
     ukui_window_add_resource(window, management_resource, id);
 }
@@ -565,7 +563,8 @@ static void management_handle_resource_destroy(struct wl_resource *resource)
     wl_list_remove(&resource->link);
 }
 
-static void ukui_window_management_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
+static void ukui_window_management_bind(struct wl_client *client, void *data, uint32_t version,
+                                        uint32_t id)
 {
     struct ukui_window_management *management = data;
 
@@ -581,9 +580,8 @@ static void ukui_window_management_bind(struct wl_client *client, void *data, ui
                                    management_handle_resource_destroy);
 
     ukui_window_management_send_show_desktop_changed(
-        resource, view_manager_get_show_desktop()
-                      ? UKUI_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED
-                      : UKUI_WINDOW_MANAGEMENT_SHOW_DESKTOP_DISABLED);
+        resource, view_manager_get_show_desktop() ? UKUI_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED
+                                                  : UKUI_WINDOW_MANAGEMENT_SHOW_DESKTOP_DISABLED);
 
     struct ukui_window *window;
     wl_list_for_each(window, &management->windows, link) {
@@ -698,8 +696,7 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
 
 static void handle_shown_desktop(struct wl_listener *listener, void *data)
 {
-    struct ukui_window_management *management =
-        wl_container_of(listener, management, show_desktop);
+    struct ukui_window_management *management = wl_container_of(listener, management, show_desktop);
     bool enabled = view_manager_get_show_desktop();
 
     struct wl_resource *resource;
@@ -730,15 +727,14 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 bool ukui_window_management_create(struct server *server)
 {
-    struct ukui_window_management *management =
-        calloc(1, sizeof(struct ukui_window_management));
+    struct ukui_window_management *management = calloc(1, sizeof(struct ukui_window_management));
     if (!management) {
         return false;
     }
 
-    management->global = wl_global_create(
-        server->display, &ukui_window_management_interface,
-        UKUI_WINDOW_MANAGEMENT_VERSION, management, ukui_window_management_bind);
+    management->global =
+        wl_global_create(server->display, &ukui_window_management_interface,
+                         UKUI_WINDOW_MANAGEMENT_VERSION, management, ukui_window_management_bind);
     if (!management->global) {
         kywc_log(KYWC_WARN, "ukui window management create failed");
         free(management);

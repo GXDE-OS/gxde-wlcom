@@ -21,7 +21,6 @@
 
 static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 };
 
-
 enum shake_effect_stage {
     SHAKE_EFFECT_ORIGIN = 0,
     SHAKE_EFFECT_LEFT_SIDE,

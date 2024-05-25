@@ -202,7 +202,7 @@ static const struct org_kde_kwin_slide_manager_interface kde_slide_manager_impl 
 };
 
 static void kde_slide_manager_bind(struct wl_client *client, void *data, uint32_t version,
-                                  uint32_t id)
+                                   uint32_t id)
 {
     struct wl_resource *resource =
         wl_resource_create(client, &org_kde_kwin_slide_manager_interface, version, id);

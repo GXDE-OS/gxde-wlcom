@@ -244,7 +244,7 @@ static void handle_set_skip_switcher(struct wl_client *client, struct wl_resourc
     }
 }
 
-static void handle_set_property(struct wl_client *client, struct wl_resource * resource,
+static void handle_set_property(struct wl_client *client, struct wl_resource *resource,
                                 uint32_t property, uint32_t value)
 {
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
@@ -334,9 +334,10 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
 
 static void keyboard_grab_cancel(struct seat_keyboard_grab *keyboard_grab)
 {
-    //For seat destroy
+    // For seat destroy
     struct ukui_surface *surface = keyboard_grab->data;
-    struct ukui_keyboard_grab *grab = get_ukui_keyboard_grab_from_seat(surface, keyboard_grab->seat);
+    struct ukui_keyboard_grab *grab =
+        get_ukui_keyboard_grab_from_seat(surface, keyboard_grab->seat);
     seat_end_keyboard_grab(keyboard_grab->seat, keyboard_grab);
     wl_list_remove(&grab->link);
     free(grab);
@@ -370,13 +371,14 @@ static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data
 
 static void end_ukui_grab_keyboard(struct ukui_keyboard_grab *ukui_keyboard_grab)
 {
-    seat_end_keyboard_grab(ukui_keyboard_grab->keyboard_grab.seat, &ukui_keyboard_grab->keyboard_grab);
+    seat_end_keyboard_grab(ukui_keyboard_grab->keyboard_grab.seat,
+                           &ukui_keyboard_grab->keyboard_grab);
     wl_list_remove(&ukui_keyboard_grab->link);
     free(ukui_keyboard_grab);
 }
 
 static void handle_grab_keyboard(struct wl_client *client, struct wl_resource *resource,
-			                           struct wl_resource *wl_seat)
+                                 struct wl_resource *wl_seat)
 {
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
     if (!surface->wlr_surface || surface->grab_all_keyboard) {
@@ -420,8 +422,7 @@ static const struct ukui_surface_interface ukui_surface_impl = {
 
 static void surface_handle_output_update_usable_area(struct wl_listener *listener, void *data)
 {
-    struct ukui_surface *surface =
-        wl_container_of(listener, surface, output_update_usable_area);
+    struct ukui_surface *surface = wl_container_of(listener, surface, output_update_usable_area);
     struct kywc_box *usable_area = data;
 
     struct kywc_box geo;
@@ -677,11 +678,9 @@ static const struct ukui_shell_interface ukui_shell_impl = {
     .create_surface = handle_create_surface,
 };
 
-static void ukui_shell_bind(struct wl_client *client, void *data, uint32_t version,
-                                  uint32_t id)
+static void ukui_shell_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
 {
-    struct wl_resource *resource =
-        wl_resource_create(client, &ukui_shell_interface, version, id);
+    struct wl_resource *resource = wl_resource_create(client, &ukui_shell_interface, version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;
@@ -712,8 +711,8 @@ bool ukui_shell_create(struct server *server)
         return false;
     }
 
-    shell->global = wl_global_create(server->display, &ukui_shell_interface,
-                                     UKUI_SHELL_VERSION, shell, ukui_shell_bind);
+    shell->global = wl_global_create(server->display, &ukui_shell_interface, UKUI_SHELL_VERSION,
+                                     shell, ukui_shell_bind);
     if (!shell->global) {
         kywc_log(KYWC_WARN, "ukui shell create failed");
         free(shell);
