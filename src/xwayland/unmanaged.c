@@ -320,6 +320,9 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, associate);
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
 
+    unmanaged->unmap.notify = unmanaged_handle_unmap;
+    wl_signal_add(&wlr_xwayland_surface->surface->events.unmap, &unmanaged->unmap);
+
     struct view_layer *layer = view_manager_get_layer(LAYER_UNMANAGED, false);
     struct ky_scene_surface *scene_surface =
         ky_scene_surface_create(layer->tree, wlr_xwayland_surface->surface);
@@ -337,8 +340,6 @@ static void unmanaged_handle_associate(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &unmanaged->precommit);
     unmanaged->map.notify = unmanaged_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &unmanaged->map);
-    unmanaged->unmap.notify = unmanaged_handle_unmap;
-    wl_signal_add(&wlr_xwayland_surface->surface->events.unmap, &unmanaged->unmap);
     unmanaged->node_destroy.notify = unmanaged_handle_node_destroy;
     wl_signal_add(&unmanaged->surface_node->events.destroy, &unmanaged->node_destroy);
 }

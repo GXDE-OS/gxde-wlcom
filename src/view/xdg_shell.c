@@ -481,6 +481,9 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     wlr_xdg_surface->data = xdg_view;
     wlr_xdg_surface->surface->data = &xdg_view->view;
 
+    xdg_view->unmap.notify = xdg_view_handle_unmap;
+    wl_signal_add(&wlr_xdg_surface->surface->events.unmap, &xdg_view->unmap);
+
     /* create tree for surface and all sub-surfaces */
     xdg_view->view.surface_tree = ky_scene_xdg_surface_create(xdg_view->view.tree, wlr_xdg_surface);
     /* event node will be destroyed when xdg_surface destroy */
@@ -490,8 +493,6 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;
     wl_signal_add(&wlr_xdg_surface->surface->events.map, &xdg_view->map);
-    xdg_view->unmap.notify = xdg_view_handle_unmap;
-    wl_signal_add(&wlr_xdg_surface->surface->events.unmap, &xdg_view->unmap);
     xdg_view->destroy.notify = xdg_view_handle_destroy;
     wl_signal_add(&wlr_xdg_surface->events.destroy, &xdg_view->destroy);
 }
