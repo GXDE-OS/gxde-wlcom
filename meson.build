@@ -46,25 +46,14 @@ if git.found()
 endif
 add_project_arguments('-DKYWC_VERSION=@0@'.format(version), language: 'c')
 
-wlroots_version = ['>=0.17.0']
-wlroots_proj = subproject(
+wlroots = dependency(
   'wlroots',
   default_options: ['default_library=static', 'examples=false', 'renderers=[]'],
-  required: false,
-  version: wlroots_version,
+  version: ['>=0.17.0', '<0.18.0'],
 )
-add_project_arguments('-DWLR_USE_UNSTABLE', language: 'c')
 
-if wlroots_proj.found()
-  wlroots = wlroots_proj.get_variable('wlroots')
-  wlroots_conf = wlroots_proj.get_variable('conf_data')
-  wlroots_has_xwayland = wlroots_conf.get('WLR_HAS_XWAYLAND') == 1
-else
-  wlroots = dependency('wlroots', version: wlroots_version)
-  wlroots = dependency('wlroots')
-  wlroots_has_xwayland = cc.get_define('WLR_HAS_XWAYLAND',
-    prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
-endif
+add_project_arguments('-DWLR_USE_UNSTABLE', language: 'c')
+wlroots_has_xwayland = wlroots.get_variable('have_xwayland') == 'true'
 
 xcb = dependency('xcb')
 have_xwayland = xcb.found() and wlroots_has_xwayland
