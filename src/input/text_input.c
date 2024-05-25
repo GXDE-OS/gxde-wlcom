@@ -267,7 +267,7 @@ static void handle_text_input_commit(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_commit);
     if (!text_input_is_enabeld(text_input)) {
-        kywc_log(KYWC_INFO, "Inactive text input tried to commit an update");
+        kywc_log(KYWC_DEBUG, "Inactive text input tried to commit an update");
         return;
     }
     kywc_log(KYWC_DEBUG, "Text input committed update");
