@@ -462,22 +462,11 @@ static void blur_fb0(struct blur_data *data)
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 }
 
-static void render(const struct kywc_box *box, const pixman_region32_t *clip, GLint attrib,
+static void render(const struct kywc_box *box, const pixman_region32_t *blur, GLint attrib,
                    const struct wlr_box *sdf_box, GLint sdfpos_attrib)
 {
-    pixman_region32_t region;
-    pixman_region32_init_rect(&region, box->x, box->y, box->width, box->height);
-
-    if (clip) {
-        pixman_region32_intersect(&region, &region, clip);
-    }
-
     int rects_len;
-    const pixman_box32_t *rects = pixman_region32_rectangles(&region, &rects_len);
-    if (rects_len == 0) {
-        pixman_region32_fini(&region);
-        return;
-    }
+    const pixman_box32_t *rects = pixman_region32_rectangles(blur, &rects_len);
 
     glEnableVertexAttribArray(sdfpos_attrib);
     glEnableVertexAttribArray(attrib);
@@ -528,8 +517,6 @@ static void render(const struct kywc_box *box, const pixman_region32_t *clip, GL
 
     glDisableVertexAttribArray(attrib);
     glDisableVertexAttribArray(sdfpos_attrib);
-
-    pixman_region32_fini(&region);
 }
 
 static void blur_render(struct ky_scene_render_target *target,
@@ -610,7 +597,7 @@ static void blur_render(struct ky_scene_render_target *target,
                 options->radius->rt / half_height, options->radius->lb / half_height,
                 options->radius->lt / half_height);
 
-    render(&buffer_cpy_box, options->clip, prog->shaders.pos_attrib, options->dst_box,
+    render(&buffer_cpy_box, blur_region, prog->shaders.pos_attrib, options->dst_box,
            prog->shaders.sdfpos_attrib);
 
     glBindTexture(texture->target, 0);
