@@ -62,4 +62,6 @@ bool touchtrail_effect_create(struct effect_manager *manager);
 
 bool long_touch_effect_create(struct effect_manager *manager);
 
+bool fade_effect_create(struct effect_manager *manager);
+
 #endif /* _EFFECT_P_H_ */

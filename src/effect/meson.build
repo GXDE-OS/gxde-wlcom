@@ -4,6 +4,7 @@ wlcom_sources += files(
   'capture.c',
   'config.c',
   'effect.c',
+  'fade.c',
   'move.c',
   'showfps.c',
   'scale.c',

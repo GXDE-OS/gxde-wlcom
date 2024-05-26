@@ -9,6 +9,7 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
+#include "effect/fade.h"
 #include "effect/scale.h"
 #include "input/seat.h"
 #include "output.h"
@@ -380,6 +381,11 @@ void view_map(struct view *view)
     modal_create(view);
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
+
+    if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+        view_add_fade_effect(view, FADE_MAP);
+    }
+
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
     wl_signal_emit_mutable(&view_manager->events.new_mapped_view, kywc_view);
 
@@ -399,6 +405,11 @@ void view_unmap(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
+
+    if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+        view_add_fade_effect(view, FADE_UNMAP);
+    }
+
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
     struct view_proxy *proxy;
