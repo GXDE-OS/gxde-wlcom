@@ -87,7 +87,6 @@ struct kywc_view {
     int32_t max_width, max_height;
 
     enum kywc_ssd ssd;
-    bool shaded;
     bool has_initial_position;
     bool has_round_corner;
 
@@ -103,7 +102,7 @@ struct kywc_view {
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;
     bool closeable, movable, resizable;
-    bool activatable, focusable, shadeable;
+    bool activatable, focusable;
     bool skip_taskbar, skip_switcher;
 
     const char *uuid;
@@ -147,8 +146,6 @@ struct kywc_view {
         struct wl_signal size;
         /* emit when view's decoration mode has changed */
         struct wl_signal decoration;
-        /* emit when view's drop-shadow mode has changed */
-        struct wl_signal shadow;
         /* emit when view unset modal */
         struct wl_signal unset_modal;
     } events;

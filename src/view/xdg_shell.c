@@ -390,8 +390,6 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     view_set_title(&xdg_view->view, toplevel->title);
     xdg_view_handle_set_parent(&xdg_view->set_parent, NULL);
 
-    view_set_shaded(&xdg_view->view, xdg_view->view.base.ssd != KYWC_SSD_NONE);
-
     xdg_view_handle_request_minimize(&xdg_view->request_minimize, NULL);
     xdg_view_handle_request_maximize(&xdg_view->request_maximize, NULL);
     xdg_view_handle_request_fullscreen(&xdg_view->request_fullscreen, NULL);

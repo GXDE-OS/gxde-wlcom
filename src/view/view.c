@@ -168,7 +168,6 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&kywc_view->events.position);
     wl_signal_init(&kywc_view->events.size);
     wl_signal_init(&kywc_view->events.decoration);
-    wl_signal_init(&kywc_view->events.shadow);
     wl_signal_init(&kywc_view->events.unset_modal);
 
     view->impl = impl;
@@ -191,7 +190,6 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     kywc_view->resizable = true;
     kywc_view->activatable = true;
     kywc_view->focusable = true;
-    kywc_view->shadeable = true;
     kywc_view->has_round_corner = true;
     kywc_view->uuid = kywc_identifier_uuid_generate();
     kywc_view->focused_seat = input_manager_get_default_seat();
@@ -605,20 +603,6 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd)
     kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, ssd);
 
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
-}
-
-void view_set_shaded(struct view *view, bool shaded)
-{
-    struct kywc_view *kywc_view = &view->base;
-    shaded = kywc_view->shadeable && shaded;
-    if (kywc_view->shaded == shaded) {
-        return;
-    }
-
-    kywc_view->shaded = shaded;
-    kywc_log(KYWC_DEBUG, "kywc_view %p need shadow %d", kywc_view, shaded);
-
-    wl_signal_emit_mutable(&kywc_view->events.shadow, NULL);
 }
 
 struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *workspace)
@@ -1344,7 +1328,6 @@ void view_apply_role(struct view *view)
                            kywc_view->role == KYWC_VIEW_ROLE_DESKTOP ||
                            kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
                            kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK;
-    kywc_view->shadeable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
 
     kywc_view->has_round_corner =
         kywc_view->role == KYWC_VIEW_ROLE_NORMAL || kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW;
