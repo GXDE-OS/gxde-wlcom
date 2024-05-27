@@ -436,7 +436,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         !pixman_region32_not_empty(&scene_output->damage_ring.current)) {
         pixman_region32_fini(&target.damage);
         pixman_region32_fini(&target.excluded_damage);
-        return true;
+        return false;
     }
 
     // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);

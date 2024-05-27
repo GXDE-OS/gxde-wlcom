@@ -335,11 +335,29 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     return output;
 }
 
+static void handle_output_present(struct wl_listener *listener, void *data)
+{
+    struct output *output = wl_container_of(listener, output, present);
+    output->pageflip = true;
+    struct kywc_output *kywc_output = &output->base;
+    output->base.has_pending = kywc_output->has_pending
+                                   ? kywc_output_set_state(kywc_output, &kywc_output->pending_state)
+                                   : false;
+    if (output->base.has_pending) {
+        output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+    }
+}
+
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
+    if (output->base.has_pending) {
+        output->wlr_output->frame_pending = true;
+        output->base.has_pending = false;
+        return;
+    }
 
-    ky_scene_output_commit(output->scene_output, NULL);
+    output->pageflip = !ky_scene_output_commit(output->scene_output, NULL);
 
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -477,6 +495,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 
     wl_list_remove(&output->destroy.link);
     wl_list_remove(&output->frame.link);
+    wl_list_remove(&output->present.link);
 
     /* output may be disabled before */
     if (output->scene_output) {
@@ -504,8 +523,10 @@ static void handle_new_output(struct wl_listener *listener, void *data)
         return;
     }
 
+    output->present.notify = handle_output_present;
     output->frame.notify = handle_output_frame;
     output->destroy.notify = handle_output_destroy;
+    wl_signal_add(&wlr_output->events.present, &output->present);
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
 
@@ -1104,6 +1125,14 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
                                                      state->refresh);
                 }
                 output_ensure_mode(wlr_output, &wlr_state, best);
+            } else if (output->wlr_output->enabled && wlr_output_is_drm(wlr_output) &&
+                       output->wlr_output->width == state->width &&
+                       output->wlr_output->height == state->height && !output->pageflip &&
+                       output->modeset) {
+                output->base.pending_state = *state;
+                output->base.has_pending = true;
+                kywc_log(KYWC_WARN, "drm output commit need waitting for pageflip");
+                return true;
             }
 
             wlr_output_state_set_transform(&wlr_state, state->transform);

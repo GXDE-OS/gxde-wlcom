@@ -54,6 +54,7 @@ struct output {
         struct wl_signal update_late_usable_area;
     } events;
 
+    struct wl_listener present;
     struct wl_listener frame;
     struct wl_listener precommit;
     struct wl_listener destroy;
@@ -61,6 +62,7 @@ struct output {
     /* output damage in layout coord */
     pixman_region32_t damage_region;
     bool modeset;
+    bool pageflip;
 };
 
 typedef void (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);
