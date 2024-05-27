@@ -719,6 +719,7 @@ bool effect_manager_create(struct server *server)
     touchtrail_effect_create(manager);
     long_touch_effect_create(manager);
     fade_effect_create(manager);
+    slide_effect_create(manager);
 
     return true;
 }

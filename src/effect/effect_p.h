@@ -64,4 +64,14 @@ bool long_touch_effect_create(struct effect_manager *manager);
 
 bool fade_effect_create(struct effect_manager *manager);
 
+#if HAVE_KDE_SLIDE
+bool slide_effect_create(struct effect_manager *manager);
+#else
+static __attribute__((unused)) inline bool
+slide_effect_create(struct effect_manager *effect_manager)
+{
+    return false;
+}
+#endif
+
 #endif /* _EFFECT_P_H_ */

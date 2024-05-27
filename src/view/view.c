@@ -11,6 +11,7 @@
 
 #include "effect/fade.h"
 #include "effect/scale.h"
+#include "effect/slide.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
@@ -382,7 +383,8 @@ void view_map(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
 
-    if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+    if (!view_add_slide_effect(view, true) &&
+        kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
         view_add_fade_effect(view, FADE_MAP);
     }
 
@@ -406,7 +408,8 @@ void view_unmap(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
 
-    if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+    if (!view_add_slide_effect(view, false) &&
+        kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
         view_add_fade_effect(view, FADE_UNMAP);
     }
 

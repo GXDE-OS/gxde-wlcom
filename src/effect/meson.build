@@ -30,4 +30,10 @@ if have_ukui_watermark
   )
 endif
 
+if have_kde_slide
+  wlcom_sources += files(
+    'slide.c',
+  )
+endif
+
 subdir('shaders')
