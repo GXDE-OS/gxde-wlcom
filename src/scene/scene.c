@@ -320,14 +320,14 @@ static void scene_destroy(struct ky_scene_node *node)
     struct ky_scene *scene = ky_scene_from_node(node);
     wl_list_remove(&scene->presentation_destroy.link);
 
-    pixman_region32_fini(&scene->collected_damage);
-    pixman_region32_fini(&scene->collected_invisible);
-    pixman_region32_fini(&scene->pushed_damage);
-
     struct ky_scene_output *output, *tmp;
     wl_list_for_each_safe(output, tmp, &scene->outputs, link) {
         ky_scene_output_destroy(output);
     }
+
+    pixman_region32_fini(&scene->collected_damage);
+    pixman_region32_fini(&scene->collected_invisible);
+    pixman_region32_fini(&scene->pushed_damage);
 
     scene->tree_destroy(node);
 }

@@ -1461,6 +1461,10 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&view_manager->server_destroy.link);
     wl_list_remove(&view_manager->theme_update.link);
 
+    for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
+        ky_scene_node_destroy(&view_manager->layers[layer].tree->node);
+    }
+
     free(view_manager);
     view_manager = NULL;
 }
