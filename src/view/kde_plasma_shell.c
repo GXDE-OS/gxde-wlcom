@@ -9,6 +9,7 @@
 
 #include "output.h"
 #include "plasma-shell-protocol.h"
+#include "scene/surface.h"
 #include "view_p.h"
 
 #define PLASMA_SURFACE_VERSION 7
@@ -27,6 +28,9 @@ struct kde_plasma_surface {
     struct wlr_surface *wlr_surface;
     struct wl_listener surface_map;
     struct wl_listener surface_destroy;
+
+    /* for popup position */
+    struct ky_scene_buffer *buffer;
 
     /* get in map listener */
     struct view *view;
@@ -57,6 +61,19 @@ static void handle_set_output(struct wl_client *client, struct wl_resource *reso
     // Not implemented yet
 }
 
+static void kde_plasma_surface_apply_position(struct kde_plasma_surface *surface)
+{
+    if (surface->view) {
+        kywc_view_move(&surface->view->base, surface->x, surface->y);
+    } else if (surface->buffer) {
+        struct ky_scene_node *node = &surface->buffer->node;
+        int lx, ly;
+        ky_scene_node_coords(node, &lx, &ly);
+        ky_scene_node_set_position(&surface->buffer->node, node->x + surface->x - lx,
+                                   node->y + surface->y - ly);
+    }
+}
+
 static void handle_set_position(struct wl_client *client, struct wl_resource *resource, int32_t x,
                                 int32_t y)
 {
@@ -68,9 +85,7 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
     surface->x = x;
     surface->y = y;
 
-    if (surface->view) {
-        kywc_view_move(&surface->view->base, surface->x, surface->y);
-    }
+    kde_plasma_surface_apply_position(surface);
 }
 
 static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
@@ -365,7 +380,8 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     /* get view from surface */
     surface->view = view_try_from_wlr_surface(surface->wlr_surface);
     if (!surface->view) {
-        kywc_log(KYWC_WARN, "surface is not a toplevel");
+        kywc_log(KYWC_DEBUG, "surface is not a toplevel");
+        surface->buffer = ky_scene_buffer_try_from_surface(surface->wlr_surface);
         return;
     }
 
@@ -376,7 +392,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     /* apply set_position called before map */
     if (surface->x != INT32_MAX || surface->y != INT32_MAX) {
         surface->view->base.has_initial_position = true;
-        kywc_view_move(&surface->view->base, surface->x, surface->y);
+        kde_plasma_surface_apply_position(surface);
     }
 
     surface->view_map.notify = surface_handle_view_map;
