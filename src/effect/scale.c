@@ -5,15 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <kywc/boxes.h>
-#include <kywc/output.h>
-
 #include "effect/animator.h"
 #include "effect/scale.h"
 #include "effect_p.h"
 #include "render/opengl.h"
-#include "scene/render.h"
-#include "scene/scene.h"
 #include "scene/thumbnail.h"
 #include "theme.h"
 #include "util/time.h"
@@ -26,7 +21,8 @@ struct scale_effect_data {
     struct animator *animator;
     struct animation_data current;
 
-    struct kywc_box start_geometry, end_geometry;
+    struct kywc_box start_geometry;
+    struct kywc_box end_geometry;
     struct kywc_box render_box;
     float start_alpha, end_alpha;
     int64_t start_time;
@@ -46,13 +42,10 @@ struct scale_effect_data {
 
 struct scale_effect {
     struct effect *effect;
-    struct ky_scene *scene;
-    struct effect_manager *manager;
-    struct wlr_renderer *renderer;
-
-    int duration;
-
     struct wl_listener destroy;
+
+    struct effect_manager *manager;
+    int duration;
 };
 
 static struct scale_effect *scale = NULL;
@@ -249,7 +242,8 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     if (scale_data->thumbnail_texture) {
         wlr_texture_destroy(scale_data->thumbnail_texture);
     }
-    scale_data->thumbnail_texture = wlr_texture_from_buffer(scale->renderer, event->buffer);
+    scale_data->thumbnail_texture =
+        wlr_texture_from_buffer(scale->manager->server->renderer, event->buffer);
 }
 
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -355,13 +349,13 @@ static const struct effect_interface scale_effect_impl = {
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
-    struct scale_effect *effect = wl_container_of(listener, effect, destroy);
     struct effect_entity *entity, *tmp;
-    wl_list_for_each_safe(entity, tmp, &effect->effect->entities, effect_link) {
+    wl_list_for_each_safe(entity, tmp, &scale->effect->entities, effect_link) {
         effect_entity_destroy(entity);
     }
 
-    free(effect);
+    free(scale);
+    scale = NULL;
 }
 
 bool scale_effect_create(struct effect_manager *manager)
@@ -371,15 +365,15 @@ bool scale_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    scale->effect = effect_create("scale", 2, true, &scale_effect_impl);
+    bool enabled = wlr_renderer_is_opengl(manager->server->renderer);
+    scale->effect = effect_create("scale", 2, enabled, &scale_effect_impl);
     if (!scale->effect) {
         free(scale);
+        scale = NULL;
         return false;
     }
 
     scale->manager = manager;
-    scale->scene = manager->server->scene;
-    scale->renderer = manager->server->renderer;
     scale->duration = 300;
 
     scale->destroy.notify = handle_effect_destroy;
