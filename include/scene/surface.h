@@ -7,11 +7,25 @@
 
 #include "scene.h"
 
+enum slide_location {
+    SLIDE_LOCATION_LEFT = 0,
+    SLIDE_LOCATION_TOP = 1,
+    SLIDE_LOCATION_RIGHT = 2,
+    SLIDE_LOCATION_BOTTOM = 3,
+};
+
+struct slide {
+    enum slide_location location;
+    int offset;
+};
+
 struct ky_scene_surface {
     struct ky_scene_buffer *buffer;
     struct wlr_surface *surface;
 
     // private state
+    bool has_slide;
+    struct slide slide;
 
     struct wlr_addon addon;
     struct wlr_addon node_addon;
@@ -36,5 +50,11 @@ struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer
 struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node);
 
 struct ky_scene_buffer *ky_scene_buffer_try_from_surface(struct wlr_surface *wlr_surface);
+
+void ky_scene_surface_unset_slide(struct wlr_surface *wlr_surface);
+
+void ky_scene_surface_set_slide(struct wlr_surface *wlr_surface, int location, int offset);
+
+bool ky_scene_surface_get_slide(struct wlr_surface *wlr_surface, struct slide *slide);
 
 #endif /* _SCENE_SURFACE_H_ */

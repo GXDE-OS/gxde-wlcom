@@ -7,6 +7,7 @@
 
 #include <wlr/types/wlr_compositor.h>
 
+#include "scene/surface.h"
 #include "slide-protocol.h"
 #include "view_p.h"
 
@@ -40,7 +41,7 @@ static void kde_slide_apply_state(struct kde_slide *slide)
     slide->offset = slide->pending_offset;
     slide->location = slide->pending_location;
 
-    // TODO: effect interface
+    ky_scene_surface_set_slide(slide->wlr_surface, slide->location, slide->offset);
 }
 
 static struct kde_slide *kde_slide_from_wlr_surface(struct wlr_surface *wlr_surface)
@@ -110,6 +111,9 @@ static void kde_slide_destroy(struct kde_slide *slide)
         wl_resource_set_user_data(resource, NULL);
         wl_resource_set_destructor(resource, NULL);
     }
+
+    ky_scene_surface_unset_slide(slide->wlr_surface);
+
     wl_list_remove(&slide->link);
     wl_list_remove(&slide->surface_map.link);
     wl_list_remove(&slide->surface_destroy.link);
