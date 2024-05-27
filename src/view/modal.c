@@ -13,11 +13,11 @@
 #include "view_p.h"
 
 /* An animation time */
-#define SHAKE_EFFECT_PERIOD (50)
+#define SHAKE_EFFECT_PERIOD (40)
 /* offset distance */
-#define SHAKE_EFFECT_OFFSET (5)
+#define SHAKE_EFFECT_OFFSET (10)
 /* Run times */
-#define SHAKE_EFFECT_TIMES (2)
+#define SHAKE_EFFECT_TIMES (3)
 
 static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 };
 
