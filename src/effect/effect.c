@@ -476,6 +476,29 @@ static void node_collect_visible(struct ky_scene_node *node, pixman_region32_t *
     }
 }
 
+struct effect_entity *ky_scene_node_find_effect_entity(struct ky_scene_node *node,
+                                                       struct effect *effect)
+{
+    bool is_root = node->parent == NULL;
+    struct wlr_addon *addon = wlr_addon_find(&node->addons, node, &effect_addon_impl);
+    if (!addon) {
+        return NULL;
+    }
+    struct node_effect_chain *chain = wl_container_of(addon, chain, addon);
+
+    struct effect_entity *entity;
+    struct effect_slot *slot;
+    wl_list_for_each(slot, &chain->base.slots, link) {
+        entity = is_root ? wl_container_of(slot, entity, frame_slot)
+                         : wl_container_of(slot, entity, slot);
+        if (entity->effect == effect) {
+            return entity;
+        }
+    }
+
+    return NULL;
+}
+
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect)
 {
     bool is_root = node->parent == NULL;

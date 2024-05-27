@@ -98,6 +98,9 @@ void effect_set_enabled(struct effect *effect, bool enabled);
 
 void effect_entity_destroy(struct effect_entity *entity);
 
+struct effect_entity *ky_scene_node_find_effect_entity(struct ky_scene_node *node,
+                                                       struct effect *effect);
+
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect);
 
 struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effec);
