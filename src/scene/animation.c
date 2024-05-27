@@ -22,8 +22,6 @@ enum animation_mask {
     ANIMATION_NONE = 0,
     ANIMATION_POSITION = 1 << 0,
     ANIMATION_SIZE = 1 << 1,
-    ANIMATION_COLOR = 1 << 2,
-    ANIMATION_OPACITY = 1 << 3,
 };
 
 union state {
@@ -33,8 +31,6 @@ union state {
     struct {
         int width, height;
     };
-    float opacity;
-    float color[4];
 };
 
 struct animation_state {
@@ -236,26 +232,6 @@ static void entity_handle_output_frame(struct wl_listener *listener, void *data)
         }
     }
 
-    if (entity->mask & ANIMATION_COLOR) {
-        struct animation_state *state = &entity->state[2];
-        uint32_t elapse = current - state->start;
-        if (elapse >= state->duration) {
-            ky_scene_rect_set_color(ky_scene_rect_from_node(entity->node), state->dst.color);
-            entity->mask &= ~ANIMATION_COLOR;
-        } else {
-            float percent = (float)elapse / state->duration;
-            float value = animation_value(state->animation, percent);
-            float delta_r = state->dst.color[0] - state->src.color[0];
-            float delta_g = state->dst.color[1] - state->src.color[1];
-            float delta_b = state->dst.color[2] - state->src.color[2];
-            float r = state->src.color[0] + value * delta_r;
-            float g = state->src.color[1] + value * delta_g;
-            float b = state->src.color[2] + value * delta_b;
-            ky_scene_rect_set_color(ky_scene_rect_from_node(entity->node),
-                                    (float[4]){ r, g, b, state->src.color[3] });
-        }
-    }
-
     animation_entity_update_output(entity, entity->mask == ANIMATION_NONE);
 }
 
@@ -391,32 +367,4 @@ void ky_scene_rect_set_size_with_animation(struct ky_scene_rect *rect, int width
     state->start = current_time_msec();
     state->src.width = rect->width;
     state->src.height = rect->height;
-}
-
-void ky_scene_rect_set_color_with_animation(struct ky_scene_rect *rect, const float color[static 4],
-                                            struct animation *animation, uint32_t duration)
-{
-    if (!manager || !animation) {
-        ky_scene_rect_set_color(rect, color);
-        return;
-    }
-
-    struct animation_entity *entity = animation_entity_get(&rect->node);
-    if (!entity) {
-        ky_scene_rect_set_color(rect, color);
-        return;
-    }
-
-    struct animation_state *state = &entity->state[2];
-    state->animation = animation;
-    state->duration = duration;
-    memcpy(state->dst.color, color, sizeof(state->dst.color));
-
-    if (entity->mask & ANIMATION_COLOR) {
-        return;
-    }
-
-    entity->mask |= ANIMATION_COLOR;
-    state->start = current_time_msec();
-    memcpy(state->src.color, rect->color, sizeof(state->src.color));
 }
