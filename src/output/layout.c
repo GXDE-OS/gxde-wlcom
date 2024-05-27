@@ -202,7 +202,7 @@ static void output_manager_generate_layout(struct output_manager *output_manager
 
 void output_manager_get_layout_configs(struct output_manager *output_manager)
 {
-    if (!output_manager->has_layout_manager) {
+    if (!output_manager->has_layout_manager || output_manager->server->terminate) {
         return;
     }
 
