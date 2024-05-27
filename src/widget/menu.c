@@ -46,7 +46,10 @@ static void menu_draw_item(struct menu_item *item, bool force)
     uint32_t text_attr = item->checked ? TEXT_ATTR_CHECKED : TEXT_ATTR_NONE;
     text_attr |= item->submenu ? TEXT_ATTR_SUBMENU : TEXT_ATTR_NONE;
     text_attr |= item->key ? TEXT_ATTR_ACCEL : TEXT_ATTR_NONE;
+    text_attr |= item->shortcut ? TEXT_ATTR_SHORTCUT : TEXT_ATTR_NONE;
+
     widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, text_attr);
+    widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, item->menu->width, item->menu->item_height);
 
@@ -613,7 +616,20 @@ static void item_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&item->destroy.link);
     wl_list_remove(&item->link);
     free(item->text);
+    free(item->shortcut);
     free(item);
+}
+
+void menu_item_add_shortcut(struct menu_item *item, const char *text)
+{
+    if ((!text && !item->shortcut) ||
+        (item->shortcut && text && strcmp(item->shortcut, text) == 0)) {
+        return;
+    }
+    free(item->shortcut);
+    item->shortcut = strdup(text);
+    item->redraw = true;
+    item->menu->redraw = true;
 }
 
 struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t key,

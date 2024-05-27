@@ -36,6 +36,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .corner_radius = widget->corner_radius,
 
         .text = widget->text,
+        .shortcut = widget->shortcut,
         .font_rgba = color_valid(widget->front_color) ? widget->front_color : NULL,
         .font = widget->font_name,
         .font_size = widget->font_size,
@@ -426,6 +427,17 @@ void widget_set_text(struct widget *widget, const char *text, int align, uint32_
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
+void widget_set_shortcut(struct widget *widget, const char *text)
+{
+    if ((!text && !widget->shortcut) ||
+        (widget->shortcut && text && strcmp(widget->shortcut, text) == 0)) {
+        return;
+    }
+    free((void *)widget->shortcut);
+    widget->shortcut = text ? strdup(text) : NULL;
+    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+}
+
 void widget_destroy(struct widget *widget)
 {
     /* widget_destroy_buffer is called */
@@ -438,6 +450,7 @@ static void widget_destroy_buffer(struct ky_scene_buffer *buffer, void *data)
     struct widget *widget = data;
     wlr_buffer_drop(buffer->buffer);
     free((void *)widget->text);
+    free((void *)widget->shortcut);
     free((void *)widget->svg);
     free((void *)widget->hover_svg);
     free((void *)widget->font_name);

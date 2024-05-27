@@ -353,6 +353,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     window_menu->maximize =
         menu_add_item(window_menu->root, tr("Ma_ximize"), KEY_X, window_menu_action, window_menu);
+    menu_item_add_shortcut(window_menu->maximize, "Alt+F10");
 
     struct menu_item *screen =
         menu_add_item(window_menu->root, tr("Move To _Screen"), KEY_S, NULL, NULL);
@@ -360,6 +361,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     window_menu->minimize =
         menu_add_item(window_menu->root, tr("Mi_nimize"), KEY_N, window_menu_action, window_menu);
+    menu_item_add_shortcut(window_menu->minimize, "Alt+F9");
 
     /* create the more action submenu */
     struct menu_item *more = menu_add_item(window_menu->root, tr("_More"), KEY_M, NULL, NULL);
@@ -373,7 +375,9 @@ static struct window_menu *window_menu_create(struct seat *seat)
     window_menu->fullscreen =
         menu_add_item(window_menu->more, tr("_Fullscreen"), KEY_F, window_menu_action, window_menu);
 
-    menu_add_item(window_menu->root, tr("_Close"), KEY_C, window_menu_action, window_menu);
+    struct menu_item *close =
+        menu_add_item(window_menu->root, tr("_Close"), KEY_C, window_menu_action, window_menu);
+    menu_item_add_shortcut(close, "Alt+F4");
 
     return window_menu;
 }

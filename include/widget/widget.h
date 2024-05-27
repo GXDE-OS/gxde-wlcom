@@ -18,6 +18,8 @@ void widget_update(struct widget *widget, bool partial);
 
 void widget_set_text(struct widget *widget, const char *text, int align, uint32_t attr);
 
+void widget_set_shortcut(struct widget *widget, const char *text);
+
 void widget_set_font(struct widget *widget, const char *name, int size);
 
 /* if hover_svg is not NULL, means this widget is hoverable */

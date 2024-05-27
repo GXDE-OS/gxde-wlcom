@@ -31,6 +31,7 @@ struct widget {
     const char *svg, *hover_svg;
 
     const char *text;
+    const char *shortcut;
     const char *font_name;
     int font_size;
     int text_align;

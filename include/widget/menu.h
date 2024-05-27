@@ -19,6 +19,7 @@ struct menu_item {
     struct menu *submenu; // may be NULL
 
     char *text;
+    char *shortcut;
     bool first, last, checked, separator;
     bool enabled, redraw, actived;
 
@@ -64,6 +65,8 @@ struct menu {
 struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_item);
 
 void menu_destroy(struct menu *menu);
+
+void menu_item_add_shortcut(struct menu_item *item, const char *text);
 
 struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t key,
                                 bool (*action)(struct menu_item *item, uint32_t key, void *data),

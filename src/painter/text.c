@@ -110,6 +110,21 @@ bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
         pango_cairo_show_layout(cairo, layout);
         g_object_unref(layout);
     }
+    if (info->text_attr & TEXT_ATTR_SHORTCUT) {
+        PangoLayout *layout = pango_cairo_create_layout(cairo);
+        pango_layout_set_width(layout, -1);
+        pango_layout_set_text(layout, info->shortcut, -1);
+        pango_layout_set_font_description(layout, desc);
+        int text_width;
+        PangoRectangle ink_rect, logical_rect;
+        pango_layout_get_extents(layout, &ink_rect, &logical_rect);
+        text_width = logical_rect.width / PANGO_SCALE;
+        cairo_move_to(cairo, box->width - text_width - width, box->y + ly);
+
+        pango_cairo_update_layout(cairo, layout);
+        pango_cairo_show_layout(cairo, layout);
+        g_object_unref(layout);
+    }
 
     pango_font_description_free(desc);
     cairo_surface_flush(surf);
