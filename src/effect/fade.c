@@ -33,6 +33,7 @@ struct fade_effect_data {
     int64_t start_time;
 
     enum fade_action action;
+    int duration;
 
     struct ky_scene_node *node;
     struct view *view;
@@ -49,7 +50,6 @@ struct fade_effect_data {
 struct fade_effect {
     struct effect *effect;
     struct effect_manager *manager;
-    int duration;
 
     struct wl_listener destroy;
 };
@@ -95,7 +95,7 @@ static void fade_calc_start_and_end_geometry(struct fade_effect_data *data)
         end_box.y = kywc_view->geometry.y + end_box.height * 0.1;
     }
 
-    if ((current_time_msec() < data->start_time + fade->duration)) {
+    if ((current_time_msec() < data->start_time + data->duration)) {
         struct kywc_box start_geometry = data->action ? kywc_view->geometry : end_box;
         calc_view_box(kywc_view, &start_geometry, &data->start_geometry);
     }
@@ -125,15 +125,15 @@ static void fade_entity_push_damage(struct effect_entity *entity)
 static bool fade_frame_render_pre(struct effect_entity *entity,
                                   struct ky_scene_output *scene_output)
 {
-    struct fade_effect_data *data = entity->usr_data;
-    if (current_time_msec() > data->start_time + fade->duration) {
+    struct fade_effect_data *fade_data = entity->usr_data;
+    if (current_time_msec() > fade_data->start_time + fade_data->duration) {
         effect_entity_destroy(entity);
         return true;
     }
 
     const struct animation_data *animation_data =
-        animator_value(data->animator, current_time_msec());
-    data->current = *animation_data;
+        animator_value(fade_data->animator, current_time_msec());
+    fade_data->current = *animation_data;
     fade_entity_push_damage(entity);
 
     return true;
@@ -144,9 +144,19 @@ static bool fade_entity_bouding_box(struct effect_entity *entity, struct kywc_bo
     struct fade_effect_data *fade_data = entity->usr_data;
     *box = fade_data->render_box;
 
-    int lx, ly;
     struct effect_chain *chain = entity->slot.chain;
     struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
+    struct wlr_box node_box;
+    if (box->width <= 0 || box->height <= 0) {
+        node_chain->impl.get_bounding_box(node_chain->node, &node_box);
+        box->x = node_box.x;
+        box->y = node_box.y;
+        box->width = node_box.width;
+        box->height = node_box.height;
+        return false;
+    }
+
+    int lx, ly;
     ky_scene_node_coords(node_chain->node, &lx, &ly);
     box->x -= lx;
     box->y -= ly;
@@ -167,6 +177,18 @@ static void handle_view_positon(struct wl_listener *listener, void *data)
 {
     struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, view_position);
     fade_calc_start_and_end_geometry(fade_data);
+
+    if (fade_data->animator) {
+        animator_destroy(fade_data->animator);
+    }
+    struct animation_data start = {
+        .alpha = fade_data->start_alpha,
+        .angle = 0,
+        .geometry = fade_data->start_geometry,
+    };
+    fade_data->animator =
+        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
+
     animator_set_position(fade_data->animator, fade_data->end_geometry.x,
                           fade_data->end_geometry.y);
 }
@@ -175,6 +197,18 @@ static void handle_view_size(struct wl_listener *listener, void *data)
 {
     struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, view_size);
     fade_calc_start_and_end_geometry(fade_data);
+
+    if (fade_data->animator) {
+        animator_destroy(fade_data->animator);
+    }
+    struct animation_data start = {
+        .alpha = fade_data->start_alpha,
+        .angle = 0,
+        .geometry = fade_data->start_geometry,
+    };
+    fade_data->animator =
+        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
+
     animator_set_size(fade_data->animator, fade_data->end_geometry.width,
                       fade_data->end_geometry.height);
 }
@@ -326,6 +360,7 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
     fade_data->view = view;
     fade_data->node = &view->tree->node;
     fade_data->action = action;
+    fade_data->duration = action ? 260 : 300;
     fade_data->buffer = NULL;
     fade_data->start_time = current_time_msec();
     struct kywc_view *kywc_view = &view->base;
@@ -349,7 +384,7 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
         .geometry = fade_data->start_geometry,
     };
     struct animator *animator =
-        animator_create(&start, fade_data->start_time, fade_data->start_time + fade->duration);
+        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
     if (!animator) {
         return false;
     }
@@ -401,7 +436,6 @@ bool fade_effect_create(struct effect_manager *manager)
     }
 
     fade->manager = manager;
-    fade->duration = 300;
 
     fade->destroy.notify = handle_effect_destroy;
     wl_signal_add(&fade->effect->events.destroy, &fade->destroy);
