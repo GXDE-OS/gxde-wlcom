@@ -378,11 +378,14 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     wl_list_init(&surface->surface_map.link);
 
     /* get view from surface */
-    surface->view = view_try_from_wlr_surface(surface->wlr_surface);
     if (!surface->view) {
-        kywc_log(KYWC_DEBUG, "surface is not a toplevel");
-        surface->buffer = ky_scene_buffer_try_from_surface(surface->wlr_surface);
-        return;
+        surface->view = view_try_from_wlr_surface(surface->wlr_surface);
+        if (!surface->view) {
+            kywc_log(KYWC_DEBUG, "surface is not a toplevel");
+            surface->buffer = ky_scene_buffer_try_from_surface(surface->wlr_surface);
+            return;
+        }
+        wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
     }
 
     surface->view->base.skip_taskbar = surface->skip_taskbar;
@@ -399,8 +402,6 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&surface->view->base.events.map, &surface->view_map);
     surface->view_unmap.notify = surface_handle_view_unmap;
     wl_signal_add(&surface->view->base.events.unmap, &surface->view_unmap);
-    surface->view_destroy.notify = surface_handle_view_destroy;
-    wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
 
     /* workaround to fix this listener is behind view map */
     if (surface->view->base.mapped) {
@@ -472,6 +473,14 @@ static void handle_get_surface(struct wl_client *client, struct wl_resource *she
     wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
 
     surface->view = view_try_from_wlr_surface(surface->wlr_surface);
+    surface->view_destroy.notify = surface_handle_view_destroy;
+
+    if (surface->view) {
+        wl_list_init(&surface->view_map.link);
+        wl_list_init(&surface->view_unmap.link);
+        wl_signal_add(&surface->view->base.events.destroy, &surface->view_destroy);
+    }
+
     /* workaround to fix this request is behind surface map */
     if (surface->wlr_surface->mapped) {
         surface_handle_map(&surface->surface_map, NULL);
