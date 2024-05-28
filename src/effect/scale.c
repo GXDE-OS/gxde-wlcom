@@ -8,6 +8,7 @@
 #include "effect/animator.h"
 #include "effect/scale.h"
 #include "effect_p.h"
+#include "output.h"
 #include "render/opengl.h"
 #include "scene/thumbnail.h"
 #include "theme.h"
@@ -83,12 +84,16 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
         calc_view_box(kywc_view, &kywc_view->geometry, &data->end_geometry);
     } else {
         /* calc minimize start and end geometry */
-        struct kywc_box end_box = {
-            .x = kywc_view->geometry.x + kywc_view->geometry.width / 2,
-            .y = kywc_view->geometry.y + kywc_view->geometry.height / 2,
-            .width = 10,
-            .height = 10,
-        };
+        struct kywc_box end_box = { 0, 0, 10, 10 };
+        if (view_manager_get_show_desktop()) {
+            struct output *output = output_from_kywc_output(view->output);
+            end_box.x = (output->geometry.width - end_box.width) / 2;
+            end_box.y = (output->geometry.height - end_box.height) / 2;
+        } else {
+            end_box.x = kywc_view->geometry.x + kywc_view->geometry.width / 2;
+            end_box.y = kywc_view->geometry.y + kywc_view->geometry.height / 2;
+        }
+
         if (current_time_msec() > data->start_time + scale->duration) {
             struct kywc_box start_geometry = kywc_view->minimized ? kywc_view->geometry : end_box;
             calc_view_box(kywc_view, &start_geometry, &data->start_geometry);
