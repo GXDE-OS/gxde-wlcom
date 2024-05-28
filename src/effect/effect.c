@@ -155,7 +155,7 @@ static void entities_collect_damage(struct node_effect_chain *chain, int lx, int
     bool node_enabled = parent_enabled && node->enabled;
     bool no_damage = node->last_enabled && node_enabled && damage_type == KY_SCENE_DAMAGE_NONE;
     if (!no_damage) {
-        /* node last visible region is added to damgae */
+        /* when node disable or set position, node last visible region is added to damgae */
         if (node->last_enabled && (!node_enabled || (damage_type & KY_SCENE_DAMAGE_HARMFUL))) {
             pixman_region32_union(damage, damage, &node->visible_region);
         }
@@ -354,6 +354,13 @@ void effect_entity_destroy(struct effect_entity *entity)
          */
         ky_scene_add_damage(ky_scene_from_node(node_chain->node),
                             &node_chain->node->visible_region);
+        /**
+         * if node is tree, when effect added again visible should be collect again.
+         * if node is rect/buffer, visible region will calc in the next frame,
+         * if rect/buffer node added effect again before next frame, visible region
+         * already added to collect damage, so can clear visible region.
+         */
+        pixman_region32_clear(&node_chain->node->visible_region);
         /* after removing effect entity, the node may cause damage in other locations */
         ky_scene_node_push_damage(node_chain->node, KY_SCENE_DAMAGE_BOTH, NULL);
     }
@@ -454,6 +461,21 @@ static void entity_handle_effect_enable(struct wl_listener *listener, void *data
     }
 }
 
+static void node_collect_visible(struct ky_scene_node *node, pixman_region32_t *visible)
+{
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *child_node;
+        wl_list_for_each(child_node, &tree->children, link) {
+            node_collect_visible(child_node, visible);
+        }
+    }
+
+    if (pixman_region32_not_empty(&node->visible_region) && visible != &node->visible_region) {
+        pixman_region32_union(visible, visible, &node->visible_region);
+    }
+}
+
 struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struct effect *effect)
 {
     bool is_root = node->parent == NULL;
@@ -489,6 +511,10 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         list = &slot->link;
     }
 
+    /**
+     * add effects through general nodes. usually, occur when both the
+     * scene effects interface and the node effects interface are implemented.
+     */
     if ((effect->types & EFFECT_TYPE_SCENE) && !is_root) {
         struct ky_scene *scene = ky_scene_from_node(node);
         entity = ky_scene_add_effect(scene, effect);
@@ -500,6 +526,10 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
             wl_list_insert(list, &entity->slot.link);
             entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
             wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
+
+            if (!pixman_region32_not_empty(&node->visible_region)) {
+                node_collect_visible(node, &node->visible_region);
+            }
         }
         return entity;
     }
@@ -516,6 +546,10 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
         wl_list_init(&entity->frame_slot.link);
         wl_list_init(&entity->frame_slot.chain_destroy.link);
+
+        if (!pixman_region32_not_empty(&node->visible_region)) {
+            node_collect_visible(node, &node->visible_region);
+        }
     } else {
         wl_list_init(&entity->slot.link);
         wl_list_init(&entity->slot.chain_destroy.link);
