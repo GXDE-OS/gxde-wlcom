@@ -90,6 +90,16 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
 
     /* finally, get all output config */
     json_object *data;
+
+    if (!json_object_object_get_ex(config, "uuid", &data)) {
+        return false;
+    }
+
+    const char *uuid = json_object_get_string(data);
+    if (!uuid || strcmp(uuid, output->base.uuid)) {
+        return false;
+    }
+
     if (json_object_object_get_ex(config, "enabled", &data)) {
         state->power = state->enabled = json_object_get_boolean(data);
     }
@@ -142,6 +152,7 @@ void output_write_config(struct output *output)
         json_object_object_add(om->config->json, output->base.name, config);
     }
 
+    json_object_object_add(config, "uuid", json_object_new_string(output->base.uuid));
     json_object_object_add(config, "enabled", json_object_new_boolean(state->enabled));
     json_object_object_add(config, "width", json_object_new_int(state->width));
     json_object_object_add(config, "height", json_object_new_int(state->height));

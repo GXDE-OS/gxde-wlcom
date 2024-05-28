@@ -283,8 +283,9 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 
     /* read config and apply it */
     struct kywc_output_state pending = kywc_output->state;
-    bool found = output_manager->has_layout_manager ? output_read_config(output, &pending) : false;
-    /* use default config without using layoutput */
+    bool found = output_read_config(output, &pending);
+    found = output_manager->has_layout_manager ? found : false;
+    /* use parttial config(scale,brightness,color_temp) */
     if (!found) {
         pending.enabled = pending.power = true;
         pending.lx = pending.ly = -1;
@@ -295,7 +296,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         pending.width = mode->width;
         pending.height = mode->height;
         pending.refresh = mode->refresh;
-        pending.scale = kywc_output_preferred_scale(kywc_output, pending.width, pending.height);
     }
 
     output->modeset = false;
