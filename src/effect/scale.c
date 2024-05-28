@@ -10,6 +10,7 @@
 #include "effect_p.h"
 #include "output.h"
 #include "render/opengl.h"
+#include "scene/surface.h"
 #include "scene/thumbnail.h"
 #include "theme.h"
 #include "util/time.h"
@@ -92,6 +93,17 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
         } else {
             end_box.x = kywc_view->geometry.x + kywc_view->geometry.width / 2;
             end_box.y = kywc_view->geometry.y + kywc_view->geometry.height / 2;
+        }
+
+        if (view->minimized_geometry.panel_surface) {
+            int lx, ly;
+            struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
+            ky_scene_node_coords(&buffer->node, &lx, &ly);
+
+            end_box.x = view->minimized_geometry.x + lx;
+            end_box.y = view->minimized_geometry.y + ly;
+            end_box.width = view->minimized_geometry.width;
+            end_box.height = view->minimized_geometry.height;
         }
 
         if (current_time_msec() > data->start_time + scale->duration) {

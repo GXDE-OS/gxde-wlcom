@@ -130,6 +130,12 @@ struct view {
         enum layer layer;
     } saved;
 
+    /* minimized geometry */
+    struct {
+        struct wlr_surface *panel_surface;
+        int x, y, width, height;
+    } minimized_geometry;
+
     struct view_configure_state pending;
 
     const struct view_impl *impl;

@@ -78,10 +78,6 @@ struct kywc_view {
         int top, bottom, left, right;
     } padding;
 
-    struct {
-        int x, y, width, height;
-    } minimized_geometry;
-
     /* minimize size client set or default */
     int32_t min_width, min_height;
     int32_t max_width, max_height;

@@ -177,13 +177,8 @@ static void handle_panel_surface_destroy(struct wl_listener *listener, void *dat
     struct ukui_window *window = wl_container_of(listener, window, panel_surface_destroy);
     wl_list_remove(&window->panel_surface_destroy.link);
     wl_list_init(&window->panel_surface_destroy.link);
-
-    window->kywc_view->minimized_geometry.x =
-        window->kywc_view->geometry.x + window->kywc_view->geometry.width / 2;
-    window->kywc_view->minimized_geometry.y =
-        window->kywc_view->geometry.y + window->kywc_view->geometry.height / 2;
-    window->kywc_view->minimized_geometry.width = 10;
-    window->kywc_view->minimized_geometry.height = 10;
+    struct view *view = view_from_kywc_view(window->kywc_view);
+    view->minimized_geometry.panel_surface = NULL;
 }
 
 static void handle_set_minimized_geometry(struct wl_client *client, struct wl_resource *resource,
@@ -196,15 +191,12 @@ static void handle_set_minimized_geometry(struct wl_client *client, struct wl_re
         return;
     }
 
-    struct view *panel_view = view_try_from_wlr_surface(panel_surface);
-    if (!panel_view) {
-        return;
-    }
-
-    window->kywc_view->minimized_geometry.x = x + panel_view->base.geometry.x;
-    window->kywc_view->minimized_geometry.y = y + panel_view->base.geometry.y;
-    window->kywc_view->minimized_geometry.width = width;
-    window->kywc_view->minimized_geometry.height = height;
+    struct view *view = view_from_kywc_view(window->kywc_view);
+    view->minimized_geometry.panel_surface = panel_surface;
+    view->minimized_geometry.x = x;
+    view->minimized_geometry.y = y;
+    view->minimized_geometry.width = width;
+    view->minimized_geometry.height = height;
 
     wl_list_remove(&window->panel_surface_destroy.link);
     wl_signal_add(&panel_surface->events.destroy, &window->panel_surface_destroy);
@@ -213,7 +205,19 @@ static void handle_set_minimized_geometry(struct wl_client *client, struct wl_re
 static void handle_unset_minimized_geometry(struct wl_client *client, struct wl_resource *resource,
                                             struct wl_resource *panel)
 {
-    // Not implemented yet
+    struct ukui_window *window = wl_resource_get_user_data(resource);
+    struct wlr_surface *panel_surface = wlr_surface_from_resource(panel);
+    if (!window || !panel_surface) {
+        return;
+    }
+
+    struct view *view = view_from_kywc_view(window->kywc_view);
+    if (view->minimized_geometry.panel_surface &&
+        view->minimized_geometry.panel_surface == panel_surface) {
+        wl_list_remove(&window->panel_surface_destroy.link);
+        wl_list_init(&window->panel_surface_destroy.link);
+        view->minimized_geometry.panel_surface = NULL;
+    }
 }
 
 static void handle_close(struct wl_client *client, struct wl_resource *resource)
