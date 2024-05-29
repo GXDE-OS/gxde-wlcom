@@ -14,9 +14,9 @@
 /* default grid gap and offset */
 #define GRID_GAP_ROW (50)
 #define GRID_GAP_COLUMN (50)
-#define GRID_OFFSET_TOP (0)
+#define GRID_OFFSET_TOP (50)
 #define GRID_OFFSET_BOTTOM (500)
-#define GRID_OFFSET_LEFT (0)
+#define GRID_OFFSET_LEFT (50)
 #define GRID_OFFSET_RIGHT (500)
 
 static struct positioner_manager {
