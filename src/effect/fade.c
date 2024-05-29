@@ -86,7 +86,6 @@ static void fade_calc_start_and_end_geometry(struct fade_effect_data *data)
         end_box.height = kywc_view->geometry.height * 0.9;
         end_box.x = kywc_view->geometry.x + end_box.width * 0.05;
         end_box.y = kywc_view->geometry.y + end_box.height * 0.05;
-
     } else {
         /* Size changed from 100% to 80% of the current window when unmap */
         end_box.width = kywc_view->geometry.width * 0.8;
@@ -173,6 +172,13 @@ static bool fade_node_push_damage(struct effect_entity *entity, struct ky_scene_
     return false;
 }
 
+static void fade_effect_data_set_animator(struct fade_effect_data *data)
+{
+    animator_set_position(data->animator, data->end_geometry.x, data->end_geometry.y);
+    animator_set_size(data->animator, data->end_geometry.width, data->end_geometry.height);
+    animator_set_alpha(data->animator, data->end_alpha);
+}
+
 static void handle_view_positon(struct wl_listener *listener, void *data)
 {
     struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, view_position);
@@ -189,8 +195,7 @@ static void handle_view_positon(struct wl_listener *listener, void *data)
     fade_data->animator =
         animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
 
-    animator_set_position(fade_data->animator, fade_data->end_geometry.x,
-                          fade_data->end_geometry.y);
+    fade_effect_data_set_animator(fade_data);
 }
 
 static void handle_view_size(struct wl_listener *listener, void *data)
@@ -209,8 +214,7 @@ static void handle_view_size(struct wl_listener *listener, void *data)
     fade_data->animator =
         animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
 
-    animator_set_size(fade_data->animator, fade_data->end_geometry.width,
-                      fade_data->end_geometry.height);
+    fade_effect_data_set_animator(fade_data);
 }
 
 static void handle_thumbnail_update(struct wl_listener *listener, void *data)
@@ -332,13 +336,6 @@ static bool fade_node_render(struct effect_entity *entity, int lx, int ly,
     animator_render_texture(&data->current, target, data->thumbnail_texture);
 
     return false;
-}
-
-static void fade_effect_data_set_animator(struct fade_effect_data *data)
-{
-    animator_set_position(data->animator, data->end_geometry.x, data->end_geometry.y);
-    animator_set_size(data->animator, data->end_geometry.width, data->end_geometry.height);
-    animator_set_alpha(data->animator, data->end_alpha);
 }
 
 static void fade_effect_data_reinit(struct fade_effect_data *fade_data, struct animation_data *data)
