@@ -595,12 +595,14 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
     if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DESKTOP)) {
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
         xwayland_view->view.base.resizable = false;
+        xwayland_view->view.base.role = KYWC_VIEW_ROLE_DESKTOP;
         removed_from_workspace = true;
     } else if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DOCK)) {
         layer = view_manager_get_layer(LAYER_DOCK, false);
         xwayland_view->view.base.focusable = false;
         xwayland_view->view.base.activatable = false;
         xwayland_view->view.base.resizable = false;
+        xwayland_view->view.base.role = KYWC_VIEW_ROLE_PANEL;
         removed_from_workspace = true;
     }
 
