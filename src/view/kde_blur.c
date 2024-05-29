@@ -135,10 +135,12 @@ static void kde_blur_destroy(struct kde_blur *blur)
         ky_scene_node_set_blur_region(&blur->scene_buffer->node, NULL);
     }
     /* clear destructor when surface destroyed before blur resources */
-    struct wl_resource *resource;
-    wl_resource_for_each(resource, &blur->resources) {
+    struct wl_resource *resource, *tmp;
+    wl_resource_for_each_safe(resource, tmp, &blur->resources) {
         wl_resource_set_user_data(resource, NULL);
         wl_resource_set_destructor(resource, NULL);
+        wl_list_remove(&resource->link);
+        wl_list_init(&resource->link);
     }
     wl_list_remove(&blur->link);
     wl_list_remove(&blur->surface_map.link);
@@ -153,7 +155,7 @@ static void kde_blur_handle_resource_destroy(struct wl_resource *resource)
     wl_list_remove(&resource->link);
     /* destroy blur if no blur resource */
     struct kde_blur *blur = wl_resource_get_user_data(resource);
-    if (wl_list_empty(&blur->resources)) {
+    if (blur && wl_list_empty(&blur->resources)) {
         kde_blur_destroy(blur);
     }
 }

@@ -105,14 +105,18 @@ static const struct org_kde_kwin_slide_interface kde_slide_impl = {
 
 static void kde_slide_destroy(struct kde_slide *slide)
 {
-    /* clear destructor when surface destroyed before slide resources */
-    struct wl_resource *resource;
-    wl_resource_for_each(resource, &slide->resources) {
-        wl_resource_set_user_data(resource, NULL);
-        wl_resource_set_destructor(resource, NULL);
+    if (slide->wlr_surface) {
+        ky_scene_surface_unset_slide(slide->wlr_surface);
     }
 
-    ky_scene_surface_unset_slide(slide->wlr_surface);
+    /* clear destructor when surface destroyed before slide resources */
+    struct wl_resource *resource, *tmp;
+    wl_resource_for_each_safe(resource, tmp, &slide->resources) {
+        wl_resource_set_user_data(resource, NULL);
+        wl_resource_set_destructor(resource, NULL);
+        wl_list_remove(&resource->link);
+        wl_list_init(&resource->link);
+    }
 
     wl_list_remove(&slide->link);
     wl_list_remove(&slide->surface_map.link);
@@ -125,7 +129,7 @@ static void kde_slide_handle_resource_destroy(struct wl_resource *resource)
     wl_list_remove(&resource->link);
     /* destroy slide if no slide resource */
     struct kde_slide *slide = wl_resource_get_user_data(resource);
-    if (wl_list_empty(&slide->resources)) {
+    if (slide && wl_list_empty(&slide->resources)) {
         kde_slide_destroy(slide);
     }
 }
@@ -133,6 +137,7 @@ static void kde_slide_handle_resource_destroy(struct wl_resource *resource)
 static void slide_handle_surface_destroy(struct wl_listener *listener, void *data)
 {
     struct kde_slide *slide = wl_container_of(listener, slide, surface_destroy);
+    slide->wlr_surface = NULL;
     kde_slide_destroy(slide);
 }
 
