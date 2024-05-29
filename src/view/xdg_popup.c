@@ -24,6 +24,7 @@ struct xdg_popup {
     struct wl_listener commit;
 
     bool topmost_popup;
+    bool use_usable_area;
 };
 
 static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
@@ -46,14 +47,14 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
                                            struct ky_scene_tree *parent,
-                                           struct ky_scene_tree *shell);
+                                           struct ky_scene_tree *shell, bool use_usable_area);
 
 static void popup_handle_new_xdg_popup(struct wl_listener *listener, void *data)
 {
     struct xdg_popup *popup = wl_container_of(listener, popup, new_popup);
     struct wlr_xdg_popup *wlr_popup = data;
 
-    _xdg_popup_create(wlr_popup, popup->popup_tree, popup->shell_tree);
+    _xdg_popup_create(wlr_popup, popup->popup_tree, popup->shell_tree, popup->use_usable_area);
 }
 
 static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
@@ -64,7 +65,7 @@ static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
 
     /* TODO: popup unconstrain output, add input_manager_get_last_seat */
     struct output *output = input_current_output(input_manager_get_default_seat());
-    struct kywc_box *output_box = &output->geometry;
+    struct kywc_box *output_box = popup->use_usable_area ? &output->usable_area : &output->geometry;
 
     int lx = 0, ly = 0;
     ky_scene_node_coords(&popup->shell_tree->node, &lx, &ly);
@@ -81,7 +82,7 @@ static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
                                            struct ky_scene_tree *parent,
-                                           struct ky_scene_tree *shell)
+                                           struct ky_scene_tree *shell, bool use_usable_area)
 {
     struct xdg_popup *popup = calloc(1, sizeof(struct xdg_popup));
     if (!popup) {
@@ -91,6 +92,7 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
     popup->wlr_xdg_popup = wlr_xdg_popup;
     popup->parent_tree = parent;
     popup->shell_tree = shell;
+    popup->use_usable_area = use_usable_area;
 
     /* add popup surface to view tree, popup map and unmap is handled in scene */
     popup->popup_tree = ky_scene_xdg_surface_create(parent, wlr_xdg_popup->base);
@@ -143,7 +145,7 @@ static const struct input_event_node_impl xdg_popup_event_node_impl = {
 };
 
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
-                      struct view_layer *layer)
+                      struct view_layer *layer, bool use_usable_area)
 {
     struct ky_scene_tree *parent = ky_scene_tree_create(layer->tree);
 
@@ -152,7 +154,7 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
     ky_scene_node_coords(&shell->node, &lx, &ly);
     ky_scene_node_set_position(&parent->node, lx, ly);
 
-    struct xdg_popup *popup = _xdg_popup_create(wlr_xdg_popup, parent, shell);
+    struct xdg_popup *popup = _xdg_popup_create(wlr_xdg_popup, parent, shell, use_usable_area);
     popup->topmost_popup = true;
 
     input_event_node_create(&parent->node, &xdg_popup_event_node_impl, xdg_popup_get_root, NULL,

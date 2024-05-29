@@ -283,7 +283,8 @@ static void xdg_view_handle_new_popup(struct wl_listener *listener, void *data)
         layer = LAYER_SCREEN_LOCK_NOTIFICATION;
     }
     struct view_layer *popup_layer = view_manager_get_layer(layer, false);
-    xdg_popup_create(wlr_xdg_popup, xdg_view->view.surface_tree, popup_layer);
+    xdg_popup_create(wlr_xdg_popup, xdg_view->view.surface_tree, popup_layer,
+                     kywc_view->role == KYWC_VIEW_ROLE_PANEL);
 }
 
 static void xdg_view_handle_request_move(struct wl_listener *listener, void *data)
