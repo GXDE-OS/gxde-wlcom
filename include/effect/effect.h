@@ -76,7 +76,7 @@ struct effect_entity {
     struct wl_listener effect_disable;
     struct wl_listener effect_destroy;
 
-    void *usr_data;
+    void *user_data;
 };
 
 struct node_effect_chain {

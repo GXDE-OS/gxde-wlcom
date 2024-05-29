@@ -133,7 +133,7 @@ static void scale_calc_render_box(struct scale_effect_data *data, struct padding
 
 static void scale_entity_destroy(struct effect_entity *entity)
 {
-    struct scale_effect_data *data = entity->usr_data;
+    struct scale_effect_data *data = entity->user_data;
     if (data->thumbnail) {
         wl_list_remove(&data->thumbnail_update.link);
         wl_list_remove(&data->thumbnail_destroy.link);
@@ -161,7 +161,7 @@ static void scale_entity_destroy(struct effect_entity *entity)
 static bool scale_node_render(struct effect_entity *entity, int lx, int ly,
                               struct ky_scene_render_target *target)
 {
-    struct scale_effect_data *data = entity->usr_data;
+    struct scale_effect_data *data = entity->user_data;
     if (!target->output || !data->thumbnail_texture) {
         return false;
     }
@@ -189,7 +189,7 @@ static void scale_init_alpha_and_geometry(struct scale_effect_data *scale_data)
 
 static bool scale_entity_bouding_box(struct effect_entity *entity, struct kywc_box *box)
 {
-    struct scale_effect_data *scale_data = entity->usr_data;
+    struct scale_effect_data *scale_data = entity->user_data;
     *box = scale_data->render_box;
 
     struct effect_chain *chain = entity->slot.chain;
@@ -321,7 +321,7 @@ static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct 
 static bool scale_frame_render_pre(struct effect_entity *entity,
                                    struct ky_scene_output *scene_output)
 {
-    struct scale_effect_data *data = entity->usr_data;
+    struct scale_effect_data *data = entity->user_data;
     if (current_time_msec() > data->start_time + scale->duration) {
         effect_entity_destroy(entity);
         return true;
@@ -338,7 +338,7 @@ static bool scale_frame_render_pre(struct effect_entity *entity,
 static bool scale_frame_render_post(struct effect_entity *entity,
                                     struct ky_scene_render_target *target)
 {
-    struct scale_effect_data *data = entity->usr_data;
+    struct scale_effect_data *data = entity->user_data;
     ky_scene_node_push_damage(data->node, KY_SCENE_DAMAGE_BOTH, NULL);
     return true;
 }
@@ -417,18 +417,18 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
     }
 
     /* scale effect interrupted */
-    if (entity->usr_data) {
+    if (entity->user_data) {
         if (view->base.minimized) {
             ky_scene_node_set_enabled(&view->tree->node, true);
         }
-        struct scale_effect_data *scale_data = entity->usr_data;
+        struct scale_effect_data *scale_data = entity->user_data;
         scale_data->action = action;
         scale_init_alpha_and_geometry(scale_data);
         scale_effect_data_set_animator(scale_data);
         return true;
     }
 
-    entity->usr_data = scale_effect_data_create(entity, view, action);
+    entity->user_data = scale_effect_data_create(entity, view, action);
 
     if (view->base.minimized) {
         ky_scene_node_set_enabled(&view->tree->node, true);

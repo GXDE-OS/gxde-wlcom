@@ -222,7 +222,7 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
 
     struct ky_scene *scene = effect->manager->server->scene;
     struct effect_entity *entity = ky_scene_add_effect(scene, effect->effect);
-    entity->usr_data = effect;
+    entity->user_data = effect;
 
     return true;
 }

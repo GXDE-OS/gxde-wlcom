@@ -202,7 +202,7 @@ static void slide_entity_push_damage(struct effect_entity *entity)
 
 static void slide_entity_destroy(struct effect_entity *entity)
 {
-    struct slide_data *data = entity->usr_data;
+    struct slide_data *data = entity->user_data;
     slide_data_destroy(data);
 }
 
@@ -212,7 +212,7 @@ static bool slide_entity_bounding_box(struct effect_entity *entity, struct kywc_
     struct effect_chain *chain = entity->slot.chain;
     struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
 
-    struct slide_data *data = entity->usr_data;
+    struct slide_data *data = entity->user_data;
     *box = data->current.geometry;
     if (box->width <= 0 || box->height <= 0) {
         struct wlr_box node_box;
@@ -243,7 +243,7 @@ static bool slide_node_push_damage(struct effect_entity *entity, struct ky_scene
 static bool slide_node_render(struct effect_entity *entity, int lx, int ly,
                               struct ky_scene_render_target *target)
 {
-    struct slide_data *data = entity->usr_data;
+    struct slide_data *data = entity->user_data;
     if (!data->thumbnail_texture) {
         return false;
     }
@@ -310,7 +310,7 @@ static bool slide_data_create_animation(struct slide_data *data)
 static bool slide_frame_render_pre(struct effect_entity *entity,
                                    struct ky_scene_output *scene_output)
 {
-    struct slide_data *data = entity->usr_data;
+    struct slide_data *data = entity->user_data;
     int64_t time = current_time_msec();
     if (time > data->start_time + data->duration) {
         effect_entity_destroy(entity);
@@ -531,7 +531,7 @@ static void slide_data_handle_node_destroy(struct wl_listener *listener, void *d
     new_data->node_destroy.notify = slide_data_handle_buffer_node_destroy;
     wl_signal_add(&buffer->node.events.destroy, &new_data->node_destroy);
 
-    entity->usr_data = new_data;
+    entity->user_data = new_data;
 
     /* must be NULL, otherwise slide data will destroy it when effect entity destroy */
     slide_data->animator = NULL;
@@ -547,7 +547,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
     struct slide_data *data = NULL;
     struct effect_entity *entity = ky_scene_node_find_effect_entity(node, slide_effect->effect);
     if (entity) {
-        data = entity->usr_data;
+        data = entity->user_data;
         data->slide_out = slid_out;
         data->start_time = current_time_msec();
 
@@ -576,7 +576,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
     data->node_destroy.notify = slide_data_handle_node_destroy;
     wl_signal_add(&node->events.destroy, &data->node_destroy);
 
-    entity->usr_data = data;
+    entity->user_data = data;
     return true;
 }
 

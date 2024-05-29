@@ -157,7 +157,7 @@ static void gl_render_finger_effect(struct long_touch_effect *effect, struct tou
 
 static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_output *output)
 {
-    struct long_touch_effect *effect = entity->usr_data;
+    struct long_touch_effect *effect = entity->user_data;
     struct touch_finger *finger = effect->touch_finger;
     if (!finger) {
         return true;
@@ -183,7 +183,7 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
 
 static bool frame_render_post(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
-    struct long_touch_effect *effect = entity->usr_data;
+    struct long_touch_effect *effect = entity->user_data;
     // add damage to trigger render event
     add_damage(effect);
     return true;
@@ -191,7 +191,7 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
 
 static bool frame_render_end(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
-    struct long_touch_effect *effect = entity->usr_data;
+    struct long_touch_effect *effect = entity->user_data;
     if (gl_shader.program == 0) {
         struct ky_opengl_renderer *renderer =
             ky_opengl_renderer_from_wlr_renderer(effect->manager->server->renderer);
@@ -399,7 +399,7 @@ bool long_touch_effect_create(struct effect_manager *manager)
 
     struct ky_scene *scene = effect->manager->server->scene;
     struct effect_entity *entity = ky_scene_add_effect(scene, effect->effect);
-    entity->usr_data = effect;
+    entity->user_data = effect;
 
     return true;
 }

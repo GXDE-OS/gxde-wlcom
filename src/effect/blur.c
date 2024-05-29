@@ -681,7 +681,7 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
 static bool blur_frame_render_pre(struct effect_entity *entity,
                                   struct ky_scene_output *scene_output)
 {
-    struct blur_data *data = entity->usr_data;
+    struct blur_data *data = entity->user_data;
 
     struct blur_output_data *output_data = NULL, *exits_data;
     wl_list_for_each(exits_data, &data->output_datas, link) {
@@ -697,7 +697,7 @@ static bool blur_frame_render_pre(struct effect_entity *entity,
 static bool blur_frame_render_begin(struct effect_entity *entity,
                                     struct ky_scene_render_target *target)
 {
-    struct blur_data *data = entity->usr_data;
+    struct blur_data *data = entity->user_data;
     struct blur_output_data *output_data = data->current_output_data;
     if (!output_data) {
         return true;
@@ -733,7 +733,7 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
 static bool blur_frame_render_end(struct effect_entity *entity,
                                   struct ky_scene_render_target *target)
 {
-    struct blur_data *data = entity->usr_data;
+    struct blur_data *data = entity->user_data;
     struct blur_output_data *output_data = data->current_output_data;
     if (!output_data || !output_data->output_buffer ||
         !pixman_region32_not_empty(&output_data->unaffected_region)) {
@@ -795,7 +795,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static bool blur_frame_render_post(struct effect_entity *entity,
                                    struct ky_scene_render_target *target)
 {
-    struct blur_data *data = entity->usr_data;
+    struct blur_data *data = entity->user_data;
     struct wlr_buffer *buffer = target->buffer;
     struct blur_output_data *output_data = NULL, *exits_data;
     wl_list_for_each(exits_data, &data->output_datas, link) {
@@ -897,7 +897,7 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         effect_destroy(effect->effect);
         return false;
     }
-    entity->usr_data = &effect_blur_data;
+    entity->user_data = &effect_blur_data;
 
     return true;
 }

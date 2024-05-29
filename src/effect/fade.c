@@ -124,7 +124,7 @@ static void fade_entity_push_damage(struct effect_entity *entity)
 static bool fade_frame_render_pre(struct effect_entity *entity,
                                   struct ky_scene_output *scene_output)
 {
-    struct fade_effect_data *fade_data = entity->usr_data;
+    struct fade_effect_data *fade_data = entity->user_data;
     if (current_time_msec() > fade_data->start_time + fade_data->duration) {
         effect_entity_destroy(entity);
         return true;
@@ -140,7 +140,7 @@ static bool fade_frame_render_pre(struct effect_entity *entity,
 
 static bool fade_entity_bouding_box(struct effect_entity *entity, struct kywc_box *box)
 {
-    struct fade_effect_data *fade_data = entity->usr_data;
+    struct fade_effect_data *fade_data = entity->user_data;
     *box = fade_data->render_box;
 
     struct effect_chain *chain = entity->slot.chain;
@@ -315,7 +315,7 @@ static void fade_data_destroy(struct fade_effect_data *data)
 
 static void fade_entity_destroy(struct effect_entity *entity)
 {
-    struct fade_effect_data *data = entity->usr_data;
+    struct fade_effect_data *data = entity->user_data;
     if (!data) {
         return;
     }
@@ -326,7 +326,7 @@ static void fade_entity_destroy(struct effect_entity *entity)
 static bool fade_node_render(struct effect_entity *entity, int lx, int ly,
                              struct ky_scene_render_target *target)
 {
-    struct fade_effect_data *data = entity->usr_data;
+    struct fade_effect_data *data = entity->user_data;
     if (!target->output || !data->thumbnail_texture) {
         return false;
     }
@@ -466,7 +466,7 @@ static bool fade_create_scene_buffer(struct view *view, struct fade_effect_data 
 
     ky_scene_node_raise_to_top(&buffer->node);
     data->buffer = buffer;
-    entity->usr_data = data;
+    entity->user_data = data;
 
     return true;
 }
@@ -522,8 +522,8 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
     }
 
     /* fade effect interrupted */
-    if (entity->usr_data != NULL && (action == FADE_UNMAP)) {
-        struct fade_effect_data *data = entity->usr_data;
+    if (entity->user_data != NULL && (action == FADE_UNMAP)) {
+        struct fade_effect_data *data = entity->user_data;
         if (!unmap_add_fade_effect(view, action, &data->current)) {
             return false;
         }
@@ -535,7 +535,7 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
         return unmap_add_fade_effect(view, action, NULL);
     }
 
-    entity->usr_data = fade_effect_data_create(entity, view, action);
+    entity->user_data = fade_effect_data_create(entity, view, action);
 
     return true;
 }
