@@ -479,7 +479,7 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         entity = is_root ? wl_container_of(slot, entity, frame_slot)
                          : wl_container_of(slot, entity, slot);
         if (entity->effect == effect && !is_root) {
-            kywc_log(KYWC_WARN, "effect %s is already added", effect->name);
+            kywc_log(KYWC_DEBUG, "effect %s is already added", effect->name);
             return entity;
         }
         /* update list by priority */
