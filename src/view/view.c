@@ -383,8 +383,7 @@ void view_map(struct view *view)
 
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
 
-    if (!view_add_slide_effect(view, true) &&
-        kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+    if (!view_add_slide_effect(view, true) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
         view_add_fade_effect(view, FADE_MAP);
     }
 
@@ -408,8 +407,7 @@ void view_unmap(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
 
-    if (!view_add_slide_effect(view, false) &&
-        kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+    if (!view_add_slide_effect(view, false) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
         view_add_fade_effect(view, FADE_UNMAP);
     }
 
@@ -498,6 +496,7 @@ void view_configured(struct view *view)
     struct kywc_view *kywc_view = &view->base;
 
     if (view->pending.configure_action & VIEW_ACTION_FULLSCREEN) {
+        view_add_scale_effect(view, SCALE_MAXIMIZE);
         wl_signal_emit_mutable(&kywc_view->events.fullscreen, NULL);
     }
 
