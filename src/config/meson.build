@@ -41,5 +41,5 @@ if have_ukui_gsettings
     'ukui_gsettings.c',
   )
   glib = dependency('glib-2.0', version: '>= 2.68')
-  wlcom_deps += glib 
+  wlcom_deps += glib
 endif

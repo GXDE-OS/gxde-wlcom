@@ -9,21 +9,6 @@
 #include "server.h"
 #include "theme.h"
 
-#define EVENT_TIMEOUT (1000)
-
-static struct ukui_accent_color {
-    char *name;
-    float accent_color[4];
-} ukui_accent_colors[] = {
-    { "daybreakBlue", { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 } },
-    { "jamPurple", { 114.0 / 255, 46.0 / 255, 209.0 / 255, 1.0 } },
-    { "magenta", { 235.0 / 255, 48.0 / 255, 150.0 / 255, 1.0 } },
-    { "sunRed", { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 } },
-    { "sunsetOrange", { 246.0 / 255, 140.0 / 255, 39.0 / 255, 1.0 } },
-    { "dustGold", { 255.0 / 255, 217.0 / 255, 102.0 / 255, 1.0 } },
-    { "polarGreen", { 82.0 / 255, 196.0 / 255, 41.0 / 255, 1.0 } },
-};
-
 struct ukui_settings {
     struct {
         GSettings *settings;
@@ -42,12 +27,16 @@ struct ukui_settings {
         int menu_transparency;
     } style;
 
-    struct wl_event_source *timer;
     struct wl_listener destroy;
 };
 
 #define UKUI_THEME_LIGHT "ukui-light"
 #define UKUI_THEME_DARK "ukui-dark"
+
+static const char *cursor_path = "/org/ukui/desktop/peripherals/mouse/";
+#define CURSOR_PATH_LEN (36)
+static const char *style_path = "/org/ukui/style/";
+#define STYLE_PATH_LEN (16)
 
 static const char *cursor_schema = "org.ukui.peripherals-mouse";
 static const char *cursor_theme_key = "cursor-theme";
@@ -61,6 +50,19 @@ static const char *font_size_key = "system-font-size";
 static const char *accent_color_key = "theme-color";
 static const char *window_radius_key = "window-radius";
 static const char *menu_transparency_key = "menu-transparency";
+
+static struct ukui_accent_color {
+    char *name;
+    float accent_color[4];
+} ukui_accent_colors[] = {
+    { "daybreakBlue", { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 } },
+    { "jamPurple", { 114.0 / 255, 46.0 / 255, 209.0 / 255, 1.0 } },
+    { "magenta", { 235.0 / 255, 48.0 / 255, 150.0 / 255, 1.0 } },
+    { "sunRed", { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 } },
+    { "sunsetOrange", { 246.0 / 255, 140.0 / 255, 39.0 / 255, 1.0 } },
+    { "dustGold", { 255.0 / 255, 217.0 / 255, 102.0 / 255, 1.0 } },
+    { "polarGreen", { 82.0 / 255, 196.0 / 255, 41.0 / 255, 1.0 } },
+};
 
 static struct ukui_settings *settings = NULL;
 
@@ -76,33 +78,7 @@ static bool is_schema_installed(const char *schema_id)
     return schema;
 }
 
-static void handle_display_destroy(struct wl_listener *listener, void *data)
-{
-    wl_list_remove(&settings->destroy.link);
-    wl_event_source_remove(settings->timer);
-
-    g_object_unref(settings->cursor.settings);
-    g_object_unref(settings->style.settings);
-
-    free(settings->cursor.theme);
-    free(settings->style.style_name);
-    free(settings->style.icon_theme);
-    free(settings->style.accent_color);
-    free(settings->style.font_name);
-    free(settings->style.font_size);
-
-    free(settings);
-}
-
-static int handle_gsettings_event(void *data)
-{
-    // TODO: cache the changes, iteration all pending event and apply changes by mask
-    g_main_context_iteration(NULL, FALSE);
-    wl_event_source_timer_update(settings->timer, EVENT_TIMEOUT);
-    return 0;
-}
-
-static void handle_cursor_settings_changed(GSettings *mouse, const char *key, void *data)
+static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 {
     if (strcmp(key, cursor_theme_key) == 0) {
         free(settings->cursor.theme);
@@ -184,7 +160,7 @@ static void menu_transparency_changed(GSettings *style, const char *key)
     theme_manager_set_opacity(settings->style.menu_transparency);
 }
 
-static void handle_style_settings_changed(GSettings *style, const char *key, void *data)
+static void handle_style_settings_changed(GSettings *style, const char *key)
 {
     if (strcmp(key, style_name_key) == 0) {
         style_name_changed(style, key);
@@ -201,23 +177,61 @@ static void handle_style_settings_changed(GSettings *style, const char *key, voi
     }
 }
 
-static bool cursor_schema_settings(void)
+static int dconf_notify(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
-    bool has_cursor = is_schema_installed(cursor_schema);
-    if (has_cursor) {
-        settings->cursor.settings = g_settings_new(cursor_schema);
-        g_signal_connect(settings->cursor.settings, "changed",
-                         G_CALLBACK(handle_cursor_settings_changed), NULL);
+    const char *prefix;
+    CK(sd_bus_message_read_basic(msg, 's', &prefix));
+    CK(sd_bus_message_enter_container(msg, 'a', "s"));
 
-        settings->cursor.theme = g_settings_get_string(settings->cursor.settings, cursor_theme_key);
-        settings->cursor.size = g_settings_get_int(settings->cursor.settings, cursor_size_key);
-        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+    const char *change;
+    char key[128];
+    int ret = 0;
+
+    /* get current changed key */
+    while (true) {
+        ret = sd_bus_message_read(msg, "s", &change);
+        if (ret < 0) {
+            return ret;
+        } else if (ret == 0) {
+            break;
+        }
+        snprintf(key, 128, "%s%s", prefix, change);
+
+        if (strncmp(key, style_path, STYLE_PATH_LEN) == 0) {
+            handle_style_settings_changed(settings->style.settings, key + STYLE_PATH_LEN);
+        } else if (strncmp(key, cursor_path, CURSOR_PATH_LEN) == 0) {
+            handle_cursor_settings_changed(settings->cursor.settings, key + CURSOR_PATH_LEN);
+        }
     }
-    return has_cursor;
+
+    return 0;
 }
 
-static void style_schema_config_effect(void)
+static bool cursor_schema_settings(void)
 {
+    if (!is_schema_installed(cursor_schema)) {
+        return false;
+    }
+
+    settings->cursor.settings = g_settings_new(cursor_schema);
+    settings->cursor.theme = g_settings_get_string(settings->cursor.settings, cursor_theme_key);
+    settings->cursor.size = g_settings_get_int(settings->cursor.settings, cursor_size_key);
+    if (settings->cursor.theme && settings->cursor.size > 0) {
+        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+    }
+
+    return true;
+}
+
+static bool style_schema_settings(void)
+{
+    if (!is_schema_installed(style_schema)) {
+        return false;
+    }
+
+    settings->style.settings = g_settings_new(style_schema);
+
+    settings->style.style_name = g_settings_get_string(settings->style.settings, style_name_key);
     if (settings->style.style_name) {
         if (!strcmp(settings->style.style_name, UKUI_THEME_LIGHT)) {
             theme_manager_set_theme(THEME_TYPE_LIGHT);
@@ -225,46 +239,53 @@ static void style_schema_config_effect(void)
             theme_manager_set_theme(THEME_TYPE_DARK);
         }
     }
+
+    settings->style.icon_theme = g_settings_get_string(settings->style.settings, icon_theme_key);
     if (settings->style.icon_theme) {
         theme_manager_set_icon_theme(settings->style.icon_theme);
     }
+
+    settings->style.accent_color =
+        g_settings_get_string(settings->style.settings, accent_color_key);
     if (settings->style.accent_color) {
         theme_manager_apply_accent_color();
     }
+
+    settings->style.font_name = g_settings_get_string(settings->style.settings, font_name_key);
+    settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
     if (settings->style.font_name && settings->style.font_size) {
         theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
     }
+
+    settings->style.window_radius = g_settings_get_int(settings->style.settings, window_radius_key);
     if (settings->style.window_radius >= 0) {
         theme_manager_set_corner_radius(settings->style.window_radius);
     }
+
+    settings->style.menu_transparency =
+        g_settings_get_int(settings->style.settings, menu_transparency_key);
     if (settings->style.menu_transparency >= 0) {
         theme_manager_set_opacity(settings->style.menu_transparency);
     }
+
+    return true;
 }
 
-static bool style_schema_settings(void)
+static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
-    bool has_style = is_schema_installed(style_schema);
-    if (has_style) {
-        settings->style.settings = g_settings_new(style_schema);
-        g_signal_connect(settings->style.settings, "changed",
-                         G_CALLBACK(handle_style_settings_changed), NULL);
+    wl_list_remove(&settings->destroy.link);
 
-        settings->style.style_name =
-            g_settings_get_string(settings->style.settings, style_name_key);
-        settings->style.icon_theme =
-            g_settings_get_string(settings->style.settings, icon_theme_key);
-        settings->style.accent_color =
-            g_settings_get_string(settings->style.settings, accent_color_key);
-        settings->style.font_name = g_settings_get_string(settings->style.settings, font_name_key);
-        settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
-        settings->style.window_radius =
-            g_settings_get_int(settings->style.settings, window_radius_key);
-        settings->style.menu_transparency =
-            g_settings_get_int(settings->style.settings, menu_transparency_key);
-        style_schema_config_effect();
-    }
-    return has_style;
+    g_object_unref(settings->cursor.settings);
+    g_object_unref(settings->style.settings);
+
+    free(settings->cursor.theme);
+    free(settings->style.style_name);
+    free(settings->style.icon_theme);
+    free(settings->style.accent_color);
+    free(settings->style.font_name);
+    free(settings->style.font_size);
+
+    free(settings);
 }
 
 bool ukui_gsettings_create(struct config_manager *config_manager)
@@ -283,10 +304,9 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
         return false;
     }
 
-    /* workaourd to process glib event loop in wayland server */
-    struct wl_event_loop *loop = wl_display_get_event_loop(config_manager->server->display);
-    settings->timer = wl_event_loop_add_timer(loop, handle_gsettings_event, NULL);
-    wl_event_source_timer_update(settings->timer, EVENT_TIMEOUT);
+    /* monitor dconf dbus notify */
+    sd_bus_match_signal(config_manager->bus, NULL, NULL, "/ca/desrt/dconf/Writer/user",
+                        "ca.desrt.dconf.Writer", "Notify", dconf_notify, NULL);
 
     settings->destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(config_manager->server->display, &settings->destroy);
