@@ -287,7 +287,7 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
 {
     wl_resource_set_destructor(resource, NULL);
     wl_resource_set_user_data(resource, NULL);
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
 }
 
 static void window_handle_view_title(struct wl_listener *listener, void *data)
@@ -458,7 +458,7 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
         return;
     }
 
-    wl_list_insert(&window->resources, &resource->link);
+    wl_list_insert(&window->resources, wl_resource_get_link(resource));
     wl_resource_set_implementation(resource, &kde_plasma_window_impl, window,
                                    window_handle_resource_destroy);
 
@@ -544,7 +544,7 @@ static const struct org_kde_plasma_window_management_interface kde_plasma_window
 
 static void management_handle_resource_destroy(struct wl_resource *resource)
 {
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
 }
 
 static void kde_plasma_window_management_bind(struct wl_client *client, void *data,
@@ -559,7 +559,7 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         return;
     }
 
-    wl_list_insert(&management->resources, &resource->link);
+    wl_list_insert(&management->resources, wl_resource_get_link(resource));
     wl_resource_set_implementation(resource, &kde_plasma_window_management_impl, management,
                                    management_handle_resource_destroy);
 

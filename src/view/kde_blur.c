@@ -139,8 +139,8 @@ static void kde_blur_destroy(struct kde_blur *blur)
     wl_resource_for_each_safe(resource, tmp, &blur->resources) {
         wl_resource_set_user_data(resource, NULL);
         wl_resource_set_destructor(resource, NULL);
-        wl_list_remove(&resource->link);
-        wl_list_init(&resource->link);
+        wl_list_remove(wl_resource_get_link(resource));
+        wl_list_init(wl_resource_get_link(resource));
     }
     wl_list_remove(&blur->link);
     wl_list_remove(&blur->surface_map.link);
@@ -152,7 +152,7 @@ static void kde_blur_destroy(struct kde_blur *blur)
 
 static void kde_blur_handle_resource_destroy(struct wl_resource *resource)
 {
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
     /* destroy blur if no blur resource */
     struct kde_blur *blur = wl_resource_get_user_data(resource);
     if (blur && wl_list_empty(&blur->resources)) {
@@ -218,7 +218,7 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
         return;
     }
 
-    wl_list_insert(&blur->resources, &resource->link);
+    wl_list_insert(&blur->resources, wl_resource_get_link(resource));
     wl_resource_set_implementation(resource, &kde_blur_impl, blur,
                                    kde_blur_handle_resource_destroy);
 }

@@ -313,7 +313,7 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
 {
     wl_resource_set_destructor(resource, NULL);
     wl_resource_set_user_data(resource, NULL);
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
 }
 
 static void window_handle_view_title(struct wl_listener *listener, void *data)
@@ -488,12 +488,12 @@ static void ukui_window_add_resource(struct ukui_window *window,
                                    window_handle_resource_destroy);
 
     if (!window) {
-        wl_list_init(&resource->link);
+        wl_list_init(wl_resource_get_link(resource));
         ukui_window_send_unmapped(resource);
         return;
     }
 
-    wl_list_insert(&window->resources, &resource->link);
+    wl_list_insert(&window->resources, wl_resource_get_link(resource));
 
     /* send states */
     ukui_window_send_state(window, resource, true);
@@ -560,7 +560,7 @@ static const struct ukui_window_management_interface ukui_window_management_impl
 
 static void management_handle_resource_destroy(struct wl_resource *resource)
 {
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
 }
 
 static void ukui_window_management_bind(struct wl_client *client, void *data, uint32_t version,
@@ -575,7 +575,7 @@ static void ukui_window_management_bind(struct wl_client *client, void *data, ui
         return;
     }
 
-    wl_list_insert(&management->resources, &resource->link);
+    wl_list_insert(&management->resources, wl_resource_get_link(resource));
     wl_resource_set_implementation(resource, &ukui_window_management_impl, management,
                                    management_handle_resource_destroy);
 

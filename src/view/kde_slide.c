@@ -114,8 +114,8 @@ static void kde_slide_destroy(struct kde_slide *slide)
     wl_resource_for_each_safe(resource, tmp, &slide->resources) {
         wl_resource_set_user_data(resource, NULL);
         wl_resource_set_destructor(resource, NULL);
-        wl_list_remove(&resource->link);
-        wl_list_init(&resource->link);
+        wl_list_remove(wl_resource_get_link(resource));
+        wl_list_init(wl_resource_get_link(resource));
     }
 
     wl_list_remove(&slide->link);
@@ -126,7 +126,7 @@ static void kde_slide_destroy(struct kde_slide *slide)
 
 static void kde_slide_handle_resource_destroy(struct wl_resource *resource)
 {
-    wl_list_remove(&resource->link);
+    wl_list_remove(wl_resource_get_link(resource));
     /* destroy slide if no slide resource */
     struct kde_slide *slide = wl_resource_get_user_data(resource);
     if (slide && wl_list_empty(&slide->resources)) {
@@ -186,7 +186,7 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
         return;
     }
 
-    wl_list_insert(&slide->resources, &resource->link);
+    wl_list_insert(&slide->resources, wl_resource_get_link(resource));
     wl_resource_set_implementation(resource, &kde_slide_impl, slide,
                                    kde_slide_handle_resource_destroy);
 }

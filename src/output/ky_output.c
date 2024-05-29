@@ -163,7 +163,7 @@ static void send_current_mode_to_output_client(struct ky_output_client *ky_clien
     }
 
     struct wl_resource *mode_resource;
-    wl_list_for_each_reverse(mode_resource, &ky_client->mode_resources, link) {
+    wl_resource_for_each(mode_resource, &ky_client->mode_resources) {
         struct kywc_output_mode *mode = wl_resource_get_user_data(mode_resource);
         if (mode->width != kywc_output->state.width || mode->height != kywc_output->state.height ||
             mode->refresh != kywc_output->state.refresh) {
