@@ -1371,6 +1371,9 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
         kywc_view->min_height == kywc_view->max_height) {
         kywc_view->maximizable = false;
         kywc_view->resizable = false;
+    } else {
+        kywc_view->maximizable = true;
+        kywc_view->resizable = true;
     }
 
     if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {
