@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
@@ -75,7 +76,11 @@ static const char *output_get_edid(struct wlr_output *wlr_output)
         return NULL;
     }
 
-    int drm_fd = wlr_backend_get_drm_fd(wlr_output->backend);
+    int drm_fd = wlr_drm_backend_get_non_master_fd(wlr_output->backend);
+    if (drm_fd < 0) {
+        return NULL;
+    }
+
     uint32_t conn_id = wlr_drm_connector_get_id(wlr_output);
 
     drmModeObjectProperties *props =
@@ -107,6 +112,8 @@ static const char *output_get_edid(struct wlr_output *wlr_output)
     }
 
     drmModeFreeObjectProperties(props);
+
+    close(drm_fd);
 
     return edid;
 }
