@@ -6,11 +6,10 @@
 #include <libinput.h>
 #include <string.h>
 
-#include <kywc/log.h>
-
 #include "config_p.h"
 #include "input/input.h"
 #include "kywc/output.h"
+#include "server.h"
 
 static const char *service_path = "/org/kde/KWin/InputDevice";
 static const char *kde_input_path = "/org/kde/KWin/InputDevice/";
@@ -774,7 +773,7 @@ bool kde_input_manager_create(struct config_manager *config_manager)
     input_add_new_listener(&kde_input_manager->new_input);
 
     kde_input_manager->destroy.notify = handle_destroy;
-    wl_signal_add(&kde_input_manager->config->events.destroy, &kde_input_manager->destroy);
+    server_add_destroy_listener(config_manager->server, &kde_input_manager->destroy);
 
     config_manager_add_config(NULL, "org.ukui.KWin", "/KWin", "org.ukui.KWin", ukui_kwin_vtable,
                               kde_input_manager);
