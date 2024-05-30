@@ -470,7 +470,7 @@ static void slide_data_handle_buffer_node_destroy(struct wl_listener *listener, 
     wl_list_remove(&slide_data->node_destroy.link);
     wl_list_init(&slide_data->node_destroy.link);
 
-    slide_data->thumbnail_texture = NULL;
+    slide_data->buffer = NULL;
 }
 
 static void slide_data_handle_node_destroy(struct wl_listener *listener, void *data)
