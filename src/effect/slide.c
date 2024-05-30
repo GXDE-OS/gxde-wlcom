@@ -460,7 +460,7 @@ static struct ky_scene_tree *get_node_layer_tree(struct ky_scene_node *node)
     }
 
     struct ky_scene_tree *view_parent = node->parent;
-    view_parent = deep >= 4 ? view_parent->node.parent->node.parent : view_parent->node.parent;
+    view_parent = deep >= 4 ? view_parent->node.parent : view_parent;
 
     return view_parent;
 }

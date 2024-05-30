@@ -468,8 +468,6 @@ static bool fade_create_scene_buffer(struct view *view, struct fade_effect_data 
     bool in_workspace = view->current_proxy ? true : false;
     struct ky_scene_tree *view_parent = view->tree->node.parent;
     if (in_workspace) {
-        view_parent = view_parent->node.parent->node.parent;
-    } else {
         view_parent = view_parent->node.parent;
     }
 
