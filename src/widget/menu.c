@@ -670,6 +670,13 @@ static void menu_handle_destroy(struct wl_listener *listener, void *data)
     struct menu *menu = wl_container_of(listener, menu, destroy);
     wl_list_remove(&menu->destroy.link);
     wl_list_remove(&menu->theme_update.link);
+
+    struct menu_item *item, *tmp;
+    wl_list_for_each_safe(item, tmp, &menu->items, link) {
+        wl_list_remove(&item->link);
+        wl_list_init(&item->link);
+    }
+
     free(menu);
 }
 
