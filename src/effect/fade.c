@@ -35,10 +35,10 @@ struct fade_effect_data {
     enum fade_action action;
     int duration;
 
-    struct ky_scene_node *node;
     struct view *view;
     struct wl_listener view_size;
     struct wl_listener view_position;
+    struct wl_listener view_destroy;
 
     struct thumbnail *thumbnail;
     struct wlr_texture *thumbnail_texture;
@@ -198,6 +198,19 @@ static void handle_view_positon(struct wl_listener *listener, void *data)
     fade_effect_data_set_animator(fade_data);
 }
 
+static void handle_view_destroy(struct wl_listener *listener, void *data)
+{
+    struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, view_destroy);
+
+    wl_list_remove(&fade_data->view_destroy.link);
+    wl_list_remove(&fade_data->view_position.link);
+    wl_list_remove(&fade_data->view_size.link);
+
+    wl_list_init(&fade_data->view_destroy.link);
+    wl_list_init(&fade_data->view_position.link);
+    wl_list_init(&fade_data->view_destroy.link);
+}
+
 static void handle_view_size(struct wl_listener *listener, void *data)
 {
     struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, view_size);
@@ -227,10 +240,9 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
 
     if (fade_data->thumbnail_texture) {
-        wlr_buffer_unlock(fade_data->thumbnail_buffer);
         wlr_texture_destroy(fade_data->thumbnail_texture);
     }
-    fade_data->thumbnail_buffer = wlr_buffer_lock(event->buffer);
+    fade_data->thumbnail_buffer = event->buffer;
     fade_data->thumbnail_texture =
         wlr_texture_from_buffer(fade->manager->server->renderer, event->buffer);
 }
@@ -299,17 +311,19 @@ static void fade_data_destroy(struct fade_effect_data *data)
         wl_list_remove(&data->thumbnail_destroy.link);
         thumbnail_destroy(data->thumbnail);
     }
-    if (data->thumbnail_buffer) {
-        wlr_buffer_unlock(data->thumbnail_buffer);
-    }
     if (data->thumbnail_texture) {
         wlr_texture_destroy(data->thumbnail_texture);
     }
     if (data->animator) {
         animator_destroy(data->animator);
     }
-    wl_list_remove(&data->view_position.link);
-    wl_list_remove(&data->view_size.link);
+
+    if (data->action == FADE_MAP) {
+        wl_list_remove(&data->view_position.link);
+        wl_list_remove(&data->view_size.link);
+        wl_list_remove(&data->view_destroy.link);
+    }
+
     free(data);
 }
 
@@ -355,7 +369,6 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
                                   enum fade_action action, struct animation_data *animation_data)
 {
     fade_data->view = view;
-    fade_data->node = &view->tree->node;
     fade_data->action = action;
     fade_data->duration = action ? 260 : 300;
     fade_data->buffer = NULL;
@@ -369,6 +382,7 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
     if (!fade_effect_data_create_thumbnail(fade_data)) {
         animator_destroy(fade_data->animator);
         free(fade_data);
+        return false;
     }
     if (action == FADE_UNMAP) {
         thumbnail_update(fade_data->thumbnail);
@@ -389,10 +403,14 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
     fade_data->animator = animator;
     fade_effect_data_set_animator(fade_data);
 
-    fade_data->view_position.notify = handle_view_positon;
-    wl_signal_add(&view->base.events.position, &fade_data->view_position);
-    fade_data->view_size.notify = handle_view_size;
-    wl_signal_add(&view->base.events.size, &fade_data->view_size);
+    if (action == FADE_MAP) {
+        fade_data->view_position.notify = handle_view_positon;
+        wl_signal_add(&view->base.events.position, &fade_data->view_position);
+        fade_data->view_size.notify = handle_view_size;
+        wl_signal_add(&view->base.events.size, &fade_data->view_size);
+        fade_data->view_destroy.notify = handle_view_destroy;
+        wl_signal_add(&view->base.events.destroy, &fade_data->view_destroy);
+    }
 
     return true;
 }
@@ -527,6 +545,7 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
         if (!unmap_add_fade_effect(view, action, &data->current)) {
             return false;
         }
+        effect_entity_destroy(entity);
         return true;
     }
 
