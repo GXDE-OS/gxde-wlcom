@@ -25,13 +25,13 @@
 
 struct input_method_manager {
     struct wlr_input_method_manager_v2 *input_method;
-    struct wlr_text_input_manager_v3 *text_input_v3;
 
     struct text_input_manager_v1 *text_input_v1;
     struct wl_listener new_text_input_v1;
+    struct wl_listener text_input_v1_destroy;
 
     struct text_input_manager_v2 *text_input_v2;
-    struct wl_listener new_text_input_v2;
+    struct wlr_text_input_manager_v3 *text_input_v3;
 
     struct wl_listener new_seat;
     struct wl_listener server_destroy;
@@ -43,10 +43,15 @@ struct input_method_relay {
     struct wl_listener seat_destroy;
 
     struct wl_list text_inputs;
-    struct wl_listener new_text_input;
+    struct wl_listener new_text_input_v2;
+    struct wl_listener text_input_v2_destroy;
+    struct wl_listener new_text_input_v3;
+    struct wl_listener text_input_v3_destroy;
 
     struct wlr_input_method_v2 *wlr_input_method;
+    struct wl_listener input_method_v2_destroy;
     struct wl_listener new_input_method;
+
     struct wl_listener input_method_commit;
     struct wl_listener input_method_grab_keyboard;
     struct wl_listener input_method_keyboard_grab_destroy;
@@ -353,9 +358,9 @@ static void handle_pending_focused_surface_destroy(struct wl_listener *listener,
     wl_list_init(&text_input->pending_focused_surface_destroy.link);
 }
 
-static void handle_new_text_input(struct wl_listener *listener, void *data)
+static void handle_new_text_input_v3(struct wl_listener *listener, void *data)
 {
-    struct input_method_relay *relay = wl_container_of(listener, relay, new_text_input);
+    struct input_method_relay *relay = wl_container_of(listener, relay, new_text_input_v3);
     struct wlr_text_input_v3 *wlr_text_input = data;
     if (relay->seat->wlr_seat != wlr_text_input->seat) {
         return;
@@ -413,17 +418,20 @@ static void handle_new_text_input_v1(struct wl_listener *listener, void *data)
 
 static void handle_new_text_input_v2(struct wl_listener *listener, void *data)
 {
+    struct input_method_relay *relay = wl_container_of(listener, relay, new_text_input_v2);
+    struct text_input_v2 *text_input_v2 = data;
+    if (relay->seat->wlr_seat != text_input_v2->seat) {
+        return;
+    }
+
     struct text_input *text_input = calloc(1, sizeof(struct text_input));
     if (!text_input) {
         return;
     }
 
-    struct text_input_v2 *text_input_v2 = data;
     text_input->text_input_v2 = text_input_v2;
-
-    struct seat *seat = seat_from_wlr_seat(text_input_v2->seat);
-    text_input->relay = seat->relay;
-    wl_list_insert(&text_input->relay->text_inputs, &text_input->link);
+    text_input->relay = relay;
+    wl_list_insert(&relay->text_inputs, &text_input->link);
 
     text_input->text_input_enable.notify = handle_text_input_enable;
     wl_signal_add(&text_input_v2->events.enable, &text_input->text_input_enable);
@@ -529,6 +537,7 @@ static void handle_input_method_destroy(struct wl_listener *listener, void *data
     wl_list_remove(&relay->input_method_commit.link);
     wl_list_remove(&relay->input_method_grab_keyboard.link);
     wl_list_remove(&relay->input_method_destroy.link);
+    wl_list_remove(&relay->new_popup_surface.link);
 
     struct text_input *text_input = relay_get_focused_text_input(relay);
     if (text_input) {
@@ -694,15 +703,46 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
     }
 }
 
+static void handle_input_method_v2_destroy(struct wl_listener *listener, void *data)
+{
+    struct input_method_relay *relay = wl_container_of(listener, relay, input_method_v2_destroy);
+    wl_list_remove(&relay->input_method_v2_destroy.link);
+    wl_list_remove(&relay->new_input_method.link);
+    wl_list_init(&relay->input_method_v2_destroy.link);
+    wl_list_init(&relay->new_input_method.link);
+}
+
+static void handle_text_input_v2_destroy(struct wl_listener *listener, void *data)
+{
+    struct input_method_relay *relay = wl_container_of(listener, relay, text_input_v2_destroy);
+    wl_list_remove(&relay->text_input_v2_destroy.link);
+    wl_list_remove(&relay->new_text_input_v2.link);
+    wl_list_init(&relay->text_input_v2_destroy.link);
+    wl_list_init(&relay->new_text_input_v2.link);
+}
+
+static void handle_text_input_v3_destroy(struct wl_listener *listener, void *data)
+{
+    struct input_method_relay *relay = wl_container_of(listener, relay, text_input_v3_destroy);
+    wl_list_remove(&relay->text_input_v3_destroy.link);
+    wl_list_remove(&relay->new_text_input_v3.link);
+    wl_list_init(&relay->text_input_v3_destroy.link);
+    wl_list_init(&relay->new_text_input_v3.link);
+}
+
 static void handle_seat_destroy(struct wl_listener *listener, void *data)
 {
     struct input_method_relay *relay = wl_container_of(listener, relay, seat_destroy);
     wl_list_remove(&relay->seat_destroy.link);
-    wl_list_remove(&relay->new_text_input.link);
-    wl_list_remove(&relay->new_input_method.link);
+
+    handle_input_method_v2_destroy(&relay->input_method_v2_destroy, NULL);
+    handle_text_input_v2_destroy(&relay->text_input_v2_destroy, NULL);
+    handle_text_input_v3_destroy(&relay->text_input_v3_destroy, NULL);
+
     if (relay->wlr_input_method) {
         handle_input_method_destroy(&relay->input_method_destroy, relay->wlr_input_method);
     }
+
     free(relay);
 }
 
@@ -726,8 +766,26 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
 
     relay->new_input_method.notify = handle_new_input_method;
     wl_signal_add(&manager->input_method->events.input_method, &relay->new_input_method);
-    relay->new_text_input.notify = handle_new_text_input;
-    wl_signal_add(&manager->text_input_v3->events.text_input, &relay->new_text_input);
+    relay->input_method_v2_destroy.notify = handle_input_method_v2_destroy;
+    wl_signal_add(&manager->input_method->events.destroy, &relay->input_method_v2_destroy);
+
+    relay->new_text_input_v2.notify = handle_new_text_input_v2;
+    wl_signal_add(&manager->text_input_v2->events.text_input, &relay->new_text_input_v2);
+    relay->text_input_v2_destroy.notify = handle_text_input_v2_destroy;
+    wl_signal_add(&manager->text_input_v2->events.destroy, &relay->text_input_v2_destroy);
+
+    relay->new_text_input_v3.notify = handle_new_text_input_v3;
+    wl_signal_add(&manager->text_input_v3->events.text_input, &relay->new_text_input_v3);
+    relay->text_input_v3_destroy.notify = handle_text_input_v3_destroy;
+    wl_signal_add(&manager->text_input_v3->events.destroy, &relay->text_input_v3_destroy);
+}
+
+static void handle_text_input_v1_destroy(struct wl_listener *listener, void *data)
+{
+    struct input_method_manager *manager =
+        wl_container_of(listener, manager, text_input_v1_destroy);
+    wl_list_remove(&manager->text_input_v1_destroy.link);
+    wl_list_remove(&manager->new_text_input_v1.link);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -747,15 +805,14 @@ bool input_method_manager_create(struct input_manager *input_manager)
 
     manager->input_method = wlr_input_method_manager_v2_create(input_manager->server->display);
     manager->text_input_v3 = wlr_text_input_manager_v3_create(input_manager->server->display);
-
     manager->text_input_v2 = text_input_manager_v2_create(input_manager->server->display);
-    manager->new_text_input_v2.notify = handle_new_text_input_v2;
-    wl_signal_add(&manager->text_input_v2->events.text_input, &manager->new_text_input_v2);
 
     /* no seat in text_input_v1 create_text_input request */
     manager->text_input_v1 = text_input_manager_v1_create(input_manager->server->display);
     manager->new_text_input_v1.notify = handle_new_text_input_v1;
     wl_signal_add(&manager->text_input_v1->events.text_input, &manager->new_text_input_v1);
+    manager->text_input_v1_destroy.notify = handle_text_input_v1_destroy;
+    wl_signal_add(&manager->text_input_v1->events.destroy, &manager->text_input_v1_destroy);
 
     manager->new_seat.notify = handle_new_seat;
     wl_signal_add(&input_manager->events.new_seat, &manager->new_seat);
