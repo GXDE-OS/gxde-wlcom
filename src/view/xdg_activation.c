@@ -179,7 +179,7 @@ static void handle_new_token(struct wl_listener *listener, void *data)
         }
     }
     token->workspace_destroy.notify = token_handle_workspace_destroy;
-    wl_signal_add(&seat->events.destroy, &token->workspace_destroy);
+    wl_signal_add(&token->workspace->events.destroy, &token->workspace_destroy);
 
     wl_list_init(&token->view_premap.link);
     wl_list_init(&token->view_destroy.link);
