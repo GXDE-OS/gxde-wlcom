@@ -450,6 +450,8 @@ static void buffer_destroy(struct ky_scene_node *node)
     if (scene_buffer->buffer) {
         wlr_buffer_unlock(scene_buffer->buffer);
         wlr_texture_destroy(scene_buffer->texture);
+        scene_buffer->buffer = NULL;
+        scene_buffer->texture = NULL;
     }
 
     if (node->last_enabled) {
