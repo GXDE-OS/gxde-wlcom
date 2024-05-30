@@ -3,8 +3,8 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
-#ifndef _UTIL_GLOBAL_H
-#define _UTIL_GLOBAL_H
+#ifndef _UTIL_WAYLAND_H_
+#define _UTIL_WAYLAND_H_
 
 #include <wayland-server-core.h>
 
@@ -16,4 +16,9 @@
  */
 void wl_global_destroy_safe(struct wl_global *global);
 
-#endif
+/**
+ * assume there is at most one listener in signal.
+ */
+void wl_signal_emit_oneshot(struct wl_signal *signal, void *data);
+
+#endif /* _UTIL_WAYLAND_H_ */

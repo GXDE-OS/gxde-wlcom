@@ -17,6 +17,7 @@
 #include "painter.h"
 #include "render/renderer.h"
 #include "server.h"
+#include "util/wayland.h"
 
 enum capture_type {
     CAPTURE_TYPE_OUTPUT = 0,
@@ -395,7 +396,7 @@ static void capture_request_mark_done(struct capture_request *request)
         wl_list_for_each_safe(capture, tmp, &buffer->captures, link) {
             if (capture->wants_update && capture->force_update) {
                 capture->force_update = false;
-                wl_signal_emit_mutable(&capture->events.update, &event);
+                wl_signal_emit_oneshot(&capture->events.update, &event);
             }
         }
         /* capture may need be destroyed in update */
@@ -411,7 +412,7 @@ static void capture_request_mark_done(struct capture_request *request)
         if (capture->wants_update) {
             event.buffer_changed = buffer->buffer_changed || capture->force_update;
             capture->force_update = false;
-            wl_signal_emit_mutable(&capture->events.update, &event);
+            wl_signal_emit_oneshot(&capture->events.update, &event);
         } else {
             capture->force_update |= buffer->buffer_changed;
         }
@@ -739,11 +740,13 @@ void capture_destroy(struct capture *capture)
 
 void capture_add_update_listener(struct capture *capture, struct wl_listener *listener)
 {
+    assert(wl_list_empty(&capture->events.update.listener_list));
     wl_signal_add(&capture->events.update, listener);
 }
 
 void capture_add_destroy_listener(struct capture *capture, struct wl_listener *listener)
 {
+    assert(wl_list_empty(&capture->events.destroy.listener_list));
     wl_signal_add(&capture->events.destroy, listener);
 }
 

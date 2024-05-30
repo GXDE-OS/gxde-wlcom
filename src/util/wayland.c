@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 
-#include "util/global.h"
+#include "util/wayland.h"
 
 /**
  * stolen from wlroots.
@@ -66,4 +66,15 @@ void wl_global_destroy_safe(struct wl_global *global)
 
     data->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(display, &data->display_destroy);
+}
+
+void wl_signal_emit_oneshot(struct wl_signal *signal, void *data)
+{
+    struct wl_list *listeners = &signal->listener_list;
+    if (wl_list_empty(listeners)) {
+        return;
+    }
+
+    struct wl_listener *listener = wl_container_of(listeners->next, listener, link);
+    listener->notify(listener, data);
 }

@@ -10,7 +10,7 @@
 #include "kde-primary-output-v1-protocol.h"
 
 #include "output_p.h"
-#include "util/global.h"
+#include "util/wayland.h"
 
 #define OUTPUT_DEVICE_VERSION 2
 #define OUTPUT_DEVICE_MODE_VERSION 1

@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MulanPSL-2.0
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <drm_fourcc.h>
@@ -15,6 +16,7 @@
 #include "scene/thumbnail.h"
 #include "server.h"
 #include "theme.h"
+#include "util/wayland.h"
 
 struct thumbnail {
     struct wl_list link;
@@ -913,11 +915,13 @@ void thumbnail_destroy(struct thumbnail *thumbnail)
 
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener)
 {
+    assert(wl_list_empty(&thumbnail->events.update.listener_list));
     wl_signal_add(&thumbnail->events.update, listener);
 }
 
 void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_listener *listener)
 {
+    assert(wl_list_empty(&thumbnail->events.destroy.listener_list));
     wl_signal_add(&thumbnail->events.destroy, listener);
 }
 
@@ -965,7 +969,7 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer,
         wl_list_for_each_safe(thumbnail, tmp, &thumbnail_buffer->thumbnails, link) {
             if (thumbnail->wants_update && thumbnail->force_update) {
                 thumbnail->force_update = false;
-                wl_signal_emit_mutable(&thumbnail->events.update, &event);
+                wl_signal_emit_oneshot(&thumbnail->events.update, &event);
             }
         }
         /* thumbnail may need be destroyed in update */
@@ -1009,7 +1013,7 @@ static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer,
         if (thumbnail->wants_update) {
             event.buffer_changed = buffer_changed || thumbnail->force_update;
             thumbnail->force_update = false;
-            wl_signal_emit_mutable(&thumbnail->events.update, &event);
+            wl_signal_emit_oneshot(&thumbnail->events.update, &event);
         } else {
             thumbnail->force_update |= buffer_changed;
         }
