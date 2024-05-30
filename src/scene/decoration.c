@@ -113,12 +113,60 @@ static int scene_decoration_create_opengl_shader(struct ky_opengl_renderer *rend
     return prog;
 }
 
+static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco, int lx, int ly,
+                                               struct ky_scene_render_target *target,
+                                               struct wlr_box *region)
+{
+    struct wlr_box box = {
+        .x = lx - target->logical.x,
+        .y = ly - target->logical.y,
+        .width = deco->rect.width,
+        .height = deco->rect.height,
+    };
+
+    bool left_shadow_mask = deco->shadow_mask & SHADOW_MASK_LEFT;
+    bool right_shadow_mask = deco->shadow_mask & SHADOW_MASK_RIGHT;
+    if (left_shadow_mask && right_shadow_mask) {
+        region->x = box.x;
+        region->width = box.width;
+    } else if (!left_shadow_mask && right_shadow_mask) {
+        region->x = box.x + deco->shadow_width;
+        region->width = box.width - deco->shadow_width;
+    } else if (left_shadow_mask && !right_shadow_mask) {
+        region->x = box.x;
+        region->width = box.width - deco->shadow_width;
+    } else {
+        region->x = box.x + deco->shadow_width;
+        region->width = box.width - deco->shadow_width * 2;
+    }
+    bool top_shadow_mask = deco->shadow_mask & SHADOW_MASK_TOP;
+    bool bottom_shadow_mask = deco->shadow_mask & SHADOW_MASK_BOTTOM;
+    if (top_shadow_mask && bottom_shadow_mask) {
+        region->y = box.y;
+        region->height = box.height;
+    } else if (!top_shadow_mask && bottom_shadow_mask) {
+        region->y = box.y + deco->shadow_width;
+        region->height = box.height - deco->shadow_width;
+    } else if (top_shadow_mask && !bottom_shadow_mask) {
+        region->y = box.y;
+        region->height = box.height - deco->shadow_width;
+    } else {
+        region->y = box.y + deco->shadow_width;
+        region->height = box.height - deco->shadow_width * 2;
+    }
+
+    ky_scene_render_box(region, target);
+}
+
 static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int lx, int ly,
                                            struct ky_scene_render_target *target,
                                            const struct wlr_box *box, const pixman_region32_t *clip)
 {
+    struct wlr_box region_box = { 0 };
+    get_render_region_with_shadow_mask(deco, lx, ly, target, &region_box);
     pixman_region32_t region;
-    pixman_region32_init_rect(&region, box->x, box->y, box->width, box->height);
+    pixman_region32_init_rect(&region, region_box.x, region_box.y, region_box.width,
+                              region_box.height);
     pixman_region32_intersect(&region, &region, clip);
 
     int rects_len;
