@@ -467,6 +467,13 @@ static void kde_output_device_send_current_mode(struct kde_output_device_client 
 static void kde_output_device_unbind(struct wl_resource *resource)
 {
     struct kde_output_device_client *kod_client = wl_resource_get_user_data(resource);
+
+    struct wl_resource *mode_resource, *tmp;
+    wl_resource_for_each_safe(mode_resource, tmp, &kod_client->mode_resources) {
+        wl_list_remove(wl_resource_get_link(mode_resource));
+        wl_list_init(wl_resource_get_link(mode_resource));
+    }
+
     wl_list_remove(&kod_client->link);
     free(kod_client);
 }
