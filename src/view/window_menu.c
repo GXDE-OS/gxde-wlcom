@@ -476,6 +476,8 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
     wl_list_remove(&manager->window_menu.link);
+    wl_list_remove(&manager->output_configured.link);
+    wl_list_remove(&manager->new_workspace.link);
 
     struct window_menu *menu, *tmp;
     wl_list_for_each_safe(menu, tmp, &manager->menus, link) {

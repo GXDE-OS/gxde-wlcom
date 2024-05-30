@@ -303,6 +303,7 @@ static void handle_seat_destory(struct wl_listener *listener, void *data)
 #endif
     wl_list_remove(&selection->request_set_selection.link);
     wl_list_remove(&selection->request_set_primary_selection.link);
+    wl_list_remove(&selection->seat_destroy.link);
 
     free(selection);
 }

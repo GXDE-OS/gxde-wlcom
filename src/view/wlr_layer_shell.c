@@ -540,6 +540,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
 static void handle_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->destroy.link);
+    wl_list_remove(&manager->new_output.link);
     free(manager);
     manager = NULL;
 }

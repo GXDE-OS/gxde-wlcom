@@ -588,6 +588,8 @@ bool xwayland_server_create(struct server *server)
 void xwayland_server_destroy(void)
 {
     if (xwayland) {
+        wl_list_remove(&xwayland->xwayland_ready.link);
+        wl_list_remove(&xwayland->new_xwayland_surface.link);
         wlr_xwayland_destroy(xwayland->wlr_xwayland);
         xwayland->wlr_xwayland = NULL;
     }

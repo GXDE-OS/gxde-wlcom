@@ -39,6 +39,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output_manager->server_destroy.link);
     wl_list_remove(&output_manager->server_suspend.link);
     wl_list_remove(&output_manager->server_resume.link);
+    wl_list_remove(&output_manager->configured.link);
 
     free(output_manager);
     output_manager = NULL;
@@ -858,6 +859,7 @@ struct output_manager *output_manager_create(struct server *server)
     output_manager->server = server;
     wl_list_init(&output_manager->outputs);
     wl_list_init(&output_manager->output_configs);
+    wl_list_init(&output_manager->configured.link);
     wl_signal_init(&output_manager->events.new_output);
     wl_signal_init(&output_manager->events.new_enabled_output);
     wl_signal_init(&output_manager->events.primary_output);

@@ -346,6 +346,7 @@ static void handle_new_input(struct wl_listener *listener, void *data)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
+    wl_list_remove(&manager->new_input.link);
     free(manager);
     manager = NULL;
 }

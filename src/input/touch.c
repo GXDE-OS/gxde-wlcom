@@ -281,6 +281,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     struct touch_manager *manager = wl_container_of(listener, manager, server_destroy);
     wl_list_remove(&manager->server_destroy.link);
+    wl_list_remove(&manager->new_input.link);
     free(manager);
 }
 

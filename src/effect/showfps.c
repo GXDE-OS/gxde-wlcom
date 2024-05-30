@@ -152,6 +152,7 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct showfps_effect *effect = wl_container_of(listener, effect, disable);
     wl_list_remove(&effect->new_enabled_output.link);
+    wl_list_init(&effect->new_enabled_output.link);
 
     struct frame_output *output, *tmp;
     wl_list_for_each_safe(output, tmp, &effect->outputs, link) {
