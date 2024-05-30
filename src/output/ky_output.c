@@ -77,10 +77,18 @@ static const struct kywc_output_v1_interface ky_output_impl = {
 static void ky_output_resource_destroy(struct wl_resource *resource)
 {
     struct ky_output_client *ky_client = wl_resource_get_user_data(resource);
-    if (ky_client) {
-        wl_list_remove(&ky_client->link);
-        free(ky_client);
+    if (!ky_client) {
+        return;
     }
+
+    struct wl_resource *mode_resource, *tmp;
+    wl_resource_for_each_safe(mode_resource, tmp, &ky_client->mode_resources) {
+        wl_list_remove(wl_resource_get_link(mode_resource));
+        wl_list_init(wl_resource_get_link(mode_resource));
+    }
+
+    wl_list_remove(&ky_client->link);
+    free(ky_client);
 }
 
 static struct ky_output_client *
