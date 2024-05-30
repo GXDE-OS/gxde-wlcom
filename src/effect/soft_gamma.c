@@ -163,6 +163,7 @@ static void handle_effect_enable(struct wl_listener *listener, void *data)
     struct soft_gamma_effect *effect = wl_container_of(listener, effect, enable);
     effect->new_enabled_output.notify = handle_new_enabled_output;
     output_manager_add_new_enabled_listener(&effect->new_enabled_output);
+    ky_scene_damage_whole(effect->manager->server->scene);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
@@ -177,6 +178,7 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
         wl_list_remove(&cursor_buffer->destroy.link);
         free(cursor_buffer);
     }
+    ky_scene_damage_whole(effect->manager->server->scene);
 }
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
