@@ -18,8 +18,6 @@ struct padding {
 };
 
 struct fade_effect_data {
-    struct ky_scene_buffer *buffer;
-
     struct animator *animator;
     struct animation_data current;
 
@@ -39,6 +37,9 @@ struct fade_effect_data {
     struct wl_listener view_size;
     struct wl_listener view_position;
     struct wl_listener view_destroy;
+
+    struct ky_scene_buffer *buffer;
+    struct wl_listener buffer_destroy;
 
     struct thumbnail *thumbnail;
     struct wlr_texture *thumbnail_texture;
@@ -304,6 +305,7 @@ static void fade_calc_render_box(struct fade_effect_data *data, struct padding *
 static void fade_data_destroy(struct fade_effect_data *data)
 {
     if (data->buffer) {
+        wl_list_remove(&data->buffer_destroy.link);
         ky_scene_node_destroy(&data->buffer->node);
     }
     if (data->thumbnail) {
@@ -459,6 +461,13 @@ bool fade_effect_create(struct effect_manager *manager)
     return true;
 }
 
+static void handle_buffer_destroy(struct wl_listener *listener, void *data)
+{
+    struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, buffer_destroy);
+    wl_list_remove(&fade_data->buffer_destroy.link);
+    fade_data->buffer = NULL;
+}
+
 static bool fade_create_scene_buffer(struct view *view, struct fade_effect_data *data)
 {
     if (!data->thumbnail_buffer) {
@@ -480,6 +489,9 @@ static bool fade_create_scene_buffer(struct view *view, struct fade_effect_data 
         ky_scene_node_destroy(&buffer->node);
         return false;
     }
+
+    data->buffer_destroy.notify = handle_buffer_destroy;
+    wl_signal_add(&buffer->node.events.destroy, &data->buffer_destroy);
 
     ky_scene_node_raise_to_top(&buffer->node);
     data->buffer = buffer;
