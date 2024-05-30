@@ -431,6 +431,7 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
         effect_entity_destroy(entity);
     }
 
+    wl_list_remove(&fade->destroy.link);
     free(fade);
     fade = NULL;
 }

@@ -359,6 +359,7 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
         effect_entity_destroy(entity);
     }
 
+    wl_list_remove(&scale->destroy.link);
     free(scale);
     scale = NULL;
 }

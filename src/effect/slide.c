@@ -353,6 +353,12 @@ static bool slide_frame_render_post(struct effect_entity *entity,
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
+    struct effect_entity *entity, *tmp;
+    wl_list_for_each_safe(entity, tmp, &slide_effect->effect->entities, effect_link) {
+        effect_entity_destroy(entity);
+    }
+
+    wl_list_remove(&slide_effect->destroy.link);
     free(slide_effect);
     slide_effect = NULL;
 }

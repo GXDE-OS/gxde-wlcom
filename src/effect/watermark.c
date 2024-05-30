@@ -343,6 +343,9 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, destroy);
     assert(wl_list_empty(&effect->watermarks));
+    wl_list_remove(&effect->destroy.link);
+    wl_list_remove(&effect->enable.link);
+    wl_list_remove(&effect->disable.link);
     free(effect);
 }
 

@@ -173,6 +173,9 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     assert(wl_list_empty(&effect->proxies));
+    wl_list_remove(&effect->destroy.link);
+    wl_list_remove(&effect->enable.link);
+    wl_list_remove(&effect->disable.link);
     free(effect);
     effect = NULL;
 }

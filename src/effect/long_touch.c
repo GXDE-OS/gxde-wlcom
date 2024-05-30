@@ -347,6 +347,9 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct long_touch_effect *effect = wl_container_of(listener, effect, destroy);
+    wl_list_remove(&effect->destroy.link);
+    wl_list_remove(&effect->enable.link);
+    wl_list_remove(&effect->disable.link);
     free(effect);
 }
 
