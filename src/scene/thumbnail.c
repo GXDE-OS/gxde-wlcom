@@ -69,6 +69,7 @@ struct workspace_thumbnail_entry {
     struct wl_listener view_move;
     struct wl_listener view_output;
     struct wl_listener workspace_leave;
+    struct wl_listener view_unmap;
 
     struct thumbnail *thumbnail;
     struct wl_listener thumbnail_update;
@@ -578,6 +579,7 @@ static void workspace_thumbnail_entry_destroy(struct workspace_thumbnail_entry *
     wl_list_remove(&entry->view_move.link);
     wl_list_remove(&entry->view_output.link);
     wl_list_remove(&entry->workspace_leave.link);
+    wl_list_remove(&entry->view_unmap.link);
 
     free(entry);
 }
@@ -660,13 +662,13 @@ static void workspace_thumbnail_handle_view_enter(struct wl_listener *listener, 
 static void workspace_thumbnail_handle_workspace_leave(struct wl_listener *listener, void *data)
 {
     struct workspace_thumbnail_entry *entry = wl_container_of(listener, entry, workspace_leave);
-
     struct workspace_thumbnail *workspace_thumbnail = entry->workspace_thumbnail;
     struct workspace *workspace = data;
-
+    /* not leave the workspace */
     if (workspace_thumbnail->workspace != workspace) {
         return;
     }
+
     workspace_thumbnail_entry_destroy(entry);
     workspace_thumbnail->base.was_damaged = true;
     thumbnail_manager_schedule_frame();
@@ -679,6 +681,18 @@ static void workspace_thumbnail_handle_thumbnail_destroy(struct wl_listener *lis
     wl_list_remove(&entry->thumbnail_update.link);
     wl_list_remove(&entry->thumbnail_destroy.link);
     entry->thumbnail = NULL;
+
+    workspace_thumbnail_entry_destroy(entry);
+    workspace_thumbnail->base.was_damaged = true;
+    thumbnail_manager_schedule_frame();
+}
+
+static void workspace_thumbnail_handle_view_unmap(struct wl_listener *listener, void *data)
+{
+    struct workspace_thumbnail_entry *entry = wl_container_of(listener, entry, view_unmap);
+    struct workspace_thumbnail *workspace_thumbnail = entry->workspace_thumbnail;
+
+    workspace_thumbnail_entry_destroy(entry);
     workspace_thumbnail->base.was_damaged = true;
     thumbnail_manager_schedule_frame();
 }
@@ -725,17 +739,16 @@ static void workspace_thumbnail_create_entry(struct workspace_thumbnail *workspa
 
     entry->workspace_thumbnail = workspace_thumbnail;
     entry->view = view;
+    wl_list_insert(&workspace_thumbnail->entries, &entry->link);
 
     entry->view_output.notify = workspace_thumbnail_handle_view_output;
     wl_signal_add(&view->events.output, &entry->view_output);
-
     entry->view_move.notify = workspace_thumbnail_handle_view_move;
     wl_signal_add(&view->base.events.position, &entry->view_move);
-
     entry->workspace_leave.notify = workspace_thumbnail_handle_workspace_leave;
     wl_signal_add(&view->events.workspace_leave, &entry->workspace_leave);
-
-    wl_list_insert(&workspace_thumbnail->entries, &entry->link);
+    entry->view_unmap.notify = workspace_thumbnail_handle_view_unmap;
+    wl_signal_add(&view->base.events.unmap, &entry->view_unmap);
 
     if (kywc_output == view->output) {
         workspace_thumbnail_entry_create_thumbnail(entry);
