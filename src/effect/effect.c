@@ -411,6 +411,12 @@ static void entity_handle_chain_destroy(struct wl_listener *listener, void *data
     effect_entity_destroy(entity);
 }
 
+static void frame_entity_handle_chain_destroy(struct wl_listener *listener, void *data)
+{
+    struct effect_entity *entity = wl_container_of(listener, entity, frame_slot.chain_destroy);
+    effect_entity_destroy(entity);
+}
+
 static void entity_handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct effect_entity *entity = wl_container_of(listener, entity, effect_destroy);
@@ -578,7 +584,7 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         wl_list_init(&entity->slot.chain_destroy.link);
         entity->frame_slot.chain = &chain->base;
         wl_list_insert(list, &entity->frame_slot.link);
-        entity->frame_slot.chain_destroy.notify = entity_handle_chain_destroy;
+        entity->frame_slot.chain_destroy.notify = frame_entity_handle_chain_destroy;
         wl_signal_add(&chain->base.events.destroy, &entity->frame_slot.chain_destroy);
     }
 
