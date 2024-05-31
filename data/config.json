@@ -34,6 +34,12 @@
                 "keys": "a",
                 "desc": "show Siderbar"
             },
+            "swipe:touch:1:up:bottom": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "ukui-window-switch --show-workspace",
+                "desc": "show multitaskView"
+            },
             "hold:touchpad:3:none": {
                 "enable": true,
                 "actiontype": "dbus",
@@ -50,6 +56,19 @@
                 "modifiers": "Super_L",
                 "keys": "h",
                 "desc": "show desktop"
+            },
+            "swipe:touchpad:3:up": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "ukui-window-switch --show-workspace",
+                "desc": "show multitaskView"
+            },
+            "swipe:touchpad:3:left+right": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Alt_L",
+                "keys": "Tab",
+                "desc": "switch windows"
             },
             "hold:touchpad:4:none": {
                 "enable": true,
@@ -95,6 +114,13 @@
                 "interface": "org.ukui.search.service",
                 "method": "showWindow",
                 "desc": "global search"
+            },
+            "swipe:touch:4:left+right": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Alt_L",
+                "keys": "Tab",
+                "desc": "switch windows"
             }
         }
     },
