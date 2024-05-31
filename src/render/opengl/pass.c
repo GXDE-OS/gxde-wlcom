@@ -227,7 +227,12 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     ky_mat3_uvofbox_to_texture(&uv2tex, options->base.transform, &src_kywcbox);
 
     ky_opengl_push_debug(renderer);
-    setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    if (has_radius) {
+        setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    } else {
+        setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
+                                                           : options->base.blend_mode);
+    }
 
     glUseProgram(shader->program);
 
@@ -253,7 +258,6 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
         break;
     }
 
-    glEnable(GL_BLEND);
     // vert shader param
     glUniform1i(shader->tex, 0);
     glUniform1f(shader->alpha, alpha);
@@ -294,7 +298,11 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
     wlr_render_rect_options_get_box(&options->base, pass->buffer->buffer, &box);
 
     ky_opengl_push_debug(renderer);
-    setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
+    if (has_radius) {
+        setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    } else {
+        setup_blending(color->a == 1.0 ? WLR_RENDER_BLEND_MODE_NONE : options->base.blend_mode);
+    }
 
     glUseProgram(shader->program);
 
