@@ -368,6 +368,7 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_t opaque;
     pixman_region32_init(&opaque);
     buffer_get_opaque_region(scene_buffer, width, height, &opaque);
+    pixman_region32_translate(&opaque, lx - target->logical.x, ly - target->logical.y);
     pixman_region32_subtract(&opaque, &render_region, &opaque);
 
     ky_scene_render_region(&render_region, target);
