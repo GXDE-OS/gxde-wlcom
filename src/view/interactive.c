@@ -771,7 +771,13 @@ static bool touch_grab_motion(struct seat_touch_grab *touch_grab, uint32_t time,
                               double ly)
 {
     struct interactive_grab *grab = touch_grab->data;
+    bool first = !grab->ongoing;
     pointer_grab_motion(&grab->pointer_grab, time, lx, ly);
+
+    if (first && grab->ongoing) {
+        seat_reset_input_gesture(grab->seat);
+    }
+
     return true;
 }
 

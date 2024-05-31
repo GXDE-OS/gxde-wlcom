@@ -277,6 +277,32 @@ static void handle_new_input(struct wl_listener *listener, void *data)
     gesture_state_init(&touch->gestures, display);
 }
 
+void touch_reset_gesture(struct input_manager *input_manager)
+{
+    struct input *input = NULL;
+    wl_list_for_each(input, &input_manager->inputs, link) {
+        if (input->prop.type != WLR_INPUT_DEVICE_TOUCH) {
+            continue;
+        }
+
+        struct wlr_touch *wlr_touch = wlr_touch_from_input_device(input->wlr_input);
+        struct touch *touch = wlr_touch->data;
+        touch_filter_enable(touch, false);
+
+        struct touch_point *point;
+        wl_list_for_each(point, &touch->points, link) {
+            /* meet the first free point */
+            if (point->touch_id < 0) {
+                break;
+            }
+            if (point->timer) {
+                wl_event_source_timer_update(point->timer, 0);
+            }
+        }
+        gesture_state_end(&touch->gestures, touch->gestures.type, GESTURE_DEVICE_TOUCHSCREEN, true);
+    }
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     struct touch_manager *manager = wl_container_of(listener, manager, server_destroy);

@@ -171,6 +171,8 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle);
 
 void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle);
 
+void touch_reset_gesture(struct input_manager *input_manager);
+
 /**
  * binding manager for keysym, gesture
  */

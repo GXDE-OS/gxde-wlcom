@@ -330,6 +330,12 @@ void seat_end_touch_grab(struct seat *seat, struct seat_touch_grab *touch_grab)
     }
 }
 
+void seat_reset_input_gesture(struct seat *seat)
+{
+    /* canceling gesture in the touch grab */
+    touch_reset_gesture(seat->manager);
+}
+
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
                         double sy, bool first_enter)
 {

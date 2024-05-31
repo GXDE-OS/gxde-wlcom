@@ -102,6 +102,8 @@ void seat_add_input(struct seat *seat, struct input *input);
 
 void seat_remove_input(struct input *input);
 
+void seat_reset_input_gesture(struct seat *seat);
+
 struct seat *seat_from_resource(struct wl_resource *resource);
 
 struct seat *seat_from_wlr_seat(struct wlr_seat *wlr_seat);
