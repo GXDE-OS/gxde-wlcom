@@ -175,13 +175,15 @@ static void handle_set_startup_geometry(struct wl_client *client, struct wl_reso
 static void handle_panel_surface_destroy(struct wl_listener *listener, void *data)
 {
     struct ukui_window *window = wl_container_of(listener, window, panel_surface_destroy);
+    wl_list_remove(&window->panel_surface_destroy.link);
+    wl_list_init(&window->panel_surface_destroy.link);
+
     window->kywc_view->minimized_geometry.x =
         window->kywc_view->geometry.x + window->kywc_view->geometry.width / 2;
     window->kywc_view->minimized_geometry.y =
         window->kywc_view->geometry.y + window->kywc_view->geometry.height / 2;
     window->kywc_view->minimized_geometry.width = 10;
     window->kywc_view->minimized_geometry.height = 10;
-    wl_list_remove(&window->panel_surface_destroy.link);
 }
 
 static void handle_set_minimized_geometry(struct wl_client *client, struct wl_resource *resource,
@@ -204,7 +206,7 @@ static void handle_set_minimized_geometry(struct wl_client *client, struct wl_re
     window->kywc_view->minimized_geometry.width = width;
     window->kywc_view->minimized_geometry.height = height;
 
-    window->panel_surface_destroy.notify = handle_panel_surface_destroy;
+    wl_list_remove(&window->panel_surface_destroy.link);
     wl_signal_add(&panel_surface->events.destroy, &window->panel_surface_destroy);
 }
 
@@ -634,6 +636,7 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&window->workspace_leave.link);
     wl_list_remove(&window->view_position.link);
     wl_list_remove(&window->view_size.link);
+    wl_list_remove(&window->panel_surface_destroy.link);
     wl_list_remove(&window->link);
 
     struct wl_resource *tmp;
@@ -687,6 +690,8 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.position, &window->view_position);
     window->view_size.notify = window_handle_view_size;
     wl_signal_add(&kywc_view->events.size, &window->view_size);
+    window->panel_surface_destroy.notify = handle_panel_surface_destroy;
+    wl_list_init(&window->panel_surface_destroy.link);
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {
