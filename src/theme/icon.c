@@ -271,7 +271,7 @@ static void icon_theme_dir_load(char *dir_name, struct icon_theme *theme)
     char *s_ptr = NULL;
     char *subdir = strtok_r(dir_name, ",", &s_ptr);
     while (subdir) {
-        if (strstr(subdir, "apps")) {
+        if (strstr(subdir, "apps") || strstr(subdir, "categories")) {
             icon_subdir = malloc(sizeof(struct icon_subdir));
             icon_subdir->subdir = fscan_build_fullname(theme->name, subdir, "");
             wl_list_insert(&theme->icons_subdir, &icon_subdir->link);
