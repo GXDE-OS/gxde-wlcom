@@ -407,7 +407,8 @@ void view_unmap(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
     input_rebase_all_cursor();
 
-    if (!view_add_slide_effect(view, false) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
+    if (!view_add_slide_effect(view, false) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL &&
+        !kywc_view->minimized) {
         view_add_fade_effect(view, FADE_UNMAP);
     }
 
