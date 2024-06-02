@@ -86,24 +86,25 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
     } else {
         /* calc minimize start and end geometry */
         struct kywc_box end_box = { 0, 0, 10, 10 };
-        if (view_manager_get_show_desktop()) {
+        if (view->minimized_when_show_desktop) {
             struct output *output = output_from_kywc_output(view->output);
             end_box.x = (output->geometry.width - end_box.width) / 2;
             end_box.y = (output->geometry.height - end_box.height) / 2;
         } else {
-            end_box.x = kywc_view->geometry.x + kywc_view->geometry.width / 2;
-            end_box.y = kywc_view->geometry.y + kywc_view->geometry.height / 2;
-        }
+            if (view->minimized_geometry.panel_surface) {
+                int lx, ly;
+                struct ky_scene_buffer *buffer =
+                    ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
+                ky_scene_node_coords(&buffer->node, &lx, &ly);
 
-        if (view->minimized_geometry.panel_surface) {
-            int lx, ly;
-            struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
-            ky_scene_node_coords(&buffer->node, &lx, &ly);
-
-            end_box.x = view->minimized_geometry.x + lx;
-            end_box.y = view->minimized_geometry.y + ly;
-            end_box.width = view->minimized_geometry.width;
-            end_box.height = view->minimized_geometry.height;
+                end_box.x = view->minimized_geometry.x + lx;
+                end_box.y = view->minimized_geometry.y + ly;
+                end_box.width = view->minimized_geometry.width;
+                end_box.height = view->minimized_geometry.height;
+            } else {
+                end_box.x = kywc_view->geometry.x + kywc_view->geometry.width / 2;
+                end_box.y = kywc_view->geometry.y + kywc_view->geometry.height / 2;
+            }
         }
 
         if (current_time_msec() > data->start_time + scale->duration) {

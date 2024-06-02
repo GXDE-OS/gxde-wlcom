@@ -1443,11 +1443,17 @@ void view_manager_show_desktop(bool enabled, bool apply)
         if (!enabled && !view->minimized_when_show_desktop) {
             continue;
         }
+
         /* true only the view is not minimized when going show desktop */
-        view->minimized_when_show_desktop = enabled && !view->base.minimized;
+        if (enabled) {
+            view->minimized_when_show_desktop = !view->base.minimized;
+        }
         /* don't restoring views if the state is breaked */
         if (apply || view_has_modal_property(view)) {
             kywc_view_set_minimized(&view->base, enabled);
+        }
+        if (!enabled) {
+            view->minimized_when_show_desktop = false;
         }
     }
 
