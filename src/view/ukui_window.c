@@ -25,6 +25,8 @@ struct ukui_window_management {
     struct wl_list resources;
     struct wl_list windows;
 
+    struct ukui_window *highlight_window;
+
     struct wl_listener new_mapped_view;
     struct wl_listener show_desktop;
     struct wl_listener display_destroy;
@@ -317,6 +319,51 @@ static void handle_send_to_output(struct wl_client *client, struct wl_resource *
     // Not implemented yet
 }
 
+static void ukui_window_highlight(struct ukui_window *ukui_window, bool enable)
+{
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view_proxy *view_proxy;
+    wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
+        if (!view_proxy->view->base.mapped || view_proxy->view->base.minimized) {
+            continue;
+        }
+        ky_scene_node_set_enabled(&view_proxy->view->tree->node, !enable);
+    }
+
+    if (!ukui_window) {
+        return;
+    }
+    struct view *highlight_view = view_from_kywc_view(ukui_window->kywc_view);
+    // Unset highlight window need to restore status when highlight window is minimized
+    ky_scene_node_set_enabled(&highlight_view->tree->node,
+                              enable ? enable : !highlight_view->base.minimized);
+}
+
+static void handle_request_highlight(struct wl_client *client, struct wl_resource *resource)
+{
+    struct ukui_window *window = wl_resource_get_user_data(resource);
+    if (!window || window->management->highlight_window == window) {
+        return;
+    }
+
+    if (window->management->highlight_window) {
+        ukui_window_highlight(window->management->highlight_window, false);
+    }
+    ukui_window_highlight(window, true);
+    window->management->highlight_window = window;
+}
+
+static void handle_request_unset_highlight(struct wl_client *client, struct wl_resource *resource)
+{
+    struct ukui_window *window = wl_resource_get_user_data(resource);
+    if (!window || window->management->highlight_window != window) {
+        return;
+    }
+
+    ukui_window_highlight(window, false);
+    window->management->highlight_window = NULL;
+}
+
 static const struct ukui_window_interface ukui_window_impl = {
     .set_state = handle_set_state,
     .set_startup_geometry = handle_set_startup_geometry,
@@ -333,6 +380,8 @@ static const struct ukui_window_interface ukui_window_impl = {
     .request_enter_activity = handle_request_enter_activity,
     .request_leave_activity = handle_request_leave_activity,
     .send_to_output = handle_send_to_output,
+    .highlight = handle_request_highlight,
+    .unset_highlight = handle_request_unset_highlight,
 };
 
 static struct ukui_window *ukui_window_from_uuid(struct ukui_window_management *management,
@@ -680,6 +729,11 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
         window_handle_resource_destroy(resource);
     }
 
+    if (window->management->highlight_window == window) {
+        window->management->highlight_window = NULL;
+        ukui_window_highlight(window->management->highlight_window, false);
+    }
+
     free(window);
 }
 
@@ -732,6 +786,11 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {
         ukui_window_management_send_window_created(resource, window->uuid);
+    }
+
+    if (management->highlight_window) {
+        ukui_window_highlight(management->highlight_window, false);
+        management->highlight_window = NULL;
     }
 }
 
