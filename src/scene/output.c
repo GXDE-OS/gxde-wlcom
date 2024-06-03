@@ -317,7 +317,7 @@ struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene, struct
 static void scene_node_send_frame_done(struct ky_scene_node *node,
                                        struct ky_scene_output *scene_output, struct timespec *now)
 {
-    if (!node->enabled) {
+    if (!node->enabled && !node->force_damage_event) {
         return;
     }
 

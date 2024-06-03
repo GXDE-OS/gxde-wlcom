@@ -386,6 +386,8 @@ static void view_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
     }
 
     struct view_thumbnail *view_thumbnail = wl_container_of(thumbnail_buffer, view_thumbnail, base);
+    ky_scene_node_force_damage_event(view_thumbnail->source_node, false);
+
     wl_list_remove(&view_thumbnail->view_unmap.link);
     wl_list_remove(&view_thumbnail->source_damage.link);
     wl_list_remove(&view_thumbnail->link);
@@ -478,6 +480,7 @@ static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, ui
     /* use surface_tree if has no server decoration */
     view_thumbnail->source_node =
         option & THUMBNAIL_DISABLE_DECOR ? &view->surface_tree->node : &view->tree->node;
+    ky_scene_node_force_damage_event(view_thumbnail->source_node, true);
     view_thumbnail->source_damage.notify = view_thumbnail_handle_source_damage;
     wl_signal_add(&view_thumbnail->source_node->events.damage, &view_thumbnail->source_damage);
 
@@ -598,6 +601,11 @@ static void workspace_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffe
     struct workspace_thumbnail_entry *entry, *tmp;
     wl_list_for_each_safe(entry, tmp, &workspace_thumbnail->entries, link) {
         workspace_thumbnail_entry_destroy(entry);
+    }
+
+    struct workspace *workspace = workspace_thumbnail->workspace;
+    for (int i = 0; i < 3; i++) {
+        ky_scene_node_force_damage_event(&workspace->layers[i].tree->node, false);
     }
 
     wl_list_remove(&workspace_thumbnail->view_enter.link);
@@ -791,6 +799,10 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
 
     workspace_thumbnail->workspace = workspace;
     workspace_thumbnail->output = kywc_output;
+
+    for (int i = 0; i < 3; i++) {
+        ky_scene_node_force_damage_event(&workspace->layers[i].tree->node, true);
+    }
 
     workspace_thumbnail_create_entries(workspace_thumbnail, kywc_output, scale);
 

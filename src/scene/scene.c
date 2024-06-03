@@ -59,7 +59,7 @@ static void node_get_bounding_box(struct ky_scene_node *node, struct wlr_box *bo
 static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
                              uint32_t damage_type, pixman_region32_t *damage)
 {
-    if (!node->enabled) {
+    if (!node->enabled && !node->force_damage_event) {
         return;
     }
 
@@ -71,6 +71,10 @@ static void node_push_damage(struct ky_scene_node *node, struct ky_scene_node *d
     if ((node == damage_node && node->damage_type & KY_SCENE_DAMAGE_HARMLESS) ||
         node != damage_node) {
         wl_signal_emit_mutable(&node->events.damage, NULL);
+    }
+
+    if (!node->enabled) {
+        return;
     }
 
     pixman_region32_translate(damage, node->x, node->y);
@@ -489,6 +493,15 @@ void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled)
 void ky_scene_node_set_input_bypassed(struct ky_scene_node *node, bool bypassed)
 {
     node->input_bypassed = bypassed;
+}
+
+void ky_scene_node_force_damage_event(struct ky_scene_node *node, bool force)
+{
+    /**
+     * damage event for this node is still not emitted,
+     * early returned in ky_scene_node_push_damage by ky_scene_node_is_visible
+     */
+    node->force_damage_event = force;
 }
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y)

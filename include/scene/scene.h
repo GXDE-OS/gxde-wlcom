@@ -137,6 +137,8 @@ struct ky_scene_node {
 
     bool enabled;
     bool input_bypassed;
+    /* emit damage event for children if node is disabled */
+    bool force_damage_event;
 
     int x, y;
     /* round corner radius */
@@ -296,6 +298,8 @@ struct ky_scene_tree *ky_scene_tree_from_node(struct ky_scene_node *node);
 void ky_scene_node_set_enabled(struct ky_scene_node *node, bool enabled);
 
 void ky_scene_node_set_input_bypassed(struct ky_scene_node *node, bool bypassed);
+
+void ky_scene_node_force_damage_event(struct ky_scene_node *node, bool force);
 
 void ky_scene_node_set_position(struct ky_scene_node *node, int x, int y);
 

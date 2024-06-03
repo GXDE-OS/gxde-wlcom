@@ -241,7 +241,7 @@ static void node_chain_collect_damage(struct ky_scene_node *node, int lx, int ly
 static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_node *damage_node,
                                    uint32_t damage_type, pixman_region32_t *damage)
 {
-    if (!node->enabled) {
+    if (!node->enabled && !node->force_damage_event) {
         return;
     }
 
@@ -251,17 +251,6 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
         chain->impl.push_damage(node, damage_node, damage_type, damage);
         return;
     }
-    damage_type |= node->damage_type;
-
-    struct effect_entity *entity;
-    struct effect_slot *slot, *temp_slot;
-    wl_list_for_each_reverse_safe(slot, temp_slot, &chain->base.slots, link) {
-        entity = wl_container_of(slot, entity, slot);
-        if (entity->effect->impl->node_push_damage &&
-            !entity->effect->impl->node_push_damage(entity, damage_node, &damage_type, damage)) {
-            break;
-        }
-    }
 
     /* emit damage when node content damaged or children damaged */
     if ((node == damage_node && node->damage_type & KY_SCENE_DAMAGE_HARMLESS) ||
@@ -269,9 +258,24 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
         wl_signal_emit_mutable(&node->events.damage, NULL);
     }
 
+    if (!node->enabled) {
+        return;
+    }
+
+    damage_type |= node->damage_type;
+
+    struct effect_entity *entity;
+    struct effect_slot *slot, *tmp;
+    wl_list_for_each_reverse_safe(slot, tmp, &chain->base.slots, link) {
+        entity = wl_container_of(slot, entity, slot);
+        if (entity->effect->impl->node_push_damage &&
+            !entity->effect->impl->node_push_damage(entity, damage_node, &damage_type, damage)) {
+            break;
+        }
+    }
+
     pixman_region32_translate(damage, node->x, node->y);
-    node->parent->node.impl.push_damage(&node->parent->node, damage_node,
-                                        damage_type | node->damage_type, damage);
+    node->parent->node.impl.push_damage(&node->parent->node, damage_node, damage_type, damage);
 }
 
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
