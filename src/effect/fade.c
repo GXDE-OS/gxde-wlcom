@@ -193,8 +193,12 @@ static void handle_view_positon(struct wl_listener *listener, void *data)
         .angle = 0,
         .geometry = fade_data->start_geometry,
     };
-    fade_data->animator =
-        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
+    struct animation_type_group type = {
+        .geometry = ANIMATION_TYPE_EASE,
+        .alpha = ANIMATION_TYPE_EASE,
+    };
+    fade_data->animator = animator_create(&start, type, fade_data->start_time,
+                                          fade_data->start_time + fade_data->duration);
 
     fade_effect_data_set_animator(fade_data);
 }
@@ -225,8 +229,12 @@ static void handle_view_size(struct wl_listener *listener, void *data)
         .angle = 0,
         .geometry = fade_data->start_geometry,
     };
-    fade_data->animator =
-        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
+    struct animation_type_group type = {
+        .geometry = ANIMATION_TYPE_EASE,
+        .alpha = ANIMATION_TYPE_EASE,
+    };
+    fade_data->animator = animator_create(&start, type, fade_data->start_time,
+                                          fade_data->start_time + fade_data->duration);
 
     fade_effect_data_set_animator(fade_data);
 }
@@ -396,8 +404,13 @@ static bool fade_effect_data_init(struct fade_effect_data *fade_data, struct vie
         .angle = 0,
         .geometry = fade_data->start_geometry,
     };
-    struct animator *animator =
-        animator_create(&start, fade_data->start_time, fade_data->start_time + fade_data->duration);
+
+    struct animation_type_group type = {
+        .geometry = ANIMATION_TYPE_EASE,
+        .alpha = ANIMATION_TYPE_EASE,
+    };
+    struct animator *animator = animator_create(&start, type, fade_data->start_time,
+                                                fade_data->start_time + fade_data->duration);
     if (!animator) {
         return false;
     }

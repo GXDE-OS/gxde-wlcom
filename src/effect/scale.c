@@ -31,6 +31,8 @@ struct scale_effect_data {
 
     enum scale_action action;
 
+    int duration;
+
     struct ky_scene_node *node;
     struct view *view;
     struct wl_listener view_size;
@@ -47,7 +49,6 @@ struct scale_effect {
     struct wl_listener destroy;
 
     struct effect_manager *manager;
-    int duration;
 };
 
 static struct scale_effect *scale = NULL;
@@ -79,7 +80,7 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
 
     /* calc maximize start and end geometry */
     if (data->action == SCALE_MAXIMIZE) {
-        if (current_time_msec() > data->start_time + scale->duration) {
+        if (current_time_msec() > data->start_time + data->duration) {
             calc_view_box(kywc_view, &view->pending.geometry, &data->start_geometry);
         }
         calc_view_box(kywc_view, &kywc_view->geometry, &data->end_geometry);
@@ -107,7 +108,7 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
             }
         }
 
-        if (current_time_msec() > data->start_time + scale->duration) {
+        if (current_time_msec() > data->start_time + data->duration) {
             struct kywc_box start_geometry = kywc_view->minimized ? kywc_view->geometry : end_box;
             calc_view_box(kywc_view, &start_geometry, &data->start_geometry);
         }
@@ -116,7 +117,7 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
     }
 
     /* calc start geometry when scale effect interrupted */
-    if (current_time_msec() <= data->start_time + scale->duration) {
+    if (current_time_msec() <= data->start_time + data->duration) {
         data->start_geometry = data->current.geometry;
     }
 }
@@ -301,6 +302,12 @@ static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct 
     scale_data->node = &view->tree->node;
     scale_data->action = action;
     scale_init_alpha_and_geometry(scale_data);
+
+    if (action == SCALE_MAXIMIZE) {
+        scale_data->duration = view->base.maximized ? 300 : 260;
+    } else {
+        scale_data->duration = view->base.minimized ? 260 : 300;
+    }
     scale_data->start_time = current_time_msec();
 
     struct animation_data start_data = {
@@ -308,8 +315,22 @@ static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct 
         .angle = 0,
         .geometry = scale_data->start_geometry,
     };
-    struct animator *animator = animator_create(&start_data, scale_data->start_time,
-                                                scale_data->start_time + scale->duration);
+
+    struct animation_type_group type = { 0 };
+    if (action == SCALE_MAXIMIZE) {
+        type.geometry = ANIMATION_TYPE_EASE;
+    } else {
+        if (view->base.minimized) {
+            type.geometry = ANIMATION_TYPE_0_40_20_100;
+            type.alpha = ANIMATION_TYPE_33_0_100_75;
+        } else {
+            type.geometry = ANIMATION_TYPE_30_15_10_100;
+            type.alpha = ANIMATION_TYPE_0_40_20_100;
+        }
+    }
+
+    struct animator *animator = animator_create(&start_data, type, scale_data->start_time,
+                                                scale_data->start_time + scale_data->duration);
     if (!animator) {
         return false;
     }
@@ -335,7 +356,7 @@ static bool scale_frame_render_pre(struct effect_entity *entity,
                                    struct ky_scene_output *scene_output)
 {
     struct scale_effect_data *data = entity->user_data;
-    if (current_time_msec() > data->start_time + scale->duration) {
+    if (current_time_msec() > data->start_time + data->duration) {
         effect_entity_destroy(entity);
         return true;
     }
@@ -393,7 +414,6 @@ bool scale_effect_create(struct effect_manager *manager)
     }
 
     scale->manager = manager;
-    scale->duration = 300;
 
     scale->destroy.notify = handle_effect_destroy;
     wl_signal_add(&scale->effect->events.destroy, &scale->destroy);

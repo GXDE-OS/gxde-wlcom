@@ -9,14 +9,7 @@
 
 #include "output.h"
 #include "scene/animation.h"
-#include "server.h"
 #include "util/time.h"
-
-#define POINTS (255)
-
-struct point {
-    float x, y;
-};
 
 enum animation_mask {
     ANIMATION_NONE = 0,
@@ -50,115 +43,6 @@ struct animation_entity {
     uint32_t mask;
     struct animation_state state[4];
 };
-
-struct animation {
-    struct wl_list link;
-    enum animation_type type;
-    struct point p1, p2;
-    struct point points[POINTS];
-};
-
-static struct animation_manager {
-    struct wl_list animations;
-    struct wl_listener destroy;
-} *manager = NULL;
-
-static const struct curve {
-    struct point p1, p2;
-} default_curves[] = {
-    { { 0, 0 }, { 0, 0 } },    { { 0, 0 }, { 1, 1 } },    { { 0.25, 0.1 }, { 0.25, 1 } },
-    { { 0.42, 0 }, { 1, 1 } }, { { 0, 0 }, { 0.58, 1 } }, { { 0.42, 0 }, { 0.58, 1 } },
-};
-
-/* copied from Hyprland */
-float animation_value(struct animation *animation, float x)
-{
-    /* find x in points, then get y by x */
-    if (x >= 1.0) {
-        return 1.0f;
-    }
-
-    int upper = POINTS - 1;
-    int lower = 0;
-    int mid = upper / 2;
-
-    while (abs(upper - lower) > 1) {
-        if (animation->points[mid].x > x) {
-            upper = mid;
-        } else {
-            lower = mid;
-        }
-        mid = (upper + lower) / 2;
-    }
-
-    // kywc_log(KYWC_INFO, "animation value %d %d", lower, upper);
-
-    struct point *p1 = &animation->points[lower];
-    struct point *p2 = &animation->points[upper];
-    float delta = (x - p1->x) / (p2->x - p1->x);
-
-    if (isnan(delta) || isinf(delta)) {
-        return 0.f;
-    }
-
-    return p1->y + (p2->y - p1->y) * delta;
-}
-
-void animation_destroy(struct animation *animation)
-{
-    wl_list_remove(&animation->link);
-    free(animation);
-}
-
-static struct animation *_animation_create(enum animation_type type, const struct point *p1,
-                                           const struct point *p2)
-{
-    struct animation *animation = calloc(1, sizeof(struct animation));
-    if (!animation) {
-        return NULL;
-    }
-
-    animation->type = type;
-    animation->p1 = *p1;
-    animation->p2 = *p2;
-    wl_list_insert(&manager->animations, &animation->link);
-
-    float t, a1, a2, a3;
-    for (int i = 0; i < POINTS; i++) {
-        t = (i + 1) / (float)POINTS;
-        a1 = 3 * t * pow(1 - t, 2);
-        a2 = 3 * pow(t, 2) * (1 - t);
-        a3 = pow(t, 3);
-        animation->points[i].x = a1 * p1->x + a2 * p2->x + a3;
-        animation->points[i].y = a1 * p1->y + a2 * p2->y + a3;
-    }
-
-    return animation;
-}
-
-struct animation *animation_create(float p1x, float p1y, float p2x, float p2y)
-{
-    if (!manager) {
-        return NULL;
-    }
-    return _animation_create(ANIMATION_TYPE_MOD, &(struct point){ p1x, p1y },
-                             &(struct point){ p2x, p2y });
-}
-
-struct animation *animation_manager_get_default(enum animation_type type)
-{
-    if (!manager || type < ANIMATION_TYPE_LINER || type >= ANIMATION_TYPES) {
-        return NULL;
-    }
-
-    struct animation *animation;
-    wl_list_for_each(animation, &manager->animations, link) {
-        if (animation->type == type) {
-            return animation;
-        }
-    }
-    return NULL;
-}
 
 static void animation_entity_update_output(struct animation_entity *entity, bool clear)
 {
@@ -250,7 +134,7 @@ static const struct wlr_addon_interface animation_entity_addon_impl = {
 
 static struct animation_entity *animation_entity_create(struct ky_scene_node *node)
 {
-    struct animation_entity *entity = calloc(1, sizeof(struct animation));
+    struct animation_entity *entity = calloc(1, sizeof(struct animation_entity));
     if (!entity) {
         return NULL;
     }
@@ -277,42 +161,10 @@ static struct animation_entity *animation_entity_get(struct ky_scene_node *node)
     return entity;
 }
 
-static void handle_server_destroy(struct wl_listener *listener, void *data)
-{
-    struct animation *animation, *tmp;
-    wl_list_for_each_safe(animation, tmp, &manager->animations, link) {
-        animation_destroy(animation);
-    }
-
-    wl_list_remove(&manager->destroy.link);
-    free(manager);
-    manager = NULL;
-}
-
-bool animation_manager_create(struct server *server)
-{
-    manager = calloc(1, sizeof(struct animation_manager));
-    if (!manager) {
-        return false;
-    }
-
-    wl_list_init(&manager->animations);
-
-    /* create default animations */
-    for (int i = ANIMATION_TYPE_LINER; i < ANIMATION_TYPES; i++) {
-        _animation_create(i, &default_curves[i].p1, &default_curves[i].p2);
-    }
-
-    manager->destroy.notify = handle_server_destroy;
-    server_add_destroy_listener(server, &manager->destroy);
-
-    return true;
-}
-
 void ky_scene_node_set_position_with_animation(struct ky_scene_node *node, int x, int y,
                                                struct animation *animation, uint32_t duration)
 {
-    if (!manager || !animation) {
+    if (!animation) {
         ky_scene_node_set_position(node, x, y);
         return;
     }
@@ -342,7 +194,7 @@ void ky_scene_node_set_position_with_animation(struct ky_scene_node *node, int x
 void ky_scene_rect_set_size_with_animation(struct ky_scene_rect *rect, int width, int height,
                                            struct animation *animation, uint32_t duration)
 {
-    if (!manager || !animation) {
+    if (!animation) {
         ky_scene_rect_set_size(rect, width, height);
         return;
     }

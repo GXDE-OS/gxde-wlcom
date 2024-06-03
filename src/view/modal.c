@@ -110,7 +110,7 @@ static void set_shake_effect_animation(struct modal *modal, enum shake_effect_st
         break;
     }
 
-    struct animation *animation = animation_manager_get_default(ANIMATION_TYPE_EASE_IN_OUT);
+    struct animation *animation = animation_manager_get(ANIMATION_TYPE_EASE_IN_OUT);
     ky_scene_node_set_position_with_animation(&modal->view->tree->node, temp_x, modal->geo.y,
                                               animation, time);
 }

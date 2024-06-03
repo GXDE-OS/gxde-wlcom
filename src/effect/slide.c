@@ -296,8 +296,11 @@ static bool slide_data_create_animation(struct slide_data *data)
     data->current.alpha = 1;
     data->current.angle = 0;
     data->current.geometry = data->start_geometry;
+    struct animation_type_group type = {
+        .geometry = ANIMATION_TYPE_EASE,
+    };
     data->animator =
-        animator_create(&data->current, data->start_time, data->start_time + data->duration);
+        animator_create(&data->current, type, data->start_time, data->start_time + data->duration);
     if (!data->animator) {
         return false;
     }

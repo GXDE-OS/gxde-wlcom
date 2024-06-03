@@ -9,8 +9,8 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
+#include "effect/animator.h"
 #include "effect_p.h"
-#include "scene/animation.h"
 #include "scene/thumbnail.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))

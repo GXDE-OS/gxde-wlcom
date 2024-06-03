@@ -158,7 +158,7 @@ static void snap_box_update(struct interactive_grab *grab, enum kywc_tile mode)
         ky_scene_node_set_position(grab->snap_node, rect_box.x, rect_box.y);
     }
 
-    struct animation *animation = animation_manager_get_default(ANIMATION_TYPE_EASE_OUT);
+    struct animation *animation = animation_manager_get(ANIMATION_TYPE_EASE_OUT);
     ky_scene_rect_set_size_with_animation(grab->snap_rect, geo.width, geo.height, animation, 200);
     ky_scene_node_set_position_with_animation(grab->snap_node, geo.x, geo.y, animation, 200);
 }
