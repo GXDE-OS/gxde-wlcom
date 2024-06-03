@@ -10,6 +10,7 @@
 #include <wlr/backend/session.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
+#include <wlr/types/wlr_relative_pointer_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
 #include <wlr/types/wlr_virtual_pointer_v1.h>
@@ -334,6 +335,7 @@ struct input_manager *input_manager_create(struct server *server)
                   &input_manager->new_virtual_keyboard);
 
     input_manager->pointer_gestures = wlr_pointer_gestures_v1_create(server->display);
+    input_manager->relative_pointer = wlr_relative_pointer_manager_v1_create(server->display);
 
     input_manager_config_init(input_manager);
     selection_manager_create(input_manager);

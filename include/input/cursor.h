@@ -90,6 +90,8 @@ struct cursor {
     struct cursor_node focus;
     /* current curosr position in node coord */
     double sx, sy;
+    /* relative motion event */
+    double dx, dy, dx_unaccel, dy_unaccel;
 
     /* special: hold a pressed button and leave surface */
     bool hold_mode;

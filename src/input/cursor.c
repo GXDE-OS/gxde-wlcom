@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
+#include <wlr/types/wlr_relative_pointer_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/types/wlr_touch.h>
@@ -125,6 +126,11 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
 void cursor_feed_motion(struct cursor *cursor, uint32_t time)
 {
     struct seat *seat = cursor->seat;
+
+    wlr_relative_pointer_manager_v1_send_relative_motion(
+        seat->manager->relative_pointer, cursor->seat->wlr_seat, (uint64_t)time * 1000, cursor->dx,
+        cursor->dy, cursor->dx_unaccel, cursor->dy_unaccel);
+
     if (seat->pointer_grab && seat->pointer_grab->interface->motion &&
         seat->pointer_grab->interface->motion(seat->pointer_grab, time, cursor->lx, cursor->ly)) {
         return;
@@ -257,6 +263,9 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
 
     cursor_set_hidden(cursor, false);
     cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y, true, false);
+
+    cursor->dx_unaccel = event->unaccel_dx;
+    cursor->dy_unaccel = event->unaccel_dy;
     cursor_feed_motion(cursor, event->time_msec);
 }
 
@@ -875,6 +884,9 @@ void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, 
     } else {
         wlr_cursor_warp(wlr_cursor, dev, x, y);
     }
+
+    cursor->dx_unaccel = cursor->dx = wlr_cursor->x - cursor->lx;
+    cursor->dy_unaccel = cursor->dy = wlr_cursor->y - cursor->ly;
 
     cursor->lx = wlr_cursor->x;
     cursor->ly = wlr_cursor->y;

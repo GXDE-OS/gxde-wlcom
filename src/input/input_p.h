@@ -26,6 +26,7 @@ struct input_manager {
     struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard;
     struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
     struct wlr_pointer_gestures_v1 *pointer_gestures;
+    struct wlr_relative_pointer_manager_v1 *relative_pointer;
 
     struct {
         struct wl_signal new_input;
