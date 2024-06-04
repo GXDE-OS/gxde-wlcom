@@ -266,9 +266,11 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
         kywc_view_toggle_kept_below(kywc_view);
         break;
     case WINDOW_ACTION_MENU:
-        lx = kywc_view->geometry.x - kywc_view->margin.off_x / 2;
-        ly = kywc_view->geometry.y - kywc_view->margin.off_y / 2;
-        view_show_window_menu(view, seat, lx, ly);
+        if (kywc_view->ssd & KYWC_SSD_TITLE) {
+            lx = kywc_view->geometry.x - kywc_view->margin.off_x / 2;
+            ly = kywc_view->geometry.y - kywc_view->margin.off_y / 2;
+            view_show_window_menu(view, seat, lx, ly);
+        }
         break;
     case WINDOW_ACTION_SNAP_TOP:
     case WINDOW_ACTION_SNAP_BOTTOM:
