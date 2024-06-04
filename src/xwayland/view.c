@@ -72,6 +72,7 @@ static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, d
     struct wlr_surface *surface = wlr_surface_try_from_node(node);
 
     xwayland_update_seat(seat);
+    xwayland_update_hovered_surface(surface);
 
     if (!hold) {
         seat_notify_motion(seat, surface, time, xwayland_scale(x), xwayland_scale(y), first);

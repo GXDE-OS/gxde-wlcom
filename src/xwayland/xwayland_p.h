@@ -76,6 +76,9 @@ struct xwayland_server {
     struct wl_event_source *event_source;
     const xcb_query_extension_reply_t *shape;
 
+    struct wlr_surface *hoverd_surface;
+    struct wl_listener surface_destroy;
+
     float scale;
 };
 
@@ -124,9 +127,12 @@ bool xwayland_view_set_opacity(struct xwayland_server *xwayland, xcb_window_t wi
 
 void xwayland_update_seat(struct seat *seat);
 
+void xwayland_update_hovered_surface(struct wlr_surface *surface);
+
 int xwayland_read_wm_state(xcb_window_t window_id);
 
 int xwayland_read_wm_icon(xcb_window_t window_id);
 
 int xwayland_read_wm_window_opacity(xcb_window_t window_id);
+
 #endif /* _XWAYLAND_P_H_ */

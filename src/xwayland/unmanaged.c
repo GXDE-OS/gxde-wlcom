@@ -45,6 +45,7 @@ static bool xwayland_unmanaged_hover(struct seat *seat, struct ky_scene_node *no
     struct wlr_surface *surface = wlr_surface_try_from_node(node);
 
     xwayland_update_seat(seat);
+    xwayland_update_hovered_surface(surface);
 
     if (!hold) {
         seat_notify_motion(seat, surface, time, xwayland_scale(x), xwayland_scale(y), first);
@@ -264,6 +265,14 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     ky_scene_node_set_enabled(unmanaged->surface_node, true);
     ky_scene_node_set_position(unmanaged->surface_node, xwayland_unscale(wlr_xwayland_surface->x),
                                xwayland_unscale(wlr_xwayland_surface->y));
+
+    /* workaround: fixup xwayland pointer position when no hovered surface */
+    struct xwayland_server *xwayland = unmanaged->xwayland;
+    if (!xwayland->hoverd_surface && xwayland->wlr_xwayland->seat) {
+        wlr_seat_pointer_enter(xwayland->wlr_xwayland->seat,
+                               unmanaged->wlr_xwayland_surface->surface, FLT_MAX, FLT_MAX);
+        wlr_seat_pointer_clear_focus(xwayland->wlr_xwayland->seat);
+    }
 }
 
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)

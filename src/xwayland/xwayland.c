@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <xcb/shape.h>
 
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland/shell.h>
 
@@ -351,6 +352,20 @@ void xwayland_update_seat(struct seat *seat)
     xwayland_set_cursor(seat);
 }
 
+void xwayland_update_hovered_surface(struct wlr_surface *surface)
+{
+    if (!xwayland || xwayland->hoverd_surface == surface) {
+        return;
+    }
+
+    if (xwayland->hoverd_surface) {
+        wl_list_remove(&xwayland->surface_destroy.link);
+    }
+
+    xwayland->hoverd_surface = surface;
+    wl_signal_add(&surface->events.destroy, &xwayland->surface_destroy);
+}
+
 static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
@@ -381,6 +396,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&xwayland->server_destroy.link);
     wl_list_remove(&xwayland->output_configured.link);
+    wl_list_remove(&xwayland->surface_destroy.link);
     free(xwayland);
     xwayland = NULL;
 }
@@ -540,6 +556,14 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
     return 0;
 }
 
+static void handle_surface_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&xwayland->surface_destroy.link);
+    wl_list_init(&xwayland->surface_destroy.link);
+
+    xwayland->hoverd_surface = NULL;
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -575,6 +599,9 @@ bool xwayland_server_create(struct server *server)
     server_add_destroy_listener(server, &xwayland->server_destroy);
     xwayland->output_configured.notify = handle_output_configured;
     output_manager_add_configured_listener(&xwayland->output_configured);
+
+    xwayland->surface_destroy.notify = handle_surface_destroy;
+    wl_list_init(&xwayland->surface_destroy.link);
 
     security_add_global_filter(xwayland->wlr_xwayland->shell_v1->global, xwayland_filter_global,
                                xwayland->wlr_xwayland);
