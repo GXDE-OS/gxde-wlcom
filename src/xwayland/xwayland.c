@@ -326,7 +326,7 @@ static int xwayland_event_handler(int fd, uint32_t mask, void *data)
 
 void xwayland_set_cursor(struct seat *seat)
 {
-    if (!xwayland || xwayland->wlr_xwayland->seat != seat->wlr_seat) {
+    if (!xwayland || !xwayland->wlr_xwayland || xwayland->wlr_xwayland->seat != seat->wlr_seat) {
         return;
     }
 
@@ -342,7 +342,7 @@ void xwayland_set_cursor(struct seat *seat)
 
 void xwayland_update_seat(struct seat *seat)
 {
-    if (xwayland->wlr_xwayland->seat == seat->wlr_seat) {
+    if (!xwayland->wlr_xwayland || xwayland->wlr_xwayland->seat == seat->wlr_seat) {
         return;
     }
 
@@ -587,17 +587,22 @@ bool xwayland_server_create(struct server *server)
 
 void xwayland_server_destroy(void)
 {
-    if (xwayland) {
-        wl_list_remove(&xwayland->xwayland_ready.link);
-        wl_list_remove(&xwayland->new_xwayland_surface.link);
-        wlr_xwayland_destroy(xwayland->wlr_xwayland);
-        xwayland->wlr_xwayland = NULL;
+    if (!xwayland) {
+        return;
     }
+
+    wl_list_remove(&xwayland->xwayland_ready.link);
+    wl_list_remove(&xwayland->new_xwayland_surface.link);
+
+    struct wlr_xwayland *wlr_xwayland = xwayland->wlr_xwayland;
+    /* prevent xwayland_update_seat in hover */
+    xwayland->wlr_xwayland = NULL;
+    wlr_xwayland_destroy(wlr_xwayland);
 }
 
 bool xwayland_check_client(const struct wl_client *client)
 {
-    return xwayland && xwayland->wlr_xwayland->server &&
+    return xwayland && xwayland->wlr_xwayland && xwayland->wlr_xwayland->server &&
            xwayland->wlr_xwayland->server->client == client;
 }
 
