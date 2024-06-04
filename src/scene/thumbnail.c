@@ -181,8 +181,8 @@ static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct
     if (kywc_view->ssd == KYWC_SSD_NONE) {
         box->x -= kywc_view->padding.left;
         box->y -= kywc_view->padding.top;
-        box->width += kywc_view->padding.right;
-        box->height += kywc_view->padding.bottom;
+        box->width += kywc_view->padding.right + kywc_view->padding.left;
+        box->height += kywc_view->padding.bottom + kywc_view->padding.top;
         return;
     }
 
