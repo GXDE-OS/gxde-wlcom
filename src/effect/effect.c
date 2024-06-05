@@ -734,6 +734,11 @@ bool effect_manager_create(struct server *server)
     return true;
 }
 
+struct effect_entity *ky_scene_find_effect_entity(struct ky_scene *scene, struct effect *effect)
+{
+    return ky_scene_node_find_effect_entity(&scene->tree.node, effect);
+}
+
 struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effect)
 {
     return ky_scene_node_add_effect(&scene->tree.node, effect);
