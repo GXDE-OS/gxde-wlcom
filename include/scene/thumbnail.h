@@ -34,6 +34,8 @@ struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option,
 struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
                                                   struct kywc_output *output, float scale);
 
+struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, float scale);
+
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener);
 
 void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_listener *listener);

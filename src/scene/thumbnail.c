@@ -101,6 +101,15 @@ struct workspace_thumbnail {
     struct wl_listener output_destroy;
 };
 
+struct output_thumbnail {
+    struct thumbnail_buffer base;
+    struct wl_list link;
+
+    struct ky_scene_output *output;
+    struct wl_listener output_commit;
+    struct wl_listener output_destroy;
+};
+
 struct thumbnail_output {
     struct wl_list link;
 
@@ -113,6 +122,7 @@ static struct thumbnail_manager {
     struct wl_list node_thumbnails;
     struct wl_list view_thumbnails;
     struct wl_list workspace_thumbnails;
+    struct wl_list output_thumbnails;
 
     struct wl_list outputs;
     struct wl_listener new_enabled_output;
@@ -139,7 +149,7 @@ static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale)
     buffer->scale = scale;
     buffer->was_damaged = true;
     buffer->can_destroy = true;
-    buffer->type = THUMBNAIL_TYPE_NODE;
+    buffer->type = THUMBNAIL_TYPE_NONE;
 
     wl_list_init(&buffer->thumbnails);
 }
@@ -835,6 +845,141 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
     return workspace_thumbnail;
 }
 
+static struct wlr_buffer *output_thumbnail_render(struct thumbnail_buffer *thumbnail_buffer,
+                                                  struct ky_scene_output *scene_output)
+{
+    struct output_thumbnail *output_thumbnail =
+        wl_container_of(thumbnail_buffer, output_thumbnail, base);
+    struct ky_scene_output *src_output = output_thumbnail->output;
+    struct wlr_output *output = src_output->output;
+
+    int buffer_width = output->width * thumbnail_buffer->scale;
+    int buffer_height = output->height * thumbnail_buffer->scale;
+
+    struct wlr_buffer *buffer =
+        thumbnail_buffer_allocate(thumbnail_buffer, buffer_width, buffer_height, output->allocator);
+    if (!buffer) {
+        return NULL;
+    }
+
+    struct wlr_render_pass *render_pass =
+        wlr_renderer_begin_buffer_pass(output->renderer, buffer, NULL);
+    if (!render_pass) {
+        wlr_buffer_drop(buffer);
+        return NULL;
+    }
+
+    /* clear the target buffer */
+    wlr_render_pass_add_rect(render_pass, &(struct wlr_render_rect_options){
+                                              .color = { 0, 0, 0, 0 },
+                                              .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                          });
+
+    struct ky_scene_render_target target = {
+        .logical = { .x = src_output->x, .y = src_output->y },
+        .scale = output->scale,
+        .buffer = buffer,
+        .transform = output->transform,
+        .output = src_output,
+        .render_pass = render_pass,
+        .options = KY_SCENE_RENDER_DISABLE_VISIBILITY,
+    };
+    wlr_output_transformed_resolution(output, &target.trans_width, &target.trans_height);
+    target.logical.width = target.trans_width / output->scale;
+    target.logical.height = target.trans_height / output->scale;
+    pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
+                              target.logical.width, target.logical.height);
+
+    struct ky_scene_node *root = &src_output->scene->tree.node;
+    root->impl.render(root, root->x, root->y, &target);
+    wlr_render_pass_submit(target.render_pass);
+    pixman_region32_fini(&target.damage);
+
+    return buffer;
+}
+
+static void output_thumbnail_destroy(struct thumbnail_buffer *thumbnail_buffer)
+{
+    if (!thumbnail_buffer_destroy(thumbnail_buffer)) {
+        return;
+    }
+
+    struct output_thumbnail *output_thumbnail =
+        wl_container_of(thumbnail_buffer, output_thumbnail, base);
+    wl_list_remove(&output_thumbnail->output_destroy.link);
+    wl_list_remove(&output_thumbnail->output_commit.link);
+    wl_list_remove(&output_thumbnail->link);
+
+    free(output_thumbnail);
+}
+
+static void output_thumbnail_handle_output_destroy(struct wl_listener *listener, void *data)
+{
+    struct output_thumbnail *output_thumbnail =
+        wl_container_of(listener, output_thumbnail, output_destroy);
+    /* force destroyed when output node destroy */
+    output_thumbnail->base.need_destroy = true;
+    output_thumbnail_destroy(&output_thumbnail->base);
+}
+
+static void output_thumbnail_handle_output_commit(struct wl_listener *listener, void *data)
+{
+    struct output_thumbnail *output_thumbnail =
+        wl_container_of(listener, output_thumbnail, output_commit);
+    struct wlr_output_event_commit *event = data;
+
+    if (!(event->state->committed & WLR_OUTPUT_STATE_BUFFER)) {
+        return;
+    }
+
+    bool has_damage = event->state->committed & WLR_OUTPUT_STATE_DAMAGE &&
+                      pixman_region32_not_empty(&event->state->damage);
+    if (has_damage) {
+        output_thumbnail->base.was_damaged = true;
+        thumbnail_manager_schedule_frame();
+    }
+}
+
+static struct output_thumbnail *find_output_thumbnail(struct ky_scene_output *output, float scale)
+{
+    struct output_thumbnail *output_thumbnail;
+    wl_list_for_each(output_thumbnail, &manager->output_thumbnails, link) {
+        if (output_thumbnail->output == output && output_thumbnail->base.scale == scale) {
+            return output_thumbnail;
+        }
+    }
+    return NULL;
+}
+
+static struct output_thumbnail *output_thumbnail_get_or_create(struct ky_scene_output *output,
+                                                               float scale)
+{
+    struct output_thumbnail *output_thumbnail = find_output_thumbnail(output, scale);
+    if (output_thumbnail) {
+        return output_thumbnail;
+    }
+
+    output_thumbnail = calloc(1, sizeof(*output_thumbnail));
+    if (!output_thumbnail) {
+        return NULL;
+    }
+
+    thumbnail_buffer_init(&output_thumbnail->base, scale);
+    output_thumbnail->base.type = THUMBNAIL_TYPE_OUTPUT;
+    output_thumbnail->base.render = output_thumbnail_render;
+    output_thumbnail->base.destroy = output_thumbnail_destroy;
+
+    output_thumbnail->output = output;
+    output_thumbnail->output_commit.notify = output_thumbnail_handle_output_commit;
+    wl_signal_add(&output->output->events.commit, &output_thumbnail->output_commit);
+    output_thumbnail->output_destroy.notify = output_thumbnail_handle_output_destroy;
+    wl_signal_add(&output->events.destroy, &output_thumbnail->output_destroy);
+
+    wl_list_insert(&manager->output_thumbnails, &output_thumbnail->link);
+
+    return output_thumbnail;
+}
+
 struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float scale)
 {
     if (!manager) {
@@ -917,6 +1062,34 @@ struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
     thumbnail->force_update = thumbnail->wants_update = true;
     /* buffer update is needed */
     thumbnail_manager_schedule_frame();
+
+    return thumbnail;
+}
+
+struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, float scale)
+{
+    if (!manager) {
+        return NULL;
+    }
+
+    struct thumbnail *thumbnail = calloc(1, sizeof(*thumbnail));
+    if (!thumbnail) {
+        return NULL;
+    }
+
+    struct output_thumbnail *output_thumbnail = output_thumbnail_get_or_create(output, scale);
+    if (!output_thumbnail) {
+        free(thumbnail);
+        return NULL;
+    }
+
+    thumbnail->buffer = &output_thumbnail->base;
+    wl_list_insert(&output_thumbnail->base.thumbnails, &thumbnail->link);
+    wl_signal_init(&thumbnail->events.update);
+    wl_signal_init(&thumbnail->events.destroy);
+    thumbnail->force_update = thumbnail->wants_update = true;
+    /* buffer update is needed */
+    wlr_output_schedule_frame(output->output);
 
     return thumbnail;
 }
@@ -1066,6 +1239,11 @@ static void thumbnail_output_handle_frame(struct wl_listener *listener, void *da
     wl_list_for_each_safe(workspace_thumbnail, _tmp, &manager->workspace_thumbnails, link) {
         thumbnail_buffer_render(&workspace_thumbnail->base, output);
     }
+
+    struct output_thumbnail *output_thumbnail, *output_tmp;
+    wl_list_for_each_safe(output_thumbnail, output_tmp, &manager->output_thumbnails, link) {
+        thumbnail_buffer_render(&output_thumbnail->base, output);
+    }
 }
 
 void thumbnail_update(struct thumbnail *thumbnail)
@@ -1125,6 +1303,7 @@ bool thumbnail_manager_create(struct server *server)
     wl_list_init(&manager->node_thumbnails);
     wl_list_init(&manager->view_thumbnails);
     wl_list_init(&manager->workspace_thumbnails);
+    wl_list_init(&manager->output_thumbnails);
 
     wl_list_init(&manager->outputs);
     manager->new_enabled_output.notify = handle_new_enabled_output;
