@@ -18,6 +18,14 @@
 #include "theme.h"
 #include "util/wayland.h"
 
+enum thumbnail_type {
+    THUMBNAIL_TYPE_NONE = 0,
+    THUMBNAIL_TYPE_NODE,
+    THUMBNAIL_TYPE_VIEW,
+    THUMBNAIL_TYPE_WORKSPACE,
+    THUMBNAIL_TYPE_OUTPUT,
+};
+
 struct thumbnail {
     struct wl_list link;
     struct thumbnail_buffer *buffer;
@@ -31,6 +39,7 @@ struct thumbnail {
 };
 
 struct thumbnail_buffer {
+    enum thumbnail_type type;
     struct wlr_buffer *buffer;
     struct wl_list thumbnails;
 
@@ -130,6 +139,7 @@ static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale)
     buffer->scale = scale;
     buffer->was_damaged = true;
     buffer->can_destroy = true;
+    buffer->type = THUMBNAIL_TYPE_NODE;
 
     wl_list_init(&buffer->thumbnails);
 }
@@ -441,6 +451,7 @@ static struct node_thumbnail *node_thumbnail_get_or_create(struct ky_scene_node 
     }
 
     thumbnail_buffer_init(&node_thumbnail->base, scale);
+    node_thumbnail->base.type = THUMBNAIL_TYPE_NODE;
     node_thumbnail->base.render = node_thumbnail_render;
     node_thumbnail->base.destroy = node_thumbnail_destroy;
 
@@ -469,6 +480,7 @@ static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, ui
     }
 
     thumbnail_buffer_init(&view_thumbnail->base, scale);
+    view_thumbnail->base.type = THUMBNAIL_TYPE_VIEW;
     view_thumbnail->option = option;
     view_thumbnail->base.render = view_thumbnail_render;
     view_thumbnail->base.destroy = view_thumbnail_destroy;
@@ -794,6 +806,7 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
 
     wl_list_init(&workspace_thumbnail->entries);
     thumbnail_buffer_init(&workspace_thumbnail->base, scale);
+    workspace_thumbnail->base.type = THUMBNAIL_TYPE_WORKSPACE;
     workspace_thumbnail->base.render = workspace_thumbnail_render;
     workspace_thumbnail->base.destroy = workspace_thumbnail_destroy;
 
@@ -944,8 +957,7 @@ void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
     }
 
     struct thumbnail_buffer *thumbnail_buffer = thumbnail->buffer;
-    if (thumbnail_buffer->render == workspace_thumbnail_render &&
-        thumbnail_buffer->destroy == workspace_thumbnail_destroy) {
+    if (thumbnail_buffer->type == THUMBNAIL_TYPE_WORKSPACE) {
         struct workspace_thumbnail *workspace_thumbnail =
             wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
 
@@ -1060,7 +1072,11 @@ void thumbnail_update(struct thumbnail *thumbnail)
 {
     struct thumbnail_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
-        thumbnail_output_handle_frame(&output->frame, NULL);
+        if (thumbnail->buffer->type == THUMBNAIL_TYPE_WORKSPACE) {
+            thumbnail_output_handle_frame(&output->frame, NULL);
+        } else {
+            thumbnail_buffer_render(thumbnail->buffer, output);
+        }
         break;
     }
 }
