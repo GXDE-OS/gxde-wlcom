@@ -730,6 +730,7 @@ bool effect_manager_create(struct server *server)
     long_touch_effect_create(manager);
     fade_effect_create(manager);
     slide_effect_create(manager);
+    translation_effect_create(manager);
 
     return true;
 }

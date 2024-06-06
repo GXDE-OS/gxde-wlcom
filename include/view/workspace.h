@@ -9,6 +9,13 @@
 
 #define MAX_WORKSPACES 15
 
+enum direction {
+    DIRECTION_LEFT,
+    DIRECTION_RIGHT,
+    DIRECTION_UP,
+    DIRECTION_DOWN,
+};
+
 struct workspace {
     const char *uuid;
     /* user readable descriptive name */

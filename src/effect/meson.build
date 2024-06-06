@@ -11,6 +11,7 @@ wlcom_sources += files(
   'soft_gamma.c',
   'touchclick.c',
   'touchtrail.c',
+  'translation.c',
   'long_touch.c',
 )
 

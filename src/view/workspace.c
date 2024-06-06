@@ -10,6 +10,7 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
+#include "effect/translation.h"
 #include "input/input.h"
 #include "nls.h"
 #include "server.h"
@@ -35,8 +36,6 @@ struct workspace_manager {
 };
 
 static struct workspace_manager *workspace_manager = NULL;
-
-enum direction { DIRECTION_LEFT, DIRECTION_RIGHT, DIRECTION_UP, DIRECTION_DOWN };
 
 static struct shortcut {
     char *keybind;
@@ -103,7 +102,11 @@ static void workspace_switch_to(int switch_workspace)
         }
     }
 
-    workspace_activate(workspace_manager->workspaces[pending]);
+    if (!workspace_add_translation_effect(workspace_manager->workspaces[current],
+                                          workspace_manager->workspaces[pending],
+                                          switch_workspace)) {
+        workspace_activate(workspace_manager->workspaces[pending]);
+    }
 }
 
 static void shortcut_action(struct key_binding *binding, void *data)
