@@ -49,6 +49,8 @@ void animator_destroy(struct animator *animator);
 
 void animator_set_time(struct animator *animator, int64_t end_time);
 
+void animator_set_time_ex(struct animator *animator, int64_t start_time, int64_t end_time);
+
 void animator_set_angle(struct animator *animator, float end_angle);
 
 void animator_set_alpha(struct animator *animator, float end_alpha);

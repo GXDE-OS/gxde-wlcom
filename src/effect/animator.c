@@ -261,6 +261,20 @@ void animator_set_time(struct animator *animator, int64_t end_time)
     animator_update_animation_value(animator, current_time);
 }
 
+/**
+ * reset start time, the start animator data is current animator data.
+ * used to synchronize time and data with other animators.
+ */
+void animator_set_time_ex(struct animator *animator, int64_t start_time, int64_t end_time)
+{
+    if (end_time < start_time) {
+        return;
+    }
+    animator->start_time = start_time;
+    animator->end_time = end_time;
+    animator_update_animation_value(animator, start_time);
+}
+
 void animator_set_angle(struct animator *animator, float end_angle)
 {
     if (end_angle == animator->end.angle) {
