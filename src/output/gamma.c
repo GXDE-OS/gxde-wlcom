@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2013-2014  Jon Lund Steffensen <jonlst@gmail.com>
+// SPDX-FileCopyrightText: 2013  Ingo Thies <ithies@astro.uni-bonn.de>
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
@@ -9,11 +11,14 @@
 
 #define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25100 ? 25100 : (val)))
 
-/* Whitepoint values for temperatures at 100K intervals.
- * These will be interpolated for the actual temperature.
- * This table was provided by Ingo Thies, 2013.
- * See the file README-colorramp for more information.
+/**
+ * From Redshift project:
+ * https://github.com/jonls/redshift/blob/master/src/colorramp.c
+ *
+ * Copyright (c) 2013-2014  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (c) 2013  Ingo Thies <ithies@astro.uni-bonn.de>
  */
+
 // clang-format off
 static const float blackbody_color[] = {
     1.00000000, 0.18172716, 0.00000000, /* 1000K */

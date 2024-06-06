@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2016-2017 Drew DeVault
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
@@ -21,7 +22,7 @@
 #include "text_input_v2.h"
 #include "view/view.h"
 
-/* most codes are copied from sway text_input.c */
+/* most codes are copied from sway input/text_input.c */
 
 struct input_method_manager {
     struct wlr_input_method_manager_v2 *input_method;
