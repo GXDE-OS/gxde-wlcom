@@ -3,7 +3,7 @@
 
 kylin-wayland-compositor或kylin-wlcom（以下简称kywc）是一个基于wlroots编写的wayland合成器，目前积极开发中，正在适配openKylin系统。
 
-该项目使用开源协议Mulan PSL v2，项目中来源于其他开源项目的文件或代码片段遵守原开源协议要求。
+该项目使用开源协议GPL-1.0-or-later，项目中来源于其他开源项目的文件或代码片段遵守原开源协议要求。
 
 
 ## 特点

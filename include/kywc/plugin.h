@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 #ifndef _KYWC_PLUGIN_H_
 #define _KYWC_PLUGIN_H_
@@ -12,16 +12,16 @@
 /* inspired by xorg module */
 
 #define PLUGIN_VERSION_NUMERIC(major, minor, micro)                                                \
-    ((((major)&0xFF) << 24) | (((minor)&0xFF) << 16) | ((micro)&0xFFFF))
+    ((((major) & 0xFF) << 24) | (((minor) & 0xFF) << 16) | ((micro) & 0xFFFF))
 #define GET_PLUGIN_MAJOR_VERSION(vers) (((vers) >> 24) & 0xFF)
 #define GET_PLUGIN_MINOR_VERSION(vers) (((vers) >> 16) & 0xFF)
-#define GET_PLUGIN_MICRO_VERSION(vers) ((vers)&0xFFFF)
+#define GET_PLUGIN_MICRO_VERSION(vers) ((vers) & 0xFFFF)
 
 #define ABI_MINOR_MASK 0x0000FFFF
 #define ABI_MAJOR_MASK 0xFFFF0000
-#define GET_ABI_MINOR(v) ((v)&ABI_MINOR_MASK)
-#define GET_ABI_MAJOR(v) (((v)&ABI_MAJOR_MASK) >> 16)
-#define ABI_VERSION(maj, min) ((((maj) << 16) & ABI_MAJOR_MASK) | ((min)&ABI_MINOR_MASK))
+#define GET_ABI_MINOR(v) ((v) & ABI_MINOR_MASK)
+#define GET_ABI_MAJOR(v) (((v) & ABI_MAJOR_MASK) >> 16)
+#define ABI_VERSION(maj, min) ((((maj) << 16) & ABI_MAJOR_MASK) | ((min) & ABI_MINOR_MASK))
 
 /* default plugin vender */
 #ifndef PLUGINVENDORSTRING

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2016 Advanced Micro Devices, Inc.
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 /* Job queue with execution in a separate thread.
  * Copied from mesa u_queue.c.

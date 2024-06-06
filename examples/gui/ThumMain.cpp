@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: GPL-1.0-or-later
+
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>

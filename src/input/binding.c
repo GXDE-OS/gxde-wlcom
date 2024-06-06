@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>

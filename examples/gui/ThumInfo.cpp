@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+//
+// SPDX-License-Identifier: GPL-1.0-or-later
+
 #include "ThumInfo.h"
 
 Thumbnail::Type ThumInfo::type() const

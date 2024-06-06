@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
+
 #include <QApplication>
 #include "widget.h"
 

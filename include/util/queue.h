@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: 2016 Advanced Micro Devices, Inc.
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 #ifndef _UTIL_QUEUE_H_
 #define _UTIL_QUEUE_H_
 
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdint.h>
 
 typedef void (*queue_execute_func)(void *job, void *gdata, int thread_index);
 

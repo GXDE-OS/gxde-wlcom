@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2023 The wlroots contributors
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <drm_fourcc.h>
 

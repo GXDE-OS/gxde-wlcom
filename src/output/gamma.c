@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2023 KylinSoft Co., Ltd.
 //
-// SPDX-License-Identifier: MulanPSL-2.0
+// SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <stdlib.h>
 #include <wlr/types/wlr_output.h>
@@ -345,7 +345,7 @@ void colortemp_get_rgb(float *rgb, uint32_t color_temp)
     int output_min = 0;
     int output_max = 241;
     int index = (input - 1000) * (output_max - output_min) / (25100 - 1000) + output_min;
-    
+
     rgb[0] = blackbody_color[index * 3 + 0];
     rgb[1] = blackbody_color[index * 3 + 1];
     rgb[2] = blackbody_color[index * 3 + 2];
