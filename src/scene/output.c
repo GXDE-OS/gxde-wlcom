@@ -449,6 +449,10 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     bool ok = false;
     if (scene_output_render(scene_output, &state, &target)) {
         ok = wlr_output_commit_state(scene_output->output, &state);
+        /* damage whole if output commit failed */
+        if (!ok) {
+            ky_scene_output_damage_whole(scene_output);
+        }
     }
 
     wlr_output_state_finish(&state);
