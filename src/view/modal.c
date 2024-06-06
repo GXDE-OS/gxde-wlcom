@@ -30,10 +30,12 @@ enum shake_effect_stage {
 struct modal {
     struct view *view;
     struct wl_listener view_unmap;
-    struct wl_listener view_minimized;
-    struct wl_listener view_position;
-    struct wl_listener view_activate;
     struct wl_listener unset_modal;
+
+    struct wl_listener parent_unmap;
+    struct wl_listener parent_minimized;
+    struct wl_listener parent_position;
+    struct wl_listener parent_activate;
 
     /* attributes used for the shake effect. */
     struct {
@@ -197,13 +199,16 @@ static void modal_destroy(struct modal *modal)
         modal->view->parent->base.resizable = modal->parent_resizable;
         modal->view->parent->base.maximizable = modal->parent_maximizable;
         modal->view->parent->base.fullscreenable = modal->parent_fullscreenable;
+
+        wl_list_remove(&modal->parent_minimized.link);
+        wl_list_remove(&modal->parent_position.link);
+        wl_list_remove(&modal->parent_activate.link);
+        wl_list_remove(&modal->parent_unmap.link);
     }
 
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
-    wl_list_remove(&modal->view_minimized.link);
-    wl_list_remove(&modal->view_position.link);
-    wl_list_remove(&modal->view_activate.link);
+
     wl_event_source_remove(modal->timer);
     ky_scene_node_destroy(&modal->modal_box->node);
     free(modal);
@@ -215,25 +220,34 @@ static void handle_view_unmap(struct wl_listener *listener, void *data)
     modal_destroy(modal);
 }
 
-static void handle_view_minimized(struct wl_listener *listener, void *data)
+static void handle_parent_minimized(struct wl_listener *listener, void *data)
 {
-    struct modal *modal = wl_container_of(listener, modal, view_minimized);
+    struct modal *modal = wl_container_of(listener, modal, parent_minimized);
     ky_scene_node_set_enabled(&modal->modal_box->node, !modal->view->parent->base.minimized);
 }
 
-static void handle_view_position(struct wl_listener *listener, void *data)
+static void handle_parent_position(struct wl_listener *listener, void *data)
 {
-    struct modal *modal = wl_container_of(listener, modal, view_position);
+    struct modal *modal = wl_container_of(listener, modal, parent_position);
     struct kywc_view *kywc_view = &modal->view->parent->base;
     int x = kywc_view->geometry.x - kywc_view->margin.off_x;
     int y = kywc_view->geometry.y - kywc_view->margin.off_y;
     ky_scene_node_set_position(&modal->modal_box->node, x, y);
 }
 
-static void handle_view_activate(struct wl_listener *listener, void *data)
+static void handle_parent_activate(struct wl_listener *listener, void *data)
 {
-    struct modal *modal = wl_container_of(listener, modal, view_activate);
+    struct modal *modal = wl_container_of(listener, modal, parent_activate);
     modal_shake_effect_init(modal);
+}
+
+static void handle_parent_unmap(struct wl_listener *listener, void *data)
+{
+    struct modal *modal = wl_container_of(listener, modal, parent_unmap);
+    wl_list_remove(&modal->parent_minimized.link);
+    wl_list_remove(&modal->parent_position.link);
+    wl_list_remove(&modal->parent_activate.link);
+    wl_list_remove(&modal->parent_unmap.link);
 }
 
 static void handle_unset_modal(struct wl_listener *listener, void *data)
@@ -283,12 +297,12 @@ void modal_create(struct view *view)
     view->parent->base.maximizable = false;
     view->parent->base.fullscreenable = false;
 
-    struct kywc_view *kywc_view = &view->parent->base;
+    struct kywc_view *parent = &view->parent->base;
     struct kywc_box geo = {
-        .x = kywc_view->geometry.x - kywc_view->margin.off_x,
-        .y = kywc_view->geometry.y - kywc_view->margin.off_y,
-        .width = kywc_view->geometry.width + kywc_view->margin.off_width,
-        .height = kywc_view->geometry.height + kywc_view->margin.off_height,
+        .x = parent->geometry.x - parent->margin.off_x,
+        .y = parent->geometry.y - parent->margin.off_y,
+        .width = parent->geometry.width + parent->margin.off_width,
+        .height = parent->geometry.height + parent->margin.off_height,
     };
 
     /* An animation time */
@@ -311,15 +325,18 @@ void modal_create(struct view *view)
     wl_signal_add(&view->base.events.unmap, &modal->view_unmap);
     modal->unset_modal.notify = handle_unset_modal;
     wl_signal_add(&view->base.events.unset_modal, &modal->unset_modal);
+
+    modal->parent_unmap.notify = handle_parent_unmap;
+    wl_signal_add(&parent->events.unmap, &modal->parent_unmap);
     /* The gray area is hidden when the desktop is displayed */
-    modal->view_minimized.notify = handle_view_minimized;
-    wl_signal_add(&kywc_view->events.minimize, &modal->view_minimized);
+    modal->parent_minimized.notify = handle_parent_minimized;
+    wl_signal_add(&parent->events.minimize, &modal->parent_minimized);
     /* When the parent view is move for reasons such as protocol */
-    modal->view_position.notify = handle_view_position;
-    wl_signal_add(&kywc_view->events.position, &modal->view_position);
+    modal->parent_position.notify = handle_parent_position;
+    wl_signal_add(&parent->events.position, &modal->parent_position);
     /* When the parent view is activate for reasons such as protocol */
-    modal->view_activate.notify = handle_view_activate;
-    wl_signal_add(&kywc_view->events.activate, &modal->view_activate);
+    modal->parent_activate.notify = handle_parent_activate;
+    wl_signal_add(&parent->events.activate, &modal->parent_activate);
 
     /* create timer for modal shake effect*/
     struct seat *seat = input_manager_get_default_seat();
