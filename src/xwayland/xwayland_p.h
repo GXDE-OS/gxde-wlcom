@@ -129,6 +129,8 @@ void xwayland_update_seat(struct seat *seat);
 
 void xwayland_update_hovered_surface(struct wlr_surface *surface);
 
+void xwayland_fixup_pointer_position(struct wlr_surface *surface);
+
 int xwayland_read_wm_state(xcb_window_t window_id);
 
 int xwayland_read_wm_icon(xcb_window_t window_id);

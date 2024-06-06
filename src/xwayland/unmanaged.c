@@ -267,12 +267,7 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
                                xwayland_unscale(wlr_xwayland_surface->y));
 
     /* workaround: fixup xwayland pointer position when no hovered surface */
-    struct xwayland_server *xwayland = unmanaged->xwayland;
-    if (!xwayland->hoverd_surface && xwayland->wlr_xwayland->seat) {
-        wlr_seat_pointer_enter(xwayland->wlr_xwayland->seat,
-                               unmanaged->wlr_xwayland_surface->surface, FLT_MAX, FLT_MAX);
-        wlr_seat_pointer_clear_focus(xwayland->wlr_xwayland->seat);
-    }
+    xwayland_fixup_pointer_position(wlr_xwayland_surface->surface);
 }
 
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)

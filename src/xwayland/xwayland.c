@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #define _POSIX_C_SOURCE 200809L
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <xcb/shape.h>
 
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland/shell.h>
 
@@ -689,6 +692,35 @@ static char *xwayland_get_atom_name(xcb_atom_t atom)
     char *name = strndup(buf, len);
     free(name_reply);
     return name;
+}
+
+void xwayland_fixup_pointer_position(struct wlr_surface *surface)
+{
+    struct wlr_seat *seat = xwayland->wlr_xwayland->seat;
+    if (xwayland->hoverd_surface || !xwayland->wlr_xwayland->seat) {
+        return;
+    }
+
+    struct wl_client *wl_client = wl_resource_get_client(surface->resource);
+    struct wlr_seat_client *client = wlr_seat_client_for_wl_client(seat, wl_client);
+    if (!client) {
+        return;
+    }
+
+    uint32_t serial = wlr_seat_client_next_serial(client);
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &client->pointers) {
+        if (!wlr_seat_client_from_pointer_resource(resource)) {
+            continue;
+        }
+
+        wl_pointer_send_enter(resource, serial, surface->resource, wl_fixed_from_double(FLT_MAX),
+                              wl_fixed_from_double(FLT_MAX));
+        wl_pointer_send_leave(resource, serial, surface->resource);
+        if (wl_resource_get_version(resource) >= WL_POINTER_FRAME_SINCE_VERSION) {
+            wl_pointer_send_frame(resource);
+        }
+    }
 }
 
 void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface)
