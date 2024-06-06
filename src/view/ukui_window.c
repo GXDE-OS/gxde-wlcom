@@ -5,8 +5,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <kywc/identifier.h>
+#include <kywc/output.h>
+#include <wlr/interfaces/wlr_buffer.h>
 #include <wlr/types/wlr_compositor.h>
 
 #include "input/seat.h"
@@ -246,7 +249,36 @@ static void handle_destroy(struct wl_client *client, struct wl_resource *resourc
 
 static void handle_get_icon(struct wl_client *client, struct wl_resource *resource, int32_t fd)
 {
-    // Not implemented yet
+    struct ukui_window *window = wl_resource_get_user_data(resource);
+    if (!window) {
+        return;
+    }
+
+    struct view *view = view_from_kywc_view(window->kywc_view);
+    if (!view->impl->get_icon_buffer) {
+        return;
+    }
+
+    float scale = view->output->state.scale;
+    struct wlr_buffer *wlr_buffer = view->impl->get_icon_buffer(view, scale);
+    if (!wlr_buffer) {
+        return;
+    }
+
+    void *data;
+    uint32_t format;
+    size_t stride;
+    if (wlr_buffer->impl->begin_data_ptr_access &&
+        wlr_buffer->impl->begin_data_ptr_access(wlr_buffer, WLR_BUFFER_DATA_PTR_ACCESS_WRITE, &data,
+                                                &format, &stride)) {
+        int32_t size[2];
+        size[0] = wlr_buffer->width;
+        size[1] = wlr_buffer->height;
+        write(fd, size, sizeof(size));
+        write(fd, data, stride * wlr_buffer->height);
+        close(fd);
+        wlr_buffer->impl->end_data_ptr_access(wlr_buffer);
+    }
 }
 
 static void handle_request_enter_virtual_desktop(struct wl_client *client,
@@ -526,12 +558,12 @@ static void ukui_window_add_resource(struct ukui_window *window,
     // ukui_window_send_virtual_desktop_changed
     // ukui_window_send_virtual_desktop_entered
     // ukui_window_send_virtual_desktop_left
-
     const char *icon_name = theme_icon_name(kywc_view->app_id);
     if (strcmp(icon_name, "fallback")) {
         ukui_window_send_themed_icon_name_changed(resource, icon_name);
+    } else {
+        ukui_window_send_icon_changed(resource);
     }
-    // ukui_window_send_icon_changed
     // ukui_window_send_application_menu
     // ukui_window_send_activity_entered
     // ukui_window_send_activity_left
