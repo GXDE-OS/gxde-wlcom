@@ -1249,6 +1249,17 @@ static void output_do_update_usable_area(struct output *output, struct kywc_box 
     wl_signal_emit_mutable(&output->events.update_late_usable_area, usable);
 }
 
+static void output_emit_usable_area(struct output *output)
+{
+    kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
+             output->usable_area.x, output->usable_area.y, output->usable_area.width,
+             output->usable_area.height);
+
+    xwayland_update_workarea();
+
+    wl_signal_emit_mutable(&output->events.usable_area, NULL);
+}
+
 void output_update_usable_area(struct kywc_output *kywc_output)
 {
     /* no need to update usable area when disabled or destroyed */
@@ -1265,10 +1276,7 @@ void output_update_usable_area(struct kywc_output *kywc_output)
     }
 
     output->usable_area = usable_area;
-    kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
-             output->usable_area.x, output->usable_area.y, output->usable_area.width,
-             output->usable_area.height);
-    wl_signal_emit_mutable(&output->events.usable_area, NULL);
+    output_emit_usable_area(output);
 }
 
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
@@ -1326,10 +1334,7 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     }
 
     if (usable_area_changed) {
-        kywc_log(KYWC_DEBUG, "output %s usable area is (%d, %d) %d x %d", output->base.name,
-                 output->usable_area.x, output->usable_area.y, output->usable_area.width,
-                 output->usable_area.height);
-        wl_signal_emit_mutable(&output->events.usable_area, NULL);
+        output_emit_usable_area(output);
     }
 
     if (kywc_output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_POWER &&
@@ -1498,4 +1503,65 @@ struct kywc_output *kywc_output_at_point(double lx, double ly)
     wlr_output = wlr_output_layout_output_at(layout, closest_x, closest_y);
 
     return wlr_output ? &output_from_wlr_output(wlr_output)->base : NULL;
+}
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+void output_layout_get_workarea(struct wlr_box *box)
+{
+    wlr_output_layout_get_box(output_manager->server->layout, NULL, box);
+
+    /* layout edges */
+    int layout_left = MAX(0, box->x);
+    int layout_right = MAX(0, box->x + box->width);
+    int layout_top = MAX(0, box->y);
+    int layout_bottom = MAX(0, box->y + box->height);
+
+    /* workarea edges */
+    int workarea_left = layout_left;
+    int workarea_right = layout_right;
+    int workarea_top = layout_top;
+    int workarea_bottom = layout_bottom;
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (!output->base.state.enabled) {
+            continue;
+        }
+
+        /* output edges */
+        int output_left = output->geometry.x;
+        int output_right = output_left + output->geometry.width;
+        int output_top = output->geometry.y;
+        int output_bottom = output_top + output->geometry.height;
+
+        /* output usable edges */
+        int usable_left = output->usable_area.x;
+        int usable_right = usable_left + output->usable_area.width;
+        int usable_top = output->usable_area.y;
+        int usable_bottom = usable_top + output->usable_area.height;
+
+        /*
+         * Only adjust workarea edges for output edges that are
+         * aligned with outer edges of layout
+         */
+        if (output_left == layout_left) {
+            workarea_left = MAX(workarea_left, usable_left);
+        }
+        if (output_right == layout_right) {
+            workarea_right = MIN(workarea_right, usable_right);
+        }
+        if (output_top == layout_top) {
+            workarea_top = MAX(workarea_top, usable_top);
+        }
+        if (output_bottom == layout_bottom) {
+            workarea_bottom = MIN(workarea_bottom, usable_bottom);
+        }
+    }
+
+    box->x = workarea_left;
+    box->y = workarea_top;
+    box->width = workarea_right - workarea_left;
+    box->height = workarea_bottom - workarea_top;
 }

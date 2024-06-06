@@ -26,6 +26,8 @@ float xwayland_scale(int value);
 
 void xwayland_set_cursor(struct seat *seat);
 
+void xwayland_update_workarea(void);
+
 #else
 
 // clang-format off
@@ -43,6 +45,8 @@ INLINE int xwayland_unscale(int value) { return value; }
 INLINE float xwayland_scale(int value) { return value; }
 
 INLINE void xwayland_set_cursor(struct seat *seat) {}
+
+INLINE void xwayland_update_workarea(void) {}
 
 // clang-format on
 

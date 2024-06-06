@@ -736,3 +736,18 @@ void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surfa
              wlr_xwayland_surface->override_redirect, wlr_xwayland_surface->width,
              wlr_xwayland_surface->height, wlr_xwayland_surface->fullscreen);
 }
+
+void xwayland_update_workarea(void)
+{
+    if (!xwayland || !xwayland->wlr_xwayland || !xwayland->wlr_xwayland->xwm) {
+        return;
+    }
+
+    struct wlr_box box;
+    output_layout_get_workarea(&box);
+    box.x = xwayland_scale(box.x);
+    box.y = xwayland_scale(box.y);
+    box.width = xwayland_scale(box.width);
+    box.height = xwayland_scale(box.height);
+    wlr_xwayland_set_workareas(xwayland->wlr_xwayland, &box, 1);
+}
