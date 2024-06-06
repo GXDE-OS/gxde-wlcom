@@ -45,26 +45,6 @@ kde_input_manager_create(struct config_manager *config_manager)
 }
 #endif
 
-#if HAVE_KDE_GLOBAL_SETTINGS
-bool kde_global_settings_create(struct config_manager *config_manager);
-#else
-static __attribute__((unused)) inline bool
-kde_global_settings_create(struct config_manager *config_manager)
-{
-    return false;
-}
-#endif
-
-#if HAVE_KDE_NIGHTCOLOR
-bool kde_nightcolor_manager_create(struct config_manager *config_manager);
-#else
-static __attribute__((unused)) inline bool
-kde_nightcolor_manager_create(struct config_manager *config_manager)
-{
-    return false;
-}
-#endif
-
 #if HAVE_UKUI_GSETTINGS
 bool ukui_gsettings_create(struct config_manager *config_mananger);
 #else

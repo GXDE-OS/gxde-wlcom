@@ -24,18 +24,6 @@ if have_kde_input
   )
 endif
 
-if have_kde_global_settings
-  wlcom_sources += files(
-    'kde_global_settings.c',
-  )
-endif
-
-if have_kde_nightcolor
-  wlcom_sources += files(
-    'kde_nightcolor.c',
-  )
-endif
-
 if have_ukui_gsettings
   wlcom_sources += files(
     'ukui_gsettings.c',

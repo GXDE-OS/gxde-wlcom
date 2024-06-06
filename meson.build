@@ -104,12 +104,10 @@ have_wlr_foreign_toplevel = get_option('wlr_foreign_toplevel')
 have_wlr_layer_shell = get_option('wlr_layer_shell')
 have_kde_global_accel = get_option('kde_global_accel')
 have_kde_input = get_option('kde_input')
-have_kde_nightcolor = get_option('kde_nightcolor')
 have_kde_plasma_shell = get_option('kde_plasma_shell')
 have_kde_plasma_window_management = get_option('kde_plasma_window_management')
 have_kde_blur = get_option('kde_blur')
 have_kde_slide = get_option('kde_slide')
-have_kde_global_settings = get_option('kde_global_settings')
 have_ukui_screenshot = get_option('ukui_screenshot')
 have_ukui_gsettings = get_option('ukui_gsettings')
 have_kde_keystate = get_option('kde_keystate')
@@ -127,12 +125,10 @@ add_project_arguments([
   '-DHAVE_WLR_LAYER_SHELL=@0@'.format(have_wlr_layer_shell.to_int()),
   '-DHAVE_KDE_GLOBAL_ACCEL=@0@'.format(have_kde_global_accel.to_int()),
   '-DHAVE_KDE_INPUT=@0@'.format(have_kde_input.to_int()),
-  '-DHAVE_KDE_NIGHTCOLOR=@0@'.format(have_kde_nightcolor.to_int()),
   '-DHAVE_KDE_PLASMA_SHELL=@0@'.format(have_kde_plasma_shell.to_int()),
   '-DHAVE_KDE_PLASMA_WINDOW_MANAGEMENT=@0@'.format(have_kde_plasma_window_management.to_int()),
   '-DHAVE_KDE_BLUR=@0@'.format(have_kde_blur.to_int()),
   '-DHAVE_KDE_SLIDE=@0@'.format(have_kde_slide.to_int()),
-  '-DHAVE_KDE_GLOBAL_SETTINGS=@0@'.format(have_kde_global_settings.to_int()), 
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
   '-DHAVE_UKUI_GSETTINGS=@0@'.format(have_ukui_gsettings.to_int()), 
   '-DHAVE_KDE_KEYSTATE=@0@'.format(have_kde_keystate.to_int()),
@@ -177,12 +173,10 @@ summary({
   'wlr_layer_shell': have_wlr_layer_shell,
   'kde_global_accel': have_kde_global_accel,
   'kde_input': have_kde_input,
-  'kde_nightcolor': have_kde_nightcolor,
   'kde_plasma_shell': have_kde_plasma_shell,
   'kde_plasma_window_management': have_kde_plasma_window_management,
   'kde_blur': have_kde_blur,
   'kde_slide': have_kde_slide,
-  'kde_global_settings': have_kde_global_settings,
   'ukui_screenshot': have_ukui_screenshot,
   'ukui_gsettings': have_ukui_gsettings,
   'kde_keystate': have_kde_keystate,
