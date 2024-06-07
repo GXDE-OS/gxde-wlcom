@@ -52,21 +52,6 @@ static struct shortcut {
     { "Ctrl+F4", "switch to workspace 3", 7 },
 };
 
-static struct gesture {
-    enum gesture_type type;
-    uint8_t fingers;
-    uint32_t devices;
-    uint32_t directions;
-    uint32_t edges;
-    char *desc;
-    enum direction direction;
-} gestures[] = {
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN,
-      GESTURE_DIRECTION_LEFT, GESTURE_EDGE_NONE, "switch to left workspace", DIRECTION_LEFT },
-    { GESTURE_TYPE_SWIPE, 3, GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN,
-      GESTURE_DIRECTION_RIGHT, GESTURE_EDGE_NONE, "switch to right workspace", DIRECTION_RIGHT },
-};
-
 static void workspace_switch_to(int switch_workspace)
 {
     if (workspace_manager->count == 1) {
@@ -115,12 +100,6 @@ static void shortcut_action(struct key_binding *binding, void *data)
     workspace_switch_to(shortcut->switch_workspace);
 }
 
-static void gesture_action(struct gesture_binding *binding, void *data)
-{
-    struct gesture *gesture = data;
-    workspace_switch_to(gesture->direction);
-}
-
 static void workspace_register_shortcut(void)
 {
     for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
@@ -132,21 +111,6 @@ static void workspace_register_shortcut(void)
 
         if (!kywc_key_binding_register(binding, shortcut_action, shortcut)) {
             kywc_key_binding_destroy(binding);
-            continue;
-        }
-    }
-
-    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
-        struct gesture *gesture = &gestures[i];
-        struct gesture_binding *binding =
-            kywc_gesture_binding_create(gesture->type, gesture->devices, gesture->directions,
-                                        gesture->edges, gesture->fingers, gesture->desc);
-        if (!binding) {
-            continue;
-        }
-
-        if (!kywc_gesture_binding_register(binding, gesture_action, gesture)) {
-            kywc_gesture_binding_destroy(binding);
             continue;
         }
     }
