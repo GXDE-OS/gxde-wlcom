@@ -406,7 +406,6 @@ void view_unmap(struct view *view)
     kywc_view->mapped = false;
 
     kywc_log(KYWC_DEBUG, "kywc_view %p unmap", kywc_view);
-    input_rebase_all_cursor();
 
     if (!view_add_slide_effect(view, false) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL &&
         !kywc_view->minimized) {
@@ -438,6 +437,8 @@ void view_unmap(struct view *view)
         wl_list_init(&child->parent_link);
         child->parent = NULL;
     }
+
+    input_rebase_all_cursor();
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
