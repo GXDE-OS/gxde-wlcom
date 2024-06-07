@@ -74,7 +74,7 @@ static bool xwayland_unmanaged_is_focusable(struct xwayland_unmanaged *unmanaged
         return false;
     }
 
-    return true;
+    return xwayland_surface_has_input(wlr_xwayland_surface, INPUT_MASK_KEYBOARD);
 }
 
 static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)

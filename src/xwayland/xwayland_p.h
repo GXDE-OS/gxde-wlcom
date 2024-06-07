@@ -92,7 +92,12 @@ void xwayland_restack_unmanaged(struct xwayland_server *xwayland);
 
 bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type);
 
-bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surface);
+enum {
+    INPUT_MASK_POINTER = 1 << 0,
+    INPUT_MASK_KEYBOARD = 1 << 1,
+};
+
+bool xwayland_surface_has_input(struct wlr_xwayland_surface *wlr_xwayland_surface, uint32_t input);
 
 void xwayland_surface_shape_select_input(struct wlr_xwayland_surface *surface, bool enabled);
 
