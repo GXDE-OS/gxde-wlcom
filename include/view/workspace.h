@@ -72,6 +72,8 @@ void workspace_destroy(struct workspace *workspace);
 
 void workspace_activate(struct workspace *workspace);
 
+void workspace_activate_with_effect(struct workspace *workspace);
+
 struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer);
 
 struct workspace *workspace_by_position(uint32_t position);

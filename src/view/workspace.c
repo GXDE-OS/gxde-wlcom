@@ -402,6 +402,17 @@ void workspace_activate(struct workspace *workspace)
     kywc_log(KYWC_INFO, "workspace %s(%d) is activated", workspace->name, workspace->position);
 }
 
+void workspace_activate_with_effect(struct workspace *workspace)
+{
+    struct workspace *current = workspace_manager->current;
+    enum direction direction =
+        current->position < workspace->position ? DIRECTION_RIGHT : DIRECTION_LEFT;
+
+    if (!workspace_add_translation_effect(current, workspace, direction)) {
+        workspace_activate(workspace);
+    }
+}
+
 struct view_layer *workspace_layer(struct workspace *workspace, enum layer layer)
 {
     switch (layer) {

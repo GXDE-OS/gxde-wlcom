@@ -930,15 +930,21 @@ static void view_set_activated(struct view *view, bool activated)
 static void view_activate(struct view *view)
 {
     struct view *last = view_manager->activated.view;
-    if (!view->base.activatable || last == view) {
+    if (!view->base.activatable) {
         return;
     }
 
-    if (last) {
-        view_set_activated(last, false);
+    if (last != view) {
+        if (last) {
+            view_set_activated(last, false);
+        }
+        view_set_activated(view, true);
     }
 
-    view_set_activated(view, true);
+    struct workspace *workspace = view->current_proxy ? view->current_proxy->workspace : NULL;
+    if (workspace && workspace != workspace_manager_get_current()) {
+        workspace_activate_with_effect(view->current_proxy->workspace);
+    }
 }
 
 void view_topmost_activate(struct workspace *workspace)
