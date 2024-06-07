@@ -549,7 +549,7 @@ static void slide_data_handle_node_destroy(struct wl_listener *listener, void *d
 
 bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset, bool slid_out)
 {
-    if (!slide_effect || !slide_effect->effect->enabled) {
+    if (!slide_effect || !slide_effect->effect->enabled || !node->enabled) {
         return false;
     }
 
