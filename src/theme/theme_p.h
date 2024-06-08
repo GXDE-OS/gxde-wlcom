@@ -8,7 +8,9 @@
 #include "theme.h"
 
 #define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
-#define APPPATH "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications"
+#define APPPATH                                                                                    \
+    "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications:/etc/xdg/"  \
+    "autostart"
 #define PIXMAPPATH "/usr/share/pixmaps"
 
 #define DEFAULT_ICON_THEME_NAME "hicolor"
