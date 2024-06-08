@@ -142,7 +142,9 @@ static void entities_collect_damage(struct node_effect_chain *chain, int lx, int
     struct wlr_box box;
     struct ky_scene_node *node = chain->node;
     /* node_chain_get_bounding_box */
-    node->impl.get_bounding_box(node, &box);
+    if (!entities_bounding_box(chain, &box)) {
+        node->impl.get_bounding_box(node, &box);
+    }
 
     /* if node state is changed, it must in the affected region */
     if (box.width > 0 && box.height > 0 &&
@@ -280,15 +282,9 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
 
 static void node_chain_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
-    if (!node->enabled) {
-        *box = (struct wlr_box){ 0 };
-        return;
-    }
-
+    /* always use origin function */
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    if (!entities_bounding_box(chain, box)) {
-        chain->impl.get_bounding_box(node, box);
-    }
+    chain->impl.get_bounding_box(node, box);
 }
 
 static void node_chain_render(struct ky_scene_node *node, int lx, int ly,
