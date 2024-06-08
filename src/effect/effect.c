@@ -43,6 +43,34 @@ static uint32_t get_effect_types(const struct effect_interface *impl)
     return types;
 }
 
+/* Do not trigger damage event that node with effect entity */
+void effect_entity_push_damage(struct effect_entity *entity, uint32_t damage_type)
+{
+    struct kywc_box box = { 0 };
+    if (entity->effect->impl->entity_bounding_box) {
+        entity->effect->impl->entity_bounding_box(entity, &box);
+    }
+
+    pixman_region32_t damage_region;
+    pixman_region32_init_rect(&damage_region, box.x, box.y, box.width, box.height);
+    if (!pixman_region32_not_empty(&damage_region)) {
+        pixman_region32_fini(&damage_region);
+        return;
+    }
+
+    struct effect_chain *chain = entity->slot.chain;
+    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
+
+    node_chain->node->damage_type |= damage_type;
+    pixman_region32_translate(&damage_region, node_chain->node->x, node_chain->node->y);
+
+    struct ky_scene_node *parent_node = &node_chain->node->parent->node;
+    parent_node->impl.push_damage(parent_node, node_chain->node,
+                                  damage_type | parent_node->damage_type, &damage_region);
+
+    pixman_region32_fini(&damage_region);
+}
+
 static void entities_clip_region(struct node_effect_chain *chain, pixman_region32_t *region)
 {
     if (wl_list_empty(&chain->base.slots)) {
