@@ -195,17 +195,15 @@ static const struct input_event_node_impl modal_impl = {
 
 static void modal_destroy(struct modal *modal)
 {
-    if (modal->view->parent) {
-        modal->view->parent->base.resizable = modal->parent_resizable;
-        modal->view->parent->base.maximizable = modal->parent_maximizable;
-        modal->view->parent->base.fullscreenable = modal->parent_fullscreenable;
+    struct kywc_view *parent = &modal->view->parent->base;
+    parent->resizable = modal->parent_resizable;
+    parent->maximizable = modal->parent_maximizable;
+    parent->fullscreenable = modal->parent_fullscreenable;
 
-        wl_list_remove(&modal->parent_minimized.link);
-        wl_list_remove(&modal->parent_position.link);
-        wl_list_remove(&modal->parent_activate.link);
-        wl_list_remove(&modal->parent_unmap.link);
-    }
-
+    wl_list_remove(&modal->parent_minimized.link);
+    wl_list_remove(&modal->parent_position.link);
+    wl_list_remove(&modal->parent_activate.link);
+    wl_list_remove(&modal->parent_unmap.link);
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
 
@@ -244,10 +242,7 @@ static void handle_parent_activate(struct wl_listener *listener, void *data)
 static void handle_parent_unmap(struct wl_listener *listener, void *data)
 {
     struct modal *modal = wl_container_of(listener, modal, parent_unmap);
-    wl_list_remove(&modal->parent_minimized.link);
-    wl_list_remove(&modal->parent_position.link);
-    wl_list_remove(&modal->parent_activate.link);
-    wl_list_remove(&modal->parent_unmap.link);
+    modal_destroy(modal);
 }
 
 static void handle_unset_modal(struct wl_listener *listener, void *data)
@@ -290,14 +285,15 @@ void modal_create(struct view *view)
     }
 
     modal->view = view;
-    modal->parent_resizable = view->parent->base.resizable;
-    modal->parent_maximizable = view->parent->base.maximizable;
-    modal->parent_fullscreenable = view->parent->base.fullscreenable;
-    view->parent->base.resizable = false;
-    view->parent->base.maximizable = false;
-    view->parent->base.fullscreenable = false;
-
     struct kywc_view *parent = &view->parent->base;
+
+    modal->parent_resizable = parent->resizable;
+    modal->parent_maximizable = parent->maximizable;
+    modal->parent_fullscreenable = parent->fullscreenable;
+    parent->resizable = false;
+    parent->maximizable = false;
+    parent->fullscreenable = false;
+
     struct kywc_box geo = {
         .x = parent->geometry.x - parent->margin.off_x,
         .y = parent->geometry.y - parent->margin.off_y,
