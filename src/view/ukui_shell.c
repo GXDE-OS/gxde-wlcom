@@ -625,6 +625,11 @@ static void surface_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, surface_destroy);
 
+    struct ukui_keyboard_grab *grab, *tmp;
+    wl_list_for_each_safe(grab, tmp, &surface->ukui_keyboard_grabs, link) {
+        end_ukui_grab_keyboard(grab);
+    }
+
     wl_list_remove(&surface->surface_map.link);
     wl_list_remove(&surface->surface_destroy.link);
 
