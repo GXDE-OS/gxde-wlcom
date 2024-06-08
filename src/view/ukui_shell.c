@@ -45,7 +45,9 @@ struct ukui_surface {
     struct wl_listener view_output;
     struct wl_listener view_destroy;
 
+    struct output *output;
     struct wl_listener output_update_usable_area;
+    struct wl_listener output_disable;
 
     int x, y;
     enum ukui_surface_role role;
@@ -85,15 +87,45 @@ static void handle_destroy(struct wl_client *client, struct wl_resource *resourc
     wl_resource_destroy(resource);
 }
 
+static void surface_handle_output_disable(struct wl_listener *listener, void *data)
+{
+    struct ukui_surface *surface = wl_container_of(listener, surface, output_disable);
+    surface->output = NULL;
+    wl_list_remove(&surface->output_disable.link);
+    wl_list_init(&surface->output_disable.link);
+}
+
 static void handle_set_output(struct wl_client *client, struct wl_resource *resource,
                               struct wl_resource *output)
 {
-    // Not implemented yet
+    struct ukui_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
+
+    struct output *surface_output = output_from_resource(output);
+    if (!surface_output || surface->output == surface_output) {
+        return;
+    }
+
+    surface->output = surface_output;
+    wl_list_remove(&surface->output_disable.link);
+    wl_signal_add(&surface->output->events.disable, &surface->output_disable);
 }
 
 static void ukui_surface_apply_position(struct ukui_surface *surface)
 {
     if (surface->view) {
+        if (surface->output) {
+            surface->x += surface->output->geometry.x;
+            surface->y += surface->output->geometry.y;
+        } else {
+            struct seat *seat = surface->view->base.focused_seat;
+            struct kywc_output *kywc_output =
+                kywc_output_at_point(seat->cursor->lx, seat->cursor->ly);
+            surface->x += kywc_output->state.lx;
+            surface->y += kywc_output->state.ly;
+        }
         kywc_view_move(&surface->view->base, surface->x, surface->y);
     } else if (surface->buffer) {
         struct ky_scene_node *node = &surface->buffer->node;
@@ -263,6 +295,9 @@ static void handle_set_property(struct wl_client *client, struct wl_resource *re
                                 uint32_t property, uint32_t value)
 {
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
 
     switch (property) {
     case UKUI_SURFACE_PROPERTY_NO_TITLEBAR:
@@ -632,8 +667,10 @@ static void surface_handle_destroy(struct wl_listener *listener, void *data)
 
     wl_list_remove(&surface->surface_map.link);
     wl_list_remove(&surface->surface_destroy.link);
+    wl_list_remove(&surface->output_disable.link);
 
     surface->wlr_surface = NULL;
+    surface->output = NULL;
 }
 
 static void ukui_surface_handle_resource_destroy(struct wl_resource *resource)
@@ -689,6 +726,8 @@ static void handle_create_surface(struct wl_client *client, struct wl_resource *
     wl_signal_add(&wlr_surface->events.map, &surface->surface_map);
     surface->surface_destroy.notify = surface_handle_destroy;
     wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
+    surface->output_disable.notify = surface_handle_output_disable;
+    wl_list_init(&surface->output_disable.link);
 
     surface->view = view_try_from_wlr_surface(surface->wlr_surface);
     surface->view_destroy.notify = surface_handle_view_destroy;
