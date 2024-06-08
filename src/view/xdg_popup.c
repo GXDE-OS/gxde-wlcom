@@ -22,6 +22,7 @@ struct xdg_popup {
     struct wl_listener destroy;
     struct wl_listener new_popup;
     struct wl_listener commit;
+    struct wl_listener reposition;
 
     bool topmost_popup;
     bool use_usable_area;
@@ -34,6 +35,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->destroy.link);
     wl_list_remove(&popup->new_popup.link);
     wl_list_remove(&popup->commit.link);
+    wl_list_remove(&popup->reposition.link);
 
     /* only need to destroy the topmost popup parent tree,
      * popup tree will be destroyed by xdg_surface destroy in scene
@@ -57,12 +59,8 @@ static void popup_handle_new_xdg_popup(struct wl_listener *listener, void *data)
     _xdg_popup_create(wlr_popup, popup->popup_tree, popup->shell_tree, popup->use_usable_area);
 }
 
-static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
+static void popup_unconstrain(struct xdg_popup *popup)
 {
-    struct xdg_popup *popup = wl_container_of(listener, popup, commit);
-    wl_list_remove(&popup->commit.link);
-    wl_list_init(&popup->commit.link);
-
     /* TODO: popup unconstrain output, add input_manager_get_last_seat */
     struct output *output = input_current_output(input_manager_get_default_seat());
     struct kywc_box *output_box = popup->use_usable_area ? &output->usable_area : &output->geometry;
@@ -78,6 +76,20 @@ static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
     };
 
     wlr_xdg_popup_unconstrain_from_box(popup->wlr_xdg_popup, &toplevel_space_box);
+}
+
+static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
+{
+    struct xdg_popup *popup = wl_container_of(listener, popup, commit);
+    if (popup->wlr_xdg_popup->base->initial_commit) {
+        popup_unconstrain(popup);
+    }
+}
+
+static void handle_xdg_popup_reposition(struct wl_listener *listener, void *data)
+{
+    struct xdg_popup *popup = wl_container_of(listener, popup, reposition);
+    popup_unconstrain(popup);
 }
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
@@ -103,6 +115,8 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
     wl_signal_add(&wlr_xdg_popup->base->events.new_popup, &popup->new_popup);
     popup->commit.notify = handle_xdg_popup_commit;
     wl_signal_add(&wlr_xdg_popup->base->surface->events.commit, &popup->commit);
+    popup->reposition.notify = handle_xdg_popup_reposition;
+    wl_signal_add(&wlr_xdg_popup->events.reposition, &popup->reposition);
 
     return popup;
 }
