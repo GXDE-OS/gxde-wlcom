@@ -128,8 +128,6 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
     slide_data->thumbnail_buffer = event->buffer;
     slide_data->thumbnail_texture = wlr_texture_from_buffer(slide_effect->renderer, event->buffer);
-
-    thumbnail_mark_wants_update(slide_data->node_thumbnail, false);
 }
 
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -191,13 +189,6 @@ static void slide_data_destroy(struct slide_data *data)
 
     wl_list_remove(&data->node_destroy.link);
     free(data);
-}
-
-static void slide_entity_push_damage(struct effect_entity *entity)
-{
-    struct effect_chain *chain = entity->slot.chain;
-    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
-    ky_scene_node_push_damage(node_chain->node, KY_SCENE_DAMAGE_BOTH, NULL);
 }
 
 static void slide_entity_destroy(struct effect_entity *entity)
@@ -343,14 +334,14 @@ static bool slide_frame_render_pre(struct effect_entity *entity,
     const struct animation_data *animation_data = animator_value(data->animator, time);
     data->current = *animation_data;
 
-    slide_entity_push_damage(entity);
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
 static bool slide_frame_render_post(struct effect_entity *entity,
                                     struct ky_scene_render_target *target)
 {
-    slide_entity_push_damage(entity);
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
