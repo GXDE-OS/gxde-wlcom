@@ -183,8 +183,6 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
     return buffers;
 }
 
-static int32_t get_color_int(float *rgba);
-
 static void theme_override_config(struct theme *theme)
 {
     struct theme_override *override = &manager->override;
@@ -695,7 +693,7 @@ static struct icon *theme_icon_find(const char *app_id)
     }
 
     if (icon_name) {
-        /* get icon from icon_name*/
+        /* get icon from icon_name */
         icon = icon_theme_get_icon(theme, icon_name, true);
         if (!icon && theme != manager->hicolor_theme) {
             icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
@@ -711,7 +709,7 @@ static struct icon *theme_icon_find(const char *app_id)
         }
     }
 
-    /* get icon from app_id*/
+    /* get icon from app_id */
     if (!icon) {
         icon = icon_theme_get_icon(theme, app_id, true);
         if (!icon && theme != manager->hicolor_theme) {
