@@ -7,13 +7,15 @@
 
 #include <wlr/types/wlr_compositor.h>
 
+#include "input/cursor.h"
+#include "input/seat.h"
 #include "output.h"
 #include "plasma-shell-protocol.h"
 #include "scene/surface.h"
 #include "view_p.h"
 
-#define PLASMA_SURFACE_VERSION 7
-#define PLASMA_SHELL_VERSION 7
+#define PLASMA_SURFACE_VERSION 8
+#define PLASMA_SHELL_VERSION 8
 
 struct kde_plasma_shell {
     struct wl_global *global;
@@ -48,6 +50,7 @@ struct kde_plasma_surface {
     enum org_kde_plasma_surface_role role;
     bool skip_taskbar, skip_switcher;
     bool role_changed;
+    bool open_under_cursor;
 };
 
 static void handle_destroy(struct wl_client *client, struct wl_resource *resource)
@@ -117,23 +120,8 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
     case ORG_KDE_PLASMA_SURFACE_ROLE_CRITICALNOTIFICATION:
         kywc_view->role = KYWC_VIEW_ROLE_CRITICALNOTIFICATION;
         break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_SYSTEMWINDOW:
-        kywc_view->role = KYWC_VIEW_ROLE_SYSTEMWINDOW;
-        break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_INPUTPANEL:
-        kywc_view->role = KYWC_VIEW_ROLE_INPUTPANEL;
-        break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_LOGOUT:
-        kywc_view->role = KYWC_VIEW_ROLE_LOGOUT;
-        break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCK:
-        kywc_view->role = KYWC_VIEW_ROLE_SCREENLOCK;
-        break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_SCREENLOCKNOTIFICATION:
-        kywc_view->role = KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION;
-        break;
-    case ORG_KDE_PLASMA_SURFACE_ROLE_WATERMARK:
-        kywc_view->role = KYWC_VIEW_ROLE_WATERMARK;
+    case ORG_KDE_PLASMA_SURFACE_ROLE_APPLETPOPUP:
+        kywc_view->role = KYWC_VIEW_ROLE_APPLETPOPUP;
         break;
     }
     view_apply_role(view_from_kywc_view(kywc_view));
@@ -221,6 +209,20 @@ static void handle_set_skip_switcher(struct wl_client *client, struct wl_resourc
     }
 }
 
+static void handle_open_under_cursor(struct wl_client *client, struct wl_resource *resource)
+{
+    struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
+    surface->open_under_cursor = true;
+
+    if (surface->view) {
+        struct seat *seat = surface->view->base.focused_seat;
+        kywc_view_move(&surface->view->base, seat->cursor->lx, seat->cursor->ly);
+    }
+}
+
 static const struct org_kde_plasma_surface_interface kde_plasma_surface_impl = {
     .destroy = handle_destroy,
     .set_output = handle_set_output,
@@ -232,6 +234,7 @@ static const struct org_kde_plasma_surface_interface kde_plasma_surface_impl = {
     .panel_auto_hide_show = handle_panel_auto_hide_show,
     .set_panel_takes_focus = handle_set_panel_takes_focus,
     .set_skip_switcher = handle_set_skip_switcher,
+    .open_under_cursor = handle_open_under_cursor,
 };
 
 static void surface_handle_output_update_usable_area(struct wl_listener *listener, void *data)
@@ -391,6 +394,12 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     surface->view->base.skip_taskbar = surface->skip_taskbar;
     surface->view->base.skip_switcher = surface->skip_switcher;
     kde_plasma_surface_apply_role(surface);
+
+    if (surface->open_under_cursor) {
+        struct seat *seat = surface->view->base.focused_seat;
+        surface->view->base.has_initial_position = true;
+        kywc_view_move(&surface->view->base, seat->cursor->lx, seat->cursor->ly);
+    }
 
     /* apply set_position called before map */
     if (surface->x != INT32_MAX || surface->y != INT32_MAX) {

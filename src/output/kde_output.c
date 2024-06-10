@@ -12,9 +12,9 @@
 #include "output_p.h"
 #include "util/wayland.h"
 
-#define OUTPUT_DEVICE_VERSION 2
+#define OUTPUT_DEVICE_VERSION 8
 #define OUTPUT_DEVICE_MODE_VERSION 1
-#define OUTPUT_MANAGER_VERSION 2
+#define OUTPUT_MANAGER_VERSION 9
 #define KDE_PRIMARY_OUTPUT_VERSION 2
 #define ORG_KDE_KWIN_DPMS_MANAGER_VERSION 1
 
@@ -77,6 +77,7 @@ struct kde_output_configs {
     struct kywc_output *pending_primary;
 
     struct wl_list configs;
+    bool applied;
 };
 
 struct kde_output_device_client {
@@ -209,8 +210,14 @@ static void output_configure_handle_scale(struct wl_client *client, struct wl_re
 static void output_configure_handle_apply(struct wl_client *client, struct wl_resource *resource)
 {
     struct kde_output_configs *configs = wl_resource_get_user_data(resource);
-    struct kywc_output *primary_output = management->primary_output.current_primary;
+    if (configs->applied) {
+        wl_resource_post_error(resource, KDE_OUTPUT_CONFIGURATION_V2_ERROR_ALREADY_APPLIED,
+                               "an output configuration can be applied only once");
+        return;
+    }
+    configs->applied = true;
 
+    struct kywc_output *primary_output = management->primary_output.current_primary;
     if (wl_list_empty(&management->output_devices) || !primary_output) {
         kywc_log(KYWC_WARN, "configuration cannot be applied");
         kde_output_configuration_v2_send_failed(resource);
@@ -306,6 +313,71 @@ static void output_configure_set_primary_output(struct wl_client *client,
     }
 }
 
+static void output_configure_set_priority(struct wl_client *client, struct wl_resource *resource,
+                                          struct wl_resource *outputdevice, uint32_t priority)
+{
+}
+
+static void output_configure_set_high_dynamic_range(struct wl_client *client,
+                                                    struct wl_resource *resource,
+                                                    struct wl_resource *outputdevice,
+                                                    uint32_t enable_hdr)
+{
+}
+
+static void output_configure_set_sdr_brightness(struct wl_client *client,
+                                                struct wl_resource *resource,
+                                                struct wl_resource *outputdevice,
+                                                uint32_t sdr_brightness)
+{
+}
+
+static void output_configure_set_wide_color_gamut(struct wl_client *client,
+                                                  struct wl_resource *resource,
+                                                  struct wl_resource *outputdevice,
+                                                  uint32_t enable_wcg)
+{
+}
+
+static void output_configure_set_auto_rotate_policy(struct wl_client *client,
+                                                    struct wl_resource *resource,
+                                                    struct wl_resource *outputdevice,
+                                                    uint32_t policy)
+{
+}
+
+static void output_configure_set_icc_profile_path(struct wl_client *client,
+                                                  struct wl_resource *resource,
+                                                  struct wl_resource *outputdevice,
+                                                  const char *profile_path)
+{
+}
+
+static void output_configure_set_brightness_overrides(
+    struct wl_client *client, struct wl_resource *resource, struct wl_resource *outputdevice,
+    int32_t max_peak_brightness, int32_t max_frame_average_brightness, int32_t min_brightness)
+{
+}
+
+static void output_configure_set_sdr_gamut_wideness(struct wl_client *client,
+                                                    struct wl_resource *resource,
+                                                    struct wl_resource *outputdevice,
+                                                    uint32_t gamut_wideness)
+{
+}
+
+static void output_configure_set_color_profile_source(struct wl_client *client,
+                                                      struct wl_resource *resource,
+                                                      struct wl_resource *outputdevice,
+                                                      uint32_t color_profile_source)
+{
+}
+
+static void output_configure_set_brightness(struct wl_client *client, struct wl_resource *resource,
+                                            struct wl_resource *outputdevice, uint32_t brightness)
+{
+}
+
 static const struct kde_output_configuration_v2_interface kde_output_configure_impl = {
     .enable = output_configure_handle_enable,
     .mode = output_configure_handle_mode,
@@ -318,6 +390,16 @@ static const struct kde_output_configuration_v2_interface kde_output_configure_i
     .set_vrr_policy = output_configure_set_vrr_policy,
     .set_rgb_range = output_configure_set_rgb_range,
     .set_primary_output = output_configure_set_primary_output,
+    .set_priority = output_configure_set_priority,
+    .set_high_dynamic_range = output_configure_set_high_dynamic_range,
+    .set_sdr_brightness = output_configure_set_sdr_brightness,
+    .set_wide_color_gamut = output_configure_set_wide_color_gamut,
+    .set_auto_rotate_policy = output_configure_set_auto_rotate_policy,
+    .set_icc_profile_path = output_configure_set_icc_profile_path,
+    .set_brightness_overrides = output_configure_set_brightness_overrides,
+    .set_sdr_gamut_wideness = output_configure_set_sdr_gamut_wideness,
+    .set_color_profile_source = output_configure_set_color_profile_source,
+    .set_brightness = output_configure_set_brightness,
 };
 
 static void kde_output_configs_handle_resource_destroy(struct wl_resource *resource)

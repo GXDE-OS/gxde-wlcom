@@ -13,7 +13,7 @@
 #include "theme.h"
 #include "view_p.h"
 
-#define PLASMA_WINDOW_MANAGEMENT_VERSION 16
+#define PLASMA_WINDOW_MANAGEMENT_VERSION 17
 
 struct kde_plasma_window_management {
     struct wl_global *global;
@@ -536,10 +536,26 @@ static void handle_show_desktop(struct wl_client *client, struct wl_resource *re
     view_manager_show_desktop(state == ORG_KDE_PLASMA_WINDOW_MANAGEMENT_SHOW_DESKTOP_ENABLED, true);
 }
 
+static void handle_get_stacking_order(struct wl_client *client,
+                                      struct wl_resource *management_resource, uint32_t id)
+{
+    uint32_t version = wl_resource_get_version(management_resource);
+    struct wl_resource *resource =
+        wl_resource_create(client, &org_kde_plasma_stacking_order_interface, version, id);
+    if (!resource) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+
+    // TODO: org_kde_plasma_stacking_order_send_window and org_kde_plasma_stacking_order_send_done
+    wl_resource_destroy(resource);
+}
+
 static const struct org_kde_plasma_window_management_interface kde_plasma_window_management_impl = {
     .show_desktop = handle_show_desktop,
     .get_window = handle_get_window,
     .get_window_by_uuid = handle_get_window_by_uuid,
+    .get_stacking_order = handle_get_stacking_order,
 };
 
 static void management_handle_resource_destroy(struct wl_resource *resource)
@@ -578,7 +594,9 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         }
     }
 
-    // TODO: stacking_order_changed, stacking_order_uuid_changed
+    if (version > ORG_KDE_PLASMA_WINDOW_MANAGEMENT_GET_STACKING_ORDER_SINCE_VERSION) {
+        org_kde_plasma_window_management_send_stacking_order_changed_2(resource);
+    }
 }
 
 static void window_handle_view_unmap(struct wl_listener *listener, void *data)
