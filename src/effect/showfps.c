@@ -123,7 +123,7 @@ static void frame_output_create(struct showfps_effect *effect, struct ky_scene_o
     output->node = ky_scene_node_from_widget(output->widget);
     ky_scene_node_set_input_bypassed(output->node, true);
 
-    wlr_output_schedule_frame(output->output->output);
+    output_schedule_frame(output->output->output);
 }
 
 static void handle_new_enabled_output(struct wl_listener *listener, void *data)

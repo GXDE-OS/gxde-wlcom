@@ -56,7 +56,7 @@ static void animation_entity_update_output(struct animation_entity *entity, bool
 
     struct kywc_output *output = kywc_output_at_point(lx, ly);
     struct output *o = output_from_kywc_output(output);
-    wlr_output_schedule_frame(o->wlr_output);
+    output_schedule_frame(o->wlr_output);
 
     if (output == entity->output) {
         return;

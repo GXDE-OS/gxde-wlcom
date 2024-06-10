@@ -140,7 +140,7 @@ static void thumbnail_manager_schedule_frame(void)
 {
     struct thumbnail_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
-        wlr_output_schedule_frame(output->output->output);
+        output_schedule_frame(output->output->output);
     }
 }
 
@@ -1089,7 +1089,7 @@ struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, f
     wl_signal_init(&thumbnail->events.destroy);
     thumbnail->force_update = thumbnail->wants_update = true;
     /* buffer update is needed */
-    wlr_output_schedule_frame(output->output);
+    output_schedule_frame(output->output);
 
     return thumbnail;
 }

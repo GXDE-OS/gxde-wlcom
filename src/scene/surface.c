@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 
+#include "output.h"
 #include "scene/surface.h"
 
 static void handle_scene_buffer_outputs_update(struct wl_listener *listener, void *data)
@@ -145,7 +146,7 @@ static void handle_scene_surface_surface_commit(struct wl_listener *listener, vo
     struct ky_scene_output *primary_output = surface->buffer->primary_output;
     if (!wl_list_empty(&surface->surface->current.frame_callback_list) && primary_output != NULL &&
         enabled) {
-        wlr_output_schedule_frame(primary_output->output);
+        output_schedule_frame(primary_output->output);
     }
 }
 

@@ -11,6 +11,7 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/util/region.h>
 
+#include "output.h"
 #include "scene_p.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -278,17 +279,16 @@ static void ky_scene_tree_init(struct ky_scene_tree *tree, struct ky_scene_tree 
 
 static void scene_damage_outputs(struct ky_scene *scene, const pixman_region32_t *damage)
 {
-    int x, y, width, height;
-
+    struct output *output;
     struct ky_scene_output *scene_output;
     wl_list_for_each(scene_output, &scene->outputs, link) {
-        x = scene_output->x;
-        y = scene_output->y;
-        wlr_output_effective_resolution(scene_output->output, &width, &height);
-
+        output = output_from_wlr_output(scene_output->output);
         if (pixman_region32_contains_rectangle(
-                damage, &(pixman_box32_t){ x, y, x + width, y + height }) != PIXMAN_REGION_OUT) {
-            wlr_output_schedule_frame(scene_output->output);
+                damage, &(pixman_box32_t){ output->geometry.x, output->geometry.y,
+                                           output->geometry.x + output->geometry.width,
+                                           output->geometry.y + output->geometry.height }) !=
+            PIXMAN_REGION_OUT) {
+            output_schedule_frame(scene_output->output);
         }
     }
 }

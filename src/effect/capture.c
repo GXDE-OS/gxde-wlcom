@@ -211,7 +211,7 @@ static void capture_manager_schedule_frame(void)
 {
     struct capture_output *output;
     wl_list_for_each(output, &manager->outputs, link) {
-        wlr_output_schedule_frame(output->output->wlr_output);
+        output_schedule_frame(output->output->wlr_output);
     }
 }
 

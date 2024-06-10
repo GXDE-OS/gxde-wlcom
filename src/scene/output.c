@@ -117,7 +117,7 @@ void ky_scene_output_layout_add_output(struct ky_scene_output_layout *sol,
 void ky_scene_output_damage_whole(struct ky_scene_output *scene_output)
 {
     wlr_damage_ring_add_whole(&scene_output->damage_ring);
-    wlr_output_schedule_frame(scene_output->output);
+    output_schedule_frame(scene_output->output);
 }
 
 static void scene_output_layout_handle_layout_destroy(struct wl_listener *listener, void *data)
@@ -168,7 +168,7 @@ static void scene_output_update_geometry(struct ky_scene_output *scene_output, b
     wlr_damage_ring_set_bounds(&scene_output->damage_ring, width, height);
 
     wlr_damage_ring_add_whole(&scene_output->damage_ring);
-    wlr_output_schedule_frame(scene_output->output);
+    output_schedule_frame(scene_output->output);
 
     ky_scene_node_update_outputs(&scene_output->scene->tree.node, &scene_output->scene->outputs,
                                  NULL, force_update ? scene_output : NULL);
@@ -221,7 +221,7 @@ static void scene_output_handle_damage(struct wl_listener *listener, void *data)
     wlr_region_scale(&damage, event->damage, 1 / event->output->scale);
 
     if (wlr_damage_ring_add(&scene_output->damage_ring, &damage)) {
-        wlr_output_schedule_frame(scene_output->output);
+        output_schedule_frame(scene_output->output);
     }
 
     pixman_region32_fini(&damage);
@@ -231,7 +231,7 @@ static void scene_output_handle_needs_frame(struct wl_listener *listener, void *
 {
     struct ky_scene_output *scene_output =
         wl_container_of(listener, scene_output, output_needs_frame);
-    wlr_output_schedule_frame(scene_output->output);
+    output_schedule_frame(scene_output->output);
 }
 
 struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wlr_output *output)

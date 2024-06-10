@@ -160,7 +160,7 @@ static void item_click(struct seat *seat, struct ky_scene_node *node, uint32_t b
             switcher->direction = NONE;
         }
     }
-    wlr_output_schedule_frame(switcher->output);
+    output_schedule_frame(switcher->output);
 }
 
 static const struct input_event_node_impl item_impl = {
@@ -268,7 +268,7 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
         break;
     }
 
-    wlr_output_schedule_frame(switcher->output);
+    output_schedule_frame(switcher->output);
     return true;
 }
 
@@ -568,7 +568,7 @@ static bool show_maximize_switcher(void)
     switcher->current = -1;
     switcher->direction = BOTTOM;
     switcher->output = output->wlr_output;
-    wlr_output_schedule_frame(switcher->output);
+    output_schedule_frame(switcher->output);
 
     return true;
 }

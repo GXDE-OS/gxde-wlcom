@@ -1176,7 +1176,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     if (enabled && output_gamma_changed(output, state)) {
         output->gamma_changed = true;
         if (output_use_hardware_gamma(output)) {
-            wlr_output_schedule_frame(output->wlr_output);
+            output_schedule_frame(output->wlr_output);
         } else {
             // software gamma need update render damage and cursor buffer
             if (output->scene_output) {
@@ -1564,4 +1564,11 @@ void output_layout_get_workarea(struct wlr_box *box)
     box->y = workarea_top;
     box->width = workarea_right - workarea_left;
     box->height = workarea_bottom - workarea_top;
+}
+
+void output_schedule_frame(struct wlr_output *wlr_output)
+{
+    if (output_manager->server->active) {
+        wlr_output_schedule_frame(wlr_output);
+    }
 }
