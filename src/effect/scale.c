@@ -89,8 +89,8 @@ static void scale_calc_start_and_end_geometry(struct scale_effect_data *data)
         struct kywc_box end_box = { 0, 0, 10, 10 };
         if (view->minimized_when_show_desktop) {
             struct output *output = output_from_kywc_output(view->output);
-            end_box.x = (output->geometry.width - end_box.width) / 2;
-            end_box.y = (output->geometry.height - end_box.height) / 2;
+            end_box.x = output->geometry.x + (output->geometry.width - end_box.width) / 2;
+            end_box.y = output->geometry.y + (output->geometry.height - end_box.height) / 2;
         } else {
             if (view->minimized_geometry.panel_surface) {
                 int lx, ly;
