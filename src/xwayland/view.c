@@ -522,7 +522,7 @@ static void xwayland_view_handle_output_update_usable_area(struct wl_listener *l
 }
 
 // XXX: set enabled arg if we need update usable_area when minimize and unmap
-static void xwayland_view_set_sruct_partial(struct xwayland_view *xwayland_view, bool enabled)
+static void xwayland_view_set_strut_partial(struct xwayland_view *xwayland_view, bool enabled)
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
     xcb_ewmh_wm_strut_partial_t *strut = wlr_xwayland_surface->strut_partial;
@@ -557,7 +557,7 @@ static void xwayland_view_handle_set_strut_partial(struct wl_listener *listener,
 {
     struct xwayland_view *xwayland_view =
         wl_container_of(listener, xwayland_view, set_strut_partial);
-    xwayland_view_set_sruct_partial(xwayland_view, true);
+    xwayland_view_set_strut_partial(xwayland_view, true);
 }
 
 static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, struct kywc_box *geo)
@@ -770,7 +770,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
 
     view_map(&xwayland_view->view);
 
-    xwayland_view_set_sruct_partial(xwayland_view, true);
+    xwayland_view_set_strut_partial(xwayland_view, true);
 }
 
 static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
