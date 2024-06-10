@@ -37,11 +37,6 @@ struct output {
     struct kywc_box geometry;
     struct kywc_box usable_area;
 
-    /* software rendering and gamma settings for color-temp and brightness */
-    uint32_t color_temp;
-    uint32_t brightness;
-    bool gamma_changed;
-
     struct {
         /* emit when output is disabled: off or destroy */
         struct wl_signal disable;
@@ -61,8 +56,16 @@ struct output {
 
     /* output damage in layout coord */
     pixman_region32_t damage_region;
-    bool modeset;
-    bool pageflip;
+
+    /* software rendering and gamma settings for color-temp and brightness */
+    uint32_t color_temp;
+    uint32_t brightness;
+    bool gamma_changed;
+
+    bool modeset, pageflip;
+
+    bool has_pending;
+    struct kywc_output_state pending_state;
 };
 
 typedef void (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);

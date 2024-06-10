@@ -56,7 +56,6 @@ struct kywc_output {
     const char *uuid;
     const char *edid; // base64
     bool destroying;
-    bool has_pending;
 
     struct kywc_output_prop prop;
     struct kywc_output_state state;
@@ -74,8 +73,6 @@ struct kywc_output {
 
         struct wl_signal destroy;
     } events;
-
-    struct kywc_output_state pending_state;
 };
 
 void kywc_output_add_new_listener(struct wl_listener *listener);

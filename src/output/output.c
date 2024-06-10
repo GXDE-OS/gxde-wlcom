@@ -355,11 +355,9 @@ static void handle_output_present(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, present);
     output->pageflip = true;
-    struct kywc_output *kywc_output = &output->base;
-    output->base.has_pending = kywc_output->has_pending
-                                   ? kywc_output_set_state(kywc_output, &kywc_output->pending_state)
-                                   : false;
-    if (output->base.has_pending) {
+    output->has_pending =
+        output->has_pending ? kywc_output_set_state(&output->base, &output->pending_state) : false;
+    if (output->has_pending) {
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
     }
 }
@@ -367,9 +365,9 @@ static void handle_output_present(struct wl_listener *listener, void *data)
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
-    if (output->base.has_pending) {
+    if (output->has_pending) {
         output->wlr_output->frame_pending = true;
-        output->base.has_pending = false;
+        output->has_pending = false;
         return;
     }
 
@@ -1147,8 +1145,8 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
                        output->wlr_output->width == state->width &&
                        output->wlr_output->height == state->height && !output->pageflip &&
                        output->modeset) {
-                output->base.pending_state = *state;
-                output->base.has_pending = true;
+                output->pending_state = *state;
+                output->has_pending = true;
                 kywc_log(KYWC_WARN, "drm output commit need waitting for pageflip");
                 return true;
             }
