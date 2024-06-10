@@ -13,7 +13,7 @@
 struct server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
-    bool ready, start, terminate;
+    bool ready, start, terminate, active;
 
     /* system bus */
     struct sd_bus *sys_bus;

@@ -135,7 +135,9 @@ static void handle_session_active(struct wl_listener *listener, void *data)
 {
     struct server *server = wl_container_of(listener, server, session_active);
     struct wlr_session *session = server->session;
-    wl_signal_emit_mutable(&server->events.active, (void *)session->active);
+    kywc_log(KYWC_INFO, "session becomes %sactive", session->active ? "" : "in");
+    server->active = session->active;
+    wl_signal_emit_mutable(&server->events.active, NULL);
 }
 
 static bool wlroots_server_init(struct server *server)
@@ -150,6 +152,7 @@ static bool wlroots_server_init(struct server *server)
     }
 
     if (server->session) {
+        server->active = server->session->active;
         server->session_active.notify = handle_session_active;
         wl_signal_add(&server->session->events.active, &server->session_active);
     }
