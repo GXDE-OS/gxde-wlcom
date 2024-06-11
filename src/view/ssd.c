@@ -469,10 +469,6 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         ssd_tooltip_show(seat, part, false);
     }
 
-    if (LEFT_BUTTON_PRESSED(button, pressed) && part->type <= SSD_BUTTON_CLOSE) {
-        ssd_part_set_button_buffer(part, BUTTON_STATE_CLICKED);
-    }
-
     if (CLICK_STATE_DOUBLE == state) {
         if (button != BTN_LEFT) {
             return;
@@ -497,6 +493,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     if (CLICK_STATE_FOCUS_LOST == state) {
         /* menu and ssd buttons do not effective */
         return;
+    }
+
+    if (LEFT_BUTTON_PRESSED(button, pressed) && part->type <= SSD_BUTTON_CLOSE) {
+        ssd_part_set_button_buffer(part, BUTTON_STATE_CLICKED);
     }
 
     switch (part->type) {
