@@ -163,6 +163,7 @@ static void scale_entity_destroy(struct effect_entity *entity)
     struct view *view = data->view;
     if (view->base.minimized) {
         ky_scene_node_set_enabled(&view->tree->node, false);
+        ky_scene_node_set_input_bypassed(&view->tree->node, false);
         view->current_proxy ? ky_scene_node_lower_to_bottom(&view->current_proxy->tree->node)
                             : ky_scene_node_lower_to_bottom(&view->tree->node);
     }
@@ -454,6 +455,7 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
     if (entity->user_data) {
         if (view->base.minimized) {
             ky_scene_node_set_enabled(&view->tree->node, true);
+            ky_scene_node_set_input_bypassed(&view->tree->node, true);
         }
         struct scale_effect_data *scale_data = entity->user_data;
         scale_data->action = action;
@@ -466,6 +468,7 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
 
     if (view->base.minimized) {
         ky_scene_node_set_enabled(&view->tree->node, true);
+        ky_scene_node_set_input_bypassed(&view->tree->node, true);
         ky_scene_node_raise_to_top(view->current_proxy ? &view->current_proxy->tree->node
                                                        : &view->tree->node);
     }
