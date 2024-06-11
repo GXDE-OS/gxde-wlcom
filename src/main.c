@@ -62,7 +62,7 @@ static void enable_debug_flag(struct server *server, const char *flag)
     } else if (strcmp(flag, "loginmtime") == 0) {
         server->options.log_in_realtime = false;
     } else {
-        printf("Unknown debug flag: %s", flag);
+        printf("Unknown debug flag: %s\n", flag);
     }
 }
 
