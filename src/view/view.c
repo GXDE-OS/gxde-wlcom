@@ -1352,7 +1352,8 @@ void view_apply_role(struct view *view)
     kywc_view->focusable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
                            kywc_view->role == KYWC_VIEW_ROLE_DESKTOP ||
                            kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
-                           kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK;
+                           kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK ||
+                           kywc_view->role == KYWC_VIEW_ROLE_APPLETPOPUP;
 
     kywc_view->has_round_corner =
         kywc_view->role == KYWC_VIEW_ROLE_NORMAL || kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW;
