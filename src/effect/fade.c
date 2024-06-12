@@ -507,6 +507,7 @@ static bool fade_create_scene_buffer(struct view *view, struct fade_effect_data 
     wl_signal_add(&buffer->node.events.destroy, &data->buffer_destroy);
 
     ky_scene_node_raise_to_top(&buffer->node);
+    ky_scene_node_set_input_bypassed(&buffer->node, true);
     data->buffer = buffer;
     entity->user_data = data;
 
