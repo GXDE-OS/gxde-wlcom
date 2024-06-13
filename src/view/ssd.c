@@ -633,15 +633,15 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     int x, y;
     y = theme->border_width + (theme->title_height - text_height) / 2;
     if (theme->text_justify == JUSTIFY_LEFT) {
-        x = theme->button_width + theme->border_width + y;
+        x = theme->button_width + y;
     } else if (theme->text_justify == JUSTIFY_CENTER) {
-        x = (theme->border_width * 2 + view->geometry.width - text_width) / 2;
+        x = (view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
         if (text_width + 4 * theme->button_width > max_width) {
             x -= theme->button_width;
         }
     } else {
-        x = theme->border_width + theme->button_width + max_width - text_width + y;
+        x = theme->button_width + max_width - text_width + y;
     }
     /* setting position directly is better */
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_TEXT].node, x, y);
@@ -708,10 +708,12 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         ky_scene_decoration_from_node(ssd->parts[SSD_FRAME_RECT].node);
 
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
+        float *c = view->activated ? theme->active_border_color : theme->inactive_border_color;
+        float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
+
         ky_scene_decoration_set_margin_color(
             frame, view->activated ? theme->active_bg_color : theme->inactive_bg_color,
-            view->activated ? theme->active_border_color : theme->inactive_border_color,
-            (float[4]){ 0.f, 0.f, 0.f, 0.5f });
+            border_color, (float[4]){ 0.f, 0.f, 0.f, 0.5f });
     }
 
     if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
@@ -764,13 +766,12 @@ static void ssd_update_margin(struct ssd *ssd)
 {
     struct kywc_view *view = ssd->kywc_view;
     struct theme *theme = theme_manager_get_current();
-    int border = view->ssd & KYWC_SSD_BORDER ? theme->border_width : 0;
     int title = view->ssd & KYWC_SSD_TITLE ? theme->title_height : 0;
 
-    view->margin.off_x = border;
-    view->margin.off_y = border + title;
-    view->margin.off_width = 2 * border;
-    view->margin.off_height = 2 * border + title;
+    view->margin.off_x = 0;
+    view->margin.off_y = title;
+    view->margin.off_width = 0;
+    view->margin.off_height = title;
 }
 
 static void ssd_update_parts(struct ssd *ssd, uint32_t cause)
