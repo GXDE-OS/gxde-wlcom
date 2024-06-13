@@ -485,6 +485,9 @@ static void handle_toplevel_activate(struct wl_listener *listener, void *data)
 {
     struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, activate);
 
+    wl_list_remove(&toplevel->link);
+    wl_list_insert(&toplevel->manager->toplevels, &toplevel->link);
+
     struct wl_resource *resource;
     wl_resource_for_each(resource, &toplevel->resources) {
         kywc_toplevel_v1_send_state(resource, toplevel_state(toplevel->view));
