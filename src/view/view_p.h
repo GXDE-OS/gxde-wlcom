@@ -102,10 +102,6 @@ bool xdg_dialog_create(struct server *server);
 
 bool xdg_activation_create(struct server *server);
 
-bool ukui_window_management_create(struct server *server);
-
-bool ukui_shell_create(struct server *server);
-
 #if HAVE_KDE_VIRTUAL_DESKTOP
 bool kde_virtual_desktop_management_create(struct server *server);
 #else
