@@ -150,6 +150,13 @@ static void handle_scene_surface_surface_commit(struct wl_listener *listener, vo
     }
 }
 
+static void handle_scene_surface_surface_map(struct wl_listener *listener, void *data)
+{
+    struct ky_scene_surface *surface = wl_container_of(listener, surface, surface_map);
+
+    set_buffer_with_surface_state(surface->buffer, surface->surface);
+}
+
 static bool scene_buffer_point_accepts_input(struct ky_scene_buffer *scene_buffer, double *sx,
                                              double *sy)
 {
@@ -174,6 +181,7 @@ static void surface_addon_destroy(struct wlr_addon *addon)
     wl_list_remove(&surface->frame_done.link);
     wl_list_remove(&surface->surface_destroy.link);
     wl_list_remove(&surface->surface_commit.link);
+    wl_list_remove(&surface->surface_map.link);
 
     free(surface);
 }
@@ -258,6 +266,9 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
     surface->surface_commit.notify = handle_scene_surface_surface_commit;
     wl_signal_add(&wlr_surface->events.commit, &surface->surface_commit);
+
+    surface->surface_map.notify = handle_scene_surface_surface_map;
+    wl_signal_add(&wlr_surface->events.map, &surface->surface_map);
 
     wlr_addon_init(&surface->addon, &scene_buffer->node.addons, scene_buffer, &surface_addon_impl);
     wlr_addon_init(&surface->node_addon, &wlr_surface->addons, wlr_surface,

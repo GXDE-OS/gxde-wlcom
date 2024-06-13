@@ -37,6 +37,7 @@ struct ky_scene_surface {
     struct wl_listener frame_done;
     struct wl_listener surface_destroy;
     struct wl_listener surface_commit;
+    struct wl_listener surface_map;
 };
 
 struct ky_scene_tree *ky_scene_subsurface_tree_create(struct ky_scene_tree *parent,
