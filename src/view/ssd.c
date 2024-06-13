@@ -688,7 +688,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_MAXIMIZE) {
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node, view->maximizable);
         if (view->maximizable) {
-            /* set maximize and restore  */
+            /* set maximize and restore */
             ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], BUTTON_STATE_NONE);
         }
 
@@ -840,7 +840,8 @@ static void ssd_create_parts(struct ssd *ssd, float scale)
                     parent, scale, ssd_update_buffer, ssd_destroy_buffer, &ssd->parts[i]);
                 ssd->parts[i].node = &buf->node;
                 ssd->parts[i].scale = scale;
-                /* set_buffer will emit output_enter,
+                /**
+                 * set_buffer will emit output_enter,
                  * otherwise we cannot get initial output the view in.
                  */
                 if (i == SSD_TITLE_ICON) {
@@ -962,7 +963,8 @@ static void ssd_parts_create(struct ssd *ssd)
         theme_manager_add_update_listener(&ssd->theme_update);
     }
 
-    /* detect scale by view geometry.
+    /**
+     * detect scale by view geometry.
      * it doesn't matter if setting to 1.0, scale will be set to best value
      * in output_enter listener.
      */
