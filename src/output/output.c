@@ -647,18 +647,9 @@ bool output_manager_configure_outputs(void)
     bool need_fix_primary_output = false;
     if (!output_manager->pending_primary && output_manager->primary_output &&
         !output_manager->primary_output->prop.is_virtual) {
-        struct output *output;
-        wl_list_for_each(output, &output_manager->outputs, link) {
-            struct kywc_output *kywc_output = &output->base;
-            /* filter primary output is destroing output */
-            if (kywc_output != output_manager->primary_output) {
-                continue;
-            }
-            output_manager->pending_primary = output_manager->primary_output;
-            kywc_log(KYWC_WARN, "Fixup primary output to %s when no pending_primary",
-                     output_manager->primary_output->name);
-            break;
-        }
+        output_manager->pending_primary = output_manager->primary_output;
+        kywc_log(KYWC_WARN, "Fixup primary output to %s when no pending_primary",
+                 output_manager->primary_output->name);
     }
     need_fix_primary_output = !output_manager->pending_primary;
 
