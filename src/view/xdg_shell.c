@@ -385,6 +385,8 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     struct wlr_xdg_toplevel *toplevel = wlr_xdg_surface->toplevel;
 
     xdg_view_update_geometry(xdg_view);
+    wlr_xdg_toplevel_set_size(toplevel, xdg_view->view.base.geometry.width,
+                              xdg_view->view.base.geometry.height);
 
     /* all states are ready when map */
     view_set_app_id(&xdg_view->view, toplevel->app_id);
