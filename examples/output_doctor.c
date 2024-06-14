@@ -651,6 +651,11 @@ static void registry_handle_global(void *data, struct wl_registry *registry, uin
         output->version = version <= 4 ? version : 4;
         output->wl_output = wl_registry_bind(registry, name, &wl_output_interface, output->version);
         wl_output_add_listener(output->wl_output, &output_listener, output);
+
+        if (output_manager->dpms && !wl_list_empty(&output_manager->devices)) {
+            output->dpms = org_kde_kwin_dpms_manager_get(output_manager->dpms, output->wl_output);
+            org_kde_kwin_dpms_add_listener(output->dpms, &output_dpms_listener, output);
+        }
     }
 }
 
