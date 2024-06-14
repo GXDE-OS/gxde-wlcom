@@ -951,6 +951,10 @@ static void view_activate(struct view *view)
 
 void view_topmost_activate(struct workspace *workspace)
 {
+    if (!workspace) {
+        workspace = workspace_manager_get_current();
+    }
+
     struct view *view;
     struct view_proxy *view_proxy;
     /* find topmost enabled(mapped and not minimized) view and activate it */

@@ -8,7 +8,6 @@
 #include "input/event.h"
 #include "output.h"
 #include "scene/xdg_shell.h"
-#include "view/workspace.h"
 #include "view_p.h"
 
 struct xdg_popup {
@@ -49,7 +48,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     }
 
     if (popup->topmost_has_grab) {
-        view_topmost_activate(workspace_manager_get_current());
+        view_topmost_activate(NULL);
     }
 
     free(popup);

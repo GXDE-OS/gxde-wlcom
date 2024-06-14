@@ -11,7 +11,6 @@
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
-#include "view/workspace.h"
 #include "view_p.h"
 
 struct wlr_layer_shell_manager {
@@ -123,7 +122,7 @@ static void layer_shell_keyboard_interactivity(struct layer_shell *layer_shell, 
         }
         // XXX: auto focus layer_shell
         if (seat->wlr_seat->keyboard_state.focused_surface == layer_surface->surface) {
-            view_topmost_activate(workspace_manager_get_current());
+            view_topmost_activate(NULL);
         }
     }
 }
