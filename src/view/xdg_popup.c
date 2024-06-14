@@ -8,6 +8,7 @@
 #include "input/event.h"
 #include "output.h"
 #include "scene/xdg_shell.h"
+#include "view/workspace.h"
 #include "view_p.h"
 
 struct xdg_popup {
@@ -23,8 +24,10 @@ struct xdg_popup {
     struct wl_listener new_popup;
     struct wl_listener commit;
     struct wl_listener reposition;
+    struct wl_listener map;
 
     bool topmost_popup;
+    bool topmost_has_grab;
     bool use_usable_area;
 };
 
@@ -36,12 +39,17 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->new_popup.link);
     wl_list_remove(&popup->commit.link);
     wl_list_remove(&popup->reposition.link);
+    wl_list_remove(&popup->map.link);
 
     /* only need to destroy the topmost popup parent tree,
      * popup tree will be destroyed by xdg_surface destroy in scene
      */
     if (popup->topmost_popup) {
         ky_scene_node_destroy(&popup->parent_tree->node);
+    }
+
+    if (popup->topmost_has_grab) {
+        view_topmost_activate(workspace_manager_get_current());
     }
 
     free(popup);
@@ -92,6 +100,22 @@ static void handle_xdg_popup_reposition(struct wl_listener *listener, void *data
     popup_unconstrain(popup);
 }
 
+static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
+{
+    struct xdg_popup *popup = wl_container_of(listener, popup, map);
+    struct wlr_seat *seat = popup->wlr_xdg_popup->seat;
+
+    popup->topmost_has_grab = popup->topmost_popup && seat;
+    /* clear prev focused surface to hide prev focused window */
+    if (popup->topmost_has_grab) {
+        struct wlr_surface *surface = seat->keyboard_state.focused_surface;
+        /* skip the surface when it's the parent of popup */
+        if (surface && surface != popup->wlr_xdg_popup->parent) {
+            wlr_seat_keyboard_clear_focus(seat);
+        }
+    }
+}
+
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
                                            struct ky_scene_tree *parent,
                                            struct ky_scene_tree *shell, bool use_usable_area)
@@ -117,6 +141,8 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
     wl_signal_add(&wlr_xdg_popup->base->surface->events.commit, &popup->commit);
     popup->reposition.notify = handle_xdg_popup_reposition;
     wl_signal_add(&wlr_xdg_popup->events.reposition, &popup->reposition);
+    popup->map.notify = handle_xdg_popup_map;
+    wl_signal_add(&wlr_xdg_popup->base->surface->events.map, &popup->map);
 
     return popup;
 }
