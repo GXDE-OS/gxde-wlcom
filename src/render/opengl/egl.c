@@ -206,6 +206,17 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         return;
     }
 
+    /* for gbm_device_get_format_modifier_plane_count */
+    if (!no_modifiers && !egl->gbm_device) {
+        int gbm_fd = ky_egl_dup_drm_fd(egl);
+        if (gbm_fd >= 0) {
+            egl->gbm_device = gbm_create_device(gbm_fd);
+            if (!egl->gbm_device) {
+                close(gbm_fd);
+            }
+        }
+    }
+
     kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
 
     bool has_modifiers = false;
@@ -761,14 +772,6 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd)
         if (egl_device != EGL_NO_DEVICE_EXT) {
             if (egl_init(egl, EGL_PLATFORM_DEVICE_EXT, egl_device)) {
                 kywc_log(KYWC_DEBUG, "Using EGL_PLATFORM_DEVICE_EXT");
-                /* for gbm_device_get_format_modifier_plane_count */
-                int gbm_fd = open_render_node(egl, drm_fd);
-                if (gbm_fd >= 0) {
-                    egl->gbm_device = gbm_create_device(gbm_fd);
-                    if (!egl->gbm_device) {
-                        close(gbm_fd);
-                    }
-                }
                 return egl;
             }
             goto error;
