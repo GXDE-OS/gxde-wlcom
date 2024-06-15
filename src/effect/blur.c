@@ -543,6 +543,8 @@ static void render(const struct kywc_box *box, const pixman_region32_t *blur, GL
     glDisableVertexAttribArray(sdfpos_attrib);
 }
 
+#define ALIGN(x, y) (((x) + ((y)-1)) & ~((y)-1))
+
 static void blur_render(struct ky_scene_render_target *target,
                         const struct blur_render_options *options,
                         const pixman_region32_t *blur_region)
@@ -553,13 +555,14 @@ static void blur_render(struct ky_scene_render_target *target,
     struct ky_opengl_render_pass *gl_pass =
         ky_opengl_render_pass_from_wlr_render_pass(target->render_pass);
 
-    /* Translucent pos in frame_buffer. */
+    /* pos in frame_buffer */
+    int align_num = pow(2, blur_config.iterations);
     pixman_box32_t *cpy_box = pixman_region32_extents(blur_region);
     struct kywc_box buffer_cpy_box = {
         .x = cpy_box->x1,
         .y = cpy_box->y1,
-        .width = cpy_box->x2 - cpy_box->x1,
-        .height = cpy_box->y2 - cpy_box->y1,
+        .width = ALIGN(cpy_box->x2 - cpy_box->x1, align_num),
+        .height = ALIGN(cpy_box->y2 - cpy_box->y1, align_num),
     };
     struct glrtt_pool_texture *src_tex =
         glrtt_pool_get_texture(glrtt_pool, buffer_cpy_box.width, buffer_cpy_box.height);
