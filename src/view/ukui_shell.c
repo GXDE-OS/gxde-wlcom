@@ -116,6 +116,7 @@ static void handle_set_output(struct wl_client *client, struct wl_resource *reso
 static void ukui_surface_apply_position(struct ukui_surface *surface)
 {
     if (surface->view) {
+#if 0
         if (surface->output) {
             surface->x += surface->output->geometry.x;
             surface->y += surface->output->geometry.y;
@@ -126,6 +127,7 @@ static void ukui_surface_apply_position(struct ukui_surface *surface)
             surface->x += kywc_output->state.lx;
             surface->y += kywc_output->state.ly;
         }
+#endif
         kywc_view_move(&surface->view->base, surface->x, surface->y);
     } else if (surface->buffer) {
         struct ky_scene_node *node = &surface->buffer->node;
