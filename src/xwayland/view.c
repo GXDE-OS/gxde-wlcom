@@ -539,6 +539,7 @@ static void xwayland_view_set_strut_partial(struct xwayland_view *xwayland_view,
             wl_list_remove(&xwayland_view->output_update_usable_area.link);
             wl_list_init(&xwayland_view->output_update_usable_area.link);
             output_update_usable_area(xwayland_view->view.output);
+            xwayland_view->view.base.movable = true;
         }
         return;
     }
@@ -548,6 +549,7 @@ static void xwayland_view_set_strut_partial(struct xwayland_view *xwayland_view,
             xwayland_view_handle_output_update_usable_area;
         output_add_update_usable_area_listener(xwayland_view->view.output,
                                                &xwayland_view->output_update_usable_area, false);
+        xwayland_view->view.base.movable = false;
     }
 
     output_update_usable_area(xwayland_view->view.output);

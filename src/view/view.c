@@ -147,6 +147,10 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
         return;
     }
 
+    if (!kywc_view->movable) {
+        return;
+    }
+
     struct kywc_box geo = kywc_view->geometry;
     view_fix_geometry_position(view, &geo, src_box, dst_box);
     /* move to dst */
