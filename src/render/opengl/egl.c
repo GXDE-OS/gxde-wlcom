@@ -445,7 +445,7 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
     if (device_exts_str != NULL) {
         kywc_log(KYWC_INFO, "Supported EGL device extensions: %s", device_exts_str);
     }
-    kywc_log(KYWC_INFO, "EGL vendor: %s", vendor);
+    kywc_log(KYWC_INFO, "EGL vendor: %s (quirks 0x%x)", vendor, egl->quirks);
     if (driver_name != NULL) {
         kywc_log(KYWC_INFO, "EGL driver name: %s", driver_name);
     }
