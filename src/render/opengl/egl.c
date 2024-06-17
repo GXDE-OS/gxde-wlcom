@@ -430,8 +430,14 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
         epoxy_extension_in_string(display_exts_str, "EGL_IMG_context_priority");
 
     const char *vendor = eglQueryString(egl->display, EGL_VENDOR);
-    egl->exts.WL_bind_wayland_display = // only check when ARM mali
-        vendor && strcmp(vendor, "ARM") == 0 &&
+    int drm_fd = ky_egl_dup_drm_fd(egl);
+    if (drm_fd >= 0) {
+        egl->quirks = quirks_by_renderer(drm_fd, vendor);
+        close(drm_fd);
+    }
+
+    egl->exts.WL_bind_wayland_display =
+        egl->quirks & QUIRKS_MASK_EGL_WAYLAND &&
         epoxy_extension_in_string(display_exts_str, "EGL_WL_bind_wayland_display");
 
     kywc_log(KYWC_INFO, "Using EGL %d.%d", (int)major, (int)minor);
@@ -600,10 +606,17 @@ static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
             return false;
         }
     } else {
-        // try gles2 first
-        if (!try_gles_api(egl) && !try_opengl_api(egl)) {
-            kywc_log(KYWC_ERROR, "Cannot use neither GL nor GLES2\n");
-            return false;
+        if (egl->quirks & QUIRKS_MASK_PREFER_OPENGL) {
+            if (!try_opengl_api(egl) && !try_gles_api(egl)) {
+                kywc_log(KYWC_ERROR, "Cannot use neither GL nor GLES2");
+                return false;
+            }
+        } else {
+            // try gles2 first
+            if (!try_gles_api(egl) && !try_opengl_api(egl)) {
+                kywc_log(KYWC_ERROR, "Cannot use neither GLES2 nor GL");
+                return false;
+            }
         }
     }
 

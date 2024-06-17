@@ -12,6 +12,8 @@ enum quirks_mask {
     QUIRKS_MASK_SOFTWARE_CURSOR = 1 << 1,
     QUIRKS_MASK_EXPLICIT_SYNC = 1 << 2,
     QUIRKS_MASK_NO_MODIFIFIERS = 1 << 3,
+    QUIRKS_MASK_EGL_WAYLAND = 1 << 4,
+    QUIRKS_MASK_PREFER_OPENGL = 1 << 5,
 };
 
 uint32_t quirks_by_backend(int drm_fd);
