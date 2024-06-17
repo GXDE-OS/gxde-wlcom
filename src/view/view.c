@@ -1562,7 +1562,7 @@ struct view_manager *view_manager_create(struct server *server)
 
     view_manager_config_init(view_manager);
 
-    view_manager->state.num_workspaces = 1;
+    view_manager->state.num_workspaces = 4;
     view_manager->state.view_adsorption = VIEW_ADSORPTION_ALL;
     view_read_config(view_manager);
 
