@@ -228,7 +228,7 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
         int width, height;
         text_extents(info->font, info->font_size, info->text, &width, &height);
         if (info->auto_resize == AUTO_RESIZE_EXTEND) {
-            height += height / 2;
+            height += height / 2 + 4;
             width += height / 2;
             info->align = TEXT_ALIGN_CENTER;
         }
