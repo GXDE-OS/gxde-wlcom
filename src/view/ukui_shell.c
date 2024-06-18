@@ -347,7 +347,8 @@ static void handle_set_panel_auto_hide(struct wl_client *client, struct wl_resou
     }
 }
 
-static void handle_open_under_cursor(struct wl_client *client, struct wl_resource *resource)
+static void handle_open_under_cursor(struct wl_client *client, struct wl_resource *resource,
+                                     int32_t x, int32_t y)
 {
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
     if (!surface->wlr_surface) {
@@ -357,7 +358,7 @@ static void handle_open_under_cursor(struct wl_client *client, struct wl_resourc
 
     if (surface->view) {
         struct seat *seat = surface->view->base.focused_seat;
-        kywc_view_move(&surface->view->base, seat->cursor->lx, seat->cursor->ly);
+        kywc_view_move(&surface->view->base, seat->cursor->lx + x, seat->cursor->ly + y);
     }
 }
 

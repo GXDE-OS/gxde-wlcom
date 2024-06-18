@@ -159,6 +159,8 @@
         Request the initial position of this surface to be under the current cursor position. Has to
         be called before attaching any buffer to this surface.
       </description>
+      <arg name="x" type="int" summary="x coordinate in cursor-relative coordinates"/>
+      <arg name="y" type="int" summary="y coordinate in cursor-relative coordinates"/>
     </request>
 
     <request name="set_panel_takes_focus">
