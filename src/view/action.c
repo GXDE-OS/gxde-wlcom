@@ -36,6 +36,12 @@ static struct window_shortcut {
     { "win+alt+down", "window tiled to bottom half screen", WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN },
     { "win+alt+left", "window tiled to left half screen", WINDOW_ACTION_TILE_LEFT_HALF_SCREEN },
     { "win+alt+right", "window tiled to right half screen", WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN },
+    { "win+shift+left", "window send to prev output", WINDOW_ACTION_SEND_LEFT_OUTPUT },
+    { "win+shift+right", "window send to next output", WINDOW_ACTION_SEND_RIGHT_OUTPUT },
+    { "ctrl+shift+left", "window send to prev output and maximize",
+      WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE },
+    { "ctrl+shift+right", "window send to next output and maximize",
+      WINDOW_ACTION_SEND_RIGHT_OUTPUT_MAXIMIZE },
 };
 
 #define MIRROR_BUFFER_DEBUG 0
@@ -152,6 +158,67 @@ static void window_capture_create(struct view *view, struct seat *seat)
     thumbnail_add_destroy_listener(capture->thumbnail, &capture->thumbnail_destroy);
 }
 
+static struct output *target_output_by_view(struct view *view, enum window_action action)
+{
+    struct output *output = output_from_kywc_output(view->output);
+    enum layout_edge edge = LAYOUT_EDGE_RIGHT;
+    if (action == WINDOW_ACTION_SEND_LEFT_OUTPUT ||
+        action == WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE) {
+        edge = LAYOUT_EDGE_LEFT;
+    }
+
+    return output_find_specified_output(output, edge);
+}
+
+/* Move the view directly to the next output in equal proportions */
+static void view_send_to_output(struct view *view, enum window_action action)
+{
+    if (view->base.fullscreen) {
+        return;
+    }
+
+    struct output *output = target_output_by_view(view, action);
+    if (output) {
+        view_move_to_output(view, NULL, &output->base);
+    }
+}
+
+/**
+ * Move the view to the next output and maximize it,
+ * but restore the original view size when the output state
+ * of the original view is not the maximized state
+ */
+static void view_send_to_output_and_maximize(struct view *view, enum window_action action)
+{
+    if (view->base.fullscreen) {
+        return;
+    }
+
+    struct output *output = target_output_by_view(view, action);
+    if (!output) {
+        return;
+    }
+
+    if (!view->saved.output || !view->base.maximized) {
+        view->saved.tiled = view->base.maximized ? KYWC_TILE_ALL : view->base.tiled;
+        view->saved.output = view->output;
+    }
+
+    view_move_to_output(view, NULL, &output->base);
+    if (output_from_kywc_output(view->saved.output) != output) {
+        kywc_view_set_maximized(&view->base, true, &output->base);
+        return;
+    }
+
+    if (view->saved.tiled == KYWC_TILE_ALL || !view->saved.tiled) {
+        kywc_view_set_maximized(&view->base, view->saved.tiled ? true : false, &output->base);
+    } else {
+        kywc_view_set_tiled(&view->base, view->saved.tiled, &output->base);
+    }
+
+    view->saved.output = NULL;
+}
+
 void window_action(struct view *view, struct seat *seat, enum window_action action)
 {
     struct kywc_view *kywc_view = &view->base;
@@ -211,6 +278,14 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
     case WINDOW_ACTION_TILE_LEFT_HALF_SCREEN:
     case WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN:
         window_begin_tile_half_screen(view, action, seat);
+        break;
+    case WINDOW_ACTION_SEND_LEFT_OUTPUT:
+    case WINDOW_ACTION_SEND_RIGHT_OUTPUT:
+        view_send_to_output(view, action);
+        break;
+    case WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE:
+    case WINDOW_ACTION_SEND_RIGHT_OUTPUT_MAXIMIZE:
+        view_send_to_output_and_maximize(view, action);
         break;
     case WINDOW_ACTION_CAPTURE:
         window_capture_create(view, seat);

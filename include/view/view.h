@@ -129,6 +129,9 @@ struct view {
     struct {
         /* geometry saved for tile, maximize and fullscreen */
         struct kywc_box geometry;
+        /* records the current output and status when it is send to output */
+        struct kywc_output *output;
+        enum kywc_tile tiled;
         /* restore view to layer when ... */
         enum layer layer;
     } saved;
