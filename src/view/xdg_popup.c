@@ -26,7 +26,7 @@ struct xdg_popup {
     struct wl_listener map;
 
     bool topmost_popup;
-    bool topmost_has_grab;
+    bool topmost_clear_focus;
     bool use_usable_area;
 };
 
@@ -47,7 +47,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
         ky_scene_node_destroy(&popup->parent_tree->node);
     }
 
-    if (popup->topmost_has_grab) {
+    if (popup->topmost_clear_focus) {
         view_topmost_activate(NULL);
     }
 
@@ -103,15 +103,12 @@ static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
 {
     struct xdg_popup *popup = wl_container_of(listener, popup, map);
     struct wlr_seat *seat = popup->wlr_xdg_popup->seat;
-
-    popup->topmost_has_grab = popup->topmost_popup && seat;
-    /* clear prev focused surface to hide prev focused window */
-    if (popup->topmost_has_grab) {
-        struct wlr_surface *surface = seat->keyboard_state.focused_surface;
-        /* skip the surface when it's the parent of popup */
-        if (surface && surface != popup->wlr_xdg_popup->parent) {
-            wlr_seat_keyboard_clear_focus(seat);
-        }
+    /* clear prev focused surface, skip the surface when it's the parent of popup */
+    popup->topmost_clear_focus =
+        popup->topmost_popup && seat && seat->keyboard_state.focused_surface &&
+        seat->keyboard_state.focused_surface != popup->wlr_xdg_popup->parent;
+    if (popup->topmost_clear_focus) {
+        wlr_seat_keyboard_clear_focus(seat);
     }
 }
 
