@@ -984,9 +984,6 @@ void view_topmost_activate(struct workspace *workspace)
             view_set_activated(view, false);
         }
     }
-
-    /* no view can be activated, clear keyboard focus */
-    seat_focus_surface(input_manager_get_default_seat(), NULL);
 }
 
 static void view_activate_with_workspace(struct view *view, bool find_parent)
