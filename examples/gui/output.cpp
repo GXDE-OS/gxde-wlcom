@@ -143,9 +143,16 @@ void Output::Private::setup(kywc_output *output)
     }
 
     struct kywc_output_mode *mode = output->mode;
-    cur_mode.size = QSize(mode->width, mode->height);
-    cur_mode.refresh = mode->refresh;
-    cur_mode.preferred = mode->preferred;
+    /* mode is null if output is disabled */
+    if (mode) {
+        cur_mode.size = QSize(mode->width, mode->height);
+        cur_mode.refresh = mode->refresh;
+        cur_mode.preferred = mode->preferred;
+    } else {
+        cur_mode.size = QSize(0, 0);
+        cur_mode.refresh = 0;
+        cur_mode.preferred = false;
+    }
 
     kywc_output_set_user_data(output, this->o);
     kywc_output_set_interface(output, &output_impl);

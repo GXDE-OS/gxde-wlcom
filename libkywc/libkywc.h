@@ -138,7 +138,7 @@ struct _kywc_output {
     struct wl_list modes;
 
     /* states */
-    struct kywc_output_mode *mode;
+    struct kywc_output_mode *mode; // may be NULL
     int32_t x, y, width, height;
     int32_t transform;
     float scale;
