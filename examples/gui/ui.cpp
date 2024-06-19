@@ -265,7 +265,7 @@ void MainWindow::update_output_item(Output::Masks mask)
 
     if (mask & Output::Mask::Mode) {
         Output::Mode cur_mode = output->curMode();
-        QString cur_m = QString("%1 x %2 px,  %3 Hz")
+        QString cur_m = QString("%1 x %2 px,  %3 mHz")
                             .arg(cur_mode.size.width())
                             .arg(cur_mode.size.height())
                             .arg(cur_mode.refresh);
@@ -356,7 +356,7 @@ void MainWindow::add_output_item(Output *output)
     QComboBox *comBox_mode = new QComboBox();
     QList<Output::Mode> modes = output->modes();
     for (int i = 0; i < modes.size(); i++) {
-        QString mode = QString("%1 x %2 px,  %3 Hz")
+        QString mode = QString("%1 x %2 px,  %3 mHz")
                            .arg(modes[i].size.width())
                            .arg(modes[i].size.height())
                            .arg(modes[i].refresh);
@@ -372,7 +372,7 @@ void MainWindow::add_output_item(Output *output)
         tableWidget_1->item(outputs_count, 13)->setText("no");
 
     Output::Mode cur_mode = output->curMode();
-    QString cur_m = QString("%1 x %2 px,  %3 Hz")
+    QString cur_m = QString("%1 x %2 px,  %3 mHz")
                         .arg(cur_mode.size.width())
                         .arg(cur_mode.size.height())
                         .arg(cur_mode.refresh);
