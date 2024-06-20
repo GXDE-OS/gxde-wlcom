@@ -402,6 +402,11 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
     idle_manager_notify_activity(cursor->seat);
 
     cursor_set_hidden(cursor, false);
+
+    /* workaround: tablet simulate pointer drag to fix peony drag */
+    cursor_feed_motion(cursor, event->time_msec);
+    wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+
     if (cursor->tablet_tool_tip_simulation_pointer && event->state == WLR_TABLET_TOOL_TIP_UP) {
         cursor->tablet_tool_tip_simulation_pointer = false;
         cursor_feed_button(cursor, BTN_LEFT, false, event->time_msec,
@@ -409,6 +414,10 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
         wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
         /* workaround to send a tool-tip up */
         tablet_handle_tool_tip(event);
+        return;
+    }
+
+    if (selection_is_draging(cursor->seat)) {
         return;
     }
 
@@ -426,6 +435,10 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
     struct cursor *cursor = wl_container_of(listener, cursor, tablet_tool_button);
     struct wlr_tablet_tool_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
+
+    if (selection_is_draging(cursor->seat)) {
+        return;
+    }
 
     cursor_set_hidden(cursor, false);
     if (cursor->tablet_tool_buttons > 0 && cursor->tablet_tool_button_simulation_pointer) {

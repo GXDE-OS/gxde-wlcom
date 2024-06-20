@@ -4,6 +4,8 @@
 
 #include <stdlib.h>
 
+#include <linux/input-event-codes.h>
+
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_data_device.h>
@@ -233,6 +235,14 @@ static void handle_request_start_drag(struct wl_listener *listener, void *data)
     struct wlr_touch_point *point;
     if (wlr_seat_validate_touch_grab_serial(wlr_seat, event->origin, event->serial, &point)) {
         wlr_seat_start_touch_drag(wlr_seat, event->drag, event->serial, point);
+        return;
+    }
+
+    /* workaround to simulate pointer drag */
+    if (tablet_has_implicit_grab(selection->seat)) {
+        wlr_seat->pointer_state.grab_button = BTN_LEFT;
+        selection->seat->cursor->tablet_tool_tip_simulation_pointer = true;
+        wlr_seat_start_pointer_drag(wlr_seat, event->drag, event->serial);
         return;
     }
 
