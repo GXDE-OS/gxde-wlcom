@@ -403,8 +403,7 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
 static void end_remain_grab(struct seat *seat, int index, void *data)
 {
     wlr_seat_keyboard_end_grab(seat->wlr_seat);
-    wlr_seat_pointer_end_grab(seat->wlr_seat);
-    wlr_seat_touch_end_grab(seat->wlr_seat);
+    wlr_seat_keyboard_clear_focus(seat->wlr_seat);
 }
 
 static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data)
