@@ -766,7 +766,7 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
         return NULL;
     }
 
-    float color[4] = { 0, 0, 0, 0.5 };
+    float color[4] = { 0, 0, 0, 0.25 };
     ky_scene_rect_init(&scene_decoration->rect, parent, 0, 0, color);
     memcpy(scene_decoration->title_color, color, sizeof(scene_decoration->title_color));
     memcpy(scene_decoration->border_color, color, sizeof(scene_decoration->border_color));

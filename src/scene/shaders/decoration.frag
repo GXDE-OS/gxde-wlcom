@@ -55,22 +55,31 @@ void main() {
     vec2 offset = -windowRect.xy * 2.0;
 
     float windowDist = sdRoundedBox(st + offset, windowRect.zw, roundedCornerRadius);
+    // inner window without border
     float shapeWindow = smoothstep(0.0, borderAA, windowDist);
-    vec4 result = mix(vec4(0.0), shadowColor, shapeWindow * shadow);
+
+    // border
+    float shapeWindowWithBorder = smoothstep(-borderAA, borderAA, windowDist + borderThickness);
+    float shapeBorder = shapeWindowWithBorder - shapeWindow;
 
     // title
+    float shapeTitle = 0.0;
     if (titleHeight > 0.001) {
         float titleDist = sdRoundedBox(
             st + offset + vec2(0.0, windowRect.w - titleHeight - borderThickness),
             vec2(windowRect.z - borderThickness, titleHeight),
             vec4(0.0, roundedCornerRadius[1] - borderThickness, 0.0, roundedCornerRadius[3] - borderThickness));
-        float shapeTitle = 1.0 - step(0.0, titleDist);
-        result += shapeTitle * titleColor;
+        shapeTitle = 1.0 - smoothstep(0.0, borderAA, titleDist);
     }
-    
-    // border
-    float border = step(0.0, windowDist + borderThickness) - shapeWindow;
-    result += border * borderColor;
+
+    // inner window remove shadow
+    float shadow_mask = shapeWindowWithBorder + shapeTitle;
+
+    // blend all color
+    vec4 result = vec4(0.0); // todo from backgroud
+    result = mix(result, shadowColor, shadow * shadow_mask);
+    result = mix(result, titleColor, shapeTitle);
+    result += shapeBorder * borderColor; // todo replace with mix
 
     gl_FragColor = result;
 }
