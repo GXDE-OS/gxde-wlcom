@@ -50,6 +50,8 @@ static struct shortcut {
     { "Ctrl+F2", "switch to workspace 1", 5 },
     { "Ctrl+F3", "switch to workspace 2", 6 },
     { "Ctrl+F4", "switch to workspace 3", 7 },
+    { "Win+ctrl+left:no", "switch to left workspace", DIRECTION_LEFT },
+    { "Win+ctrl+Right:no", "switch to right workspace", DIRECTION_RIGHT },
 };
 
 static void workspace_switch_to(int switch_workspace)
