@@ -485,19 +485,16 @@ static void window_handle_view_capabilities(struct wl_listener *listener, void *
     struct ukui_window *window = wl_container_of(listener, window, view_capabilities);
     ukui_window_send_state(window, NULL, false);
 }
+
 static void window_handle_view_position(struct wl_listener *listener, void *data)
 {
     struct ukui_window *window = wl_container_of(listener, window, view_position);
     struct kywc_view *view = window->kywc_view;
 
-    int32_t x = view->geometry.x - view->margin.off_x;
-    int32_t y = view->geometry.y - view->margin.off_y;
-    uint32_t width = view->geometry.width + view->margin.off_width;
-    uint32_t height = view->geometry.height + view->margin.off_height;
-
     struct wl_resource *resource;
     wl_resource_for_each(resource, &window->resources) {
-        ukui_window_send_geometry(resource, x, y, width, height);
+        ukui_window_send_geometry(resource, view->geometry.x, view->geometry.y,
+                                  view->geometry.width, view->geometry.height);
     }
 }
 
@@ -506,14 +503,10 @@ static void window_handle_view_size(struct wl_listener *listener, void *data)
     struct ukui_window *window = wl_container_of(listener, window, view_size);
     struct kywc_view *view = window->kywc_view;
 
-    int32_t x = view->geometry.x - view->margin.off_x;
-    int32_t y = view->geometry.y - view->margin.off_y;
-    uint32_t width = view->geometry.width + view->margin.off_width;
-    uint32_t height = view->geometry.height + view->margin.off_height;
-
     struct wl_resource *resource;
     wl_resource_for_each(resource, &window->resources) {
-        ukui_window_send_geometry(resource, x, y, width, height);
+        ukui_window_send_geometry(resource, view->geometry.x, view->geometry.y,
+                                  view->geometry.width, view->geometry.height);
     }
 }
 
@@ -597,11 +590,8 @@ static void ukui_window_add_resource(struct ukui_window *window,
         ukui_window_send_pid_changed(resource, view->pid);
     }
 
-    int32_t x = kywc_view->geometry.x - kywc_view->margin.off_x;
-    int32_t y = kywc_view->geometry.y - kywc_view->margin.off_y;
-    uint32_t width = kywc_view->geometry.width + kywc_view->margin.off_width;
-    uint32_t height = kywc_view->geometry.height + kywc_view->margin.off_height;
-    ukui_window_send_geometry(resource, x, y, width, height);
+    ukui_window_send_geometry(resource, kywc_view->geometry.x, kywc_view->geometry.y,
+                              kywc_view->geometry.width, kywc_view->geometry.height);
 
     // ukui_window_send_parent_window
     // ukui_window_send_virtual_desktop_changed
