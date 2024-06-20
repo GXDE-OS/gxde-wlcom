@@ -90,6 +90,7 @@ struct workspace_thumbnail_entry {
 struct workspace_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
+    uint32_t option;
 
     struct wl_list entries; // workspace_thumbnail_entry
 
@@ -563,7 +564,7 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
             continue;
         }
 
-        view_thumbnail = find_view_thumbnail(view_proxy->view, 0, 1.0);
+        view_thumbnail = find_view_thumbnail(view_proxy->view, workspace_thumbnail->option, 1.0);
         if (!view_thumbnail || !view_thumbnail->base.buffer) {
             continue;
         }
@@ -748,7 +749,8 @@ static void workspace_thumbnail_handle_source_destroy(struct wl_listener *listen
 
 static void workspace_thumbnail_entry_create_thumbnail(struct workspace_thumbnail_entry *entry)
 {
-    struct thumbnail *thumbnail = thumbnail_create_from_view(entry->view, 0, 1.0);
+    struct thumbnail *thumbnail =
+        thumbnail_create_from_view(entry->view, entry->workspace_thumbnail->option, 1.0);
     if (!thumbnail) {
         return;
     }
@@ -822,6 +824,7 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
 
     workspace_thumbnail->workspace = workspace;
     workspace_thumbnail->output = kywc_output;
+    workspace_thumbnail->option = THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_DISABLE_SHADOW;
 
     for (int i = 0; i < 3; i++) {
         ky_scene_node_force_damage_event(&workspace->layers[i].tree->node, true);
