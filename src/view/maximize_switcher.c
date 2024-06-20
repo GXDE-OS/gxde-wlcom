@@ -364,11 +364,10 @@ static void get_maximize_views(int *num_views)
     struct workspace *workspace = workspace_manager_get_current();
     struct kywc_output *kywc_output = kywc_output_get_primary();
     float color[4] = { 0 };
-    struct view *view;
     struct view_proxy *view_proxy;
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
-        view = view_proxy->view;
-        if (!view->base.mapped || !view->base.maximized) {
+        struct view *view = view_proxy->view;
+        if (!view->base.mapped || (!view->base.maximized && !view->base.fullscreen)) {
             continue;
         }
 
