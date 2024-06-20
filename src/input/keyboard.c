@@ -276,6 +276,9 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, uint32_t 
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
         keyboard_state_clear(&keyboard->state);
+        if (key != keyboard->repeat.key) {
+            keyboard_repeat_stop(keyboard);
+        }
         keyboard_repeat_start(keyboard, key, pressed);
         return;
     }
