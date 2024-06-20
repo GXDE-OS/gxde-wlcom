@@ -1,0 +1,113 @@
+# kylin-wayland-compositor pot file
+# Copyright (C) 2023
+# This file is distributed under the same license as the kylin-wayland-compositor package.
+# kylin <yangcanfen@kylinos.cn>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kylin-wayland-compositor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-06-17 17:16+0800\n"
+"Last-Translator: kylin <yangcanfen@kylinos.cn>\n"
+"Language-Team: Kirghiz <(nothing)>\n"
+"Language: ky\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/view/action.c:173
+msgid "Capture saved to"
+msgstr "кармалуу сакталды"
+
+#: src/view/ssd.c:247
+msgid "More actions for this window"
+msgstr "бул терезе үчүн дагы иш-аракеттер"
+
+#: src/view/ssd.c:248
+msgid "Minimize"
+msgstr "минималдуу"
+
+#: src/view/ssd.c:249
+msgid "Maximize"
+msgstr "максималдуу"
+
+#: src/view/ssd.c:250
+msgid "Restore"
+msgstr "калыбына келтирүү"
+
+#: src/view/ssd.c:251
+msgid "Close"
+msgstr "жакын"
+
+#: src/view/window_menu.c:184
+msgid "Desktop"
+msgstr "иш столу"
+
+#: src/view/window_menu.c:214
+msgid "Move To Desktop"
+msgstr "иш столуна өтүү"
+
+#: src/view/window_menu.c:248
+msgid "Screen"
+msgstr "экран"
+
+#: src/view/window_menu.c:342
+msgid "_Take Screenshot"
+msgstr "(_T)скриншот алуу"
+
+#: src/view/window_menu.c:346
+msgid "_Desktop"
+msgstr "(_D)иш столу"
+
+#: src/view/window_menu.c:348
+msgid "_All Desktop"
+msgstr "(_A)бардык иш столу"
+
+#: src/view/window_menu.c:350
+msgid "Add To _New Desktop"
+msgstr "(_N)жаңы иш столуна кошуу"
+
+#: src/view/window_menu.c:353
+msgid "_Move To New Desktop"
+msgstr "(_M)жаңы иш столуна өтүү"
+
+#: src/view/window_menu.c:356
+msgid "Ma_ximize"
+msgstr "(_X)максималдуу"
+
+#: src/view/window_menu.c:360
+msgid "Move To _Screen"
+msgstr "(_S)экранга өтүү"
+
+#: src/view/window_menu.c:363
+msgid "Mi_nimize"
+msgstr "(_N)минималдуу"
+
+#: src/view/window_menu.c:367
+msgid "_More"
+msgstr "(_M)кененирээк"
+
+#: src/view/window_menu.c:369
+msgid "_Move"
+msgstr "(_M)жылдыруу"
+
+#: src/view/window_menu.c:370
+msgid "_Resize"
+msgstr "(_R)дизайн"
+
+#: src/view/window_menu.c:371
+msgid "Keep-_Above"
+msgstr "(_A)жогоруда сактоо"
+
+#: src/view/window_menu.c:373
+msgid "Keep-_Below"
+msgstr "(_B)төмөндө сактоо"
+
+#: src/view/window_menu.c:375
+msgid "_Fullscreen"
+msgstr "(_F)Толук экран"
+
+#: src/view/window_menu.c:378
+msgid "_Close"
+msgstr "(_C)жакын"

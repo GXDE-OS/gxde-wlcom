@@ -1,0 +1,113 @@
+# kylin-wayland-compositor pot file
+# Copyright (C) 2023
+# This file is distributed under the same license as the kylin-wayland-compositor package.
+# kylin <yangcanfen@kylinos.cn>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kylin-wayland-compositor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-06-15 15:24+0800\n"
+"Last-Translator: kylin <yangcanfen@kylinos.cn>\n"
+"Language-Team: Chinese (Hong Kong) <(nothing)>\n"
+"Language: zh_HK\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/view/action.c:173
+msgid "Capture saved to"
+msgstr "捕獲已保存為"
+
+#: src/view/ssd.c:247
+msgid "More actions for this window"
+msgstr "此視窗的更多操作"
+
+#: src/view/ssd.c:248
+msgid "Minimize"
+msgstr "最小化"
+
+#: src/view/ssd.c:249
+msgid "Maximize"
+msgstr "最大化"
+
+#: src/view/ssd.c:250
+msgid "Restore"
+msgstr "還原"
+
+#: src/view/ssd.c:251
+msgid "Close"
+msgstr "關閉"
+
+#: src/view/window_menu.c:184
+msgid "Desktop"
+msgstr "桌面"
+
+#: src/view/window_menu.c:214
+msgid "Move To Desktop"
+msgstr "移動到桌面"
+
+#: src/view/window_menu.c:248
+msgid "Screen"
+msgstr "螢幕"
+
+#: src/view/window_menu.c:342
+msgid "_Take Screenshot"
+msgstr "截圖(_T)"
+
+#: src/view/window_menu.c:346
+msgid "_Desktop"
+msgstr "桌面(_D)"
+
+#: src/view/window_menu.c:348
+msgid "_All Desktop"
+msgstr "全部桌面(_A)"
+
+#: src/view/window_menu.c:350
+msgid "Add To _New Desktop"
+msgstr "添加到新桌面(_N)"
+
+#: src/view/window_menu.c:353
+msgid "_Move To New Desktop"
+msgstr "移動到新桌面(_M)"
+
+#: src/view/window_menu.c:356
+msgid "Ma_ximize"
+msgstr "最大化(_X)"
+
+#: src/view/window_menu.c:360
+msgid "Move To _Screen"
+msgstr "移動到螢幕(_S)"
+
+#: src/view/window_menu.c:363
+msgid "Mi_nimize"
+msgstr "最小化(_N)"
+
+#: src/view/window_menu.c:367
+msgid "_More"
+msgstr "更多操作(_M)"
+
+#: src/view/window_menu.c:369
+msgid "_Move"
+msgstr "移動(_M)"
+
+#: src/view/window_menu.c:370
+msgid "_Resize"
+msgstr "調整大小(_R)"
+
+#: src/view/window_menu.c:371
+msgid "Keep-_Above"
+msgstr "置於頂層(_A)"
+
+#: src/view/window_menu.c:373
+msgid "Keep-_Below"
+msgstr "置於底層(_B)"
+
+#: src/view/window_menu.c:375
+msgid "_Fullscreen"
+msgstr "全屏(_F)"
+
+#: src/view/window_menu.c:378
+msgid "_Close"
+msgstr "關閉(_C)"

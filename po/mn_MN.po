@@ -1,0 +1,113 @@
+# kylin-wayland-compositor pot file
+# Copyright (C) 2023
+# This file is distributed under the same license as the kylin-wayland-compositor package.
+# kylin <kylin@kylin-qitianm425-n000>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kylin-wayland-compositor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-06-18 17:11+0800\n"
+"Last-Translator: kylin <kylin@kylin-qitianm425-n000>\n"
+"Language-Team: Mongolian <openmn-translation@lists.sourceforge.net>\n"
+"Language: mn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/view/action.c:173
+msgid "Capture saved to"
+msgstr "ᠣᠯᠵᠠᠯᠠᠬᠤ ᠪᠥᠭᠡᠳ ᠬᠠᠳᠠᠭᠠᠯᠠᠬᠤ"
+
+#: src/view/ssd.c:247
+msgid "More actions for this window"
+msgstr "ᠲᠤᠰ ᠴᠣᠩᠬᠣ᠎ᠶ᠋ᠢᠨ ᠨᠡᠩ ᠣᠯᠠᠨ ᠠᠵᠢᠯᠯᠠᠭ᠎ᠠ"
+
+#: src/view/ssd.c:248
+msgid "Minimize"
+msgstr "ᠬᠠᠮᠤᠭ᠎ᠤ᠋ᠨ ᠪᠠᠭᠠᠴᠢᠯᠠᠯ"
+
+#: src/view/ssd.c:249
+msgid "Maximize"
+msgstr "ᠬᠠᠮᠤᠭ ᠶᠡᠬᠡᠰᠭᠡᠬᠦ"
+
+#: src/view/ssd.c:250
+msgid "Restore"
+msgstr "ᠲᠣᠬᠣᠷᠬᠤ"
+
+#: src/view/ssd.c:251
+msgid "Close"
+msgstr "ᠬᠠᠭᠠᠬᠤ"
+
+#: src/view/window_menu.c:184
+msgid "Desktop"
+msgstr "ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ"
+
+#: src/view/window_menu.c:214
+msgid "Move To Desktop"
+msgstr "ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ᠎ᠲᠤ᠌ ᠰᠢᠯᠵᠢᠭᠦᠯᠦᠨ ᠬᠦᠷᠭᠡᠬᠦ"
+
+#: src/view/window_menu.c:248
+msgid "Screen"
+msgstr "ᠳᠡᠯᠭᠡᠴᠡ"
+
+#: src/view/window_menu.c:342
+msgid "_Take Screenshot"
+msgstr "ᠵᠢᠷᠤᠭ ᠣᠭᠲᠣᠯᠬᠤ(_T)"
+
+#: src/view/window_menu.c:346
+msgid "_Desktop"
+msgstr "ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ(_D)"
+
+#: src/view/window_menu.c:348
+msgid "_All Desktop"
+msgstr "ᠪᠦᠬᠦ ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ(_A)"
+
+#: src/view/window_menu.c:350
+msgid "Add To _New Desktop"
+msgstr "ᠰᠢᠨ᠎ᠡ ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ᠎ᠲᠤ᠌ ᠨᠡᠮᠡᠵᠦ ᠣᠷᠣᠭᠤᠯᠬᠤ(_N)"
+
+#: src/view/window_menu.c:353
+msgid "_Move To New Desktop"
+msgstr "ᠰᠢᠨ᠎ᠡ ᠰᠢᠷᠡᠭᠡᠨ ᠨᠢᠭᠤᠷ᠎ᠲᠤ᠌ ᠰᠢᠯᠵᠢᠭᠦᠯᠦᠨ ᠬᠦᠷᠭᠡᠬᠦ(_M)"
+
+#: src/view/window_menu.c:356
+msgid "Ma_ximize"
+msgstr "ᠬᠠᠮᠤᠭ ᠶᠡᠬᠡᠰᠭᠡᠬᠦ(_X)"
+
+#: src/view/window_menu.c:360
+msgid "Move To _Screen"
+msgstr "ᠳᠡᠯᠭᠡᠴᠡ᠎ᠳ᠋ᠦ᠍ ᠰᠢᠯᠵᠢᠭᠦᠯᠦᠨ ᠬᠦᠷᠭᠡᠬᠦ(_S)"
+
+#: src/view/window_menu.c:363
+msgid "Mi_nimize"
+msgstr "ᠬᠠᠮᠤᠭ᠎ᠤ᠋ᠨ ᠪᠠᠭᠠᠴᠢᠯᠠᠯ(_N)"
+
+#: src/view/window_menu.c:367
+msgid "_More"
+msgstr "ᠨᠡᠩ ᠣᠯᠠᠨ ᠠᠵᠢᠯᠯᠠᠭ᠎ᠠ(_M)"
+
+#: src/view/window_menu.c:369
+msgid "_Move"
+msgstr "ᠨᠡᠭᠦᠬᠦ(_M)"
+
+#: src/view/window_menu.c:370
+msgid "_Resize"
+msgstr "ᠶᠡᠬᠡ ᠪᠠᠭ᠎ᠠ᠎ᠶ᠋ᠢ ᠲᠣᠬᠢᠷᠠᠭᠤᠯᠬᠤ(_R)"
+
+#: src/view/window_menu.c:371
+msgid "Keep-_Above"
+msgstr "ᠣᠷᠣᠢ᠎ᠶ᠋ᠢᠨ ᠳᠠᠪᠬᠤᠷᠭ᠎ᠠ᠎ᠳ᠋ᠤ᠌ ᠲᠠᠯᠪᠢᠬᠤ(_A)"
+
+#: src/view/window_menu.c:373
+msgid "Keep-_Below"
+msgstr "ᠬᠠᠮᠤᠭ ᠳᠣᠣᠷ᠎ᠠ ᠳᠠᠪᠬᠤᠷᠭ᠎ᠠ᠎ᠳ᠋ᠤ᠌ ᠲᠠᠯᠪᠢᠬᠤ(_B)"
+
+#: src/view/window_menu.c:375
+msgid "_Fullscreen"
+msgstr "ᠪᠦᠷᠢᠨ ᠳᠡᠯᠭᠡᠴᠡ(_F)"
+
+#: src/view/window_menu.c:378
+msgid "_Close"
+msgstr "ᠬᠠᠭᠠᠬᠤ(_C)"

@@ -1,0 +1,113 @@
+# kylin-wayland-compositor pot file
+# Copyright (C) 2023
+# This file is distributed under the same license as the kylin-wayland-compositor package.
+# kylin <yangcanfen@kylinos.cn>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kylin-wayland-compositor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-06-15 15:51+0800\n"
+"Last-Translator: kylin <yangcanfen@kylinos.cn>\n"
+"Language-Team: Tibetan <translation-team-bo@lists.sourceforge.net>\n"
+"Language: bo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/view/action.c:173
+msgid "Capture saved to"
+msgstr "འཛིན་བཟུང་ཐུབ་པ་དེ་ཉར་འཛིན་བྱེད་པ་དེ།"
+
+#: src/view/ssd.c:247
+msgid "More actions for this window"
+msgstr "དེའི་སྐར་ཁུང་དེ་བས་མང་བར་བཀོལ་སྤྱོད།"
+
+#: src/view/ssd.c:248
+msgid "Minimize"
+msgstr "ཆེས་ཆུང་བ་ཅན།"
+
+#: src/view/ssd.c:249
+msgid "Maximize"
+msgstr "ཆེས་ཆེ་འཐོབ་པ།"
+
+#: src/view/ssd.c:250
+msgid "Restore"
+msgstr "སོར་ཆུད།"
+
+#: src/view/ssd.c:251
+msgid "Close"
+msgstr "སྒོ་རྒྱག།"
+
+#: src/view/window_menu.c:184
+msgid "Desktop"
+msgstr "ཅོག་ངོས།"
+
+#: src/view/window_menu.c:214
+msgid "Move To Desktop"
+msgstr "སྤོ་སྒུལ་ནས་ཅོག་ངོས།"
+
+#: src/view/window_menu.c:248
+msgid "Screen"
+msgstr "བརྙན་ཤེལ།"
+
+#: src/view/window_menu.c:342
+msgid "_Take Screenshot"
+msgstr "截རིས།(_T)"
+
+#: src/view/window_menu.c:346
+msgid "_Desktop"
+msgstr "ཅོག་ངོས།(_D)"
+
+#: src/view/window_menu.c:348
+msgid "_All Desktop"
+msgstr "ཡོངས་རྫོགས་ཅོག་ངོས།(_A)"
+
+#: src/view/window_menu.c:350
+msgid "Add To _New Desktop"
+msgstr "སྦྱོར་རྟ་གསར་པ་ཅོག་ངོས།(_N)"
+
+#: src/view/window_menu.c:353
+msgid "_Move To New Desktop"
+msgstr "སྤོ་སྒུལ་གསར་པ་ཅོག་ངོས།(_M)"
+
+#: src/view/window_menu.c:356
+msgid "Ma_ximize"
+msgstr "ཆེས་ཆེ་འཐོབ་པ།(_X)"
+
+#: src/view/window_menu.c:360
+msgid "Move To _Screen"
+msgstr "སྤོ་སྒུལ་ནས་བརྙན་ཤེལ།(_S)"
+
+#: src/view/window_menu.c:363
+msgid "Mi_nimize"
+msgstr "ཆེས་ཆུང་བ་ཅན།(_N)"
+
+#: src/view/window_menu.c:367
+msgid "_More"
+msgstr "དེ་བས་མང་བར་བཀོལ་སྤྱོད།(_M)"
+
+#: src/view/window_menu.c:369
+msgid "_Move"
+msgstr "གནས་སྤོ།(_M)"
+
+#: src/view/window_menu.c:370
+msgid "_Resize"
+msgstr "ལེགས་སྒྲིག་ཆེ་ཆུང།(_R)"
+
+#: src/view/window_menu.c:371
+msgid "Keep-_Above"
+msgstr "འཆི་བའི་སྣེ།(_A)"
+
+#: src/view/window_menu.c:373
+msgid "Keep-_Below"
+msgstr "འཆི་བའི་མཐིལ།(_B)"
+
+#: src/view/window_menu.c:375
+msgid "_Fullscreen"
+msgstr "全屏།(_F)"
+
+#: src/view/window_menu.c:378
+msgid "_Close"
+msgstr "སྒོ་རྒྱག།(_C)"

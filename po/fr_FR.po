@@ -1,0 +1,114 @@
+# kylin-wayland-compositor pot file
+# Copyright (C) 2023
+# This file is distributed under the same license as the kylin-wayland-compositor package.
+# kylin <yangcanfen@kylinos.cn>, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kylin-wayland-compositor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-20 13:39+0800\n"
+"PO-Revision-Date: 2024-06-19 17:17+0800\n"
+"Last-Translator: kylin <yangcanfen@kylinos.cn>\n"
+"Language-Team: French <traduc@traduc.org>\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/view/action.c:173
+msgid "Capture saved to"
+msgstr "Capture enregistrée à"
+
+#: src/view/ssd.c:247
+msgid "More actions for this window"
+msgstr "Plus d'actions pour cette fenêtre"
+
+#: src/view/ssd.c:248
+msgid "Minimize"
+msgstr "Minimiser"
+
+#: src/view/ssd.c:249
+msgid "Maximize"
+msgstr "Maximiser"
+
+#: src/view/ssd.c:250
+msgid "Restore"
+msgstr "Restaurer"
+
+#: src/view/ssd.c:251
+msgid "Close"
+msgstr "Fermer"
+
+#: src/view/window_menu.c:184
+msgid "Desktop"
+msgstr "Bureau"
+
+#: src/view/window_menu.c:214
+msgid "Move To Desktop"
+msgstr "Déplacer vers le bureau"
+
+#: src/view/window_menu.c:248
+msgid "Screen"
+msgstr "Écran"
+
+#: src/view/window_menu.c:342
+msgid "_Take Screenshot"
+msgstr "Raccourci(_T)"
+
+#: src/view/window_menu.c:346
+msgid "_Desktop"
+msgstr "Bureau(_D)"
+
+#: src/view/window_menu.c:348
+msgid "_All Desktop"
+msgstr "Tous les bure_aux"
+
+#: src/view/window_menu.c:350
+msgid "Add To _New Desktop"
+msgstr "Ajouter au _nouveau bureau"
+
+#: src/view/window_menu.c:353
+msgid "_Move To New Desktop"
+msgstr "Déplacer vers le nouveau bureau(_M)"
+
+#: src/view/window_menu.c:356
+msgid "Ma_ximize"
+msgstr "Ma_ximiser"
+
+#: src/view/window_menu.c:360
+msgid "Move To _Screen"
+msgstr "Déplacer ver_s l'écran"
+
+#: src/view/window_menu.c:363
+msgid "Mi_nimize"
+msgstr "Mi_nimiser"
+
+#: src/view/window_menu.c:367
+msgid "_More"
+msgstr "Actions supplé_mentaires"
+
+#: src/view/window_menu.c:369
+msgid "_Move"
+msgstr "Déplacer(_M)"
+
+#: src/view/window_menu.c:370
+msgid "_Resize"
+msgstr "_Re-dimensionner"
+
+#: src/view/window_menu.c:371
+msgid "Keep-_Above"
+msgstr "Conserver _au-dessu"
+
+#: src/view/window_menu.c:373
+msgid "Keep-_Below"
+msgstr "Conserver au-dessous(_B)"
+
+#: src/view/window_menu.c:375
+msgid "_Fullscreen"
+msgstr "Plein écran(_F)"
+
+#: src/view/window_menu.c:378
+msgid "_Close"
+msgstr "Fermer(_C)"
