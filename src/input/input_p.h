@@ -153,6 +153,8 @@ bool tablet_handle_tool_tip(struct wlr_tablet_tool_tip_event *event);
 
 bool tablet_handle_tool_button(struct wlr_tablet_tool_button_event *event);
 
+bool tablet_has_implicit_grab(struct seat *seat);
+
 /**
  * touchscreen manager
  */

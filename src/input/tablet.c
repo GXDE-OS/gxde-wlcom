@@ -37,6 +37,8 @@ struct tablet {
 
     struct input *input;
     struct wl_listener input_destroy;
+
+    struct tablet_tool *tablet_tool;
 };
 
 struct tablet_tool {
@@ -111,6 +113,8 @@ static void tablet_tool_handle_tool_destroy(struct wl_listener *listener, void *
     struct tablet_tool *tablet_tool = wl_container_of(listener, tablet_tool, tool_destroy);
     wl_list_remove(&tablet_tool->tool_destroy.link);
     wl_list_remove(&tablet_tool->set_cursor.link);
+    tablet_tool->tablet->tablet_tool = NULL;
+
     free(tablet_tool);
 }
 
@@ -124,6 +128,7 @@ static struct tablet_tool *tablet_tool_create(struct tablet *tablet,
 
     tablet_tool->tablet = tablet;
     wlr_tablet_tool->data = tablet_tool;
+    tablet->tablet_tool = tablet_tool;
 
     tablet_tool->tablet_tool =
         wlr_tablet_tool_create(manager->manager, tablet->input->seat->wlr_seat, wlr_tablet_tool);
@@ -586,4 +591,17 @@ void tablet_set_focus(struct seat *seat, struct wlr_surface *surface)
     wl_list_for_each(tablet_pad, &manager->tablet_pads, link) {
         tablet_pad_set_focus(tablet_pad, surface);
     }
+}
+
+bool tablet_has_implicit_grab(struct seat *seat)
+{
+    struct tablet *tablet;
+    wl_list_for_each(tablet, &manager->tablets, link) {
+        if (tablet->input->seat == seat && tablet->tablet_tool &&
+            wlr_tablet_tool_v2_has_implicit_grab(tablet->tablet_tool->tablet_tool)) {
+            return true;
+        }
+    }
+
+    return false;
 }
