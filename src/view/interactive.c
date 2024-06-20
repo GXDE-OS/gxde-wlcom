@@ -1142,20 +1142,21 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
         cursor_set_resize_image(seat->cursor, edges);
     } else if (mode == INTERACTIVE_MODE_TILE) {
         int key = 0;
-        if (edges == WINDOW_ACTION_SNAP_TOP) {
+        if (edges == WINDOW_ACTION_TILE_TOP) {
             key = KEY_UP;
-        } else if (edges == WINDOW_ACTION_SNAP_BOTTOM) {
+        } else if (edges == WINDOW_ACTION_TILE_BOTTOM) {
             key = KEY_DOWN;
-        } else if (edges == WINDOW_ACTION_SNAP_LEFT) {
+        } else if (edges == WINDOW_ACTION_TILE_LEFT) {
             key = KEY_LEFT;
-        } else if (edges == WINDOW_ACTION_SNAP_RIGHT) {
+        } else if (edges == WINDOW_ACTION_TILE_RIGHT) {
             key = KEY_RIGHT;
         }
         if (grab->view->base.maximized) {
             grab->current = TILE_MAXIMIZE;
         } else {
-            grab->current =
-                grab->view->base.tiled < KYWC_TILE_CENTER ? grab->view->base.tiled : TILE_NONE;
+            grab->current = grab->view->base.tiled < KYWC_TILE_CENTER
+                                ? (enum tile_state)grab->view->base.tiled
+                                : TILE_NONE;
         }
 
         interactive_process_tile(grab, key);

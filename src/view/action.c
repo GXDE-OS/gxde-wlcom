@@ -28,10 +28,10 @@ static struct window_shortcut {
     { "Alt+F9", "window minimized", WINDOW_ACTION_MINIMIZE },
     { "Alt+F4", "window closed", WINDOW_ACTION_CLOSE },
     { "Alt+F3", "window menu", WINDOW_ACTION_MENU },
-    { "win+up", "window snap edge up", WINDOW_ACTION_SNAP_TOP },
-    { "win+down", "window snap edge down", WINDOW_ACTION_SNAP_BOTTOM },
-    { "win+left", "window snap edge left", WINDOW_ACTION_SNAP_LEFT },
-    { "win+right", "window snap edge right", WINDOW_ACTION_SNAP_RIGHT },
+    { "win+up", "window tile up", WINDOW_ACTION_TILE_TOP },
+    { "win+down", "window tile down", WINDOW_ACTION_TILE_BOTTOM },
+    { "win+left", "window tile left", WINDOW_ACTION_TILE_LEFT },
+    { "win+right", "window tile right", WINDOW_ACTION_TILE_RIGHT },
 };
 
 #define MIRROR_BUFFER_DEBUG 0
@@ -196,10 +196,10 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
             view_show_window_menu(view, seat, lx, ly);
         }
         break;
-    case WINDOW_ACTION_SNAP_TOP:
-    case WINDOW_ACTION_SNAP_BOTTOM:
-    case WINDOW_ACTION_SNAP_LEFT:
-    case WINDOW_ACTION_SNAP_RIGHT:
+    case WINDOW_ACTION_TILE_TOP:
+    case WINDOW_ACTION_TILE_BOTTOM:
+    case WINDOW_ACTION_TILE_LEFT:
+    case WINDOW_ACTION_TILE_RIGHT:
         window_begin_tile(view, action, seat);
         break;
     case WINDOW_ACTION_CAPTURE:
@@ -238,10 +238,10 @@ bool window_actions_create(struct view_manager *view_manager)
 
 enum {
     TOGGLE_SHOW_DESKTOP = 0,
-    DO_SHOW_DESKTOP,
-    DO_RESTORE_DESKTOP,
-    MINIMIZE_ALL_VIEW,
-    RESTORE_MINIMIZE_ALL_VIEW,
+    SHOW_DESKTOP,
+    RESTORE_DESKTOP,
+    MINIMIZE_ALL_VIEWS,
+    RESTORE_ALL_VIEWS,
 };
 
 static struct shortcut {
@@ -250,10 +250,10 @@ static struct shortcut {
     uint32_t action;
 } shortcuts[] = {
     { "win+d:no", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
-    { "win+h", "do show desktop", DO_SHOW_DESKTOP },
-    { "win+g", "do restore desktop", DO_RESTORE_DESKTOP },
-    { "win+m", "minimize all view", MINIMIZE_ALL_VIEW },
-    { "win+shift+m", "restore minimize all view", RESTORE_MINIMIZE_ALL_VIEW },
+    { "win+h", "show desktop", SHOW_DESKTOP },
+    { "win+g", "restore desktop", RESTORE_DESKTOP },
+    { "win+m", "minimize all views", MINIMIZE_ALL_VIEWS },
+    { "win+shift+m", "restore all views", RESTORE_ALL_VIEWS },
 };
 
 static void shortcuts_action(struct key_binding *binding, void *data)
@@ -264,12 +264,12 @@ static void shortcuts_action(struct key_binding *binding, void *data)
     case TOGGLE_SHOW_DESKTOP:
         view_manager_show_desktop(!view_manager_get_show_desktop(), true);
         break;
-    case DO_SHOW_DESKTOP:
-    case MINIMIZE_ALL_VIEW:
+    case SHOW_DESKTOP:
+    case MINIMIZE_ALL_VIEWS:
         view_manager_show_desktop(true, true);
         break;
-    case DO_RESTORE_DESKTOP:
-    case RESTORE_MINIMIZE_ALL_VIEW:
+    case RESTORE_DESKTOP:
+    case RESTORE_ALL_VIEWS:
         view_manager_show_desktop(false, true);
         break;
     }
