@@ -22,7 +22,7 @@
 #include "xwayland.h"
 
 static struct output_manager *output_manager = NULL;
-static char *unknown = "unknown";
+static char *unknown = " ";
 
 struct output *output_from_kywc_output(struct kywc_output *kywc_output)
 {
@@ -271,7 +271,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         kywc_output->prop.desc = kywc_output->name;
     }
     if (!kywc_output->prop.make) {
-        kywc_output->prop.make = unknown;
+        kywc_output->prop.make = name;
     }
     if (kywc_output->prop.is_virtual && strcmp(name, "FALLBACK") == 0) {
         output_manager->fallback_output = kywc_output;
