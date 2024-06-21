@@ -354,24 +354,31 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 static void handle_output_present(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, present);
-    output->pageflip = true;
-    output->has_pending =
-        output->has_pending ? kywc_output_set_state(&output->base, &output->pending_state) : false;
-    if (output->has_pending) {
+    output->scene_commit = false;
+
+    if (!output->has_pending) {
+        return;
+    }
+
+    if (kywc_output_set_state(&output->base, &output->pending_state)) {
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+        /* has_pending is reset in handle_output_frame */
+    } else {
+        output->has_pending = false;
     }
 }
 
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
+    /* skip rendering if has_pending, otherwise drm may report busy */
     if (output->has_pending) {
         output->wlr_output->frame_pending = true;
         output->has_pending = false;
         return;
     }
 
-    output->pageflip = !ky_scene_output_commit(output->scene_output, NULL);
+    output->scene_commit = ky_scene_output_commit(output->scene_output, NULL);
 
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -1134,7 +1141,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
                 output_ensure_mode(wlr_output, &wlr_state, best);
             } else if (output->wlr_output->enabled && wlr_output_is_drm(wlr_output) &&
                        output->wlr_output->width == state->width &&
-                       output->wlr_output->height == state->height && !output->pageflip &&
+                       output->wlr_output->height == state->height && output->scene_commit &&
                        output->modeset) {
                 output->pending_state = *state;
                 output->has_pending = true;

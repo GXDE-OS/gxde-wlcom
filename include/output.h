@@ -62,7 +62,7 @@ struct output {
     uint32_t brightness;
     bool gamma_changed;
 
-    bool modeset, pageflip;
+    bool modeset, scene_commit;
 
     bool has_pending;
     struct kywc_output_state pending_state;
