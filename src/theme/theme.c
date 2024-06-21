@@ -740,9 +740,12 @@ fallback:
     return icon;
 }
 
-struct wlr_buffer *theme_icon_load(const char *app_id, float scale)
+struct wlr_buffer *theme_icon_load(const char *name, float scale)
 {
-    struct icon *icon = theme_icon_find(app_id);
+    if (!name || !*name) {
+        return NULL;
+    }
+    struct icon *icon = theme_icon_find(name);
     if (icon == manager->fallback_icon) {
         return NULL;
     }

@@ -132,7 +132,7 @@ bool theme_manager_set_opacity(int32_t opacity);
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);
 
-struct wlr_buffer *theme_icon_load(const char *app_id, float scale);
+struct wlr_buffer *theme_icon_load(const char *name, float scale);
 
 const char *theme_icon_name(const char *app_id);
 

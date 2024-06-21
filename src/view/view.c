@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <stdlib.h>
 
@@ -188,6 +189,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&view->events.workspace_enter);
     wl_signal_init(&view->events.workspace_leave);
     wl_signal_init(&view->events.output);
+    wl_signal_init(&view->events.icon_update);
 
     kywc_view->role = KYWC_VIEW_ROLE_NORMAL;
     kywc_view->minimizable = true;
@@ -317,7 +319,13 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 {
     struct wlr_buffer *buf = NULL;
-    buf = theme_icon_load(view->base.app_id, scale);
+
+    // try icon_name first
+    buf = theme_icon_load(view->icon_name, scale);
+
+    if (!buf) {
+        buf = theme_icon_load(view->base.app_id, scale);
+    }
 
     if (!buf && view->impl->get_icon_buffer) {
         buf = view->impl->get_icon_buffer(view, scale);
@@ -445,6 +453,7 @@ void view_unmap(struct view *view)
     }
 
     input_rebase_all_cursor();
+    free(view->icon_name);
 }
 
 #define CONFIGURE_TIMEOUT_MS 100
@@ -627,6 +636,18 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd)
     kywc_log(KYWC_DEBUG, "kywc_view %p need ssd %d", kywc_view, ssd);
 
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
+}
+
+void view_set_icon(struct view *view, const char *icon_name)
+{
+    if ((!view->icon_name && !icon_name) ||
+        (view->icon_name && icon_name && !strcmp(view->icon_name, icon_name))) {
+        return;
+    }
+
+    free(view->icon_name);
+    view->icon_name = icon_name ? strdup(icon_name) : NULL;
+    wl_signal_emit_mutable(&view->events.icon_update, NULL);
 }
 
 struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *workspace)

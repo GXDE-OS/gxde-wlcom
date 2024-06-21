@@ -104,6 +104,7 @@ struct ssd {
     struct wl_listener view_title;
     struct wl_listener view_maximize;
     struct wl_listener view_fullscreen;
+    struct wl_listener view_icon_update;
 
     struct wl_listener theme_update;
     struct wl_listener icon_update;
@@ -880,6 +881,12 @@ static void handle_icon_update(struct wl_listener *listener, void *data)
     ssd_part_set_icon_buffer(&ssd->parts[SSD_TITLE_ICON]);
 }
 
+static void handle_view_icon_update(struct wl_listener *listener, void *data)
+{
+    struct ssd *ssd = wl_container_of(listener, ssd, view_icon_update);
+    ssd_part_set_icon_buffer(&ssd->parts[SSD_TITLE_ICON]);
+}
+
 static void handle_view_activate(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_activate);
@@ -940,6 +947,8 @@ static void ssd_parts_create(struct ssd *ssd)
     wl_signal_add(&kywc_view->events.maximize, &ssd->view_maximize);
     ssd->view_fullscreen.notify = handle_view_fullscreen;
     wl_signal_add(&kywc_view->events.fullscreen, &ssd->view_fullscreen);
+    ssd->view_icon_update.notify = handle_view_icon_update;
+    wl_signal_add(&view->events.icon_update, &ssd->view_icon_update);
 
     wl_list_init(&ssd->view_activate.link);
     wl_list_init(&ssd->view_title.link);
@@ -991,6 +1000,7 @@ static void ssd_parts_destroy(struct ssd *ssd)
     wl_list_remove(&ssd->view_fullscreen.link);
     wl_list_remove(&ssd->theme_update.link);
     wl_list_remove(&ssd->icon_update.link);
+    wl_list_remove(&ssd->view_icon_update.link);
 
     // XXX: destroyed in view_destroy, check ssd->tree ?
     ky_scene_node_destroy(&ssd->tree->node);

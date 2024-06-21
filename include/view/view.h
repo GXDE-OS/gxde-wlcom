@@ -121,6 +121,8 @@ struct view {
         struct wl_signal workspace_enter;
         /* emit if view leave a workspace */
         struct wl_signal workspace_leave;
+        /* emit if view change icon name */
+        struct wl_signal icon_update;
     } events;
 
     struct {
@@ -145,6 +147,7 @@ struct view {
     bool minimized_when_show_desktop;
     bool show_in_all_workspaces;
     uint32_t current_resize_edges;
+    char *icon_name;
 };
 
 struct view_impl {
@@ -222,5 +225,7 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 void view_apply_role(struct view *view);
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
+
+void view_set_icon(struct view *view, const char *icon_name);
 
 #endif /* __VIEW_H_ */

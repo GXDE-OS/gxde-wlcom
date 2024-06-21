@@ -181,5 +181,13 @@
            summary="the seat for which the keyboard should be grabbed"/>
     </request>
 
+    <request name="set_icon">
+      <description summary="set server decoration icon">
+        Setting server decoration icon by icon name.
+        Set icon name to null will use app_id to find icon.
+      </description>
+      <arg name="icon_name" type="string" allow-null="true" summary="icon name for surface ssd"/>
+    </request>
+
   </interface>
 </protocol>

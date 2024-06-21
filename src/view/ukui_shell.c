@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
 
@@ -64,6 +65,8 @@ struct ukui_surface {
 
     struct wl_list ukui_keyboard_grabs;
     bool grab_all_keyboard;
+
+    char *icon_name;
 };
 
 struct ukui_keyboard_grab {
@@ -458,6 +461,23 @@ static void handle_grab_keyboard(struct wl_client *client, struct wl_resource *r
     }
 }
 
+static void handle_set_icon(struct wl_client *client, struct wl_resource *resource,
+                            const char *icon_name)
+{
+    struct ukui_surface *surface = wl_resource_get_user_data(resource);
+    if (!surface->wlr_surface) {
+        return;
+    }
+
+    if (surface->view) {
+        view_set_icon(surface->view, icon_name);
+        return;
+    }
+
+    free(surface->icon_name);
+    surface->icon_name = icon_name ? strdup(icon_name) : NULL;
+}
+
 static const struct ukui_surface_interface ukui_surface_impl = {
     .destroy = handle_destroy,
     .set_output = handle_set_output,
@@ -470,6 +490,7 @@ static const struct ukui_surface_interface ukui_surface_impl = {
     .open_under_cursor = handle_open_under_cursor,
     .set_panel_takes_focus = handle_set_panel_takes_focus,
     .grab_keyboard = handle_grab_keyboard,
+    .set_icon = handle_set_icon,
 };
 
 static void surface_handle_output_update_usable_area(struct wl_listener *listener, void *data)
@@ -633,6 +654,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     surface->view->base.skip_taskbar = surface->skip_taskbar;
     surface->view->base.skip_switcher = surface->skip_switcher;
     ukui_surface_apply_role(surface);
+    view_set_icon(surface->view, surface->icon_name);
     ukui_surface_apply_property(surface);
 
     if (surface->open_under_cursor) {
@@ -690,6 +712,7 @@ static void ukui_surface_handle_resource_destroy(struct wl_resource *resource)
         surface_handle_view_destroy(&surface->view_destroy, NULL);
     }
 
+    free(surface->icon_name);
     free(surface);
 }
 
