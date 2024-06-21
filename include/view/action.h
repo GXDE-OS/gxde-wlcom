@@ -25,6 +25,10 @@ enum window_action {
     WINDOW_ACTION_TILE_BOTTOM,
     WINDOW_ACTION_TILE_LEFT,
     WINDOW_ACTION_TILE_RIGHT,
+    WINDOW_ACTION_TILE_TOP_HALF_SCREEN,
+    WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN,
+    WINDOW_ACTION_TILE_LEFT_HALF_SCREEN,
+    WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN,
     WINDOW_ACTION_CAPTURE,
 };
 
@@ -37,6 +41,11 @@ void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat);
 
 void window_begin_tile(struct view *view, uint32_t key, struct seat *seat);
 
+void window_begin_tile_half_screen(struct view *view, uint32_t key, struct seat *seat);
+
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y);
+
+struct output *window_target_output_by_current_output(struct output *current, struct seat *seat,
+                                                      enum layout_edge layout_edge);
 
 #endif

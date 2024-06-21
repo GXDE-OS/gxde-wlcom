@@ -32,6 +32,10 @@ static struct window_shortcut {
     { "win+down", "window tile down", WINDOW_ACTION_TILE_BOTTOM },
     { "win+left", "window tile left", WINDOW_ACTION_TILE_LEFT },
     { "win+right", "window tile right", WINDOW_ACTION_TILE_RIGHT },
+    { "win+alt+up", "window tiled to top half screen", WINDOW_ACTION_TILE_TOP_HALF_SCREEN },
+    { "win+alt+down", "window tiled to bottom half screen", WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN },
+    { "win+alt+left", "window tiled to left half screen", WINDOW_ACTION_TILE_LEFT_HALF_SCREEN },
+    { "win+alt+right", "window tiled to right half screen", WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN },
 };
 
 #define MIRROR_BUFFER_DEBUG 0
@@ -201,6 +205,12 @@ void window_action(struct view *view, struct seat *seat, enum window_action acti
     case WINDOW_ACTION_TILE_LEFT:
     case WINDOW_ACTION_TILE_RIGHT:
         window_begin_tile(view, action, seat);
+        break;
+    case WINDOW_ACTION_TILE_TOP_HALF_SCREEN:
+    case WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN:
+    case WINDOW_ACTION_TILE_LEFT_HALF_SCREEN:
+    case WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN:
+        window_begin_tile_half_screen(view, action, seat);
         break;
     case WINDOW_ACTION_CAPTURE:
         window_capture_create(view, seat);
