@@ -19,6 +19,7 @@
 #include "util/time.h"
 
 #define WAIT_SESSION_TIMEOUT 10000 // ms
+#define WAIT_GPU_TIMEOUT 1500      // ms
 
 static struct wlr_session *session_create_and_wait(struct wl_display *disp)
 {
@@ -169,8 +170,8 @@ static bool attempt_fbdev_backend(struct wl_display *display, struct wlr_backend
     return true;
 }
 
-static struct wlr_backend *ky_backend_create(struct wl_display *display,
-                                             struct wlr_session **session_ptr)
+static struct wlr_backend *ky_fbdev_backend_create(struct wl_display *display,
+                                                   struct wlr_session **session_ptr)
 {
     if (session_ptr != NULL) {
         *session_ptr = NULL;
@@ -215,14 +216,85 @@ error:
     return NULL;
 }
 
+static bool find_drm_cards(struct wl_display *display)
+{
+    struct udev *udev = udev_new();
+    if (!udev) {
+        kywc_log_errno(KYWC_ERROR, "Failed to create udev context");
+        return false;
+    }
+
+    bool found = false;
+    struct udev_enumerate *en = udev_enumerate_new(udev);
+    if (!en) {
+        kywc_log(KYWC_ERROR, "udev_enumerate_new failed");
+        goto out;
+    }
+
+    udev_enumerate_add_match_subsystem(en, "drm");
+    udev_enumerate_add_match_sysname(en, "card[0-9]*");
+
+    if (udev_enumerate_scan_devices(en) != 0) {
+        kywc_log(KYWC_ERROR, "udev_enumerate_scan_devices failed");
+        goto out;
+    }
+
+    if (udev_enumerate_get_list_entry(en) == NULL) {
+        kywc_log(KYWC_INFO, "Waiting for a KMS device");
+
+        int64_t started_at = current_time_msec();
+        int64_t timeout = WAIT_GPU_TIMEOUT;
+        struct wl_event_loop *event_loop = wl_display_get_event_loop(display);
+
+        while (1) {
+            int ret = wl_event_loop_dispatch(event_loop, (int)timeout);
+            if (ret < 0) {
+                kywc_log_errno(KYWC_ERROR, "wl_event_loop_dispatch failed");
+                goto out;
+            }
+            int64_t now = current_time_msec();
+            if (now >= started_at + WAIT_GPU_TIMEOUT) {
+                break;
+            }
+            timeout = started_at + WAIT_GPU_TIMEOUT - now;
+        }
+
+        if (udev_enumerate_scan_devices(en) != 0) {
+            kywc_log(KYWC_ERROR, "udev_enumerate_scan_devices failed");
+            goto out;
+        }
+
+        if (udev_enumerate_get_list_entry(en) == NULL) {
+            kywc_log(KYWC_INFO, "Found 0 GPUs, trying fbdev backend");
+            goto out;
+        }
+    }
+
+    found = true;
+
+out:
+    if (en) {
+        udev_enumerate_unref(en);
+    }
+    udev_unref(udev);
+    return found;
+}
+
 struct wlr_backend *ky_backend_autocreate(struct wl_display *display,
                                           struct wlr_session **session_ptr)
 {
     const char *env = getenv("KYWC_BACKEND");
     if (env && strcmp(env, "fbdev") == 0) {
-        return ky_backend_create(display, session_ptr);
+        return ky_fbdev_backend_create(display, session_ptr);
     }
 
-    struct wlr_backend *wlr_backend = wlr_backend_autocreate(display, session_ptr);
-    return wlr_backend ? wlr_backend : ky_backend_create(display, session_ptr);
+    if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET") || getenv("DISPLAY")) {
+        return wlr_backend_autocreate(display, session_ptr);
+    }
+
+    struct wlr_backend *backend = NULL;
+    if (find_drm_cards(display)) {
+        backend = wlr_backend_autocreate(display, session_ptr);
+    }
+    return backend ? backend : ky_fbdev_backend_create(display, session_ptr);
 }
