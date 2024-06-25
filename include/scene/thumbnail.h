@@ -10,6 +10,7 @@
 #include "view/workspace.h"
 
 struct server;
+struct kywc_output_state;
 
 struct thumbnail_update_event {
     struct wlr_buffer *buffer;
@@ -34,7 +35,8 @@ struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option,
 struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
                                                   struct kywc_output *output, float scale);
 
-struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, float scale);
+struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output,
+                                               struct kywc_output_state *output_state, float scale);
 
 void thumbnail_add_update_listener(struct thumbnail *thumbnail, struct wl_listener *listener);
 

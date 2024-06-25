@@ -103,9 +103,23 @@ struct workspace_thumbnail {
     struct wl_listener output_destroy;
 };
 
+struct output_thumbnail_state {
+    enum wl_output_transform transform;
+    /* transformed output resolution */
+    int trans_width, trans_height;
+    int width, height;
+    float scale;
+
+    /* lx, ly in scene */
+    struct wlr_box logical;
+};
+
 struct output_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
+
+    bool state_readonly;
+    struct output_thumbnail_state state;
 
     struct ky_scene_output *output;
     struct wl_listener output_commit;
@@ -871,11 +885,16 @@ static struct wlr_buffer *output_thumbnail_render(struct thumbnail_buffer *thumb
     struct output_thumbnail *output_thumbnail =
         wl_container_of(thumbnail_buffer, output_thumbnail, base);
     struct ky_scene_output *src_output = output_thumbnail->output;
+    if (!output_thumbnail->state_readonly) {
+        output_thumbnail->state.logical.x = src_output->x;
+        output_thumbnail->state.logical.y = src_output->y;
+    }
+
+    const struct output_thumbnail_state *state = &output_thumbnail->state;
+    int buffer_width = state->width * thumbnail_buffer->scale;
+    int buffer_height = state->height * thumbnail_buffer->scale;
+
     struct wlr_output *output = src_output->output;
-
-    int buffer_width = output->width * thumbnail_buffer->scale;
-    int buffer_height = output->height * thumbnail_buffer->scale;
-
     struct wlr_buffer *buffer =
         thumbnail_buffer_allocate(thumbnail_buffer, buffer_width, buffer_height, output->allocator);
     if (!buffer) {
@@ -896,17 +915,16 @@ static struct wlr_buffer *output_thumbnail_render(struct thumbnail_buffer *thumb
                                           });
 
     struct ky_scene_render_target target = {
-        .logical = { .x = src_output->x, .y = src_output->y },
-        .scale = output->scale,
+        .logical = state->logical,
+        .scale = state->scale,
         .buffer = buffer,
-        .transform = output->transform,
+        .transform = state->transform,
+        .trans_width = state->trans_width,
+        .trans_height = state->trans_height,
         .output = src_output,
         .render_pass = render_pass,
         .options = KY_SCENE_RENDER_DISABLE_VISIBILITY,
     };
-    wlr_output_transformed_resolution(output, &target.trans_width, &target.trans_height);
-    target.logical.width = target.trans_width / output->scale;
-    target.logical.height = target.trans_height / output->scale;
     pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
                               target.logical.width, target.logical.height);
 
@@ -942,11 +960,31 @@ static void output_thumbnail_handle_output_destroy(struct wl_listener *listener,
     output_thumbnail_destroy(&output_thumbnail->base);
 }
 
+static void get_state_from_wlr_output(struct output_thumbnail_state *state,
+                                      struct wlr_output *wlr_output)
+{
+    state->scale = wlr_output->scale;
+    state->width = wlr_output->width;
+    state->height = wlr_output->height;
+    state->transform = wlr_output->transform;
+    wlr_output_transformed_resolution(wlr_output, &state->trans_width, &state->trans_height);
+
+    state->logical.width = state->trans_width / state->scale;
+    state->logical.height = state->trans_height / state->scale;
+}
+
 static void output_thumbnail_handle_output_commit(struct wl_listener *listener, void *data)
 {
     struct output_thumbnail *output_thumbnail =
         wl_container_of(listener, output_thumbnail, output_commit);
     struct wlr_output_event_commit *event = data;
+
+    if (!output_thumbnail->state_readonly &&
+        (event->state->committed & WLR_OUTPUT_STATE_MODE ||
+         event->state->committed & WLR_OUTPUT_STATE_SCALE ||
+         event->state->committed & WLR_OUTPUT_STATE_TRANSFORM)) {
+        get_state_from_wlr_output(&output_thumbnail->state, event->output);
+    }
 
     if (!(event->state->committed & WLR_OUTPUT_STATE_BUFFER)) {
         return;
@@ -960,21 +998,46 @@ static void output_thumbnail_handle_output_commit(struct wl_listener *listener, 
     }
 }
 
-static struct output_thumbnail *find_output_thumbnail(struct ky_scene_output *output, float scale)
+static bool output_state_is_same(struct output_thumbnail_state *thumbnail_state,
+                                 struct kywc_output_state *output_state)
+{
+    if (thumbnail_state == NULL && output_state == NULL) {
+        return true;
+    } else if (thumbnail_state == NULL || output_state == NULL) {
+        return false;
+    }
+
+    if (thumbnail_state->scale != output_state->scale ||
+        thumbnail_state->width != output_state->width ||
+        thumbnail_state->height != output_state->height ||
+        thumbnail_state->logical.x != output_state->lx ||
+        thumbnail_state->logical.y != output_state->ly ||
+        thumbnail_state->transform != output_state->transform) {
+        return false;
+    }
+
+    return true;
+}
+
+static struct output_thumbnail *find_output_thumbnail(struct ky_scene_output *output,
+                                                      struct kywc_output_state *state, float scale)
 {
     struct output_thumbnail *output_thumbnail;
     wl_list_for_each(output_thumbnail, &manager->output_thumbnails, link) {
-        if (output_thumbnail->output == output && output_thumbnail->base.scale == scale) {
+        if (output_thumbnail->output == output && output_thumbnail->base.scale == scale &&
+            output_state_is_same(&output_thumbnail->state, state)) {
             return output_thumbnail;
         }
     }
+
     return NULL;
 }
 
-static struct output_thumbnail *output_thumbnail_get_or_create(struct ky_scene_output *output,
-                                                               float scale)
+static struct output_thumbnail *
+output_thumbnail_get_or_create(struct ky_scene_output *output,
+                               struct kywc_output_state *output_state, float scale)
 {
-    struct output_thumbnail *output_thumbnail = find_output_thumbnail(output, scale);
+    struct output_thumbnail *output_thumbnail = find_output_thumbnail(output, output_state, scale);
     if (output_thumbnail) {
         return output_thumbnail;
     }
@@ -997,6 +1060,35 @@ static struct output_thumbnail *output_thumbnail_get_or_create(struct ky_scene_o
 
     wl_list_insert(&manager->output_thumbnails, &output_thumbnail->link);
 
+    struct output_thumbnail_state *state = &output_thumbnail->state;
+    if (!output_state) {
+        struct wlr_output *wlr_output = output_thumbnail->output->output;
+        state->logical.x = output_thumbnail->output->x;
+        state->logical.y = output_thumbnail->output->y;
+        get_state_from_wlr_output(state, wlr_output);
+
+        output_thumbnail->state_readonly = false;
+        return output_thumbnail;
+    }
+
+    state->scale = output_state->scale;
+    state->width = output_state->width;
+    state->height = output_state->height;
+    state->transform = output_state->transform;
+    if (state->transform % 2 == 0) {
+        state->trans_width = state->width;
+        state->trans_height = state->height;
+    } else {
+        state->trans_height = state->width;
+        state->trans_width = state->height;
+    }
+
+    state->logical.x = output_state->lx;
+    state->logical.y = output_state->ly;
+    state->logical.width = state->trans_width / state->scale;
+    state->logical.height = state->trans_height / state->scale;
+
+    output_thumbnail->state_readonly = true;
     return output_thumbnail;
 }
 
@@ -1086,7 +1178,8 @@ struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
     return thumbnail;
 }
 
-struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, float scale)
+struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output,
+                                               struct kywc_output_state *output_state, float scale)
 {
     if (!manager) {
         return NULL;
@@ -1097,7 +1190,8 @@ struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output, f
         return NULL;
     }
 
-    struct output_thumbnail *output_thumbnail = output_thumbnail_get_or_create(output, scale);
+    struct output_thumbnail *output_thumbnail =
+        output_thumbnail_get_or_create(output, output_state, scale);
     if (!output_thumbnail) {
         free(thumbnail);
         return NULL;

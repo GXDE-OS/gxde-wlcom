@@ -288,7 +288,8 @@ static struct translation_entity *translation_entity_create(struct workspace_out
 
     wl_list_init(&translation_entity->link);
 
-    struct thumbnail *output_thumbnail = thumbnail_create_from_output(ws_output->scene_output, 1.0);
+    struct thumbnail *output_thumbnail =
+        thumbnail_create_from_output(ws_output->scene_output, NULL, 1.0);
     if (!output_thumbnail) {
         return NULL;
     }
