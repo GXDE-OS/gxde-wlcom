@@ -119,7 +119,10 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
     state->edge = edge;
 
     if (state->timer) {
-        int timeout = state->type == GESTURE_TYPE_HOLD ? GESTURE_HOLD_TIMEOUT : GESTURE_TIMEOUT;
+        int timeout = GESTURE_TIMEOUT;
+        if (state->type == GESTURE_TYPE_HOLD && state->device == GESTURE_DEVICE_TOUCHSCREEN) {
+            timeout = GESTURE_HOLD_TIMEOUT;
+        }
         wl_event_source_timer_update(state->timer, timeout);
     }
 
