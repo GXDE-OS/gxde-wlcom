@@ -380,7 +380,10 @@ static bool menu_shortcut(struct menu *menu, uint32_t key)
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
                               bool pressed, uint32_t modifiers)
 {
+    static bool left_alt = false, right_alt = false;
     if (!pressed) {
+        left_alt = key == KEY_LEFTALT ? false : left_alt;
+        right_alt = key == KEY_RIGHTALT ? false : right_alt;
         return true;
     }
 
@@ -397,9 +400,24 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
     case KEY_DOWN:
         menu_hover_prev_or_next(menu, true);
         break;
+    case KEY_LEFTALT:
+        if (left_alt) {
+            break;
+        }
+        left_alt = true;
+        // fallthrought to right alt key
+    case KEY_RIGHTALT:
+        if (key == KEY_RIGHTALT) {
+            if (right_alt) {
+                break;
+            }
+            right_alt = true;
+        }
+        // fallthrought to esc key
     case KEY_ESC:
         if (!menu->parent) {
             menu_hide_root(root);
+            left_alt = right_alt = false;
             break;
         }
         // fallthrought to left key
