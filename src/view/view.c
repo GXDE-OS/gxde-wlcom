@@ -397,7 +397,7 @@ void view_map(struct view *view)
     kywc_log(KYWC_DEBUG, "kywc_view %p map", kywc_view);
 
     if (!view_add_slide_effect(view, true) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
-        view_add_fade_effect(view, FADE_MAP);
+        view_add_fade_effect(view, FADE_IN);
     }
 
     wl_signal_emit_mutable(&kywc_view->events.map, NULL);
@@ -423,7 +423,7 @@ void view_unmap(struct view *view)
 
     if (!view_add_slide_effect(view, false) && kywc_view->role == KYWC_VIEW_ROLE_NORMAL &&
         !kywc_view->minimized) {
-        view_add_fade_effect(view, FADE_UNMAP);
+        view_add_fade_effect(view, FADE_OUT);
     }
 
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);

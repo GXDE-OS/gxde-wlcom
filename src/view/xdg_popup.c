@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+#include "effect/fade.h"
 #include "input/event.h"
 #include "output.h"
 #include "scene/xdg_shell.h"
@@ -24,6 +25,7 @@ struct xdg_popup {
     struct wl_listener commit;
     struct wl_listener reposition;
     struct wl_listener map;
+    struct wl_listener unmap;
 
     bool topmost_popup;
     bool topmost_clear_focus;
@@ -39,6 +41,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->commit.link);
     wl_list_remove(&popup->reposition.link);
     wl_list_remove(&popup->map.link);
+    wl_list_remove(&popup->unmap.link);
 
     /* only need to destroy the topmost popup parent tree,
      * popup tree will be destroyed by xdg_surface destroy in scene
@@ -110,6 +113,23 @@ static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
     if (popup->topmost_clear_focus) {
         wlr_seat_keyboard_clear_focus(seat);
     }
+
+    struct ky_scene_node *node = &popup->popup_tree->node;
+    popup_add_fade_effect(node, node, FADE_IN, popup->topmost_popup, seat);
+}
+
+static void handle_xdg_popup_unmap(struct wl_listener *listener, void *data)
+{
+    struct xdg_popup *popup = wl_container_of(listener, popup, unmap);
+    struct ky_scene_buffer *buffer =
+        ky_scene_buffer_try_from_surface(popup->wlr_xdg_popup->base->surface);
+    if (!buffer) {
+        return;
+    }
+
+    struct wlr_seat *seat = popup->wlr_xdg_popup->seat;
+    struct ky_scene_node *node = &popup->popup_tree->node;
+    popup_add_fade_effect(node, &buffer->node, FADE_OUT, popup->topmost_popup, seat);
 }
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
@@ -139,6 +159,8 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
     wl_signal_add(&wlr_xdg_popup->events.reposition, &popup->reposition);
     popup->map.notify = handle_xdg_popup_map;
     wl_signal_add(&wlr_xdg_popup->base->surface->events.map, &popup->map);
+    popup->unmap.notify = handle_xdg_popup_unmap;
+    wl_signal_add(&wlr_xdg_popup->base->surface->events.unmap, &popup->unmap);
 
     return popup;
 }

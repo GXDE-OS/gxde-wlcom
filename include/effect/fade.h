@@ -5,13 +5,29 @@
 #ifndef _EFFECT_FADE_H_
 #define _EFFECT_FADE_H_
 
+#include "effect/animator.h"
 #include "view/view.h"
 
 enum fade_action {
-    FADE_MAP = 0,
-    FADE_UNMAP,
+    FADE_OUT = 0,
+    FADE_IN,
+};
+
+struct fade_options {
+    struct ky_scene_node *entity_node;
+    struct animation_type_group type;
+    enum fade_action action;
+    int64_t start_time;
+    int duration;
+    float factor;
+    int offset;
 };
 
 bool view_add_fade_effect(struct view *view, enum fade_action action);
+
+bool popup_add_fade_effect(struct ky_scene_node *entity_node, struct ky_scene_node *node,
+                           enum fade_action action, bool topmost, bool seat);
+
+bool node_add_fade_effect(struct ky_scene_node *node, struct fade_options *options);
 
 #endif /* _EFFECT_FADE_H_ */

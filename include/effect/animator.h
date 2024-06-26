@@ -22,6 +22,7 @@ enum animation_type {
     ANIMATION_TYPE_30_15_10_100, // (0.3, 0.15) (0.1, 1)
     ANIMATION_TYPE_0_40_20_100,  // (0, 0.4) (0.2, 1)
     ANIMATION_TYPE_33_0_100_75,  // (0.33, 0) (1, 0.75)
+    ANIMATION_TYPE_30_2_8_100,   // (0.3, 0.02) (0.08, 1)
     ANIMATION_TYPES,
 };
 
