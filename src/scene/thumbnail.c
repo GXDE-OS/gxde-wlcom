@@ -85,6 +85,7 @@ struct workspace_thumbnail_entry {
     struct thumbnail *thumbnail;
     struct wl_listener thumbnail_update;
     struct wl_listener thumbnail_destroy;
+    struct wl_listener view_minimize;
 };
 
 struct workspace_thumbnail {
@@ -559,7 +560,7 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
     struct view_proxy *view_proxy;
     wl_list_for_each_reverse(view_proxy, &workspace_thumbnail->workspace->view_proxies,
                              workspace_link) {
-        if (!view_proxy->view->base.mapped ||
+        if (!view_proxy->view->base.mapped || view_proxy->view->base.minimized ||
             view_proxy->view->output != workspace_thumbnail->output) {
             continue;
         }
@@ -600,6 +601,7 @@ static void workspace_thumbnail_entry_destroy(struct workspace_thumbnail_entry *
     if (entry->thumbnail) {
         wl_list_remove(&entry->thumbnail_destroy.link);
         wl_list_remove(&entry->thumbnail_update.link);
+        wl_list_remove(&entry->view_minimize.link);
         thumbnail_destroy(entry->thumbnail);
     }
 
@@ -730,6 +732,16 @@ static void workspace_thumbnail_handle_view_unmap(struct wl_listener *listener, 
     thumbnail_manager_schedule_frame();
 }
 
+static void workspace_thumbnail_handle_view_minimize(struct wl_listener *listener, void *data)
+{
+    struct workspace_thumbnail_entry *entry = wl_container_of(listener, entry, view_minimize);
+    struct workspace_thumbnail *workspace_thumbnail = entry->workspace_thumbnail;
+
+    thumbnail_mark_wants_update(entry->thumbnail, !entry->view->base.minimized);
+    workspace_thumbnail->base.was_damaged = true;
+    thumbnail_manager_schedule_frame();
+}
+
 static void workspace_thumbnail_handle_output_destroy(struct wl_listener *listener, void *data)
 {
     struct workspace_thumbnail *workspace_thumbnail =
@@ -761,6 +773,11 @@ static void workspace_thumbnail_entry_create_thumbnail(struct workspace_thumbnai
 
     entry->thumbnail_destroy.notify = workspace_thumbnail_handle_thumbnail_destroy;
     wl_signal_add(&thumbnail->events.destroy, &entry->thumbnail_destroy);
+
+    entry->view_minimize.notify = workspace_thumbnail_handle_view_minimize;
+    wl_signal_add(&entry->view->base.events.minimize, &entry->view_minimize);
+
+    thumbnail_mark_wants_update(entry->thumbnail, !entry->view->base.minimized);
 }
 
 static void workspace_thumbnail_create_entry(struct workspace_thumbnail *workspace_thumbnail,
