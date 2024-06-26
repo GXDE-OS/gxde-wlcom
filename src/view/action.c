@@ -252,6 +252,7 @@ enum {
     RESTORE_DESKTOP,
     MINIMIZE_ALL_VIEWS,
     RESTORE_ALL_VIEWS,
+    TOGGLE_SHOW_ACTIVE_ONLY,
 };
 
 static struct shortcut {
@@ -264,6 +265,7 @@ static struct shortcut {
     { "win+g", "restore desktop", RESTORE_DESKTOP },
     { "win+m", "minimize all views", MINIMIZE_ALL_VIEWS },
     { "win+shift+m", "restore all views", RESTORE_ALL_VIEWS },
+    { "win+home", "toggle show active window only", TOGGLE_SHOW_ACTIVE_ONLY },
 };
 
 static void shortcuts_action(struct key_binding *binding, void *data)
@@ -281,6 +283,9 @@ static void shortcuts_action(struct key_binding *binding, void *data)
     case RESTORE_DESKTOP:
     case RESTORE_ALL_VIEWS:
         view_manager_show_desktop(false, true);
+        break;
+    case TOGGLE_SHOW_ACTIVE_ONLY:
+        view_manager_show_active_only(!view_manager_get_show_activte_only(), true);
         break;
     }
 }

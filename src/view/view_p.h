@@ -44,6 +44,7 @@ struct view_manager {
     struct wl_listener server_destroy;
 
     bool show_desktop_enabled;
+    bool show_activte_only_enabled;
 };
 
 struct view_show_window_menu_event {

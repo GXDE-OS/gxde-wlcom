@@ -144,10 +144,11 @@ struct view {
     void *data;
 
     pid_t pid;
-    bool minimized_when_show_desktop;
-    bool show_in_all_workspaces;
-    uint32_t current_resize_edges;
     char *icon_name;
+    uint32_t current_resize_edges;
+    bool show_in_all_workspaces;
+    bool minimized_when_show_desktop;
+    bool minimized_when_show_active_only;
 };
 
 struct view_impl {
@@ -170,6 +171,10 @@ void view_manager_show_desktop(bool enabled, bool apply);
 bool view_manager_get_show_desktop(void);
 
 void view_add_show_desktop_listener(struct wl_listener *listener);
+
+void view_manager_show_active_only(bool enabled, bool apply);
+
+bool view_manager_get_show_activte_only(void);
 
 uint32_t view_manager_get_adsorption(void);
 

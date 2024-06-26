@@ -407,8 +407,13 @@ void view_map(struct view *view)
     wl_list_for_each(proxy, &view->view_proxies, view_link) {
         wl_signal_emit_mutable(&proxy->workspace->events.view_enter, view);
     }
-    if (view->current_proxy && !kywc_view->minimized && view_manager->show_desktop_enabled) {
-        view_manager_show_desktop(false, false);
+    if (view->current_proxy && !kywc_view->minimized) {
+        if (view_manager->show_desktop_enabled) {
+            view_manager_show_desktop(false, false);
+        }
+        if (view_manager->show_activte_only_enabled) {
+            view_manager_show_active_only(false, false);
+        }
     }
 
     input_rebase_all_cursor();
@@ -962,6 +967,9 @@ static void view_activate(struct view *view)
     }
 
     if (last != view) {
+        if (view_manager->show_activte_only_enabled) {
+            view_manager_show_active_only(false, false);
+        }
         if (last) {
             view_set_activated(last, false);
         }
@@ -1115,8 +1123,13 @@ void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
     view_add_scale_effect(view, SCALE_MINIMIZE);
     wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
 
-    if (!kywc_view->minimized && view_manager->show_desktop_enabled) {
-        view_manager_show_desktop(false, false);
+    if (!kywc_view->minimized) {
+        if (view_manager->show_desktop_enabled) {
+            view_manager_show_desktop(false, false);
+        }
+        if (view_manager->show_activte_only_enabled) {
+            view_manager_show_active_only(false, false);
+        }
     }
 
     input_rebase_all_cursor();
@@ -1510,6 +1523,62 @@ void view_add_show_desktop_listener(struct wl_listener *listener)
 bool view_manager_get_show_desktop(void)
 {
     return view_manager->show_desktop_enabled;
+}
+
+void view_manager_show_active_only(bool enabled, bool apply)
+{
+    if (view_manager->show_activte_only_enabled == enabled) {
+        return;
+    }
+    view_manager->show_activte_only_enabled = enabled;
+
+    struct view *current_view = view_manager_get_activated();
+    if (!current_view) {
+        return;
+    }
+
+    /* minimize all view in current workspace */
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view_proxy *view_proxy;
+    wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
+        struct view *view = view_proxy->view;
+        if (!view->base.mapped || view_has_modal_property(view) || view == current_view) {
+            continue;
+        }
+
+        /* skip restoring views not minimized by show only current view */
+        if (!enabled && !view->minimized_when_show_active_only) {
+            continue;
+        }
+
+        if (enabled) {
+            view->minimized_when_show_active_only = !view->base.minimized;
+        }
+        /* don't restoring views if the state is breaked */
+        if (apply) {
+            if (!view->base.minimizable || view->base.minimized == enabled) {
+                continue;
+            }
+
+            ky_scene_node_set_enabled(&view->tree->node, !enabled);
+            view->base.minimized = enabled;
+            view->pending.action |= VIEW_ACTION_MINIMIZE;
+
+            if (view->impl->configure) {
+                view->impl->configure(view);
+            }
+            wl_signal_emit_mutable(&view->base.events.minimize, NULL);
+        }
+
+        if (!enabled) {
+            view->minimized_when_show_active_only = false;
+        }
+    }
+}
+
+bool view_manager_get_show_activte_only(void)
+{
+    return view_manager->show_activte_only_enabled;
 }
 
 uint32_t view_manager_get_adsorption(void)
