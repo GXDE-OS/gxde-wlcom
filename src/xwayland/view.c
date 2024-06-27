@@ -595,6 +595,9 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
     struct view_layer *layer = NULL;
     bool removed_from_workspace = false;
 
+    xwayland_view->view.base.focusable = xwayland_view->view.base.activatable =
+        wlr_xwayland_or_surface_wants_focus(surface);
+
     if (xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DESKTOP)) {
         layer = view_manager_get_layer(LAYER_DESKTOP, false);
         xwayland_view->view.base.resizable = false;
