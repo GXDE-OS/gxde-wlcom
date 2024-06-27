@@ -14,7 +14,7 @@ kylin-wayland-compositor或kylin-wlcom（以下简称kywc）是一个基于wlroo
 
 3. 特效支持，支持最大化最小化等特效，以插件形式加载。
 
-4. 完整的中文输入支持，支持input-method v2和text-input v1/v3，支持input popup，支持chromium/electron应用
+4. 完整的中文输入支持，支持input-method v2和text-input v1/v2/v3，支持input popup，支持chromium/electron应用
 
 5. 快捷键和触摸手势支持，支持键盘快捷键，触摸板和触摸屏手势设置
 

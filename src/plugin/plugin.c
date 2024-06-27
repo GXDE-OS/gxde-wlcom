@@ -35,7 +35,7 @@ static void scan_all_plugins(bool rescan)
 
     DIR *plugin_dir = opendir(PLUGIN_DIR);
     if (!plugin_dir) {
-        kywc_log_errno(KYWC_ERROR, "Plugin dir open failed");
+        kywc_log_errno(KYWC_INFO, "Plugin dir open failed");
         return;
     }
 
