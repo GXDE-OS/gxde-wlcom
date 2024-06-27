@@ -27,13 +27,6 @@
                 "button": "right",
                 "desc": "simulate right key"
             },
-            "swipe:touch:1:left:right": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Super_L",
-                "keys": "a",
-                "desc": "show Siderbar"
-            },
             "swipe:touch:1:up:bottom": {
                 "enable": true,
                 "actiontype": "command",
