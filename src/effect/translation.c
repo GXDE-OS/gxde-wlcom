@@ -137,7 +137,7 @@ static void translation_entity_render(struct translation_entity *translation_ent
         .repeated = false,
         .rotation_angle = translation_entity->current.angle,
     };
-    ky_opengl_render_pass_add_texture(target->render_pass, &options);
+    ky_render_pass_add_texture(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);
 }
