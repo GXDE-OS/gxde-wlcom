@@ -131,7 +131,8 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
             .transform = head_v1->state.transform,
             .lx = head_v1->state.x,
             .ly = head_v1->state.y,
-            .vrr_policy = head_v1->state.adaptive_sync_enabled,
+            .vrr_policy = head_v1->state.adaptive_sync_enabled ? KYWC_OUTPUT_VRR_POLICY_ALWAYS
+                                                               : KYWC_OUTPUT_VRR_POLICY_NEVER,
         };
 
         struct output *output = output_from_wlr_output(head_v1->state.output);

@@ -12,17 +12,24 @@
 
 #include "boxes.h"
 
+enum kywc_output_vrr_policy {
+    KYWC_OUTPUT_VRR_POLICY_NEVER = 0,
+    KYWC_OUTPUT_VRR_POLICY_ALWAYS,
+    KYWC_OUTPUT_VRR_POLICY_AUTO,
+};
+
 enum kywc_output_capability {
     KYWC_OUTPUT_CAPABILITY_POWER = 1 << 0,
     KYWC_OUTPUT_CAPABILITY_BRIGHTNESS = 1 << 1,
     KYWC_OUTPUT_CAPABILITY_COLOR_TEMP = 1 << 2,
+    KYWC_OUTPUT_CAPABILITY_VRR = 1 << 3,
 };
 
 struct kywc_output_state {
     bool enabled, power;
     int32_t width, height, refresh; // refresh in mHz
     enum wl_output_transform transform;
-    uint32_t vrr_policy;
+    enum kywc_output_vrr_policy vrr_policy;
     float scale;
 
     /* layout coord */

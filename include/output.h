@@ -60,6 +60,7 @@ struct output {
     /* software rendering and gamma settings for color-temp and brightness */
     uint32_t color_temp;
     uint32_t brightness;
+    enum kywc_output_vrr_policy vrr_policy;
     bool gamma_changed;
 
     /* Whether the output is initialized */

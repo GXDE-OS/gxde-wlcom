@@ -612,11 +612,19 @@ static void kde_output_device_bind(struct wl_client *client, void *data, uint32_
 
     /* TODO: finish these
         kde_output_device_v2_send_eisa_id();
-        kde_output_device_v2_send_capabilities();
         kde_output_device_v2_send_overscan();
-        kde_output_device_v2_send_vrr_policy();
         kde_output_device_v2_send_rgb_range();
     */
+    uint32_t capabilities = 0;
+    if (kywc_output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_VRR) {
+        capabilities |= KDE_OUTPUT_DEVICE_V2_CAPABILITY_VRR;
+    }
+    kde_output_device_v2_send_capabilities(resource, capabilities);
+
+    if (capabilities & KDE_OUTPUT_DEVICE_V2_CAPABILITY_VRR) {
+        kde_output_device_v2_send_vrr_policy(resource, kywc_output->state.vrr_policy);
+    }
+
     if (version >= KDE_OUTPUT_DEVICE_V2_NAME_SINCE_VERSION) {
         kde_output_device_v2_send_name(resource, kywc_output->name);
     }

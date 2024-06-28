@@ -92,6 +92,7 @@ static const char *output_get_edid(struct wlr_output *wlr_output)
         drmModeObjectGetProperties(drm_fd, conn_id, DRM_MODE_OBJECT_CONNECTOR);
     if (!props) {
         kywc_log_errno(KYWC_ERROR, "Failed to get DRM object properties");
+        close(drm_fd);
         return NULL;
     }
 
@@ -123,6 +124,72 @@ static const char *output_get_edid(struct wlr_output *wlr_output)
     return edid;
 }
 
+static bool get_drm_prop(int fd, uint32_t obj, uint32_t prop, uint64_t *ret)
+{
+    drmModeObjectProperties *props = drmModeObjectGetProperties(fd, obj, DRM_MODE_OBJECT_ANY);
+    if (!props) {
+        return false;
+    }
+
+    bool found = false;
+    for (uint32_t i = 0; i < props->count_props; ++i) {
+        if (props->props[i] == prop) {
+            *ret = props->prop_values[i];
+            found = true;
+            break;
+        }
+    }
+
+    drmModeFreeObjectProperties(props);
+
+    return found;
+}
+
+static bool output_get_vrr_capable(struct wlr_output *wlr_output)
+{
+    if (!wlr_output_is_drm(wlr_output)) {
+        return false;
+    }
+
+    int drm_fd = wlr_drm_backend_get_non_master_fd(wlr_output->backend);
+    if (drm_fd < 0) {
+        return false;
+    }
+
+    uint32_t conn_id = wlr_drm_connector_get_id(wlr_output);
+
+    drmModeObjectProperties *props =
+        drmModeObjectGetProperties(drm_fd, conn_id, DRM_MODE_OBJECT_CONNECTOR);
+    if (!props) {
+        kywc_log_errno(KYWC_ERROR, "Failed to get DRM object properties");
+        close(drm_fd);
+        return false;
+    }
+
+    uint64_t vrr_capable = 0;
+    for (uint32_t i = 0; i < props->count_props; ++i) {
+        drmModePropertyRes *prop = drmModeGetProperty(drm_fd, props->props[i]);
+        if (!prop) {
+            kywc_log_errno(KYWC_ERROR, "Failed to get DRM object property");
+            continue;
+        }
+        if (!strcmp(prop->name, "vrr_capable")) {
+            get_drm_prop(drm_fd, conn_id, prop->prop_id, &vrr_capable);
+            kywc_log(KYWC_INFO, "output: %s, VRR-Capable: %ld", wlr_output->name, vrr_capable);
+            drmModeFreeProperty(prop);
+            break;
+        }
+
+        drmModeFreeProperty(prop);
+    }
+
+    drmModeFreeObjectProperties(props);
+
+    close(drm_fd);
+
+    return vrr_capable != 0;
+}
+
 static void output_get_prop(struct output *output, struct kywc_output_prop *prop)
 {
     struct wlr_output *wlr_output = output->wlr_output;
@@ -141,6 +208,9 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->capabilities = KYWC_OUTPUT_CAPABILITY_POWER;
     if (!prop->is_fbdev) {
         prop->capabilities |= KYWC_OUTPUT_CAPABILITY_BRIGHTNESS | KYWC_OUTPUT_CAPABILITY_COLOR_TEMP;
+    }
+    if (output_get_vrr_capable(wlr_output)) {
+        prop->capabilities |= KYWC_OUTPUT_CAPABILITY_VRR;
     }
 
     /* fix zero mode in some backend, like wayland */
@@ -173,7 +243,6 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
     state->transform = wlr_output->transform;
     state->scale = wlr_output->scale;
 
-    // state->vrr_policy = wlr_output->adaptive_sync_status;
     struct wlr_output_layout_output *layout_output;
     layout_output = wlr_output_layout_get(output_manager->server->layout, wlr_output);
     if (layout_output) {
@@ -192,6 +261,7 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
         state->brightness = output->brightness;
     }
     state->color_temp = output->color_temp;
+    state->vrr_policy = output->vrr_policy;
 }
 
 static void fallback_output_set_state(struct kywc_output *kywc_output, bool enabled)
@@ -1219,6 +1289,8 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     if (!output->base.prop.brightness_support) {
         output->brightness = state->brightness;
     }
+
+    output->vrr_policy = state->vrr_policy;
 
     if (enabled && output_gamma_changed(output, state)) {
         output->gamma_changed = true;
