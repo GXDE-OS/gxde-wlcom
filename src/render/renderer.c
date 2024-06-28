@@ -4,6 +4,9 @@
 
 #include <stdlib.h>
 
+#include <drm_fourcc.h>
+#include <gbm.h>
+
 #include <wlr/backend.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/pixman.h>
@@ -15,6 +18,81 @@
 #include "render/opengl.h"
 #include "render/renderer.h"
 #include "renderer_p.h"
+
+static struct single_plane_formats {
+    struct wlr_drm_format_set formats;
+    struct wl_listener destroy;
+} *formats = NULL;
+
+static void handle_renderer_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&formats->destroy.link);
+    wlr_drm_format_set_finish(&formats->formats);
+    free(formats);
+}
+
+static void query_single_plane_formats(struct wlr_renderer *renderer)
+{
+    if (wlr_renderer_is_opengl(renderer)) {
+        struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
+        if (!r->egl->has_modifiers) {
+            return;
+        }
+    }
+
+    formats = calloc(1, sizeof(*formats));
+    if (!formats) {
+        return;
+    }
+
+    int drm_fd = wlr_renderer_get_drm_fd(renderer);
+    if (drm_fd < 0) {
+        goto out;
+    }
+    struct gbm_device *gbm_device = gbm_create_device(drm_fd);
+    if (!gbm_device) {
+        goto out;
+    }
+
+    const struct wlr_drm_format_set *render_formats = renderer->impl->get_render_formats(renderer);
+    if (!render_formats) {
+        gbm_device_destroy(gbm_device);
+        goto out;
+    }
+
+    const struct wlr_drm_format *fmt;
+    for (size_t i = 0; i < render_formats->len; i++) {
+        fmt = &render_formats->formats[i];
+        for (size_t j = 0; j < fmt->len; ++j) {
+            if (fmt->modifiers[j] == DRM_FORMAT_MOD_INVALID ||
+                fmt->modifiers[j] == DRM_FORMAT_MOD_LINEAR) {
+                wlr_drm_format_set_add(&formats->formats, fmt->format, fmt->modifiers[j]);
+                continue;
+            }
+
+            if (gbm_device_get_format_modifier_plane_count(gbm_device, fmt->format,
+                                                           fmt->modifiers[j]) == 1) {
+                wlr_drm_format_set_add(&formats->formats, fmt->format, fmt->modifiers[j]);
+            }
+        }
+    }
+
+    if (formats->formats.len == 0) {
+        wlr_drm_format_set_finish(&formats->formats);
+        gbm_device_destroy(gbm_device);
+        goto out;
+    }
+
+    formats->destroy.notify = handle_renderer_destroy;
+    wl_signal_add(&renderer->events.destroy, &formats->destroy);
+
+    gbm_device_destroy(gbm_device);
+    return;
+
+out:
+    free(formats);
+    formats = NULL;
+}
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
 {
@@ -36,7 +114,9 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
         }
     }
 
-    if (!renderer) {
+    if (renderer) {
+        query_single_plane_formats(renderer);
+    } else {
         kywc_log(KYWC_ERROR, "Failed to create a OpenGL renderer");
         renderer = wlr_pixman_renderer_create();
     }
@@ -84,14 +164,8 @@ const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *
         return NULL;
     }
 
-    const struct wlr_drm_format_set *render_formats = NULL;
-    if (wlr_renderer_is_opengl(renderer)) {
-        struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
-        render_formats = &r->egl->dmabuf_render_single_plane_formats;
-    } else {
-        render_formats = renderer->impl->get_render_formats(renderer);
-    }
-
+    const struct wlr_drm_format_set *render_formats =
+        formats ? &formats->formats : renderer->impl->get_render_formats(renderer);
     if (!render_formats) {
         kywc_log(KYWC_ERROR, "Failed to get render formats");
         return NULL;

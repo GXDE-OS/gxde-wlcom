@@ -206,17 +206,6 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         return;
     }
 
-    /* for gbm_device_get_format_modifier_plane_count */
-    if (!no_modifiers && !egl->gbm_device) {
-        int gbm_fd = ky_egl_dup_drm_fd(egl);
-        if (gbm_fd >= 0) {
-            egl->gbm_device = gbm_create_device(gbm_fd);
-            if (!egl->gbm_device) {
-                close(gbm_fd);
-            }
-        }
-    }
-
     kywc_log(KYWC_DEBUG, "Supported DMA-BUF formats:");
 
     bool has_modifiers = false;
@@ -242,14 +231,6 @@ static void init_dmabuf_formats(struct ky_egl *egl)
                 wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, modifiers[j]);
                 all_external_only = false;
             }
-            if (!egl->gbm_device) {
-                continue;
-            }
-            int plane_count =
-                gbm_device_get_format_modifier_plane_count(egl->gbm_device, fmt, modifiers[j]);
-            if (plane_count == 1) {
-                wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt, modifiers[j]);
-            }
         }
 
         // EGL always supports implicit modifiers. If at least one modifier supports rendering,
@@ -257,8 +238,6 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_INVALID);
         if (modifiers_len == 0 || !all_external_only) {
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_INVALID);
-            wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt,
-                                   DRM_FORMAT_MOD_INVALID);
         }
 
         if (modifiers_len == 0) {
@@ -266,8 +245,6 @@ static void init_dmabuf_formats(struct ky_egl *egl)
             // explicitly say otherwise
             wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_LINEAR);
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_LINEAR);
-            wlr_drm_format_set_add(&egl->dmabuf_render_single_plane_formats, fmt,
-                                   DRM_FORMAT_MOD_LINEAR);
         }
 
         if (kywc_log_get_level() >= KYWC_DEBUG) {
@@ -835,7 +812,6 @@ void ky_egl_destroy(struct ky_egl *egl)
 
     wlr_drm_format_set_finish(&egl->dmabuf_texture_formats);
     wlr_drm_format_set_finish(&egl->dmabuf_render_formats);
-    wlr_drm_format_set_finish(&egl->dmabuf_render_single_plane_formats);
 
     eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(egl->display, egl->context);
