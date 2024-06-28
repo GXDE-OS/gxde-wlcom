@@ -5,15 +5,16 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_output.h>
 
 #include "effect/animator.h"
 #include "effect/translation.h"
 #include "effect_p.h"
+#include "render/pass.h"
+#include "render/renderer.h"
 #include "scene/render.h"
 #include "scene/thumbnail.h"
-
-#include "render/opengl.h"
 #include "util/time.h"
 #include "view/view.h"
 
@@ -196,7 +197,7 @@ bool translation_effect_create(struct effect_manager *manager)
     translation_effect->scene = manager->server->scene;
     translation_effect->renderer = manager->server->renderer;
 
-    bool enable = wlr_renderer_is_opengl(manager->server->renderer);
+    bool enable = !ky_renderer_is_software(manager->server->renderer);
     translation_effect->effect = effect_create("translation", 105, enable, &effect_impl);
     if (!translation_effect->effect) {
         free(translation_effect);

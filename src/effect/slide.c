@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <wlr/render/wlr_texture.h>
 #include <wlr/util/box.h>
 
 #include <kywc/log.h>
@@ -11,11 +12,11 @@
 #include "effect/animator.h"
 #include "effect/slide.h"
 #include "effect_p.h"
+#include "output.h"
+#include "render/pass.h"
+#include "render/renderer.h"
 #include "scene/surface.h"
 #include "scene/thumbnail.h"
-
-#include "output.h"
-#include "render/opengl.h"
 #include "theme.h"
 #include "util/time.h"
 
@@ -373,7 +374,7 @@ bool slide_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    bool enabled = wlr_renderer_is_opengl(manager->server->renderer);
+    bool enabled = !ky_renderer_is_software(manager->server->renderer);
     slide_effect->effect = effect_create("slide", 5, enabled, &slide_effect_impl);
     if (!slide_effect->effect) {
         free(slide_effect);

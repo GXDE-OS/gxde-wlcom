@@ -5,11 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <wlr/render/wlr_texture.h>
+
 #include "effect/animator.h"
 #include "effect/scale.h"
 #include "effect_p.h"
 #include "output.h"
-#include "render/opengl.h"
+#include "render/renderer.h"
 #include "scene/surface.h"
 #include "scene/thumbnail.h"
 #include "theme.h"
@@ -406,7 +408,7 @@ bool scale_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    bool enabled = wlr_renderer_is_opengl(manager->server->renderer);
+    bool enabled = !ky_renderer_is_software(manager->server->renderer);
     scale->effect = effect_create("scale", 2, enabled, &scale_effect_impl);
     if (!scale->effect) {
         free(scale);

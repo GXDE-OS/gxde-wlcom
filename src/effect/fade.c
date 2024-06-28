@@ -5,12 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <wlr/render/wlr_texture.h>
+
 #include <kywc/log.h>
 
 #include "effect/animator.h"
 #include "effect/fade.h"
 #include "effect_p.h"
-#include "render/opengl.h"
+#include "render/renderer.h"
 #include "scene/thumbnail.h"
 #include "util/time.h"
 
@@ -252,7 +254,7 @@ bool fade_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    bool enabled = wlr_renderer_is_opengl(manager->server->renderer);
+    bool enabled = !ky_renderer_is_software(manager->server->renderer);
     fade->effect = effect_create("fade", 10, enabled, &fade_effect_impl);
     if (!fade->effect) {
         free(fade);
@@ -302,7 +304,7 @@ static struct ky_scene_buffer *fade_create_scene_buffer(struct ky_scene_node *no
         layer_tree = layer->tree;
     }
     if (!layer_tree) {
-        kywc_log(KYWC_WARN, "node don't in layer");
+        kywc_log(KYWC_WARN, "node is not in layer");
     }
 
     struct ky_scene_buffer *buffer = ky_scene_buffer_create(layer_tree, data->thumbnail_buffer);
