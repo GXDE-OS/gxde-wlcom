@@ -24,4 +24,6 @@ struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
                                              struct wlr_allocator *alloc, int width, int height,
                                              uint32_t format);
 
+bool ky_renderer_is_software(struct wlr_renderer *renderer);
+
 #endif /* _RENDER_H_ */

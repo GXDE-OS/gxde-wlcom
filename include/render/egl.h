@@ -19,6 +19,8 @@ struct ky_egl {
 
     // opengl or opengles
     bool is_gles;
+    // software renderering, like llvmpipe
+    bool is_software;
 
     // https://registry.khronos.org/EGL/extensions/
     struct {

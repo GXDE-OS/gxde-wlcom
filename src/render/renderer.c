@@ -112,3 +112,18 @@ struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
     }
     return wlr_allocator_create_buffer(alloc, width, height, format);
 }
+
+bool ky_renderer_is_software(struct wlr_renderer *renderer)
+{
+    if (wlr_renderer_is_pixman(renderer)) {
+        return true;
+    }
+
+    /* return true if software opengl or vulkan */
+    if (wlr_renderer_is_opengl(renderer)) {
+        struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
+        return r->egl->is_software;
+    }
+
+    return false;
+}

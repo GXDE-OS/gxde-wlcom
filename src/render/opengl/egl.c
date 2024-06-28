@@ -401,6 +401,7 @@ static bool egl_init_display(struct ky_egl *egl, EGLDisplay display)
             char *env = getenv("KYWC_RENDERER_ALLOW_SOFTWARE");
             if (env && strcmp(env, "1") == 0) {
                 kywc_log(KYWC_INFO, "Using software rendering");
+                egl->is_software = true;
             } else {
                 kywc_log(KYWC_ERROR, "Software rendering detected, please use "
                                      "the KYWC_RENDERER_ALLOW_SOFTWARE environment variable "
