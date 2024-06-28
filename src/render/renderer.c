@@ -7,6 +7,7 @@
 #include <wlr/backend.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/pixman.h>
+#include <wlr/render/vulkan.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 
 #include <kywc/log.h>
@@ -17,15 +18,22 @@
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
 {
-    struct wlr_renderer *renderer = NULL;
+    const char *api = getenv("KYWC_RENDERER");
+    if (api && strcmp(api, "pixman") == 0) {
+        return wlr_pixman_renderer_create();
+    }
 
+    struct wlr_renderer *renderer = NULL;
     /* get drm fd from backend */
     int drm_fd = wlr_backend_get_drm_fd(backend);
     if (drm_fd < 0) {
         kywc_log(KYWC_ERROR, "Cannot create OpenGL renderer: no DRM fd available");
     } else {
-        /* try opengl renderer first */
-        renderer = ky_opengl_renderer_create_with_drm_fd(drm_fd);
+        if (api && strcmp(api, "vulkan") == 0) {
+            renderer = wlr_vk_renderer_create_with_drm_fd(drm_fd);
+        } else {
+            renderer = ky_opengl_renderer_create_with_drm_fd(drm_fd);
+        }
     }
 
     if (!renderer) {
