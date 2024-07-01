@@ -142,9 +142,9 @@ static void scale_calc_render_box(struct scale_effect_data *data, struct padding
     /* render box */
     struct kywc_box *render_box = &data->render_box;
     render_box->x = geometry->x - shadow.left;
-    render_box->y = geometry->y - shadow.right;
-    render_box->width = geometry->width + shadow.top + shadow.left;
-    render_box->height = geometry->height + shadow.bottom + shadow.right;
+    render_box->y = geometry->y - shadow.top;
+    render_box->width = geometry->width + shadow.right + shadow.left;
+    render_box->height = geometry->height + shadow.bottom + shadow.top;
 }
 
 static void scale_entity_destroy(struct effect_entity *entity)
