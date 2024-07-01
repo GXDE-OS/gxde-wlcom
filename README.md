@@ -1,20 +1,21 @@
 # kylin-wayland-compositor
 
+kylin-wayland-compositor或kylin-wlcom（以下简称kywc）是一个基于wlroots编写的wayland合成器。
 
-kylin-wayland-compositor或kylin-wlcom（以下简称kywc）是一个基于wlroots编写的wayland合成器，目前积极开发中，正在适配openKylin系统。
+目前积极开发中，并作为默认显示服务器随openKylin系统发布。
 
 该项目使用开源协议GPL-1.0-or-later，项目中来源于其他开源项目的文件或代码片段遵守原开源协议要求。
 
 
-## 特点
+## 功能和特点
 
-1. 依赖少，未使用QT或者GTK进行UI编写。只需要一些基础的库，例如pixman、cairo、pango、librsvg等。
+1. 依赖少，未使用QT或者GTK等图形开发框架。
 
-2. 按需设计应用与合成器之间的协议，可方便快捷增添协议，减少因协议库更新不同步或者版本冲突带来的问题。
+2. 按需设计应用与合成器之间的协议，目前协议支持情况[PROTOCOLS]。
 
-3. 特效支持，支持最大化最小化等特效，以插件形式加载。
+3. 特效支持，支持常用的窗口动效。
 
-4. 完整的中文输入支持，支持input-method v2和text-input v1/v2/v3，支持input popup，支持chromium/electron应用
+4. 完整的中文输入支持，支持input-method v2和text-input v1/v2/v3。
 
 5. 快捷键和触摸手势支持，支持键盘快捷键，触摸板和触摸屏手势设置
 
@@ -22,21 +23,7 @@ kylin-wayland-compositor或kylin-wlcom（以下简称kywc）是一个基于wlroo
 
 7. 多语言国际化支持
 
-## 功能支持
-
-kywc完成了一个在openKylin系统上的预览版，能够进行一些基本常用的操作，支持ukui-session运行。
-
-可支持基本的窗口管理功能，输入设备设置，显示输入设置等，支持基本的窗口特效。
-
-## 后续计划
-
-1. 功能完善，继续适配openKylin系统
-
-2. x11应用场景兼容
-
-3. 性能优化
-
-4. 硬件适配
+8. 多后端支持，支持x11/wayland嵌套运行，支持drm和fbdev显示后端
 
 ## 编译
 
@@ -45,12 +32,12 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 - wlroots, wayland, libinput, xkbcommon
 - libseat, libdrm, libsystemd, librsvg-2.0
 - cairo, pango, pangocairo, pixman-1
-- gbm, pkg-config, hwdata, json-c, msgfmt
+- gbm, json-c, libudev
 - xwayland, xcb (optional)
 
-编译时需要使用的库或程序:
+依赖安装可通过apt进行（配置了deb-src源）
 
-- 编译依赖详见control文件
+    apt build-dep kylin-wayland-compositor
 
 编译选项见`meson_options.txt`，简单的编译指令:
 ```
@@ -91,13 +78,6 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 
 > 保证："Content-Type: text/plain; charset=UTF-8\n"
 
-## openKylin 2.0使用说明
-
-使用apt命令安装kylin-wayland-compositor即可。
-如需要特效，则还需安装kylin-wayland-compositor-effects。
-
-安装结束后，注销系统，在登陆界面，选择`Kylin Wlcom`。
-
 ## 已知问题
 
 请参阅[KNOWN_ISSUES]文件，了解已知问题。
@@ -105,10 +85,6 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 ## 参与开发
 
 请参阅[CONTRIBUTING]文件，了解向kywc贡献所需的信息。
-
-## FAQ
-
-请参阅[FAQ]文件，了解更多。
 
 ## 致谢
 
@@ -122,21 +98,11 @@ kywc完成了一个在openKylin系统上的预览版，能够进行一些基本�
 
 [labwc]
 
-
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [sway]: https://github.com/swaywm
 [wayfire]: https://github.com/wayfire
 [labwc]: https://github.com/labwc
 
+[PROTOCOLS]: docs/PROTOCOLS.md
 [KNOWN_ISSUES]: docs/KNOWN_ISSUES.md
 [CONTRIBUTING]: docs/CONTRIBUTING.md
-[FAQ]: docs/FAQ.md
-
-
-[wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
-[sway]: https://github.com/swaywm
-[wayfire]: https://github.com/wayfire
-
-[KNOWN_ISSUES]: docs/KNOWN_ISSUES.md
-[CONTRIBUTING]: docs/CONTRIBUTING.md
-[FAQ]: docs/FAQ.md
