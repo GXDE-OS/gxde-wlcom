@@ -1258,10 +1258,18 @@ void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
 
 void window_begin_tile(struct view *view, uint32_t key, struct seat *seat)
 {
+    if (view->base.fullscreen) {
+        return;
+    }
+
     interactive_grab_add(view, INTERACTIVE_MODE_TILE, key, seat);
 }
 
 void window_begin_tile_half_screen(struct view *view, uint32_t key, struct seat *seat)
 {
+    if (view->base.fullscreen) {
+        return;
+    }
+
     interactive_grab_add(view, INTERACTIVE_MODE_TILE_HALF_SCREEN, key, seat);
 }
