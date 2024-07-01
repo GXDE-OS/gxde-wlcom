@@ -341,7 +341,7 @@ struct theme_manager *theme_manager_create(struct server *server)
 
     /* load theme from config */
     const char *theme = theme_manager_read_config(manager);
-    enum theme_type theme_type = theme_type_from_name(theme);
+    enum theme_type theme_type = theme ? theme_type_from_name(theme) : THEME_TYPE_DEFAULT;
     manager->current = theme_create(theme_type, 1.0);
     /* theme load failed, fallback to default theme */
     if (!manager->current) {
