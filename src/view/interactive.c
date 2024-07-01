@@ -1016,7 +1016,7 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
 {
     struct interactive_grab *grab = pointer_grab->data;
 
-    if (!pressed) {
+    if (!pressed && button == BTN_LEFT) {
         interactive_done(grab);
         return false;
     }
