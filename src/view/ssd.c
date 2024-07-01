@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_seat.h>
 #include <wlr/util/box.h>
 
+#include "effect/fade.h"
 #include "input/cursor.h"
 #include "nls.h"
 #include "output.h"
@@ -189,6 +190,9 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
             widget_set_enabled(widget, false);
             widget_update(widget, true);
         }
+
+        struct ky_scene_node *node = ky_scene_node_from_widget(widget);
+        popup_add_fade_effect(node, node, FADE_OUT, true, false);
         return;
     }
 
@@ -205,6 +209,9 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     widget_set_enabled(widget, true);
     widget_update(widget, true);
 
+    struct ky_scene_node *node = ky_scene_node_from_widget(widget);
+    popup_add_fade_effect(node, node, FADE_IN, true, false);
+
     int x = seat->cursor->lx;
     int y = seat->cursor->ly + theme->icon_size;
     int w, h;
@@ -220,7 +227,6 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
         y = seat->cursor->ly - h;
     }
 
-    struct ky_scene_node *node = ky_scene_node_from_widget(widget);
     ky_scene_node_set_position(node, x, y);
     ky_scene_node_raise_to_top(node);
 

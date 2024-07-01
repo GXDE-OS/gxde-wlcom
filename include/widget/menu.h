@@ -45,7 +45,7 @@ struct menu {
     struct wl_listener theme_update;
 
     int width, height, item_height;
-    bool enabled, redraw;
+    bool enabled, redraw, fade_enabled;
 
     void *data;
 
@@ -65,6 +65,8 @@ struct menu {
 struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_item);
 
 void menu_destroy(struct menu *menu);
+
+void menu_set_fade_enabled(struct menu *menu, bool enabled);
 
 void menu_item_add_shortcut(struct menu_item *item, const char *text);
 

@@ -11,6 +11,7 @@
 
 #include <kywc/log.h>
 
+#include "effect/fade.h"
 #include "input/cursor.h"
 #include "input/event.h"
 #include "output.h"
@@ -122,6 +123,11 @@ static void menu_render_items(struct menu *menu, bool force)
     }
 }
 
+void menu_set_fade_enabled(struct menu *menu, bool enabled)
+{
+    menu->fade_enabled = enabled;
+}
+
 static void menu_set_enabled(struct menu *menu, bool enabled)
 {
     if (menu->enabled == enabled) {
@@ -150,6 +156,11 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
         widget_set_hovered(item->content, false);
         widget_set_enabled(item->content, enabled);
         widget_update(item->content, true);
+    }
+
+    if (menu->fade_enabled) {
+        popup_add_fade_effect(&menu->tree->node, &menu->tree->node, enabled, !menu->parent,
+                              !menu->parent);
     }
 
     if (menu->parent) {

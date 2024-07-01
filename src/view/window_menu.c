@@ -338,12 +338,14 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the root menu: items and submenus */
     window_menu->root = menu_create(manager->tree, NULL);
+    menu_set_fade_enabled(window_menu->root, true);
 
     menu_add_item(window_menu->root, tr("_Take Screenshot"), KEY_T, window_menu_action,
                   window_menu);
 
     struct menu_item *desktop = menu_add_item(window_menu->root, tr("_Desktop"), KEY_D, NULL, NULL);
     window_menu->desktop = menu_create(NULL, desktop);
+    menu_set_fade_enabled(window_menu->desktop, true);
     menu_add_item(window_menu->desktop, tr("_All Desktop"), KEY_A, window_menu_action, window_menu);
     window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To _New Desktop"), KEY_N,
                                         window_menu_action, window_menu);
@@ -366,6 +368,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
     /* create the more action submenu */
     struct menu_item *more = menu_add_item(window_menu->root, tr("_More"), KEY_M, NULL, NULL);
     window_menu->more = menu_create(NULL, more);
+    menu_set_fade_enabled(window_menu->more, true);
     menu_add_item(window_menu->more, tr("_Move"), KEY_M, window_menu_action, window_menu);
     menu_add_item(window_menu->more, tr("_Resize"), KEY_R, window_menu_action, window_menu);
     window_menu->keep_above =
