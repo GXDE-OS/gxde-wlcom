@@ -1,15 +1,16 @@
 # kylin-wayland-compositor pot file
 # Copyright (C) 2023
 # This file is distributed under the same license as the kylin-wayland-compositor package.
-# kylin <kylin@kylin-qitianm425-n000>, 2024.
+# yangcanfen <yangcanfen@kylinos.cn>, 2024.
 #
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-05-20 13:39+0800\n"
 "PO-Revision-Date: 2024-06-18 17:11+0800\n"
-"Last-Translator: kylin <kylin@kylin-qitianm425-n000>\n"
+"Last-Translator: yangcanfen <yangcanfen@kylinos.cn>\n"
 "Language-Team: Mongolian <openmn-translation@lists.sourceforge.net>\n"
 "Language: mn\n"
 "MIME-Version: 1.0\n"
