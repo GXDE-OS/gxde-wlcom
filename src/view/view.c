@@ -701,6 +701,11 @@ static void view_do_set_workspace(struct view *view, struct workspace *workspace
         wl_list_init(&view->view_proxies);
         return;
     }
+
+    if (view->base.modal) {
+        view_do_set_workspace(view->parent, workspace);
+    }
+
     struct view_proxy *proxy = view_proxy_by_workspace(view, workspace);
     if (!proxy) {
         proxy = view_proxy_create(view, workspace);
@@ -744,6 +749,11 @@ struct view_proxy *view_add_workspace(struct view *view, struct workspace *works
     if (!view || !workspace) {
         return NULL;
     }
+
+    if (view->base.modal) {
+        view_add_workspace(view->parent, workspace);
+    }
+
     struct view_proxy *view_proxy = view_proxy_by_workspace(view, workspace);
     if (view_proxy) {
         return NULL;
@@ -762,6 +772,11 @@ void view_remove_workspace(struct view *view, struct workspace *workspace)
     if (!view || !workspace) {
         return;
     }
+
+    if (view->base.modal) {
+        view_remove_workspace(view->parent, workspace);
+    }
+
     struct view_proxy *view_proxy = view_proxy_by_workspace(view, workspace);
     if (!view_proxy) {
         return;
