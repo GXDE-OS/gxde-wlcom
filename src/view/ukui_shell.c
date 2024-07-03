@@ -16,8 +16,8 @@
 #include "ukui-shell-protocol.h"
 #include "view_p.h"
 
-#define UKUI_SURFACE_VERSION 1
-#define UKUI_SHELL_VERSION 1
+#define UKUI_SURFACE_VERSION 2
+#define UKUI_SHELL_VERSION 2
 
 struct ukui_shell {
     struct wl_global *global;
@@ -769,8 +769,27 @@ static void handle_create_surface(struct wl_client *client, struct wl_resource *
     }
 }
 
+static void send_seat_output(struct seat *seat, int index, void *data)
+{
+    struct wl_resource *resource = data;
+    struct kywc_output *kywc_output = kywc_output_at_point(seat->cursor->lx, seat->cursor->ly);
+    ukui_shell_send_current_output(resource, kywc_output->name, seat->name);
+}
+
+static void handle_get_current_output(struct wl_client *client, struct wl_resource *shell_resource)
+{
+    uint32_t version = wl_resource_get_version(shell_resource);
+    if (version >= UKUI_SHELL_CURRENT_OUTPUT_SINCE_VERSION) {
+        input_manager_for_each_seat(send_seat_output, shell_resource);
+    }
+    if (version >= UKUI_SHELL_DONE_SINCE_VERSION) {
+        ukui_shell_send_done(shell_resource);
+    }
+}
+
 static const struct ukui_shell_interface ukui_shell_impl = {
     .create_surface = handle_create_surface,
+    .get_current_output = handle_get_current_output,
 };
 
 static void ukui_shell_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
@@ -783,6 +802,13 @@ static void ukui_shell_bind(struct wl_client *client, void *data, uint32_t versi
 
     struct ukui_shell *shell = data;
     wl_resource_set_implementation(resource, &ukui_shell_impl, shell, NULL);
+
+    if (version >= UKUI_SHELL_CURRENT_OUTPUT_SINCE_VERSION) {
+        input_manager_for_each_seat(send_seat_output, resource);
+    }
+    if (version >= UKUI_SHELL_DONE_SINCE_VERSION) {
+        ukui_shell_send_done(resource);
+    }
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
