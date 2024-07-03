@@ -180,6 +180,10 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
         wl_list_remove(&tooltip->hovered_view_unmap.link);
         wl_list_init(&tooltip->hovered_view_unmap.link);
 
+        struct ky_scene_node *node = ky_scene_node_from_widget(widget);
+        if (node->enabled) {
+            popup_add_fade_effect(node, node, FADE_OUT, true, false);
+        }
         /* make sure restore and maximize widgets both are disabled */
         if (part->type == SSD_BUTTON_MAXIMIZE) {
             widget_set_enabled(tooltip->restore, false);
@@ -190,9 +194,6 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
             widget_set_enabled(widget, false);
             widget_update(widget, true);
         }
-
-        struct ky_scene_node *node = ky_scene_node_from_widget(widget);
-        popup_add_fade_effect(node, node, FADE_OUT, true, false);
         return;
     }
 
