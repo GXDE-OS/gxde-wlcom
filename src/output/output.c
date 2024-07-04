@@ -1280,6 +1280,50 @@ void output_update_usable_area(struct kywc_output *kywc_output)
     output_emit_usable_area(output);
 }
 
+static bool output_manager_is_sorted(void)
+{
+    int prev_x = 0, prev_y = 0;
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        int distance_x = output->geometry.x - prev_x;
+        int distance_y = output->geometry.y - prev_y;
+        if (distance_x < 0 || (distance_x == 0 && distance_y < 0)) {
+            return false;
+        }
+        prev_x = output->geometry.x;
+        prev_y = output->geometry.y;
+    }
+    return true;
+}
+
+static void output_manager_sort_outputs(void)
+{
+    if (output_manager_is_sorted()) {
+        return;
+    }
+    struct output *output, *prev_output, *tmp;
+    wl_list_for_each_safe(output, tmp, &output_manager->outputs, link) {
+        wl_list_for_each_reverse(prev_output, &output->link, link) {
+            if (&prev_output->link == &output_manager->outputs) {
+                wl_list_remove(&output->link);
+                wl_list_insert(&output_manager->outputs, &output->link);
+                break;
+            }
+            // sort
+            int distance_x = output->geometry.x - prev_output->geometry.x;
+            int distance_y = output->geometry.y - prev_output->geometry.y;
+            if (distance_x < 0 || (distance_x == 0 && distance_y < 0)) {
+                continue;
+            }
+            if (distance_x > 0 || (distance_x == 0 && distance_y > 0)) {
+                wl_list_remove(&output->link);
+                wl_list_insert(&prev_output->link, &output->link);
+                break;
+            }
+        }
+    }
+}
+
 bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
 {
     struct output *output = output_from_kywc_output(kywc_output);
@@ -1310,6 +1354,13 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
                 usable_area_changed = true;
             }
         }
+    }
+
+    /* sort output manager outputs */
+    if (geometry_changed || current->width != old.width || current->height != old.height ||
+        current->transform != old.transform || current->scale != old.scale ||
+        current->lx != old.lx || current->ly != old.ly) {
+        output_manager_sort_outputs();
     }
 
     /* check state changes */
