@@ -259,5 +259,5 @@ bool kde_slide_manager_create(struct server *server)
     manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &manager->display_destroy);
 
-    return false;
+    return true;
 }

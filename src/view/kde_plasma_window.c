@@ -594,7 +594,7 @@ static void kde_plasma_window_management_bind(struct wl_client *client, void *da
         }
     }
 
-    if (version > ORG_KDE_PLASMA_WINDOW_MANAGEMENT_GET_STACKING_ORDER_SINCE_VERSION) {
+    if (version >= ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STACKING_ORDER_CHANGED_2_SINCE_VERSION) {
         org_kde_plasma_window_management_send_stacking_order_changed_2(resource);
     }
 }
