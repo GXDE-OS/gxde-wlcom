@@ -120,6 +120,8 @@ bool output_at_layout_edge(struct output *output, enum layout_edge edge);
 
 struct output *output_adjacent_output(struct output *output, enum layout_edge edge);
 
+struct output *output_find_specified_output(struct output *output, enum layout_edge edge);
+
 struct wlr_output_state;
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state);
 

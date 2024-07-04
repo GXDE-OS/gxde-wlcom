@@ -1545,6 +1545,51 @@ struct output *output_adjacent_output(struct output *output, enum layout_edge ed
 #endif
 }
 
+static struct output *output_get_prve_usable_output(struct output *output)
+{
+    struct output *find_output = NULL;
+    wl_list_for_each_reverse(find_output, &output->link, link) {
+        if (&find_output->link == &output_manager->outputs) {
+            continue;
+        }
+        if (find_output->base.state.enabled) {
+            return find_output;
+        }
+    }
+    return NULL;
+}
+
+static struct output *output_get_next_usable_output(struct output *output)
+{
+    struct output *find_output = NULL;
+    wl_list_for_each(find_output, &output->link, link) {
+        if (&find_output->link == &output_manager->outputs) {
+            continue;
+        }
+        if (find_output->base.state.enabled) {
+            return find_output;
+        }
+    }
+    return NULL;
+}
+
+struct output *output_find_specified_output(struct output *output, enum layout_edge edge)
+{
+    struct output *find_output = NULL;
+    switch (edge) {
+    case LAYOUT_EDGE_LEFT:
+        find_output = output_get_prve_usable_output(output);
+        break;
+    case LAYOUT_EDGE_RIGHT:
+        find_output = output_get_next_usable_output(output);
+        break;
+    case LAYOUT_EDGE_TOP:
+    case LAYOUT_EDGE_BOTTOM:
+        break;
+    }
+    return find_output;
+}
+
 struct kywc_output *kywc_output_at_point(double lx, double ly)
 {
     struct wlr_output_layout *layout = output_manager->server->layout;
