@@ -78,9 +78,8 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
 static void xwayland_update_dpi(xcb_connection_t *xcb_conn)
 {
     /* get current props */
-    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
     xcb_get_property_cookie_t cookie = xcb_get_property(
-        xcb_conn, 0, screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 0, 8192);
+        xcb_conn, 0, xwayland->screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 0, 8192);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xcb_conn, cookie, NULL);
 
     char *props = xcb_get_property_value(reply);
@@ -117,7 +116,7 @@ static void xwayland_update_dpi(xcb_connection_t *xcb_conn)
 
     free(reply);
     xcb_change_property(xcb_conn, has_dpi ? XCB_PROP_MODE_REPLACE : XCB_PROP_MODE_APPEND,
-                        screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 8,
+                        xwayland->screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 8,
                         strlen(prop_str), prop_str);
     xcb_flush(xcb_conn);
 
@@ -183,12 +182,12 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
      * or set _JAVA_AWT_WM_NONREPARENTING=1
      */
     const char name[] = "LG3D";
-    xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(xcb_conn)).data;
-    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root,
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, xwayland->screen->root,
                         xwayland->atoms[NET_SUPPORTING_WM_CHECK], XCB_ATOM_WINDOW, 32, 1,
-                        &screen->root);
-    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, screen->root, xwayland->atoms[NET_WM_NAME],
-                        xwayland->atoms[UTF8_STRING], 8, strlen(name), name);
+                        &xwayland->screen->root);
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, xwayland->screen->root,
+                        xwayland->atoms[NET_WM_NAME], xwayland->atoms[UTF8_STRING], 8, strlen(name),
+                        name);
 
     xwayland->shape = xcb_get_extension_data(xcb_conn, &xcb_shape_id);
     if (!xwayland->shape || !xwayland->shape->present) {
@@ -379,6 +378,10 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
         kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
         return;
     }
+
+    xcb_screen_iterator_t screen_iterator =
+        xcb_setup_roots_iterator(xcb_get_setup(xwayland->xcb_conn));
+    xwayland->screen = screen_iterator.data;
 
     xwayland->event_source =
         wl_event_loop_add_fd(wl_display_get_event_loop(xwayland->server->display),
