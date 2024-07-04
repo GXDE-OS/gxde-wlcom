@@ -104,4 +104,13 @@ static __attribute__((unused)) inline bool layout_manager_create(struct server *
 }
 #endif
 
+#if HAVE_UKUI_OUTPUT
+bool ukui_output_management_create(struct server *server);
+#else
+static __attribute__((unused)) inline bool ukui_output_management_create(struct server *server)
+{
+    return false;
+}
+#endif
+
 #endif /* _OUTPUT_P_H_ */

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="ukui_output_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+
+    SPDX-License-Identifier: MulanPSL-2.0
+    ]]></copyright>
+
+  <interface name="ukui_output_management_v1" version="1">
+    <description summary="ukui output management">
+      This interface is a manager that allows show some additional output info.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="Destroy the ukui_output_management_v1 object."/>
+    </request>
+
+    <event name="output">
+      <description summary="introduce a new output">
+        This event introduces a new output. This happens whenever a new output
+        appears (e.g. a monitor is plugged in) or after the ukui_output_management_v1
+        is bound.
+      </description>
+      <arg name="output" type="new_id" interface="ukui_output_v1"/>
+    </event>
+
+    <event name="done">
+      <description summary="sent all output information">
+        This event is sent after all information has been sent after binding to
+        the output manager object and after any subsequent changes. This applies
+        to child output as well.
+      </description>
+    </event>
+  </interface>
+
+  <interface name="ukui_output_v1" version="1">
+    <description summary="output device">
+      A output has some read-only properties: name, usable_area.
+      These cannot be changed by clients.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the ukui_output_v1 object"/>
+    </request>
+
+    <event name="name">
+      <description summary="output name">
+        This event describes the name of output.
+
+        The name event is sent after a ukui_output_v1 object is created. This
+        event is only sent once per object, and the name does not change over
+        the lifetime of the ukui_output_v1 object.
+      </description>
+      <arg name="name" type="string" summary="name of output"/>
+    </event>
+
+    <event name="usable_area">
+      <description summary="output usable_area">
+        This event describes the usable_area of output.
+      </description>
+      <arg name="x" type="int" summary="x of the output usable_area"/>
+      <arg name="y" type="int" summary="y of the output usable_area"/>
+      <arg name="width" type="int" summary="width of the output usable_area"/>
+      <arg name="height" type="int" summary="height of the output usable_area"/>
+    </event>
+
+    <event name="finished">
+      <description summary="the output has disappeared">
+        This event indicates that the ukui_output_v1 is no longer available.
+        Clients should send a destroy request and release any resources associated
+        with it.
+      </description>
+    </event>
+  </interface>
+</protocol>

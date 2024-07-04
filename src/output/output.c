@@ -899,6 +899,7 @@ struct output_manager *output_manager_create(struct server *server)
     ky_output_manager_create(server);
     kde_output_management_create(server);
     wlr_output_management_create(server);
+    ukui_output_management_create(server);
 
     char *env = getenv("KYWC_SOFTWARE_GAMMA");
     output_manager->force_software_gamma = (env && strcmp(env, "1") == 0);

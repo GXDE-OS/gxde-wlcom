@@ -135,3 +135,9 @@ option('ukui_window_management',
        value: true,
        description: 'Enable ukui window management protocol support'
 )
+
+option('ukui_output',
+       type: 'boolean',
+       value: true,
+       description: 'Enable ukui output protocol support'
+)

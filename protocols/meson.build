@@ -90,6 +90,12 @@ if have_ukui_window_management
   }
 endif
 
+if have_ukui_output
+  protocols += {
+    'ukui-output-v1': 'ukui-output-v1.xml',
+  }
+endif
+
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}

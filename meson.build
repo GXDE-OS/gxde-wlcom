@@ -125,6 +125,7 @@ have_kde_clipboard = get_option('kde_clipboard')
 have_ukui_watermark = get_option('ukui_watermark')
 have_ukui_shell = get_option('ukui_shell')
 have_ukui_window_management = get_option('ukui_window_management')
+have_ukui_output = get_option('ukui_output')
 
 add_project_arguments([
   '-DHAVE_LIBUNWIND=@0@'.format(unwind.found().to_int()),
@@ -146,6 +147,7 @@ add_project_arguments([
   '-DHAVE_UKUI_WATERMARK=@0@'.format(have_ukui_watermark.to_int()),
   '-DHAVE_UKUI_SHELL=@0@'.format(have_ukui_shell.to_int()),
   '-DHAVE_UKUI_WINDOW_MANAGEMENT=@0@'.format(have_ukui_window_management.to_int()),
+  '-DHAVE_UKUI_OUTPUT=@0@'.format(have_ukui_output.to_int()),
 ], language: 'c')
 
 msgfmt = find_program('msgfmt', required: get_option('nls'))
@@ -196,6 +198,7 @@ summary({
   'ukui_watermark': have_ukui_watermark,
   'ukui_shell': have_ukui_shell,
   'ukui_window_management': have_ukui_window_management,
+  'ukui_output': have_ukui_output,
   },
   section: 'Configuration', bool_yn: true)
 

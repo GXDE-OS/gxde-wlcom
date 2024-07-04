@@ -20,3 +20,9 @@ if have_wlr_output
     'wlr_output.c',
   )
 endif
+
+if have_ukui_output
+  wlcom_sources += files(
+    'ukui_output.c',
+  )
+endif
