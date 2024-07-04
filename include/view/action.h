@@ -45,7 +45,4 @@ void window_begin_tile_half_screen(struct view *view, uint32_t key, struct seat 
 
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y);
 
-struct output *window_target_output_by_current_output(struct output *current, struct seat *seat,
-                                                      enum layout_edge layout_edge);
-
 #endif

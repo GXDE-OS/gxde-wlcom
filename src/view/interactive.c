@@ -706,143 +706,9 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     kywc_view_resize(kywc_view, &pending);
 }
 
-struct output *window_target_output_by_current_output(struct output *current, struct seat *seat,
-                                                      enum layout_edge layout_edge)
-{
-    struct output *near_left = NULL, *far_left = NULL;
-    struct output *near_right = NULL, *far_right = NULL;
-    struct output *near_top = NULL, *far_top = NULL;
-    struct output *near_bottom = NULL, *far_bottom = NULL;
-
-    struct wlr_box box = { 0 };
-    wlr_output_layout_get_box(seat->layout, NULL, &box);
-    int min_left = box.width;
-    int max_left = 0;
-    int min_right = box.width;
-    int max_right = 0;
-
-    int min_top = box.height;
-    int max_top = 0;
-    int min_bottom = box.height;
-    int max_bottom = 0;
-
-    struct ky_scene_output *scene_output;
-    wl_list_for_each(scene_output, &seat->scene->outputs, link) {
-        struct output *tmp = output_from_wlr_output(scene_output->output);
-        if (tmp == current) {
-            continue;
-        }
-        int gap = tmp->geometry.x - current->geometry.x;
-        /**
-         * The nearest and farthest output on the left side of the X-axis is obtained.
-         * If the distance is the same, the Y-axis is used to judge. The smaller the y,
-         * the farther the output will be; the larger the y, the closer the output will be.
-         */
-        if (gap < 0) {
-            gap = -gap;
-            if (gap < min_left) {
-                min_left = gap;
-                near_left = tmp;
-            }
-            if (gap > max_left) {
-                max_left = gap;
-                far_left = tmp;
-            }
-
-            if (gap == min_left) {
-                near_left = tmp->geometry.y > near_left->geometry.y ? tmp : near_left;
-            }
-            if (gap == max_left) {
-                far_left = tmp->geometry.y < far_left->geometry.y ? tmp : far_left;
-            }
-            /**
-             * The nearest and farthest output to the right of the X-axis is obtained.
-             * If the distance is the same, the Y-axis is used to judge. The larger the y is,
-             * the farther the output is; the smaller the y is, the closer the output is.
-             */
-        } else if (gap > 0) {
-            if (gap < min_right) {
-                min_right = gap;
-                near_right = tmp;
-            }
-            if (gap > max_right) {
-                max_right = gap;
-                far_right = tmp;
-            }
-
-            if (gap == min_right) {
-                near_right = tmp->geometry.y < near_right->geometry.y ? tmp : near_right;
-            }
-            if (gap == max_right) {
-                far_right = tmp->geometry.y > far_right->geometry.y ? tmp : far_right;
-            }
-        } else if (gap == 0) {
-            int gap_y = tmp->geometry.y - current->geometry.y;
-            if (gap_y < 0) {
-                gap_y = -gap_y;
-                if (gap_y < min_top) {
-                    min_top = gap_y;
-                    near_top = tmp;
-                }
-                if (gap_y > max_top) {
-                    max_top = gap_y;
-                    far_top = tmp;
-                }
-            } else if (gap_y > 0) {
-                if (min_bottom > gap_y) {
-                    min_bottom = gap_y;
-                    near_bottom = tmp;
-                }
-                if (max_bottom < gap_y) {
-                    max_bottom = gap_y;
-                    far_bottom = tmp;
-                }
-            }
-        }
-    }
-
-    struct output *output = NULL;
-    if (layout_edge == LAYOUT_EDGE_LEFT) {
-        /* near_top > near_left > far_right > near_right > far_bottom > near_bottom */
-        if (near_top) {
-            output = near_top;
-        } else if (near_left) {
-            output = near_left;
-        } else if (far_right) {
-            output = far_right;
-        } else if (near_right) {
-            output = near_right;
-        } else if (far_bottom) {
-            output = far_bottom;
-        } else if (near_bottom) {
-            output = near_bottom;
-        }
-    } else if (layout_edge == LAYOUT_EDGE_RIGHT) {
-        /* near_bottom > near_right > far_left > near_left > far_top > near_top */
-        if (near_bottom) {
-            output = near_bottom;
-        } else if (near_right) {
-            output = near_right;
-        } else if (far_left) {
-            output = far_left;
-        } else if (near_left) {
-            output = near_left;
-        } else if (far_top) {
-            output = far_top;
-        } else if (near_top) {
-            output = near_top;
-        }
-    }
-
-    return output;
-}
-
 static void interactive_tile_output_update(struct interactive_grab *grab, int key)
 {
     grab->output = output_from_kywc_output(grab->view->output);
-    if (wl_list_length(&grab->seat->scene->outputs) == 1) {
-        return;
-    }
 
     enum layout_edge layout_edge = LAYOUT_EDGE_TOP;
     if (key == KEY_LEFT) {
@@ -861,9 +727,11 @@ static void interactive_tile_output_update(struct interactive_grab *grab, int ke
         return;
     }
 
-    struct output *output =
-        window_target_output_by_current_output(grab->output, grab->seat, layout_edge);
-    grab->output = output ? output : grab->output;
+    struct output *output = output_find_specified_output(grab->output, layout_edge);
+    if (!output) {
+        return;
+    }
+    grab->output = output;
 }
 
 static void interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
@@ -974,13 +842,8 @@ static void interactive_process_tile_half_screen(struct interactive_grab *grab, 
         return;
     }
 
-    if (wl_list_length(&grab->seat->scene->outputs) == 1 || tile == KYWC_TILE_TOP ||
-        tile == KYWC_TILE_BOTTOM) {
-        return;
-    }
-
-    struct output *output = window_target_output_by_current_output(
-        grab->output, grab->seat, tile == KYWC_TILE_LEFT ? LAYOUT_EDGE_LEFT : LAYOUT_EDGE_RIGHT);
+    struct output *output = output_find_specified_output(
+        grab->output, tile == KYWC_TILE_LEFT ? LAYOUT_EDGE_LEFT : LAYOUT_EDGE_RIGHT);
     if (!output) {
         return;
     }
