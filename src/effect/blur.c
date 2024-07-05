@@ -175,6 +175,7 @@ struct blur_program {
 struct blur_output_data {
     struct wl_list link;
     pixman_region32_t unaffected_region;
+    pixman_region32_t damage_blur_region;
 
     struct ky_scene_output *output;
     struct wl_listener output_destroy;
@@ -238,10 +239,12 @@ static void gl_texture_copy(struct glrtt_pool_texture *tex, struct ky_opengl_buf
 }
 
 #if 0
-static void save_texture_to_rgba(GLuint texture_id, int width, int height, const char *prefix)
+static void save_texture_to_rgba(int frame_count, GLuint texture_id, GLuint fb, int width,
+                                 int height, const char *prefix)
 {
-    char path[50] = { 0 };
-    snprintf(path, 50, "/tmp/ky_w%d_h%d_%s%s", width, height, prefix, ".rgb");
+    char path[255] = { 0 };
+    snprintf(path, 50, "/tmp/ky_%dx%d_rgba_%s_%d_%d%s", width, height, prefix, fb, frame_count,
+             ".rgb");
     mkstemps(path, 4);
 
     int fileszie = width * height * 4;
@@ -254,9 +257,14 @@ static void save_texture_to_rgba(GLuint texture_id, int width, int height, const
     glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo);
     glBufferData(GL_PIXEL_PACK_BUFFER, fileszie, NULL, GL_STREAM_READ);
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    /* FBO attach texture */
-    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_id, 0);
+    if (fb > 0 && texture_id <= 0) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fb);
+    } else {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+        /* FBO attach texture */
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_id,
+                               0);
+    }
     /**
      * read texture data to PBO.
      * nullptr indicates reading data to PBO, not to cpu memeory.
@@ -555,31 +563,32 @@ static void blur_render(struct ky_scene_render_target *target,
     struct ky_opengl_render_pass *gl_pass =
         ky_opengl_render_pass_from_wlr_render_pass(target->render_pass);
 
-    /* pos in frame_buffer */
+    /**
+     * the copy area may be larger than the damage area, but it has no effect.
+     * because it is outside the radius of blur.
+     */
     int align_num = pow(2, blur_config.iterations);
     pixman_box32_t *cpy_box = pixman_region32_extents(blur_region);
+    /* pos in frame_buffer */
     struct kywc_box buffer_cpy_box = {
         .x = cpy_box->x1,
         .y = cpy_box->y1,
         .width = ALIGN(cpy_box->x2 - cpy_box->x1, align_num),
         .height = ALIGN(cpy_box->y2 - cpy_box->y1, align_num),
     };
+
     struct glrtt_pool_texture *src_tex =
         glrtt_pool_get_texture(glrtt_pool, buffer_cpy_box.width, buffer_cpy_box.height);
     if (!src_tex) {
         return;
     }
+
     gl_texture_copy(src_tex, gl_pass->buffer, &buffer_cpy_box);
 
     struct blur_data *data = &effect_blur_data;
-    if ((int)options->strength == -1) {
-        data->offset = 4.f;
-    } else {
-        data->offset = options->strength / 1000.f;
-    }
+    data->offset = ((int)options->strength == -1) ? 4.f : options->strength / 1000.f;
 
     blur_fb0(data, src_tex);
-    struct glrtt_pool_texture *blurred_tex = src_tex;
 
     struct blur_tex_program *prog = &data->blur_tex_prog;
     if (!prog) {
@@ -588,7 +597,7 @@ static void blur_render(struct ky_scene_render_target *target,
     glUseProgram(prog->id);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, blurred_tex->texture);
+    glBindTexture(GL_TEXTURE_2D, src_tex->texture);
 
     if (target->scale - floor(target->scale) > 0.001) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -671,11 +680,25 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     if (node->type == KY_SCENE_NODE_TREE) {
         struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
         struct ky_scene_node *child;
-        wl_list_for_each(child, &tree->children, link) {
+        wl_list_for_each_reverse(child, &tree->children, link) {
             node_for_each_blur_region(child, target, lx + child->x, ly + child->y, data,
                                       half_expand_damage);
         }
         return;
+    }
+
+    pixman_region32_t *damage_blur = &data->current_output_data->damage_blur_region;
+    /* the blur damage must be refresh */
+    if (pixman_region32_not_empty(damage_blur)) {
+        struct wlr_box box;
+        pixman_region32_t blur_backgroud;
+        pixman_region32_init(&blur_backgroud);
+        node->impl.get_bounding_box(node, &box);
+        pixman_region32_intersect_rect(&blur_backgroud, damage_blur, box.x + lx, box.y + ly,
+                                       box.width, box.height);
+        pixman_region32_union(&node->visible_region, &node->visible_region, &blur_backgroud);
+        /* TODO: damage_blur sub the node opaque region */
+        pixman_region32_fini(&blur_backgroud);
     }
 
     if (!node->has_blur) {
@@ -691,6 +714,8 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     } else {
         pixman_region32_copy(&blur_region, &node->visible_region);
     }
+
+    /* blur in damage and visible */
     pixman_region32_intersect(&blur_region, &blur_region, &target->damage);
     if (!pixman_region32_not_empty(&blur_region)) {
         return;
@@ -700,10 +725,15 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     int distance = calculate_blur_radius(blur_config.iterations, offset);
     distance = ceil(distance / target->scale);
 
+    /* blur expand region, region for blur */
     wlr_region_expand(&blur_region, &blur_region, distance);
     pixman_region32_union(half_expand_damage, &blur_region, half_expand_damage);
-    wlr_region_expand(&blur_region, &blur_region, distance / 2);
+    /* region for copyback and blur */
+    wlr_region_expand(&blur_region, &blur_region, distance);
+    /* blur expand region add to damage */
     pixman_region32_union(&target->damage, &blur_region, &target->damage);
+    /* blur region in damage, include expand region */
+    pixman_region32_union(damage_blur, damage_blur, &blur_region);
     pixman_region32_fini(&blur_region);
 }
 
@@ -733,16 +763,7 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
         return true;
     }
     pixman_region32_clear(&output_data->unaffected_region);
-
-    int width, height;
-    pixman_region32_t output_region;
-    wlr_output_effective_resolution(target->output->output, &width, &height);
-    pixman_region32_init_rect(&output_region, target->logical.x, target->logical.y, width, height);
-
-    if (pixman_region32_equal(&target->damage, &output_region)) {
-        pixman_region32_fini(&output_region);
-        return true;
-    }
+    pixman_region32_clear(&output_data->damage_blur_region);
 
     pixman_region32_t half_expand_damage;
     pixman_region32_init(&half_expand_damage);
@@ -751,12 +772,13 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
     struct ky_scene_node *node = &data->effect->scene->tree.node;
     node_for_each_blur_region(node, target, 0, 0, data, &half_expand_damage);
 
-    pixman_region32_intersect(&target->damage, &target->damage, &output_region);
+    /* the target must be output in render begin */
+    pixman_region32_intersect_rect(&target->damage, &target->damage, target->logical.x,
+                                   target->logical.y, target->logical.width,
+                                   target->logical.height);
     pixman_region32_subtract(&output_data->unaffected_region, &target->damage, &half_expand_damage);
 
     pixman_region32_fini(&half_expand_damage);
-    pixman_region32_fini(&output_region);
-
     return true;
 }
 
@@ -806,6 +828,7 @@ static void blur_output_data_destroy(struct blur_output_data *data)
     blur_output_data_buffer_destroy(data);
 
     pixman_region32_fini(&data->unaffected_region);
+    pixman_region32_fini(&data->damage_blur_region);
     wl_list_remove(&data->link);
     free(data);
 }
@@ -851,6 +874,7 @@ static bool blur_frame_render_post(struct effect_entity *entity,
     wl_list_insert(&data->output_datas, &output_data->link);
 
     pixman_region32_init(&output_data->unaffected_region);
+    pixman_region32_init(&output_data->damage_blur_region);
     output_data->output = target->output;
     output_data->output_destroy.notify = handle_output_destroy;
     wl_signal_add(&target->output->events.destroy, &output_data->output_destroy);
