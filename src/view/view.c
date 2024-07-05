@@ -148,7 +148,7 @@ void view_move_to_output(struct view *view, struct kywc_box *src_box,
         return;
     }
 
-    if (!kywc_view->movable) {
+    if (!view_is_movable(view)) {
         return;
     }
 
@@ -881,14 +881,8 @@ struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface)
 
 void kywc_view_close(struct kywc_view *kywc_view)
 {
-    if (!kywc_view->closeable) {
-        return;
-    }
-
     struct view *view = view_from_kywc_view(kywc_view);
-    /* it is not allowed to close a view that has children views */
-    if (!wl_list_empty(&view->children)) {
-        kywc_log(KYWC_WARN, "close a view that still have children views");
+    if (!view_is_closeable(view)) {
         return;
     }
 
@@ -991,7 +985,7 @@ static void view_set_activated(struct view *view, bool activated)
 static void view_activate(struct view *view)
 {
     struct view *last = view_manager->activated.view;
-    if (!view->base.activatable) {
+    if (!view_is_activatable(view)) {
         return;
     }
 
@@ -1022,7 +1016,7 @@ void view_topmost_activate(struct workspace *workspace)
     /* find topmost enabled(mapped and not minimized) view and activate it */
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
         view = view_proxy->view;
-        if (!view->base.activatable || !view->base.mapped || view->base.minimized) {
+        if (!view_is_activatable(view) || !view->base.mapped || view->base.minimized) {
             continue;
         }
         view_activate(view);
@@ -1097,11 +1091,10 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
                          struct kywc_output *kywc_output)
 {
-    if (kywc_view->fullscreen || !kywc_view->resizable) {
+    struct view *view = view_from_kywc_view(kywc_view);
+    if (!view_is_resizable(view)) {
         return;
     }
-
-    struct view *view = view_from_kywc_view(kywc_view);
 
     /* tiled mode may switch between outputs */
     if (kywc_view->tiled == tile && (!kywc_output || kywc_output == view->output)) {
@@ -1134,11 +1127,11 @@ void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
 
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
 {
-    if (!kywc_view->minimizable || kywc_view->minimized == minimized) {
+    struct view *view = view_from_kywc_view(kywc_view);
+    if (!view_is_minimizable(view) || kywc_view->minimized == minimized) {
         return;
     }
 
-    struct view *view = view_from_kywc_view(kywc_view);
     ky_scene_node_set_enabled(&view->tree->node, !minimized);
 
     kywc_view->minimized = minimized;
@@ -1175,9 +1168,8 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* tiled to unmaximized after tiled from maximized */
-    if (!kywc_view->maximizable || kywc_view->fullscreen ||
-        (!kywc_view->tiled && kywc_view->maximized == maximized &&
-         (!kywc_output || kywc_output == view->output))) {
+    if (!view_is_maximizable(view) || (!kywc_view->tiled && kywc_view->maximized == maximized &&
+                                       (!kywc_output || kywc_output == view->output))) {
         return;
     }
 
@@ -1244,7 +1236,7 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
-    if (!kywc_view->fullscreenable ||
+    if (!view_is_fullscreenable(view) ||
         (kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output))) {
         return;
     }
@@ -1350,16 +1342,154 @@ void view_helper_move(struct view *view, int x, int y)
     }
 }
 
-bool view_is_moveable(struct view *view)
+static bool view_has_modal_child(struct view *view)
+{
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        if (child->base.modal || view_has_modal_child(child)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool view_has_modal_property(struct view *view)
+{
+    return view->base.modal || view_has_modal_child(view);
+}
+
+bool view_is_minimizable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    return kywc_view->movable && !kywc_view->fullscreen;
+    if (!kywc_view->minimizable) {
+        return false;
+    }
+    if (view_has_modal_property(view)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_maximizable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->maximizable) {
+        return false;
+    }
+    if (kywc_view->fullscreen) {
+        return false;
+    }
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+    /* can not be maximize if view max size == min size */
+    if (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
+        kywc_view->min_width == kywc_view->max_width &&
+        kywc_view->min_height == kywc_view->max_height) {
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_fullscreenable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->fullscreenable) {
+        return false;
+    }
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+    if (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
+        kywc_view->min_width == kywc_view->max_width &&
+        kywc_view->min_height == kywc_view->max_height) {
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_closeable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->closeable) {
+        return false;
+    }
+    /* it is not allowed to close a view that has children views */
+    if (!wl_list_empty(&view->children)) {
+        kywc_log(KYWC_WARN, "close a view that still have children views");
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_movable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->movable) {
+        return false;
+    }
+    if (kywc_view->fullscreen) {
+        return false;
+    }
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+
+    return true;
 }
 
 bool view_is_resizable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    return kywc_view->resizable && !kywc_view->fullscreen && !kywc_view->maximized;
+    if (!kywc_view->resizable) {
+        return false;
+    }
+    /* can not be resize if view is fullscreen */
+    if (kywc_view->fullscreen) {
+        return false;
+    }
+    /* can not be resize if view has modal */
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+    /* can not be resize if view max size == min size */
+    if (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
+        kywc_view->min_width == kywc_view->max_width &&
+        kywc_view->min_height == kywc_view->max_height) {
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_activatable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->activatable) {
+        return false;
+    }
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool view_is_focusable(struct view *view)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (!kywc_view->focusable) {
+        return false;
+    }
+    if (view_has_modal_child(view)) {
+        return false;
+    }
+
+    return true;
 }
 
 void view_apply_role(struct view *view)
@@ -1454,16 +1584,6 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
         kywc_log(KYWC_DEBUG, "view %p maximal size to %d x %d", view, max_width, max_height);
     }
 
-    if (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
-        kywc_view->min_width == kywc_view->max_width &&
-        kywc_view->min_height == kywc_view->max_height) {
-        kywc_view->maximizable = false;
-        kywc_view->resizable = false;
-    } else {
-        kywc_view->maximizable = true;
-        kywc_view->resizable = true;
-    }
-
     if (kywc_view->geometry.width != width || kywc_view->geometry.height != height) {
         kywc_view->geometry.width = width;
         kywc_view->geometry.height = height;
@@ -1490,22 +1610,6 @@ void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
     }
     struct view_show_window_menu_event event = { view, seat, x, y };
     wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
-}
-
-static bool view_has_modal_child(struct view *view)
-{
-    struct view *child;
-    wl_list_for_each(child, &view->children, parent_link) {
-        if (child->base.modal || view_has_modal_child(child)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool view_has_modal_property(struct view *view)
-{
-    return view->base.modal || view_has_modal_child(view);
 }
 
 void view_manager_show_desktop(bool enabled, bool apply)
@@ -1590,7 +1694,7 @@ void view_manager_show_active_only(bool enabled, bool apply)
         }
         /* don't restoring views if the state is breaked */
         if (apply) {
-            if (!view->base.minimizable || view->base.minimized == enabled) {
+            if (!view_is_minimizable(view) || view->base.minimized == enabled) {
                 continue;
             }
 

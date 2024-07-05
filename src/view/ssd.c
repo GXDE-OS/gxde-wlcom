@@ -432,7 +432,8 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
     case SSD_FRAME_RECT:
-        if (view_is_resizable(view_from_kywc_view(part->ssd->kywc_view))) {
+        if (view_is_resizable(view_from_kywc_view(part->ssd->kywc_view)) &&
+            !part->ssd->kywc_view->maximized) {
             cursor_set_resize_image(seat->cursor, get_resize_type(part, x, y));
         }
         break;
@@ -488,7 +489,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
             }
         // fallthrough if click in title
         case SSD_TITLE_TEXT:
-            if (view->base.maximizable) {
+            if (view_is_maximizable(view)) {
                 kywc_view_toggle_maximized(kywc_view);
             }
             break;
@@ -547,7 +548,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         break;
     }
 
-    if (edges != KYWC_EDGE_NONE && pressed && button == BTN_LEFT && view_is_resizable(view)) {
+    if (edges != KYWC_EDGE_NONE && pressed && button == BTN_LEFT) {
         window_begin_resize(view, edges, seat);
     }
 

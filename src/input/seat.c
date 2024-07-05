@@ -383,7 +383,7 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
     struct view *view = surface ? view_try_from_wlr_surface(surface) : NULL;
-    if (view && !view->base.focusable) {
+    if (view && !view_is_focusable(view)) {
         return;
     }
 

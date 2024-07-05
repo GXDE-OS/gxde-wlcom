@@ -220,9 +220,21 @@ void view_helper_move(struct view *view, int x, int y);
 void view_update_size(struct view *view, int width, int height, int min_width, int min_height,
                       int max_width, int max_height);
 
-bool view_is_moveable(struct view *view);
+bool view_is_minimizable(struct view *view);
+
+bool view_is_maximizable(struct view *view);
+
+bool view_is_fullscreenable(struct view *view);
+
+bool view_is_closeable(struct view *view);
+
+bool view_is_movable(struct view *view);
 
 bool view_is_resizable(struct view *view);
+
+bool view_is_activatable(struct view *view);
+
+bool view_is_focusable(struct view *view);
 
 void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
                              struct kywc_output *kywc_output, enum kywc_tile tile);

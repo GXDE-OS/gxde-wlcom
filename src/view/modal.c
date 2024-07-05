@@ -47,8 +47,6 @@ struct modal {
 
     /* view position and size before shake effect. */
     struct kywc_box geo;
-    /* records the resizeble maximizable fullscreenable flag of the superview. */
-    bool parent_resizable, parent_maximizable, parent_fullscreenable;
 
     struct ky_scene_rect *modal_box;
     struct wl_event_source *timer;
@@ -193,11 +191,6 @@ static const struct input_event_node_impl modal_impl = {
 
 static void modal_destroy(struct modal *modal)
 {
-    struct kywc_view *parent = &modal->view->parent->base;
-    parent->resizable = modal->parent_resizable;
-    parent->maximizable = modal->parent_maximizable;
-    parent->fullscreenable = modal->parent_fullscreenable;
-
     wl_list_remove(&modal->parent_activate.link);
     wl_list_remove(&modal->parent_unmap.link);
     wl_list_remove(&modal->unset_modal.link);
@@ -267,14 +260,6 @@ void modal_create(struct view *view)
 
     modal->view = view;
     struct kywc_view *parent = &view->parent->base;
-
-    modal->parent_resizable = parent->resizable;
-    modal->parent_maximizable = parent->maximizable;
-    modal->parent_fullscreenable = parent->fullscreenable;
-    parent->resizable = false;
-    parent->maximizable = false;
-    parent->fullscreenable = false;
-
     struct kywc_box geo = {
         .x = -parent->margin.off_x,
         .y = -parent->margin.off_y,

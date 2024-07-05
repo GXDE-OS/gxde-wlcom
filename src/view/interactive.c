@@ -227,7 +227,8 @@ static int handle_snap_box(void *data)
 
 static void interactive_move_show_snap_box(struct interactive_grab *grab, int cur_x, int cur_y)
 {
-    if (!grab->view->base.resizable) {
+    struct view *view = grab->view;
+    if (!view_is_resizable(view)) {
         return;
     }
 
@@ -1242,7 +1243,7 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
 
 void window_begin_move(struct view *view, struct seat *seat)
 {
-    if (!view_is_moveable(view)) {
+    if (!view_is_movable(view)) {
         return;
     }
     interactive_grab_add(view, INTERACTIVE_MODE_MOVE, 0, seat);
@@ -1250,7 +1251,7 @@ void window_begin_move(struct view *view, struct seat *seat)
 
 void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
 {
-    if (!view_is_resizable(view)) {
+    if (!view_is_resizable(view) || view->base.maximized) {
         return;
     }
     interactive_grab_add(view, INTERACTIVE_MODE_RESIZE, edges, seat);

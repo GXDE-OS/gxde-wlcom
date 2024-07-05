@@ -753,7 +753,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     xwayland_view_apply_type(xwayland_view);
 
     /* we should stack above the new window always */
-    if (!xwayland_view->view.base.activatable) {
+    if (!view_is_activatable(&xwayland_view->view)) {
         xwayland_restack_view(xwayland_view);
     }
 
