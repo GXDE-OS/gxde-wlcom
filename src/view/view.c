@@ -1492,20 +1492,20 @@ void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
     wl_signal_emit_mutable(&view_manager->events.window_menu, &event);
 }
 
-static bool view_has_modal_property(struct view *view)
+static bool view_has_modal_child(struct view *view)
 {
-    if (view->base.modal) {
-        return true;
-    }
-
     struct view *child;
     wl_list_for_each(child, &view->children, parent_link) {
-        if (child->base.modal) {
+        if (child->base.modal || view_has_modal_child(child)) {
             return true;
         }
     }
-
     return false;
+}
+
+static bool view_has_modal_property(struct view *view)
+{
+    return view->base.modal || view_has_modal_child(view);
 }
 
 void view_manager_show_desktop(bool enabled, bool apply)
