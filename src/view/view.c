@@ -954,6 +954,11 @@ static void view_set_activated(struct view *view, bool activated)
         view_reparent_fullscreen(view, activated);
     }
 
+    /* change parent fullscreen layer if parent is fullscreen */
+    if (view->parent && view->parent->base.fullscreen) {
+        view_reparent_fullscreen(view->parent, activated);
+    }
+
     if (kywc_view->minimized && activated) {
         kywc_view_set_minimized(kywc_view, false);
     }
