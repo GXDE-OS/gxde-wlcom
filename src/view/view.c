@@ -809,8 +809,17 @@ void view_set_parent(struct view *view, struct view *parent)
     wl_list_remove(&view->parent_link);
     if (parent) {
         wl_list_insert(&parent->children, &view->parent_link);
+
         if (parent->base.kept_above) {
             kywc_view_set_kept_above(&view->base, true);
+        }
+        if (parent->base.fullscreen) {
+            view->saved.layer = parent->saved.layer;
+            struct view_layer *layer = view_manager_get_layer(LAYER_ACTIVE, false);
+            struct view_proxy *view_proxy;
+            wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
+                ky_scene_node_reparent(&view_proxy->tree->node, layer->tree);
+            }
         }
     } else {
         wl_list_init(&view->parent_link);
@@ -1202,6 +1211,11 @@ static void view_reparent_fullscreen(struct view *view, bool active)
             layer = workspace_layer(view_proxy->workspace, view->saved.layer);
         }
         ky_scene_node_reparent(&view_proxy->tree->node, layer->tree);
+    }
+
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        view_reparent_fullscreen(child, active);
     }
 }
 
