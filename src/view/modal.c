@@ -33,7 +33,6 @@ struct modal {
     struct wl_listener unset_modal;
 
     struct wl_listener parent_unmap;
-    struct wl_listener parent_activate;
 
     /* attributes used for the shake effect. */
     struct {
@@ -191,7 +190,6 @@ static const struct input_event_node_impl modal_impl = {
 
 static void modal_destroy(struct modal *modal)
 {
-    wl_list_remove(&modal->parent_activate.link);
     wl_list_remove(&modal->parent_unmap.link);
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
@@ -205,12 +203,6 @@ static void handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct modal *modal = wl_container_of(listener, modal, view_unmap);
     modal_destroy(modal);
-}
-
-static void handle_parent_activate(struct wl_listener *listener, void *data)
-{
-    struct modal *modal = wl_container_of(listener, modal, parent_activate);
-    modal_shake_effect_init(modal);
 }
 
 static void handle_parent_unmap(struct wl_listener *listener, void *data)
@@ -288,9 +280,6 @@ void modal_create(struct view *view)
 
     modal->parent_unmap.notify = handle_parent_unmap;
     wl_signal_add(&parent->events.unmap, &modal->parent_unmap);
-    /* When the parent view is activate for reasons such as protocol */
-    modal->parent_activate.notify = handle_parent_activate;
-    wl_signal_add(&parent->events.activate, &modal->parent_activate);
 
     /* create timer for modal shake effect*/
     struct seat *seat = input_manager_get_default_seat();
