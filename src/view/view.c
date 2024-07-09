@@ -1364,7 +1364,7 @@ bool view_is_minimizable(struct view *view)
     if (!kywc_view->minimizable) {
         return false;
     }
-    if (view_has_modal_property(view)) {
+    if (view_has_modal_property(view) && !view->minimized_when_show_desktop) {
         return false;
     }
 
