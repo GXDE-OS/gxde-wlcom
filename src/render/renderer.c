@@ -105,7 +105,7 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
     /* get drm fd from backend */
     int drm_fd = wlr_backend_get_drm_fd(backend);
     if (drm_fd < 0) {
-        kywc_log(KYWC_ERROR, "Cannot create OpenGL renderer: no DRM fd available");
+        kywc_log(KYWC_ERROR, "Cannot create hardware renderer: no DRM fd available");
     } else {
         if (api && strcmp(api, "vulkan") == 0) {
             renderer = wlr_vk_renderer_create_with_drm_fd(drm_fd);
@@ -117,7 +117,7 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
     if (renderer) {
         query_single_plane_formats(renderer);
     } else {
-        kywc_log(KYWC_ERROR, "Failed to create a OpenGL renderer");
+        kywc_log(KYWC_WARN, "Failed to create a hardware renderer");
         renderer = wlr_pixman_renderer_create();
     }
 
