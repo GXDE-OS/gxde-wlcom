@@ -98,6 +98,7 @@ struct view {
     struct view *parent;
     struct wl_list parent_link;
     struct wl_list children;
+    struct modal *modal;
 
     /* view in workspace */
     struct view_proxy *current_proxy;

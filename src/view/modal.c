@@ -51,6 +51,19 @@ struct modal {
     struct wl_event_source *timer;
 };
 
+static struct modal *modal_find_top_modal(struct modal *modal)
+{
+    struct view *child;
+    wl_list_for_each(child, &modal->view->children, parent_link) {
+        if (!child->modal) {
+            continue;
+        }
+        return modal_find_top_modal(child->modal);
+    }
+
+    return modal;
+}
+
 static int handle_modal_shake_effect(void *data);
 
 static void modal_shake_effect_set_enabled(struct modal *modal, bool enabled)
@@ -173,7 +186,7 @@ static void modal_click(struct seat *seat, struct ky_scene_node *node, uint32_t 
     }
 
     struct modal *modal = data;
-    modal_shake_effect_init(modal);
+    modal_shake_effect_init(modal_find_top_modal(modal));
 }
 
 static struct ky_scene_node *modal_get_root(void *data)
@@ -190,6 +203,7 @@ static const struct input_event_node_impl modal_impl = {
 
 static void modal_destroy(struct modal *modal)
 {
+    modal->view->modal = NULL;
     wl_list_remove(&modal->parent_unmap.link);
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
@@ -251,6 +265,7 @@ void modal_create(struct view *view)
     }
 
     modal->view = view;
+    view->modal = modal;
     struct kywc_view *parent = &view->parent->base;
     struct kywc_box geo = {
         .x = -parent->margin.off_x,
