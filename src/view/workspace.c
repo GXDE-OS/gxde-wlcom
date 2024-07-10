@@ -326,15 +326,16 @@ static void fix_workspace(struct workspace *workspace)
     }
 
     /* fixup activated workspace */
+    struct workspace *activate_workspace =
+        workspace_manager->workspaces[workspace->position ? workspace->position - 1 : 0];
     if (workspace_manager->current == workspace) {
-        workspace_activate(workspace_manager->workspaces[0]);
+        workspace_activate(activate_workspace);
     }
 
-    /* move all views to current activated workspace */
-    struct workspace *current = workspace_manager_get_current();
+    /* move all views to activate workspace */
     struct view_proxy *view_proxy, *tmp;
     wl_list_for_each_safe(view_proxy, tmp, &workspace->view_proxies, workspace_link) {
-        struct view_proxy *new_proxy = view_add_workspace(view_proxy->view, current);
+        struct view_proxy *new_proxy = view_add_workspace(view_proxy->view, activate_workspace);
         if (new_proxy) {
             view_set_current_proxy(view_proxy->view, new_proxy);
         }
