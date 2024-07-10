@@ -1019,7 +1019,7 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
 
     if (!pressed && button == BTN_LEFT) {
         interactive_done(grab);
-        return false;
+        return grab->view->base.ssd & KYWC_SSD_TITLE ? true : false;
     }
     return true;
 }
