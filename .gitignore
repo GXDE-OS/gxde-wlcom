@@ -73,3 +73,5 @@ Thumbs.db
 
 .cache
 
+# vscode settings files
+.vscode
