@@ -1018,8 +1018,9 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct interactive_grab *grab = pointer_grab->data;
 
     if (!pressed && button == BTN_LEFT) {
+        bool has_title = grab->view->base.ssd & KYWC_SSD_TITLE;
         interactive_done(grab);
-        return grab->view->base.ssd & KYWC_SSD_TITLE ? true : false;
+        return has_title ? true : false;
     }
     return true;
 }
