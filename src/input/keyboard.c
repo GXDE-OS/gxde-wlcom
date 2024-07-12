@@ -104,9 +104,9 @@ static void keyboard_state_erase_key(struct keyboard_state *keyboard_state, uint
         keyboard_state->npressed--;
         keyboard_state->pressed_keysyms[keyboard_state->npressed] = 0;
     }
-    kywc_log(KYWC_DEBUG, "erase key %d, %lu", keysym, keyboard_state->npressed);
+    kywc_log(KYWC_DEBUG, "erase key 0x%x, %lu", keysym, keyboard_state->npressed);
     for (size_t i = 0; i < keyboard_state->npressed; i++) {
-        kywc_log(KYWC_DEBUG, "\t current keysym %lu: %d", i, keyboard_state->pressed_keysyms[i]);
+        kywc_log(KYWC_DEBUG, "\t current keysym %lu: 0x%x", i, keyboard_state->pressed_keysyms[i]);
     }
 }
 
@@ -122,9 +122,9 @@ static void keyboard_state_add_key(struct keyboard_state *keyboard_state, uint32
 
     keyboard_state->pressed_keysyms[keyboard_state->npressed] = keysym;
     keyboard_state->npressed++;
-    kywc_log(KYWC_DEBUG, "add key %d, %lu", keysym, keyboard_state->npressed);
+    kywc_log(KYWC_DEBUG, "add key 0x%x, %lu", keysym, keyboard_state->npressed);
     for (size_t i = 0; i < keyboard_state->npressed; i++) {
-        kywc_log(KYWC_DEBUG, "\t current keysym %lu: %d", i, keyboard_state->pressed_keysyms[i]);
+        kywc_log(KYWC_DEBUG, "\t current keysym %lu: 0x%x", i, keyboard_state->pressed_keysyms[i]);
     }
 }
 
