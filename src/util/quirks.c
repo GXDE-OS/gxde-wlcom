@@ -33,6 +33,12 @@ static const struct quirks quirks_table[] = {
         .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
     },
     {
+        "virtio_gpu",
+        "Mesa Project",
+        .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
+        .render_mask = QUIRKS_MASK_EXPLICIT_SYNC,
+    },
+    {
         "vmwgfx",
         NULL,
         .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
