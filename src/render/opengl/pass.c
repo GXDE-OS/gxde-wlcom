@@ -234,6 +234,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 
     ky_opengl_push_debug(renderer);
     if (has_radius) {
+        // radius clip alway need blend
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
     } else {
         setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
@@ -272,6 +273,10 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     glUniformMatrix3fv(shader->uv2tex, 1, GL_FALSE, uv2tex.matrix);
 
     if (has_radius) {
+        // avoid texture alpha < 1
+        bool force_opaque = (!texture->has_alpha && alpha == 1.0) ||
+                            options->base.blend_mode == WLR_RENDER_BLEND_MODE_NONE;
+        glUniform1i(shader->force_opaque, force_opaque);
         glUniform1f(shader->aspect, width / (float)height);
         float half_height = height * 0.5f; // shader distance scale
         glUniform1f(shader->pixel_distance, 1.0 / half_height);

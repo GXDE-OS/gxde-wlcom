@@ -10,6 +10,7 @@ varying vec2 v_texcoord;
 uniform sampler2D tex;
 uniform float alpha;
 
+uniform int forceOpaque; // texture alpha force = 1
 uniform float pixelDistance; // 1px in distance
 uniform float aspect; // width / height
 uniform vec4 roundCornerRadius;
@@ -31,5 +32,8 @@ void main()
     float dist = sdRoundedBox(st, fullSize, roundCornerRadius);
     float shape = 1.0 - smoothstep(0.0, pixelDistance, dist);
     vec4 texColor = vec4(texture2D(tex, v_texcoord).rgb, 1.0) * alpha;
+    if (forceOpaque != 0) {
+        texColor.a = 1.0;
+    }
     gl_FragColor = mix(vec4(0.0), texColor, shape);
 }

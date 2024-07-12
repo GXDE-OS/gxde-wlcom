@@ -870,6 +870,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgba_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgba_ex.alpha = glGetUniformLocation(prog, "alpha");
+    renderer->shaders.tex_rgba_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
     renderer->shaders.tex_rgba_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.tex_rgba_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgba_ex.round_corner_radius =
@@ -885,6 +886,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgbx_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.tex_rgbx_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgbx_ex.alpha = glGetUniformLocation(prog, "alpha");
+    renderer->shaders.tex_rgbx_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
     renderer->shaders.tex_rgbx_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
     renderer->shaders.tex_rgbx_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgbx_ex.round_corner_radius =
@@ -901,6 +903,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         renderer->shaders.tex_ext_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
         renderer->shaders.tex_ext_ex.tex = glGetUniformLocation(prog, "tex");
         renderer->shaders.tex_ext_ex.alpha = glGetUniformLocation(prog, "alpha");
+        renderer->shaders.tex_ext_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
         renderer->shaders.tex_ext_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
         renderer->shaders.tex_ext_ex.aspect = glGetUniformLocation(prog, "aspect");
         renderer->shaders.tex_ext_ex.round_corner_radius =

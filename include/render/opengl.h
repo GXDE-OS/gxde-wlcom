@@ -38,6 +38,7 @@ struct ky_opengl_tex_ex_shader {
 
     GLint tex;
     GLint alpha;
+    GLint force_opaque;
     GLint aspect;
     GLint pixel_distance;
     GLint round_corner_radius;
