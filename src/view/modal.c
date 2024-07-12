@@ -37,9 +37,6 @@ struct modal {
     /* attributes used for the shake effect. */
     struct {
         int current_stage;
-        int period;
-        int offset;
-        int times;
         int count;
         bool enabled;
     } shake_effect;
@@ -113,10 +110,10 @@ static void set_shake_effect_animation(struct modal *modal, enum shake_effect_st
         temp_x = modal->geo.x;
         break;
     case SHAKE_EFFECT_LEFT_SIDE:
-        temp_x = modal->geo.x - modal->shake_effect.offset;
+        temp_x = modal->geo.x - SHAKE_EFFECT_OFFSET;
         break;
     case SHAKE_EFFECT_RIGHT_SIDE:
-        temp_x = modal->geo.x + modal->shake_effect.offset;
+        temp_x = modal->geo.x + SHAKE_EFFECT_OFFSET;
         break;
     }
 
@@ -139,14 +136,13 @@ static int handle_modal_shake_effect(void *data)
     }
 
     set_shake_effect_animation_time(modal, pending_stage == SHAKE_EFFECT_RIGHT_SIDE
-                                               ? modal->shake_effect.period * 2
-                                               : modal->shake_effect.period);
+                                               ? SHAKE_EFFECT_PERIOD * 2
+                                               : SHAKE_EFFECT_PERIOD);
     set_shake_effect_animation(modal, pending_stage,
-                               pending_stage == SHAKE_EFFECT_RIGHT_SIDE
-                                   ? modal->shake_effect.period * 2
-                                   : modal->shake_effect.period);
+                               pending_stage == SHAKE_EFFECT_RIGHT_SIDE ? SHAKE_EFFECT_PERIOD * 2
+                                                                        : SHAKE_EFFECT_PERIOD);
 
-    if (modal->shake_effect.count >= modal->shake_effect.times) {
+    if (modal->shake_effect.count >= SHAKE_EFFECT_TIMES) {
         modal_shake_effect_set_enabled(modal, false);
         modal->shake_effect.count = 0;
     }
@@ -273,13 +269,6 @@ void modal_create(struct view *view)
         .width = parent->geometry.width + parent->margin.off_width,
         .height = parent->geometry.height + parent->margin.off_height,
     };
-
-    /* An animation time */
-    modal->shake_effect.period = SHAKE_EFFECT_PERIOD;
-    /* offset distance */
-    modal->shake_effect.offset = SHAKE_EFFECT_OFFSET;
-    /* Run times */
-    modal->shake_effect.times = SHAKE_EFFECT_TIMES;
 
     modal->modal_box = ky_scene_rect_create(view->parent->tree, geo.width, geo.height, modal_color);
     ky_scene_node_raise_to_top(&modal->modal_box->node);
