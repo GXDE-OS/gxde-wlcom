@@ -576,9 +576,9 @@ static struct Xkb2Qt {
     { XKB_KEY_Hyper_L, Key_Hyper_L },
     { XKB_KEY_Hyper_R, Key_Hyper_R },
     { XKB_KEY_Help, Key_Help },
-    { 0x1000FF74, Key_Backtab }, // hardcoded HP backtab
-    { 0x1005FF10, Key_F11 },     // hardcoded Sun F36 (labeled F11)
-    { 0x1005FF11, Key_F12 },     // hardcoded Sun F37 (labeled F12)
+    // { 0x1000FF74, Key_Backtab }, // hardcoded HP backtab
+    { 0x1005FF10, Key_F11 }, // hardcoded Sun F36 (labeled F11)
+    { 0x1005FF11, Key_F12 }, // hardcoded Sun F37 (labeled F12)
     // numeric and function keypad keys
     { XKB_KEY_KP_Space, Key_Space },
     { XKB_KEY_KP_Tab, Key_Tab },
