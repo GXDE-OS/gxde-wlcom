@@ -21,7 +21,7 @@
             }
         },
         "gesture": {
-            "hold:any:1:none": {
+            "hold:touch:1:none": {
                 "enable": true,
                 "actiontype": "button",
                 "button": "right",
