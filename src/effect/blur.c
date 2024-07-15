@@ -625,9 +625,14 @@ static void blur_render(struct ky_scene_render_target *target,
     glUniform1f(prog->shaders.aspect, width / (float)height);
     float half_height = (float)height * 0.5f; // shader distance scale
     glUniform1f(prog->shaders.pixel_distance, 1.0 / half_height);
-    glUniform4f(prog->shaders.rounded_corner_radius, options->radius->rb / half_height,
-                options->radius->rt / half_height, options->radius->lb / half_height,
-                options->radius->lt / half_height);
+
+    if (options->radius) {
+        glUniform4f(prog->shaders.rounded_corner_radius, options->radius->rb / half_height,
+                    options->radius->rt / half_height, options->radius->lb / half_height,
+                    options->radius->lt / half_height);
+    } else {
+        glUniform4f(prog->shaders.rounded_corner_radius, 0, 0, 0, 0);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
     render(&buffer_cpy_box, blur_region, prog->shaders.pos_attrib, options->dst_box,
