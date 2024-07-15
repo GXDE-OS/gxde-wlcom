@@ -610,7 +610,10 @@ static void blur_render(struct ky_scene_render_target *target,
     struct wlr_fbox src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
 
     glUniform1i(prog->shaders.tex, 0);
-    glUniform1f(prog->shaders.alpha, 1.0f);
+
+    float alpha = options->alpha ? *options->alpha : 1.0f;
+    glUniform1f(prog->shaders.alpha, alpha);
+
     set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, &buffer_cpy_box);
     set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
     set_tex_matrix(prog->shaders.shape_proj, target->transform, &src_fbox);
@@ -651,7 +654,8 @@ void blur_render_with_target(struct ky_scene_render_target *target,
                              const struct blur_render_options *options)
 {
     if (options->region == NULL || !blur_config.renderer || !blur_config.enable ||
-        !get_or_generate_blur_text_program() || !get_or_generate_blur_program()) {
+        !get_or_generate_blur_text_program() || !get_or_generate_blur_program() ||
+        (options->alpha && *options->alpha <= 0.0f)) {
         return;
     }
 

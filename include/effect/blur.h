@@ -10,6 +10,7 @@
 
 struct blur_render_options {
     int lx, ly;
+    const float *alpha;
     const struct wlr_box *dst_box;
     const pixman_region32_t *clip;
     const struct ky_render_round_corner *radius;
