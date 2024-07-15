@@ -969,7 +969,20 @@ static bool input_action_manager_read_config(struct input_action_manager *manage
     }
 
     json_object *data;
-    if (json_object_object_get_ex(manager->config->json, "keyboard", &data)) {
+    /* get system default config */
+    if (manager->config->sys_json &&
+        json_object_object_get_ex(manager->config->sys_json, "keyboard", &data)) {
+        intput_action_create_with_keyboard(manager, data);
+    }
+
+    if (manager->config->sys_json &&
+        json_object_object_get_ex(manager->config->sys_json, "gesture", &data)) {
+        intput_action_create_with_gesture(manager, data);
+    }
+
+    /* get user config */
+    if (manager->config->json &&
+        json_object_object_get_ex(manager->config->json, "keyboard", &data)) {
         intput_action_create_with_keyboard(manager, data);
     }
 

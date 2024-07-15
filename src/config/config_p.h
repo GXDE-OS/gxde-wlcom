@@ -12,7 +12,8 @@ struct config_manager {
     struct wl_list configs;
 
     char *file;
-    json_object *json;
+    json_object *json;     /* user config */
+    json_object *sys_json; /* system default config */
 
     /* dbus support */
     struct wl_event_source *event;

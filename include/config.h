@@ -21,6 +21,7 @@ struct server;
 struct config {
     struct wl_list link;
     json_object *json;
+    json_object *sys_json;
     sd_bus_slot *slot;
 
     struct {

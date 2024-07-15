@@ -140,6 +140,12 @@ const char *theme_manager_read_config(struct theme_manager *manager)
         return json_object_get_string(data);
     }
 
+    /* get system default config */
+    if (manager->config->sys_json &&
+        json_object_object_get_ex(manager->config->sys_json, "name", &data)) {
+        return json_object_get_string(data);
+    }
+
     return NULL;
 }
 
@@ -183,6 +189,12 @@ const char *theme_manager_read_icon_config(struct theme_manager *manager)
 
     json_object *data;
     if (json_object_object_get_ex(manager->config->json, "icon_theme_name", &data)) {
+        return json_object_get_string(data);
+    }
+
+    /* get system default config */
+    if (manager->config->sys_json &&
+        json_object_object_get_ex(manager->config->sys_json, "icon_theme_name", &data)) {
         return json_object_get_string(data);
     }
 

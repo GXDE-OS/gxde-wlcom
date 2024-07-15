@@ -125,6 +125,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
     config_manager_sync();
     json_object_put(config_manager->json);
+    json_object_put(config_manager->sys_json);
     free(config_manager->file);
 
     free(config_manager);
@@ -150,13 +151,11 @@ struct config_manager *config_manager_create(struct server *server)
     if (config_manager->file) {
         config_manager->json = json_object_from_file(config_manager->file);
     }
-    /* get default config */
-    if (!config_manager->json) {
-        config_manager->json = json_object_from_file("/etc/kylin-wlcom/config.json");
-        kywc_log(KYWC_INFO, "get the default config from the etc directory");
-        if (!config_manager->json) {
-            kywc_log(KYWC_WARN, "the default config does not exist");
-        }
+    /* get system default config */
+    config_manager->sys_json = json_object_from_file("/etc/kylin-wlcom/config.json");
+    kywc_log(KYWC_INFO, "get the sys default config from the etc directory");
+    if (!config_manager->sys_json) {
+        kywc_log(KYWC_WARN, "the default config does not exist");
     }
 
     /* create one if empty */
@@ -195,14 +194,17 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
     }
 
     json_object *object = config_manager->json;
+    json_object *sys_object = config_manager->sys_json;
     if (name) {
         object = json_object_object_get(config_manager->json, name);
         if (!object) {
             object = json_object_new_object();
             json_object_object_add(config_manager->json, name, object);
         }
+        sys_object = json_object_object_get(config_manager->sys_json, name);
     }
     config->json = object;
+    config->sys_json = sys_object;
 
     if (bus) {
         sd_bus_request_name(config_manager->bus, bus, 0);
