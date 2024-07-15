@@ -1521,8 +1521,10 @@ void view_apply_role(struct view *view)
         layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
         break;
     case KYWC_VIEW_ROLE_SYSTEMWINDOW:
-    case KYWC_VIEW_ROLE_SWITCHER:
         layer = view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
+        break;
+    case KYWC_VIEW_ROLE_SWITCHER:
+        layer = view_manager_get_layer(LAYER_SWITCHER, false);
         break;
     case KYWC_VIEW_ROLE_INPUTPANEL:
         layer = view_manager_get_layer(LAYER_INPUT_PANEL, false);

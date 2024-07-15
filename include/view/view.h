@@ -33,6 +33,8 @@ enum layer {
     LAYER_ACTIVE,
     /* layer for system window, ukui-sidebar, ukui-menu */
     LAYER_SYSTEM_WINDOW,
+    /* layer for window switcher, panel window preview */
+    LAYER_SWITCHER,
     /* tooltips, sub- and context menus, popups */
     LAYER_POPUP,
     /* layer for input method */
