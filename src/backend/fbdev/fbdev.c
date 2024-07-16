@@ -428,6 +428,10 @@ static void output_defer_present(struct wlr_output *output, struct wlr_output_ev
 static bool fbdev_output_state_update_fb(struct fbdev_output *output,
                                          const struct wlr_output_state *state)
 {
+    if (!output->fb) {
+        return false;
+    }
+
     void *data;
     uint32_t format;
     size_t stride;
@@ -439,7 +443,6 @@ static bool fbdev_output_state_update_fb(struct fbdev_output *output,
     assert(output->screen_info.x_resolution * output->screen_info.bits_per_pixel / 8 == stride);
 
     pixman_region32_t clipped;
-    pixman_region32_init(&clipped);
     pixman_region32_init_rect(&clipped, 0, 0, output->screen_info.x_resolution,
                               output->screen_info.y_resolution);
 
