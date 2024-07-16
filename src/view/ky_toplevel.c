@@ -68,12 +68,7 @@ static struct ky_toplevel *toplevel_for_view(struct ky_toplevel_manager *manager
 
 static void toplevel_update_icon_name(struct ky_toplevel *toplevel)
 {
-    const char *app_id = toplevel->view->app_id;
-    if (!app_id) {
-        return;
-    }
-
-    const char *icon_name = theme_icon_name(app_id);
+    const char *icon_name = theme_icon_name(toplevel->view->app_id);
     if (toplevel->icon_name && strcmp(toplevel->icon_name, icon_name) == 0) {
         return;
     }
