@@ -13,7 +13,7 @@ bool sysfs_read_uint64(const char *filename, uint64_t *val)
     FILE *fp;
     fp = fopen(filename, "r");
     if (!fp) {
-        kywc_log(KYWC_ERROR, "writing %s failed", filename);
+        kywc_log(KYWC_ERROR, "reading %s failed", filename);
         return false;
     }
 
