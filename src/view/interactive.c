@@ -734,16 +734,16 @@ static void interactive_tile_output_update(struct interactive_grab *grab, int ke
     grab->output = output;
 }
 
-static void interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
+static bool interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
 {
     if (state == TILE_MINIMIZE) {
         kywc_view_set_minimized(&grab->view->base, true);
-        return;
+        return grab->view->base.minimized;
     }
 
     if (state == TILE_MAXIMIZE) {
         kywc_view_set_maximized(&grab->view->base, true, NULL);
-        return;
+        return grab->view->base.maximized;
     }
 
     /**
@@ -780,16 +780,19 @@ static void interactive_tile_update(struct interactive_grab *grab, struct output
 
     if (grab->view->base.maximized && !state) {
         kywc_view_set_maximized(&grab->view->base, false, NULL);
-        return;
+        return true;
     }
 
     if (grab->view->base.minimized) {
         /* kywc_view_activate will call the minimize restore interface. */
         kywc_view_activate(&grab->view->base);
         seat_focus_surface(grab->view->base.focused_seat, grab->view->surface);
-    } else {
-        kywc_view_set_tiled(&grab->view->base, state, &output->base);
+        return true;
     }
+
+    kywc_view_set_tiled(&grab->view->base, state, &output->base);
+
+    return (int)grab->view->base.tiled == state;
 }
 
 static void interactive_process_tile(struct interactive_grab *grab, int key)
@@ -810,8 +813,9 @@ static void interactive_process_tile(struct interactive_grab *grab, int key)
     }
 
     interactive_tile_output_update(grab, key);
-    interactive_tile_update(grab, grab->output, pending_state);
-    grab->current = pending_state;
+    if (interactive_tile_update(grab, grab->output, pending_state)) {
+        grab->current = pending_state;
+    }
 }
 
 static void interactive_process_tile_half_screen(struct interactive_grab *grab, int key)
