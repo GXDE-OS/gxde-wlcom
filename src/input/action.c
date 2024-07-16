@@ -919,6 +919,7 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
         }
 
         if (!kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)) {
+            kywc_log(KYWC_DEBUG, "key_binding registion failed");
             kywc_key_binding_destroy(binding);
             binding = NULL;
         }
@@ -956,7 +957,9 @@ static void intput_action_create_with_gesture(struct input_action_manager *manag
 
         if (!kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
                                            input_action)) {
+            kywc_log(KYWC_DEBUG, "gesture_binding registion failed");
             kywc_gesture_binding_destroy(binding);
+            binding = NULL;
         }
         input_action->data = binding;
     }
