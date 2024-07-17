@@ -84,20 +84,6 @@
                 "keys": "Right",
                 "desc": "switch Right Workspace"
             },
-            "swipe:touchpad:4:up": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Control_L+Alt_L",
-                "keys": "Up",
-                "desc": "switch Up Workspace"
-            },
-            "swipe:touchpad:4:down": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Control_L+Alt_L",
-                "keys": "Down",
-                "desc": "switch Down Workspace"
-            },
             "swipe:touch:4:down": {
                 "enable": true,
                 "actiontype": "dbus",
