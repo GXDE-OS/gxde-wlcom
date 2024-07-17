@@ -8,6 +8,7 @@
 #include <gbm.h>
 
 #include <wlr/backend.h>
+#include <wlr/config.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/pixman.h>
 #include <wlr/render/vulkan.h>
@@ -108,7 +109,11 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
         kywc_log(KYWC_ERROR, "Cannot create hardware renderer: no DRM fd available");
     } else {
         if (api && strcmp(api, "vulkan") == 0) {
+#if WLR_HAS_VULKAN_RENDERER
             renderer = wlr_vk_renderer_create_with_drm_fd(drm_fd);
+#else
+            kywc_log(KYWC_ERROR, "Cannot create Vulkan renderer: wlr not compiled with Vulkan");
+#endif
         } else {
             renderer = ky_opengl_renderer_create_with_drm_fd(drm_fd);
         }
