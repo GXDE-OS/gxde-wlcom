@@ -410,7 +410,7 @@ static void toplevel_idle_send_done(void *data)
 
 static void toplevel_update_idle_source(struct ky_toplevel *toplevel)
 {
-    if (toplevel->idle_source) {
+    if (toplevel->idle_source || wl_list_empty(&toplevel->resources)) {
         return;
     }
 

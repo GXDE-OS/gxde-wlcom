@@ -197,7 +197,7 @@ static void manager_idle_send_done(void *data)
 
 static void manager_update_idle_source(struct ky_workspace_manager *manager)
 {
-    if (manager->idle_source) {
+    if (manager->idle_source || wl_list_empty(&manager->resources)) {
         return;
     }
 

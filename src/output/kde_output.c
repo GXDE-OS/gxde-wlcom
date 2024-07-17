@@ -675,7 +675,7 @@ static void output_idle_send_done(void *data)
 
 static void output_update_idle_source(struct kde_output_device *output_device)
 {
-    if (output_device->idle_source) {
+    if (output_device->idle_source || wl_list_empty(&output_device->clients)) {
         return;
     }
 
