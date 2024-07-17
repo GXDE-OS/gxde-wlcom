@@ -724,7 +724,7 @@ bool output_manager_configure_outputs(void)
         have_zero_coord = true;
     }
 
-    if (!have_enabled_output || (!have_zero_coord && !have_auto_coord)) {
+    if (!have_enabled_output || !have_zero_coord) {
         kywc_log(KYWC_WARN, "All outputs will be disabled or no zero coord, reject this configure");
         goto failed;
     }
