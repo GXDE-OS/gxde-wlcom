@@ -80,7 +80,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_new_output(struct wl_listener *listener, void *data)
 {
     struct kywc_output *kywc_output = data;
-    if (kywc_output->prop.is_virtual) {
+    if (output_manager_get_fallback() == kywc_output) {
         return;
     }
 

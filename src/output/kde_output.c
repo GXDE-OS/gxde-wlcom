@@ -656,7 +656,9 @@ static void kde_output_device_handle_destroy(struct wl_listener *listener, void 
     }
 
     /* global destroy when output destroy */
-    wl_global_destroy_safe(output_device->global);
+    if (output_device->global) {
+        wl_global_destroy_safe(output_device->global);
+    }
 
     free(output_device);
 }
@@ -785,22 +787,20 @@ static void kde_output_device_handle_power(struct wl_listener *listener, void *d
 
 static void kde_output_management_handle_new_output(struct wl_listener *listener, void *data)
 {
-    struct kywc_output *kywc_output = data;
-    if (kywc_output->prop.is_virtual) {
-        return;
-    }
-
     struct kde_output_device *output_device = calloc(1, sizeof(struct kde_output_device));
     if (!output_device) {
         return;
     }
 
-    output_device->global =
-        wl_global_create(management->display, &kde_output_device_v2_interface,
-                         OUTPUT_DEVICE_VERSION, output_device, kde_output_device_bind);
-    if (!output_device->global) {
-        free(output_device);
-        return;
+    struct kywc_output *kywc_output = data;
+    if (output_manager_get_fallback() != kywc_output) {
+        output_device->global =
+            wl_global_create(management->display, &kde_output_device_v2_interface,
+                             OUTPUT_DEVICE_VERSION, output_device, kde_output_device_bind);
+        if (!output_device->global) {
+            free(output_device);
+            return;
+        }
     }
 
     wl_list_init(&output_device->clients);

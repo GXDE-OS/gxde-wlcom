@@ -313,7 +313,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
 
     output->modeset = false;
-    if (!kywc_output->prop.is_virtual) {
+    if (output_manager_get_fallback() != kywc_output) {
         if (!output_manager->has_layout_manager) {
             output_manager_add_output_pending_state(output, &pending);
             if (pending.primary) {
@@ -663,7 +663,7 @@ bool output_manager_configure_outputs(void)
     /* 1.check configs */
     bool need_fix_primary_output = false;
     if (!output_manager->pending_primary && output_manager->primary_output &&
-        !output_manager->primary_output->prop.is_virtual) {
+        output_manager_get_fallback() != output_manager->primary_output) {
         output_manager->pending_primary = output_manager->primary_output;
         kywc_log(KYWC_WARN, "Fixup primary output to %s when no pending_primary",
                  output_manager->primary_output->name);
