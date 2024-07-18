@@ -227,10 +227,6 @@ static void xdg_view_update_geometry(struct xdg_view *xdg_view)
     kywc_view->padding.right = wlr_surface->current.width - geo->x - width;
     kywc_view->padding.top = geo->y;
     kywc_view->padding.bottom = wlr_surface->current.height - geo->y - height;
-
-    kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
-             kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
-             kywc_view->padding.bottom);
 }
 
 static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
@@ -383,10 +379,13 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     struct wlr_xdg_surface *wlr_xdg_surface = xdg_view->wlr_xdg_surface;
     struct wlr_surface *wlr_surface = wlr_xdg_surface->surface;
     struct wlr_xdg_toplevel *toplevel = wlr_xdg_surface->toplevel;
+    struct kywc_view *kywc_view = &xdg_view->view.base;
 
     xdg_view_update_geometry(xdg_view);
-    wlr_xdg_toplevel_set_size(toplevel, xdg_view->view.base.geometry.width,
-                              xdg_view->view.base.geometry.height);
+    wlr_xdg_toplevel_set_size(toplevel, kywc_view->geometry.width, kywc_view->geometry.height);
+    kywc_log(KYWC_DEBUG, "kywc_view %p padding: ← %d↑ %d→ %d↓ %d", kywc_view,
+             kywc_view->padding.left, kywc_view->padding.top, kywc_view->padding.right,
+             kywc_view->padding.bottom);
 
     /* all states are ready when map */
     view_set_app_id(&xdg_view->view, toplevel->app_id);
