@@ -65,13 +65,14 @@ static void view_update_output(struct view *view)
         view->output = kywc_output_at_point(lx, ly);
     }
 
+    /* use fallback output if no valid output */
+    if (!view->output) {
+        view->output = output_manager_get_fallback();
+    }
+
     if (old != view->output) {
         wl_list_remove(&view->output_destroy.link);
-        if (view->output) {
-            wl_signal_add(&view->output->events.destroy, &view->output_destroy);
-        } else {
-            wl_list_init(&view->output_destroy.link);
-        }
+        wl_signal_add(&view->output->events.destroy, &view->output_destroy);
         wl_signal_emit_mutable(&view->events.output, old);
     }
 }
