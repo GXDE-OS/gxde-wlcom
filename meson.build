@@ -37,6 +37,13 @@ if get_option('buildtype') == 'release'
 endif
 
 version = '"@0@"'.format(meson.project_version())
+dpkg = find_program('dpkg-parsechangelog', native: true, required: false)
+if dpkg.found()
+  dpkg_version = run_command([dpkg, '-SVersion'], check: false)
+  if dpkg_version.returncode() == 0
+    version = '"@0@"'.format(dpkg_version.stdout().strip())
+  endif
+endif
 git = find_program('git', native: true, required: false)
 if git.found()
   git_commit = run_command([git, 'rev-parse', '--short=7', 'HEAD'], check: false)
