@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
         level = KYWC_INFO;
     }
     logger_init(level, server.options.log_to_file, server.options.log_in_realtime);
+    kywc_log(KYWC_SILENT, "kylin-wlcom %s starting...", KYWC_VERSION);
 
     /* set Number of open files to max */
     limit_set_nofile();

@@ -36,12 +36,12 @@ if get_option('buildtype') == 'release'
   ]), language: 'c')
 endif
 
-version='"@0@"'.format(meson.project_version())
+version = '"@0@"'.format(meson.project_version())
 git = find_program('git', native: true, required: false)
 if git.found()
-  git_commit = run_command([git, 'describe', '--dirty'], check: false)
+  git_commit = run_command([git, 'rev-parse', '--short=7', 'HEAD'], check: false)
   if git_commit.returncode() == 0
-    version = '"@0@"'.format(git_commit.stdout().strip())
+    version += '".g@0@"'.format(git_commit.stdout().strip())
   endif
 endif
 add_project_arguments('-DKYWC_VERSION=@0@'.format(version), language: 'c')
