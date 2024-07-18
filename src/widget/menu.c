@@ -76,8 +76,8 @@ static void menu_render_items(struct menu *menu, bool force)
     menu->redraw = false;
 
     struct theme *theme = theme_manager_get_current();
-    int max_width = 0, max_height = 0;
-    int width = 0, height = 0;
+    int max_width = 0, max_height = 0, max_shortcut_width = 0;
+    int width = 0, height = 0, shortcut_width = 0, shortcut_height = 0;
     int item_count = 0;
 
     struct menu_item *item;
@@ -92,9 +92,20 @@ static void menu_render_items(struct menu *menu, bool force)
         if (item->enabled) {
             item_count++;
         }
+        if (!item->shortcut) {
+            continue;
+        }
+        painter_text_size(item->shortcut, theme->font_name, theme->font_size, &shortcut_width,
+                          &shortcut_height);
+        if (shortcut_width > max_shortcut_width) {
+            max_shortcut_width = shortcut_width;
+        }
+        if (shortcut_height > max_height) {
+            max_height = shortcut_height;
+        }
     }
 
-    width = max_width * 2;
+    width = max_width + max_shortcut_width + max_height * 2.75;
     height = max_height * 1.75;
 
     if (width != menu->width) {

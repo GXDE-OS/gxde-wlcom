@@ -49,7 +49,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
     }
 
     if (hover) {
-        double offset = box->width * 0.02;
+        double offset = box->height * 0.1;
         double x = box->x + offset;
         double y = box->y + offset;
         double w = box->width - 2 * offset;
