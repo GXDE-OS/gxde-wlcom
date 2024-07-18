@@ -71,17 +71,9 @@ static void input_clear_mapped_output(struct input *input)
     input_set_state(input, &state);
 }
 
-static void handle_mapped_output_off(struct wl_listener *listener, void *data)
+static void handle_mapped_output_disable(struct wl_listener *listener, void *data)
 {
-    struct input *input = wl_container_of(listener, input, mapped_output_off);
-
-    input_clear_mapped_output(input);
-}
-
-static void handle_mapped_output_destroy(struct wl_listener *listener, void *data)
-{
-    struct input *input = wl_container_of(listener, input, mapped_output_destroy);
-
+    struct input *input = wl_container_of(listener, input, mapped_output_disable);
     input_clear_mapped_output(input);
 }
 
@@ -93,11 +85,8 @@ static void input_destroy(struct input *input)
     wl_signal_emit_mutable(&input->events.destroy, NULL);
 
     wl_list_remove(&input->link);
+    wl_list_remove(&input->mapped_output_disable.link);
 
-    if (input->mapped_output) {
-        wl_list_remove(&input->mapped_output_off.link);
-        wl_list_remove(&input->mapped_output_destroy.link);
-    }
     free(input->desired_mapped_output);
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
@@ -195,8 +184,8 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     wl_signal_init(&input->events.destroy);
     wl_list_insert(&input_manager->inputs, &input->link);
 
-    input->mapped_output_off.notify = handle_mapped_output_off;
-    input->mapped_output_destroy.notify = handle_mapped_output_destroy;
+    input->mapped_output_disable.notify = handle_mapped_output_disable;
+    wl_list_init(&input->mapped_output_disable.link);
 
     if (wlr_input_device_is_libinput(wlr_input)) {
         input->device = wlr_libinput_get_device_handle(wlr_input);
@@ -467,13 +456,12 @@ bool input_set_state(struct input *input, struct input_state *state)
     input_get_state(input, &input->state);
 
     if (old_mapped_output != input->mapped_output) {
-        if (old_mapped_output) {
-            wl_list_remove(&input->mapped_output_off.link);
-            wl_list_remove(&input->mapped_output_destroy.link);
-        }
+        wl_list_remove(&input->mapped_output_disable.link);
+        wl_list_init(&input->mapped_output_disable.link);
+
         if (input->mapped_output) {
-            wl_signal_add(&input->mapped_output->events.off, &input->mapped_output_off);
-            wl_signal_add(&input->mapped_output->events.destroy, &input->mapped_output_destroy);
+            struct output *output = output_from_kywc_output(input->mapped_output);
+            wl_signal_add(&output->events.disable, &input->mapped_output_disable);
 
             free(input->desired_mapped_output);
             input->desired_mapped_output = NULL;
