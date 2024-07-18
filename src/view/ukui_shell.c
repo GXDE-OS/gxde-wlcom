@@ -152,7 +152,9 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
     surface->x = x;
     surface->y = y;
 
-    ukui_surface_apply_position(surface);
+    if (surface->wlr_surface->mapped) {
+        ukui_surface_apply_position(surface);
+    }
 }
 
 static void ukui_surface_apply_role(struct ukui_surface *surface)
@@ -244,7 +246,7 @@ static void handle_set_role(struct wl_client *client, struct wl_resource *resour
         surface->role_changed = true;
     }
 
-    if (surface->view) {
+    if (surface->wlr_surface->mapped) {
         ukui_surface_apply_role(surface);
         /* if plasma shell change role after map */
         ukui_surface_set_usable_area(surface, true);
@@ -319,7 +321,7 @@ static void handle_set_property(struct wl_client *client, struct wl_resource *re
         break;
     }
 
-    if (surface->view) {
+    if (surface->wlr_surface->mapped) {
         ukui_surface_apply_property(surface);
     }
 }
@@ -344,7 +346,7 @@ static void handle_set_panel_auto_hide(struct wl_client *client, struct wl_resou
 
     surface->panel_auto_hide = hide;
 
-    if (surface->view) {
+    if (surface->wlr_surface->mapped) {
         ukui_surface_set_usable_area(surface, !surface->panel_auto_hide);
         panel_change_layer(surface->view, surface->panel_auto_hide);
     }
@@ -359,7 +361,7 @@ static void handle_open_under_cursor(struct wl_client *client, struct wl_resourc
     }
     surface->open_under_cursor = true;
 
-    if (surface->view) {
+    if (surface->wlr_surface->mapped) {
         struct seat *seat = surface->view->base.focused_seat;
         kywc_view_move(&surface->view->base, seat->cursor->lx + x, seat->cursor->ly + y);
     }
@@ -469,7 +471,7 @@ static void handle_set_icon(struct wl_client *client, struct wl_resource *resour
         return;
     }
 
-    if (surface->view) {
+    if (surface->wlr_surface->mapped) {
         view_set_icon(surface->view, icon_name);
         return;
     }
