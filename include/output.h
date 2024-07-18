@@ -88,6 +88,8 @@ void output_manager_power_outputs(bool power);
 
 float output_manager_get_scale(void);
 
+struct kywc_output *output_manager_get_fallback(void);
+
 /* update scale to xwayland */
 void output_manager_update_scale(float scale);
 

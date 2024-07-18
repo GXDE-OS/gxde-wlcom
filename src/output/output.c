@@ -597,6 +597,11 @@ float output_manager_get_scale(void)
     return scale;
 }
 
+struct kywc_output *output_manager_get_fallback(void)
+{
+    return output_manager->fallback_output;
+}
+
 void output_manager_update_scale(float scale)
 {
     /* update xdg_output pos and size */
@@ -645,14 +650,14 @@ static void output_manager_update_primary_state(void)
 
 bool output_manager_configure_outputs(void)
 {
+    if (wl_list_empty(&output_manager->output_configs)) {
+        return false;
+    }
+
     bool ret = false;
 
     if (output_manager->server->terminate || wl_list_empty(&output_manager->outputs)) {
         goto failed;
-    }
-
-    if (wl_list_empty(&output_manager->output_configs)) {
-        return false;
     }
 
     /* 1.check configs */
