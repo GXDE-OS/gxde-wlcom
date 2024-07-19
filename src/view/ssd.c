@@ -46,6 +46,14 @@ enum button_state {
     BUTTON_STATE_CLICKED,
 };
 
+enum button_mask {
+    BUTTON_MASK_NONE = 0,
+    BUTTON_MASK_MINIMIZE = 1 << 0,
+    BUTTON_MASK_MAXIMIZE = 1 << 1,
+    BUTTON_MASK_CLOSE = 1 << 2,
+    BUTTON_MASK_ALL = (1 << 3) - 1,
+};
+
 enum ssd_update_cause {
     SSD_UPDATE_CAUSE_NONE = 0,
     SSD_UPDATE_CAUSE_SIZE = 1 << 0,
@@ -120,6 +128,7 @@ struct ssd {
     bool created;
     /* view size to reduce redraw */
     int view_width, view_height;
+    uint32_t buttons;
 };
 
 static struct ssd_manager *manager = NULL;
@@ -680,8 +689,18 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
+        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MINIMIZE].node,
+                                  ssd->buttons & BUTTON_MASK_MINIMIZE);
+        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node,
+                                  ssd->buttons & BUTTON_MASK_MAXIMIZE);
+        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_CLOSE].node,
+                                  ssd->buttons & BUTTON_MASK_CLOSE);
+
+        ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node,
+                                   ssd->buttons & BUTTON_MASK_MAXIMIZE ? 0 : button_w, 0);
         ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MAXIMIZE].node, button_w, 0);
         ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 2 * button_w, 0);
+
         ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MINIMIZE], BUTTON_STATE_NONE);
         ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_CLOSE], BUTTON_STATE_NONE);
     }
@@ -693,18 +712,9 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
         }
     }
 
-    if (cause & SSD_UPDATE_CAUSE_MAXIMIZE) {
-        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MAXIMIZE].node, view->maximizable);
-        if (view->maximizable) {
-            /* set maximize and restore */
-            ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], BUTTON_STATE_NONE);
-        }
-
-        ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_MINIMIZE].node, !view->modal);
-        if (!view->modal) {
-            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node,
-                                       view->maximizable ? 0 : button_w, 0);
-        }
+    if (cause & SSD_UPDATE_CAUSE_MAXIMIZE && ssd->buttons & BUTTON_MASK_MAXIMIZE) {
+        /* set maximize and restore */
+        ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MAXIMIZE], BUTTON_STATE_NONE);
     }
 }
 
@@ -933,6 +943,25 @@ static void handle_view_fullscreen(struct wl_listener *listener, void *data)
     ssd_update_parts(ssd, SSD_UPDATE_CAUSE_FULLSCREEN);
 }
 
+static void ssd_check_buttons(struct ssd *ssd)
+{
+    struct kywc_view *kywc_view = ssd->kywc_view;
+
+    /* always has a close button */
+    ssd->buttons = BUTTON_MASK_ALL;
+
+    if (!kywc_view->maximizable || kywc_view->modal ||
+        (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
+         kywc_view->min_width == kywc_view->max_width &&
+         kywc_view->min_height == kywc_view->max_height)) {
+        ssd->buttons &= ~BUTTON_MASK_MAXIMIZE;
+    }
+
+    if (!kywc_view->minimizable || kywc_view->modal) {
+        ssd->buttons &= ~BUTTON_MASK_MINIMIZE;
+    }
+}
+
 static void ssd_parts_create(struct ssd *ssd)
 {
     if (ssd->created) {
@@ -971,6 +1000,8 @@ static void ssd_parts_create(struct ssd *ssd)
         wl_signal_add(&kywc_view->events.title, &ssd->view_title);
         ssd->icon_update.notify = handle_icon_update;
         theme_manager_add_icon_update_listener(&ssd->icon_update);
+
+        ssd_check_buttons(ssd);
     }
 
     if (kywc_view->ssd & (KYWC_SSD_TITLE | KYWC_SSD_BORDER)) {
