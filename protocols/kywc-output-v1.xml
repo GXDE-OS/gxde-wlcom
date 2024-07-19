@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<protocol name="kywc_workspace_v1">
+<protocol name="kywc_output_v1">
   <copyright><![CDATA[
     SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
     SPDX-License-Identifier: MulanPSL-2.0

@@ -58,7 +58,7 @@
 
     <request name="get_window_by_uuid" since="12">
         <arg name="id" type="new_id" interface="org_kde_plasma_window"/>
-        <arg name="internal_window_uuid" type="string" summary="The internal window uuiid of the window to create"/>
+        <arg name="internal_window_uuid" type="string" summary="The internal window uuid of the window to create"/>
     </request>
 
     <event name="show_desktop_changed">

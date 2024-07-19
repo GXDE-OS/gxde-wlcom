@@ -45,7 +45,7 @@
     </event>
 
     <event name="done" since="2">
-      <description summary="sent all output and seat info completly">
+      <description summary="sent all output and seat info completely">
         This event is sent after all information has been sent after binding to
         the ukui shell object.
       </description>

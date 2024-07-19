@@ -30,7 +30,7 @@
     <request name="create_window">
       <arg name="id" type="new_id" interface="ukui_window"/>
       <arg name="internal_window_uuid" type="string"
-        summary="The internal window uuiid of the window to create"/>
+        summary="The internal window uuid of the window to create"/>
     </request>
 
     <event name="show_desktop_changed">
