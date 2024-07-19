@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "util/debug.h"
 #include "util/limit.h"
 #include "util/logger.h"
 #include "util/spawn.h"
@@ -76,22 +77,40 @@ static void terminate(int exit_code)
     }
 }
 
-static void sig_handler(int signal)
-{
-    terminate(EXIT_SUCCESS);
-}
-
-static void set_signal(int sig, void (*handler)(int))
+static void set_signal(int sig, void *handler)
 {
     struct sigaction act;
     sigemptyset(&act.sa_mask);
     if (handler != SIG_IGN) {
         sigaddset(&act.sa_mask, sig);
     }
-
-    act.sa_flags = 0;
-    act.sa_handler = handler;
+    act.sa_sigaction = handler;
+    act.sa_flags = SA_SIGINFO;
     sigaction(sig, &act, NULL);
+}
+
+static void sig_handler(int signo, siginfo_t *sip, void *unused)
+{
+    if (sip->si_code == SI_USER) {
+        kywc_log(KYWC_SILENT, "Received signal %s(%u) sent by process %u, uid %u", strsignal(signo),
+                 signo, sip->si_pid, sip->si_uid);
+    } else {
+        switch (signo) {
+        case SIGSEGV:
+        case SIGBUS:
+        case SIGILL:
+        case SIGFPE:
+        case SIGABRT:
+            kywc_log(KYWC_SILENT, "Caught %s(%u) at address %p", strsignal(signo), signo,
+                     sip->si_addr);
+            debug_backtrace();
+            /* abort() raises SIGABRT */
+            set_signal(SIGABRT, SIG_DFL);
+            abort();
+        }
+    }
+
+    terminate(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -164,6 +183,12 @@ int main(int argc, char *argv[])
     set_signal(SIGINT, sig_handler);
     /* handle SIGHUP signals */
     set_signal(SIGHUP, sig_handler);
+    /* crash signals */
+    set_signal(SIGSEGV, sig_handler);
+    set_signal(SIGBUS, sig_handler);
+    set_signal(SIGILL, sig_handler);
+    set_signal(SIGFPE, sig_handler);
+    set_signal(SIGABRT, sig_handler);
 
     if (!server_init(&server)) {
         terminate(EXIT_FAILURE);
