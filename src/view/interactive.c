@@ -734,16 +734,16 @@ static void interactive_tile_output_update(struct interactive_grab *grab, int ke
     grab->output = output;
 }
 
-static bool interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
+static void interactive_tile_update(struct interactive_grab *grab, struct output *output, int state)
 {
     if (state == TILE_MINIMIZE) {
         kywc_view_set_minimized(&grab->view->base, true);
-        return grab->view->base.minimized;
+        return;
     }
 
     if (state == TILE_MAXIMIZE) {
         kywc_view_set_maximized(&grab->view->base, true, NULL);
-        return grab->view->base.maximized;
+        return;
     }
 
     /**
@@ -780,19 +780,28 @@ static bool interactive_tile_update(struct interactive_grab *grab, struct output
 
     if (grab->view->base.maximized && !state) {
         kywc_view_set_maximized(&grab->view->base, false, NULL);
-        return true;
+        return;
     }
 
     if (grab->view->base.minimized) {
         /* kywc_view_activate will call the minimize restore interface. */
         kywc_view_activate(&grab->view->base);
         seat_focus_surface(grab->view->base.focused_seat, grab->view->surface);
-        return true;
+        return;
     }
 
     kywc_view_set_tiled(&grab->view->base, state, &output->base);
+}
 
-    return (int)grab->view->base.tiled == state;
+static int interactive_get_tile_state(struct view *view)
+{
+    if (view->base.maximized) {
+        return TILE_MAXIMIZE;
+    } else if (view->base.minimized) {
+        return TILE_MINIMIZE;
+    }
+
+    return view->base.tiled < KYWC_TILE_CENTER ? (enum tile_state)view->base.tiled : TILE_NONE;
 }
 
 static void interactive_process_tile(struct interactive_grab *grab, int key)
@@ -802,6 +811,7 @@ static void interactive_process_tile(struct interactive_grab *grab, int key)
     }
 
     enum tile_state pending_state = TILE_NONE;
+    grab->current = interactive_get_tile_state(grab->view);
     if (key == KEY_UP) {
         pending_state = tile_states[grab->current].key_up;
     } else if (key == KEY_DOWN) {
@@ -813,13 +823,16 @@ static void interactive_process_tile(struct interactive_grab *grab, int key)
     }
 
     interactive_tile_output_update(grab, key);
-    if (interactive_tile_update(grab, grab->output, pending_state)) {
-        grab->current = pending_state;
-    }
+    interactive_tile_update(grab, grab->output, pending_state);
 }
 
 static void interactive_process_tile_half_screen(struct interactive_grab *grab, int key)
 {
+    if (key != KEY_UP && key != KEY_DOWN && key != KEY_LEFT && key != KEY_RIGHT) {
+        return;
+    }
+
+    grab->current = interactive_get_tile_state(grab->view);
     if (grab->current == TILE_MINIMIZE) {
         return;
     }
@@ -836,27 +849,24 @@ static void interactive_process_tile_half_screen(struct interactive_grab *grab, 
         tile = KYWC_TILE_RIGHT;
     }
 
-    if (tile == KYWC_TILE_NONE) {
-        return;
-    }
-
     if (grab->view->base.tiled != tile) {
         kywc_view_set_tiled(&grab->view->base, tile, grab->view->output);
-        grab->current = (enum tile_state)grab->view->base.tiled;
         return;
     }
 
-    struct output *output = output_find_specified_output(
-        grab->output, tile == KYWC_TILE_LEFT ? LAYOUT_EDGE_LEFT : LAYOUT_EDGE_RIGHT);
+    if (tile == KYWC_TILE_TOP || tile == KYWC_TILE_BOTTOM) {
+        return;
+    }
+
+    enum layout_edge edge = tile == KYWC_TILE_LEFT ? LAYOUT_EDGE_LEFT : LAYOUT_EDGE_RIGHT;
+    struct output *output = output_find_specified_output(grab->output, edge);
     if (!output) {
         return;
     }
 
     tile = tile == KYWC_TILE_LEFT ? KYWC_TILE_RIGHT : KYWC_TILE_LEFT;
     kywc_view_set_tiled(&grab->view->base, tile, &output->base);
-
     grab->output = output;
-    grab->current = (enum tile_state)grab->view->base.tiled;
 }
 
 static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
@@ -1088,14 +1098,6 @@ static void interactive_grab_add(struct view *view, enum interactive_mode mode, 
     } else if (mode == INTERACTIVE_MODE_RESIZE) {
         cursor_set_resize_image(seat->cursor, edges);
     } else if (mode == INTERACTIVE_MODE_TILE) {
-        if (grab->view->base.maximized) {
-            grab->current = TILE_MAXIMIZE;
-        } else {
-            grab->current = grab->view->base.tiled < KYWC_TILE_CENTER
-                                ? (enum tile_state)grab->view->base.tiled
-                                : TILE_NONE;
-        }
-
         int key = interactive_tiled_key_by_action(edges);
         interactive_process_tile(grab, key);
         interactive_tiled_record_view_ratio(grab);
