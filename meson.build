@@ -85,6 +85,7 @@ pango = dependency('pango')
 pangocairo = dependency('pangocairo')
 rsvg  = dependency('librsvg-2.0', version: '>=2.46')
 udev = dependency('libudev')
+unwind = dependency('libunwind', required : get_option('libunwind'))
 
 plugindir = get_option('plugin_directory')
 if plugindir == ''
@@ -98,7 +99,7 @@ wlcom_deps = [
   wayland_server, wayland_protos,
   wlroots, xkbcommon, drm, input, udev,
   pixman, xcb, jsonc, sdbus,
-  math, dl, thread,
+  math, dl, thread, unwind,
   cairo, pango, pangocairo, rsvg,
 ]
 
@@ -126,6 +127,7 @@ have_ukui_shell = get_option('ukui_shell')
 have_ukui_window_management = get_option('ukui_window_management')
 
 add_project_arguments([
+  '-DHAVE_LIBUNWIND=@0@'.format(unwind.found().to_int()),
   '-DHAVE_KDE_OUTPUT=@0@'.format(have_kde_output.to_int()),
   '-DHAVE_KDE_VIRTUAL_DESKTOP=@0@'.format(have_kde_virtual_desktop.to_int()),
   '-DHAVE_WLR_OUTPUT=@0@'.format(have_wlr_output.to_int()),
@@ -173,7 +175,9 @@ summary({
 
 summary({
   'examples': have_examples,
+  'libunwind': unwind.found(),
   'nls': msgfmt.found(),
+  'libkywc': have_libkywc,
   'kde_output': have_kde_output,
   'kde_virtual_desktop': have_kde_virtual_desktop,
   'wlr_output': have_wlr_output,
@@ -188,7 +192,6 @@ summary({
   'ukui_screenshot': have_ukui_screenshot,
   'ukui_gsettings': have_ukui_gsettings,
   'kde_keystate': have_kde_keystate,
-  'libkywc': have_libkywc,
   'kde_clipboard': have_kde_clipboard,
   'ukui_watermark': have_ukui_watermark,
   'ukui_shell': have_ukui_shell,

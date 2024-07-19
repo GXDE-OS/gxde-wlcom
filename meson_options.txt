@@ -4,6 +4,12 @@ option('plugin_directory',
        description: 'Location for plugin (default: ${prefix}/lib/kylin-wlcom/plugins/)'
 )
 
+option('libunwind',
+       type : 'feature',
+       value: 'auto',
+       description : 'Use libunwind for stack-traces'
+)
+
 option('examples',
        type: 'boolean',
        value: true,
