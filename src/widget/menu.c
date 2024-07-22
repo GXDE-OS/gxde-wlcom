@@ -123,11 +123,6 @@ static void menu_render_items(struct menu *menu, bool force)
     }
 }
 
-void menu_set_fade_enabled(struct menu *menu, bool enabled)
-{
-    menu->fade_enabled = enabled;
-}
-
 static void menu_set_enabled(struct menu *menu, bool enabled)
 {
     if (menu->enabled == enabled) {
@@ -786,6 +781,11 @@ void menu_destroy(struct menu *menu)
     }
 
     ky_scene_node_destroy(&menu->tree->node);
+}
+
+void menu_set_fade_enabled(struct menu *menu, bool enabled)
+{
+    menu->fade_enabled = enabled;
 }
 
 void menu_show_root(struct menu *menu, struct seat *seat, int x, int y)
