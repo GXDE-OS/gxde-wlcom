@@ -27,8 +27,6 @@ struct ukui_shell {
 };
 
 struct ukui_surface {
-    struct ukui_shell *shell;
-
     struct wlr_surface *wlr_surface;
     struct wl_listener surface_map;
     struct wl_listener surface_destroy;
@@ -160,6 +158,7 @@ static void ukui_surface_apply_role(struct ukui_surface *surface)
     if (!surface->role_changed) {
         return;
     }
+
     struct kywc_view *kywc_view = &surface->view->base;
 
     switch (surface->role) {
@@ -209,6 +208,7 @@ static void ukui_surface_apply_role(struct ukui_surface *surface)
         kywc_view->role = KYWC_VIEW_ROLE_SWITCHER;
         break;
     }
+
     view_apply_role(view_from_kywc_view(kywc_view));
     surface->role_changed = false;
 }
@@ -216,7 +216,6 @@ static void ukui_surface_apply_role(struct ukui_surface *surface)
 static void ukui_surface_apply_property(struct ukui_surface *surface)
 {
     struct kywc_view *kywc_view = &surface->view->base;
-
     enum kywc_ssd ssd = kywc_view->ssd;
 
     if ((surface->property_state >> UKUI_SURFACE_PROPERTY_NO_TITLEBAR) & 0x1) {
@@ -357,6 +356,7 @@ static void handle_open_under_cursor(struct wl_client *client, struct wl_resourc
     if (!surface->wlr_surface) {
         return;
     }
+
     surface->open_under_cursor = true;
 
     if (surface->view) {
@@ -410,18 +410,31 @@ static void end_remain_grab(struct seat *seat, int index, void *data)
     wlr_seat_keyboard_clear_focus(seat->wlr_seat);
 }
 
+static struct ukui_keyboard_grab *get_or_create_keyboard_grab(struct ukui_surface *surface,
+                                                              struct seat *seat)
+{
+    struct ukui_keyboard_grab *grab = get_ukui_keyboard_grab_from_seat(surface, seat);
+    if (grab) {
+        return grab;
+    }
+
+    grab = calloc(1, sizeof(struct ukui_keyboard_grab));
+    if (!grab) {
+        return NULL;
+    }
+
+    grab->keyboard_grab.data = surface;
+    grab->keyboard_grab.interface = &keyboard_grab_impl;
+    seat_start_keyboard_grab(seat, &grab->keyboard_grab);
+    wl_list_insert(&surface->ukui_keyboard_grabs, &grab->link);
+
+    return grab;
+}
+
 static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data)
 {
     struct ukui_surface *surface = data;
-    struct ukui_keyboard_grab *grab = get_ukui_keyboard_grab_from_seat(surface, seat);
-
-    if (!grab) {
-        grab = calloc(1, sizeof(struct ukui_keyboard_grab));
-        grab->keyboard_grab.data = surface;
-        grab->keyboard_grab.interface = &keyboard_grab_impl;
-        seat_start_keyboard_grab(seat, &grab->keyboard_grab);
-        wl_list_insert(&surface->ukui_keyboard_grabs, &grab->link);
-    }
+    get_or_create_keyboard_grab(surface, seat);
 }
 
 static void end_ukui_grab_keyboard(struct ukui_keyboard_grab *ukui_keyboard_grab)
@@ -444,15 +457,7 @@ static void handle_grab_keyboard(struct wl_client *client, struct wl_resource *r
         struct seat *seat = seat_from_resource(wl_seat);
         if (seat) {
             end_remain_grab(seat, 0, NULL);
-            struct ukui_keyboard_grab *grab = get_ukui_keyboard_grab_from_seat(surface, seat);
-
-            if (!grab) {
-                grab = calloc(1, sizeof(struct ukui_keyboard_grab));
-                grab->keyboard_grab.data = surface;
-                grab->keyboard_grab.interface = &keyboard_grab_impl;
-                seat_start_keyboard_grab(seat, &grab->keyboard_grab);
-                wl_list_insert(&surface->ukui_keyboard_grabs, &grab->link);
-            }
+            get_or_create_keyboard_grab(surface, seat);
         }
     } else {
         surface->grab_all_keyboard = true;

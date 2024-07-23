@@ -25,8 +25,6 @@ struct kde_plasma_shell {
 };
 
 struct kde_plasma_surface {
-    struct kde_plasma_shell *shell;
-
     struct wlr_surface *wlr_surface;
     struct wl_listener surface_map;
     struct wl_listener surface_destroy;
@@ -96,6 +94,7 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
     if (!surface->role_changed) {
         return;
     }
+
     struct kywc_view *kywc_view = &surface->view->base;
 
     switch (surface->role) {
@@ -124,11 +123,13 @@ static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
         kywc_view->role = KYWC_VIEW_ROLE_APPLETPOPUP;
         break;
     }
+
     view_apply_role(view_from_kywc_view(kywc_view));
     surface->role_changed = false;
 }
 
 static void kde_plasma_surface_set_usable_area(struct kde_plasma_surface *surface, bool enabled);
+
 static void handle_set_role(struct wl_client *client, struct wl_resource *resource, uint32_t role)
 {
     struct kde_plasma_surface *surface = wl_resource_get_user_data(resource);
@@ -215,6 +216,7 @@ static void handle_open_under_cursor(struct wl_client *client, struct wl_resourc
     if (!surface->wlr_surface) {
         return;
     }
+
     surface->open_under_cursor = true;
 
     if (surface->view) {
