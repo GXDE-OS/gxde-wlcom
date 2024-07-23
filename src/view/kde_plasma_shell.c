@@ -91,10 +91,6 @@ static void handle_set_position(struct wl_client *client, struct wl_resource *re
 
 static void kde_plasma_surface_apply_role(struct kde_plasma_surface *surface)
 {
-    if (!surface->role_changed) {
-        return;
-    }
-
     struct kywc_view *kywc_view = &surface->view->base;
 
     switch (surface->role) {
@@ -142,7 +138,7 @@ static void handle_set_role(struct wl_client *client, struct wl_resource *resour
         surface->role_changed = true;
     }
 
-    if (surface->view) {
+    if (surface->view && surface->role_changed) {
         kde_plasma_surface_apply_role(surface);
         /* if plasma shell change role after map */
         kde_plasma_surface_set_usable_area(surface, true);
@@ -395,7 +391,10 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
 
     surface->view->base.skip_taskbar = surface->skip_taskbar;
     surface->view->base.skip_switcher = surface->skip_switcher;
-    kde_plasma_surface_apply_role(surface);
+
+    if (surface->role_changed) {
+        kde_plasma_surface_apply_role(surface);
+    }
 
     if (surface->open_under_cursor) {
         struct seat *seat = surface->view->base.focused_seat;
