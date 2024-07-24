@@ -179,8 +179,13 @@ bool kywc_key_binding_register(struct key_binding *binding,
     }
 
     wl_list_insert(&bindings->keysym_bindings, &binding->link);
-    binding->action = action;
-    binding->data = data;
+
+    if (action) {
+        binding->action = action;
+    }
+    if (data) {
+        binding->data = data;
+    }
 
     return true;
 }
