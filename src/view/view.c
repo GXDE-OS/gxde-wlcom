@@ -952,7 +952,7 @@ static void view_set_activated(struct view *view, bool activated)
          */
         view_manager->activated.view = view;
         wl_signal_add(&kywc_view->events.minimize, &view_manager->activated.minimize);
-        wl_signal_add(&kywc_view->events.destroy, &view_manager->activated.unmap);
+        wl_signal_add(&kywc_view->events.unmap, &view_manager->activated.unmap);
     } else {
         wl_list_remove(&view_manager->activated.minimize.link);
         wl_list_remove(&view_manager->activated.unmap.link);
