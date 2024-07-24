@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <assert.h>
+#include <float.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_compositor.h>
@@ -269,7 +270,7 @@ static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, fl
     };
 
     float scale_width = info.width * info.scale;
-    float min_abs = 256.0;
+    float min_abs = FLT_MAX;
     float tmp_abs;
     struct net_wm_icon *icon_similar = NULL;
     struct net_wm_icon *icon;
