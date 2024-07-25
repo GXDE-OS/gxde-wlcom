@@ -55,60 +55,60 @@ msgstr "ئېكران"
 
 #: src/view/window_menu.c:342
 msgid "_Take Screenshot"
-msgstr "(_T)ئېكران رەسىمى"
+msgstr "ئېكران رەسىمى(_T)"
 
 #: src/view/window_menu.c:346
 msgid "_Desktop"
-msgstr "(_D)ئۈستەل يۈزى"
+msgstr "ئۈستەل يۈزى(_D)"
 
 #: src/view/window_menu.c:348
 msgid "_All Desktop"
-msgstr "(_A)بارلىق ئۈستەل يۈزى"
+msgstr "بارلىق ئۈستەل يۈزى(_A)"
 
 #: src/view/window_menu.c:350
 msgid "Add To _New Desktop"
-msgstr "(_N)يېڭى ئۈستەل يۈزىگە قوشۇڭ"
+msgstr "يېڭى ئۈستەل يۈزىگە قوشۇڭ(_N)"
 
 #: src/view/window_menu.c:353
 msgid "_Move To New Desktop"
-msgstr "(_M)يېڭى ئۈستەل يۈزىگە يۆتكىڭ"
+msgstr "يېڭى ئۈستەل يۈزىگە يۆتكىڭ(_M)"
 
 #: src/view/window_menu.c:356
 msgid "Ma_ximize"
-msgstr "(_X)ماكسىمۇم ھالەت"
+msgstr "ماكسىمۇم ھالەت(_X)"
 
 #: src/view/window_menu.c:360
 msgid "Move To _Screen"
-msgstr "(_S)ئېكرانغا يۆتكىڭ"
+msgstr "ئېكرانغا يۆتكىڭ(_S)"
 
 #: src/view/window_menu.c:363
 msgid "Mi_nimize"
-msgstr "(_N)ئەڭ كىچىكلەشتۈرۈش"
+msgstr "ئەڭ كىچىكلەشتۈرۈش(_N)"
 
 #: src/view/window_menu.c:367
 msgid "_More"
-msgstr "(_M)تېخىمۇ كۆپ مەشغۇلات"
+msgstr "تېخىمۇ كۆپ مەشغۇلات(_M)"
 
 #: src/view/window_menu.c:369
 msgid "_Move"
-msgstr "(_M)يۆتكەڭ"
+msgstr "يۆتكەڭ(_M)"
 
 #: src/view/window_menu.c:370
 msgid "_Resize"
-msgstr "(_R)چوڭ-كىچىكلىكىنى تەڭشەش"
+msgstr "چوڭ-كىچىكلىكىنى تەڭشەش(_R)"
 
 #: src/view/window_menu.c:371
 msgid "Keep-_Above"
-msgstr "(_A)ئەڭ يۇقىرى قەۋەتكە قويۇپ"
+msgstr "ئەڭ يۇقىرى قەۋەتكە قويۇپ(_A)"
 
 #: src/view/window_menu.c:373
 msgid "Keep-_Below"
-msgstr "(_B)ئەڭ تۆۋەن قاتلامغا قويۇپ"
+msgstr "ئەڭ تۆۋەن قاتلامغا قويۇپ(_B)"
 
 #: src/view/window_menu.c:375
 msgid "_Fullscreen"
-msgstr "(_F)پۈتۈن ئېكران"
+msgstr "پۈتۈن ئېكران(_F)"
 
 #: src/view/window_menu.c:378
 msgid "_Close"
-msgstr "(_C)تاقاش"
+msgstr "تاقاش(_C)"
