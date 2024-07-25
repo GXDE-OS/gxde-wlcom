@@ -874,6 +874,19 @@ static int compare_qtkey(const void *p1, const void *p2)
     return k1 > k2 ? 1 : (k1 == k2 ? 0 : -1);
 }
 
+static int compare_keysym(const void *p1, const void *p2)
+{
+    int32_t k1 = ((struct Xkb2Qt *)p1)->keysym;
+    int32_t k2 = ((struct Xkb2Qt *)p2)->keysym;
+
+    // one qtkey may has multiple xkb keysym, fixup it please
+    if (k1 == k2) {
+        fprintf(stderr, "// something goes wrong, multiple 0x%08x\n", k1);
+    }
+
+    return k1 > k2 ? 1 : (k1 == k2 ? 0 : -1);
+}
+
 int main(int argc, char *argv[])
 {
     size_t count = sizeof(KeyTbl) / sizeof(struct Xkb2Qt);
@@ -897,6 +910,40 @@ int main(int argc, char *argv[])
     const struct Xkb2Qt *map;
     size_t row = count / 3;
     size_t left = count % 3;
+
+    for (size_t i = 0; i < row; i++) {
+        map = &KeyTbl[i * 3];
+        fprintf(stdout, "    { 0x%08x, 0x%08x }, { 0x%08x, 0x%08x }, { 0x%08x, 0x%08x },\n",
+                map->qtkey, map->keysym, (map + 1)->qtkey, (map + 1)->keysym, (map + 2)->qtkey,
+                (map + 2)->keysym);
+    }
+
+    if (left) {
+        fprintf(stdout, "    ");
+    }
+    for (size_t i = 0; i < left; i++) {
+        map = &KeyTbl[row * 3 + i];
+        fprintf(stdout, "{ 0x%08x, 0x%08x }, ", map->qtkey, map->keysym);
+    }
+    if (left) {
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "};\n\n");
+
+    size_t i, j;
+    struct Xkb2Qt temp;
+    for (i = 0; i < count - 1; i++) {
+        for (j = 0; j < count - 1 - i; j++) {
+            if (KeyTbl[j].keysym > KeyTbl[j + 1].keysym) {
+                temp = KeyTbl[j];
+                KeyTbl[j] = KeyTbl[j + 1];
+                KeyTbl[j + 1] = temp;
+            }
+        }
+    }
+    /* sort the table */
+    qsort(KeyTbl, count, sizeof(struct Xkb2Qt), compare_keysym);
+    fprintf(stdout, "static const struct qtkey_map keysym_map_table[] = {\n");
 
     for (size_t i = 0; i < row; i++) {
         map = &KeyTbl[i * 3];

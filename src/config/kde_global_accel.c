@@ -23,6 +23,7 @@
 enum Key {
     Key_0 = 0x30,
     Key_9 = 0x39,
+    Key_F1 = 0x01000030,
 
     NoModifier = 0x00000000,
     ShiftModifier = 0x02000000,
@@ -32,7 +33,8 @@ enum Key {
     KeypadModifier = 0x20000000,
     GroupSwitchModifier = 0x40000000,
     // Do not extend the mask to include 0x01000000
-    KeyboardModifierMask = 0xfe000000
+    KeyboardModifierMask = 0xfe000000,
+    KeyMask = ~KeyboardModifierMask,
 };
 
 static int compare_key(const void *p1, const void *p2)
@@ -97,6 +99,66 @@ static uint32_t qtkey_to_keysym(int32_t key)
     }
 
     return sym;
+}
+
+static int compare_keysym(const void *p1, const void *p2)
+{
+    int32_t k1 = ((struct qtkey_map *)p1)->keysym;
+    int32_t k2 = ((struct qtkey_map *)p2)->keysym;
+    return k1 > k2 ? 1 : (k1 == k2 ? 0 : -1);
+}
+
+static uint32_t modifiers_to_qtkey(int32_t key)
+{
+    uint32_t qtkey = 0;
+
+    if (key & WLR_MODIFIER_SHIFT) {
+        qtkey |= ShiftModifier;
+    }
+    if (key & WLR_MODIFIER_CTRL) {
+        qtkey |= ControlModifier;
+    }
+    if (key & WLR_MODIFIER_ALT) {
+        qtkey |= AltModifier;
+    }
+    if (key & WLR_MODIFIER_LOGO) {
+        qtkey |= MetaModifier;
+    }
+    if (key & WLR_MODIFIER_MOD2) {
+        qtkey |= KeypadModifier;
+    }
+    if (key & WLR_MODIFIER_MOD5) {
+        qtkey |= GroupSwitchModifier;
+    }
+
+    return qtkey;
+}
+
+static uint32_t keysym_to_qtkey(int32_t keysym)
+{
+    uint32_t qtKey = KeyMask;
+
+    if (keysym >= XKB_KEY_KP_0 && keysym <= XKB_KEY_KP_9) {
+        qtKey = keysym + Key_0 - XKB_KEY_KP_0;
+    } else if (keysym < XKB_KEY_ydiaeresis) {
+        qtKey = toupper(keysym);
+    } else if (keysym >= XKB_KEY_F1 && keysym <= XKB_KEY_R15) {
+        qtKey = keysym - XKB_KEY_F1 + Key_F1;
+    }
+
+    if (qtKey == KeyMask) {
+        struct qtkey_map k = { .keysym = keysym };
+        struct qtkey_map *map =
+            bsearch(&k, keysym_map_table, KEY_MAP_COUNT, sizeof(struct qtkey_map), compare_keysym);
+        if (map) {
+            qtKey = map->qtkey;
+        }
+    }
+
+    if (qtKey == KeyMask) {
+        kywc_log(KYWC_WARN, "cannot covert xkb symbol 0x%08x to qtkey", keysym);
+    }
+    return qtKey;
 }
 
 /**
