@@ -82,4 +82,7 @@ void kywc_key_binding_unregister(struct key_binding *binding);
 
 bool kywc_key_binding_is_registered(struct key_binding *binding);
 
+void kywc_key_bingbing_manager_for_each_binding(void (*binding_iterator_func_t)(
+    struct key_binding *binding, char *keybind, char *desc, int32_t modifiers, int32_t key));
+
 #endif /* _KYWC_BINDING_H_ */

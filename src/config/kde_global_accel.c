@@ -424,14 +424,19 @@ static void global_shortcut_create_binding(struct global_shortcut *shortcut)
     }
 }
 
-static void global_shortcut_set_active(struct global_shortcut *shortcut)
+static void global_shortcut_set_active(struct global_shortcut *shortcut, bool need_register)
 {
     if (!shortcut->is_present || shortcut->is_registered) {
         return;
     }
 
     /* register the key binding */
-    kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
+    if (need_register) {
+        kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
+    } else {
+        kywc_key_binding_register(shortcut->binding, NULL, NULL);
+    }
+
     shortcut->is_registered = true;
 }
 
@@ -809,7 +814,8 @@ static int block_global_shortcuts(sd_bus_message *msg, void *userdata, sd_bus_er
     wl_list_for_each(component, &registry->components, link) {
         struct global_shortcut *shortcut;
         wl_list_for_each(shortcut, &component->current->shortcuts, link) {
-            block ? global_shortcut_set_inactive(shortcut) : global_shortcut_set_active(shortcut);
+            block ? global_shortcut_set_inactive(shortcut)
+                  : global_shortcut_set_active(shortcut, false);
         }
     }
 
@@ -1022,7 +1028,7 @@ static int set_shortcut_keys(sd_bus_message *msg, void *userdata, sd_bus_error *
         if (isAutoloading && !shortcut->is_fresh) {
             if (!shortcut->is_present && setPresent) {
                 shortcut->is_present = true;
-                global_shortcut_set_active(shortcut);
+                global_shortcut_set_active(shortcut, true);
             }
             // We are finished here. Return the list of current active keys.
             CK(sd_bus_message_append(reply, "(ai)", 4, shortcut->key, 0, 0, 0));
@@ -1035,7 +1041,7 @@ static int set_shortcut_keys(sd_bus_message *msg, void *userdata, sd_bus_error *
 
         if (setPresent) {
             shortcut->is_present = true;
-            global_shortcut_set_active(shortcut);
+            global_shortcut_set_active(shortcut, true);
         }
 
         shortcut->is_fresh = false;
@@ -1123,6 +1129,30 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
     registry = NULL;
 }
 
+static const char *component_builtin = "kylin-wlcom";
+
+static void kglobalaccel_builtin_shortcuts(struct key_binding *binding, char *unique_name,
+                                           char *friendly_name, int32_t modifiers, int32_t key)
+{
+    struct global_shortcut *shortcut =
+        global_shortcut_registry_get_shortcut_by_name(component_builtin, unique_name);
+    if (!shortcut) {
+        /* create a shortcut */
+        struct global_shortcut_component *component =
+            global_shortcut_registry_get_component(component_builtin);
+        /*  Create the component if necessary */
+        if (!component) {
+            component = global_shortcut_component_create(component_builtin, friendly_name);
+        }
+        shortcut = global_shortcut_create(component->current, unique_name, friendly_name);
+    }
+
+    shortcut->binding = binding;
+    shortcut->key = modifiers_to_qtkey(modifiers) | keysym_to_qtkey(key);
+    shortcut->is_present = true;
+    shortcut->is_registered = true;
+}
+
 bool kde_global_accel_manager_create(struct config_manager *config_manager)
 {
     registry = calloc(1, sizeof(struct global_shortcut_registry));
@@ -1139,6 +1169,8 @@ bool kde_global_accel_manager_create(struct config_manager *config_manager)
     }
 
     wl_list_init(&registry->components);
+
+    kywc_key_bingbing_manager_for_each_binding(kglobalaccel_builtin_shortcuts);
 
     registry->destroy.notify = handle_config_destroy;
     wl_signal_add(&registry->config->events.destroy, &registry->destroy);
