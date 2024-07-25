@@ -178,10 +178,10 @@ int main(int argc, char *argv[])
 
     /* ignore SIGPIPE */
     set_signal(SIGPIPE, SIG_IGN);
-    /* handle SIGTERM signals */
+    /* exit signals */
     set_signal(SIGTERM, sig_handler);
     set_signal(SIGINT, sig_handler);
-    /* handle SIGHUP signals */
+    set_signal(SIGQUIT, sig_handler);
     set_signal(SIGHUP, sig_handler);
     /* crash signals */
     set_signal(SIGSEGV, sig_handler);

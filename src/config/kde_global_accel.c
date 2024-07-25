@@ -93,7 +93,7 @@ static uint32_t qtkey_to_keysym(int32_t key)
     }
 
     if (sym == XKB_KEY_NoSymbol) {
-        kywc_log(KYWC_WARN, "cannot covert qtkey 0x%8x to xkb symbol", key);
+        kywc_log(KYWC_WARN, "cannot covert qtkey 0x%08x to xkb symbol", key);
     }
 
     return sym;

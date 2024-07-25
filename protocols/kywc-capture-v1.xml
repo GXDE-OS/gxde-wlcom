@@ -42,7 +42,7 @@
         All objects created by the manager will still remain valid, until their
         appropriate destroy request has been called.
       </description>
-  </request>
+    </request>
   </interface>
 
   <interface name="kywc_capture_frame_v1" version="1">
