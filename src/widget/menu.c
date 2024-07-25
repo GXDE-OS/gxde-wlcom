@@ -14,6 +14,7 @@
 #include "effect/fade.h"
 #include "input/cursor.h"
 #include "input/event.h"
+#include "nls.h"
 #include "output.h"
 #include "painter.h"
 #include "theme.h"
@@ -49,7 +50,10 @@ static void menu_draw_item(struct menu_item *item, bool force)
     text_attr |= item->key ? TEXT_ATTR_ACCEL : TEXT_ATTR_NONE;
     text_attr |= item->shortcut ? TEXT_ATTR_SHORTCUT : TEXT_ATTR_NONE;
 
-    widget_set_text(item->content, item->text, TEXT_ALIGN_LEFT, text_attr);
+    widget_set_layout(item->content, theme->layout_is_right_to_left);
+    widget_set_text(item->content, item->text,
+                    theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
+
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_size(item->content, item->menu->width, item->menu->item_height);
@@ -193,6 +197,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
         ky_scene_node_coords(&menu->parent->tree->node, &lx, &ly);
     }
 
+    struct theme *theme = theme_manager_get_current();
     struct kywc_output *kywc_output = kywc_output_at_point(lx, ly);
     struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *geo = &output->geometry;
@@ -202,8 +207,14 @@ static void menu_set_position(struct menu *menu, int x, int y)
     int max_y = geo->y + geo->height;
 
     if (!menu->parent) {
-        if (lx + menu->width > max_x) {
-            x = max_x - menu->width;
+        if (theme->layout_is_right_to_left) {
+            if (lx - menu->width > 0) {
+                x -= (menu->width + 4);
+            }
+        } else {
+            if (lx + menu->width > max_x) {
+                x = max_x - menu->width;
+            }
         }
         if (ly + menu->height > max_y) {
             y -= menu->height;
@@ -211,11 +222,18 @@ static void menu_set_position(struct menu *menu, int x, int y)
     } else {
         /* default menu position */
         struct menu_item *parent = menu->parent;
-        x = parent->menu->width + SUB_MENU_GAP;
         y = 0;
 
-        if (lx + parent->menu->width + menu->width > max_x) {
-            x = -menu->width + 4;
+        if (theme->layout_is_right_to_left) {
+            x = -menu->width - SUB_MENU_GAP;
+            if (lx - menu->width < 0) {
+                x = parent->menu->width + 4;
+            }
+        } else {
+            x = parent->menu->width + SUB_MENU_GAP;
+            if (lx + parent->menu->width + menu->width > max_x) {
+                x = -menu->width + 4;
+            }
         }
         int off_y = ly + menu->height - max_y;
         if (off_y > 0) {

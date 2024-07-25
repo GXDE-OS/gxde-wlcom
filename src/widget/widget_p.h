@@ -37,6 +37,7 @@ struct widget {
     int text_align;
     bool text_truncated;
     uint32_t text_attr;
+    bool layout_is_right_to_left;
 
     /* color in this widget */
     float background_color[4];

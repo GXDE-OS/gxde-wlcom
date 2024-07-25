@@ -43,6 +43,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .align = widget->text_align,
         .auto_resize = widget->auto_resize,
         .text_attr = widget->text_attr,
+        .layout_is_right_to_left = widget->layout_is_right_to_left,
 
         .svg = widget->svg,
         .hover_svg = widget->hover_svg,
@@ -403,6 +404,15 @@ void widget_set_font(struct widget *widget, const char *name, int size)
 
     free((void *)widget->font_name);
     widget->font_name = name ? strdup(name) : NULL;
+    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+}
+
+void widget_set_layout(struct widget *widget, bool right_to_left)
+{
+    if (widget->layout_is_right_to_left == right_to_left) {
+        return;
+    }
+    widget->layout_is_right_to_left = right_to_left;
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 

@@ -91,6 +91,8 @@ struct theme {
     float active_text_color[4];
     float inactive_text_color[4];
     enum justification text_justify;
+    bool layout_is_right_to_left;
+    bool text_is_right_align;
 
     float accent_color[4];
 

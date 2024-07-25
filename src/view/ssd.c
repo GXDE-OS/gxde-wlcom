@@ -129,6 +129,7 @@ struct ssd {
     /* view size to reduce redraw */
     int view_width, view_height;
     uint32_t buttons;
+    int button_count;
 };
 
 static struct ssd_manager *manager = NULL;
@@ -605,7 +606,13 @@ static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
     int y = theme->border_width + (theme->title_height - theme->icon_size) / 2;
-    ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node, y, y);
+    if (theme->layout_is_right_to_left) {
+        int view_w = ssd->kywc_view->geometry.width + 2 * theme->border_width;
+        ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node,
+                                   view_w - y - theme->button_width, y);
+    } else {
+        ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node, y, y);
+    }
 }
 
 static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
@@ -613,7 +620,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
 
-    int max_width = view->geometry.width - 4.5 * theme->button_width;
+    int max_width = view->geometry.width - (ssd->button_count + 1.5) * theme->button_width;
     /* no space left for title text */
     if (max_width <= 0) {
         widget_set_enabled(ssd->title_text, false);
@@ -650,15 +657,19 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
     int x, y;
     y = theme->border_width + (theme->title_height - text_height) / 2;
     if (theme->text_justify == JUSTIFY_LEFT) {
-        x = theme->button_width + y;
+        x = theme->layout_is_right_to_left ? ssd->button_count * theme->button_width
+                                           : theme->button_width;
+        x += y;
     } else if (theme->text_justify == JUSTIFY_CENTER) {
         x = (view->geometry.width - text_width) / 2;
         /* add a left shift if close to button */
-        if (text_width + 4 * theme->button_width > max_width) {
+        if (text_width + (ssd->button_count + 1) * theme->button_width > max_width) {
             x -= theme->button_width;
         }
     } else {
-        x = theme->button_width + max_width - text_width + y;
+        x = theme->layout_is_right_to_left ? ssd->button_count * theme->button_width
+                                           : theme->button_width;
+        x += max_width - text_width + y;
     }
     /* setting position directly is better */
     ky_scene_node_set_position(ssd->parts[SSD_TITLE_TEXT].node, x, y);
@@ -677,15 +688,15 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
     /* set titlebar subtree position if theme changed */
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         ky_scene_node_set_position(&ssd->titlebar_tree->node, -border_w, -(title_h + border_w));
-        ssd_update_title_icon(ssd);
     }
 
     /* only set button tree position when view w changed */
     if (cause & SSD_UPDATE_CAUSE_SIZE && ssd->view_width != view_w) {
         int pad = (title_h - button_w) / 2;
-        int x = view_w + border_w - 3 * button_w - pad;
+        int x = theme->layout_is_right_to_left ? pad : (view_w + border_w - 3 * button_w - pad);
         int y = pad + border_w;
         ky_scene_node_set_position(&ssd->button_tree->node, x, y);
+        ssd_update_title_icon(ssd);
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
@@ -696,11 +707,17 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
         ky_scene_node_set_enabled(ssd->parts[SSD_BUTTON_CLOSE].node,
                                   ssd->buttons & BUTTON_MASK_CLOSE);
 
-        ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node,
-                                   ssd->buttons & BUTTON_MASK_MAXIMIZE ? 0 : button_w, 0);
         ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MAXIMIZE].node, button_w, 0);
-        ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 2 * button_w, 0);
-
+        if (theme->layout_is_right_to_left) {
+            ky_scene_node_set_position(
+                ssd->parts[SSD_BUTTON_MINIMIZE].node,
+                ssd->buttons & BUTTON_MASK_MAXIMIZE ? 2 * button_w : button_w, 0);
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 0, 0);
+        } else {
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_MINIMIZE].node,
+                                       ssd->buttons & BUTTON_MASK_MAXIMIZE ? 0 : button_w, 0);
+            ky_scene_node_set_position(ssd->parts[SSD_BUTTON_CLOSE].node, 2 * button_w, 0);
+        }
         ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_MINIMIZE], BUTTON_STATE_NONE);
         ssd_part_set_button_buffer(&ssd->parts[SSD_BUTTON_CLOSE], BUTTON_STATE_NONE);
     }
@@ -949,16 +966,19 @@ static void ssd_check_buttons(struct ssd *ssd)
 
     /* always has a close button */
     ssd->buttons = BUTTON_MASK_ALL;
+    ssd->button_count = 3;
 
     if (!kywc_view->maximizable || kywc_view->modal ||
         (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
          kywc_view->min_width == kywc_view->max_width &&
          kywc_view->min_height == kywc_view->max_height)) {
         ssd->buttons &= ~BUTTON_MASK_MAXIMIZE;
+        ssd->button_count--;
     }
 
     if (!kywc_view->minimizable || kywc_view->modal) {
         ssd->buttons &= ~BUTTON_MASK_MINIMIZE;
+        ssd->button_count--;
     }
 }
 

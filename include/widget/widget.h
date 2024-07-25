@@ -16,6 +16,8 @@ void widget_destroy(struct widget *widget);
 
 void widget_update(struct widget *widget, bool partial);
 
+void widget_set_layout(struct widget *widget, bool right_to_left);
+
 void widget_set_text(struct widget *widget, const char *text, int align, uint32_t attr);
 
 void widget_set_shortcut(struct widget *widget, const char *text);

@@ -17,6 +17,7 @@
 #include "base_light_svg_src.h"
 
 #include "config.h"
+#include "nls.h"
 #include "painter.h"
 #include "server.h"
 #include "theme_p.h"
@@ -230,6 +231,11 @@ static struct theme *theme_create(enum theme_type theme_type, float scale)
         return NULL;
     }
 
+    theme->layout_is_right_to_left = nls_layout_is_right_to_left();
+    theme->text_is_right_align = nls_text_is_right_align();
+    if (theme->layout_is_right_to_left) {
+        theme->text_justify = JUSTIFY_RIGHT;
+    }
     wl_list_init(&theme->scaled_buffers);
     wl_list_insert(&manager->themes, &theme->link);
 
