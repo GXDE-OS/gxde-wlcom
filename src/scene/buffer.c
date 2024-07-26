@@ -414,11 +414,13 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_fini(&render_region);
     pixman_region32_fini(&opaque);
 
-    struct ky_scene_output_sample_event sample_event = {
-        .output = target->output,
-        .direct_scanout = false,
-    };
-    wl_signal_emit_mutable(&scene_buffer->events.output_sample, &sample_event);
+    if (target->options & KY_SCENE_RENDER_ENABLE_PRESENTATION) {
+        struct ky_scene_output_sample_event sample_event = {
+            .output = target->output,
+            .direct_scanout = false,
+        };
+        wl_signal_emit_mutable(&scene_buffer->events.output_sample, &sample_event);
+    }
 }
 
 static void buffer_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)

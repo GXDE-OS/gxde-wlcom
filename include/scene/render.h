@@ -12,6 +12,7 @@ enum ky_scene_render_option {
     KY_SCENE_RENDER_DISABLE_ROUND_CORNER = 1 << 1,
     KY_SCENE_RENDER_DISABLE_BLUR = 1 << 2,
     KY_SCENE_RENDER_DISABLE_EFFECT = 1 << 3,
+    KY_SCENE_RENDER_ENABLE_PRESENTATION = 1 << 4,
 };
 
 struct ky_scene_render_target {

@@ -412,6 +412,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         .scale = output->scale,
         .logical = { .x = scene_output->x, .y = scene_output->y },
         .output = scene_output,
+        .options = KY_SCENE_RENDER_ENABLE_PRESENTATION,
     };
     wlr_output_transformed_resolution(output, &target.trans_width, &target.trans_height);
     target.logical.width = target.trans_width / output->scale;
