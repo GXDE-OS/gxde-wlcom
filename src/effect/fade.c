@@ -368,6 +368,7 @@ static bool node_add_fade_out_effect(struct fade_options *options, struct ky_sce
 
     struct effect_entity *entity = ky_scene_node_add_effect(&buffer->node, fade->effect);
     if (!entity) {
+        fade_data_destroy(data);
         ky_scene_node_destroy(&buffer->node);
         return false;
     }
@@ -439,6 +440,7 @@ bool node_add_fade_effect(struct ky_scene_node *node, struct fade_options *optio
 
     entity = ky_scene_node_add_effect(node, fade->effect);
     if (!entity) {
+        fade_data_destroy(fade_data);
         return false;
     }
 
