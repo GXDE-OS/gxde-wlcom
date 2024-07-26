@@ -755,6 +755,7 @@ bool effect_manager_create(struct server *server)
     fade_effect_create(manager);
     slide_effect_create(manager);
     translation_effect_create(manager);
+    output_transform_effect_create(manager);
 
     return true;
 }

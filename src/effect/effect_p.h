@@ -76,4 +76,6 @@ slide_effect_create(struct effect_manager *effect_manager)
 
 bool translation_effect_create(struct effect_manager *manager);
 
+bool output_transform_effect_create(struct effect_manager *manager);
+
 #endif /* _EFFECT_P_H_ */

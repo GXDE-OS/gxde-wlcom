@@ -21,6 +21,7 @@
 #include "output_p.h"
 #include "util/quirks.h"
 #include "xwayland.h"
+#include "effect/output_transform.h"
 
 static struct output_manager *output_manager = NULL;
 static char *unknown = " ";
@@ -1434,6 +1435,7 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     }
 
     if (current->transform != old.transform) {
+        output_add_transform_effect(kywc_output, &old, current);
         wl_signal_emit_mutable(&kywc_output->events.transform, NULL);
     }
 

@@ -5,14 +5,15 @@ wlcom_sources += files(
   'config.c',
   'effect.c',
   'fade.c',
+  'long_touch.c',
   'move.c',
+  'output_transform.c',
   'showfps.c',
   'scale.c',
   'soft_gamma.c',
   'touchclick.c',
   'touchtrail.c',
   'translation.c',
-  'long_touch.c',
 )
 
 wlcom_sources += files(
