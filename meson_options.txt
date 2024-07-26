@@ -100,6 +100,12 @@ option('ukui_screenshot',
        description: 'Enable ukui screenshot dbus server support'
 )
 
+option('ukui_shortcut',
+       type: 'boolean',
+       value: true,
+       description: 'Enable ukui shortcut block dbus manager support'
+)
+
 option('ukui_gsettings',
        type: 'boolean',
        value: true,

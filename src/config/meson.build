@@ -24,6 +24,12 @@ if have_kde_input
   )
 endif
 
+if have_ukui_shortcut
+  wlcom_sources += files(
+    'ukui_shortcut.c',
+  )
+endif
+
 if have_ukui_gsettings
   wlcom_sources += files(
     'ukui_gsettings.c',
