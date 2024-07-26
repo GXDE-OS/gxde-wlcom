@@ -1170,7 +1170,7 @@ bool kde_global_accel_manager_create(struct config_manager *config_manager)
 
     wl_list_init(&registry->components);
 
-    kywc_key_bingbing_manager_for_each_binding(kglobalaccel_builtin_shortcuts);
+    kywc_key_binding_for_each(kglobalaccel_builtin_shortcuts);
 
     registry->destroy.notify = handle_config_destroy;
     wl_signal_add(&registry->config->events.destroy, &registry->destroy);

@@ -559,12 +559,10 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
     return false;
 }
 
-void kywc_key_bingbing_manager_for_each_binding(void (*binding_iterator_func_t)(
-    struct key_binding *binding, char *keybind, char *desc, int32_t modifiers, int32_t key))
+void kywc_key_binding_for_each(binding_iterator_func_t iterator)
 {
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
-        binding_iterator_func_t(binding, binding->keybind, binding->desc, binding->modifiers,
-                                binding->keysym);
+        iterator(binding, binding->keybind, binding->desc, binding->modifiers, binding->keysym);
     }
 }
