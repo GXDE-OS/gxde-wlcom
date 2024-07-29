@@ -1557,7 +1557,8 @@ void view_apply_role(struct view *view)
     kywc_view->activatable = kywc_view->role != KYWC_VIEW_ROLE_PANEL &&
                              kywc_view->role != KYWC_VIEW_ROLE_TOOLTIP &&
                              kywc_view->role != KYWC_VIEW_ROLE_WATERMARK &&
-                             kywc_view->role != KYWC_VIEW_ROLE_NOTIFICATION;
+                             kywc_view->role != KYWC_VIEW_ROLE_NOTIFICATION &&
+                             kywc_view->role != KYWC_VIEW_ROLE_SWITCHER;
     kywc_view->focusable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
                            kywc_view->role == KYWC_VIEW_ROLE_DESKTOP ||
                            kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
