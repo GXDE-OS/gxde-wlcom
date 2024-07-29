@@ -424,19 +424,14 @@ static void global_shortcut_create_binding(struct global_shortcut *shortcut)
     }
 }
 
-static void global_shortcut_set_active(struct global_shortcut *shortcut, bool need_register)
+static void global_shortcut_set_active(struct global_shortcut *shortcut)
 {
     if (!shortcut->is_present || shortcut->is_registered) {
         return;
     }
 
     /* register the key binding */
-    if (need_register) {
-        kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
-    } else {
-        kywc_key_binding_register(shortcut->binding, NULL, NULL);
-    }
-
+    kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
     shortcut->is_registered = true;
 }
 
@@ -810,14 +805,7 @@ static int block_global_shortcuts(sd_bus_message *msg, void *userdata, sd_bus_er
     CK(sd_bus_message_read(msg, "b", &block));
 
     /* activate and deactivate all shortcuts in component current context */
-    struct global_shortcut_component *component;
-    wl_list_for_each(component, &registry->components, link) {
-        struct global_shortcut *shortcut;
-        wl_list_for_each(shortcut, &component->current->shortcuts, link) {
-            block ? global_shortcut_set_inactive(shortcut)
-                  : global_shortcut_set_active(shortcut, false);
-        }
-    }
+    kywc_key_binding_block_all(block);
 
     return sd_bus_reply_method_return(msg, NULL);
 }
@@ -1028,7 +1016,7 @@ static int set_shortcut_keys(sd_bus_message *msg, void *userdata, sd_bus_error *
         if (isAutoloading && !shortcut->is_fresh) {
             if (!shortcut->is_present && setPresent) {
                 shortcut->is_present = true;
-                global_shortcut_set_active(shortcut, true);
+                global_shortcut_set_active(shortcut);
             }
             // We are finished here. Return the list of current active keys.
             CK(sd_bus_message_append(reply, "(ai)", 4, shortcut->key, 0, 0, 0));
@@ -1041,7 +1029,7 @@ static int set_shortcut_keys(sd_bus_message *msg, void *userdata, sd_bus_error *
 
         if (setPresent) {
             shortcut->is_present = true;
-            global_shortcut_set_active(shortcut, true);
+            global_shortcut_set_active(shortcut);
         }
 
         shortcut->is_fresh = false;

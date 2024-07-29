@@ -47,6 +47,8 @@ static struct bindings {
     struct wl_list keysym_bindings;
     struct wl_list gesture_bindings;
     struct wl_listener server_destroy;
+
+    bool keysym_bindings_block;
 } *bindings = NULL;
 
 static char **split_string(const char *str, const char *delims, size_t *len)
@@ -158,7 +160,7 @@ static bool key_binding_is_valid(struct key_binding *binding, uint32_t keysym, u
         }
 
         if (!(modifiers ^ bind->modifiers) && keysym == bind->keysym) {
-            kywc_log(KYWC_ERROR, "%s(%s) is already registed by %s(%s)", binding->keybind,
+            kywc_log(KYWC_ERROR, "%s(%s) is already registered by %s(%s)", binding->keybind,
                      binding->desc, bind->keybind, bind->desc);
             return false;
         }
@@ -245,6 +247,8 @@ bool bindings_create(struct input_manager *input_manager)
         return false;
     }
 
+    bindings->keysym_bindings_block = false;
+
     wl_list_init(&bindings->keysym_bindings);
     wl_list_init(&bindings->gesture_bindings);
 
@@ -267,6 +271,10 @@ static bool match_key_binding(struct keyboard_state *keyboard_state, struct key_
 
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *repeat)
 {
+    if (bindings->keysym_bindings_block) {
+        return false;
+    }
+
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
         if ((keyboard_state->only_one_modifier && binding->keysym) ||
@@ -564,5 +572,12 @@ void kywc_key_binding_for_each(binding_iterator_func_t iterator)
     struct key_binding *binding;
     wl_list_for_each(binding, &bindings->keysym_bindings, link) {
         iterator(binding, binding->keybind, binding->desc, binding->modifiers, binding->keysym);
+    }
+}
+
+void kywc_key_binding_block_all(bool block)
+{
+    if (bindings->keysym_bindings_block != block) {
+        bindings->keysym_bindings_block = block;
     }
 }

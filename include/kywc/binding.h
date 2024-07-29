@@ -87,4 +87,6 @@ typedef void (*binding_iterator_func_t)(struct key_binding *binding, char *keybi
 
 void kywc_key_binding_for_each(binding_iterator_func_t iterator);
 
+void kywc_key_binding_block_all(bool block);
+
 #endif /* _KYWC_BINDING_H_ */
