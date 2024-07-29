@@ -141,3 +141,7 @@ option('ukui_output',
        value: true,
        description: 'Enable ukui output protocol support'
 )
+
+option('ukui_blur',
+       type: 'boolean',
+       value: true, description: 'Enable ukui blur protocol support')

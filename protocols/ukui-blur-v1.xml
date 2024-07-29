@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="ukui_blur_v1">
+  <copyright><![CDATA[
+      SPDX-FileCopyrightText: 2024 KylinSoft Co., Ltd.
+      SPDX-License-Identifier: MulanPSL-2.0
+    ]]>
+  </copyright>
+
+  <interface name="ukui_blur_manager_v1" version="1">
+    <description summary="blur object factory">
+      This protocol provides a way to improve visuals of translucent surfaces
+      by blurring background behind them.
+
+      Warning! The protocol described in this file is currently in the testing
+      phase. Backward compatible changes may be added together with the
+      corresponding interface version bump. Backward incompatible changes can
+      only be done by creating a new major version of the extension.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the blur manager object">
+        Informs the server that the client will no longer be using this
+        protocol object. Existing objects created by this object are not
+        affected.
+      </description>
+    </request>
+
+    <enum name="error">
+      <entry name="blur_exists" value="0"
+             summary="the surface has already a blur object associated"/>
+    </enum>
+
+    <request name="get_blur">
+      <description summary="get a blur object">
+        Instantiate an interface extension for the given wl_surface to
+        blur background behind it. If the given wl_surface already has
+        a ukui_blur_surface_v1 object associated, the blur_exists protocol
+        error will be raised.
+      </description>
+      <arg name="id" type="new_id" interface="ukui_blur_surface_v1"
+           summary="the new ukui_blur_surface_v1 object"/>
+      <arg name="surface" type="object" interface="wl_surface"
+           summary="the surface"/>
+    </request>
+  </interface>
+
+  <interface name="ukui_blur_surface_v1" version="1">
+    <description summary="blur object for a surface">
+      The blur object provides a way to specify a region behind a surface
+      that should be blurred by the compositor.
+
+      If the wl_surface associated with the ukui_blur_surface_v1 object has been
+      destroyed, this object becomes inert.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="release the blur object">
+        Informs the server that the client will no longer be using this
+        protocol object. The blur region will be unset on the next commit.
+      </description>
+    </request>
+
+    <request name="set_region">
+      <description summary="set blur region">
+        This request sets the region of the surface that will have its
+        background blurred.
+
+        The blur region is specified in the surface-local coordinates.
+        The initial value for the blur region is empty. Setting the pending
+        blur region has copy semantics, and the wl_region object can be
+        destroyed immediately. A NULL wl_region causes the blur region to be
+        set to infinite.
+
+        The blur region is double-buffered state, and will be applied on
+        the next wl_surface.commit.
+
+        The blur algorithm is subject to compositor policies.
+      </description>
+      <arg name="region" type="object" interface="wl_region" allow-null="true"
+           summary="blur region of the surface"/>
+    </request>
+
+    <request name="set_level">
+      <description summary="set blur algorithm level">
+        Change blur algorithm level in compositor.
+        The range of level is 1 to 15.
+        The compositor default blur algorithm level is 5.
+        The blur level will be applied on the next wl_surface.commit.
+      </description>
+      <arg name="level" type="uint" summary="level of the blur algorithm"/>
+    </request>
+  </interface>
+</protocol>

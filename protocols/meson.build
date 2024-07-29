@@ -96,6 +96,12 @@ if have_ukui_output
   }
 endif
 
+if have_ukui_blur
+  protocols += {
+    'ukui-blur': 'ukui-blur-v1.xml',
+  }
+endif
+
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}

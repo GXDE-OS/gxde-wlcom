@@ -74,3 +74,9 @@ if have_ukui_window_management
     'ukui_window.c',
   )
 endif
+
+if have_ukui_blur
+  wlcom_sources += files(
+    'ukui_blur.c',
+  )
+endif

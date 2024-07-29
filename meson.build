@@ -126,6 +126,7 @@ have_ukui_watermark = get_option('ukui_watermark')
 have_ukui_shell = get_option('ukui_shell')
 have_ukui_window_management = get_option('ukui_window_management')
 have_ukui_output = get_option('ukui_output')
+have_ukui_blur = get_option('ukui_blur')
 
 add_project_arguments([
   '-DHAVE_LIBUNWIND=@0@'.format(unwind.found().to_int()),
@@ -148,6 +149,7 @@ add_project_arguments([
   '-DHAVE_UKUI_SHELL=@0@'.format(have_ukui_shell.to_int()),
   '-DHAVE_UKUI_WINDOW_MANAGEMENT=@0@'.format(have_ukui_window_management.to_int()),
   '-DHAVE_UKUI_OUTPUT=@0@'.format(have_ukui_output.to_int()),
+  '-DHAVE_UKUI_BLUR=@0@'.format(have_ukui_blur.to_int()),
 ], language: 'c')
 
 msgfmt = find_program('msgfmt', required: get_option('nls'))
@@ -199,6 +201,7 @@ summary({
   'ukui_shell': have_ukui_shell,
   'ukui_window_management': have_ukui_window_management,
   'ukui_output': have_ukui_output,
+  'ukui_blur': have_ukui_blur,
   },
   section: 'Configuration', bool_yn: true)
 

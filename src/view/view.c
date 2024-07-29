@@ -1816,6 +1816,7 @@ struct view_manager *view_manager_create(struct server *server)
     xdg_activation_create(server);
     ukui_shell_create(server);
     ukui_window_management_create(server);
+    ukui_blur_manager_create(server);
 
     return view_manager;
 }
