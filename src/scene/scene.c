@@ -91,7 +91,7 @@ static void node_destroy(struct ky_scene_node *node)
     pixman_region32_fini(&node->visible_region);
     pixman_region32_fini(&node->input_region);
     pixman_region32_fini(&node->clip_region);
-    pixman_region32_fini(&node->blur_region);
+    pixman_region32_fini(&node->blur.region);
 
     wl_list_remove(&node->link);
     free(node);
@@ -103,7 +103,8 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
         .parent = parent,
         .enabled = true,
         .damage_type = KY_SCENE_DAMAGE_HARMFUL,
-        .blur_strength = -1,
+        .blur.iterations = 3,
+        .blur.offset = 2.6f,
         .impl = {
             .accpet_input = node_accpet_input,
             .update_outputs = node_update_outputs,
@@ -121,7 +122,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
     pixman_region32_init(&node->visible_region);
     pixman_region32_init(&node->input_region);
     pixman_region32_init(&node->clip_region);
-    pixman_region32_init(&node->blur_region);
+    pixman_region32_init(&node->blur.region);
 
     if (parent != NULL) {
         wl_list_insert(parent->children.prev, &node->link);
@@ -667,31 +668,32 @@ void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_regi
     if (node->has_blur != has_blur) {
         node->has_blur = has_blur;
         if (has_blur) {
-            pixman_region32_copy(&node->blur_region, region);
+            pixman_region32_copy(&node->blur.region, region);
         } else {
-            pixman_region32_clear(&node->blur_region);
+            pixman_region32_clear(&node->blur.region);
         }
     } else { /* change blur region */
-        if (pixman_region32_equal(&node->blur_region, region)) {
+        if (pixman_region32_equal(&node->blur.region, region)) {
             return;
         }
-        pixman_region32_copy(&node->blur_region, region);
+        pixman_region32_copy(&node->blur.region, region);
     }
 
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, NULL);
 }
 
-void ky_scene_node_set_blur_strength(struct ky_scene_node *node, uint32_t blur_strength)
+void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iterations, float offset)
 {
     /* tree is not support currently */
     assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
-    if (node->blur_strength == blur_strength) {
+    if (node->blur.iterations == iterations && node->blur.offset == offset) {
         return;
     }
 
-    node->blur_strength = blur_strength;
+    node->blur.iterations = iterations;
+    node->blur.offset = offset;
     if (node->has_blur) {
-        ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, &node->blur_region);
+        ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, &node->blur.region);
     }
 }
 

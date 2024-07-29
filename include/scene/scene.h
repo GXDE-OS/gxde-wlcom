@@ -122,6 +122,13 @@ enum ky_scene_round_corner {
     KY_SCENE_ROUND_CORNER_LT, // left-top
 };
 
+struct blur_info {
+    float offset;
+    uint32_t iterations;
+    /* region that mark as blur area */
+    pixman_region32_t region;
+};
+
 struct ky_scene_node {
     struct ky_scene_tree *parent;
     struct wl_list link;
@@ -150,9 +157,7 @@ struct ky_scene_node {
     bool last_enabled;
 
     bool has_blur;
-    uint32_t blur_strength;
-    /* region that mark as blur area */
-    pixman_region32_t blur_region;
+    struct blur_info blur;
 
     pixman_region32_t visible_region;
     /* region that can accept input */
@@ -324,7 +329,7 @@ void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_regi
 
 void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
-void ky_scene_node_set_blur_strength(struct ky_scene_node *node, uint32_t blur_strength);
+void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iterations, float offset);
 
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 

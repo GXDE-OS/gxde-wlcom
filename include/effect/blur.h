@@ -15,8 +15,7 @@ struct blur_render_options {
     const pixman_region32_t *clip;
     const struct ky_render_round_corner *radius;
 
-    const pixman_region32_t *region;
-    uint32_t strength;
+    const struct blur_info *blur;
 };
 
 void blur_render_with_target(struct ky_scene_render_target *target,

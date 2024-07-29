@@ -611,8 +611,7 @@ static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int l
         .dst_box = &blur_box,
         .clip = clip,
         .radius = &round_corner_radius,
-        .region = &deco->window_region,
-        .strength = deco->rect.node.blur_strength,
+        .blur = deco->blurred ? &deco->rect.node.blur : NULL,
     };
     blur_render_with_target(target, &opts);
 }

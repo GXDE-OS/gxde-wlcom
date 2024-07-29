@@ -190,20 +190,17 @@ static struct blur_data {
     struct blur_output_data *current_output_data;
 
     float offset;
+    uint32_t iterations;
     struct blur_program blur_prog[2];
     struct blur_tex_program blur_tex_prog;
 } effect_blur_data = { 0 };
 
 struct blur_render_config {
-    int iterations;
-
-    /* render config */
     bool enable;
     struct ky_opengl_renderer *renderer;
 };
 
 static struct blur_render_config blur_config = {
-    .iterations = 2,
     .renderer = NULL,
     .enable = true,
 };
@@ -422,7 +419,7 @@ static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_te
 static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
 {
     // iterations must > 0
-    int iterations = blur_config.iterations;
+    int iterations = data->iterations;
     float offset = data->offset;
     int width = src_tex->width;
     int height = src_tex->height;
@@ -563,11 +560,15 @@ static void blur_render(struct ky_scene_render_target *target,
     struct ky_opengl_render_pass *gl_pass =
         ky_opengl_render_pass_from_wlr_render_pass(target->render_pass);
 
+    struct blur_data *data = &effect_blur_data;
+    data->iterations = options->blur->iterations;
+    data->offset = options->blur->offset;
+
     /**
      * the copy area may be larger than the damage area, but it has no effect.
      * because it is outside the radius of blur.
      */
-    int align_num = pow(2, blur_config.iterations);
+    int align_num = pow(2, data->iterations);
     pixman_box32_t *cpy_box = pixman_region32_extents(blur_region);
     /* pos in frame_buffer */
     struct kywc_box buffer_cpy_box = {
@@ -584,9 +585,6 @@ static void blur_render(struct ky_scene_render_target *target,
     }
 
     gl_texture_copy(src_tex, gl_pass->buffer, &buffer_cpy_box);
-
-    struct blur_data *data = &effect_blur_data;
-    data->offset = ((int)options->strength == -1) ? 4.f : options->strength / 1000.f;
 
     blur_fb0(data, src_tex);
 
@@ -653,16 +651,16 @@ static void blur_render(struct ky_scene_render_target *target,
 void blur_render_with_target(struct ky_scene_render_target *target,
                              const struct blur_render_options *options)
 {
-    if (options->region == NULL || !blur_config.renderer || !blur_config.enable ||
+    if (options->blur == NULL || !blur_config.renderer || !blur_config.enable ||
         !get_or_generate_blur_text_program() || !get_or_generate_blur_program() ||
         (options->alpha && *options->alpha <= 0.0f)) {
         return;
     }
 
     pixman_region32_t blur_region;
-    if (pixman_region32_not_empty(options->region)) {
+    if (pixman_region32_not_empty(&options->blur->region)) {
         pixman_region32_init(&blur_region);
-        pixman_region32_copy(&blur_region, options->region);
+        pixman_region32_copy(&blur_region, &options->blur->region);
         pixman_region32_translate(&blur_region, options->lx - target->logical.x,
                                   options->ly - target->logical.y);
         ky_scene_render_region(&blur_region, target);
@@ -716,8 +714,8 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
 
     pixman_region32_t blur_region;
     pixman_region32_init(&blur_region);
-    if (pixman_region32_not_empty(&node->blur_region)) {
-        pixman_region32_copy(&blur_region, &node->blur_region);
+    if (pixman_region32_not_empty(&node->blur.region)) {
+        pixman_region32_copy(&blur_region, &node->blur.region);
         pixman_region32_translate(&blur_region, lx, ly);
         pixman_region32_intersect(&blur_region, &blur_region, &node->visible_region);
     } else {
@@ -730,8 +728,7 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
         return;
     }
 
-    int offset = ((int)node->blur_strength == -1) ? 4.f : node->blur_strength / 1000.f;
-    int distance = calculate_blur_radius(blur_config.iterations, offset);
+    int distance = calculate_blur_radius(node->blur.iterations, node->blur.offset);
     distance = ceil(distance / target->scale);
 
     /* blur expand region, region for blur */

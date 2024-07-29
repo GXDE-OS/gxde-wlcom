@@ -201,8 +201,7 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
             .dst_box = &dst_box,
             .clip = &render_region,
             .radius = &options.radius,
-            .region = node->has_blur ? &node->blur_region : NULL,
-            .strength = node->blur_strength,
+            .blur = node->has_blur ? &node->blur : NULL,
         };
         blur_render_with_target(target, &opts);
     }
