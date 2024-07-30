@@ -39,7 +39,7 @@ void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kyw
     geo.y += geo.height / 2;
 
     cursor_move(cursor, NULL, geo.x, geo.y, false, false);
-    // kywc_log(KYWC_INFO, "move %s cursor to %s conter", cursor->seat->name, kywc_output->name);
+    // kywc_log(KYWC_INFO, "move %s cursor to %s center", cursor->seat->name, kywc_output->name);
 }
 
 static void input_restore_mapped_output(struct input_monitor *input_monitor,
@@ -142,7 +142,7 @@ static void handle_configured(struct wl_listener *listener, void *data)
     output_rebase_cursor(input_monitor, event->type == CONFIGURE_TYPE_UPDATE ? true : false);
 }
 
-static void handle_seat_idle(struct idle *idle, void *data){};
+static void handle_seat_idle(struct idle *idle, void *data) {};
 
 static void handle_seat_resume(struct idle *idle, void *data)
 {

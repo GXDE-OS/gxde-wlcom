@@ -142,7 +142,7 @@ static void watermark_update_buffer(struct watermark *watermark)
         break;
     case EXPAND_TYPE_REPEAT:
         ky_scene_buffer_set_repeated(watermark->scene_buffer, true);
-        /* fallthrought to screen */
+        /* fallthrough to screen */
     case EXPAND_TYPE_SCREEN:
         width = geo->width;
         height = geo->height;

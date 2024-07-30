@@ -440,7 +440,7 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
             break;
         }
         left_alt = true;
-        // fallthrought to right alt key
+        // fallthrough to right alt key
     case KEY_RIGHTALT:
         if (key == KEY_RIGHTALT) {
             if (right_alt) {
@@ -448,14 +448,14 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
             }
             right_alt = true;
         }
-        // fallthrought to esc key
+        // fallthrough to esc key
     case KEY_ESC:
         if (!menu->parent) {
             menu_hide_root(root);
             left_alt = right_alt = false;
             break;
         }
-        // fallthrought to left key
+        // fallthrough to left key
     case KEY_LEFT:
         if (menu->parent) {
             menu_set_enabled(menu, false);
@@ -469,7 +469,7 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
                 break;
             }
         }
-        // fallthrought to right key
+        // fallthrough to right key
     case KEY_RIGHT:
         if (menu->hovered && menu->hovered->submenu) {
             submenu_show(menu->hovered->submenu, true);
