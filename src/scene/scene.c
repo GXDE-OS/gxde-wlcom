@@ -697,6 +697,25 @@ void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iteration
     }
 }
 
+static void scene_node_get_blur_region(struct ky_scene_node *node, pixman_region32_t *region)
+{
+    /* tree is not support currently */
+    assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
+    if (!node->has_blur) {
+        pixman_region32_clear(region);
+        return;
+    }
+
+    if (pixman_region32_not_empty(&node->blur.region)) {
+        pixman_region32_copy(region, &node->blur.region);
+    } else {
+        struct wlr_box box;
+        node->impl.get_bounding_box(node, &box);
+        pixman_region32_fini(region);
+        pixman_region32_init_rect(region, box.x, box.y, box.width, box.height);
+    }
+}
+
 /* the x、y value is the offset relative to the first node */
 static void node_for_each_enabled(struct ky_scene_node *node, int x, int y,
                                  void (*callback)(struct ky_scene_node *, int, int, void *),
@@ -719,6 +738,36 @@ static void node_for_each_enabled(struct ky_scene_node *node, int x, int y,
     wl_list_for_each(pos, &tree->children, link) {
         node_for_each_enabled(pos, x, y, callback, data);
     }
+}
+
+static void get_node_blur_info(struct ky_scene_node *node, int x, int y, void *data)
+{
+    /* tree is not support currently */
+    if (!node->has_blur ||
+        (node->type != KY_SCENE_NODE_RECT && node->type != KY_SCENE_NODE_BUFFER)) {
+        return;
+    }
+
+    pixman_region32_t blur_region;
+    pixman_region32_init(&blur_region);
+    scene_node_get_blur_region(node, &blur_region);
+    pixman_region32_translate(&blur_region, x, y);
+
+    struct blur_info *info = data;
+    pixman_region32_union(&info->region, &info->region, &blur_region);
+    pixman_region32_fini(&blur_region);
+
+    info->iterations =
+        info->iterations < node->blur.iterations ? node->blur.iterations : info->iterations;
+    info->offset = info->offset < node->blur.offset ? node->blur.offset : info->offset;
+}
+
+void ky_scene_node_get_blur_info(struct ky_scene_node *node, struct blur_info *info)
+{
+    info->offset = 0;
+    info->iterations = 0;
+    pixman_region32_clear(&info->region);
+    node_for_each_enabled(node, -node->x, -node->y, get_node_blur_info, info);
 }
 
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4])

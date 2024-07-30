@@ -331,6 +331,9 @@ void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_regi
 
 void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iterations, float offset);
 
+/* if node hasn't blur, bur region is empty. */
+void ky_scene_node_get_blur_info(struct ky_scene_node *node, struct blur_info *info);
+
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 
 /* radius on bounding box */
