@@ -5,10 +5,12 @@
 #ifndef _SECURITY_H_
 #define _SECURITY_H_
 
-#include <stdbool.h>
+#include <pixman.h>
 #include <wayland-server-core.h>
 
 struct server;
+struct output;
+struct ky_scene_node;
 
 struct security_client {
     struct wl_list link;
@@ -32,5 +34,27 @@ bool security_add_global_filter(struct wl_global *global, security_global_filter
 void security_remove_global_filter(struct wl_global *global);
 
 bool security_manager_create(struct server *server);
+
+#if 0
+
+bool security_check_node(struct ky_scene_node *node);
+
+bool security_check_output(struct output *output, pixman_region32_t *clip);
+
+#else
+
+// clang-format off
+
+#define INLINE static __attribute__((unused)) inline
+
+INLINE bool security_check_node(struct ky_scene_node *node) { return false; }
+
+INLINE bool security_check_output(struct output *output, pixman_region32_t *clip) { return false; }
+
+// clang-format on
+
+#undef INLINE
+
+#endif
 
 #endif /* _SECURITY_H_ */

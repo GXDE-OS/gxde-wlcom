@@ -342,11 +342,12 @@ static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    uint32_t options = THUMBNAIL_DISABLE_ROUND_CORNER;
+    uint32_t options = THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_ENABLE_SECURITY;
     options |= without_decoration ? THUMBNAIL_DISABLE_DECOR : THUMBNAIL_DISABLE_SHADOW;
     if (version < KYWC_CAPTURE_FRAME_V1_BUFFER_WITH_PLANE_SINCE_VERSION) {
         options |= THUMBNAIL_ENABLE_SINGLE_PLANE;
     }
+
     frame->thumbnail = thumbnail_create_from_view(view, options, 1.0);
     if (!frame->thumbnail) {
         kywc_capture_frame_v1_send_failed(frame->resource);

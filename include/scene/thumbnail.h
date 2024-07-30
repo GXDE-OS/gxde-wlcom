@@ -26,6 +26,8 @@ enum thumbnail_option {
     THUMBNAIL_DISABLE_ROUND_CORNER = 1 << 2,
     /* prefer single plane buffer */
     THUMBNAIL_ENABLE_SINGLE_PLANE = 1 << 3,
+    /* enable security check */
+    THUMBNAIL_ENABLE_SECURITY = 1 << 4,
 };
 
 bool thumbnail_manager_create(struct server *server);

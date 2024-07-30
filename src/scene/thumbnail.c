@@ -379,6 +379,9 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
     if (view_thumbnail->options & THUMBNAIL_DISABLE_ROUND_CORNER) {
         target.options |= KY_SCENE_RENDER_DISABLE_ROUND_CORNER;
     }
+    if (view_thumbnail->options & THUMBNAIL_ENABLE_SECURITY) {
+        target.options |= KY_SCENE_RENDER_ENABLE_SECURITY;
+    }
 
     pixman_region32_init_rect(&target.damage, 0, 0, bounding_box.width, bounding_box.height);
 
@@ -874,7 +877,8 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
 
     workspace_thumbnail->workspace = workspace;
     workspace_thumbnail->output = kywc_output;
-    workspace_thumbnail->options = THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_DISABLE_SHADOW;
+    workspace_thumbnail->options =
+        THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_DISABLE_SHADOW | THUMBNAIL_ENABLE_SECURITY;
     if (single_plane) {
         workspace_thumbnail->options |= THUMBNAIL_ENABLE_SINGLE_PLANE;
     }

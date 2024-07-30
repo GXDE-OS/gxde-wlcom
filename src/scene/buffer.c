@@ -13,6 +13,7 @@
 #include "render/pass.h"
 #include "render/pixel_format.h"
 #include "scene_p.h"
+#include "security.h"
 
 struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node)
 {
@@ -324,6 +325,11 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
 
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
     if (!scene_buffer->buffer || scene_buffer->opacity == 0) {
+        return;
+    }
+
+    if (target->options & KY_SCENE_RENDER_ENABLE_SECURITY &&
+        security_check_node(&scene_buffer->node)) {
         return;
     }
 

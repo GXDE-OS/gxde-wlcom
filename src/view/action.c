@@ -140,7 +140,7 @@ static void window_capture_create(struct view *view, struct seat *seat)
     }
 
     // struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
-    capture->thumbnail = thumbnail_create_from_view(view, 0, 1.0);
+    capture->thumbnail = thumbnail_create_from_view(view, THUMBNAIL_ENABLE_SECURITY, 1.0);
     if (!capture->thumbnail) {
         free(capture);
         return;

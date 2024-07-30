@@ -8,6 +8,7 @@
 
 #include <drm_fourcc.h>
 #include <wlr/types/wlr_output.h>
+#include <wlr/util/region.h>
 
 #include <kywc/log.h>
 
@@ -16,6 +17,7 @@
 #include "output.h"
 #include "painter.h"
 #include "render/renderer.h"
+#include "security.h"
 #include "server.h"
 #include "util/wayland.h"
 
@@ -51,6 +53,7 @@ struct capture_buffer {
         struct wlr_box area;
     };
 
+    float scale;
     bool was_damaged, buffer_changed;
     bool need_destroy, can_destroy;
 };
@@ -170,6 +173,8 @@ static bool capture_buffer_calc_box(struct capture_buffer *buffer, struct output
                                     struct wlr_box *dst, struct wlr_fbox *src)
 {
     float scale = buffer->options & CAPTURE_NEED_UNSCALED ? output_manager_get_scale() : 1.0;
+    buffer->scale = scale;
+
     struct kywc_box *geo = &output->geometry;
     *dst = (struct wlr_box){ 0 };
     *src = (struct wlr_fbox){ 0 };
@@ -346,11 +351,46 @@ static void capture_output_handle_geometry(struct wl_listener *listener, void *d
 
 static bool capture_request_do_blit(struct capture_request *request, struct wlr_buffer *src)
 {
-    struct wlr_output *wlr_output = request->output->output->wlr_output;
+    struct capture_buffer *buffer = request->buffer;
+    struct output *output = request->output->output;
+
+    pixman_region32_t clip;
+    if (buffer->type == CAPTURE_TYPE_AREA) {
+        pixman_region32_init_rect(&clip, request->dst_box.x + buffer->area.x,
+                                  request->dst_box.y + buffer->area.y, request->dst_box.width,
+                                  request->dst_box.height);
+    } else {
+        pixman_region32_init_rect(&clip, output->geometry.x, output->geometry.y,
+                                  output->geometry.width, output->geometry.height);
+    }
+    bool has_security = security_check_output(output, &clip);
+    if (has_security && !pixman_region32_not_empty(&clip)) {
+        /* output capture is not allowed */
+        pixman_region32_fini(&clip);
+        return true;
+    }
+
+    struct wlr_output *wlr_output = output->wlr_output;
     struct wlr_render_pass *render_pass =
-        wlr_renderer_begin_buffer_pass(wlr_output->renderer, request->buffer->buffer, NULL);
+        wlr_renderer_begin_buffer_pass(wlr_output->renderer, buffer->buffer, NULL);
     if (!render_pass) {
+        pixman_region32_fini(&clip);
         return false;
+    }
+
+    if (has_security) {
+        switch (buffer->type) {
+        case CAPTURE_TYPE_OUTPUT:
+            pixman_region32_translate(&clip, -output->geometry.x, -output->geometry.y);
+            // fallthrough to fullscreen
+        case CAPTURE_TYPE_FULLSCREEN:
+            wlr_region_scale(&clip, &clip, buffer->scale);
+            break;
+        case CAPTURE_TYPE_AREA:
+            wlr_region_scale(&clip, &clip, buffer->scale);
+            pixman_region32_translate(&clip, -buffer->area.x, -buffer->area.y);
+            break;
+        }
     }
 
     struct wlr_texture *src_tex = wlr_texture_from_buffer(wlr_output->renderer, src);
@@ -359,12 +399,14 @@ static bool capture_request_do_blit(struct capture_request *request, struct wlr_
         .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
         .src_box = request->src_box,
         .dst_box = request->dst_box,
+        .clip = has_security ? &clip : NULL,
         .transform = wlr_output_transform_invert(wlr_output->transform),
     };
 
     wlr_render_pass_add_texture(render_pass, &options);
     wlr_texture_destroy(src_tex);
     wlr_render_pass_submit(render_pass);
+    pixman_region32_fini(&clip);
 
     kywc_log(KYWC_DEBUG, "capture output %s copy (%f, %f) %f x %f to (%d, %d) %d x %d",
              wlr_output->name, request->src_box.x, request->src_box.y, request->src_box.width,
