@@ -697,6 +697,30 @@ void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iteration
     }
 }
 
+/* the x、y value is the offset relative to the first node */
+static void node_for_each_enabled(struct ky_scene_node *node, int x, int y,
+                                 void (*callback)(struct ky_scene_node *, int, int, void *),
+                                 void *data)
+{
+    if (!node->enabled) {
+        return;
+    }
+
+    x += node->x;
+    y += node->y;
+    callback(node, x, y, data);
+
+    if (node->type != KY_SCENE_NODE_TREE) {
+        return;
+    }
+
+    struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+    struct ky_scene_node *pos;
+    wl_list_for_each(pos, &tree->children, link) {
+        node_for_each_enabled(pos, x, y, callback, data);
+    }
+}
+
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4])
 {
     /* tree is not support currently */
@@ -707,6 +731,86 @@ void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[stati
 
     memcpy(node->radius, radius, sizeof(node->radius));
     ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_BOTH, NULL);
+}
+
+struct round_corner {
+    int x, y;
+    int radius;
+};
+
+static void get_node_radius(struct ky_scene_node *node, int x, int y, void *data)
+{
+    if (node->type != KY_SCENE_NODE_RECT && node->type != KY_SCENE_NODE_BUFFER) {
+        return;
+    }
+
+    int x1 = x, y1 = y;
+    int x2 = x1, y2 = y1;
+
+    if (node->type == KY_SCENE_NODE_RECT) {
+        struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
+        x2 += rect->width;
+        y2 += rect->height;
+    } else if (node->type == KY_SCENE_NODE_BUFFER) {
+        struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(node);
+        x2 += buffer->dst_width;
+        y2 += buffer->dst_height;
+    }
+
+    /* don't include decoration radius, because decoration radius isn't in rect node radius */
+    struct round_corner *corner = data;
+    int index = KY_SCENE_ROUND_CORNER_RB;
+    if (node->radius[index] > 0 && (corner[index].x < x2 || corner[index].y < y2)) {
+        corner[index].x = x2;
+        corner[index].y = y2;
+        corner[index].radius = node->radius[index];
+    }
+    index = KY_SCENE_ROUND_CORNER_RT;
+    if (node->radius[index] > 0 && (corner[index].x < x2 || corner[index].y > y1)) {
+        corner[index].x = x2;
+        corner[index].y = y1;
+        corner[index].radius = node->radius[index];
+    }
+    index = KY_SCENE_ROUND_CORNER_LB;
+    if (node->radius[index] > 0 && (corner[index].x > x1 || corner[index].y < y2)) {
+        corner[index].x = x1;
+        corner[index].y = y2;
+        corner[index].radius = node->radius[index];
+    }
+    index = KY_SCENE_ROUND_CORNER_LT;
+    if (node->radius[index] > 0 && (corner[index].x < x1 || corner[index].y < y1)) {
+        corner[index].x = x1;
+        corner[index].y = y1;
+        corner[index].radius = node->radius[index];
+    }
+}
+
+void ky_scene_node_get_radius(struct ky_scene_node *node, int radius[static 4])
+{
+    if (node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER) {
+        memcpy(radius, node->radius, sizeof(node->radius));
+        return;
+    }
+
+    /* 0 = right-bottom, 1 = right-top, 2 = left-bottom, 3 = left-top */
+    struct round_corner corner[4] = { 0 };
+    node_for_each_enabled(node, -node->x, -node->y, get_node_radius, &corner);
+
+    struct wlr_box box = { 0 };
+    node->impl.get_bounding_box(node, &box);
+
+    int x1 = box.x, y1 = box.y;
+    int x2 = box.x + box.width, y2 = box.y + box.height;
+
+    struct point {
+        int x, y;
+    } points[4] = { { x2, y2 }, { x2, y1 }, { x1, y2 }, { x1, y1 } };
+
+    for (int i = 0; i < 4; ++i) {
+        if (corner[i].radius > 0 && corner[i].x == points[i].x && corner[i].y == points[i].y) {
+            radius[i] = corner[i].radius;
+        }
+    }
 }
 
 bool ky_scene_node_is_visible(struct ky_scene_node *node)

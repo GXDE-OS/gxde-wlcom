@@ -333,6 +333,9 @@ void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iteration
 
 void ky_scene_node_set_radius(struct ky_scene_node *node, const int radius[static 4]);
 
+/* radius on bounding box */
+void ky_scene_node_get_radius(struct ky_scene_node *node, int radius[static 4]);
+
 bool ky_scene_node_is_visible(struct ky_scene_node *node);
 
 void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
