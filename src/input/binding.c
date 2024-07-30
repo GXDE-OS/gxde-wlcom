@@ -54,6 +54,7 @@ static struct bindings {
     struct wl_listener server_destroy;
 
     bool keysym_bindings_block;
+    uint32_t keysyms_binding_masks; /* binding mask */
 } *bindings = NULL;
 
 static char **split_string(const char *str, const char *delims, size_t *len)
@@ -190,6 +191,7 @@ bool kywc_key_binding_register(struct key_binding *binding, enum key_binding_typ
 
     struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[type];
     wl_list_insert(&keysyms_binding->bindings, &binding->link);
+    bindings->keysyms_binding_masks |= 1 << type;
 
     if (action) {
         binding->action = action;
@@ -291,6 +293,10 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
     }
 
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        if (!(bindings->keysyms_binding_masks & (1 << i))) {
+            continue;
+        }
+
         struct key_binding *binding;
         struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_for_each(binding, &keysyms_binding->bindings, link) {
@@ -601,5 +607,14 @@ void kywc_key_binding_block_all(bool block)
 {
     if (bindings->keysym_bindings_block != block) {
         bindings->keysym_bindings_block = block;
+    }
+}
+
+void kywc_key_binding_block_type(enum key_binding_type type, bool block)
+{
+    if (block) {
+        bindings->keysyms_binding_masks &= ~(1 << type);
+    } else {
+        bindings->keysyms_binding_masks |= (1 << type);
     }
 }

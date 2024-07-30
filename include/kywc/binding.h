@@ -100,4 +100,6 @@ void kywc_key_binding_for_each(binding_iterator_func_t iterator);
 
 void kywc_key_binding_block_all(bool block);
 
+void kywc_key_binding_block_type(enum key_binding_type type, bool block);
+
 #endif /* _KYWC_BINDING_H_ */
