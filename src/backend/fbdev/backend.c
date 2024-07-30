@@ -117,7 +117,7 @@ bool wlr_backend_is_fbdev(struct wlr_backend *backend)
 }
 
 struct wlr_backend *fbdev_backend_create(struct wl_display *display, struct wlr_session *session,
-                                         const char *device)
+                                         const char **devices, int devices_len)
 {
     struct fbdev_backend *backend = calloc(1, sizeof(*backend));
     if (!backend) {
@@ -131,7 +131,9 @@ struct wlr_backend *fbdev_backend_create(struct wl_display *display, struct wlr_
     backend->session = session;
     wl_list_init(&backend->outputs);
 
-    fbdev_output_create(&backend->backend, device);
+    for (int i = 0; i < devices_len; i++) {
+        fbdev_output_create(&backend->backend, devices[i], i);
+    }
 
     backend->session_active.notify = handle_session_active;
     wl_signal_add(&session->events.active, &backend->session_active);

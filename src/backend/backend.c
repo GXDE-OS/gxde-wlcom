@@ -20,6 +20,7 @@
 
 #define WAIT_SESSION_TIMEOUT 10000 // ms
 #define WAIT_GPU_TIMEOUT 1500      // ms
+#define MAX_NUM_GPUS 8
 
 static struct wlr_session *session_create_and_wait(struct wl_display *disp)
 {
@@ -60,29 +61,69 @@ static struct wlr_session *session_create_and_wait(struct wl_display *disp)
     return session;
 }
 
-static const char *session_find_framebuffer_device(struct wlr_session *session)
+static int explicit_find_fbs(struct wlr_session *session, int dev_len, char *dev[static dev_len],
+                             const char *str)
 {
+    char *fbs = strdup(str);
+    if (!fbs) {
+        kywc_log(KYWC_ERROR, "Allocation failed");
+        return -1;
+    }
+
+    int i = 0;
+    char *save;
+    char *ptr = strtok_r(fbs, ":", &save);
+    do {
+        if (i >= dev_len) {
+            break;
+        }
+
+        dev[i] = strdup(ptr);
+        if (!dev[i]) {
+            kywc_log(KYWC_ERROR, "Allocation failed");
+            break;
+        }
+
+        ++i;
+    } while ((ptr = strtok_r(NULL, ":", &save)));
+
+    free(fbs);
+    return i;
+}
+
+static int session_find_framebuffer_device(struct wlr_session *session, char **devices,
+                                           int devices_len)
+{
+    const char *explicit = getenv("KYWC_FB_DEVICES");
+    if (explicit) {
+        return explicit_find_fbs(session, devices_len, devices, explicit);
+    }
+
     struct udev_enumerate *enumerate = udev_enumerate_new(session->udev);
     if (!enumerate) {
-        return NULL;
+        return -1;
     }
 
     udev_enumerate_add_match_sysname(enumerate, "fb[0-9]*");
     if (udev_enumerate_add_match_subsystem(enumerate, "graphics") < 0) {
         udev_enumerate_unref(enumerate);
         kywc_log(KYWC_ERROR, "Failed to add match subsystem");
-        return NULL;
+        return -1;
     }
 
     if (udev_enumerate_scan_devices(enumerate) < 0) {
         udev_enumerate_unref(enumerate);
         kywc_log(KYWC_ERROR, "Failed to scan devices");
-        return NULL;
+        return -1;
     }
 
-    struct udev_device *fb_device = NULL;
+    int i = 0;
     struct udev_list_entry *entry;
     udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+        if (i >= devices_len) {
+            break;
+        }
+
         const char *path = udev_list_entry_get_name(entry);
         struct udev_device *device = udev_device_new_from_syspath(session->udev, path);
         if (!device) {
@@ -98,74 +139,49 @@ static const char *session_find_framebuffer_device(struct wlr_session *session)
             continue;
         }
 
-        bool is_boot_vga = false;
-
-        struct udev_device *pci =
-            udev_device_get_parent_with_subsystem_devtype(device, "pci", NULL);
-        if (pci) {
-            const char *id = udev_device_get_sysattr_value(pci, "boot_vga");
-            if (id && !strcmp(id, "1")) {
-                is_boot_vga = true;
-            }
-        }
-
-        /**
-         * If a framebuffer device was found, and this device isn't
-         * the boot-VGA device, don't use it.
-         */
-        if (!is_boot_vga && fb_device) {
-            udev_device_unref(device);
-            continue;
-        }
-
-        /* There can only be one boot_vga device. Try to use it at all costs */
-        if (is_boot_vga) {
-            if (fb_device) {
-                udev_device_unref(fb_device);
-            }
-            fb_device = device;
+        /* a framebuffer device was found */
+        char *fbdev_path = strdup(udev_device_get_devnode(device));
+        udev_device_unref(device);
+        if (!fbdev_path) {
+            kywc_log(KYWC_ERROR, "Allocation failed");
             break;
         }
-
-        /**
-         * Per the (!is_boot_vga && fb_device) test above, only
-         * trump existing saved devices with boot-VGA devices, so if
-         * the test ends up here, this must be the first device seen.
-         */
-        assert(!fb_device);
-        fb_device = device;
+        devices[i++] = fbdev_path;
     }
 
     udev_enumerate_unref(enumerate);
 
-    if (!fb_device) {
-        return NULL;
+    return i;
+}
+
+static void frambffer_devices_release(char **devices, int n)
+{
+    for (int i = 0; i < n; i++) {
+        free((void *)devices[i]);
     }
-
-    char *fbdev_path = strdup(udev_device_get_devnode(fb_device));
-    udev_device_unref(fb_device);
-
-    return fbdev_path;
 }
 
 static bool attempt_fbdev_backend(struct wl_display *display, struct wlr_backend *backend,
                                   struct wlr_session *session)
 {
-    const char *device = session_find_framebuffer_device(session);
-    if (!device) {
-        kywc_log(KYWC_ERROR, "Failed to find framebuffer device,can not create backend");
+    char *devices[MAX_NUM_GPUS];
+    int n = session_find_framebuffer_device(session, devices, MAX_NUM_GPUS);
+    if (n <= 0) {
+        kywc_log(KYWC_ERROR, "Failed to find framebuffer device, can not create backend");
         return false;
     }
 
-    struct wlr_backend *fbdev = fbdev_backend_create(display, session, device);
+    kywc_log(KYWC_INFO, "Found %d framebuffer devices", n);
+
+    struct wlr_backend *fbdev = fbdev_backend_create(display, session, (const char **)devices, n);
     if (!fbdev) {
         kywc_log(KYWC_ERROR, "Failed to create fbdev backend");
-        free((void *)device);
+        frambffer_devices_release(devices, n);
         return false;
     }
 
     wlr_multi_backend_add(backend, fbdev);
-    free((void *)device);
+    frambffer_devices_release(devices, n);
 
     return true;
 }

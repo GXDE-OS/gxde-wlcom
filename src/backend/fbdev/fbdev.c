@@ -585,7 +585,8 @@ static const struct wlr_output_impl output_impl = {
     .commit = fbdev_output_commit,
 };
 
-struct wlr_output *fbdev_output_create(struct wlr_backend *wlr_backend, const char *device)
+struct wlr_output *fbdev_output_create(struct wlr_backend *wlr_backend, const char *device,
+                                       int index)
 {
     struct fbdev_output *output = calloc(1, sizeof(*output));
     /* Create the frame buffer */
@@ -605,7 +606,10 @@ struct wlr_output *fbdev_output_create(struct wlr_backend *wlr_backend, const ch
     wlr_output_init(&output->wlr_output, wlr_backend, &output_impl, backend->display, &state);
     wlr_output_state_finish(&state);
 
-    wlr_output_set_name(&output->wlr_output, "FB-1");
+    char name[8];
+    snprintf(name, 8, "FB-%d", index);
+    wlr_output_set_name(&output->wlr_output, name);
+
     wlr_output_set_description(&output->wlr_output, output->screen_info.desc);
     kywc_log(KYWC_INFO, "fbdev desc: %s", output->screen_info.desc);
 

@@ -66,7 +66,8 @@ struct fbdev_output {
     void *fb; // map
 };
 
-struct wlr_output *fbdev_output_create(struct wlr_backend *wlr_backend, const char *device);
+struct wlr_output *fbdev_output_create(struct wlr_backend *wlr_backend, const char *device,
+                                       int index);
 
 struct fbdev_output *fbdev_output_from_output(struct wlr_output *wlr_output);
 

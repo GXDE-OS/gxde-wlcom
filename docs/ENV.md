@@ -9,6 +9,7 @@ kylin-wlcom合成器支持多个环境变量，可对内部流程进行修改。
 ## 显示
 
 * *KYWC_BACKEND*：设置显示后端，可选值为：fbdev
+* *KYWC_FB_DEVICES*：设置FBDEV后端输出节点，如/dev/fb0:/dev/fb1
 
 ## 渲染
 

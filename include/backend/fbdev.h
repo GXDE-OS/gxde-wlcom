@@ -9,7 +9,7 @@
 #include <wlr/types/wlr_output.h>
 
 struct wlr_backend *fbdev_backend_create(struct wl_display *display, struct wlr_session *session,
-                                         const char *device);
+                                         const char **devices, int devices_len);
 
 bool wlr_backend_is_fbdev(struct wlr_backend *backend);
 
