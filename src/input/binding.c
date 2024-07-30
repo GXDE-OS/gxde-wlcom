@@ -57,6 +57,18 @@ static struct bindings {
     uint32_t keysyms_binding_masks; /* binding mask */
 } *bindings = NULL;
 
+const struct key_binding_type2string {
+    enum key_binding_type type;
+    const char *name;
+} key_binding_table[] = {
+    { KEY_BINDING_TYPE_CUSTOM_DEF, "WLCOM_CUSTOM_DEF" },
+    { KEY_BINDING_TYPE_WIN_MENU, "WLCOM_WIN_MENU" },
+    { KEY_BINDING_TYPE_SWITCH_WORKSPACE, "WLCOM_SWITCH_WORKSPACE" },
+    { KEY_BINDING_TYPE_WINDOW_ACTION, "WLCOM_WINDOW_ACTION" },
+    { KEY_BINDING_TYPE_MAXIMIZED_VIEWS, "WLCOM_MAXIMIZED_VIEWS" },
+    { KEY_BINDING_TYPE_CTRL_VIEWS, "WLCOM_CTRL_VIEWS" },
+};
+
 static char **split_string(const char *str, const char *delims, size_t *len)
 {
     char **split_str = malloc(sizeof(void *) * 10);
@@ -617,4 +629,16 @@ void kywc_key_binding_block_type(enum key_binding_type type, bool block)
     } else {
         bindings->keysyms_binding_masks |= (1 << type);
     }
+}
+
+enum key_binding_type kywc_key_binding_type_by_name(const char *name)
+{
+    for (size_t i = 0; i < sizeof(key_binding_table) / sizeof(key_binding_table[0]); ++i) {
+        if (strcmp(name, key_binding_table[i].name)) {
+            continue;
+        }
+        return key_binding_table[i].type;
+    }
+
+    return KEY_BINDING_TYPE_CUSTOM_DEF;
 }

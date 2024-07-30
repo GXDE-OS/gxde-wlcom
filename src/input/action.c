@@ -62,6 +62,7 @@ struct action_key_data {
 
 struct action_data {
     enum action_type type;
+    enum key_binding_type binding_type;
     bool enable;
     union {
         struct action_dbus_data dbus;
@@ -587,6 +588,11 @@ static struct action_data *action_data_create_from_config(json_object *action_co
         action_data->type = type;
     }
 
+    if (json_object_object_get_ex(action_config, "type", &data)) {
+        const char *type_str = json_object_get_string(data);
+        action_data->binding_type = kywc_key_binding_type_by_name(type_str);
+    }
+
     switch (type) {
     case ACTION_TYPE_DBUS_ACTION:
         if (json_object_object_get_ex(action_config, "bustype", &data)) {
@@ -648,7 +654,9 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
 
     const char *input_type, *input_bindings = NULL;
     const char *action_desc = NULL, *action_dat = NULL;
-    CK(sd_bus_message_read(m, "ssss", &input_type, &input_bindings, &action_desc, &action_dat));
+    const char *binding_type = NULL;
+    CK(sd_bus_message_read(m, "sssss", &input_type, &input_bindings, &action_desc, &action_dat,
+                           &binding_type));
 
     enum input_type itype;
     if (strcmp(input_type, "keyboard") == 0) {
@@ -684,9 +692,13 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
     input_action->action = action_data;
     action_data->desc = strdup(action_desc);
 
+    if (itype == INPUT_TYPE_KEYBOARD) {
+        action_data->binding_type = kywc_key_binding_type_by_name(binding_type);
+    }
+
     if (action_data->enable) {
         bool ret = itype == INPUT_TYPE_KEYBOARD
-                       ? kywc_key_binding_register(binding, KEY_BINDING_TYPE_WIN_MENU,
+                       ? kywc_key_binding_register(binding, action_data->binding_type,
                                                    input_manager_keybinding_action, input_action)
                        : kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
                                                        input_action);
@@ -788,7 +800,8 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
                     kywc_key_binding_create(input_action->bindings, input_action->action->desc);
             }
             if (input_action->data) {
-                if (!kywc_key_binding_register(input_action->data, KEY_BINDING_TYPE_WIN_MENU,
+                if (!kywc_key_binding_register(input_action->data,
+                                               input_action->action->binding_type,
                                                input_manager_keybinding_action, input_action)) {
                     kywc_key_binding_destroy(input_action->data);
                     input_action->data = NULL;
@@ -867,7 +880,7 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_WIN_MENU,
+        if (!kywc_key_binding_register(binding, action_data->binding_type,
                                        input_manager_keybinding_action, input_action)) {
             kywc_log(KYWC_DEBUG, "key_binding registion failed");
             if (user) {

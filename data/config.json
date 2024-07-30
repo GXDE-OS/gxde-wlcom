@@ -11,6 +11,7 @@
         "keyboard": {
             "win:no": {
                 "enable": true,
+                "type": "WLCOM_WIN_MENU",
                 "actiontype": "dbus",
                 "bustype": "session",
                 "service": "org.ukui.menu",
