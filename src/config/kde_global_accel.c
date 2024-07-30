@@ -431,8 +431,8 @@ static void global_shortcut_set_active(struct global_shortcut *shortcut)
     }
 
     /* register the key binding */
-    shortcut->is_registered =
-        kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
+    shortcut->is_registered = kywc_key_binding_register(
+        shortcut->binding, KEY_BINDING_TYPE_CUSTOM_DEF, global_shortcut_action, shortcut);
 
     if (!shortcut->is_registered) {
         kywc_key_binding_destroy(shortcut->binding);

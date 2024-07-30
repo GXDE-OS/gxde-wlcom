@@ -314,7 +314,8 @@ bool window_actions_create(struct view_manager *view_manager)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, view_shortcuts, shortcut)) {
+        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_WINDOW_ACTION, view_shortcuts,
+                                       shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }
@@ -434,7 +435,8 @@ bool view_manager_actions_create(struct view_manager *view_manager)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, shortcuts_action, shortcut)) {
+        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_CTRL_VIEWS, shortcuts_action,
+                                       shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }

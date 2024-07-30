@@ -685,11 +685,11 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
     action_data->desc = strdup(action_desc);
 
     if (action_data->enable) {
-        bool ret =
-            itype == INPUT_TYPE_KEYBOARD
-                ? kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)
-                : kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
-                                                input_action);
+        bool ret = itype == INPUT_TYPE_KEYBOARD
+                       ? kywc_key_binding_register(binding, KEY_BINDING_TYPE_WIN_MENU,
+                                                   input_manager_keybinding_action, input_action)
+                       : kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
+                                                       input_action);
         if (!ret) {
             itype == INPUT_TYPE_KEYBOARD ? kywc_key_binding_destroy(binding)
                                          : kywc_gesture_binding_destroy(binding);
@@ -788,8 +788,8 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
                     kywc_key_binding_create(input_action->bindings, input_action->action->desc);
             }
             if (input_action->data) {
-                if (!kywc_key_binding_register(input_action->data, input_manager_keybinding_action,
-                                               input_action)) {
+                if (!kywc_key_binding_register(input_action->data, KEY_BINDING_TYPE_WIN_MENU,
+                                               input_manager_keybinding_action, input_action)) {
                     kywc_key_binding_destroy(input_action->data);
                     input_action->data = NULL;
                 }
@@ -867,7 +867,8 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)) {
+        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_WIN_MENU,
+                                       input_manager_keybinding_action, input_action)) {
             kywc_log(KYWC_DEBUG, "key_binding registion failed");
             if (user) {
                 json_object_object_del(keyboard_obj, keybind);

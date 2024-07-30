@@ -44,6 +44,17 @@ enum gesture_edge {
     GESTURE_EDGE_RIGHT = 1 << 3,
 };
 
+/* key binding type */
+enum key_binding_type {
+    KEY_BINDING_TYPE_CUSTOM_DEF = 0,
+    KEY_BINDING_TYPE_WIN_MENU,
+    KEY_BINDING_TYPE_SWITCH_WORKSPACE,
+    KEY_BINDING_TYPE_WINDOW_ACTION,
+    KEY_BINDING_TYPE_MAXIMIZED_VIEWS,
+    KEY_BINDING_TYPE_CTRL_VIEWS,
+    KEY_BINDING_TYPE_NUM,
+};
+
 /**
  * gesture bindings
  */
@@ -72,7 +83,7 @@ struct key_binding *kywc_key_binding_create_by_symbol(unsigned int keysym, unsig
 
 void kywc_key_binding_destroy(struct key_binding *binding);
 
-bool kywc_key_binding_register(struct key_binding *binding,
+bool kywc_key_binding_register(struct key_binding *binding, enum key_binding_type type,
                                void (*action)(struct key_binding *binding, void *data), void *data);
 
 bool kywc_key_binding_update(struct key_binding *binding, unsigned int keysym,

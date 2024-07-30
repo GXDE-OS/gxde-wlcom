@@ -111,7 +111,8 @@ static void workspace_register_shortcut(void)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, shortcut_action, shortcut)) {
+        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_SWITCH_WORKSPACE, shortcut_action,
+                                       shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }

@@ -74,7 +74,8 @@ static void simple_plugin_register_shortcuts(void)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, shortcut_action, shortcut)) {
+        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_CUSTOM_DEF, shortcut_action,
+                                       shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }

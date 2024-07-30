@@ -29,6 +29,11 @@ struct key_binding {
     void *data;
 };
 
+struct keysyms_binding_type {
+    enum key_binding_type type;
+    struct wl_list bindings; /* key binding */
+};
+
 struct gesture_binding {
     struct wl_list link;
 
@@ -44,7 +49,7 @@ struct gesture_binding {
 };
 
 static struct bindings {
-    struct wl_list keysym_bindings;
+    struct keysyms_binding_type keysyms_binding[KEY_BINDING_TYPE_NUM];
     struct wl_list gesture_bindings;
     struct wl_listener server_destroy;
 
@@ -152,24 +157,27 @@ void kywc_key_binding_destroy(struct key_binding *binding)
 
 static bool key_binding_is_valid(struct key_binding *binding, uint32_t keysym, uint32_t modifiers)
 {
-    struct key_binding *bind;
-    wl_list_for_each(bind, &bindings->keysym_bindings, link) {
-        /* skip itself */
-        if (bind == binding) {
-            continue;
-        }
+    for (int i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct key_binding *bind;
+        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        wl_list_for_each(bind, &keysyms_binding->bindings, link) {
+            /* skip itself */
+            if (bind == binding) {
+                continue;
+            }
 
-        if (!(modifiers ^ bind->modifiers) && keysym == bind->keysym) {
-            kywc_log(KYWC_ERROR, "%s(%s) is already registered by %s(%s)", binding->keybind,
-                     binding->desc, bind->keybind, bind->desc);
-            return false;
+            if (!(modifiers ^ bind->modifiers) && keysym == bind->keysym) {
+                kywc_log(KYWC_ERROR, "%s(%s) is already registered by %s(%s)", binding->keybind,
+                         binding->desc, bind->keybind, bind->desc);
+                return false;
+            }
         }
     }
 
     return true;
 }
 
-bool kywc_key_binding_register(struct key_binding *binding,
+bool kywc_key_binding_register(struct key_binding *binding, enum key_binding_type type,
                                void (*action)(struct key_binding *binding, void *data), void *data)
 {
     if (kywc_key_binding_is_registered(binding)) {
@@ -180,7 +188,8 @@ bool kywc_key_binding_register(struct key_binding *binding,
         return false;
     }
 
-    wl_list_insert(&bindings->keysym_bindings, &binding->link);
+    struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[type];
+    wl_list_insert(&keysyms_binding->bindings, &binding->link);
 
     if (action) {
         binding->action = action;
@@ -226,9 +235,12 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&bindings->server_destroy.link);
 
-    struct key_binding *key_binding, *key_binding_tmp;
-    wl_list_for_each_safe(key_binding, key_binding_tmp, &bindings->keysym_bindings, link) {
-        kywc_key_binding_destroy(key_binding);
+    for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct key_binding *key_binding, *key_binding_tmp;
+        wl_list_for_each_safe(key_binding, key_binding_tmp, &keysyms_binding->bindings, link) {
+            kywc_key_binding_destroy(key_binding);
+        }
     }
 
     struct gesture_binding *gesture_binding, *gesture_binding_tmp;
@@ -249,7 +261,10 @@ bool bindings_create(struct input_manager *input_manager)
 
     bindings->keysym_bindings_block = false;
 
-    wl_list_init(&bindings->keysym_bindings);
+    for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        wl_list_init(&keysyms_binding->bindings);
+    }
     wl_list_init(&bindings->gesture_bindings);
 
     bindings->server_destroy.notify = handle_server_destroy;
@@ -275,28 +290,31 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
         return false;
     }
 
-    struct key_binding *binding;
-    wl_list_for_each(binding, &bindings->keysym_bindings, link) {
-        if ((keyboard_state->only_one_modifier && binding->keysym) ||
-            (!keyboard_state->only_one_modifier && !binding->keysym)) {
-            continue;
-        }
-
-        if (keyboard_state->last_modifiers ^ binding->modifiers) {
-            continue;
-        }
-
-        if (keyboard_state->npressed < 1 && binding->keysym) {
-            continue;
-        }
-
-        if (!binding->keysym || match_key_binding(keyboard_state, binding)) {
-            kywc_log(KYWC_DEBUG, "start key binding: %s", binding->desc);
-            if (binding->action) {
-                binding->action(binding, binding->data);
+    for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct key_binding *binding;
+        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        wl_list_for_each(binding, &keysyms_binding->bindings, link) {
+            if ((keyboard_state->only_one_modifier && binding->keysym) ||
+                (!keyboard_state->only_one_modifier && !binding->keysym)) {
+                continue;
             }
-            *repeat = !binding->no_repeat;
-            return true;
+
+            if (keyboard_state->last_modifiers ^ binding->modifiers) {
+                continue;
+            }
+
+            if (keyboard_state->npressed < 1 && binding->keysym) {
+                continue;
+            }
+
+            if (!binding->keysym || match_key_binding(keyboard_state, binding)) {
+                kywc_log(KYWC_DEBUG, "start key binding: %s", binding->desc);
+                if (binding->action) {
+                    binding->action(binding, binding->data);
+                }
+                *repeat = !binding->no_repeat;
+                return true;
+            }
         }
     }
     return false;
@@ -569,9 +587,13 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
 
 void kywc_key_binding_for_each(binding_iterator_func_t iterator)
 {
-    struct key_binding *binding;
-    wl_list_for_each(binding, &bindings->keysym_bindings, link) {
-        iterator(binding, binding->keybind, binding->desc, binding->modifiers, binding->keysym);
+
+    for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct key_binding *binding;
+        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        wl_list_for_each(binding, &keysyms_binding->bindings, link) {
+            iterator(binding, binding->keybind, binding->desc, binding->modifiers, binding->keysym);
+        }
     }
 }
 
