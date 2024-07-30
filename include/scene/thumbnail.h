@@ -44,6 +44,10 @@ void thumbnail_add_destroy_listener(struct thumbnail *thumbnail, struct wl_liste
 
 void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants);
 
+/* logic coord */
+bool thumbnail_get_node_offset(struct thumbnail *thumbnail, struct ky_scene_node *node, int32_t *x,
+                               int32_t *y);
+
 void thumbnail_update(struct thumbnail *thumbnail);
 
 void thumbnail_destroy(struct thumbnail *thumbnail);

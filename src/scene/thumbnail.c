@@ -56,6 +56,7 @@ struct node_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
 
+    int source_offset_x, source_offset_y;
     struct ky_scene_node *source_node;
     struct wl_listener source_damage;
     struct wl_listener source_destroy;
@@ -68,6 +69,8 @@ struct view_thumbnail {
 
     struct view *view;
     struct wl_listener view_unmap;
+
+    int source_offset_x, source_offset_y;
     struct ky_scene_node *source_node;
     struct wl_listener source_damage;
 };
@@ -99,7 +102,9 @@ struct workspace_thumbnail {
     struct wl_listener view_enter;
     struct wl_listener workspace_destroy;
 
+    int output_offset_x, output_offset_y;
     struct kywc_output *output;
+    struct kywc_box output_geometry;
     struct wl_listener output_destroy;
 };
 
@@ -121,7 +126,9 @@ struct output_thumbnail {
     bool state_readonly;
     struct output_thumbnail_state state;
 
+    int output_offset_x, output_offset_y;
     struct ky_scene_output *output;
+    struct kywc_box output_geometry;
     struct wl_listener output_commit;
     struct wl_listener output_destroy;
 };
@@ -266,6 +273,8 @@ static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbna
     struct ky_scene_node *source_node = node_thumbnail->source_node;
     struct wlr_box bounding_box = { 0 };
     source_node->impl.get_bounding_box(source_node, &bounding_box);
+    node_thumbnail->source_offset_x = -bounding_box.x;
+    node_thumbnail->source_offset_y = -bounding_box.y;
 
     /* bounding_box become empty when some client is minimized */
     if (wlr_box_empty(&bounding_box)) {
@@ -324,6 +333,8 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
     struct wlr_box bounding_box = { 0 };
 
     view_thumbnail_get_box(view_thumbnail, &bounding_box);
+    view_thumbnail->source_offset_x = -bounding_box.x;
+    view_thumbnail->source_offset_y = -bounding_box.y;
 
     int buffer_width = bounding_box.width * thumbnail_buffer->scale;
     int buffer_height = bounding_box.height * thumbnail_buffer->scale;
@@ -548,6 +559,7 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
     struct workspace_thumbnail *workspace_thumbnail =
         wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
     struct output *output = output_from_kywc_output(workspace_thumbnail->output);
+    workspace_thumbnail->output_geometry = output->geometry;
     /* use output effective size */
     int buffer_width = output->geometry.width * thumbnail_buffer->scale;
     int buffer_height = output->geometry.height * thumbnail_buffer->scale;
@@ -928,6 +940,11 @@ static struct wlr_buffer *output_thumbnail_render(struct thumbnail_buffer *thumb
     pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
                               target.logical.width, target.logical.height);
 
+    output_thumbnail->output_geometry.x = target.logical.x;
+    output_thumbnail->output_geometry.y = target.logical.y;
+    output_thumbnail->output_geometry.width = target.logical.width;
+    output_thumbnail->output_geometry.height = target.logical.height;
+
     struct ky_scene_node *root = &src_output->scene->tree.node;
     root->impl.render(root, root->x, root->y, &target);
     wlr_render_pass_submit(target.render_pass);
@@ -1262,6 +1279,92 @@ void thumbnail_mark_wants_update(struct thumbnail *thumbnail, bool wants)
     if (wants) {
         thumbnail_manager_schedule_frame();
     }
+}
+
+bool thumbnail_get_node_offset(struct thumbnail *thumbnail, struct ky_scene_node *node, int32_t *x,
+                               int32_t *y)
+{
+    struct thumbnail_buffer *thumbnail_buffer = thumbnail->buffer;
+    if (!thumbnail_buffer->buffer) {
+        return false;
+    }
+
+    struct ky_scene_node *source_node = NULL;
+    struct kywc_box output_geometry = { 0 };
+
+    switch (thumbnail_buffer->type) {
+    case THUMBNAIL_TYPE_NODE:;
+        struct node_thumbnail *node_thumbnail =
+            wl_container_of(thumbnail_buffer, node_thumbnail, base);
+        source_node = node_thumbnail->source_node;
+        *x = node_thumbnail->source_offset_x;
+        *y = node_thumbnail->source_offset_y;
+        break;
+    case THUMBNAIL_TYPE_VIEW:;
+        struct view_thumbnail *view_thumbnail =
+            wl_container_of(thumbnail_buffer, view_thumbnail, base);
+        source_node = view_thumbnail->source_node;
+        *x = view_thumbnail->source_offset_x;
+        *y = view_thumbnail->source_offset_y;
+        break;
+    case THUMBNAIL_TYPE_WORKSPACE:;
+        struct workspace_thumbnail *workspace_thumbnail =
+            wl_container_of(thumbnail_buffer, workspace_thumbnail, base);
+        *x = workspace_thumbnail->output_offset_x;
+        *y = workspace_thumbnail->output_offset_y;
+        output_geometry = workspace_thumbnail->output_geometry;
+        break;
+    case THUMBNAIL_TYPE_OUTPUT:;
+        struct output_thumbnail *output_thumbnail =
+            wl_container_of(thumbnail_buffer, output_thumbnail, base);
+        *x = output_thumbnail->output_offset_x;
+        *y = output_thumbnail->output_offset_y;
+        output_geometry = output_thumbnail->output_geometry;
+        break;
+    case THUMBNAIL_TYPE_NONE:
+        return false;
+    }
+
+    if (thumbnail_buffer->type == THUMBNAIL_TYPE_NODE ||
+        thumbnail_buffer->type == THUMBNAIL_TYPE_VIEW) {
+        if (node == source_node) {
+            return true;
+        }
+
+        struct ky_scene_node *tmp_node = node;
+        struct ky_scene_tree *parent = node->parent;
+        while (parent) {
+            *x += tmp_node->x;
+            *y += tmp_node->y;
+            if (&parent->node == source_node) {
+                break;
+            }
+            tmp_node = &parent->node;
+            parent = parent->node.parent;
+        }
+
+        if (!parent) {
+            *x = *y = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    if (thumbnail_buffer->type == THUMBNAIL_TYPE_WORKSPACE ||
+        thumbnail_buffer->type == THUMBNAIL_TYPE_OUTPUT) {
+        int lx, ly;
+        ky_scene_node_coords(node, &lx, &ly);
+        *x += (lx - output_geometry.x);
+        *y += (ly - output_geometry.y);
+    }
+
+    if (*x < 0 || *y < 0 || *x > output_geometry.width || *y > output_geometry.height) {
+        *x = *y = 0;
+        return false;
+    }
+
+    return true;
 }
 
 static bool thumbnail_buffer_render(struct thumbnail_buffer *thumbnail_buffer,
