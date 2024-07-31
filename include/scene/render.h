@@ -37,6 +37,41 @@ struct ky_scene_render_target {
     uint32_t options;
 };
 
+struct ky_scene_render_texture_options {
+    struct wlr_texture *texture;
+    const struct kywc_box *geometry_box;
+    /**
+     * texture round corner radius
+     * 0 = right-bottom, 1 = right-top, 2 = left-bottom, 3 = left-top
+     */
+    const int (*radius)[4];
+    /* the rotation angle is based on transform */
+    const float *alpha, angle;
+    /* the origin is the texture top-left */
+    const struct kywc_fbox *src;
+    /* transform applied to the source texture */
+    enum wl_output_transform transform;
+
+    /**
+     * blur region don't support rotation
+     * the origin is the top-left of surface in logical coord
+     */
+    struct {
+        const struct blur_info *info;
+        const float *alpha;
+        /* the magnification factor of the blur area in the texture */
+        const float *scale;
+        /**
+         * round corner radius on the tex_dst.
+         * if blur is in this round corner region, blur don't be rendered.
+         * 0 = right-bottom, 1 = right-top, 2 = left-bottom, 3 = left-top
+         */
+        const int (*radius)[4];
+        /* logical coord of the blur area in the texture, not scale */
+        int offset_x, offset_y;
+    } blur;
+};
+
 /**
  * translate logical coord box to render target buffer coord
  */
@@ -46,5 +81,8 @@ void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_ta
 
 void ky_scene_render_damage_in_target(struct ky_scene *scene,
                                       struct ky_scene_render_target *target);
+
+void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
+                                        const struct ky_scene_render_texture_options *opts);
 
 #endif /* _SCENE_RENDER_H_ */
