@@ -428,7 +428,10 @@ static void show_current_page_items(int index)
     struct theme *theme = theme_manager_get_current();
     int icon_width = theme->button_width;
     int select_width_gap = SELECT_WIDTH_GAP;
-    int icon_x = (icon_width - theme->icon_size) / 2 + select_width_gap;
+
+    int icon_x = theme->layout_is_right_to_left ? switcher->width - select_width_gap - icon_width
+                                                : select_width_gap;
+    icon_x += (icon_width - theme->icon_size) / 2;
     int icon_y = (ITEM_HEIGHT - theme->icon_size) / 2;
 
     struct item_view *item_view;
@@ -450,9 +453,8 @@ static void show_current_page_items(int index)
         /* set icon position */
         ky_scene_node_set_position(item_view->icon_node, icon_x, icon_y);
         /* set text position */
-        int text_x =
-            icon_width + select_width_gap +
-            (switcher->width - icon_width - item_view->text_width - select_width_gap * 2) / 2;
+        int text_x = theme->layout_is_right_to_left ? 0 : icon_width + select_width_gap;
+        text_x += (switcher->width - icon_width - item_view->text_width - select_width_gap * 2) / 2;
         int text_y = (ITEM_HEIGHT - item_view->text_height) / 2;
         ky_scene_node_set_position(item_view->text_node, text_x, text_y);
 
