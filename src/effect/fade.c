@@ -12,6 +12,7 @@
 #include "effect/animator.h"
 #include "effect/fade.h"
 #include "effect_p.h"
+#include "render/opengl.h"
 #include "render/renderer.h"
 #include "scene/thumbnail.h"
 #include "util/time.h"
@@ -24,9 +25,17 @@ struct fade_effect_data {
 
     struct fade_options options;
 
+    bool need_blur;
+    struct blur_info blur_info;
+
+    struct ky_scene_node *node;
+    struct wl_listener node_destroy;
+
     struct ky_scene_buffer *buffer;
     struct wl_listener buffer_destroy;
 
+    int thumbnail_radius[4];
+    int node_offset_x, node_offset_y;
     struct thumbnail *thumbnail;
     struct wlr_texture *thumbnail_texture;
     struct wlr_buffer *thumbnail_buffer;
@@ -39,6 +48,7 @@ struct fade_effect {
     struct effect_manager *manager;
 
     struct wl_listener destroy;
+    bool is_opengl_renderer;
 };
 
 static struct fade_effect *fade = NULL;
@@ -148,6 +158,12 @@ static bool fade_node_push_damage(struct effect_entity *entity, struct ky_scene_
     struct kywc_box box;
     fade_entity_bouding_box(entity, &box);
     pixman_region32_union_rect(damage, damage, box.x, box.y, box.width, box.height);
+
+    struct fade_effect_data *data = entity->user_data;
+    if (data->node && data->need_blur) {
+        ky_scene_node_get_blur_info(data->node, &data->blur_info);
+    }
+
     return false;
 }
 
@@ -166,6 +182,18 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     fade_data->thumbnail_buffer = event->buffer;
     fade_data->thumbnail_texture =
         wlr_texture_from_buffer(fade->manager->server->renderer, event->buffer);
+
+    if (!fade_data->node) {
+        kywc_log(KYWC_DEBUG, "when fade thumbnail update, fade data node = NULL. need_blur = %d",
+                 fade_data->need_blur);
+        return;
+    }
+
+    if (fade_data->need_blur &&
+        !thumbnail_get_node_offset(fade_data->thumbnail, fade_data->node, &fade_data->node_offset_x,
+                                   &fade_data->node_offset_y)) {
+        kywc_log(KYWC_INFO, "when fade thumbnail update, thumbnail get node offset failed.");
+    }
 }
 
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -186,6 +214,9 @@ static bool fade_frame_render_post(struct effect_entity *entity,
 
 static void fade_data_destroy(struct fade_effect_data *data)
 {
+    if (data->node && data->need_blur) {
+        wl_list_remove(&data->node_destroy.link);
+    }
     if (data->buffer) {
         wl_list_remove(&data->buffer_destroy.link);
         ky_scene_node_destroy(&data->buffer->node);
@@ -201,6 +232,7 @@ static void fade_data_destroy(struct fade_effect_data *data)
     if (data->animator) {
         animator_destroy(data->animator);
     }
+    pixman_region32_fini(&data->blur_info.region);
     free(data);
 }
 
@@ -222,7 +254,23 @@ static bool fade_node_render(struct effect_entity *entity, int lx, int ly,
         return false;
     }
 
-    animator_render_texture(&data->current, target, data->thumbnail_texture);
+    /* if data need blur is false, blur region is empty */
+    bool has_blur = pixman_region32_not_empty(&data->blur_info.region);
+
+    const struct ky_scene_render_texture_options opts = {
+        .texture = data->thumbnail_texture,
+        .geometry_box = &data->current.geometry,
+        .alpha = &data->current.alpha,
+        .blur = {
+            .alpha = &data->current.alpha,
+            .info = has_blur ? &data->blur_info : NULL,
+            .offset_x = data->node_offset_x,
+            .offset_y = data->node_offset_y,
+            .radius = &data->thumbnail_radius,
+        },
+    };
+    ky_scene_render_target_add_texture(target, &opts);
+
     return false;
 }
 
@@ -254,6 +302,7 @@ bool fade_effect_create(struct effect_manager *manager)
         return false;
     }
 
+    fade->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
     fade->effect = effect_create("fade", 10, enabled, &fade_effect_impl);
     if (!fade->effect) {
@@ -267,6 +316,13 @@ bool fade_effect_create(struct effect_manager *manager)
     wl_signal_add(&fade->effect->events.destroy, &fade->destroy);
 
     return true;
+}
+
+static void handle_node_destroy(struct wl_listener *listener, void *data)
+{
+    struct fade_effect_data *fade_data = wl_container_of(listener, fade_data, node_destroy);
+    wl_list_remove(&fade_data->node_destroy.link);
+    fade_data->node = NULL;
 }
 
 static void handle_buffer_destroy(struct wl_listener *listener, void *data)
@@ -333,12 +389,13 @@ static bool fade_data_create_animator(struct fade_effect_data *data, struct fade
     return true;
 }
 
-static bool node_add_fade_out_effect(struct fade_options *options, struct ky_scene_node *node,
-                                     struct animation_data *animation_data)
+static struct fade_effect_data *node_add_fade_out_effect(struct fade_options *options,
+                                                         struct ky_scene_node *node,
+                                                         struct animation_data *animation_data)
 {
     struct fade_effect_data *data = fade_data_create(options, node);
     if (!data) {
-        return false;
+        return NULL;
     }
 
     struct animation_data start = { 0 }, end = { 0 };
@@ -357,20 +414,20 @@ static bool node_add_fade_out_effect(struct fade_options *options, struct ky_sce
 
     if (!fade_data_create_animator(data, options, &start, &end)) {
         fade_data_destroy(data);
-        return false;
+        return NULL;
     }
 
     struct ky_scene_buffer *buffer = fade_create_scene_buffer(node, data);
     if (!buffer) {
         fade_data_destroy(data);
-        return false;
+        return NULL;
     }
 
     struct effect_entity *entity = ky_scene_node_add_effect(&buffer->node, fade->effect);
     if (!entity) {
         fade_data_destroy(data);
         ky_scene_node_destroy(&buffer->node);
-        return false;
+        return NULL;
     }
 
     data->buffer_destroy.notify = handle_buffer_destroy;
@@ -379,7 +436,7 @@ static bool node_add_fade_out_effect(struct fade_options *options, struct ky_sce
     data->buffer = buffer;
     entity->user_data = data;
 
-    return true;
+    return data;
 }
 
 static struct fade_effect_data *fade_data_create(struct fade_options *options,
@@ -396,6 +453,17 @@ static struct fade_effect_data *fade_data_create(struct fade_options *options,
     if (!data->thumbnail) {
         free(data);
         return false;
+    }
+
+    data->need_blur = fade->is_opengl_renderer;
+    pixman_region32_init(&data->blur_info.region);
+    if (data->need_blur) {
+        ky_scene_node_get_blur_info(node, &data->blur_info);
+        ky_scene_node_get_radius(node, data->thumbnail_radius);
+
+        data->node = node;
+        data->node_destroy.notify = handle_node_destroy;
+        wl_signal_add(&node->events.destroy, &data->node_destroy);
     }
 
     data->thumbnail_update.notify = handle_thumbnail_update;
@@ -425,12 +493,32 @@ bool node_add_fade_effect(struct ky_scene_node *node, struct fade_options *optio
         entity = ky_scene_node_find_effect_entity(entity_node, fade->effect);
         if (entity) {
             fade_data = entity->user_data;
-            struct animation_data current = fade_data->current;
+            struct fade_effect_data *new_data =
+                node_add_fade_out_effect(options, node, &fade_data->current);
+            if (!new_data) {
+                return false;
+            }
+
+            new_data->need_blur = fade_data->need_blur;
+            new_data->node_offset_x = fade_data->node_offset_x;
+            new_data->node_offset_y = fade_data->node_offset_y;
+            memcpy(new_data->thumbnail_radius, fade_data->thumbnail_radius,
+                   sizeof(new_data->thumbnail_radius));
+
+            pixman_region32_init(&new_data->blur_info.region);
+            pixman_region32_copy(&new_data->blur_info.region, &fade_data->blur_info.region);
+            new_data->blur_info.iterations = fade_data->blur_info.iterations;
+            new_data->blur_info.offset = fade_data->blur_info.offset;
 
             effect_entity_destroy(entity);
-            return node_add_fade_out_effect(options, node, &current);
+            return true;
         }
-        return node_add_fade_out_effect(options, node, NULL);
+
+        if (node_add_fade_out_effect(options, node, NULL)) {
+            return true;
+        }
+
+        return false;
     }
 
     fade_data = fade_data_create(options, node);

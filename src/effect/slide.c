@@ -13,7 +13,7 @@
 #include "effect/slide.h"
 #include "effect_p.h"
 #include "output.h"
-#include "render/pass.h"
+#include "render/opengl.h"
 #include "render/renderer.h"
 #include "scene/surface.h"
 #include "scene/thumbnail.h"
@@ -31,12 +31,17 @@ struct slide_data {
     int64_t start_time;
     int duration;
 
+    bool need_blur;
+    struct blur_info blur_info;
+
     struct kywc_box start_geometry;
     struct kywc_box end_geometry;
 
     struct animator *animator;
     struct animation_data current;
 
+    int thumbnail_radius[4];
+    int node_offset_x, node_offset_y;
     struct thumbnail *node_thumbnail;
     struct wlr_buffer *thumbnail_buffer;
     struct wlr_texture *thumbnail_texture;
@@ -49,12 +54,12 @@ struct slide_data {
 
 struct slide_effect {
     struct effect *effect;
-
-    int duration;
     struct ky_scene *scene;
     struct wlr_renderer *renderer;
 
+    int duration;
     struct wl_listener destroy;
+    bool is_opengl_renderer;
 };
 
 struct slide_effect *slide_effect = NULL;
@@ -129,6 +134,16 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
     slide_data->thumbnail_buffer = event->buffer;
     slide_data->thumbnail_texture = wlr_texture_from_buffer(slide_effect->renderer, event->buffer);
+
+    if (!slide_data->node) {
+        return;
+    }
+
+    if (slide_data->need_blur &&
+        !thumbnail_get_node_offset(slide_data->node_thumbnail, slide_data->node,
+                                   &slide_data->node_offset_x, &slide_data->node_offset_y)) {
+        kywc_log(KYWC_INFO, "when slide thumbnail update, thumbnail get node offset failed.");
+    }
 }
 
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -140,13 +155,13 @@ static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
     slide_data->node_thumbnail = NULL;
 }
 
-static void slide_get_src_box(struct slide_data *data, struct wlr_fbox *src_fbox)
+static void slide_get_src_box(struct slide_data *data, struct kywc_fbox *src_fbox)
 {
     src_fbox->x = 0, src_fbox->y = 0;
     src_fbox->width = data->thumbnail_texture->width;
     src_fbox->height = data->thumbnail_texture->height;
 
-    /* thumbnail no scale*/
+    /* thumbnail no scale */
     switch (data->slide.location) {
     case SLIDE_LOCATION_LEFT:
         src_fbox->x = src_fbox->width - data->current.geometry.width;
@@ -188,6 +203,7 @@ static void slide_data_destroy(struct slide_data *data)
         animator_destroy(data->animator);
     }
 
+    pixman_region32_fini(&data->blur_info.region);
     wl_list_remove(&data->node_destroy.link);
     free(data);
 }
@@ -229,6 +245,11 @@ static bool slide_node_push_damage(struct effect_entity *entity, struct ky_scene
     struct kywc_box box;
     slide_entity_bounding_box(entity, &box);
     pixman_region32_union_rect(damage, damage, box.x, box.y, box.width, box.height);
+
+    struct slide_data *data = entity->user_data;
+    if (data->node && data->need_blur) {
+        ky_scene_node_get_blur_info(data->node, &data->blur_info);
+    }
     return true;
 }
 
@@ -251,35 +272,28 @@ static bool slide_node_render(struct effect_entity *entity, int lx, int ly,
         return false;
     }
 
-    struct wlr_fbox src_box;
+    struct kywc_fbox src_box;
     slide_get_src_box(data, &src_box);
 
-    struct wlr_box dst_box = {
-        .x = geometry.x - target->logical.x,
-        .y = geometry.y - target->logical.y,
-        .width = geometry.width,
-        .height = geometry.height,
-    };
-    ky_scene_render_box(&dst_box, target);
+    /* if data need blur is false, blur region is empty */
+    bool has_blur = pixman_region32_not_empty(&data->blur_info.region);
 
-    pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
-    ky_scene_render_region(&render_region, target);
-
-    struct ky_render_texture_options options = {
-        .base = {
-            .texture = data->thumbnail_texture,
-            .src_box = src_box,
-            .dst_box = dst_box,
+    const struct ky_scene_render_texture_options opts = {
+        .texture = data->thumbnail_texture,
+        .geometry_box = &geometry,
+        .alpha = &current->alpha,
+        .src = &src_box,
+        .blur = {
             .alpha = &current->alpha,
-            .transform = target->transform,
-            .clip = &render_region,
-            .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
-        },
-        .rotation_angle = current->angle,
-    };
-    ky_render_pass_add_texture(target->render_pass, &options);
+            .info = has_blur ? &data->blur_info : NULL,
+            .offset_x = data->node_offset_x,
+            .offset_y = data->node_offset_y,
+            .radius = &data->thumbnail_radius,
+        }
 
-    pixman_region32_fini(&render_region);
+    };
+    ky_scene_render_target_add_texture(target, &opts);
+
     return false;
 }
 
@@ -374,6 +388,7 @@ bool slide_effect_create(struct effect_manager *manager)
         return false;
     }
 
+    slide_effect->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
     slide_effect->effect = effect_create("slide", 5, enabled, &slide_effect_impl);
     if (!slide_effect->effect) {
@@ -406,6 +421,13 @@ static struct slide_data *slide_data_create(struct ky_scene_node *node, const st
     data->slide_out = slide_out;
     data->start_time = current_time_msec();
     data->duration = slide_effect->duration; // ms
+
+    pixman_region32_init(&data->blur_info.region);
+    data->need_blur = slide_effect->is_opengl_renderer;
+    if (data->need_blur) {
+        ky_scene_node_get_blur_info(data->node, &data->blur_info);
+        ky_scene_node_get_radius(data->node, data->thumbnail_radius);
+    }
 
     data->node_thumbnail = thumbnail_create_from_node(node, 1.0f);
     if (!data->node_thumbnail) {
@@ -517,6 +539,18 @@ static void slide_data_handle_node_destroy(struct wl_listener *listener, void *d
     new_data->slide_out = slide_data->slide_out;
     new_data->start_time = slide_data->start_time;
     new_data->duration = slide_data->duration; // ms
+
+    new_data->need_blur = slide_data->need_blur;
+    new_data->node_offset_x = slide_data->node_offset_x;
+    new_data->node_offset_y = slide_data->node_offset_y;
+
+    memcpy(new_data->thumbnail_radius, slide_data->thumbnail_radius,
+           sizeof(new_data->thumbnail_radius));
+
+    pixman_region32_init(&new_data->blur_info.region);
+    pixman_region32_copy(&new_data->blur_info.region, &slide_data->blur_info.region);
+    new_data->blur_info.iterations = slide_data->blur_info.iterations;
+    new_data->blur_info.offset = slide_data->blur_info.offset;
 
     new_data->thumbnail_texture = slide_data->thumbnail_texture;
     new_data->thumbnail_buffer = slide_data->thumbnail_buffer;

@@ -7,10 +7,13 @@
 
 #include <wlr/render/wlr_texture.h>
 
+#include <kywc/log.h>
+
 #include "effect/animator.h"
 #include "effect/scale.h"
 #include "effect_p.h"
 #include "output.h"
+#include "render/opengl.h"
 #include "render/renderer.h"
 #include "scene/surface.h"
 #include "scene/thumbnail.h"
@@ -25,6 +28,9 @@ struct scale_effect_data {
     struct animator *animator;
     struct animation_data current;
 
+    bool need_blur;
+    struct blur_info blur_info;
+
     struct kywc_box start_geometry;
     struct kywc_box end_geometry;
     struct kywc_box render_box;
@@ -36,10 +42,14 @@ struct scale_effect_data {
     int duration;
 
     struct ky_scene_node *node;
+    struct wl_listener node_destroy;
+
     struct view *view;
     struct wl_listener view_size;
     struct wl_listener view_position;
 
+    int thumbnail_radius[4];
+    int node_offset_x, node_offset_y;
     struct thumbnail *thumbnail;
     struct wlr_texture *thumbnail_texture;
     struct wl_listener thumbnail_update;
@@ -48,9 +58,10 @@ struct scale_effect_data {
 
 struct scale_effect {
     struct effect *effect;
-    struct wl_listener destroy;
-
     struct effect_manager *manager;
+
+    struct wl_listener destroy;
+    bool is_opengl_renderer;
 };
 
 static struct scale_effect *scale = NULL;
@@ -150,6 +161,9 @@ static void scale_calc_render_box(struct scale_effect_data *data, struct padding
 static void scale_entity_destroy(struct effect_entity *entity)
 {
     struct scale_effect_data *data = entity->user_data;
+    if (data->node) {
+        wl_list_remove(&data->node_destroy.link);
+    }
     if (data->thumbnail) {
         wl_list_remove(&data->thumbnail_update.link);
         wl_list_remove(&data->thumbnail_destroy.link);
@@ -170,6 +184,8 @@ static void scale_entity_destroy(struct effect_entity *entity)
                             : ky_scene_node_lower_to_bottom(&view->tree->node);
     }
 
+    pixman_region32_fini(&data->blur_info.region);
+
     wl_list_remove(&data->view_position.link);
     wl_list_remove(&data->view_size.link);
     free(data);
@@ -183,11 +199,22 @@ static bool scale_node_render(struct effect_entity *entity, int lx, int ly,
         return false;
     }
 
-    struct padding shadow = { 0 };
-    scale_calc_shadow(&data->view->base, &shadow);
-    scale_calc_render_box(data, &shadow);
-    data->current.geometry = data->render_box;
-    animator_render_texture(&data->current, target, data->thumbnail_texture);
+    /* if data need blur is false, blur region is empty */
+    bool has_blur = pixman_region32_not_empty(&data->blur_info.region);
+
+    const struct ky_scene_render_texture_options opts = {
+        .texture = data->thumbnail_texture,
+        .geometry_box = &data->render_box,
+        .alpha = &data->current.alpha,
+        .blur ={
+            .alpha = &data->current.alpha,
+            .info = has_blur ? &data->blur_info : NULL,
+            .offset_x = data->node_offset_x,
+            .offset_y = data->node_offset_y,
+            .radius = &data->thumbnail_radius,
+        },
+    };
+    ky_scene_render_target_add_texture(target, &opts);
 
     return false;
 }
@@ -234,6 +261,11 @@ static bool scale_node_push_damage(struct effect_entity *entity, struct ky_scene
     struct kywc_box box;
     scale_entity_bouding_box(entity, &box);
     pixman_region32_union_rect(damage, damage, box.x, box.y, box.width, box.height);
+
+    struct scale_effect_data *data = entity->user_data;
+    if (data->node && data->need_blur) {
+        ky_scene_node_get_blur_info(data->node, &data->blur_info);
+    }
     return false;
 }
 
@@ -266,6 +298,16 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
     scale_data->thumbnail_texture =
         wlr_texture_from_buffer(scale->manager->server->renderer, event->buffer);
+
+    if (!scale_data->node) {
+        return;
+    }
+
+    if (scale_data->need_blur &&
+        !thumbnail_get_node_offset(scale_data->thumbnail, scale_data->node, &scale_data->node_offset_x,
+                                   &scale_data->node_offset_y)) {
+        kywc_log(KYWC_INFO, "when scale thumbnail update, thumbnail get node offset failed.");
+    }
 }
 
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
@@ -298,6 +340,13 @@ static void scale_effect_data_set_animator(struct scale_effect_data *data)
     animator_set_alpha(data->animator, data->end_alpha);
 }
 
+static void handle_node_destroy(struct wl_listener *listener, void *data)
+{
+    struct scale_effect_data *scale_data = wl_container_of(listener, scale_data, node_destroy);
+    wl_list_remove(&scale_data->node_destroy.link);
+    scale_data->node = NULL;
+}
+
 static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct view *view,
                                    enum scale_action action)
 {
@@ -305,6 +354,15 @@ static bool scale_effect_data_init(struct scale_effect_data *scale_data, struct 
     scale_data->node = &view->tree->node;
     scale_data->action = action;
     scale_init_alpha_and_geometry(scale_data);
+
+    pixman_region32_init(&scale_data->blur_info.region);
+    scale_data->need_blur = scale->is_opengl_renderer;
+    if (scale_data->need_blur) {
+        ky_scene_node_get_blur_info(scale_data->node, &scale_data->blur_info);
+        ky_scene_node_get_radius(scale_data->node, scale_data->thumbnail_radius);
+    }
+    scale_data->node_destroy.notify = handle_node_destroy;
+    wl_signal_add(&scale_data->node->events.destroy, &scale_data->node_destroy);
 
     if (action == SCALE_MAXIMIZE) {
         scale_data->duration = view->base.maximized ? 300 : 260;
@@ -367,7 +425,12 @@ static bool scale_frame_render_pre(struct effect_entity *entity,
     const struct animation_data *animation_data =
         animator_value(data->animator, current_time_msec());
     data->current = *animation_data;
-    ky_scene_node_push_damage(data->node, KY_SCENE_DAMAGE_BOTH, NULL);
+
+    struct padding shadow = { 0 };
+    scale_calc_shadow(&data->view->base, &shadow);
+    scale_calc_render_box(data, &shadow);
+    data->current.geometry = data->render_box;
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
 
     return true;
 }
@@ -375,8 +438,7 @@ static bool scale_frame_render_pre(struct effect_entity *entity,
 static bool scale_frame_render_post(struct effect_entity *entity,
                                     struct ky_scene_render_target *target)
 {
-    struct scale_effect_data *data = entity->user_data;
-    ky_scene_node_push_damage(data->node, KY_SCENE_DAMAGE_BOTH, NULL);
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
@@ -408,6 +470,7 @@ bool scale_effect_create(struct effect_manager *manager)
         return false;
     }
 
+    scale->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
     scale->effect = effect_create("scale", 2, enabled, &scale_effect_impl);
     if (!scale->effect) {
