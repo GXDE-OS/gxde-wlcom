@@ -9,6 +9,12 @@
 #include "scene/decoration.h"
 #include "widget.h"
 
+enum item_type {
+    ITEM_TYPE_NORMAL = 0,
+    ITEM_TYPE_FLIP_UP,
+    ITEM_TYPE_FLIP_DOWN,
+};
+
 struct menu_item {
     struct ky_scene_tree *tree;
     struct wl_listener destroy; // tree node destroy
@@ -21,8 +27,9 @@ struct menu_item {
     char *text;
     char *shortcut;
     bool first, last, checked, separator;
-    bool enabled, redraw, actived;
+    bool enabled, redraw, actived, shown;
 
+    enum item_type item_type;
     uint32_t key; // shortcut key
 
     bool (*action)(struct menu_item *item, uint32_t key, void *data);
@@ -39,13 +46,25 @@ struct menu {
     struct wl_list items;
     struct menu_item *parent; // NULL if root-menu
     struct menu_item *hovered;
-    struct menu *root; // root menu
+    /**
+     * used when the menu exceeds the output
+     * not included in the number of item
+     */
+    struct menu_item *flip_up, *flip_down;
+    struct menu_item *clip_item;
 
+    struct menu *root; // root menu
+    struct output *output;
+
+    struct wl_listener output_disable;
     /* redraw menu and items */
     struct wl_listener theme_update;
 
+    int shown_start, shown_item, item_count;
+    int clip_item_height;
+
     int width, height, item_height;
-    bool enabled, redraw, fade_enabled;
+    bool enabled, redraw, fade_enabled, exceed_output;
 
     void *data;
 

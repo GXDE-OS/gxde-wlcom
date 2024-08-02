@@ -21,6 +21,7 @@
 #include "widget/menu.h"
 
 #define SUB_MENU_GAP (2)
+#define MENU_FLIP_HEIGHT (12)
 
 static void menu_draw_item(struct menu_item *item, bool force)
 {
@@ -33,11 +34,11 @@ static void menu_draw_item(struct menu_item *item, bool force)
     uint32_t border_mask = BORDER_MASK_LEFT | BORDER_MASK_RIGHT;
     uint32_t corner_mask = CORNER_MASK_NONE;
 
-    if (item->first) {
+    if (item->first || item->item_type == ITEM_TYPE_FLIP_UP) {
         border_mask |= BORDER_MASK_TOP;
         corner_mask |= CORNER_MASK_TOP_LEFT | CORNER_MASK_TOP_RIGHT;
     }
-    if (item->last) {
+    if (item->last || item->item_type == ITEM_TYPE_FLIP_DOWN) {
         border_mask |= BORDER_MASK_BOTTOM;
         corner_mask |= CORNER_MASK_BOTTOM_LEFT | CORNER_MASK_BOTTOM_RIGHT;
     }
@@ -51,12 +52,17 @@ static void menu_draw_item(struct menu_item *item, bool force)
     text_attr |= item->shortcut ? TEXT_ATTR_SHORTCUT : TEXT_ATTR_NONE;
 
     widget_set_layout(item->content, theme->layout_is_right_to_left);
-    widget_set_text(item->content, item->text,
-                    theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
-
+    if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
+        widget_set_text(item->content, item->text, TEXT_ALIGN_CENTER, text_attr);
+        widget_set_size(item->content, item->menu->width, MENU_FLIP_HEIGHT);
+    } else {
+        widget_set_text(item->content, item->text,
+                        theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
+        widget_set_size(item->content, item->menu->width, item->menu->item_height);
+        widget_set_hovered_color(item->content, theme->accent_color);
+    }
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
-    widget_set_size(item->content, item->menu->width, item->menu->item_height);
 
     float *backgrond_color = item->actived ? theme->active_bg_color : theme->inactive_bg_color;
     float *front_color = item->actived ? theme->active_text_color : theme->inactive_text_color;
@@ -64,12 +70,100 @@ static void menu_draw_item(struct menu_item *item, bool force)
                                (float[4]){ backgrond_color[0], backgrond_color[1],
                                            backgrond_color[2], theme->opacity / 100.0 });
     widget_set_front_color(item->content, front_color);
-    widget_set_hovered_color(item->content, theme->accent_color);
-
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
     widget_set_round_corner(item->content, corner_mask, theme->corner_radius);
 
     widget_update(item->content, true);
+}
+
+static void menu_set_clip_item(struct menu *menu, struct menu_item *item)
+{
+    if (!menu || !item || !menu->clip_item_height) {
+        return;
+    }
+
+    struct ky_scene_node *node = NULL;
+    int height = menu->clip_item_height;
+    bool is_bottom = menu->shown_start + menu->shown_item == menu->item_count;
+    if (is_bottom || !menu->shown_start) {
+        height += MENU_FLIP_HEIGHT;
+    }
+
+    if (menu->clip_item) {
+        node = ky_scene_node_from_widget(menu->clip_item->content);
+        pixman_region32_clear(&node->clip_region);
+        pixman_region32_clear(&node->input_region);
+    }
+
+    pixman_region32_t region;
+    pixman_region32_init_rect(&region, 0, is_bottom ? menu->item_height - height : 0, menu->width,
+                              height);
+    node = ky_scene_node_from_widget(item->content);
+    ky_scene_node_set_clip_region(node, &region);
+    ky_scene_node_set_input_region(node, &region);
+    pixman_region32_fini(&region);
+
+    menu->clip_item = item;
+}
+
+static void menu_not_exceed_output(struct menu *menu)
+{
+    if (menu->flip_up) {
+        menu->flip_up->shown = false;
+    }
+    if (menu->flip_down) {
+        menu->flip_down->shown = false;
+    }
+    if (menu->clip_item) {
+        struct ky_scene_node *node = ky_scene_node_from_widget(menu->clip_item->content);
+        pixman_region32_clear(&node->clip_region);
+        pixman_region32_clear(&node->input_region);
+        menu->clip_item = NULL;
+    }
+    menu->exceed_output = false;
+    ky_scene_decoration_set_window_size(menu->deco, menu->width, menu->height);
+}
+
+static void menu_exceed_output(struct menu *menu, int output_height)
+{
+    if (!menu->flip_up) {
+        menu->flip_up = menu_add_item(menu, "▴", 0, NULL, menu);
+        menu->flip_up->item_type = ITEM_TYPE_FLIP_UP;
+        widget_set_enabled(menu->flip_up->content, true);
+        menu_draw_item(menu->flip_up, true);
+    }
+    if (!menu->flip_down) {
+        menu->flip_down = menu_add_item(menu, "▾", 0, NULL, menu);
+        menu->flip_down->item_type = ITEM_TYPE_FLIP_DOWN;
+        widget_set_enabled(menu->flip_down->content, true);
+        menu_draw_item(menu->flip_down, true);
+    }
+    menu->exceed_output = true;
+    ky_scene_node_set_position(&menu->flip_up->tree->node, 0, 0);
+    ky_scene_node_set_position(&menu->flip_down->tree->node, 0, output_height - MENU_FLIP_HEIGHT);
+    ky_scene_decoration_set_window_size(menu->deco, menu->width, output_height);
+}
+
+static void menu_adjust_exceed_output(struct menu *menu)
+{
+    struct output *output = menu->root->output;
+    if (!output) {
+        return;
+    }
+
+    int output_height = output->geometry.height;
+    menu->clip_item_height = (output_height - 2 * MENU_FLIP_HEIGHT) % menu->item_height;
+    menu->shown_item = (output_height - 2 * MENU_FLIP_HEIGHT) / menu->item_height +
+                       (menu->clip_item_height ? 1 : 0);
+    if (menu->shown_item > menu->item_count) {
+        menu->shown_item = menu->item_count;
+    }
+
+    if (menu->height < output_height) {
+        menu_not_exceed_output(menu);
+    } else if (menu->height > output_height) {
+        menu_exceed_output(menu, output_height);
+    }
 }
 
 static void menu_render_items(struct menu *menu, bool force)
@@ -86,6 +180,9 @@ static void menu_render_items(struct menu *menu, bool force)
 
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
+        if (item->item_type != ITEM_TYPE_NORMAL) {
+            continue;
+        }
         painter_text_size(item->text, theme->font_name, theme->font_size, &width, &height);
         if (width > max_width) {
             max_width = width;
@@ -122,16 +219,13 @@ static void menu_render_items(struct menu *menu, bool force)
     }
 
     menu->height = menu->item_height * item_count;
-    ky_scene_decoration_set_window_size(menu->deco, menu->width, menu->height);
+    menu->item_count = item_count;
 
     int index = 0;
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (!item->enabled) {
+        if (!item->enabled || item->item_type != ITEM_TYPE_NORMAL) {
             continue;
         }
-
-        ky_scene_node_set_position(&item->tree->node, 0, index * menu->item_height);
-
         item->first = index == 0;
         item->last = ++index == item_count;
         menu_draw_item(item, force);
@@ -147,25 +241,47 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
     menu->current = NULL;
     menu->hovered = NULL;
     menu->enabled = enabled;
+    menu->shown_start = 0;
     ky_scene_node_set_enabled(&menu->tree->node, enabled);
 
     if (enabled) {
         ky_scene_node_raise_to_top(menu->parent ? &menu->parent->tree->node : &menu->tree->node);
         menu_render_items(menu, false);
+        menu_adjust_exceed_output(menu);
+        if (menu->exceed_output) {
+            menu->flip_up->shown = false;
+            menu->flip_down->shown = true;
+        }
     }
 
+    int index = 0;
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
         if (!item->enabled) {
             continue;
         }
-        ky_scene_node_set_enabled(&item->tree->node, enabled);
+        if (item->item_type != ITEM_TYPE_NORMAL) {
+            ky_scene_node_set_enabled(&item->tree->node, item->shown);
+            continue;
+        }
+
+        item->shown = index >= menu->shown_start && index < menu->shown_start + menu->shown_item;
+        if (item->shown) {
+            ky_scene_node_set_position(&item->tree->node, 0, index * menu->item_height);
+        }
+        ky_scene_node_set_enabled(&item->tree->node, item->shown);
         if (!enabled && item->submenu) {
             menu_set_enabled(item->submenu, false);
         }
+
         widget_set_hovered(item->content, false);
         widget_set_enabled(item->content, enabled);
         widget_update(item->content, true);
+
+        index++;
+        if (menu->exceed_output && index == menu->shown_start + menu->shown_item) {
+            menu_set_clip_item(menu, item);
+        }
     }
 
     if (menu->fade_enabled) {
@@ -191,6 +307,10 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
 
 static void menu_set_position(struct menu *menu, int x, int y)
 {
+    struct output *output = menu->root->output;
+    if (!output) {
+        return;
+    }
     /* use (x, y) when root-menu, otherwise use parent item pos */
     int lx = x, ly = y;
     if (menu->parent) {
@@ -198,8 +318,6 @@ static void menu_set_position(struct menu *menu, int x, int y)
     }
 
     struct theme *theme = theme_manager_get_current();
-    struct kywc_output *kywc_output = kywc_output_at_point(lx, ly);
-    struct output *output = output_from_kywc_output(kywc_output);
     struct kywc_box *geo = &output->geometry;
 
     /* keep menu visible in the output */
@@ -216,13 +334,14 @@ static void menu_set_position(struct menu *menu, int x, int y)
                 x = max_x - menu->width;
             }
         }
-        if (ly + menu->height > max_y) {
+        if (menu->exceed_output) {
+            y = geo->y;
+        } else if (ly + menu->height > max_y) {
             y -= menu->height;
         }
     } else {
         /* default menu position */
         struct menu_item *parent = menu->parent;
-        y = 0;
 
         if (theme->layout_is_right_to_left) {
             x = -menu->width - SUB_MENU_GAP;
@@ -236,7 +355,9 @@ static void menu_set_position(struct menu *menu, int x, int y)
             }
         }
         int off_y = ly + menu->height - max_y;
-        if (off_y > 0) {
+        if (menu->exceed_output) {
+            y = geo->y - ly;
+        } else if (off_y > 0) {
             y -= off_y;
         }
     }
@@ -276,7 +397,7 @@ static struct menu_item *menu_first_item(struct menu *menu)
 {
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (item->enabled) {
+        if (item->enabled && item->item_type == ITEM_TYPE_NORMAL) {
             return item;
         }
     }
@@ -319,12 +440,71 @@ static void submenu_show(struct menu *menu, bool hovered)
     }
 }
 
+static void menu_update_shown_item(struct menu *menu, bool is_upward)
+{
+    if (menu && !menu->exceed_output) {
+        return;
+    }
+    if (is_upward && menu->shown_start > 0) {
+        menu->shown_start--;
+    } else if (!is_upward && menu->shown_start + menu->shown_item < menu->item_count) {
+        menu->shown_start++;
+    } else {
+        return;
+    }
+
+    int position_y = 0;
+    bool is_bottom = menu->shown_start + menu->shown_item == menu->item_count;
+    if (menu->shown_start) {
+        position_y = MENU_FLIP_HEIGHT;
+    }
+    if (is_bottom) {
+        position_y =
+            MENU_FLIP_HEIGHT - (menu->item_height - menu->clip_item_height - MENU_FLIP_HEIGHT);
+    }
+
+    menu->flip_up->shown = menu->shown_start ? true : false;
+    menu->flip_down->shown = is_bottom ? false : true;
+
+    int index = 0;
+    struct menu_item *item, *record_item = NULL;
+    wl_list_for_each_reverse(item, &menu->items, link) {
+        if (!item->enabled) {
+            continue;
+        }
+        if (item->item_type != ITEM_TYPE_NORMAL) {
+            ky_scene_node_set_enabled(&item->tree->node, item->shown);
+            continue;
+        }
+        item->shown = index >= menu->shown_start && index < menu->shown_start + menu->shown_item;
+        if (item->shown) {
+            if (is_bottom && index == menu->shown_start) {
+                record_item = item;
+            }
+            ky_scene_node_set_position(
+                &item->tree->node, 0, (index - menu->shown_start) * menu->item_height + position_y);
+        }
+        ky_scene_node_set_enabled(&item->tree->node, item->shown);
+
+        index++;
+        if (index == menu->shown_start + menu->shown_item && !record_item) {
+            record_item = item;
+        }
+    }
+    menu_set_clip_item(menu, record_item);
+}
+
 static bool menu_item_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
                             uint32_t time, bool first, bool hold, void *data)
 {
     struct menu_item *item = data;
 
     if (!item->actived) {
+        return false;
+    }
+
+    if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
+        menu_update_shown_item(item->menu, item->item_type == ITEM_TYPE_FLIP_UP ? true : false);
         return false;
     }
 
@@ -357,6 +537,10 @@ static void menu_item_leave(struct seat *seat, struct ky_scene_node *node, bool 
         return;
     }
 
+    if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
+        return;
+    }
+
     if (item->menu->hovered == item) {
         widget_set_hovered(item->content, false);
         widget_update(item->content, true);
@@ -370,6 +554,10 @@ static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint3
     struct menu_item *item = data;
     /* do actions when released */
     if (!item->actived || pressed) {
+        return;
+    }
+
+    if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
         return;
     }
 
@@ -529,6 +717,14 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
 static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
                               double value)
 {
+    struct menu *root = pointer_grab->data;
+    static uint32_t last_time = 0;
+    if (time - last_time < 100) {
+        return false;
+    }
+    last_time = time;
+
+    menu_update_shown_item(root->current, value < 0);
     return true;
 }
 
@@ -700,6 +896,7 @@ struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t ke
     item->redraw = true;
     item->enabled = true;
     item->actived = true;
+    item->shown = true;
 
     item->data = data;
     item->text = strdup(text);
@@ -722,6 +919,7 @@ static void menu_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct menu *menu = wl_container_of(listener, menu, destroy);
     wl_list_remove(&menu->destroy.link);
+    wl_list_remove(&menu->output_disable.link);
     wl_list_remove(&menu->theme_update.link);
 
     struct menu_item *item, *tmp;
@@ -731,6 +929,12 @@ static void menu_handle_destroy(struct wl_listener *listener, void *data)
     }
 
     free(menu);
+}
+
+static void menu_handle_output_disable(struct wl_listener *listener, void *data)
+{
+    struct menu *menu = wl_container_of(listener, menu, output_disable);
+    menu_hide_root(menu);
 }
 
 static void menu_update_decoration(struct menu *menu)
@@ -772,6 +976,8 @@ struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_
     ky_scene_node_set_enabled(&menu->tree->node, false);
     menu->destroy.notify = menu_handle_destroy;
     wl_signal_add(&menu->tree->node.events.destroy, &menu->destroy);
+    menu->output_disable.notify = menu_handle_output_disable;
+    wl_list_init(&menu->output_disable.link);
 
     wl_list_init(&menu->items);
     menu->parent = parent_item;
@@ -825,6 +1031,12 @@ void menu_show_root(struct menu *menu, struct seat *seat, int x, int y)
         menu_set_enabled(menu, false);
     }
 
+    struct kywc_output *kywc_output = kywc_output_at_point(x, y);
+    struct output *output = output_from_kywc_output(kywc_output);
+    wl_list_remove(&menu->output_disable.link);
+    wl_signal_add(&output->events.disable, &menu->output_disable);
+    menu->output = output;
+
     menu->seat = seat;
     menu_set_enabled(menu, true);
     menu_set_position(menu, x, y);
@@ -835,4 +1047,8 @@ void menu_hide_root(struct menu *menu)
     assert(menu->parent == NULL);
     menu_set_enabled(menu, false);
     menu->seat = NULL;
+
+    wl_list_remove(&menu->output_disable.link);
+    wl_list_init(&menu->output_disable.link);
+    menu->output = NULL;
 }
