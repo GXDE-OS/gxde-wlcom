@@ -224,6 +224,15 @@ static void handle_blur_manager_get_blur(struct wl_client *client,
         return;
     }
 
+    struct wl_resource *resource =
+        wl_resource_create(client, &ukui_blur_surface_v1_interface, UKUI_BLUR_SURFACE_VERSION, id);
+    if (!resource) {
+        wl_client_post_no_memory(client);
+        free(blur_surface);
+        return;
+    }
+
+    blur_surface->resource = resource;
     wl_list_insert(&manager->ukui_blur_surfaces, &blur_surface->link);
 
     pixman_region32_init(&blur_surface->region);
@@ -239,16 +248,12 @@ static void handle_blur_manager_get_blur(struct wl_client *client,
     blur_surface->node_destroy.notify = blur_surface_handle_node_destroy;
     wl_list_init(&blur_surface->node_destroy.link);
 
-    struct wl_resource *resource =
-        wl_resource_create(client, &ukui_blur_surface_v1_interface, UKUI_BLUR_SURFACE_VERSION, id);
-    if (!resource) {
-        wl_client_post_no_memory(client);
-        return;
-    }
-
     wl_resource_set_implementation(resource, &ukui_blur_surface_impl, blur_surface,
                                    ukui_blur_surface_handle_resource_destroy);
-    blur_surface->resource = resource;
+
+    if (wlr_surface->mapped) {
+        blur_surface_handle_surface_map(&blur_surface->surface_map, NULL);
+    }
 }
 
 static void handle_blur_manager_destroy(struct wl_client *client, struct wl_resource *resource)
