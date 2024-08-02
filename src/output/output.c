@@ -312,7 +312,6 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         pending.refresh = mode->refresh;
     }
 
-    output->modeset = false;
     if (output_manager_get_fallback() != kywc_output) {
         if (!output_manager->has_layout_manager) {
             output_manager_add_output_pending_state(output, &pending);
@@ -343,7 +342,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         kywc_output_set_primary(kywc_output);
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
     }
-    output->modeset = true;
+    output->initialized = true;
 
     output_lock_software_cursors(output);
 
@@ -765,7 +764,7 @@ bool output_manager_configure_outputs(void)
             continue;
         }
 
-        if (output->modeset) {
+        if (output->initialized) {
             continue;
         }
 
@@ -1128,7 +1127,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     struct wlr_output *wlr_output = output->wlr_output;
     struct server *server = output_manager->server;
 
-    bool changed = !output->modeset || output_compare_state(output, state);
+    bool changed = !output->initialized || output_compare_state(output, state);
     bool enabled = state->enabled && state->power;
 
     if (changed) {
@@ -1157,7 +1156,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
             } else if (output->wlr_output->enabled && wlr_output_is_drm(wlr_output) &&
                        output->wlr_output->width == state->width &&
                        output->wlr_output->height == state->height && output->scene_commit &&
-                       output->modeset) {
+                       output->initialized) {
                 output->pending_state = *state;
                 output->has_pending = true;
                 kywc_log(KYWC_WARN, "drm output commit need waitting for pageflip");
@@ -1373,18 +1372,22 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
         output_manager_sort_outputs();
     }
 
+    output_write_config(output);
+
+    /* early return when not initialized as new_output and new_enabled_output not emitted */
+    if (!output->initialized) {
+        return true;
+    }
+
     /* check state changes */
     if (current->enabled != old.enabled) {
         if (!current->enabled) {
             wl_signal_emit_mutable(&kywc_output->events.off, NULL);
             wl_signal_emit_mutable(&output->events.disable, NULL);
-            output_write_config(output);
             return true;
         } else {
             wl_signal_emit_mutable(&kywc_output->events.on, NULL);
-            if (output->modeset) {
-                wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
-            }
+            wl_signal_emit_mutable(&output_manager->events.new_enabled_output, kywc_output);
         }
     }
 
@@ -1430,8 +1433,6 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     if (current->lx != old.lx || current->ly != old.ly) {
         wl_signal_emit_mutable(&kywc_output->events.position, NULL);
     }
-
-    output_write_config(output);
 
     return true;
 }
