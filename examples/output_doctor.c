@@ -718,6 +718,7 @@ static void registry_handle_global_remove(void *data, struct wl_registry *regist
     wl_list_for_each_safe(output, output_tmp, &output_manager->outputs, link) {
         if (output->global_name == name) {
             output_destroy(output);
+            return;
         }
     }
 }

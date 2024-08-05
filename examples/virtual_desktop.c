@@ -203,7 +203,7 @@ static const struct option long_options[] = {
 };
 
 static const char usage[] = "usage: virtual-desktop [option]\n\n"
-                            " --help             Show help message and quit.\n"
+                            " --help             Show help message and quit\n"
                             " --monitor          Enter monitor mode\n"
                             " --create <name>    Create virtual desktop with name\n"
                             " --desktop <id>     control virtual desktop with unique id\n"
@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
             has_request = true;
         } else if (strcmp(name, "monitor") == 0) {
             monitor = true;
-        } else { // output sub-option
+        } else { // desktop sub-option
             if (current_desktop == NULL) {
                 fprintf(stderr, "no --desktop specified before --%s\n", name);
                 goto done;
