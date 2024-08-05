@@ -234,6 +234,17 @@ static void output_uuid_generate(struct kywc_output *kywc_output)
     kywc_output->uuid = kywc_identifier_md5_generate_uuid((void *)description, strlen(description));
 }
 
+static bool output_manager_have_enabled_outputs(void)
+{
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->base.state.enabled) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static struct output *output_create(const char *name, struct wlr_output *wlr_output)
 {
     struct output *output = calloc(1, sizeof(struct output));
@@ -337,7 +348,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         output_manager_configure_outputs();
     }
 
-    if (kywc_output == output_manager->fallback_output && wl_list_empty(&output_manager->outputs)) {
+    if (kywc_output == output_manager->fallback_output && !output_manager_have_enabled_outputs()) {
         fallback_output_set_state(kywc_output, true);
         kywc_output_set_primary(kywc_output);
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
@@ -498,7 +509,7 @@ static void output_destroy(struct output *output)
     output_manager_configure_outputs();
 
     if (!output_manager->server->terminate && output_manager->fallback_output &&
-        wl_list_empty(&output_manager->outputs)) {
+        !output_manager_have_enabled_outputs()) {
         fallback_output_set_state(output_manager->fallback_output, true);
         kywc_output_set_primary(output_manager->fallback_output);
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
