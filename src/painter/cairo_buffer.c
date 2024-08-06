@@ -57,8 +57,8 @@ struct cairo_buffer *cairo_buffer_create(uint32_t width, uint32_t height, float 
         return NULL;
     }
 
-    int scaled_width = width * scale;
-    int scaled_height = height * scale;
+    int scaled_width = ceil(width * scale);
+    int scaled_height = ceil(height * scale);
     wlr_buffer_init(&buffer->base, &cairo_buffer_impl, scaled_width, scaled_height);
 
     buffer->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, scaled_width, scaled_height);
