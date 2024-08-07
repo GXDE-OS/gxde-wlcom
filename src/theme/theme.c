@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -692,30 +692,15 @@ static struct icon *theme_icon_find(const char *app_id)
         goto fallback;
     }
 
-    /* find icon_name from desktop file (equal app_id) */
     struct desktop_info *desktop_info;
     wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
         if (strcasecmp(desktop_info->app_id, app_id) == 0) {
             icon_name = desktop_info->icon_name;
-            if (icon_name) {
-                break;
-            }
-        }
-    }
-    /* find icon_name from desktop file (contain app_id) */
-    if (!icon_name) {
-        wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
-            if (strcasestr(desktop_info->app_id, app_id)) {
-                icon_name = desktop_info->icon_name;
-                if (icon_name) {
-                    break;
-                }
-            }
         }
     }
 
-    /* get icon from icon_name */
     if (icon_name) {
+        /* get icon from icon_name */
         icon = icon_theme_get_icon(theme, icon_name, true);
         if (!icon && theme != manager->hicolor_theme) {
             icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
