@@ -682,63 +682,78 @@ static struct icon *get_icon_from_specific_path(const char *path)
     return icon;
 }
 
-static struct icon *theme_icon_find(const char *app_id)
+static struct icon *theme_icon_find(struct icon_theme *theme, const char *icon_name)
 {
-    struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
-    struct icon *icon = NULL;
-    char *icon_name = NULL;
-
-    if (!theme || !app_id) {
-        goto fallback;
+    if (!icon_name) {
+        return NULL;
     }
 
-    struct desktop_info *desktop_info;
-    wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
-        if (strcasecmp(desktop_info->app_id, app_id) == 0) {
-            icon_name = desktop_info->icon_name;
-        }
+    struct icon *icon = icon_theme_get_icon(theme, icon_name, true);
+    if (!icon && theme != manager->hicolor_theme) {
+        icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
     }
-
-    if (icon_name) {
-        /* get icon from icon_name */
-        icon = icon_theme_get_icon(theme, icon_name, true);
-        if (!icon && theme != manager->hicolor_theme) {
-            icon = icon_theme_get_icon(manager->hicolor_theme, icon_name, true);
-        }
-        if (!icon) {
-            struct icon *icon_tmp;
-            wl_list_for_each(icon_tmp, &manager->pixmaps_icons, link) {
-                if (strcmp(icon_name, icon_tmp->name) == 0) {
-                    icon = icon_tmp;
-                    break;
-                }
-            }
-        }
-    }
-
-    /* get icon from app_id */
     if (!icon) {
-        icon = icon_theme_get_icon(theme, app_id, true);
-        if (!icon && theme != manager->hicolor_theme) {
-            icon = icon_theme_get_icon(manager->hicolor_theme, app_id, true);
-        }
-        if (!icon) {
-            struct icon *icon_tmp;
-            wl_list_for_each(icon_tmp, &manager->pixmaps_icons, link) {
-                if (strcmp(app_id, icon_tmp->name) == 0) {
-                    icon = icon_tmp;
-                    break;
-                }
+        struct icon *icon_tmp;
+        wl_list_for_each(icon_tmp, &manager->pixmaps_icons, link) {
+            if (strcmp(icon_name, icon_tmp->name) == 0) {
+                icon = icon_tmp;
+                break;
             }
         }
     }
 
     /* if icon_name is specific path */
-    if (!icon && icon_name) {
+    if (!icon) {
         icon = get_icon_from_specific_path(icon_name);
     }
 
-fallback:
+    return icon;
+}
+
+static struct icon *theme_icon_from_app_id(const char *app_id)
+{
+    struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
+    struct icon *icon = NULL;
+    struct desktop_info *desktop_appid = NULL, *desktop_exec = NULL;
+
+    if (!theme || !app_id) {
+        return manager->fallback_icon;
+    }
+
+    /* find desktop file from desktop_info->app_id */
+    struct desktop_info *desktop_info;
+    wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
+        if (strcasecmp(desktop_info->app_id, app_id) == 0) {
+            desktop_appid = desktop_info;
+            break;
+        }
+    }
+
+    if (desktop_appid) {
+        icon = theme_icon_find(theme, desktop_appid->icon_name);
+    }
+    if (!icon) {
+        icon = theme_icon_find(theme, app_id);
+    }
+
+    /* fuzzy search desktop file from exec name */
+    if (!icon) {
+        wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
+            if (desktop_info->exec_name && strcasecmp(desktop_info->exec_name, app_id) == 0) {
+                // abandon this search if find multiple results
+                if (desktop_exec) {
+                    desktop_exec = NULL;
+                    break;
+                }
+                desktop_exec = desktop_info;
+            }
+        }
+
+        if (desktop_exec) {
+            icon = theme_icon_find(theme, desktop_exec->icon_name);
+        }
+    }
+
     if (!icon) {
         icon = manager->fallback_icon;
     }
@@ -751,7 +766,7 @@ struct wlr_buffer *theme_icon_load(const char *name, float scale)
     if (!name || !*name) {
         return NULL;
     }
-    struct icon *icon = theme_icon_find(name);
+    struct icon *icon = theme_icon_from_app_id(name);
     if (icon == manager->fallback_icon) {
         return NULL;
     }
@@ -762,6 +777,6 @@ struct wlr_buffer *theme_icon_load(const char *name, float scale)
 
 const char *theme_icon_name(const char *app_id)
 {
-    struct icon *icon = theme_icon_find(app_id);
+    struct icon *icon = theme_icon_from_app_id(app_id);
     return icon->name;
 }

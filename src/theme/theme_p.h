@@ -71,6 +71,7 @@ struct desktop_info {
     struct wl_list link;
     char *app_id;
     char *icon_name;
+    char *exec_name;
 };
 
 struct theme_manager {

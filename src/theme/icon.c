@@ -220,6 +220,34 @@ struct icon *icon_fallback_create(void)
     return icon;
 }
 
+static char *get_exec_name_from_path(const char *path)
+{
+    if (!path || !*path) {
+        return NULL;
+    }
+
+    const char *p = path;
+    while (*p == ' ') {
+        p++;
+    }
+
+    const char *space = strchr(p, ' ');
+    if (!space) {
+        space = p + strlen(p);
+    }
+    size_t end = space - p;
+    size_t first = 0;
+    for (int i = end; i >= 0; i--) {
+        if (p[i] == '/') {
+            first = i + 1;
+            break;
+        }
+    }
+    size_t size = end - first;
+
+    return strndup(&p[first], size);
+}
+
 static void desktop_load(const char *path, const char *name, void *data)
 {
     struct wl_list *desktop_infos = data;
@@ -242,6 +270,14 @@ static void desktop_load(const char *path, const char *name, void *data)
         goto close;
     }
     info->icon_name = fscan_search_keyword(fp, "Icon");
+    if (!info->icon_name || !*info->icon_name) {
+        free(info->app_id);
+        free(info);
+        goto close;
+    }
+    char *exec_path = fscan_search_keyword(fp, "Exec");
+    info->exec_name = get_exec_name_from_path(exec_path);
+    free(exec_path);
 
     wl_list_insert(desktop_infos, &info->link);
 
@@ -292,7 +328,6 @@ static void index_theme_file_load(const char *path, void *data)
         parents_icon_theme_load(result, theme);
         free(result);
     }
-    rewind(fp);
     result = fscan_search_keyword(fp, "Directories");
     if (result) {
         icon_theme_dir_load(result, theme);
@@ -322,9 +357,8 @@ void desktop_infos_destroy(struct wl_list *desktop_infos)
     wl_list_for_each_safe(desktop_info, tmp, desktop_infos, link) {
         wl_list_remove(&desktop_info->link);
         free(desktop_info->app_id);
-        if (desktop_info->icon_name) {
-            free(desktop_info->icon_name);
-        }
+        free(desktop_info->icon_name);
+        free(desktop_info->exec_name);
         free(desktop_info);
     }
 }

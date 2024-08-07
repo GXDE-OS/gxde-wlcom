@@ -176,6 +176,7 @@ char *fscan_search_keyword(FILE *fp, const char *keyword)
         return NULL;
     }
 
+    rewind(fp);
     size_t keyword_size = strlen(keyword);
     while (getline(&line, &line_size, fp) >= 0) {
         if (strncmp(line, keyword, keyword_size)) {
