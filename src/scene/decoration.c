@@ -477,7 +477,7 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
                               &deco->round_corner_region);
     }
 
-    if (pending_cause & DECO_UPDATE_CAUSE_BLURRED) {
+    if (pending_cause & (DECO_UPDATE_CAUSE_WINDOW_SIZE | DECO_UPDATE_CAUSE_BLURRED)) {
         ky_scene_node_set_blur_region(&deco->rect.node,
                                       deco->blurred ? &deco->window_region : NULL);
         pending_cause &= ~DECO_UPDATE_CAUSE_BLURRED;
