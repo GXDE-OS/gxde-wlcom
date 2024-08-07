@@ -14,7 +14,6 @@
 #include "effect/fade.h"
 #include "input/cursor.h"
 #include "input/event.h"
-#include "nls.h"
 #include "output.h"
 #include "painter.h"
 #include "theme.h"
