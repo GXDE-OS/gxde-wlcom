@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <float.h>
 #include <stdlib.h>
 
 #include "decoration_frag.h"
@@ -318,7 +319,8 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     glUniform2f(gl_locations.size, width, height);
     // frag shader param
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
-    glUniform1f(gl_locations.shadow_sigma, shadow_width * 0.424660891f);
+    glUniform1f(gl_locations.shadow_sigma,
+                shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX);
     glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y,
                 window_frame.x + window_frame.width, window_frame.y + window_frame.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
