@@ -11,8 +11,9 @@
 #include "input/gesture.h"
 #include "input_p.h"
 
-#define GESTURE_TIMEOUT (200)
-#define GESTURE_HOLD_TIMEOUT (800)
+#define GESTURE_DEFAULT_TIMEOUT (200)
+#define GESTURE_TOUCHPAD_TIMEOUT (20)
+#define GESTURE_TOUCHSCREEN_HOLD_TIMEOUT (800)
 
 static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 
@@ -119,9 +120,12 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
     state->edge = edge;
 
     if (state->timer) {
-        int timeout = GESTURE_TIMEOUT;
-        if (state->type == GESTURE_TYPE_HOLD && state->device == GESTURE_DEVICE_TOUCHSCREEN) {
-            timeout = GESTURE_HOLD_TIMEOUT;
+        int timeout = GESTURE_DEFAULT_TIMEOUT;
+        if (state->device == GESTURE_DEVICE_TOUCHPAD) {
+            timeout = GESTURE_TOUCHPAD_TIMEOUT;
+        } else if (state->type == GESTURE_TYPE_HOLD &&
+                   state->device == GESTURE_DEVICE_TOUCHSCREEN) {
+            timeout = GESTURE_TOUCHSCREEN_HOLD_TIMEOUT;
         }
         wl_event_source_timer_update(state->timer, timeout);
     }
