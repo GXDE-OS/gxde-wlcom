@@ -112,7 +112,7 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
 #if WLR_HAS_VULKAN_RENDERER
             renderer = wlr_vk_renderer_create_with_drm_fd(drm_fd);
 #else
-            kywc_log(KYWC_ERROR, "Cannot create Vulkan renderer: wlr not compiled with Vulkan");
+            kywc_log(KYWC_ERROR, "Cannot create Vulkan renderer: wlroots not compiled with Vulkan");
 #endif
         } else {
             renderer = ky_opengl_renderer_create_with_drm_fd(drm_fd);
@@ -206,7 +206,7 @@ bool ky_renderer_is_software(struct wlr_renderer *renderer)
         return true;
     }
 
-    /* return true if software opengl or vulkan */
+    /* return true if software opengl */
     if (wlr_renderer_is_opengl(renderer)) {
         struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
         return r->egl->is_software;

@@ -35,7 +35,7 @@ static const char usage[] =
     "\n"
     "  -h, --help               Show help message and quit.\n"
     "  -d, --debug              Enables full logging, including debug information.\n"
-    "  -s, --session <process>  Run session on startup\n"
+    "  -s, --session <process>  Run session on startup.\n"
     "  -v, --version            Show the version number and quit.\n"
     "  -V, --verbose            Enables more verbose logging.\n"
     "\n";
