@@ -49,6 +49,8 @@ struct window_menu {
     struct menu_item *minimize;
     struct menu_item *keep_above;
     struct menu_item *keep_below;
+    struct menu_item *move;
+    struct menu_item *resize;
     struct menu_item *fullscreen;
 
     struct seat *seat;
@@ -277,6 +279,12 @@ static void window_menu_update_view_action(struct window_menu *window_menu)
 {
     struct kywc_view *kywc_view = &window_menu->view->base;
 
+    menu_item_set_actived(window_menu->maximize, view_is_maximizable(window_menu->view));
+    menu_item_set_actived(window_menu->minimize, view_is_minimizable(window_menu->view));
+    menu_item_set_actived(window_menu->move, view_is_movable(window_menu->view));
+    menu_item_set_actived(window_menu->resize, view_is_resizable(window_menu->view));
+    menu_item_set_actived(window_menu->fullscreen, view_is_fullscreenable(window_menu->view));
+
     menu_item_set_checked(window_menu->maximize, kywc_view->maximized);
     menu_item_set_checked(window_menu->minimize, kywc_view->minimized);
     menu_item_set_checked(window_menu->keep_above, kywc_view->kept_above);
@@ -369,8 +377,10 @@ static struct window_menu *window_menu_create(struct seat *seat)
     struct menu_item *more = menu_add_item(window_menu->root, tr("_More"), KEY_M, NULL, NULL);
     window_menu->more = menu_create(NULL, more);
     menu_set_fade_enabled(window_menu->more, true);
-    menu_add_item(window_menu->more, tr("_Move"), KEY_M, window_menu_action, window_menu);
-    menu_add_item(window_menu->more, tr("_Resize"), KEY_R, window_menu_action, window_menu);
+    window_menu->move =
+        menu_add_item(window_menu->more, tr("_Move"), KEY_M, window_menu_action, window_menu);
+    window_menu->resize =
+        menu_add_item(window_menu->more, tr("_Resize"), KEY_R, window_menu_action, window_menu);
     window_menu->keep_above =
         menu_add_item(window_menu->more, tr("Keep-_Above"), KEY_A, window_menu_action, window_menu);
     window_menu->keep_below =
