@@ -717,13 +717,20 @@ static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t t
                               double value)
 {
     struct menu *root = pointer_grab->data;
+    struct input_event_node *inode = input_event_node_from_node(root->seat->cursor->hover.node);
+    struct ky_scene_node *node = input_event_node_root(inode);
+    if (node != &root->tree->node) {
+        return false;
+    }
+
+    struct menu_item *item = inode->data;
     static uint32_t last_time = 0;
     if (time - last_time < 100) {
         return false;
     }
     last_time = time;
 
-    menu_update_shown_item(root->current, value < 0);
+    menu_update_shown_item(item->menu, value < 0);
     return true;
 }
 
