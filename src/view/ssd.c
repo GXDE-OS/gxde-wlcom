@@ -442,8 +442,8 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
     case SSD_FRAME_RECT:
-        if (view_is_resizable(view_from_kywc_view(part->ssd->kywc_view)) &&
-            !part->ssd->kywc_view->maximized) {
+        if (!part->ssd->kywc_view->maximized &&
+            view_is_resizable(view_from_kywc_view(part->ssd->kywc_view))) {
             cursor_set_resize_image(seat->cursor, get_resize_type(part, x, y));
         }
         break;

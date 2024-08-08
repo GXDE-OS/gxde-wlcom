@@ -1121,7 +1121,7 @@ void window_begin_move(struct view *view, struct seat *seat)
 
 void window_begin_resize(struct view *view, uint32_t edges, struct seat *seat)
 {
-    if (!view_is_resizable(view) || view->base.maximized) {
+    if (view->base.maximized || !view_is_resizable(view)) {
         return;
     }
     interactive_grab_add(view, INTERACTIVE_MODE_RESIZE, edges, seat);

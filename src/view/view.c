@@ -1017,7 +1017,7 @@ void view_topmost_activate(struct workspace *workspace)
     /* find topmost enabled(mapped and not minimized) view and activate it */
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
         view = view_proxy->view;
-        if (!view_is_activatable(view) || !view->base.mapped || view->base.minimized) {
+        if (!view->base.mapped || view->base.minimized || !view_is_activatable(view)) {
             continue;
         }
         view_activate(view);
@@ -1129,7 +1129,7 @@ void kywc_view_set_tiled(struct kywc_view *kywc_view, enum kywc_tile tile,
 void kywc_view_set_minimized(struct kywc_view *kywc_view, bool minimized)
 {
     struct view *view = view_from_kywc_view(kywc_view);
-    if (!view_is_minimizable(view) || kywc_view->minimized == minimized) {
+    if (kywc_view->minimized == minimized || !view_is_minimizable(view)) {
         return;
     }
 
@@ -1169,8 +1169,9 @@ void kywc_view_set_maximized(struct kywc_view *kywc_view, bool maximized,
     struct view *view = view_from_kywc_view(kywc_view);
 
     /* tiled to unmaximized after tiled from maximized */
-    if (!view_is_maximizable(view) || (!kywc_view->tiled && kywc_view->maximized == maximized &&
-                                       (!kywc_output || kywc_output == view->output))) {
+    if ((!kywc_view->tiled && kywc_view->maximized == maximized &&
+         (!kywc_output || kywc_output == view->output)) ||
+        !view_is_maximizable(view)) {
         return;
     }
 
@@ -1237,8 +1238,8 @@ void kywc_view_set_fullscreen(struct kywc_view *kywc_view, bool fullscreen,
 {
     struct view *view = view_from_kywc_view(kywc_view);
 
-    if (!view_is_fullscreenable(view) ||
-        (kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output))) {
+    if ((kywc_view->fullscreen == fullscreen && (!kywc_output || kywc_output == view->output)) ||
+        !view_is_fullscreenable(view)) {
         return;
     }
 
@@ -1365,7 +1366,7 @@ bool view_is_minimizable(struct view *view)
     if (!kywc_view->minimizable) {
         return false;
     }
-    if (view_has_modal_property(view) && !view->minimized_when_show_desktop) {
+    if (!view->minimized_when_show_desktop && view_has_modal_property(view)) {
         return false;
     }
 
@@ -1684,7 +1685,7 @@ void view_manager_show_active_only(bool enabled, bool apply)
     struct view_proxy *view_proxy;
     wl_list_for_each_reverse(view_proxy, &workspace->view_proxies, workspace_link) {
         struct view *view = view_proxy->view;
-        if (!view->base.mapped || view_has_modal_property(view) || view == current_view) {
+        if (!view->base.mapped || view == current_view || view_has_modal_property(view)) {
             continue;
         }
 
@@ -1698,7 +1699,7 @@ void view_manager_show_active_only(bool enabled, bool apply)
         }
         /* don't restoring views if the state is breaked */
         if (apply) {
-            if (!view_is_minimizable(view) || view->base.minimized == enabled) {
+            if (view->base.minimized == enabled || !view_is_minimizable(view)) {
                 continue;
             }
 
