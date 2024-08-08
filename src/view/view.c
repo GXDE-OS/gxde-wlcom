@@ -1348,7 +1348,7 @@ static bool view_has_modal_child(struct view *view)
 {
     struct view *child;
     wl_list_for_each(child, &view->children, parent_link) {
-        if (child->base.modal || view_has_modal_child(child)) {
+        if (child->base.mapped && (child->base.modal || view_has_modal_child(child))) {
             return true;
         }
     }
