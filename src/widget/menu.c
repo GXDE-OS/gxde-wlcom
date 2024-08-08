@@ -64,7 +64,7 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
 
-    float *backgrond_color = item->actived ? theme->active_bg_color : theme->inactive_bg_color;
+    float *backgrond_color = theme->active_bg_color;
     float *front_color = item->actived ? theme->active_text_color : theme->inactive_text_color;
     widget_set_backgrond_color(item->content,
                                (float[4]){ backgrond_color[0], backgrond_color[1],
