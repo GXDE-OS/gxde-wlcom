@@ -441,7 +441,7 @@ static void submenu_show(struct menu *menu, bool hovered)
 
 static void menu_update_shown_item(struct menu *menu, bool is_upward)
 {
-    if (menu && !menu->exceed_output) {
+    if (!menu || !menu->exceed_output) {
         return;
     }
     if (is_upward && menu->shown_start > 0) {
