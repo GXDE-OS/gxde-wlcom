@@ -40,7 +40,7 @@
                 "service": "com.ukui.search.service",
                 "path": "\/",
                 "interface": "org.ukui.search.service",
-                "method": "showWindow",
+                "method": "mainWindowSwitch",
                 "desc": "global search"
             },
             "swipe:touchpad:3:down": {
