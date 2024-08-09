@@ -81,6 +81,16 @@ static struct theme dark = {
     .button_svg = base_dark_svg_src,
 };
 
+static void icon_pairs_destroy(void)
+{
+    struct icon_pair *icon_pair, *pair_tmp;
+    wl_list_for_each_safe(icon_pair, pair_tmp, &manager->icon_pairs, link) {
+        wl_list_remove(&icon_pair->link);
+        free(icon_pair->app_id);
+        free(icon_pair);
+    }
+}
+
 static int handle_manager_timer(void *data)
 {
     time_t current_time, threshold;
@@ -100,56 +110,58 @@ static int handle_manager_timer(void *data)
         reload_hicolor_theme_file = icon_need_reload(ICONPATH, hicolor_theme, threshold);
     }
 
-    if (reload_desktop_file || reload_pixmaps_file || reload_current_theme_file ||
-        reload_hicolor_theme_file) {
-        struct wl_list new_desktop_infos, old_desktop_infos, new_pixmaps_icons, old_pixmaps_icons;
-        struct icon_theme *new_icon_theme, *old_icon_theme, *new_hicolor_theme, *old_hicolor_theme;
+    if (!reload_desktop_file && !reload_pixmaps_file && !reload_current_theme_file &&
+        !reload_hicolor_theme_file) {
+        return 0;
+    }
 
-        if (reload_desktop_file) {
-            wl_list_init(&new_desktop_infos);
-            icon_load_desktop(&new_desktop_infos);
-            wl_list_init(&old_desktop_infos);
-            wl_list_insert_list(&old_desktop_infos, &manager->desktop_infos);
-            wl_list_init(&manager->desktop_infos);
-            wl_list_insert_list(&manager->desktop_infos, &new_desktop_infos);
-        }
-        if (reload_pixmaps_file) {
-            wl_list_init(&new_pixmaps_icons);
-            icon_load_pixmaps_path(&new_pixmaps_icons);
-            wl_list_init(&old_pixmaps_icons);
-            wl_list_insert_list(&old_pixmaps_icons, &manager->pixmaps_icons);
-            wl_list_init(&manager->pixmaps_icons);
-            wl_list_insert_list(&manager->pixmaps_icons, &new_pixmaps_icons);
-        }
-        if (reload_current_theme_file) {
-            old_icon_theme = manager->icon_theme;
-            new_icon_theme = icon_theme_load(old_icon_theme->name);
-            manager->icon_theme = new_icon_theme;
-        }
-        if (reload_hicolor_theme_file) {
-            old_hicolor_theme = manager->hicolor_theme;
-            new_hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
-            manager->hicolor_theme = new_hicolor_theme;
-        }
+    struct wl_list new_desktop_infos, old_desktop_infos, new_pixmaps_icons, old_pixmaps_icons;
+    struct icon_theme *new_icon_theme, *old_icon_theme, *new_hicolor_theme, *old_hicolor_theme;
+    if (reload_desktop_file) {
+        wl_list_init(&new_desktop_infos);
+        icon_load_desktop(&new_desktop_infos);
+        wl_list_init(&old_desktop_infos);
+        wl_list_insert_list(&old_desktop_infos, &manager->desktop_infos);
+        wl_list_init(&manager->desktop_infos);
+        wl_list_insert_list(&manager->desktop_infos, &new_desktop_infos);
+    }
+    if (reload_pixmaps_file) {
+        wl_list_init(&new_pixmaps_icons);
+        icon_load_pixmaps_path(&new_pixmaps_icons);
+        wl_list_init(&old_pixmaps_icons);
+        wl_list_insert_list(&old_pixmaps_icons, &manager->pixmaps_icons);
+        wl_list_init(&manager->pixmaps_icons);
+        wl_list_insert_list(&manager->pixmaps_icons, &new_pixmaps_icons);
+    }
+    if (reload_current_theme_file) {
+        old_icon_theme = manager->icon_theme;
+        new_icon_theme = icon_theme_load(old_icon_theme->name);
+        manager->icon_theme = new_icon_theme;
+    }
+    if (reload_hicolor_theme_file) {
+        old_hicolor_theme = manager->hicolor_theme;
+        new_hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
+        manager->hicolor_theme = new_hicolor_theme;
+    }
 
-        struct icon_theme *theme =
-            manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
-        if (theme) {
-            wl_signal_emit_mutable(&manager->events.icon_update, theme);
-        }
+    icon_pairs_destroy();
 
-        if (reload_desktop_file) {
-            desktop_infos_destroy(&old_desktop_infos);
-        }
-        if (reload_pixmaps_file) {
-            pixmaps_icon_destroy(&old_pixmaps_icons);
-        }
-        if (reload_current_theme_file) {
-            icon_theme_destroy(old_icon_theme);
-        }
-        if (reload_hicolor_theme_file) {
-            icon_theme_destroy(old_hicolor_theme);
-        }
+    struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
+    if (theme) {
+        wl_signal_emit_mutable(&manager->events.icon_update, theme);
+    }
+
+    if (reload_desktop_file) {
+        desktop_infos_destroy(&old_desktop_infos);
+    }
+    if (reload_pixmaps_file) {
+        pixmaps_icon_destroy(&old_pixmaps_icons);
+    }
+    if (reload_current_theme_file) {
+        icon_theme_destroy(old_icon_theme);
+    }
+    if (reload_hicolor_theme_file) {
+        icon_theme_destroy(old_hicolor_theme);
     }
 
     wl_event_source_timer_update(manager->timer, 5000);
@@ -289,6 +301,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     icon_theme_destroy(manager->hicolor_theme);
     pixmaps_icon_destroy(&manager->pixmaps_icons);
     icon_destroy(manager->fallback_icon);
+    icon_pairs_destroy();
 
     struct icon *icon, *icon_tmp;
     wl_list_for_each_safe(icon, icon_tmp, &manager->specific_icons, link) {
@@ -341,6 +354,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     /* config support */
     theme_manager_config_init(manager);
 
+    wl_list_init(&manager->icon_pairs);
     /* load all desktop files and get icon name */
     wl_list_init(&manager->desktop_infos);
     icon_load_desktop(&manager->desktop_infos);
@@ -457,6 +471,7 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
         }
     }
 
+    icon_pairs_destroy();
     /* apply the new icon_theme */
     manager->icon_theme = new;
     wl_signal_emit_mutable(&manager->events.icon_update, new);
@@ -710,14 +725,47 @@ static struct icon *theme_icon_find(struct icon_theme *theme, const char *icon_n
     return icon;
 }
 
+static void icon_pair_insert(const char *app_id, struct icon *icon)
+{
+    if (!icon) {
+        return;
+    }
+
+    struct icon_pair *icon_pair = malloc(sizeof(struct icon_pair));
+    if (!icon_pair) {
+        return;
+    }
+
+    wl_list_insert(&manager->icon_pairs, &icon_pair->link);
+    icon_pair->app_id = strdup(app_id);
+    icon_pair->icon = icon;
+}
+
+static struct icon *theme_icon_from_icon_pair(const char *app_id)
+{
+    struct icon_pair *icon_pair;
+    wl_list_for_each(icon_pair, &manager->icon_pairs, link) {
+        if (strcmp(app_id, icon_pair->app_id) == 0) {
+            return icon_pair->icon;
+        }
+    }
+    return NULL;
+}
+
 static struct icon *theme_icon_from_app_id(const char *app_id)
 {
     struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
     struct icon *icon = NULL;
     struct desktop_info *desktop_appid = NULL, *desktop_exec = NULL;
 
-    if (!theme || !app_id) {
+    if (!theme || !app_id || !*app_id) {
         return manager->fallback_icon;
+    }
+
+    /* first find in icon_pair cache */
+    icon = theme_icon_from_icon_pair(app_id);
+    if (icon) {
+        return icon;
     }
 
     /* find desktop file from desktop_info->app_id */
@@ -757,6 +805,7 @@ static struct icon *theme_icon_from_app_id(const char *app_id)
     if (!icon) {
         icon = manager->fallback_icon;
     }
+    icon_pair_insert(app_id, icon);
 
     return icon;
 }

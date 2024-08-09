@@ -49,6 +49,12 @@ struct icon_subdir {
     char *subdir;
 };
 
+struct icon_pair {
+    struct wl_list link;
+    char *app_id;
+    struct icon *icon;
+};
+
 struct icon_theme {
     struct wl_list link;
     struct wl_list parents_theme; // struct icon_theme
@@ -81,6 +87,8 @@ struct theme_manager {
     struct theme_override override;
     struct config *config;
 
+    /* cache of appid icon */
+    struct wl_list icon_pairs; // struct icon_pair.link
     /* desktop infos*/
     struct wl_list desktop_infos; // struct desktop_info
     /* current icon theme */
