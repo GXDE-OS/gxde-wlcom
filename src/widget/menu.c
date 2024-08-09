@@ -396,7 +396,7 @@ static struct menu_item *menu_first_item(struct menu *menu)
 {
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (item->enabled && item->item_type == ITEM_TYPE_NORMAL) {
+        if (item->enabled && item->actived && item->item_type == ITEM_TYPE_NORMAL) {
             return item;
         }
     }
@@ -412,7 +412,9 @@ static struct menu_item *menu_prev_or_next_item(struct menu *menu, struct wl_lis
     }
 
     struct menu_item *item = wl_container_of(node, item, link);
-    return item->enabled ? item : menu_prev_or_next_item(menu, node, next);
+    bool skip = !item->enabled || !item->actived || item->item_type == ITEM_TYPE_FLIP_UP ||
+                item->item_type == ITEM_TYPE_FLIP_DOWN;
+    return skip ? menu_prev_or_next_item(menu, node, next) : item;
 }
 
 static void menu_hover_prev_or_next(struct menu *menu, bool next)
@@ -585,7 +587,7 @@ static bool menu_shortcut(struct menu *menu, uint32_t key)
 {
     struct menu_item *item;
     wl_list_for_each(item, &menu->items, link) {
-        if (!item->enabled || item->key != key) {
+        if (!item->enabled || !item->actived || item->key != key) {
             continue;
         }
         if (menu_item_action(item)) {
