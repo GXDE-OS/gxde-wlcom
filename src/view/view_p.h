@@ -46,6 +46,7 @@ struct view_manager {
 
     bool show_desktop_enabled;
     bool show_activte_only_enabled;
+    bool switcher_shown;
 };
 
 struct view_show_window_menu_event {
@@ -55,6 +56,8 @@ struct view_show_window_menu_event {
 };
 
 bool view_manager_config_init(struct view_manager *view_manager);
+
+void view_manager_set_switcher_shown(bool shown);
 
 bool view_read_config(struct view_manager *view_manager);
 

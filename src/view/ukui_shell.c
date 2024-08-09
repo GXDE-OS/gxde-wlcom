@@ -436,6 +436,12 @@ static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data
 
 static void end_ukui_grab_keyboard(struct ukui_keyboard_grab *ukui_keyboard_grab)
 {
+    struct ukui_surface *surface = ukui_keyboard_grab->keyboard_grab.data;
+    struct kywc_view *kywc_view = &surface->view->base;
+    if (kywc_view->role == KYWC_VIEW_ROLE_SWITCHER) {
+        view_manager_set_switcher_shown(false);
+    }
+
     seat_end_keyboard_grab(ukui_keyboard_grab->keyboard_grab.seat,
                            &ukui_keyboard_grab->keyboard_grab);
     wl_list_remove(&ukui_keyboard_grab->link);
@@ -448,6 +454,10 @@ static void handle_grab_keyboard(struct wl_client *client, struct wl_resource *r
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
     if (!surface->wlr_surface || surface->grab_all_keyboard) {
         return;
+    }
+
+    if (surface->view && surface->view->base.role == KYWC_VIEW_ROLE_SWITCHER) {
+        view_manager_set_switcher_shown(true);
     }
 
     if (wl_seat) {
