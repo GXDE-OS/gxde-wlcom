@@ -44,6 +44,7 @@ struct kde_plasma_window {
     struct wl_listener view_capabilities;
     struct wl_listener view_position;
     struct wl_listener view_size;
+    struct wl_listener view_icon_update;
 
     /* The internal window id and uuid */
     uint32_t id;
@@ -488,7 +489,7 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     // org_kde_plasma_window_send_virtual_desktop_entered
     // org_kde_plasma_window_send_virtual_desktop_left
 
-    const char *icon_name = theme_icon_name(kywc_view->app_id);
+    const char *icon_name = theme_icon_get_name(view->icon);
     if (strcmp(icon_name, "fallback")) {
         org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
     }
@@ -618,6 +619,7 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_capabilities.link);
     wl_list_remove(&window->view_position.link);
     wl_list_remove(&window->view_size.link);
+    wl_list_remove(&window->view_icon_update.link);
     wl_list_remove(&window->link);
 
     struct wl_resource *tmp;
@@ -626,6 +628,20 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
     }
 
     free(window);
+}
+
+static void window_handle_view_icon_update(struct wl_listener *listener, void *data)
+{
+    struct kde_plasma_window *window = wl_container_of(listener, window, view_icon_update);
+    struct view *view = view_from_kywc_view(window->kywc_view);
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &window->resources) {
+        const char *icon_name = theme_icon_get_name(view->icon);
+        if (strcmp(icon_name, "fallback")) {
+            org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
+        }
+    }
 }
 
 static void handle_new_mapped_view(struct wl_listener *listener, void *data)
@@ -667,6 +683,9 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.position, &window->view_position);
     window->view_size.notify = window_handle_view_size;
     wl_signal_add(&kywc_view->events.size, &window->view_size);
+    struct view *view = view_from_kywc_view(kywc_view);
+    window->view_icon_update.notify = window_handle_view_icon_update;
+    wl_signal_add(&view->events.icon_update, &window->view_icon_update);
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {

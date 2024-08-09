@@ -150,7 +150,9 @@ struct view {
     void *data;
 
     pid_t pid;
-    char *icon_name;
+    char *icon_name;   // from application set
+    struct icon *icon; // find in icon folder
+
     uint32_t current_resize_edges;
     bool show_in_all_workspaces;
     bool minimized_when_show_desktop;
@@ -249,6 +251,6 @@ void view_apply_role(struct view *view);
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
 
-void view_set_icon(struct view *view, const char *icon_name);
+void view_set_icon_name(struct view *view, const char *icon_name);
 
 #endif /* __VIEW_H_ */

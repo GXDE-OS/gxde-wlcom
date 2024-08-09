@@ -48,6 +48,7 @@ struct ky_toplevel {
     struct wl_listener position;
     struct wl_listener size;
 
+    struct wl_listener icon_update;
     struct wl_listener output;
     struct wl_listener parent;
     struct wl_listener workspace_enter;
@@ -68,7 +69,8 @@ static struct ky_toplevel *toplevel_for_view(struct ky_toplevel_manager *manager
 
 static void toplevel_update_icon_name(struct ky_toplevel *toplevel)
 {
-    const char *icon_name = theme_icon_name(toplevel->view->app_id);
+    struct view *view = view_from_kywc_view(toplevel->view);
+    const char *icon_name = theme_icon_get_name(view->icon);
     if (toplevel->icon_name && strcmp(toplevel->icon_name, icon_name) == 0) {
         return;
     }
@@ -440,12 +442,22 @@ static void handle_toplevel_app_id(struct wl_listener *listener, void *data)
         return;
     }
 
-    /* update toplevel icon when app_id changed */
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &toplevel->resources) {
+        kywc_toplevel_v1_send_app_id(resource, toplevel->view->app_id);
+    }
+
+    toplevel_update_idle_source(toplevel);
+}
+
+static void handle_toplevel_icon_update(struct wl_listener *listener, void *data)
+{
+    struct ky_toplevel *toplevel = wl_container_of(listener, toplevel, icon_update);
+
     toplevel_update_icon_name(toplevel);
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &toplevel->resources) {
-        kywc_toplevel_v1_send_app_id(resource, toplevel->view->app_id);
         kywc_toplevel_v1_send_icon(resource, toplevel->icon_name);
     }
 
@@ -644,6 +656,8 @@ static void handle_new_mapped_toplevel(struct wl_listener *listener, void *data)
     wl_signal_add(&toplevel->view->events.size, &toplevel->size);
 
     struct view *view = view_from_kywc_view(toplevel->view);
+    toplevel->icon_update.notify = handle_toplevel_icon_update;
+    wl_signal_add(&view->events.icon_update, &toplevel->icon_update);
     toplevel->output.notify = handle_toplevel_output;
     wl_signal_add(&view->events.output, &toplevel->output);
     toplevel->parent.notify = handle_toplevel_parent;
@@ -682,6 +696,7 @@ static void handle_toplevel_unmap(struct wl_listener *listener, void *data)
 
     wl_list_remove(&toplevel->title.link);
     wl_list_remove(&toplevel->app_id.link);
+    wl_list_remove(&toplevel->icon_update.link);
     wl_list_remove(&toplevel->maximize.link);
     wl_list_remove(&toplevel->minimize.link);
     wl_list_remove(&toplevel->activate.link);

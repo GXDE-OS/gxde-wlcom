@@ -62,6 +62,7 @@ enum theme_update_mask {
 struct server;
 struct wlr_fbox;
 struct wlr_buffer;
+struct icon;
 
 struct theme_update_event {
     enum theme_type theme_type;
@@ -134,8 +135,10 @@ bool theme_manager_set_opacity(int32_t opacity);
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src);
 
-struct wlr_buffer *theme_icon_load(const char *name, float scale);
+const char *theme_icon_get_name(struct icon *icon);
 
-const char *theme_icon_name(const char *app_id);
+struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale);
+
+struct icon *theme_icon_from_app_id(const char *app_id);
 
 #endif /* _THEME_H_ */

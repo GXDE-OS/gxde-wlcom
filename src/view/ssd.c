@@ -116,7 +116,6 @@ struct ssd {
     struct wl_listener view_icon_update;
 
     struct wl_listener theme_update;
-    struct wl_listener icon_update;
 
     struct ky_scene_tree *tree;
     struct ky_scene_tree *button_tree;
@@ -909,12 +908,6 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     }
 }
 
-static void handle_icon_update(struct wl_listener *listener, void *data)
-{
-    struct ssd *ssd = wl_container_of(listener, ssd, icon_update);
-    ssd_part_set_icon_buffer(&ssd->parts[SSD_TITLE_ICON]);
-}
-
 static void handle_view_icon_update(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_icon_update);
@@ -1003,13 +996,11 @@ static void ssd_parts_create(struct ssd *ssd)
     wl_signal_add(&kywc_view->events.maximize, &ssd->view_maximize);
     ssd->view_fullscreen.notify = handle_view_fullscreen;
     wl_signal_add(&kywc_view->events.fullscreen, &ssd->view_fullscreen);
-    ssd->view_icon_update.notify = handle_view_icon_update;
-    wl_signal_add(&view->events.icon_update, &ssd->view_icon_update);
 
     wl_list_init(&ssd->view_activate.link);
     wl_list_init(&ssd->view_title.link);
+    wl_list_init(&ssd->view_icon_update.link);
     wl_list_init(&ssd->theme_update.link);
-    wl_list_init(&ssd->icon_update.link);
 
     if (kywc_view->ssd & KYWC_SSD_TITLE) {
         ssd->titlebar_tree = ky_scene_tree_create(ssd->tree);
@@ -1018,8 +1009,8 @@ static void ssd_parts_create(struct ssd *ssd)
 
         ssd->view_title.notify = handle_view_title;
         wl_signal_add(&kywc_view->events.title, &ssd->view_title);
-        ssd->icon_update.notify = handle_icon_update;
-        theme_manager_add_icon_update_listener(&ssd->icon_update);
+        ssd->view_icon_update.notify = handle_view_icon_update;
+        wl_signal_add(&view->events.icon_update, &ssd->view_icon_update);
 
         ssd_check_buttons(ssd);
     }
@@ -1057,7 +1048,6 @@ static void ssd_parts_destroy(struct ssd *ssd)
     wl_list_remove(&ssd->view_maximize.link);
     wl_list_remove(&ssd->view_fullscreen.link);
     wl_list_remove(&ssd->theme_update.link);
-    wl_list_remove(&ssd->icon_update.link);
     wl_list_remove(&ssd->view_icon_update.link);
 
     // XXX: destroyed in view_destroy, check ssd->tree ?

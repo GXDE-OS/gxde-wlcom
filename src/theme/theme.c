@@ -752,7 +752,7 @@ static struct icon *theme_icon_from_icon_pair(const char *app_id)
     return NULL;
 }
 
-static struct icon *theme_icon_from_app_id(const char *app_id)
+struct icon *theme_icon_from_app_id(const char *app_id)
 {
     struct icon_theme *theme = manager->icon_theme ? manager->icon_theme : manager->hicolor_theme;
     struct icon *icon = NULL;
@@ -810,22 +810,17 @@ static struct icon *theme_icon_from_app_id(const char *app_id)
     return icon;
 }
 
-struct wlr_buffer *theme_icon_load(const char *name, float scale)
+const char *theme_icon_get_name(struct icon *icon)
 {
-    if (!name || !*name) {
-        return NULL;
-    }
-    struct icon *icon = theme_icon_from_app_id(name);
+    return icon->name;
+}
+
+struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale)
+{
     if (icon == manager->fallback_icon) {
         return NULL;
     }
 
     struct icon_buffer *buf = icon_get_buffer(icon, scale);
     return buf ? buf->buffer : NULL;
-}
-
-const char *theme_icon_name(const char *app_id)
-{
-    struct icon *icon = theme_icon_from_app_id(app_id);
-    return icon->name;
 }

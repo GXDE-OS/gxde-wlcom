@@ -319,19 +319,10 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 {
-    struct wlr_buffer *buf = NULL;
-
-    // try icon_name first
-    buf = theme_icon_load(view->icon_name, scale);
-
-    if (!buf) {
-        buf = theme_icon_load(view->base.app_id, scale);
-    }
-
+    struct wlr_buffer *buf = theme_icon_get_buffer(view->icon, scale);
     if (!buf && view->impl->get_icon_buffer) {
         buf = view->impl->get_icon_buffer(view, scale);
     }
-
     return buf;
 }
 
@@ -372,6 +363,7 @@ void view_map(struct view *view)
 
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
+    view->icon = theme_icon_from_app_id(view->icon_name ? view->icon_name : kywc_view->app_id);
     positioner_add_new_view(view);
     /* assume that request_minimize may emited before map */
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
@@ -624,9 +616,13 @@ void view_set_app_id(struct view *view, const char *app_id)
 {
     struct kywc_view *kywc_view = &view->base;
 
+    if (kywc_view->mapped && !view->icon_name) {
+        view->icon = theme_icon_from_app_id(app_id);
+        wl_signal_emit_mutable(&view->events.icon_update, NULL);
+    }
+
     kywc_view->app_id = app_id;
     kywc_log(KYWC_DEBUG, "kywc_view %p app_id: %s", kywc_view, app_id);
-
     wl_signal_emit_mutable(&kywc_view->events.app_id, NULL);
 }
 
@@ -644,7 +640,7 @@ void view_set_decoration(struct view *view, enum kywc_ssd ssd)
     wl_signal_emit_mutable(&kywc_view->events.decoration, NULL);
 }
 
-void view_set_icon(struct view *view, const char *icon_name)
+void view_set_icon_name(struct view *view, const char *icon_name)
 {
     if ((!view->icon_name && !icon_name) ||
         (view->icon_name && icon_name && !strcmp(view->icon_name, icon_name))) {
@@ -653,6 +649,8 @@ void view_set_icon(struct view *view, const char *icon_name)
 
     free(view->icon_name);
     view->icon_name = icon_name ? strdup(icon_name) : NULL;
+    view->icon = theme_icon_from_app_id(view->icon_name ? view->icon_name : view->base.app_id);
+
     wl_signal_emit_mutable(&view->events.icon_update, NULL);
 }
 
@@ -1733,6 +1731,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
     wl_list_remove(&view_manager->theme_update.link);
+    wl_list_remove(&view_manager->theme_icon_update.link);
 
     for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
         ky_scene_node_destroy(&view_manager->layers[layer].tree->node);
@@ -1760,6 +1759,18 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     }
 }
 
+static void handle_theme_icon_update(struct wl_listener *listener, void *data)
+{
+    struct view *view;
+    wl_list_for_each(view, &view_manager->views, link) {
+        if (view->base.mapped) {
+            view->icon =
+                theme_icon_from_app_id(view->icon_name ? view->icon_name : view->base.app_id);
+            wl_signal_emit_mutable(&view->events.icon_update, NULL);
+        }
+    }
+}
+
 struct view_manager *view_manager_create(struct server *server)
 {
     view_manager = calloc(1, sizeof(struct view_manager));
@@ -1776,6 +1787,8 @@ struct view_manager *view_manager_create(struct server *server)
 
     view_manager->theme_update.notify = handle_theme_update;
     theme_manager_add_update_listener(&view_manager->theme_update);
+    view_manager->theme_icon_update.notify = handle_theme_icon_update;
+    theme_manager_add_icon_update_listener(&view_manager->theme_icon_update);
     view_manager->server_terminate.notify = handle_server_terminate;
     wl_signal_add(&server->events.terminate, &view_manager->server_terminate);
     view_manager->server_destroy.notify = handle_server_destroy;

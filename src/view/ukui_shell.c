@@ -472,7 +472,7 @@ static void handle_set_icon(struct wl_client *client, struct wl_resource *resour
     }
 
     if (surface->view) {
-        view_set_icon(surface->view, icon_name);
+        view_set_icon_name(surface->view, icon_name);
         return;
     }
 
@@ -661,7 +661,7 @@ static void surface_handle_map(struct wl_listener *listener, void *data)
     }
 
     if (surface->icon_name) {
-        view_set_icon(surface->view, surface->icon_name);
+        view_set_icon_name(surface->view, surface->icon_name);
     }
 
     if (surface->property_state != 0) {
