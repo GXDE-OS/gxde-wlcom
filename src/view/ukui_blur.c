@@ -161,9 +161,7 @@ static void ukui_blur_surface_handle_set_region(struct wl_client *client,
         pixman_region32_clear(&blur_surface->pending_region);
     }
 
-    if (!pixman_region32_equal(&blur_surface->pending_region, &blur_surface->region)) {
-        blur_surface->pending_mask |= UKUI_BLUR_STATE_REGION;
-    }
+    blur_surface->pending_mask |= UKUI_BLUR_STATE_REGION;
 }
 
 static void ukui_blur_surface_handle_set_level(struct wl_client *client,
@@ -180,9 +178,7 @@ static void ukui_blur_surface_handle_set_level(struct wl_client *client,
     }
 
     blur_surface->pending_level = level;
-    if (blur_surface->pending_level != blur_surface->level) {
-        blur_surface->pending_mask |= UKUI_BLUR_STATE_LEVEL;
-    }
+    blur_surface->pending_mask |= UKUI_BLUR_STATE_LEVEL;
 }
 
 static const struct ukui_blur_surface_v1_interface ukui_blur_surface_impl = {
