@@ -42,8 +42,8 @@ struct ukui_blur_surface {
     struct ky_scene_buffer *scene_buffer;
     struct wl_listener node_destroy;
 
-    pixman_region32_t region, pending_region;
-    uint32_t level, pending_level;
+    pixman_region32_t pending_region;
+    uint32_t pending_level;
     uint32_t pending_mask;
 };
 
@@ -66,15 +66,12 @@ static void blur_surface_apply_state(struct ukui_blur_surface *blur_surface)
     if (blur_surface->pending_mask & UKUI_BLUR_STATE_REGION) {
         ky_scene_node_set_blur_region(&blur_surface->scene_buffer->node,
                                       &blur_surface->pending_region);
-        blur_surface->region = blur_surface->pending_region;
     }
     if (blur_surface->pending_mask & UKUI_BLUR_STATE_LEVEL) {
         const struct blur_level *level = &blur_levels[blur_surface->pending_level - 1];
         ky_scene_node_set_blur_level(&blur_surface->scene_buffer->node, level->iterations,
                                      level->offset);
-        blur_surface->level = blur_surface->pending_level;
     }
-
     blur_surface->pending_mask = UKUI_BLUR_STATE_NONE;
 }
 
@@ -93,7 +90,6 @@ static void blur_surface_destroy(struct ukui_blur_surface *blur_surface)
     wl_list_remove(&blur_surface->surface_map.link);
     wl_list_remove(&blur_surface->surface_destroy.link);
     wl_list_remove(&blur_surface->node_destroy.link);
-    pixman_region32_fini(&blur_surface->region);
     pixman_region32_fini(&blur_surface->pending_region);
     free(blur_surface);
 }
@@ -231,7 +227,6 @@ static void handle_blur_manager_get_blur(struct wl_client *client,
     blur_surface->resource = resource;
     wl_list_insert(&manager->ukui_blur_surfaces, &blur_surface->link);
 
-    pixman_region32_init(&blur_surface->region);
     pixman_region32_init(&blur_surface->pending_region);
 
     blur_surface->wlr_surface = wlr_surface;
