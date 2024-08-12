@@ -22,6 +22,10 @@
 #define SUB_MENU_GAP (2)
 #define MENU_FLIP_HEIGHT (12)
 
+#define CLAMP(value, min, max) (((value) < (min)) ? (min) : ((value) > (max)) ? (max) : (value))
+
+static void menu_update_shown_item(struct menu *menu, int offset);
+
 static void menu_draw_item(struct menu_item *item, bool force)
 {
     if (!force && !item->redraw) {
@@ -372,6 +376,30 @@ static bool menu_item_action(struct menu_item *item)
     return false;
 }
 
+static void menu_shown_by_current_item(struct menu_item *item)
+{
+    struct menu *menu = item->menu;
+    if (!menu->exceed_output) {
+        return;
+    }
+    int index = 0;
+    struct menu_item *tmp;
+    wl_list_for_each_reverse(tmp, &menu->items, link) {
+        if (!tmp->enabled || tmp->item_type != ITEM_TYPE_NORMAL) {
+            continue;
+        }
+        if (tmp == item) {
+            break;
+        }
+        index++;
+    }
+    if (index < menu->shown_start || index > menu->shown_start + menu->shown_item - 2) {
+        menu_update_shown_item(menu, index < menu->shown_start
+                                         ? index - menu->shown_start
+                                         : index - menu->shown_start - menu->shown_item + 2);
+    }
+}
+
 static void menu_item_set_hovered(struct menu_item *item)
 {
     struct menu_item *hovered = item->menu->hovered;
@@ -428,6 +456,7 @@ static void menu_hover_prev_or_next(struct menu *menu, bool next)
                                  : menu_first_item(menu);
     if (item) {
         menu_item_set_hovered(item);
+        menu_shown_by_current_item(item);
     }
 }
 
@@ -441,18 +470,16 @@ static void submenu_show(struct menu *menu, bool hovered)
     }
 }
 
-static void menu_update_shown_item(struct menu *menu, bool is_upward)
+static void menu_update_shown_item(struct menu *menu, int offset)
 {
     if (!menu || !menu->exceed_output) {
         return;
     }
-    if (is_upward && menu->shown_start > 0) {
-        menu->shown_start--;
-    } else if (!is_upward && menu->shown_start + menu->shown_item < menu->item_count) {
-        menu->shown_start++;
-    } else {
+    int shown_start = CLAMP(menu->shown_start + offset, 0, menu->item_count - menu->shown_item);
+    if (shown_start == menu->shown_start) {
         return;
     }
+    menu->shown_start = shown_start;
 
     int position_y = 0;
     bool is_bottom = menu->shown_start + menu->shown_item == menu->item_count;
@@ -505,7 +532,7 @@ static bool menu_item_hover(struct seat *seat, struct ky_scene_node *node, doubl
     }
 
     if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
-        menu_update_shown_item(item->menu, item->item_type == ITEM_TYPE_FLIP_UP ? true : false);
+        menu_update_shown_item(item->menu, item->item_type == ITEM_TYPE_FLIP_UP ? -1 : 1);
         return false;
     }
 
@@ -732,7 +759,7 @@ static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t t
     }
     last_time = time;
 
-    menu_update_shown_item(item->menu, value < 0);
+    menu_update_shown_item(item->menu, value < 0 ? -1 : 1);
     return true;
 }
 
