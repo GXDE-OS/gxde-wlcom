@@ -81,21 +81,29 @@ static void menu_draw_item(struct menu_item *item, bool force)
 
 static void menu_set_clip_item(struct menu *menu, struct menu_item *item)
 {
-    if (!menu || !item || !menu->clip_item_height) {
+    if (!menu || !item || !menu->exceed_output) {
         return;
     }
 
     struct ky_scene_node *node = NULL;
     int height = menu->clip_item_height;
     bool is_bottom = menu->shown_start + menu->shown_item == menu->item_count;
-    if (is_bottom || !menu->shown_start) {
-        height += MENU_FLIP_HEIGHT;
-    }
-
     if (menu->clip_item) {
         node = ky_scene_node_from_widget(menu->clip_item->content);
         pixman_region32_clear(&node->clip_region);
         pixman_region32_clear(&node->input_region);
+        menu->clip_item = NULL;
+    }
+
+    /* do not show item if flip item shown and clip_item_height is 0 */
+    if (menu->shown_start && !is_bottom && !menu->clip_item_height) {
+        item->shown = false;
+        ky_scene_node_set_enabled(&item->tree->node, false);
+        return;
+    }
+
+    if (is_bottom || !menu->shown_start) {
+        height += MENU_FLIP_HEIGHT;
     }
 
     pixman_region32_t region;
@@ -156,8 +164,7 @@ static void menu_adjust_exceed_output(struct menu *menu)
 
     int output_height = output->geometry.height;
     menu->clip_item_height = (output_height - 2 * MENU_FLIP_HEIGHT) % menu->item_height;
-    menu->shown_item = (output_height - 2 * MENU_FLIP_HEIGHT) / menu->item_height +
-                       (menu->clip_item_height ? 1 : 0);
+    menu->shown_item = (output_height - 2 * MENU_FLIP_HEIGHT) / menu->item_height + 1;
     if (menu->shown_item > menu->item_count) {
         menu->shown_item = menu->item_count;
     }
