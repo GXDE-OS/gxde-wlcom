@@ -306,6 +306,7 @@ static int xwayland_event_handler(int fd, uint32_t mask, void *data)
     if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR)) {
         kywc_log(KYWC_ERROR, "xwayland is crashed");
         wl_event_source_remove(xwayland->event_source);
+        xwayland->event_source = NULL;
         return 0;
     }
 
@@ -626,6 +627,10 @@ void xwayland_server_destroy(void)
 
     wl_list_remove(&xwayland->xwayland_ready.link);
     wl_list_remove(&xwayland->new_xwayland_surface.link);
+
+    if (xwayland->event_source) {
+        wl_event_source_remove(xwayland->event_source);
+    }
 
     struct wlr_xwayland *wlr_xwayland = xwayland->wlr_xwayland;
     /* prevent xwayland_update_seat in hover */
