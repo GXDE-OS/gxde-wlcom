@@ -136,6 +136,8 @@ uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data);
 
 struct input_manager *input_manager_create(struct server *server);
 
+bool input_action_manager_create(struct server *server);
+
 struct seat *input_manager_get_default_seat(void);
 
 struct output *input_current_output(struct seat *seat);

@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include "config_p.h"
+#include "input/input.h"
 #include "server.h"
 #include "util/dir.h"
 
@@ -134,6 +135,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 static void handle_server_ready(struct wl_listener *listener, void *data)
 {
+    input_action_manager_create(config_manager->server);
     kde_global_accel_manager_create(config_manager);
     kde_input_manager_create(config_manager);
     ukui_gsettings_create(config_manager);

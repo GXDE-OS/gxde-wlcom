@@ -201,12 +201,6 @@ void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t sour
                       int32_t delta_discrete, uint32_t time);
 
 /**
- * input action for keyshort, gesture binding
- */
-
-bool input_action_manager_create(struct input_manager *input_manager);
-
-/**
  * keeps track of the states of capslock, numlock, scrolllock
  */
 

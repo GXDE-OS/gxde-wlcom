@@ -85,7 +85,7 @@ struct input_action {
 
 static struct input_action_manager {
     struct config *config;
-    struct input_manager *input_manager;
+    struct server *server;
 
     struct wl_listener server_destroy;
 
@@ -352,8 +352,7 @@ static void action_call_sdbus_method(struct action_dbus_data *dbus_data)
     if (dbus_data->type == DBUS_TYPE_SESSION) {
         bus = sd_bus_slot_get_bus(manager->config->slot);
     } else if (dbus_data->type == DBUS_TYPE_SYSTEM) {
-        struct input_manager *input_manager = manager->input_manager;
-        bus = input_manager->server->sys_bus;
+        bus = manager->server->sys_bus;
     }
 
     if (!bus) {
@@ -368,85 +367,36 @@ static void action_call_sdbus_method(struct action_dbus_data *dbus_data)
     }
 }
 
-static struct keyboard *get_keyboard_form_seat(struct input_action_manager *manager)
-{
-    struct input_manager *input_manager = manager->input_manager;
-
-    struct seat *seat;
-    wl_list_for_each(seat, &input_manager->seats, link) {
-        struct keyboard *keyboard;
-        wl_list_for_each(keyboard, &seat->keyboards, link) {
-            if (keyboard->is_virtual) {
-                continue;
-            }
-            return keyboard;
-        }
-    }
-    return NULL;
-}
-
-static struct cursor *get_cursor_form_seat(struct input_action_manager *manager)
-{
-    struct input_manager *input_manager = manager->input_manager;
-
-    struct seat *seat;
-    wl_list_for_each(seat, &input_manager->seats, link) {
-        struct cursor *cursor = seat->cursor;
-        if (cursor) {
-            return cursor;
-        }
-    }
-    return NULL;
-}
-
 static void action_call_send_button(struct action_button_data *data)
 {
-    struct cursor *cursor = get_cursor_form_seat(manager);
-    if (!cursor) {
-        return;
-    }
+    struct seat *seat = input_manager_get_default_seat();
+    struct cursor *cursor = seat->cursor;
 
     if (cursor->touch_simulation_pointer && cursor->last_click_button == BTN_LEFT &&
         data->val == BTN_RIGHT) {
-        seat_feed_pointer_button(cursor->seat, BTN_LEFT, false);
+        seat_feed_pointer_button(seat, BTN_LEFT, false);
         cursor->touch_simulation_pointer = false;
     }
 
-    seat_feed_pointer_button(cursor->seat, data->val, true);
-    seat_feed_pointer_button(cursor->seat, data->val, false);
+    seat_feed_pointer_button(seat, data->val, true);
+    seat_feed_pointer_button(seat, data->val, false);
 }
 
 static void action_call_send_key(struct action_key_data *data)
 {
-    struct keyboard *keyboard = get_keyboard_form_seat(manager);
-    if (!keyboard) {
-        return;
-    }
-
-    struct wlr_keyboard_key_event wlr_event = {
-        .time_msec = current_time_msec(),
-        .update_state = true,
-    };
+    struct seat *seat = input_manager_get_default_seat();
 
     for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
-        wlr_event.keycode = data->modifiers->code[i];
-        wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
-        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+        seat_feed_keyboard_key(seat, data->modifiers->code[i], true);
     }
     for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
-        wlr_event.keycode = data->keys->code[i];
-        wlr_event.state = WL_KEYBOARD_KEY_STATE_PRESSED;
-        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+        seat_feed_keyboard_key(seat, data->keys->code[i], true);
     }
     for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
-        wlr_event.keycode = data->modifiers->code[i];
-        wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
-        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+        seat_feed_keyboard_key(seat, data->modifiers->code[i], false);
     }
     for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
-        wlr_event.keycode = data->keys->code[i];
-        wlr_event.state = WL_KEYBOARD_KEY_STATE_RELEASED;
-        wlr_keyboard_notify_key(keyboard->wlr_keyboard, &wlr_event);
+        seat_feed_keyboard_key(seat, data->keys->code[i], false);
     }
 }
 
@@ -892,7 +842,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 }
 
 static void intput_action_create_with_keyboard(struct input_action_manager *manager,
-                                               json_object *keyboard_obj)
+                                               json_object *keyboard_obj, bool user)
 {
     json_object_object_foreach(keyboard_obj, keybind, action_config) {
         struct action_data *action_data = action_data_create_from_config(action_config);
@@ -920,6 +870,9 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
 
         if (!kywc_key_binding_register(binding, input_manager_keybinding_action, input_action)) {
             kywc_log(KYWC_DEBUG, "key_binding registion failed");
+            if (user) {
+                json_object_object_del(keyboard_obj, keybind);
+            }
             kywc_key_binding_destroy(binding);
             binding = NULL;
         }
@@ -928,7 +881,7 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
 }
 
 static void intput_action_create_with_gesture(struct input_action_manager *manager,
-                                              json_object *gesture_obj)
+                                              json_object *gesture_obj, bool user)
 {
     json_object_object_foreach(gesture_obj, gesture, action_config) {
         struct action_data *action_data = action_data_create_from_config(action_config);
@@ -958,6 +911,9 @@ static void intput_action_create_with_gesture(struct input_action_manager *manag
         if (!kywc_gesture_binding_register(binding, input_manager_gesturebinding_action,
                                            input_action)) {
             kywc_log(KYWC_DEBUG, "gesture_binding registion failed");
+            if (user) {
+                json_object_object_del(gesture_obj, gesture);
+            }
             kywc_gesture_binding_destroy(binding);
             binding = NULL;
         }
@@ -975,22 +931,22 @@ static bool input_action_manager_read_config(struct input_action_manager *manage
     /* get system default config */
     if (manager->config->sys_json &&
         json_object_object_get_ex(manager->config->sys_json, "keyboard", &data)) {
-        intput_action_create_with_keyboard(manager, data);
+        intput_action_create_with_keyboard(manager, data, false);
     }
 
     if (manager->config->sys_json &&
         json_object_object_get_ex(manager->config->sys_json, "gesture", &data)) {
-        intput_action_create_with_gesture(manager, data);
+        intput_action_create_with_gesture(manager, data, false);
     }
 
     /* get user config */
     if (manager->config->json &&
         json_object_object_get_ex(manager->config->json, "keyboard", &data)) {
-        intput_action_create_with_keyboard(manager, data);
+        intput_action_create_with_keyboard(manager, data, true);
     }
 
     if (json_object_object_get_ex(manager->config->json, "gesture", &data)) {
-        intput_action_create_with_gesture(manager, data);
+        intput_action_create_with_gesture(manager, data, true);
     }
     return true;
 }
@@ -1002,22 +958,21 @@ static bool input_action_manager_config_init(struct input_action_manager *manage
     return !!manager->config;
 }
 
-bool input_action_manager_create(struct input_manager *input_manager)
+bool input_action_manager_create(struct server *server)
 {
     manager = calloc(1, sizeof(struct input_action_manager));
     if (!manager) {
         return false;
     }
 
-    manager->input_manager = input_manager;
-
+    manager->server = server;
     wl_list_init(&manager->actions);
 
     input_action_manager_config_init(manager);
     input_action_manager_read_config(manager);
 
     manager->server_destroy.notify = handle_server_destroy;
-    server_add_destroy_listener(input_manager->server, &manager->server_destroy);
+    server_add_destroy_listener(server, &manager->server_destroy);
 
     return true;
 }
