@@ -65,6 +65,7 @@ struct net_wm_icon {
 
     uint32_t width, height;
     unsigned char *data;
+    struct wlr_buffer *buffer;
 };
 
 static bool xwayland_view_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
@@ -285,15 +286,16 @@ static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, fl
         return NULL;
     }
 
+    if (icon_similar->buffer) {
+        return icon_similar->buffer;
+    }
+
     info.pixel.width = icon_similar->width;
     info.pixel.height = icon_similar->height;
     info.pixel.data = icon_similar->data;
-    struct wlr_buffer *buffer = painter_draw_buffer(&info);
-    if (!buffer) {
-        return NULL;
-    }
+    icon_similar->buffer = painter_draw_buffer(&info);
 
-    return buffer;
+    return icon_similar->buffer;
 }
 
 static const struct view_impl xwl_surface_impl = {
@@ -899,6 +901,7 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
     struct net_wm_icon *icon, *tmp;
     wl_list_for_each_safe(icon, tmp, &xwayland_view->net_wm_icons, link) {
         wl_list_remove(&icon->link);
+        wlr_buffer_drop(icon->buffer);
         free(icon->data);
         free(icon);
     }
