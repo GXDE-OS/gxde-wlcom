@@ -15,11 +15,10 @@
 #include <kywc/log.h>
 
 #include "config.h"
+#include "input/cursor.h"
 #include "input/seat.h"
-#include "input_p.h"
 #include "server.h"
 #include "util/spawn.h"
-#include "util/time.h"
 
 enum action_type {
     ACTION_TYPE_NONE = 0,
