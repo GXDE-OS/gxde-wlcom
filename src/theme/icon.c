@@ -271,6 +271,7 @@ static void desktop_load(const char *path, const char *name, void *data)
     }
     info->icon_name = fscan_search_keyword(fp, "Icon");
     if (!info->icon_name || !*info->icon_name) {
+        free(info->icon_name);
         free(info->app_id);
         free(info);
         goto close;
@@ -496,6 +497,7 @@ void icon_theme_destroy(struct icon_theme *theme)
 
     struct icon_subdir *subdir, *dir_tmp;
     wl_list_for_each_safe(subdir, dir_tmp, &theme->icons_subdir, link) {
+        wl_list_remove(&subdir->link);
         free(subdir->subdir);
         free(subdir);
     }
