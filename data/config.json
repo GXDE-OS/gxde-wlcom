@@ -43,19 +43,6 @@
                 "method": "mainWindowSwitch",
                 "desc": "global search"
             },
-            "swipe:touchpad:3:down": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Super_L",
-                "keys": "h",
-                "desc": "show desktop"
-            },
-            "swipe:touchpad:3:up": {
-                "enable": true,
-                "actiontype": "command",
-                "command": "ukui-window-switch --show-workspace",
-                "desc": "show multitaskView"
-            },
             "swipe:touchpad:3:left+right": {
                 "enable": true,
                 "actiontype": "key",
