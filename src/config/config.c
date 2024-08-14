@@ -237,6 +237,16 @@ void config_notify(const char *title, const char *body, const char *icon)
                              icon ? icon : "", title, body, 0, 0, 5000);
 }
 
+bool config_call_method(const char *service, const char *path, const char *interface,
+                        const char *method)
+{
+    if (!config_manager) {
+        return false;
+    }
+    return sd_bus_call_method_async(config_manager->bus, NULL, service, path, interface, method,
+                                    NULL, NULL, NULL) >= 0;
+}
+
 void config_destroy(struct config *config)
 {
     wl_signal_emit_mutable(&config->events.destroy, NULL);

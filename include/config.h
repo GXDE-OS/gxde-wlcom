@@ -39,6 +39,9 @@ void config_destroy(struct config *config);
 
 void config_notify(const char *title, const char *body, const char *icon);
 
+bool config_call_method(const char *service, const char *path, const char *interface,
+                        const char *method);
+
 void config_manager_sync(void);
 
 #endif /* _CONFIG_H_ */
