@@ -437,8 +437,7 @@ static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data
 static void end_ukui_grab_keyboard(struct ukui_keyboard_grab *ukui_keyboard_grab)
 {
     struct ukui_surface *surface = ukui_keyboard_grab->keyboard_grab.data;
-    struct kywc_view *kywc_view = &surface->view->base;
-    if (kywc_view->role == KYWC_VIEW_ROLE_SWITCHER) {
+    if (surface->view && surface->view->base.role == KYWC_VIEW_ROLE_SWITCHER) {
         view_manager_set_switcher_shown(false);
     }
 
