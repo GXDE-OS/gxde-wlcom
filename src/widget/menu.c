@@ -169,7 +169,7 @@ static void menu_adjust_exceed_output(struct menu *menu)
         menu->shown_item = menu->item_count;
     }
 
-    if (menu->height < output_height) {
+    if (menu->height <= output_height) {
         menu_not_exceed_output(menu);
     } else if (menu->height > output_height) {
         menu_exceed_output(menu, output_height);
@@ -188,7 +188,7 @@ static void menu_render_items(struct menu *menu, bool force)
     int width = 0, height = 0, shortcut_width = 0, shortcut_height = 0;
     int item_count = 0;
 
-    struct menu_item *item;
+    struct menu_item *item, *last_item = NULL;
     wl_list_for_each_reverse(item, &menu->items, link) {
         if (item->item_type != ITEM_TYPE_NORMAL) {
             continue;
@@ -201,6 +201,8 @@ static void menu_render_items(struct menu *menu, bool force)
             max_height = height;
         }
         if (item->enabled) {
+            item->first = item_count == 0;
+            last_item = item;
             item_count++;
         }
         if (!item->shortcut) {
@@ -214,6 +216,9 @@ static void menu_render_items(struct menu *menu, bool force)
         if (shortcut_height > max_height) {
             max_height = shortcut_height;
         }
+    }
+    if (last_item) {
+        last_item->last = true;
     }
 
     width = max_width + max_shortcut_width + max_height * 2.75;
@@ -231,13 +236,11 @@ static void menu_render_items(struct menu *menu, bool force)
     menu->height = menu->item_height * item_count;
     menu->item_count = item_count;
 
-    int index = 0;
+    /* update all enable item */
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (!item->enabled || item->item_type != ITEM_TYPE_NORMAL) {
+        if (!item->enabled) {
             continue;
         }
-        item->first = index == 0;
-        item->last = ++index == item_count;
         menu_draw_item(item, force);
     }
 }
