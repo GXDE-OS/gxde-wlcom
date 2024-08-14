@@ -343,6 +343,35 @@ static struct shortcut {
     { "win+home", "toggle show active window only", TOGGLE_SHOW_ACTIVE_ONLY },
 };
 
+static struct gesture {
+    enum gesture_type type;
+    uint8_t fingers;
+    uint32_t devices;
+    uint32_t directions;
+    uint32_t edges;
+    char *desc;
+    enum direction direction;
+} gestures[] = {
+    {
+        GESTURE_TYPE_SWIPE,
+        3,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_UP,
+        GESTURE_EDGE_NONE,
+        "switch app or switcher",
+        DIRECTION_UP,
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        3,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_DOWN,
+        GESTURE_EDGE_NONE,
+        "hide switcher or show desktop",
+        DIRECTION_DOWN,
+    },
+};
+
 static void shortcuts_action(struct key_binding *binding, void *data)
 {
     struct shortcut *shortcut = data;
@@ -365,6 +394,36 @@ static void shortcuts_action(struct key_binding *binding, void *data)
     }
 }
 
+static void view_manager_show_switcher(bool show)
+{
+    if (!config_call_method("org.kylin.switch", "/MultitaskView", "org.kylin.switch.MultitaskView",
+                            show ? "show" : "hide")) {
+        kywc_log(KYWC_ERROR, "dbus call Multitaskview failed");
+    }
+}
+
+static void gestures_action(struct gesture_binding *binding, void *data)
+{
+    struct gesture *gesture = data;
+    switch (gesture->direction) {
+    case DIRECTION_UP:
+        if (!view_manager_get_show_desktop()) {
+            view_manager_show_switcher(true);
+        } else {
+            view_manager_show_desktop(false, true);
+        }
+        break;
+    case DIRECTION_DOWN:
+        if (view_manager_get_show_switcher()) {
+            view_manager_show_switcher(false);
+        } else {
+            view_manager_show_desktop(true, true);
+        }
+    default:
+        break;
+    }
+}
+
 bool view_manager_actions_create(struct view_manager *view_manager)
 {
     for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
@@ -379,5 +438,21 @@ bool view_manager_actions_create(struct view_manager *view_manager)
             continue;
         }
     }
+
+    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
+        struct gesture *gesture = &gestures[i];
+        struct gesture_binding *binding =
+            kywc_gesture_binding_create(gesture->type, gesture->devices, gesture->directions,
+                                        gesture->edges, gesture->fingers, gesture->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_gesture_binding_register(binding, gestures_action, gesture)) {
+            kywc_gesture_binding_destroy(binding);
+            continue;
+        }
+    }
+
     return true;
 }

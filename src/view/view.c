@@ -8,11 +8,9 @@
 
 #include <wlr/types/wlr_compositor.h>
 
-#include <kywc/binding.h>
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
-#include "config.h"
 #include "effect/fade.h"
 #include "effect/scale.h"
 #include "effect/slide.h"
@@ -23,35 +21,6 @@
 #include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
-
-static struct gesture {
-    enum gesture_type type;
-    uint8_t fingers;
-    uint32_t devices;
-    uint32_t directions;
-    uint32_t edges;
-    char *desc;
-    enum direction direction;
-} gestures[] = {
-    {
-        GESTURE_TYPE_SWIPE,
-        3,
-        GESTURE_DEVICE_TOUCHPAD,
-        GESTURE_DIRECTION_UP,
-        GESTURE_EDGE_NONE,
-        "switch app or switcher",
-        DIRECTION_UP,
-    },
-    {
-        GESTURE_TYPE_SWIPE,
-        3,
-        GESTURE_DEVICE_TOUCHPAD,
-        GESTURE_DIRECTION_DOWN,
-        GESTURE_EDGE_NONE,
-        "hide switcher or show desktop",
-        DIRECTION_DOWN,
-    },
-};
 
 static struct view_manager *view_manager = NULL;
 
@@ -1697,6 +1666,11 @@ bool view_manager_get_show_desktop(void)
     return view_manager->show_desktop_enabled;
 }
 
+bool view_manager_get_show_switcher(void)
+{
+    return view_manager->switcher_shown;
+}
+
 void view_manager_show_active_only(bool enabled, bool apply)
 {
     if (view_manager->show_activte_only_enabled == enabled) {
@@ -1802,62 +1776,6 @@ static void handle_theme_icon_update(struct wl_listener *listener, void *data)
     }
 }
 
-static void view_manager_show_switcher(bool show)
-{
-    sd_bus *bus = NULL;
-    bus = sd_bus_slot_get_bus(view_manager->config->slot);
-    if (!bus) {
-        kywc_log(KYWC_WARN, "sd bus is null!");
-        return;
-    }
-
-    if (sd_bus_call_method_async(bus, NULL, "org.kylin.switch", "/MultitaskView",
-                                 "org.kylin.switch.MultitaskView", show ? "show" : "hide", NULL,
-                                 NULL, NULL) < 0) {
-        kywc_log(KYWC_ERROR, "dbus call Multitaskview failed");
-    }
-}
-
-static void gesture_action(struct gesture_binding *binding, void *data)
-{
-    struct gesture *gesture = data;
-    switch (gesture->direction) {
-    case DIRECTION_UP:
-        if (!view_manager_get_show_desktop()) {
-            view_manager_show_switcher(true);
-        } else {
-            view_manager_show_desktop(false, true);
-        }
-        break;
-    case DIRECTION_DOWN:
-        if (view_manager->switcher_shown) {
-            view_manager_show_switcher(false);
-        } else {
-            view_manager_show_desktop(true, true);
-        }
-    default:
-        break;
-    }
-}
-
-static void view_manager_register_shortcut(void)
-{
-    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
-        struct gesture *gesture = &gestures[i];
-        struct gesture_binding *binding =
-            kywc_gesture_binding_create(gesture->type, gesture->devices, gesture->directions,
-                                        gesture->edges, gesture->fingers, gesture->desc);
-        if (!binding) {
-            continue;
-        }
-
-        if (!kywc_gesture_binding_register(binding, gesture_action, gesture)) {
-            kywc_gesture_binding_destroy(binding);
-            continue;
-        }
-    }
-}
-
 void view_manager_set_switcher_shown(bool shown)
 {
     view_manager->switcher_shown = shown;
@@ -1924,8 +1842,6 @@ struct view_manager *view_manager_create(struct server *server)
     ukui_shell_create(server);
     ukui_window_management_create(server);
     ukui_blur_manager_create(server);
-
-    view_manager_register_shortcut();
 
     return view_manager;
 }
