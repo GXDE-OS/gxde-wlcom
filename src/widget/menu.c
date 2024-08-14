@@ -251,6 +251,7 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
         return;
     }
 
+    struct menu_item *item = NULL;
     menu->current = NULL;
     menu->hovered = NULL;
     menu->enabled = enabled;
@@ -265,10 +266,20 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
             menu->flip_up->shown = false;
             menu->flip_down->shown = true;
         }
+    } else {
+        wl_list_for_each_reverse(item, &menu->items, link) {
+            if (item->enabled && item->submenu) {
+                menu_set_enabled(item->submenu, false);
+            }
+        }
+    }
+
+    if (menu->fade_enabled) {
+        popup_add_fade_effect(&menu->tree->node, &menu->tree->node, enabled, !menu->parent,
+                              !menu->parent);
     }
 
     int index = 0;
-    struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
         if (!item->enabled) {
             continue;
@@ -283,9 +294,6 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
             ky_scene_node_set_position(&item->tree->node, 0, index * menu->item_height);
         }
         ky_scene_node_set_enabled(&item->tree->node, item->shown);
-        if (!enabled && item->submenu) {
-            menu_set_enabled(item->submenu, false);
-        }
 
         widget_set_hovered(item->content, false);
         widget_set_enabled(item->content, enabled);
@@ -295,11 +303,6 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
         if (menu->exceed_output && index == menu->shown_start + menu->shown_item) {
             menu_set_clip_item(menu, item);
         }
-    }
-
-    if (menu->fade_enabled) {
-        popup_add_fade_effect(&menu->tree->node, &menu->tree->node, enabled, !menu->parent,
-                              !menu->parent);
     }
 
     if (menu->parent) {
