@@ -40,9 +40,6 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
         return;
     }
 
-    pixman_region32_t damage;
-    pixman_region32_init(&damage);
-    pixman_region32_copy(&damage, &target->damage);
     // to scene layout coord
     pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
 
@@ -71,6 +68,10 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
     ky_scene_output_render_end(target);
 
     // for software cursor
+    pixman_region32_t damage;
+    pixman_region32_init(&damage);
+    pixman_region32_copy(&damage, &target->damage);
+    pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
     wlr_region_scale(&damage, &damage, target->scale);
     wlr_output_add_software_cursors_to_render_pass(target->output->output, target->render_pass,
                                                    &damage);
