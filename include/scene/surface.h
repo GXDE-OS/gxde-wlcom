@@ -38,6 +38,8 @@ struct ky_scene_surface {
     struct wl_listener surface_destroy;
     struct wl_listener surface_commit;
     struct wl_listener surface_map;
+
+    struct ky_scene_node_interface buffer_default_impl;
 };
 
 struct ky_scene_tree *ky_scene_subsurface_tree_create(struct ky_scene_tree *parent,

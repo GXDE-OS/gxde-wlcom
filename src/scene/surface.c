@@ -244,6 +244,7 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
     surface->has_slide = false;
     surface->buffer = scene_buffer;
     surface->surface = wlr_surface;
+    surface->buffer_default_impl = scene_buffer->node.impl;
     scene_buffer->point_accepts_input = scene_buffer_point_accepts_input;
 
     surface->outputs_update.notify = handle_scene_buffer_outputs_update;

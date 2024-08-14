@@ -5,6 +5,8 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/util/addon.h>
@@ -36,6 +38,61 @@ struct ky_scene_subsurface_tree {
 
     struct wl_listener subsurface_destroy;
 };
+
+static void subsurface_get_radius(struct wlr_subsurface *subsurface, int child_radius[4])
+{
+    memset(child_radius, 0, sizeof(int) * 4);
+    struct wlr_surface *parent = subsurface->parent;
+    if (!parent) {
+        return;
+    }
+
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(parent);
+    if (!buffer) {
+        return;
+    }
+
+    int parent_radius[4] = { 0 };
+    ky_scene_node_get_radius(&buffer->node, parent_radius);
+
+    int x1 = 0, y1 = 0;
+    int x2 = parent->current.width;
+    int y2 = parent->current.height;
+    struct {
+        int x, y;
+    } parent_vertex[4] = { { x2, y2 }, { x2, y1 }, { x1, y2 }, { x1, y1 } };
+
+    x1 = subsurface->current.x;
+    y1 = subsurface->current.y;
+    x2 = x1 + subsurface->surface->current.width;
+    y2 = y1 + subsurface->surface->current.height;
+    struct {
+        int x, y;
+    } child_vertex[4] = { { x2, y2 }, { x2, y1 }, { x1, y2 }, { x1, y1 } };
+
+    for (int i = 0; i < 4; ++i) {
+        if (parent_radius[i] > 0 &&
+            abs(parent_vertex[i].x - child_vertex[i].x) < parent_radius[i] &&
+            abs(parent_vertex[i].y - child_vertex[i].y) < parent_radius[i]) {
+            child_radius[i] = parent_radius[i];
+        }
+    }
+}
+
+static void subsurface_collect_damage(struct ky_scene_node *node, int lx, int ly,
+                                      bool parent_enabled, uint32_t damage_type,
+                                      pixman_region32_t *damage, pixman_region32_t *invisible,
+                                      pixman_region32_t *affected)
+{
+    struct ky_scene_surface *scene_surface =
+        ky_scene_surface_try_from_buffer(ky_scene_buffer_from_node(node));
+
+    subsurface_get_radius(wlr_subsurface_try_from_wlr_surface(scene_surface->surface),
+                          node->radius);
+
+    scene_surface->buffer_default_impl.collect_damage(node, lx, ly, parent_enabled, damage_type,
+                                                      damage, invisible, affected);
+}
 
 static void subsurface_tree_handle_tree_destroy(struct wl_listener *listener, void *data)
 {
@@ -206,6 +263,11 @@ static struct ky_scene_subsurface_tree *scene_surface_tree_create(struct ky_scen
     }
 
     subsurface_tree->surface = surface;
+
+    if (wlr_subsurface_try_from_wlr_surface(surface)) {
+        subsurface_tree->scene_surface->buffer->node.impl.collect_damage =
+            subsurface_collect_damage;
+    }
 
     struct wlr_subsurface *subsurface;
     wl_list_for_each(subsurface, &surface->current.subsurfaces_below, current.link) {
