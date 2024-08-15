@@ -69,7 +69,7 @@ void main() {
             st + offset + vec2(0.0, windowRect.w - titleHeight - borderThickness),
             vec2(windowRect.z - borderThickness, titleHeight),
             vec4(0.0, roundedCornerRadius[1] - borderThickness, 0.0, roundedCornerRadius[3] - borderThickness));
-        shapeTitle = 1.0 - smoothstep(0.0, borderAA, titleDist);
+        shapeTitle = 1.0 - smoothstep(-borderAA, borderAA, titleDist);
     }
 
     // inner window remove shadow

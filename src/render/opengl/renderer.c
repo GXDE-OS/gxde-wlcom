@@ -799,7 +799,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.quad.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
     renderer->shaders.quad.uv_attrib = glGetAttribLocation(prog, "inUV");
-    renderer->shaders.quad.pixel_distance = 0;
+    renderer->shaders.quad.anti_aliasing = 0;
     renderer->shaders.quad.aspect = 0;
     renderer->shaders.quad.round_corner_radius = 0;
 
@@ -813,7 +813,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgba.uv_attrib = glGetAttribLocation(prog, "inUV");
-    renderer->shaders.tex_rgba.pixel_distance = 0;
+    renderer->shaders.tex_rgba.anti_aliasing = 0;
     renderer->shaders.tex_rgba.aspect = 0;
     renderer->shaders.tex_rgba.round_corner_radius = 0;
 
@@ -827,7 +827,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgbx.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgbx.uv_attrib = glGetAttribLocation(prog, "inUV");
-    renderer->shaders.tex_rgbx.pixel_distance = 0;
+    renderer->shaders.tex_rgbx.anti_aliasing = 0;
     renderer->shaders.tex_rgbx.aspect = 0;
     renderer->shaders.tex_rgbx.round_corner_radius = 0;
 
@@ -842,7 +842,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         renderer->shaders.tex_ext.tex = glGetUniformLocation(prog, "tex");
         renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
         renderer->shaders.tex_ext.uv_attrib = glGetAttribLocation(prog, "inUV");
-        renderer->shaders.tex_ext.pixel_distance = 0;
+        renderer->shaders.tex_ext.anti_aliasing = 0;
         renderer->shaders.tex_ext.aspect = 0;
         renderer->shaders.tex_ext.round_corner_radius = 0;
     }
@@ -856,7 +856,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.quad_ex.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
     renderer->shaders.quad_ex.uv2tex = glGetUniformLocation(prog, "uv2tex");
     renderer->shaders.quad_ex.color = glGetUniformLocation(prog, "color");
-    renderer->shaders.quad_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+    renderer->shaders.quad_ex.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
     renderer->shaders.quad_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.quad_ex.round_corner_radius = glGetUniformLocation(prog, "roundCornerRadius");
     renderer->shaders.quad_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
@@ -871,7 +871,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgba_ex.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgba_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
-    renderer->shaders.tex_rgba_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+    renderer->shaders.tex_rgba_ex.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
     renderer->shaders.tex_rgba_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgba_ex.round_corner_radius =
         glGetUniformLocation(prog, "roundCornerRadius");
@@ -887,7 +887,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgbx_ex.tex = glGetUniformLocation(prog, "tex");
     renderer->shaders.tex_rgbx_ex.alpha = glGetUniformLocation(prog, "alpha");
     renderer->shaders.tex_rgbx_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
-    renderer->shaders.tex_rgbx_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+    renderer->shaders.tex_rgbx_ex.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
     renderer->shaders.tex_rgbx_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgbx_ex.round_corner_radius =
         glGetUniformLocation(prog, "roundCornerRadius");
@@ -904,7 +904,7 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         renderer->shaders.tex_ext_ex.tex = glGetUniformLocation(prog, "tex");
         renderer->shaders.tex_ext_ex.alpha = glGetUniformLocation(prog, "alpha");
         renderer->shaders.tex_ext_ex.force_opaque = glGetUniformLocation(prog, "forceOpaque");
-        renderer->shaders.tex_ext_ex.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+        renderer->shaders.tex_ext_ex.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
         renderer->shaders.tex_ext_ex.aspect = glGetUniformLocation(prog, "aspect");
         renderer->shaders.tex_ext_ex.round_corner_radius =
             glGetUniformLocation(prog, "roundCornerRadius");

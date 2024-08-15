@@ -278,11 +278,13 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
                             options->base.blend_mode == WLR_RENDER_BLEND_MODE_NONE;
         glUniform1i(shader->force_opaque, force_opaque);
         glUniform1f(shader->aspect, width / (float)height);
-        float half_height = height * 0.5f; // shader distance scale
-        glUniform1f(shader->pixel_distance, 1.0 / half_height);
-        glUniform4f(shader->round_corner_radius, options->radius.rb / half_height,
-                    options->radius.rt / half_height, options->radius.lb / half_height,
-                    options->radius.lt / half_height);
+        float half_height = height * 0.5f;
+        float one_pixel_distance = 1.0f / half_height; // shader distance scale
+        glUniform1f(shader->anti_aliasing, one_pixel_distance * 0.5f);
+        glUniform4f(shader->round_corner_radius, options->radius.rb * one_pixel_distance,
+                    options->radius.rt * one_pixel_distance,
+                    options->radius.lb * one_pixel_distance,
+                    options->radius.lt * one_pixel_distance);
     }
     render(&dst_box, options->base.clip, shader->uv_attrib);
 
@@ -335,11 +337,13 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 
     if (has_radius) {
         glUniform1f(shader->aspect, box.width / (float)box.height);
-        float half_height = (float)box.height * 0.5f; // shader distance scale
-        glUniform1f(shader->pixel_distance, 1.0 / half_height);
-        glUniform4f(shader->round_corner_radius, options->radius.rb / half_height,
-                    options->radius.rt / half_height, options->radius.lb / half_height,
-                    options->radius.lt / half_height);
+        float half_height = box.height * 0.5f;
+        float one_pixel_distance = 1.0f / half_height; // shader distance scale
+        glUniform1f(shader->anti_aliasing, one_pixel_distance * 0.5f);
+        glUniform4f(shader->round_corner_radius, options->radius.rb * one_pixel_distance,
+                    options->radius.rt * one_pixel_distance,
+                    options->radius.lb * one_pixel_distance,
+                    options->radius.lt * one_pixel_distance);
     }
     render(&box, options->base.clip, shader->uv_attrib);
 

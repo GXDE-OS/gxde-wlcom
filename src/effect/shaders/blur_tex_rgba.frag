@@ -11,7 +11,7 @@ varying vec2 v_texcoord;
 uniform sampler2D tex;
 uniform float alpha;
 
-uniform float pixelDistance; // 1px in distance
+uniform float antiAliasing;
 uniform float aspect; // width / height
 uniform vec4 roundedCornerRadius;
 
@@ -30,7 +30,7 @@ void main()
     vec2 fullSize = vec2(aspect, 1.0);
 
     float dist = sdRoundedBox(st, fullSize, roundedCornerRadius);
-    float shape = 1.0 - smoothstep(0.0, pixelDistance, dist);
+    float shape = 1.0 - smoothstep(0.0, antiAliasing, dist);
     vec4 texColor = texture2D(tex, v_texcoord) * alpha;
     gl_FragColor = mix(vec4(0.0), texColor, shape);
 }

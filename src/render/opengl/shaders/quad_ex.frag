@@ -9,7 +9,7 @@ precision mediump float;
 varying vec2 v_texcoord;
 uniform vec4 color;
 
-uniform float pixelDistance; // 1px in distance
+uniform float antiAliasing;
 uniform float aspect; // width / height
 uniform vec4 roundCornerRadius;
 
@@ -28,7 +28,6 @@ void main()
     vec2 fullSize = vec2(aspect, 1.0);
 
     float dist = sdRoundedBox(st, fullSize, roundCornerRadius);
-    float aa = pixelDistance * 0.5;
-    float shape = 1.0 - smoothstep(0.0, pixelDistance, dist);
+    float shape = 1.0 - smoothstep(0.0, antiAliasing, dist);
     gl_FragColor = mix(vec4(0.0), color, shape);
 }

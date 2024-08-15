@@ -154,7 +154,7 @@ struct blur_tex_program {
         GLint shape_proj;
         GLint tex;
         GLint alpha;
-        GLint pixel_distance;
+        GLint anti_aliasing;
         GLint aspect;
         GLint rounded_corner_radius;
         GLint pos_attrib;
@@ -336,7 +336,7 @@ static struct blur_tex_program *get_or_generate_blur_text_program(void)
         blur_tex_prog->shaders.shape_proj = glGetUniformLocation(prog, "shape_proj");
         blur_tex_prog->shaders.tex = glGetUniformLocation(prog, "tex");
         blur_tex_prog->shaders.alpha = glGetUniformLocation(prog, "alpha");
-        blur_tex_prog->shaders.pixel_distance = glGetUniformLocation(prog, "pixelDistance");
+        blur_tex_prog->shaders.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
         blur_tex_prog->shaders.aspect = glGetUniformLocation(prog, "aspect");
         blur_tex_prog->shaders.rounded_corner_radius =
             glGetUniformLocation(prog, "roundedCornerRadius");
@@ -624,13 +624,15 @@ static void blur_render(struct ky_scene_render_target *target,
     }
 
     glUniform1f(prog->shaders.aspect, width / (float)height);
-    float half_height = (float)height * 0.5f; // shader distance scale
-    glUniform1f(prog->shaders.pixel_distance, 1.0 / half_height);
+    float half_height = (float)height * 0.5f;
+    float one_pixel_distance = 1.0f / half_height; // shader distance scale
+    glUniform1f(prog->shaders.anti_aliasing, one_pixel_distance * 0.5f);
 
     if (options->radius) {
-        glUniform4f(prog->shaders.rounded_corner_radius, options->radius->rb / half_height,
-                    options->radius->rt / half_height, options->radius->lb / half_height,
-                    options->radius->lt / half_height);
+        glUniform4f(prog->shaders.rounded_corner_radius, options->radius->rb * one_pixel_distance,
+                    options->radius->rt * one_pixel_distance,
+                    options->radius->lb * one_pixel_distance,
+                    options->radius->lt * one_pixel_distance);
     } else {
         glUniform4f(prog->shaders.rounded_corner_radius, 0, 0, 0, 0);
     }

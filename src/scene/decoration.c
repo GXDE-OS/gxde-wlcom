@@ -326,8 +326,7 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
     // 1 pixel border thickness keep 1 pixel less soft aa
     float one_pixel_distance = 1.0 / half_height;
-    glUniform1f(gl_locations.border_aa,
-                border_thickness > 1 ? one_pixel_distance * 0.7f : one_pixel_distance * 0.5f);
+    glUniform1f(gl_locations.border_aa, one_pixel_distance * 0.5f);
     glUniform1f(gl_locations.aspect, width / height);
     float width_distance = window_frame.width / height;
     float height_distance = window_frame.height / height;
@@ -337,11 +336,15 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
                 height_distance);
     glUniform4f(
         gl_locations.rounded_corner_radius,
-        deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] / half_height : 0.0f,
-        deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] / half_height : 0.0f,
-        deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] / half_height : 0.0f,
-        deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] / half_height : 0.0f);
-    glUniform1f(gl_locations.border_thickness, border_thickness / half_height);
+        deco->shadow_mask & SHADOW_MASK_BOTTOM_RIGHT ? round_corner_radius[0] * one_pixel_distance
+                                                     : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_TOP_RIGHT ? round_corner_radius[1] * one_pixel_distance
+                                                  : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_BOTTOM_LEFT ? round_corner_radius[2] * one_pixel_distance
+                                                    : 0.0f,
+        deco->shadow_mask & SHADOW_MASK_TOP_LEFT ? round_corner_radius[3] * one_pixel_distance
+                                                 : 0.0f);
+    glUniform1f(gl_locations.border_thickness, border_thickness * one_pixel_distance);
     glUniform4fv(gl_locations.border_color, 1, deco->border_color);
     glUniform1f(gl_locations.title_height, title_height / height);
     glUniform4fv(gl_locations.title_color, 1, deco->title_color);

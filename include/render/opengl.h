@@ -25,7 +25,7 @@ struct ky_opengl_rect_ex_shader {
 
     GLint color;
     GLint aspect;
-    GLint pixel_distance;
+    GLint anti_aliasing;
     GLint round_corner_radius;
 };
 
@@ -40,7 +40,7 @@ struct ky_opengl_tex_ex_shader {
     GLint alpha;
     GLint force_opaque;
     GLint aspect;
-    GLint pixel_distance;
+    GLint anti_aliasing;
     GLint round_corner_radius;
 };
 
