@@ -21,6 +21,7 @@ static struct server server = {
     .options.enable_xwayland = true,
     .options.log_to_file = true,
     .options.log_in_realtime = true,
+    .session_pid = -1,
 };
 static int exit_value = 0;
 
@@ -113,6 +114,32 @@ static void sig_handler(int signo, siginfo_t *sip, void *unused)
     terminate(EXIT_SUCCESS);
 }
 
+static void child_handler(int signo, siginfo_t *sip, void *unused)
+{
+    if (sip->si_pid != server.session_pid) {
+        return;
+    }
+
+    switch (sip->si_code) {
+    case CLD_EXITED:
+        kywc_log(KYWC_ERROR, "session %d exited with %d", sip->si_pid, sip->si_status);
+        break;
+    case CLD_KILLED:
+    case CLD_DUMPED:;
+        const char *signame = strsignal(sip->si_status);
+        kywc_log(KYWC_ERROR, "session %d terminated with signal %d (%s)", sip->si_pid,
+                 sip->si_status, signame ? signame : "unknown");
+        break;
+    default:
+        kywc_log(KYWC_ERROR, "session %d terminated unexpectedly: %d", sip->si_pid, sip->si_code);
+        break;
+    }
+
+    kywc_log(KYWC_FATAL, "kylin-wlcom abort...");
+    server.session_pid = -1;
+    terminate(EXIT_SUCCESS);
+}
+
 int main(int argc, char *argv[])
 {
 #if HAVE_NLS
@@ -200,11 +227,28 @@ int main(int argc, char *argv[])
         goto shutdown;
     }
 
+    /* child terminated or stopped */
+    set_signal(SIGCHLD, child_handler);
+
     if (session_process) {
-        spawn_invoke(session_process);
+        server.session_pid = spawn_session(session_process);
+        if (server.session_pid < 0) {
+            kywc_log(KYWC_ERROR, "session %s start failed, abort", session_process);
+            terminate(EXIT_FAILURE);
+            goto shutdown;
+        }
+        kywc_log(KYWC_INFO, "session %s(%d) started", session_process, server.session_pid);
     }
 
     server_run(&server);
+
+    set_signal(SIGCHLD, SIG_DFL);
+    /* kill the session process */
+    if (server.session_pid > 0) {
+        if (kill(server.session_pid, SIGTERM) < 0) {
+            kill(server.session_pid, SIGKILL);
+        }
+    }
 
 shutdown:
     server_finish(&server);

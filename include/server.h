@@ -51,6 +51,7 @@ struct server {
     struct wlr_output_layout *layout;
 
     struct queue queue;
+    pid_t session_pid;
 };
 
 bool server_init(struct server *server);
