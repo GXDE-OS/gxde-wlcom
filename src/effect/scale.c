@@ -304,8 +304,8 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
 
     if (scale_data->need_blur &&
-        !thumbnail_get_node_offset(scale_data->thumbnail, scale_data->node, &scale_data->node_offset_x,
-                                   &scale_data->node_offset_y)) {
+        !thumbnail_get_node_offset(scale_data->thumbnail, scale_data->node,
+                                   &scale_data->node_offset_x, &scale_data->node_offset_y)) {
         kywc_log(KYWC_INFO, "when scale thumbnail update, thumbnail get node offset failed.");
     }
 }

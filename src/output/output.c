@@ -18,10 +18,10 @@
 #include <kywc/log.h>
 
 #include "backend/fbdev.h"
+#include "effect/output_transform.h"
 #include "output_p.h"
 #include "util/quirks.h"
 #include "xwayland.h"
-#include "effect/output_transform.h"
 
 static struct output_manager *output_manager = NULL;
 static char *unknown = " ";
