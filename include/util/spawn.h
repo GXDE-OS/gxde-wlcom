@@ -6,7 +6,10 @@
 #define _UTIL_SPAWN_H_
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 bool spawn_invoke(const char *command);
+
+pid_t spawn_session(const char *session);
 
 #endif /* _SPAWN_H_ */
