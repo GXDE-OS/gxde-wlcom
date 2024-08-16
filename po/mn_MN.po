@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-05-20 13:39+0800\n"
-"PO-Revision-Date: 2024-06-18 17:11+0800\n"
+"PO-Revision-Date: 2024-08-16 09:56+0800\n"
 "Last-Translator: yangcanfen <yangcanfen@kylinos.cn>\n"
 "Language-Team: Mongolian <openmn-translation@lists.sourceforge.net>\n"
 "Language: mn\n"
@@ -20,10 +20,6 @@ msgstr ""
 #: src/view/action.c:173
 msgid "Capture saved to"
 msgstr "ᠣᠯᠵᠠᠯᠠᠬᠤ ᠪᠥᠭᠡᠳ ᠬᠠᠳᠠᠭᠠᠯᠠᠬᠤ"
-
-#: src/view/ssd.c:247
-msgid "More actions for this window"
-msgstr "ᠲᠤᠰ ᠴᠣᠩᠬᠣ᠎ᠶ᠋ᠢᠨ ᠨᠡᠩ ᠣᠯᠠᠨ ᠠᠵᠢᠯᠯᠠᠭ᠎ᠠ"
 
 #: src/view/ssd.c:248
 msgid "Minimize"

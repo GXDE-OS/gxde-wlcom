@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: kylin-wayland-compositor\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-05-20 13:39+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2024-08-16 10:36+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -17,98 +17,94 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/action.c:173
+#: src/view/action.c:107
 msgid "Capture saved to"
 msgstr ""
 
-#: src/view/ssd.c:247
-msgid "More actions for this window"
-msgstr ""
-
-#: src/view/ssd.c:248
+#: src/view/ssd.c:266
 msgid "Minimize"
 msgstr ""
 
-#: src/view/ssd.c:249
+#: src/view/ssd.c:267
 msgid "Maximize"
 msgstr ""
 
-#: src/view/ssd.c:250
+#: src/view/ssd.c:268
 msgid "Restore"
 msgstr ""
 
-#: src/view/ssd.c:251
+#: src/view/ssd.c:269
 msgid "Close"
 msgstr ""
 
-#: src/view/window_menu.c:184
+#: src/view/window_menu.c:186
 msgid "Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:214
+#: src/view/window_menu.c:216
 msgid "Move To Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:248
+#: src/view/window_menu.c:250
 msgid "Screen"
 msgstr ""
 
-#: src/view/window_menu.c:342
+#: src/view/window_menu.c:351
 msgid "_Take Screenshot"
 msgstr ""
 
-#: src/view/window_menu.c:346
+#: src/view/window_menu.c:354
 msgid "_Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:348
+#: src/view/window_menu.c:357
 msgid "_All Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:350
+#: src/view/window_menu.c:358
 msgid "Add To _New Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:353
+#: src/view/window_menu.c:361
 msgid "_Move To New Desktop"
 msgstr ""
 
-#: src/view/window_menu.c:356
+#: src/view/window_menu.c:365
 msgid "Ma_ximize"
 msgstr ""
 
-#: src/view/window_menu.c:360
+#: src/view/window_menu.c:369
 msgid "Move To _Screen"
 msgstr ""
 
-#: src/view/window_menu.c:363
+#: src/view/window_menu.c:373
 msgid "Mi_nimize"
 msgstr ""
 
-#: src/view/window_menu.c:367
+#: src/view/window_menu.c:377
 msgid "_More"
 msgstr ""
 
-#: src/view/window_menu.c:369
+#: src/view/window_menu.c:381
 msgid "_Move"
 msgstr ""
 
-#: src/view/window_menu.c:370
+#: src/view/window_menu.c:383
 msgid "_Resize"
 msgstr ""
 
-#: src/view/window_menu.c:371
+#: src/view/window_menu.c:385
 msgid "Keep-_Above"
 msgstr ""
 
-#: src/view/window_menu.c:373
+#: src/view/window_menu.c:387
 msgid "Keep-_Below"
 msgstr ""
 
-#: src/view/window_menu.c:375
+#: src/view/window_menu.c:389
 msgid "_Fullscreen"
 msgstr ""
 
-#: src/view/window_menu.c:378
+#: src/view/window_menu.c:392
 msgid "_Close"
 msgstr ""
