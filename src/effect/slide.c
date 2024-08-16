@@ -521,6 +521,7 @@ static void slide_data_handle_node_destroy(struct wl_listener *listener, void *d
     if (!buffer) {
         return;
     }
+    ky_scene_node_set_input_bypassed(&buffer->node, true);
 
     struct effect_entity *entity = ky_scene_node_add_effect(&buffer->node, slide_effect->effect);
     if (!entity) {
