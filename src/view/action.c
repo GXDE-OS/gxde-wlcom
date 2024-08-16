@@ -42,6 +42,7 @@ static struct window_shortcut {
       WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE },
     { "ctrl+shift+right", "window send to next output and maximize",
       WINDOW_ACTION_SEND_RIGHT_OUTPUT_MAXIMIZE },
+    { "ctrl+print", "window capture", WINDOW_ACTION_CAPTURE },
 };
 
 #define MIRROR_BUFFER_DEBUG 0
