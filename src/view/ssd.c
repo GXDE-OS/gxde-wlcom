@@ -68,7 +68,7 @@ enum ssd_update_cause {
 
 struct ssd_tooltip {
     struct wl_list link;
-    struct widget *icon, *minimize, *maximize, *restore, *close;
+    struct widget *minimize, *maximize, *restore, *close;
     struct wl_listener theme_update;
 
     struct seat *seat;
@@ -173,9 +173,6 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     case SSD_BUTTON_CLOSE:
         widget = tooltip->close;
         break;
-    case SSD_TITLE_ICON:
-        widget = tooltip->icon;
-        break;
     default:
         return;
     }
@@ -266,7 +263,6 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 
 static void ssd_tooltip_draw_widgets(struct ssd_tooltip *tooltip)
 {
-    ssd_tooltip_draw_widget(tooltip->icon, tr("More actions for this window"));
     ssd_tooltip_draw_widget(tooltip->minimize, tr("Minimize"));
     ssd_tooltip_draw_widget(tooltip->maximize, tr("Maximize"));
     ssd_tooltip_draw_widget(tooltip->restore, tr("Restore"));
@@ -300,7 +296,6 @@ static void ssd_tooltip_handle_seat_destroy(struct wl_listener *listener, void *
     wl_list_remove(&tooltip->hovered_view_unmap.link);
     wl_list_remove(&tooltip->link);
 
-    widget_destroy(tooltip->icon);
     widget_destroy(tooltip->minimize);
     widget_destroy(tooltip->maximize);
     widget_destroy(tooltip->restore);
@@ -345,7 +340,6 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
 
     /* create widgets in popup layer */
     struct view_layer *layer = view_manager_get_layer(LAYER_POPUP, false);
-    tooltip->icon = widget_create(layer->tree);
     tooltip->minimize = widget_create(layer->tree);
     tooltip->maximize = widget_create(layer->tree);
     tooltip->restore = widget_create(layer->tree);
@@ -435,8 +429,6 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_set_button_buffer(part, BUTTON_STATE_HOVER);
-        // fallthrough to icon
-    case SSD_TITLE_ICON:
         ssd_tooltip_show(seat, part, true);
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
@@ -461,8 +453,6 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_set_button_buffer(part, BUTTON_STATE_NONE);
-        // fallthrough to icon
-    case SSD_TITLE_ICON:
         ssd_tooltip_show(seat, part, false);
         break;
     case SSD_FRAME_RECT:
@@ -482,7 +472,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     struct view *view = view_from_kywc_view(kywc_view);
     enum kywc_edges edges = KYWC_EDGE_NONE;
 
-    if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_TITLE_ICON) {
+    if (part->type >= SSD_BUTTON_MINIMIZE && part->type <= SSD_BUTTON_CLOSE) {
         ssd_tooltip_show(seat, part, false);
     }
 
