@@ -426,13 +426,18 @@ static void global_shortcut_create_binding(struct global_shortcut *shortcut)
 
 static void global_shortcut_set_active(struct global_shortcut *shortcut)
 {
-    if (!shortcut->is_present || shortcut->is_registered) {
+    if (!shortcut->is_present || shortcut->is_registered || !shortcut->binding) {
         return;
     }
 
     /* register the key binding */
-    kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
-    shortcut->is_registered = true;
+    shortcut->is_registered =
+        kywc_key_binding_register(shortcut->binding, global_shortcut_action, shortcut);
+
+    if (!shortcut->is_registered) {
+        kywc_key_binding_destroy(shortcut->binding);
+        shortcut->binding = NULL;
+    }
 }
 
 static void global_shortcut_set_inactive(struct global_shortcut *shortcut)
