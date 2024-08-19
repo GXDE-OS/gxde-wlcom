@@ -350,6 +350,8 @@ static struct blur_tex_program *get_or_generate_blur_text_program(void)
 
 static void blur_data_destroy(struct blur_data *data)
 {
+    ky_egl_make_current(blur_config.renderer->egl);
+
     if (data->blur_prog[0].id > 0) {
         glDeleteProgram(data->blur_prog[0].id);
     }
