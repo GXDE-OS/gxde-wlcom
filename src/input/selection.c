@@ -64,7 +64,7 @@ struct selection {
 #if HAVE_KDE_CLIPBOARD
 static const char *service_bus = "org.kde.KWin";
 static const char *service_path = "/Clipboard";
-static const char *service_interface = "org.kde.kwin.Clipboard";
+static const char *service_interface = "org.kde.KWin.Clipboard";
 
 // SD_BUS_METHOD("getClipboardSelectionPid", "", "i", get_clipboard_selection_pid, 0),
 static int get_clipboard_selection_pid(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
