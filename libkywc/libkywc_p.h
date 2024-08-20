@@ -283,6 +283,8 @@ struct ky_thumbnail {
 
     void (*destroy)(struct ky_thumbnail *thumbnail);
     void *data;
+
+    struct kywc_thumbnail_buffer buffer;
 };
 
 struct ky_thumbnail_manager *ky_thumbnail_manager_create(kywc_context *ctx);

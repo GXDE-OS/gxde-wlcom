@@ -50,6 +50,10 @@ static void kywc_context_init_providers(kywc_context *ctx)
 kywc_context *kywc_context_create_by_display(struct wl_display *display, uint32_t capabilities,
                                              const struct kywc_context_interface *impl, void *data)
 {
+    if (capabilities & KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT) {
+        capabilities &= ~KYWC_CONTEXT_CAPABILITY_THUMBNAIL;
+    }
+
     kywc_context *ctx = calloc(1, sizeof(kywc_context));
     if (!ctx) {
         return NULL;
@@ -188,7 +192,8 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
             return false;
         }
         ctx->workspace = manager;
-    } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_THUMBNAIL) {
+    } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_THUMBNAIL ||
+               provider->capability == KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT) {
         if (ctx->thumbnail) {
             return false;
         }

@@ -23,6 +23,8 @@ enum kywc_context_capability {
     KYWC_CONTEXT_CAPABILITY_TOPLEVEL = 1 << 1,
     KYWC_CONTEXT_CAPABILITY_WORKSPACE = 1 << 2,
     KYWC_CONTEXT_CAPABILITY_THUMBNAIL = 1 << 3,
+    /* with multi-plane support */
+    KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT = 1 << 4,
 };
 
 struct kywc_context_interface {
@@ -306,6 +308,13 @@ struct kywc_thumbnail_buffer {
     uint32_t offset, stride; // in bytes
     uint64_t modifier;       // only used when dmabuf
     uint32_t flags;          // enum kywc_thumbnail_buffer_flag
+
+    uint32_t n_planes;
+    // planes attributes if multi-planes
+    struct {
+        int32_t fd;
+        uint32_t offset, stride;
+    } planes[4];
 };
 
 struct kywc_thumbnail_interface {
