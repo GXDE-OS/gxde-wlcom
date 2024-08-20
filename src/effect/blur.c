@@ -805,6 +805,13 @@ static bool blur_frame_render_end(struct effect_entity *entity,
     pixman_region32_translate(&output_data->unaffected_region, -target->logical.x,
                               -target->logical.y);
     ky_scene_render_region(&output_data->unaffected_region, target);
+
+    /**
+     * if sub the unaffected region from target damage,
+     * the new target damage (to framebuffer coord) union (+) unaffected region (to framebuffer
+     * coord) maybe not equal (!=) target old framebuffer damage (to framebuffer coord), when output
+     * scale is not integer.
+     */
     pixman_region32_union(&target->excluded_damage, &target->excluded_damage,
                           &output_data->unaffected_region);
 
