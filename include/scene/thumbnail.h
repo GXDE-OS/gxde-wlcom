@@ -24,6 +24,8 @@ enum thumbnail_option {
     THUMBNAIL_DISABLE_SHADOW = 1 << 1,
     /* disable round corners */
     THUMBNAIL_DISABLE_ROUND_CORNER = 1 << 2,
+    /* prefer single plane buffer */
+    THUMBNAIL_ENABLE_SINGLE_PLANE = 1 << 3,
 };
 
 bool thumbnail_manager_create(struct server *server);
@@ -33,7 +35,8 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
 struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option, float scale);
 
 struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
-                                                  struct kywc_output *output, float scale);
+                                                  struct kywc_output *output, float scale,
+                                                  bool single_plane);
 
 struct thumbnail *thumbnail_create_from_output(struct ky_scene_output *output,
                                                struct kywc_output_state *output_state, float scale);

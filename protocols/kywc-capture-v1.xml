@@ -5,7 +5,7 @@
     SPDX-License-Identifier: MulanPSL-2.0
   ]]></copyright>
 
-  <interface name="kywc_capture_manager_v1" version="1">
+  <interface name="kywc_capture_manager_v1" version="2">
     <description summary="manager to inform clients and begin get capturing">
       This object is a manager which offers requests to start capturing from a source.
     </description>
@@ -45,7 +45,7 @@
     </request>
   </interface>
 
-  <interface name="kywc_capture_frame_v1" version="1">
+  <interface name="kywc_capture_frame_v1" version="2">
     <description summary="a frame ready for copy">
     </description>
 
@@ -96,5 +96,21 @@
       </description>
       <arg name="want_buffer" type="uint" summary="request send buffer event when buffer is changed"/>
     </request>
+
+    <event name="buffer_with_plane" since="2">
+      <description summary="buffer information with plane">
+        Provides information about buffer parameters with the plane index
+        that need to be used for this frame.
+      </description>
+      <arg name="index" type="uint" summary="plane index"/>
+      <arg name="fd" type="fd" summary="buffer file descriptor"/>
+      <arg name="offset" type="uint" summary="buffer offset in bytes"/>
+      <arg name="stride" type="uint" summary="buffer stride in bytes"/>
+    </event>
+
+    <event name="buffer_done" since="2">
+      <description summary="all buffer parameters have been sent">
+      </description>
+    </event>
   </interface>
 </protocol>

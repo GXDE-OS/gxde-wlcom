@@ -174,14 +174,15 @@ bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backe
 }
 
 const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *renderer,
-                                                           uint32_t fmt)
+                                                           uint32_t fmt, bool single_plane)
 {
     if (!renderer->impl->get_render_formats) {
         return NULL;
     }
 
     const struct wlr_drm_format_set *render_formats =
-        formats ? &formats->formats : renderer->impl->get_render_formats(renderer);
+        (formats && single_plane) ? &formats->formats
+                                  : renderer->impl->get_render_formats(renderer);
     if (!render_formats) {
         kywc_log(KYWC_ERROR, "Failed to get render formats");
         return NULL;
@@ -198,13 +199,14 @@ const struct wlr_drm_format *ky_renderer_get_render_format(struct wlr_renderer *
 
 struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
                                              struct wlr_allocator *alloc, int width, int height,
-                                             uint32_t fmt)
+                                             uint32_t fmt, bool single_plane)
 {
     if (wlr_renderer_is_pixman(renderer)) {
         return shm_create_buffer(width, height, fmt);
     }
 
-    const struct wlr_drm_format *format = ky_renderer_get_render_format(renderer, fmt);
+    const struct wlr_drm_format *format =
+        ky_renderer_get_render_format(renderer, fmt, single_plane);
     if (!format) {
         return NULL;
     }

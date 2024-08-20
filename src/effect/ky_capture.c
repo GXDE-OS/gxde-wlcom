@@ -147,22 +147,29 @@ static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
 
     struct wlr_dmabuf_attributes dmabuf;
     struct wlr_shm_attributes shm;
-    uint32_t format, stride, offset;
+    uint32_t format, n_planes = 1;
     uint64_t modifier = 0;
-    int fd;
+
+    struct {
+        int fd;
+        uint32_t offset, stride;
+    } planes[WLR_DMABUF_MAX_PLANES] = { 0 };
 
     if (wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
-        fd = dmabuf.fd[0];
-        stride = dmabuf.stride[0];
-        offset = dmabuf.offset[0];
+        flags |= KYWC_CAPTURE_FRAME_V1_FLAGS_DMABUF;
         format = dmabuf.format;
         modifier = dmabuf.modifier;
-        flags |= KYWC_CAPTURE_FRAME_V1_FLAGS_DMABUF;
+        n_planes = dmabuf.n_planes;
+        for (uint32_t i = 0; i < n_planes; i++) {
+            planes[i].fd = dmabuf.fd[i];
+            planes[i].offset = dmabuf.offset[i];
+            planes[i].stride = dmabuf.stride[i];
+        }
     } else if (wlr_buffer_get_shm(buffer, &shm)) {
-        fd = shm.fd;
-        stride = shm.stride;
-        offset = shm.offset;
         format = shm.format;
+        planes[0].fd = shm.fd;
+        planes[0].offset = shm.offset;
+        planes[0].stride = shm.stride;
     } else {
         return;
     }
@@ -172,8 +179,19 @@ static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
 
     uint32_t mod_high = modifier >> 32;
     uint32_t mod_low = modifier & 0xFFFFFFFF;
-    kywc_capture_frame_v1_send_buffer(frame->resource, fd, format, buffer->width, buffer->height,
-                                      offset, stride, mod_high, mod_low, flags);
+
+    kywc_capture_frame_v1_send_buffer(frame->resource, planes[0].fd, format, buffer->width,
+                                      buffer->height, planes[0].offset, planes[0].stride, mod_high,
+                                      mod_low, flags);
+
+    uint32_t version = wl_resource_get_version(frame->resource);
+    if (version >= KYWC_CAPTURE_FRAME_V1_BUFFER_DONE_SINCE_VERSION) {
+        for (uint32_t i = 1; i < n_planes; i++) {
+            kywc_capture_frame_v1_send_buffer_with_plane(frame->resource, i, planes[i].fd,
+                                                         planes[i].offset, planes[i].stride);
+        }
+        kywc_capture_frame_v1_send_buffer_done(frame->resource);
+    }
 
     /* enable update if client wants buffer again in release_buffer */
     if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
@@ -214,6 +232,9 @@ static void manager_handle_capture_output(struct wl_client *client, struct wl_re
     }
 
     uint32_t options = overlay_cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+    if (version < KYWC_CAPTURE_FRAME_V1_BUFFER_WITH_PLANE_SINCE_VERSION) {
+        options |= CAPTURE_NEED_SINGLE_PLANE;
+    }
     frame->capture = capture_create_from_output(output_from_kywc_output(kywc_output), options);
     if (!frame->capture) {
         kywc_capture_frame_v1_send_failed(frame->resource);
@@ -266,7 +287,8 @@ static void manager_handle_capture_workspace(struct wl_client *client, struct wl
         return;
     }
 
-    frame->thumbnail = thumbnail_create_from_workspace(ws, kywc_output, 1.0);
+    frame->thumbnail = thumbnail_create_from_workspace(
+        ws, kywc_output, 1.0, version < KYWC_CAPTURE_FRAME_V1_BUFFER_WITH_PLANE_SINCE_VERSION);
     if (!frame->thumbnail) {
         kywc_capture_frame_v1_send_failed(frame->resource);
         wl_resource_set_user_data(frame->resource, NULL);
@@ -320,9 +342,12 @@ static void manager_handle_capture_toplevel(struct wl_client *client, struct wl_
     }
 
     struct view *view = view_from_kywc_view(kywc_view);
-    uint32_t option = THUMBNAIL_DISABLE_ROUND_CORNER;
-    option |= without_decoration ? THUMBNAIL_DISABLE_DECOR : THUMBNAIL_DISABLE_SHADOW;
-    frame->thumbnail = thumbnail_create_from_view(view, option, 1.0);
+    uint32_t options = THUMBNAIL_DISABLE_ROUND_CORNER;
+    options |= without_decoration ? THUMBNAIL_DISABLE_DECOR : THUMBNAIL_DISABLE_SHADOW;
+    if (version < KYWC_CAPTURE_FRAME_V1_BUFFER_WITH_PLANE_SINCE_VERSION) {
+        options |= THUMBNAIL_ENABLE_SINGLE_PLANE;
+    }
+    frame->thumbnail = thumbnail_create_from_view(view, options, 1.0);
     if (!frame->thumbnail) {
         kywc_capture_frame_v1_send_failed(frame->resource);
         wl_resource_set_user_data(frame->resource, NULL);
@@ -390,7 +415,7 @@ bool ky_capture_manager_create(struct server *server)
         return false;
     }
 
-    manager->global = wl_global_create(server->display, &kywc_capture_manager_v1_interface, 1,
+    manager->global = wl_global_create(server->display, &kywc_capture_manager_v1_interface, 2,
                                        manager, ky_capture_manager_bind);
     if (!manager->global) {
         kywc_log(KYWC_WARN, "kywc capture manager create failed");

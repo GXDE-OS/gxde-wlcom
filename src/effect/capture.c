@@ -144,7 +144,8 @@ static struct wlr_buffer *capture_buffer_allocate(struct capture_buffer *capture
     }
 
     struct wlr_buffer *buffer = ky_renderer_create_buffer(
-        manager->server->renderer, manager->server->allocator, width, height, DRM_FORMAT_ARGB8888);
+        manager->server->renderer, manager->server->allocator, width, height, DRM_FORMAT_ARGB8888,
+        capture_buffer->options & CAPTURE_NEED_SINGLE_PLANE);
     if (!buffer) {
         kywc_log(KYWC_ERROR, "failed to create wlr buffer");
         return NULL;
@@ -590,7 +591,8 @@ static struct capture_buffer *capture_buffer_get_or_create(enum capture_type typ
     struct capture_buffer *buffer;
     wl_list_for_each(buffer, &manager->buffers, link) {
         /* skip cursor option check */
-        if (buffer->type != type || (buffer->options ^ options) & CAPTURE_NEED_UNSCALED) {
+        if (buffer->type != type ||
+            (buffer->options ^ options) & (CAPTURE_NEED_UNSCALED | CAPTURE_NEED_SINGLE_PLANE)) {
             continue;
         }
         if (type == CAPTURE_TYPE_FULLSCREEN) {

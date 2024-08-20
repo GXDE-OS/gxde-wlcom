@@ -44,6 +44,7 @@ struct thumbnail_buffer {
     struct wl_list thumbnails;
 
     float scale;
+    bool single_plane;
     bool was_damaged;  // buffer is damaged
     bool need_destroy; // need force destroyed
     bool can_destroy;  // cannot be destroyed when render
@@ -65,7 +66,7 @@ struct node_thumbnail {
 struct view_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
-    uint32_t option;
+    uint32_t options;
 
     struct view *view;
     struct wl_listener view_unmap;
@@ -94,7 +95,7 @@ struct workspace_thumbnail_entry {
 struct workspace_thumbnail {
     struct thumbnail_buffer base;
     struct wl_list link;
-    uint32_t option;
+    uint32_t options;
 
     struct wl_list entries; // workspace_thumbnail_entry
 
@@ -167,12 +168,13 @@ static void thumbnail_manager_schedule_frame(void)
     }
 }
 
-static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale)
+static void thumbnail_buffer_init(struct thumbnail_buffer *buffer, float scale, bool single_plane)
 {
     buffer->scale = scale;
     buffer->was_damaged = true;
     buffer->can_destroy = true;
     buffer->type = THUMBNAIL_TYPE_NONE;
+    buffer->single_plane = single_plane;
 
     wl_list_init(&buffer->thumbnails);
 }
@@ -188,11 +190,11 @@ static struct node_thumbnail *find_node_thumbnail(struct ky_scene_node *node, fl
     return NULL;
 }
 
-static struct view_thumbnail *find_view_thumbnail(struct view *view, uint32_t option, float scale)
+static struct view_thumbnail *find_view_thumbnail(struct view *view, uint32_t options, float scale)
 {
     struct view_thumbnail *view_thumbnail;
     wl_list_for_each(view_thumbnail, &manager->view_thumbnails, link) {
-        if (view_thumbnail->view == view && view_thumbnail->option == option &&
+        if (view_thumbnail->view == view && view_thumbnail->options == options &&
             view_thumbnail->base.scale == scale) {
             return view_thumbnail;
         }
@@ -201,12 +203,14 @@ static struct view_thumbnail *find_view_thumbnail(struct view *view, uint32_t op
 }
 
 static struct workspace_thumbnail *find_workspace_thumbnail(struct workspace *workspace,
-                                                            struct kywc_output *output, float scale)
+                                                            struct kywc_output *output, float scale,
+                                                            bool single_plane)
 {
     struct workspace_thumbnail *workspace_thumbnail;
     wl_list_for_each(workspace_thumbnail, &manager->workspace_thumbnails, link) {
         if (workspace_thumbnail->workspace == workspace &&
-            workspace_thumbnail->base.scale == scale && workspace_thumbnail->output == output) {
+            workspace_thumbnail->base.scale == scale && workspace_thumbnail->output == output &&
+            workspace_thumbnail->base.single_plane == single_plane) {
             return workspace_thumbnail;
         }
     }
@@ -229,16 +233,18 @@ static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct
         return;
     }
 
-    uint32_t option = view_thumbnail->option;
-    struct theme *theme = theme_manager_get_current();
-    if (option & THUMBNAIL_DISABLE_DECOR) {
+    uint32_t options = // only care about these options
+        view_thumbnail->options &
+        (THUMBNAIL_DISABLE_DECOR | THUMBNAIL_DISABLE_SHADOW | THUMBNAIL_DISABLE_ROUND_CORNER);
+    if (options & THUMBNAIL_DISABLE_DECOR) {
         return;
-    } else if (option & THUMBNAIL_DISABLE_SHADOW) {
+    } else if (options & THUMBNAIL_DISABLE_SHADOW) {
         box->x -= kywc_view->margin.off_x;
         box->y -= kywc_view->margin.off_y;
         box->width += kywc_view->margin.off_width;
         box->height += kywc_view->margin.off_height;
-    } else if (option & THUMBNAIL_DISABLE_ROUND_CORNER || option == 0) {
+    } else if (options & THUMBNAIL_DISABLE_ROUND_CORNER || options == 0) {
+        struct theme *theme = theme_manager_get_current();
         box->x -= kywc_view->margin.off_x + theme->shadow_border;
         box->y -= kywc_view->margin.off_y + theme->shadow_border;
         box->width += kywc_view->margin.off_width + theme->shadow_border * 2;
@@ -256,8 +262,9 @@ static struct wlr_buffer *thumbnail_buffer_allocate(struct thumbnail_buffer *thu
         return thumbnail_buffer->buffer;
     }
 
-    struct wlr_buffer *buffer = ky_renderer_create_buffer(
-        manager->server->renderer, manager->server->allocator, width, height, DRM_FORMAT_ARGB8888);
+    struct wlr_buffer *buffer =
+        ky_renderer_create_buffer(manager->server->renderer, manager->server->allocator, width,
+                                  height, DRM_FORMAT_ARGB8888, thumbnail_buffer->single_plane);
     if (!buffer) {
         kywc_log(KYWC_ERROR, "failed create wlr buffer with %d x %d", width, height);
         return NULL;
@@ -369,7 +376,7 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
         .options = KY_SCENE_RENDER_DISABLE_VISIBILITY | KY_SCENE_RENDER_DISABLE_BLUR |
                    KY_SCENE_RENDER_DISABLE_EFFECT,
     };
-    if (view_thumbnail->option & THUMBNAIL_DISABLE_ROUND_CORNER) {
+    if (view_thumbnail->options & THUMBNAIL_DISABLE_ROUND_CORNER) {
         target.options |= KY_SCENE_RENDER_DISABLE_ROUND_CORNER;
     }
 
@@ -487,7 +494,7 @@ static struct node_thumbnail *node_thumbnail_get_or_create(struct ky_scene_node 
         return NULL;
     }
 
-    thumbnail_buffer_init(&node_thumbnail->base, scale);
+    thumbnail_buffer_init(&node_thumbnail->base, scale, false);
     node_thumbnail->base.type = THUMBNAIL_TYPE_NODE;
     node_thumbnail->base.render = node_thumbnail_render;
     node_thumbnail->base.destroy = node_thumbnail_destroy;
@@ -503,10 +510,10 @@ static struct node_thumbnail *node_thumbnail_get_or_create(struct ky_scene_node 
     return node_thumbnail;
 }
 
-static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, uint32_t option,
+static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, uint32_t options,
                                                            float scale)
 {
-    struct view_thumbnail *view_thumbnail = find_view_thumbnail(view, option, scale);
+    struct view_thumbnail *view_thumbnail = find_view_thumbnail(view, options, scale);
     if (view_thumbnail) {
         return view_thumbnail;
     }
@@ -516,9 +523,9 @@ static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, ui
         return NULL;
     }
 
-    thumbnail_buffer_init(&view_thumbnail->base, scale);
+    thumbnail_buffer_init(&view_thumbnail->base, scale, options & THUMBNAIL_ENABLE_SINGLE_PLANE);
     view_thumbnail->base.type = THUMBNAIL_TYPE_VIEW;
-    view_thumbnail->option = option;
+    view_thumbnail->options = options;
     view_thumbnail->base.render = view_thumbnail_render;
     view_thumbnail->base.destroy = view_thumbnail_destroy;
 
@@ -528,7 +535,7 @@ static struct view_thumbnail *view_thumbnail_get_or_create(struct view *view, ui
 
     /* use surface_tree if has no server decoration */
     view_thumbnail->source_node =
-        option & THUMBNAIL_DISABLE_DECOR ? &view->surface_tree->node : &view->tree->node;
+        options & THUMBNAIL_DISABLE_DECOR ? &view->surface_tree->node : &view->tree->node;
     ky_scene_node_force_damage_event(view_thumbnail->source_node, true);
     view_thumbnail->source_damage.notify = view_thumbnail_handle_source_damage;
     wl_signal_add(&view_thumbnail->source_node->events.damage, &view_thumbnail->source_damage);
@@ -591,7 +598,7 @@ static struct wlr_buffer *workspace_thumbnail_render(struct thumbnail_buffer *th
             continue;
         }
 
-        view_thumbnail = find_view_thumbnail(view_proxy->view, workspace_thumbnail->option, 1.0);
+        view_thumbnail = find_view_thumbnail(view_proxy->view, workspace_thumbnail->options, 1.0);
         if (!view_thumbnail || !view_thumbnail->base.buffer) {
             continue;
         }
@@ -788,7 +795,7 @@ static void workspace_thumbnail_handle_source_destroy(struct wl_listener *listen
 static void workspace_thumbnail_entry_create_thumbnail(struct workspace_thumbnail_entry *entry)
 {
     struct thumbnail *thumbnail =
-        thumbnail_create_from_view(entry->view, entry->workspace_thumbnail->option, 1.0);
+        thumbnail_create_from_view(entry->view, entry->workspace_thumbnail->options, 1.0);
     if (!thumbnail) {
         return;
     }
@@ -846,10 +853,10 @@ static void workspace_thumbnail_create_entries(struct workspace_thumbnail *works
 
 static struct workspace_thumbnail *
 workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_output *kywc_output,
-                                  float scale)
+                                  float scale, bool single_plane)
 {
     struct workspace_thumbnail *workspace_thumbnail =
-        find_workspace_thumbnail(workspace, kywc_output, scale);
+        find_workspace_thumbnail(workspace, kywc_output, scale, single_plane);
     if (workspace_thumbnail) {
         return workspace_thumbnail;
     }
@@ -860,14 +867,17 @@ workspace_thumbnail_get_or_create(struct workspace *workspace, struct kywc_outpu
     }
 
     wl_list_init(&workspace_thumbnail->entries);
-    thumbnail_buffer_init(&workspace_thumbnail->base, scale);
+    thumbnail_buffer_init(&workspace_thumbnail->base, scale, single_plane);
     workspace_thumbnail->base.type = THUMBNAIL_TYPE_WORKSPACE;
     workspace_thumbnail->base.render = workspace_thumbnail_render;
     workspace_thumbnail->base.destroy = workspace_thumbnail_destroy;
 
     workspace_thumbnail->workspace = workspace;
     workspace_thumbnail->output = kywc_output;
-    workspace_thumbnail->option = THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_DISABLE_SHADOW;
+    workspace_thumbnail->options = THUMBNAIL_DISABLE_ROUND_CORNER | THUMBNAIL_DISABLE_SHADOW;
+    if (single_plane) {
+        workspace_thumbnail->options |= THUMBNAIL_ENABLE_SINGLE_PLANE;
+    }
 
     for (int i = 0; i < 3; i++) {
         ky_scene_node_force_damage_event(&workspace->layers[i].tree->node, true);
@@ -1064,7 +1074,7 @@ output_thumbnail_get_or_create(struct ky_scene_output *output,
         return NULL;
     }
 
-    thumbnail_buffer_init(&output_thumbnail->base, scale);
+    thumbnail_buffer_init(&output_thumbnail->base, scale, false);
     output_thumbnail->base.type = THUMBNAIL_TYPE_OUTPUT;
     output_thumbnail->base.render = output_thumbnail_render;
     output_thumbnail->base.destroy = output_thumbnail_destroy;
@@ -1137,7 +1147,7 @@ struct thumbnail *thumbnail_create_from_node(struct ky_scene_node *node, float s
     return thumbnail;
 }
 
-struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option, float scale)
+struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t options, float scale)
 {
     if (!manager) {
         return NULL;
@@ -1148,7 +1158,7 @@ struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option,
         return NULL;
     }
 
-    struct view_thumbnail *view_thumbnail = view_thumbnail_get_or_create(view, option, scale);
+    struct view_thumbnail *view_thumbnail = view_thumbnail_get_or_create(view, options, scale);
     if (!view_thumbnail) {
         free(thumbnail);
         return NULL;
@@ -1166,7 +1176,8 @@ struct thumbnail *thumbnail_create_from_view(struct view *view, uint32_t option,
 }
 
 struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
-                                                  struct kywc_output *kywc_output, float scale)
+                                                  struct kywc_output *kywc_output, float scale,
+                                                  bool single_plane)
 {
     if (!manager) {
         return NULL;
@@ -1178,7 +1189,7 @@ struct thumbnail *thumbnail_create_from_workspace(struct workspace *workspace,
     }
 
     struct workspace_thumbnail *workspace_thumbnail =
-        workspace_thumbnail_get_or_create(workspace, kywc_output, scale);
+        workspace_thumbnail_get_or_create(workspace, kywc_output, scale, single_plane);
     if (!workspace_thumbnail) {
         free(thumbnail);
         return NULL;

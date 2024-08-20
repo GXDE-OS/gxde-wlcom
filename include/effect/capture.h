@@ -23,6 +23,8 @@ enum capture_option {
      * other capture request is different in cursor option.
      */
     CAPTURE_NEED_CURSOR = 1 << 1,
+    /* prefer single plane buffer */
+    CAPTURE_NEED_SINGLE_PLANE = 1 << 2,
 };
 
 struct capture *capture_create_from_output(struct output *output, uint32_t options);
