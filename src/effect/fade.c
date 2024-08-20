@@ -505,7 +505,6 @@ bool node_add_fade_effect(struct ky_scene_node *node, struct fade_options *optio
             memcpy(new_data->thumbnail_radius, fade_data->thumbnail_radius,
                    sizeof(new_data->thumbnail_radius));
 
-            pixman_region32_init(&new_data->blur_info.region);
             pixman_region32_copy(&new_data->blur_info.region, &fade_data->blur_info.region);
             new_data->blur_info.iterations = fade_data->blur_info.iterations;
             new_data->blur_info.offset = fade_data->blur_info.offset;

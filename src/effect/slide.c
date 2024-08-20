@@ -261,26 +261,16 @@ static bool slide_node_render(struct effect_entity *entity, int lx, int ly,
         return false;
     }
 
-    struct animation_data *current = &data->current;
-    struct kywc_box geometry = data->current.geometry;
-    pixman_region32_t render_region;
-    pixman_region32_init(&render_region);
-    pixman_region32_intersect_rect(&render_region, &target->damage, geometry.x, geometry.y,
-                                   geometry.width, geometry.height);
-    if (!pixman_region32_not_empty(&render_region)) {
-        pixman_region32_fini(&render_region);
-        return false;
-    }
-
     struct kywc_fbox src_box;
     slide_get_src_box(data, &src_box);
 
     /* if data need blur is false, blur region is empty */
     bool has_blur = pixman_region32_not_empty(&data->blur_info.region);
 
+    struct animation_data *current = &data->current;
     const struct ky_scene_render_texture_options opts = {
         .texture = data->thumbnail_texture,
-        .geometry_box = &geometry,
+        .geometry_box = &current->geometry,
         .alpha = &current->alpha,
         .src = &src_box,
         .blur = {
