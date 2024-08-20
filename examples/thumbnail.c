@@ -11,13 +11,14 @@ static bool thumbnail_handle_buffer(kywc_thumbnail *thumbnail,
                                     const struct kywc_thumbnail_buffer *buffer, void *data)
 {
     printf("thumbnail %d \"%s\"\n", thumbnail->type, thumbnail->source_uuid);
-    printf("  %s: %d reused: %s\n",
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_DMABUF ? "dmabuf" : "memfd", buffer->fd,
-           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_REUSED ? "yes" : "no");
-    printf("  format: 0x%x\n", buffer->format);
-    printf("  size: %d x %d\n", buffer->width, buffer->height);
-    printf("  offset: %d  stride:  %d\n", buffer->offset, buffer->stride);
-    printf("  modifier: 0x%lx\n", buffer->modifier);
+    printf("  %s%s %d x %d with 0x%x (0x%lx) %d plane\n",
+           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_DMABUF ? "dmabuf" : "memfd",
+           buffer->flags & KYWC_THUMBNAIL_BUFFER_IS_REUSED ? "(reused)" : "", buffer->width,
+           buffer->height, buffer->format, buffer->modifier, buffer->n_planes);
+    for (uint32_t i = 0; i < buffer->n_planes; i++) {
+        printf("    %d: fd %d offset %d stride %d\n", i, buffer->planes[i].fd,
+               buffer->planes[i].offset, buffer->planes[i].stride);
+    }
     printf("\n");
 
     kywc_context *ctx = kywc_thumbnail_get_context(thumbnail);
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    uint32_t caps = KYWC_CONTEXT_CAPABILITY_THUMBNAIL;
+    uint32_t caps = KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT;
     kywc_context *ctx = kywc_context_create(NULL, caps, &context_impl, NULL);
     if (!ctx) {
         return -1;

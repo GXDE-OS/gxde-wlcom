@@ -537,19 +537,36 @@ static bool kywc_buffer_import_dmabuf(struct kywc_buffer *kywc_buffer,
         eglMakeCurrent(helper->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
 
-    EGLint attribs[20] = { EGL_NONE };
+    EGLint attribs[50] = { EGL_NONE };
     int num_attribs = 0;
 
     ADD_ATTRIB(EGL_WIDTH, buffer->width);
     ADD_ATTRIB(EGL_HEIGHT, buffer->height);
     ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, buffer->format);
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, buffer->fd);
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, buffer->offset);
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, buffer->stride);
-    if (buffer->modifier != DRM_FORMAT_MOD_INVALID) {
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, buffer->modifier & 0xFFFFFFFF);
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, buffer->modifier >> 32);
+
+    struct {
+        EGLint fd, offset, pitch, mod_lo, mod_hi;
+    } attr_names[4] = {
+        { EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT,
+          EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT,
+          EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT,
+          EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT,
+          EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT }
+    };
+
+    for (uint32_t i = 0; i < buffer->n_planes; i++) {
+        ADD_ATTRIB(attr_names[i].fd, buffer->planes[i].fd);
+        ADD_ATTRIB(attr_names[i].offset, buffer->planes[i].offset);
+        ADD_ATTRIB(attr_names[i].pitch, buffer->planes[i].stride);
+        if (buffer->modifier != DRM_FORMAT_MOD_INVALID) {
+            ADD_ATTRIB(attr_names[i].mod_hi, buffer->modifier >> 32);
+            ADD_ATTRIB(attr_names[i].mod_lo, buffer->modifier & 0xFFFFFFFF);
+        }
     }
+
     ADD_ATTRIB(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
 
     kywc_buffer->image = helper->procs.eglCreateImageKHR(helper->display, EGL_NO_CONTEXT,
