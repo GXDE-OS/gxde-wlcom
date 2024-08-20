@@ -36,7 +36,8 @@ static uint32_t get_effect_types(const struct effect_interface *impl)
         impl->frame_render_end || impl->frame_render_post) {
         types |= EFFECT_TYPE_SCENE;
     }
-    if (impl->node_render) {
+    if (impl->node_render || impl->node_push_damage || impl->entity_bounding_box ||
+        impl->entity_clip_region || impl->entity_opaque_region) {
         types |= EFFECT_TYPE_NODE;
     }
 
