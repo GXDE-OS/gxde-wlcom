@@ -22,6 +22,11 @@ static const struct quirks quirks_table[] = {
         .render_mask = QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND,
     },
     {
+        "hisi-dpu",
+        "HUAWEI",
+        .render_mask = QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND,
+    },
+    {
         "nvidia-drm",
         "NVIDIA",
         .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
