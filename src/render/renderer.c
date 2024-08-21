@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #include <stdlib.h>
 
 #include <drm_fourcc.h>
@@ -23,6 +25,8 @@
 static struct single_plane_formats {
     struct wlr_drm_format_set formats;
     struct wl_listener destroy;
+    int (*get_format_modifier_plane_count)(struct gbm_device *gbm, uint32_t format,
+                                           uint64_t modifier);
 } *formats = NULL;
 
 static void handle_renderer_destroy(struct wl_listener *listener, void *data)
@@ -61,6 +65,12 @@ static void query_single_plane_formats(struct wlr_renderer *renderer)
         goto out;
     }
 
+    formats->get_format_modifier_plane_count =
+        dlsym(RTLD_DEFAULT, "gbm_device_get_format_modifier_plane_count");
+    if (formats->get_format_modifier_plane_count == NULL) {
+        kywc_log(KYWC_WARN, "No gbm_device_get_format_modifier_plane_count support!");
+    }
+
     const struct wlr_drm_format *fmt;
     for (size_t i = 0; i < render_formats->len; i++) {
         fmt = &render_formats->formats[i];
@@ -70,11 +80,12 @@ static void query_single_plane_formats(struct wlr_renderer *renderer)
                 wlr_drm_format_set_add(&formats->formats, fmt->format, fmt->modifiers[j]);
                 continue;
             }
-
-            if (gbm_device_get_format_modifier_plane_count(gbm_device, fmt->format,
-                                                           fmt->modifiers[j]) == 1) {
-                wlr_drm_format_set_add(&formats->formats, fmt->format, fmt->modifiers[j]);
+            if (formats->get_format_modifier_plane_count &&
+                formats->get_format_modifier_plane_count(gbm_device, fmt->format,
+                                                         fmt->modifiers[j]) != 1) {
+                continue;
             }
+            wlr_drm_format_set_add(&formats->formats, fmt->format, fmt->modifiers[j]);
         }
     }
 
