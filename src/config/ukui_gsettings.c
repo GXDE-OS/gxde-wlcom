@@ -66,16 +66,10 @@ static struct ukui_accent_color {
 
 static struct ukui_settings *settings = NULL;
 
-static bool is_schema_installed(const char *schema_id)
+static GSettingsSchema *is_schema_installed(const char *schema_id)
 {
     GSettingsSchemaSource *source = g_settings_schema_source_get_default();
-    GSettingsSchema *schema = g_settings_schema_source_lookup(source, schema_id, TRUE);
-
-    if (schema) {
-        g_settings_schema_unref(schema);
-    }
-
-    return schema;
+    return g_settings_schema_source_lookup(source, schema_id, TRUE);
 }
 
 static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
@@ -89,7 +83,9 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
         return;
     }
 
-    input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+    if (settings->cursor.theme && settings->cursor.size > 0) {
+        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+    }
 }
 
 static void style_name_changed(GSettings *style, const char *key)
@@ -119,7 +115,9 @@ static void font_style_changed(GSettings *style, const char *key)
         free(settings->style.font_size);
         settings->style.font_size = g_settings_get_string(style, key);
     }
-    theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
+    if (settings->style.font_name && settings->style.font_size) {
+        theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
+    }
 }
 
 static int32_t get_color_int(float *rgba)
@@ -207,68 +205,29 @@ static int dconf_notify(sd_bus_message *msg, void *userdata, sd_bus_error *ret_e
     return 0;
 }
 
-static bool cursor_schema_settings(void)
+static GSettings *init_schema_settings(const char *schema_id,
+                                       void (*handler)(GSettings *settings, const char *key))
 {
-    if (!is_schema_installed(cursor_schema)) {
-        return false;
+    GSettingsSchema *schema = is_schema_installed(schema_id);
+    if (!schema) {
+        return NULL;
     }
 
-    settings->cursor.settings = g_settings_new(cursor_schema);
-    settings->cursor.theme = g_settings_get_string(settings->cursor.settings, cursor_theme_key);
-    settings->cursor.size = g_settings_get_int(settings->cursor.settings, cursor_size_key);
-    if (settings->cursor.theme && settings->cursor.size > 0) {
-        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+    GSettings *settings = g_settings_new(schema_id);
+    if (!settings) {
+        g_settings_schema_unref(schema);
+        return NULL;
     }
 
-    return true;
-}
-
-static bool style_schema_settings(void)
-{
-    if (!is_schema_installed(style_schema)) {
-        return false;
+    gchar **keys = g_settings_schema_list_keys(schema);
+    for (int i = 0; keys[i] != NULL; i++) {
+        handler(settings, keys[i]);
     }
 
-    settings->style.settings = g_settings_new(style_schema);
+    g_strfreev(keys);
+    g_settings_schema_unref(schema);
 
-    settings->style.style_name = g_settings_get_string(settings->style.settings, style_name_key);
-    if (settings->style.style_name) {
-        if (!strcmp(settings->style.style_name, UKUI_THEME_LIGHT)) {
-            theme_manager_set_theme(THEME_TYPE_LIGHT);
-        } else if (!strcmp(settings->style.style_name, UKUI_THEME_DARK)) {
-            theme_manager_set_theme(THEME_TYPE_DARK);
-        }
-    }
-
-    settings->style.icon_theme = g_settings_get_string(settings->style.settings, icon_theme_key);
-    if (settings->style.icon_theme) {
-        theme_manager_set_icon_theme(settings->style.icon_theme);
-    }
-
-    settings->style.accent_color =
-        g_settings_get_string(settings->style.settings, accent_color_key);
-    if (settings->style.accent_color) {
-        theme_manager_apply_accent_color();
-    }
-
-    settings->style.font_name = g_settings_get_string(settings->style.settings, font_name_key);
-    settings->style.font_size = g_settings_get_string(settings->style.settings, font_size_key);
-    if (settings->style.font_name && settings->style.font_size) {
-        theme_manager_set_font(settings->style.font_name, atoi(settings->style.font_size));
-    }
-
-    settings->style.window_radius = g_settings_get_int(settings->style.settings, window_radius_key);
-    if (settings->style.window_radius >= 0) {
-        theme_manager_set_corner_radius(settings->style.window_radius);
-    }
-
-    settings->style.menu_transparency =
-        g_settings_get_int(settings->style.settings, menu_transparency_key);
-    if (settings->style.menu_transparency >= 0) {
-        theme_manager_set_opacity(settings->style.menu_transparency);
-    }
-
-    return true;
+    return settings;
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)
@@ -295,10 +254,10 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
         return false;
     }
 
-    bool has_gsettings = cursor_schema_settings();
-    has_gsettings |= style_schema_settings();
+    settings->cursor.settings = init_schema_settings(cursor_schema, handle_cursor_settings_changed);
+    settings->style.settings = init_schema_settings(style_schema, handle_style_settings_changed);
 
-    if (!has_gsettings) {
+    if (!settings->cursor.settings && !settings->style.settings) {
         free(settings);
         settings = NULL;
         return false;
