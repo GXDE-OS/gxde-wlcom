@@ -28,6 +28,6 @@ if have_ukui_gsettings
   wlcom_sources += files(
     'ukui_gsettings.c',
   )
-  glib = dependency('glib-2.0', version: '>= 2.68')
+  glib = dependency('glib-2.0', version: '>= 2.64')
   wlcom_deps += glib
 endif

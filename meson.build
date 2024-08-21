@@ -79,6 +79,7 @@ math = cc.find_library('m')
 jsonc = dependency('json-c', version: '>=0.13')
 sdbus = dependency('libsystemd')
 dl = cc.find_library('dl')
+rt = cc.find_library('rt')
 thread = dependency('threads')
 cairo = dependency('cairo')
 pango = dependency('pango')
@@ -99,7 +100,7 @@ wlcom_deps = [
   wayland_server, wayland_protos,
   wlroots, xkbcommon, drm, input, udev,
   pixman, xcb, jsonc, sdbus,
-  math, dl, thread, unwind,
+  math, dl, rt, thread, unwind,
   cairo, pango, pangocairo, rsvg,
 ]
 
