@@ -235,7 +235,11 @@ static void init_dmabuf_formats(struct ky_egl *egl)
 
         // EGL always supports implicit modifiers. If at least one modifier supports rendering,
         // assume the implicit modifier supports rendering too.
-        wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_INVALID);
+        // workaround to fix linux_dmabuf_send_modifiers
+        bool linear_only = modifiers_len == 1 && modifiers[0] == DRM_FORMAT_MOD_LINEAR;
+        if (!linear_only) {
+            wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_INVALID);
+        }
         if (modifiers_len == 0 || !all_external_only) {
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_INVALID);
         }
@@ -252,7 +256,9 @@ static void init_dmabuf_formats(struct ky_egl *egl)
             kywc_log(KYWC_DEBUG, "  %s (0x%08" PRIX32 ")", fmt_name ? fmt_name : "<unknown>", fmt);
             free(fmt_name);
 
-            log_modifier(DRM_FORMAT_MOD_INVALID, false);
+            if (!linear_only) {
+                log_modifier(DRM_FORMAT_MOD_INVALID, false);
+            }
             if (modifiers_len == 0) {
                 log_modifier(DRM_FORMAT_MOD_LINEAR, false);
             }
@@ -268,7 +274,7 @@ static void init_dmabuf_formats(struct ky_egl *egl)
 
     egl->has_modifiers = has_modifiers;
     if (!no_modifiers) {
-        kywc_log(KYWC_DEBUG, "EGL DMA-BUF format modifiers %s",
+        kywc_log(KYWC_INFO, "EGL DMA-BUF format modifiers %s",
                  has_modifiers ? "supported" : "unsupported");
     }
 }
