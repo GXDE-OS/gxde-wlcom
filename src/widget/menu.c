@@ -332,7 +332,6 @@ static void menu_set_position(struct menu *menu, int x, int y)
     if (menu->parent) {
         ky_scene_node_coords(&menu->parent->tree->node, &lx, &ly);
     }
-
     struct theme *theme = theme_manager_get_current();
     struct kywc_box *geo = &output->geometry;
 
@@ -376,8 +375,9 @@ static void menu_set_position(struct menu *menu, int x, int y)
         } else if (off_y > 0) {
             y -= off_y;
         }
+        x += lx;
+        y += ly;
     }
-
     ky_scene_node_set_position(&menu->tree->node, x, y);
 }
 
@@ -1014,12 +1014,12 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
 
 struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_item)
 {
+    assert(parent);
     struct menu *menu = calloc(1, sizeof(struct menu));
     if (!menu) {
         return NULL;
     }
 
-    parent = parent_item ? parent_item->tree : parent;
     menu->tree = ky_scene_tree_create(parent);
     ky_scene_node_set_enabled(&menu->tree->node, false);
     menu->destroy.notify = menu_handle_destroy;

@@ -352,7 +352,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
                   window_menu);
 
     struct menu_item *desktop = menu_add_item(window_menu->root, tr("_Desktop"), KEY_D, NULL, NULL);
-    window_menu->desktop = menu_create(NULL, desktop);
+    window_menu->desktop = menu_create(manager->tree, desktop);
     menu_set_fade_enabled(window_menu->desktop, true);
     menu_add_item(window_menu->desktop, tr("_All Desktop"), KEY_A, window_menu_action, window_menu);
     window_menu->add_to = menu_add_item(window_menu->desktop, tr("Add To _New Desktop"), KEY_N,
@@ -367,7 +367,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     struct menu_item *screen =
         menu_add_item(window_menu->root, tr("Move To _Screen"), KEY_S, NULL, NULL);
-    window_menu->screen = menu_create(NULL, screen);
+    window_menu->screen = menu_create(manager->tree, screen);
 
     window_menu->minimize =
         menu_add_item(window_menu->root, tr("Mi_nimize"), KEY_N, window_menu_action, window_menu);
@@ -375,7 +375,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
 
     /* create the more action submenu */
     struct menu_item *more = menu_add_item(window_menu->root, tr("_More"), KEY_M, NULL, NULL);
-    window_menu->more = menu_create(NULL, more);
+    window_menu->more = menu_create(manager->tree, more);
     menu_set_fade_enabled(window_menu->more, true);
     window_menu->move =
         menu_add_item(window_menu->more, tr("_Move"), KEY_M, window_menu_action, window_menu);
