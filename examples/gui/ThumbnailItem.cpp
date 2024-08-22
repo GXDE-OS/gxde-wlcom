@@ -161,19 +161,36 @@ void ThumbnailItem::Private::createEglImage(Thumbnail *thumbnail)
         eglDestroyImageKHR(display, m_image);
     }
 
-    EGLint attribs[20] = { EGL_NONE };
+    EGLint attribs[50] = { EGL_NONE };
     int num_attribs = 0;
 
     ADD_ATTRIB(EGL_WIDTH, thumbnail->size().width());
     ADD_ATTRIB(EGL_HEIGHT, thumbnail->size().height());
     ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, thumbnail->format());
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, thumbnail->fd());
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, thumbnail->offset());
-    ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, thumbnail->stride());
-    if (thumbnail->modifier() != DRM_FORMAT_MOD_INVALID) {
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, thumbnail->modifier() & 0xFFFFFFFF);
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, thumbnail->modifier() >> 32);
+
+    struct {
+        EGLint fd, offset, pitch, mod_lo, mod_hi;
+    } attr_names[4] = {
+        { EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT,
+          EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT,
+          EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT,
+          EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT },
+        { EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT,
+          EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT }
+    };
+
+    for (uint32_t i = 0; i < thumbnail->planeCount(); i++) {
+        ADD_ATTRIB(attr_names[i].fd, thumbnail->fd(i));
+        ADD_ATTRIB(attr_names[i].offset, thumbnail->offset(i));
+        ADD_ATTRIB(attr_names[i].pitch, thumbnail->stride(i));
+        if (thumbnail->modifier() != DRM_FORMAT_MOD_INVALID) {
+            ADD_ATTRIB(attr_names[i].mod_lo, thumbnail->modifier() & 0xFFFFFFFF);
+            ADD_ATTRIB(attr_names[i].mod_hi, thumbnail->modifier() >> 32);
+        }
     }
+
     ADD_ATTRIB(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
 
     format = thumbnail->format();

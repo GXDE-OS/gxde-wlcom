@@ -94,7 +94,7 @@ Context::Context(struct wl_display *display, Capabilities caps, QObject *parent)
     if (caps & Context::Capability::Workspace)
         capabilities |= KYWC_CONTEXT_CAPABILITY_WORKSPACE;
     if (caps & Context::Capability::Thumbnail)
-        capabilities |= KYWC_CONTEXT_CAPABILITY_THUMBNAIL;
+        capabilities |= KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT;
     pri->capabilities = capabilities;
 }
 

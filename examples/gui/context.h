@@ -210,11 +210,15 @@ class Thumbnail : public QObject
                QString decoration);
 
     int32_t fd() const;
+    int32_t fd(int index) const;
     uint32_t format() const;
     QSize size() const;
     uint32_t offset() const;
+    uint32_t offset(int index) const;
     uint32_t stride() const;
+    uint32_t stride(int index) const;
     uint64_t modifier() const;
+    uint32_t planeCount() const;
     Thumbnail::BufferFlags flags() const;
 
   Q_SIGNALS:

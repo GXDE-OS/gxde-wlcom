@@ -13,12 +13,13 @@ class Thumbnail::Private
     void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid,
                QString decoration);
 
-    int32_t fd;
+    int32_t fd[4];
     uint32_t format;
     QSize size;
-    uint32_t offset;
-    uint32_t stride;
+    uint32_t offset[4];
+    uint32_t stride[4];
     uint64_t modifier;
+    uint32_t planeCount;
     Thumbnail::BufferFlags flags;
 
     Type type;
@@ -68,9 +69,13 @@ bool Thumbnail::Private::bufferHandle(kywc_thumbnail *thumbnail,
     }
 
     thum->pri->size = QSize(buffer->width, buffer->height);
-    thum->pri->offset = buffer->offset;
-    thum->pri->stride = buffer->stride;
-    thum->pri->fd = buffer->fd;
+
+    thum->pri->planeCount = buffer->n_planes;
+    for (uint32_t i = 0; i < buffer->n_planes; i++) {
+        thum->pri->offset[i] = buffer->planes[i].offset;
+        thum->pri->stride[i] = buffer->planes[i].stride;
+        thum->pri->fd[i] = buffer->planes[i].fd;
+    }
 
     thum->pri->format = buffer->format;
     thum->pri->modifier = buffer->modifier;
@@ -132,7 +137,12 @@ void Thumbnail::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QSt
 
 int32_t Thumbnail::fd() const
 {
-    return pri->fd;
+    return pri->fd[0];
+}
+
+int32_t Thumbnail::fd(int index) const
+{
+    return pri->fd[index];
 }
 
 uint32_t Thumbnail::format() const
@@ -147,12 +157,27 @@ QSize Thumbnail::size() const
 
 uint32_t Thumbnail::offset() const
 {
-    return pri->offset;
+    return pri->offset[0];
+}
+
+uint32_t Thumbnail::offset(int index) const
+{
+    return pri->offset[index];
 }
 
 uint32_t Thumbnail::stride() const
 {
-    return pri->stride;
+    return pri->stride[0];
+}
+
+uint32_t Thumbnail::stride(int index) const
+{
+    return pri->stride[index];
+}
+
+uint32_t Thumbnail::planeCount() const
+{
+    return pri->planeCount;
 }
 
 uint64_t Thumbnail::modifier() const
