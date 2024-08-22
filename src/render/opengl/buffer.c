@@ -245,8 +245,7 @@ static struct wlr_texture *gl_texture_from_wayland(struct wlr_renderer *wlr_rend
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
 
     const EGLint attribs[] = {
         EGL_WAYLAND_PLANE_WL,

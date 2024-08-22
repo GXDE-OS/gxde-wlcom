@@ -126,6 +126,7 @@ struct ky_opengl_render_pass {
     const struct ky_render_pass_impl *impl;
     struct ky_opengl_buffer *buffer;
     float projection_matrix[9];
+    struct ky_egl_context prev_ctx;
     struct ky_opengl_render_timer *timer;
 };
 
@@ -154,6 +155,7 @@ void ky_opengl_push_debug_(struct ky_opengl_renderer *renderer, const char *file
 #define ky_opengl_push_debug(renderer) ky_opengl_push_debug_(renderer, __FILE__, __func__)
 
 struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffer *buffer,
+                                                          struct ky_egl_context *prev_ctx,
                                                           struct ky_opengl_render_timer *timer);
 
 bool wlr_render_pass_is_opengl(struct wlr_render_pass *render_pass);

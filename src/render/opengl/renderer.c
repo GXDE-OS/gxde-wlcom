@@ -108,7 +108,6 @@ struct ky_opengl_renderer *ky_opengl_renderer_from_wlr_renderer(struct wlr_rende
 static struct ky_opengl_renderer *gl_get_renderer_in_context(struct wlr_renderer *wlr_renderer)
 {
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
-    assert(ky_egl_is_current(renderer->egl));
     assert(renderer->current_buffer != NULL);
     return renderer;
 }
@@ -126,8 +125,7 @@ static void destroy_buffer(struct ky_opengl_buffer *buffer)
     wlr_addon_finish(&buffer->addon);
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(buffer->renderer->egl);
+    ky_egl_make_current(buffer->renderer->egl, &prev_ctx);
 
     ky_opengl_push_debug(buffer->renderer);
 
@@ -222,8 +220,6 @@ static bool gl_bind_buffer(struct wlr_renderer *wlr_renderer, struct wlr_buffer 
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
 
     if (renderer->current_buffer != NULL) {
-        assert(ky_egl_is_current(renderer->egl));
-
         ky_opengl_push_debug(renderer);
         glFlush();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -238,7 +234,7 @@ static bool gl_bind_buffer(struct wlr_renderer *wlr_renderer, struct wlr_buffer 
         return true;
     }
 
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, NULL);
 
     struct ky_opengl_buffer *buffer = get_or_create_buffer(renderer, wlr_buffer);
     if (buffer == NULL) {
@@ -428,7 +424,7 @@ static void gl_destroy(struct wlr_renderer *wlr_renderer)
 {
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
 
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, NULL);
 
     struct ky_opengl_buffer *buffer, *buffer_tmp;
     wl_list_for_each_safe(buffer, buffer_tmp, &renderer->buffers, link) {
@@ -467,7 +463,9 @@ static struct wlr_render_pass *gl_begin_buffer_pass(struct wlr_renderer *wlr_ren
                                                     const struct wlr_buffer_pass_options *options)
 {
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
-    if (!ky_egl_make_current(renderer->egl)) {
+
+    struct ky_egl_context prev_ctx = { 0 };
+    if (!ky_egl_make_current(renderer->egl, &prev_ctx)) {
         return NULL;
     }
 
@@ -482,7 +480,7 @@ static struct wlr_render_pass *gl_begin_buffer_pass(struct wlr_renderer *wlr_ren
         return NULL;
     }
 
-    struct ky_opengl_render_pass *pass = ky_opengl_begin_buffer_pass(buffer, timer);
+    struct ky_opengl_render_pass *pass = ky_opengl_begin_buffer_pass(buffer, &prev_ctx, timer);
     if (!pass) {
         return NULL;
     }
@@ -505,8 +503,7 @@ static struct wlr_render_timer *gl_render_timer_create(struct wlr_renderer *wlr_
     timer->renderer = renderer;
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
     glGenQueriesEXT(1, &timer->id);
     ky_egl_restore_context(&prev_ctx);
 
@@ -524,8 +521,7 @@ static int gl_get_render_time(struct wlr_render_timer *wlr_timer)
     struct ky_opengl_renderer *renderer = timer->renderer;
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
 
     GLint64 disjoint;
     glGetInteger64v(GL_GPU_DISJOINT_EXT, &disjoint);
@@ -559,8 +555,7 @@ static void gl_render_timer_destroy(struct wlr_render_timer *wlr_timer)
     struct ky_opengl_renderer *renderer = timer->renderer;
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
     glDeleteQueriesEXT(1, &timer->id);
     ky_egl_restore_context(&prev_ctx);
     free(timer);
@@ -704,7 +699,7 @@ error:
 
 static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 {
-    if (!ky_egl_make_current(egl)) {
+    if (!ky_egl_make_current(egl, NULL)) {
         return NULL;
     }
 

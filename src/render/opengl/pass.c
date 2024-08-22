@@ -63,6 +63,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     ky_opengl_pop_debug(renderer);
+    ky_egl_restore_context(&pass->prev_ctx);
 
     wlr_buffer_unlock(pass->buffer->buffer);
     free(pass);
@@ -370,6 +371,7 @@ static const char *reset_status_str(GLenum status)
 }
 
 struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffer *buffer,
+                                                          struct ky_egl_context *prev_ctx,
                                                           struct ky_opengl_render_timer *timer)
 {
     struct ky_opengl_renderer *renderer = buffer->renderer;
@@ -394,6 +396,7 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
     wlr_buffer_lock(wlr_buffer);
     pass->buffer = buffer;
     pass->timer = timer;
+    pass->prev_ctx = *prev_ctx;
 
     ky_opengl_matrix_projection(pass->projection_matrix, wlr_buffer->width, wlr_buffer->height,
                                 WL_OUTPUT_TRANSFORM_FLIPPED_180);

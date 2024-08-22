@@ -63,13 +63,9 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd);
 
 void ky_egl_destroy(struct ky_egl *egl);
 
-bool ky_egl_make_current(struct ky_egl *egl);
+bool ky_egl_make_current(struct ky_egl *egl, struct ky_egl_context *save_context);
 
 bool ky_egl_unset_current(struct ky_egl *egl);
-
-bool ky_egl_is_current(struct ky_egl *egl);
-
-void ky_egl_save_context(struct ky_egl_context *context);
 
 bool ky_egl_restore_context(struct ky_egl_context *context);
 

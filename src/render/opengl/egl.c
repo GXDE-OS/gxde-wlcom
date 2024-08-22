@@ -490,7 +490,7 @@ static bool try_opengl_api(struct ky_egl *egl)
         return false;
     }
 
-    if (!ky_egl_make_current(egl)) {
+    if (!ky_egl_make_current(egl, NULL)) {
         kywc_log(KYWC_ERROR, "Failed to make EGL context current with GL\n");
         maybe_destroy_context(egl);
         return false;
@@ -543,7 +543,7 @@ static bool try_gles_api(struct ky_egl *egl)
         return false;
     }
 
-    if (!ky_egl_make_current(egl)) {
+    if (!ky_egl_make_current(egl, NULL)) {
         kywc_log(KYWC_ERROR, "Failed to make EGL context current with GLES2");
         maybe_destroy_context(egl);
         return false;
@@ -658,6 +658,7 @@ static EGLDeviceEXT get_egl_device_from_drm_fd(struct ky_egl *egl, int drm_fd)
 
     if (!eglQueryDevicesEXT(nb_devices, devices, &nb_devices)) {
         kywc_log(KYWC_ERROR, "Failed to query EGL devices");
+        free(devices);
         return EGL_NO_DEVICE_EXT;
     }
 
@@ -665,6 +666,7 @@ static EGLDeviceEXT get_egl_device_from_drm_fd(struct ky_egl *egl, int drm_fd)
     int ret = drmGetDevice(drm_fd, &device);
     if (ret < 0) {
         kywc_log(KYWC_ERROR, "Failed to get DRM device: %s", strerror(-ret));
+        free(devices);
         return EGL_NO_DEVICE_EXT;
     }
 
@@ -848,8 +850,14 @@ bool ky_egl_destroy_image(struct ky_egl *egl, EGLImageKHR image)
     return eglDestroyImageKHR(egl->display, image);
 }
 
-bool ky_egl_make_current(struct ky_egl *egl)
+bool ky_egl_make_current(struct ky_egl *egl, struct ky_egl_context *save_context)
 {
+    if (save_context) {
+        save_context->display = eglGetCurrentDisplay();
+        save_context->context = eglGetCurrentContext();
+        save_context->draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        save_context->read_surface = eglGetCurrentSurface(EGL_READ);
+    }
     if (!eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl->context)) {
         kywc_log(KYWC_ERROR, "eglMakeCurrent failed");
         return false;
@@ -864,19 +872,6 @@ bool ky_egl_unset_current(struct ky_egl *egl)
         return false;
     }
     return true;
-}
-
-bool ky_egl_is_current(struct ky_egl *egl)
-{
-    return eglGetCurrentContext() == egl->context;
-}
-
-void ky_egl_save_context(struct ky_egl_context *context)
-{
-    context->display = eglGetCurrentDisplay();
-    context->context = eglGetCurrentContext();
-    context->draw_surface = eglGetCurrentSurface(EGL_DRAW);
-    context->read_surface = eglGetCurrentSurface(EGL_READ);
 }
 
 bool ky_egl_restore_context(struct ky_egl_context *context)

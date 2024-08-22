@@ -66,8 +66,7 @@ static bool gl_texture_update_from_buffer(struct wlr_texture *wlr_texture,
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(texture->renderer->egl);
+    ky_egl_make_current(texture->renderer->egl, &prev_ctx);
 
     ky_opengl_push_debug(texture->renderer);
 
@@ -115,8 +114,7 @@ bool ky_opengl_texture_invalidate(struct ky_opengl_texture *texture)
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(texture->renderer->egl);
+    ky_egl_make_current(texture->renderer->egl, &prev_ctx);
 
     ky_opengl_push_debug(texture->renderer);
 
@@ -139,8 +137,7 @@ void ky_opengl_texture_destroy(struct ky_opengl_texture *texture)
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(texture->renderer->egl);
+    ky_egl_make_current(texture->renderer->egl, &prev_ctx);
 
     ky_opengl_push_debug(texture->renderer);
 
@@ -229,8 +226,7 @@ static struct wlr_texture *gl_texture_from_pixels(struct wlr_renderer *wlr_rende
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
 
     ky_opengl_push_debug(renderer);
 
@@ -278,8 +274,7 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
     }
 
     struct ky_egl_context prev_ctx;
-    ky_egl_save_context(&prev_ctx);
-    ky_egl_make_current(renderer->egl);
+    ky_egl_make_current(renderer->egl, &prev_ctx);
 
     bool external_only;
     texture->image = ky_egl_create_image_from_dmabuf(renderer->egl, attribs, &external_only);
