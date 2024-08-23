@@ -259,7 +259,7 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
     ky_scene_node_set_enabled(&menu->tree->node, enabled);
 
     if (enabled) {
-        ky_scene_node_raise_to_top(menu->parent ? &menu->parent->tree->node : &menu->tree->node);
+        ky_scene_node_raise_to_top(&menu->tree->node);
         menu_render_items(menu, false);
         menu_adjust_exceed_output(menu);
         if (menu->exceed_output) {

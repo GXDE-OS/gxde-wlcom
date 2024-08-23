@@ -78,8 +78,7 @@ struct menu {
 };
 
 /**
- *  root-menu when parent_item is NULL and parent is not NULL
- *  submenu when parent_item is not NULL, parent is not used
+ *  root-menu when parent_item is NULL
  */
 struct menu *menu_create(struct ky_scene_tree *parent, struct menu_item *parent_item);
 
