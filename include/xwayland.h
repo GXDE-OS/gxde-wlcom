@@ -24,6 +24,8 @@ int xwayland_unscale(int value);
 
 float xwayland_scale(int value);
 
+float xwayland_get_scale(void);
+
 void xwayland_set_cursor(struct seat *seat);
 
 void xwayland_update_workarea(void);
@@ -43,6 +45,8 @@ INLINE bool xwayland_check_client(const struct wl_client *client) { return false
 INLINE int xwayland_unscale(int value) { return value; }
 
 INLINE float xwayland_scale(int value) { return value; }
+
+INLINE float xwayland_get_scale(void) { return 1.0; }
 
 INLINE void xwayland_set_cursor(struct seat *seat) {}
 

@@ -656,6 +656,11 @@ float xwayland_scale(int value)
     return xwayland ? value * xwayland->scale : value;
 }
 
+float xwayland_get_scale(void)
+{
+    return xwayland ? xwayland->scale : 1.0;
+}
+
 bool xwayland_surface_has_type(struct wlr_xwayland_surface *wlr_xwayland_surface, int type)
 {
     for (size_t i = 0; i < wlr_xwayland_surface->window_type_len; ++i) {
