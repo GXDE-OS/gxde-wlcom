@@ -276,6 +276,7 @@ static void desktop_load(const char *path, const char *name, void *data)
         free(info);
         goto close;
     }
+    info->startup_name = fscan_search_keyword(fp, "StartupWMClass");
     char *exec_path = fscan_search_keyword(fp, "Exec");
     info->exec_name = get_exec_name_from_path(exec_path);
     free(exec_path);
@@ -360,6 +361,7 @@ void desktop_infos_destroy(struct wl_list *desktop_infos)
         free(desktop_info->app_id);
         free(desktop_info->icon_name);
         free(desktop_info->exec_name);
+        free(desktop_info->startup_name);
         free(desktop_info);
     }
 }

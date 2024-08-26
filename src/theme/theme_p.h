@@ -78,6 +78,7 @@ struct desktop_info {
     char *app_id;
     char *icon_name;
     char *exec_name;
+    char *startup_name;
 };
 
 struct theme_manager {

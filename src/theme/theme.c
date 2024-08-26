@@ -770,7 +770,8 @@ struct icon *theme_icon_from_app_id(const char *app_id)
     /* find desktop file from desktop_info->app_id */
     struct desktop_info *desktop_info;
     wl_list_for_each(desktop_info, &manager->desktop_infos, link) {
-        if (strcasecmp(desktop_info->app_id, app_id) == 0) {
+        if ((strcasecmp(desktop_info->app_id, app_id) == 0) ||
+            (desktop_info->startup_name && strcasecmp(desktop_info->startup_name, app_id) == 0)) {
             desktop_appid = desktop_info;
             break;
         }
