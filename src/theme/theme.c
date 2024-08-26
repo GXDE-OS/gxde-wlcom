@@ -99,6 +99,7 @@ static int handle_manager_timer(void *data)
     bool reload_desktop_file = false, reload_pixmaps_file = false,
          reload_current_theme_file = false, reload_hicolor_theme_file = false;
 
+    wl_event_source_timer_update(manager->timer, 5000);
     current_time = time(NULL);
     threshold = current_time - 6;
     reload_desktop_file = icon_need_reload(APPPATH, NULL, threshold);
@@ -163,8 +164,6 @@ static int handle_manager_timer(void *data)
     if (reload_hicolor_theme_file) {
         icon_theme_destroy(old_hicolor_theme);
     }
-
-    wl_event_source_timer_update(manager->timer, 5000);
 
     return 0;
 }
