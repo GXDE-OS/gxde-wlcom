@@ -124,6 +124,40 @@ static int list_view_states(sd_bus_message *m, void *userdata, sd_bus_error *ret
     return 1;
 }
 
+static int list_all_modes(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct view_manager *manager = userdata;
+    sd_bus_message *reply = NULL;
+    CK(sd_bus_message_new_method_return(m, &reply));
+    CK(sd_bus_message_open_container(reply, 'a', "(sb)"));
+
+    struct view_mode *mode;
+    wl_list_for_each(mode, &manager->view_modes, link) {
+        sd_bus_message_append(reply, "(sb)", mode->impl->name, mode == manager->mode);
+    }
+
+    CK(sd_bus_message_close_container(reply));
+    CK(sd_bus_send(NULL, reply, NULL));
+    sd_bus_message_unref(reply);
+    return 1;
+}
+
+#if 0
+static int set_view_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name;
+    CK(sd_bus_message_read(m, "s", &name));
+
+    if (!view_manager_set_view_mode(name)) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild mode name.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+#endif
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("GetViewAdsorption", "", "u", get_view_adsorption, 0),
@@ -131,6 +165,9 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("SetCSDRoundCorner", "b", "", set_csd_round_corner, 0),
     SD_BUS_METHOD("ListAllViews", "", "a(ssi)", list_all_views, 0),
     SD_BUS_METHOD("ListViewStates", "s", "a(sai)", list_view_states, 0),
+
+    SD_BUS_METHOD("ListAllModes", "", "a(sb)", list_all_modes, 0),
+    // SD_BUS_METHOD("SetViewMode", "s", "", set_view_mode, 0),
     SD_BUS_VTABLE_END,
 };
 

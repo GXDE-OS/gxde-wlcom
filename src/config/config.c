@@ -140,6 +140,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
     kde_input_manager_create(config_manager);
     ukui_gsettings_create(config_manager);
     ukui_shortcut_manager_create(config_manager);
+    ukui_view_mode_manager_create(config_manager);
 }
 
 struct config_manager *config_manager_create(struct server *server)

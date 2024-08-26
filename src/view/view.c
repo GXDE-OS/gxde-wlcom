@@ -1890,10 +1890,15 @@ struct view_mode *view_manager_mode_from_name(const char *name)
     return NULL;
 }
 
-void view_manager_set_view_mode(struct view_mode *view_mode)
+bool view_manager_set_view_mode(const char *name)
 {
+    struct view_mode *view_mode = view_manager_mode_from_name(name);
+    if (!view_mode) {
+        return false;
+    }
+
     if (view_manager->mode == view_mode) {
-        return;
+        return true;
     }
 
     if (view_manager->mode && view_manager->mode->impl->view_mode_leave) {
@@ -1903,6 +1908,7 @@ void view_manager_set_view_mode(struct view_mode *view_mode)
     if (view_manager->mode->impl->view_mode_enter) {
         view_manager->mode->impl->view_mode_enter();
     }
+    return true;
 }
 
 bool view_has_descendant(struct view *view, struct view *descendant)

@@ -155,3 +155,9 @@ option('ukui_blur',
 option('tracy',
        type: 'boolean',
        value: false, description: 'Enable tracy profiler')
+
+option('ukui_view_mode',
+       type: 'boolean',
+       value: true,
+       description: 'Enable ukui view mode dbus support'
+)

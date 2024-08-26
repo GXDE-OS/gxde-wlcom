@@ -66,4 +66,14 @@ ukui_gsettings_create(struct config_manager *config_mananger)
 }
 #endif
 
+#if HAVE_UKUI_VIEW_MODE
+bool ukui_view_mode_manager_create(struct config_manager *config_mananger);
+#else
+static __attribute__((unused)) inline bool
+ukui_view_mode_manager_create(struct config_manager *config_mananger)
+{
+    return false;
+}
+#endif
+
 #endif /* _CONFIG_P_H_ */

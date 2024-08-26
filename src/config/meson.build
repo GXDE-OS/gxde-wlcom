@@ -37,3 +37,9 @@ if have_ukui_gsettings
   glib = dependency('glib-2.0', version: '>= 2.64')
   wlcom_deps += glib
 endif
+
+if have_ukui_view_mode
+  wlcom_sources += files(
+    'ukui_view_mode.c',
+  )
+endif
