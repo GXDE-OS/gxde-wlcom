@@ -7,6 +7,7 @@
 
 #include <linux/input-event-codes.h>
 
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
@@ -15,6 +16,7 @@
 #include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/util/region.h>
 
 #include <kywc/log.h>
 #include <kywc/view.h>
@@ -22,6 +24,7 @@
 #include "input/cursor.h"
 #include "input_p.h"
 #include "util/time.h"
+#include "xwayland.h"
 
 /* cursor images used in compositor */
 static char *cursor_image[] = {
@@ -651,6 +654,64 @@ static void cursor_handle_hold_end(struct wl_listener *listener, void *data)
                                           event->time_msec, event->cancelled || handled);
 }
 
+static void cursor_handle_surface_precommit(struct wl_listener *listener, void *data)
+{
+    float scale = xwayland_get_scale();
+    if (scale == 1.0) {
+        return;
+    }
+
+    struct cursor *cursor = wl_container_of(listener, cursor, surface_precommit);
+    struct wlr_surface_state *pending = data;
+
+    pending->width = xwayland_unscale(pending->width);
+    pending->height = xwayland_unscale(pending->height);
+
+    if (pending->committed & WLR_SURFACE_STATE_SURFACE_DAMAGE) {
+        wlr_region_scale(&pending->surface_damage, &pending->surface_damage, 1.0 / scale);
+    }
+    if (pending->committed & WLR_SURFACE_STATE_OFFSET) {
+        pending->dx = xwayland_unscale(pending->dx);
+        pending->dy = xwayland_unscale(pending->dy);
+    }
+}
+
+static void cursor_handle_surface_destroy(struct wl_listener *listener, void *data)
+{
+    struct cursor *cursor = wl_container_of(listener, cursor, surface_destroy);
+    wl_list_remove(&cursor->surface_precommit.link);
+    wl_list_remove(&cursor->surface_destroy.link);
+    wl_list_init(&cursor->surface_precommit.link);
+    wl_list_init(&cursor->surface_destroy.link);
+    cursor->surface = NULL;
+}
+
+void cursor_set_surface(struct cursor *cursor, struct wlr_surface *surface, int32_t hotspot_x,
+                        int32_t hotspot_y)
+{
+    struct wl_client *client = wl_resource_get_client(surface->resource);
+
+    /* unscale cursor surface from xwayland */
+    if (xwayland_check_client(client)) {
+        hotspot_x = xwayland_unscale(hotspot_x);
+        hotspot_y = xwayland_unscale(hotspot_y);
+
+        if (cursor->surface != surface) {
+            if (cursor->surface) {
+                wl_list_remove(&cursor->surface_precommit.link);
+                wl_list_remove(&cursor->surface_destroy.link);
+            }
+            cursor->surface = surface;
+            wl_signal_add(&surface->events.precommit, &cursor->surface_precommit);
+            wl_signal_add(&surface->events.destroy, &cursor->surface_destroy);
+        }
+    }
+
+    /* use this to filter cursor image */
+    cursor->client_requested = true;
+    wlr_cursor_set_surface(cursor->wlr_cursor, surface, hotspot_x, hotspot_y);
+}
+
 static void cursor_handle_request_set_cursor(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, request_set_cursor);
@@ -662,9 +723,7 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
         return;
     }
 
-    /* use this to filter cursor image */
-    cursor->client_requested = true;
-    wlr_cursor_set_surface(cursor->wlr_cursor, event->surface, event->hotspot_x, event->hotspot_y);
+    cursor_set_surface(cursor, event->surface, event->hotspot_x, event->hotspot_y);
 }
 
 static void cursor_node_handle_destroy(struct wl_listener *listener, void *data)
@@ -763,6 +822,11 @@ struct cursor *cursor_create(struct seat *seat)
     cursor->request_set_cursor.notify = cursor_handle_request_set_cursor;
     wl_signal_add(&seat->wlr_seat->events.request_set_cursor, &cursor->request_set_cursor);
 
+    cursor->surface_precommit.notify = cursor_handle_surface_precommit;
+    wl_list_init(&cursor->surface_precommit.link);
+    cursor->surface_destroy.notify = cursor_handle_surface_destroy;
+    wl_list_init(&cursor->surface_destroy.link);
+
     cursor->hover.destroy.notify = cursor_node_handle_destroy;
     cursor->focus.destroy.notify = cursor_node_handle_destroy;
 
@@ -798,6 +862,9 @@ void cursor_destroy(struct cursor *cursor)
     wl_list_remove(&cursor->tablet_tool_proximity.link);
     wl_list_remove(&cursor->tablet_tool_tip.link);
     wl_list_remove(&cursor->tablet_tool_button.link);
+
+    wl_list_remove(&cursor->surface_precommit.link);
+    wl_list_remove(&cursor->surface_destroy.link);
 
     if (cursor->hover.node) {
         wl_list_remove(&cursor->hover.destroy.link);

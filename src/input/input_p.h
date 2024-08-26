@@ -63,6 +63,9 @@ struct seat *seat_by_name(const char *seat_name);
 void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size,
                                 bool saved);
 
+void cursor_set_surface(struct cursor *cursor, struct wlr_surface *surface, int32_t hotspot_x,
+                        int32_t hotspot_y);
+
 bool seat_read_config(struct seat *seat);
 
 void seat_write_config(struct seat *seat);

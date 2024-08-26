@@ -62,6 +62,10 @@ struct cursor {
     struct wl_listener tablet_tool_button;
 
     struct wl_listener request_set_cursor;
+    /* client cursor surface */
+    struct wlr_surface *surface;
+    struct wl_listener surface_precommit;
+    struct wl_listener surface_destroy;
 
     struct gesture_state gestures;
 
@@ -74,7 +78,6 @@ struct cursor {
     uint32_t tablet_tool_buttons;
 
     enum cursor_name name;
-    float scale;
     /* current cursor position in layout coord */
     double lx, ly;
     bool client_requested;
