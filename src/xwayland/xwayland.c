@@ -14,6 +14,8 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland/shell.h>
 
+#include <kywc/identifier.h>
+
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
@@ -75,54 +77,23 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
     xwayland_view_create(xwayland, wlr_xwayland_surface);
 }
 
-static void xwayland_update_dpi(xcb_connection_t *xcb_conn)
+static void xwayland_update_xresources(xcb_connection_t *xcb_conn)
 {
-    /* get current props */
-    xcb_get_property_cookie_t cookie = xcb_get_property(
-        xcb_conn, 0, xwayland->screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 0, 8192);
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(xcb_conn, cookie, NULL);
+    struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
 
-    char *props = xcb_get_property_value(reply);
-    size_t len = xcb_get_property_value_length(reply);
-    len = strnlen(props, len);
-
-    char dpi_str[16];
-    snprintf(dpi_str, 16, "Xft.dpi:\t%d\n", (int)(xwayland->scale * 96));
-    size_t dpi_str_len = strlen(dpi_str);
-
-    char *prop_str = NULL, *p = NULL;
-    /* if no dpi prop found, we can just append it */
-    bool has_dpi = len > 0 && (p = strstr(props, "Xft.dpi:"));
-
-    /* replace the dpi prop with new value */
-    if (has_dpi && (prop_str = malloc(len + 8))) {
-        size_t left = p - props;
-        size_t offset = 0;
-        memcpy(prop_str, props, left);
-        offset += left;
-        memcpy(prop_str + offset, dpi_str, dpi_str_len);
-        offset += dpi_str_len;
-        while (*p != '\n') {
-            p++;
-        }
-        left = len - (++p - props);
-        memcpy(prop_str + offset, p, left);
-        offset += left;
-        prop_str[offset] = '\0';
-    } else {
-        prop_str = dpi_str;
-        has_dpi = false;
+    const char *prop_str = kywc_identifier_utf8_generate(
+        "Xft.dpi:\t%d\nXcursor.size:\t%d\nXcursor.theme:\t%s\n", (int)(xwayland->scale * 96),
+        (int)(seat->state.cursor_size * xwayland->scale),
+        seat->state.cursor_theme ? seat->state.cursor_theme : "default");
+    if (!prop_str) {
+        return;
     }
 
-    free(reply);
-    xcb_change_property(xcb_conn, has_dpi ? XCB_PROP_MODE_REPLACE : XCB_PROP_MODE_APPEND,
-                        xwayland->screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 8,
-                        strlen(prop_str), prop_str);
+    xcb_change_property(xcb_conn, XCB_PROP_MODE_REPLACE, xwayland->screen->root,
+                        XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, 8, strlen(prop_str), prop_str);
     xcb_flush(xcb_conn);
 
-    if (has_dpi) {
-        free(prop_str);
-    }
+    free((void *)prop_str);
 }
 
 static void handle_output_configured(struct wl_listener *listener, void *data)
@@ -141,7 +112,6 @@ static void handle_output_configured(struct wl_listener *listener, void *data)
     }
 
     output_manager_update_scale(xwayland->scale);
-    xwayland_update_dpi(xwayland->xcb_conn);
 
     /* update default cursor with current scale */
     xwayland_set_cursor(seat_from_wlr_seat(xwayland->wlr_xwayland->seat));
@@ -342,6 +312,8 @@ void xwayland_set_cursor(struct seat *seat)
         wlr_xwayland_set_cursor(xwayland->wlr_xwayland, image->buffer, image->width * 4,
                                 image->width, image->height, image->hotspot_x, image->hotspot_y);
     }
+
+    xwayland_update_xresources(xwayland->xcb_conn);
 }
 
 void xwayland_update_seat(struct seat *seat)
@@ -392,9 +364,6 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 
     /* use the default seat0 */
     xwayland_update_seat(input_manager_get_default_seat());
-
-    /* set xft.dpi */
-    xwayland_update_dpi(xwayland->xcb_conn);
 
     xwayland_get_resources(xwayland->xcb_conn);
 }
