@@ -687,23 +687,25 @@ static void cursor_handle_surface_destroy(struct wl_listener *listener, void *da
 }
 
 void cursor_set_surface(struct cursor *cursor, struct wlr_surface *surface, int32_t hotspot_x,
-                        int32_t hotspot_y)
+                        int32_t hotspot_y, struct wl_client *client)
 {
-    struct wl_client *client = wl_resource_get_client(surface->resource);
-
     /* unscale cursor surface from xwayland */
     if (xwayland_check_client(client)) {
-        hotspot_x = xwayland_unscale(hotspot_x);
-        hotspot_y = xwayland_unscale(hotspot_y);
+        if (surface) {
+            hotspot_x = xwayland_unscale(hotspot_x);
+            hotspot_y = xwayland_unscale(hotspot_y);
+        }
 
         if (cursor->surface != surface) {
             if (cursor->surface) {
-                wl_list_remove(&cursor->surface_precommit.link);
-                wl_list_remove(&cursor->surface_destroy.link);
+                cursor_handle_surface_destroy(&cursor->surface_destroy, NULL);
             }
-            cursor->surface = surface;
-            wl_signal_add(&surface->events.precommit, &cursor->surface_precommit);
-            wl_signal_add(&surface->events.destroy, &cursor->surface_destroy);
+
+            if (surface) {
+                cursor->surface = surface;
+                wl_signal_add(&surface->events.precommit, &cursor->surface_precommit);
+                wl_signal_add(&surface->events.destroy, &cursor->surface_destroy);
+            }
         }
     }
 
@@ -723,7 +725,8 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
         return;
     }
 
-    cursor_set_surface(cursor, event->surface, event->hotspot_x, event->hotspot_y);
+    cursor_set_surface(cursor, event->surface, event->hotspot_x, event->hotspot_y,
+                       event->seat_client->client);
 }
 
 static void cursor_node_handle_destroy(struct wl_listener *listener, void *data)

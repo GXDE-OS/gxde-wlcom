@@ -104,7 +104,8 @@ static void tablet_tool_handle_set_cursor(struct wl_listener *listener, void *da
         return;
     }
 
-    cursor_set_surface(cursor, event->surface, event->hotspot_x, event->hotspot_y);
+    cursor_set_surface(cursor, event->surface, event->hotspot_x, event->hotspot_y,
+                       event->seat_client->client);
 }
 
 static void tablet_tool_handle_tool_destroy(struct wl_listener *listener, void *data)

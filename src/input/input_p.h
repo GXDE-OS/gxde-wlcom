@@ -64,7 +64,7 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
                                 bool saved);
 
 void cursor_set_surface(struct cursor *cursor, struct wlr_surface *surface, int32_t hotspot_x,
-                        int32_t hotspot_y);
+                        int32_t hotspot_y, struct wl_client *client);
 
 bool seat_read_config(struct seat *seat);
 
