@@ -16,6 +16,7 @@
 #include "render/opengl.h"
 #include "util/matrix.h"
 #include "util/quirks.h"
+#include "util/debug.h"
 
 #define MAX_QUADS 86 // 4kb
 
@@ -36,6 +37,8 @@ ky_opengl_render_pass_from_wlr_render_pass(struct wlr_render_pass *wlr_pass)
 
 static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
 {
+    KY_PROFILE_ZONE(zone, __func__);
+
     struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct ky_opengl_render_timer *timer = pass->timer;
@@ -68,6 +71,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
     wlr_buffer_unlock(pass->buffer->buffer);
     free(pass);
 
+    KY_PROFILE_ZONE_END(zone);
     return true;
 }
 

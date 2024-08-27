@@ -20,6 +20,7 @@
 #include "backend/fbdev.h"
 #include "effect/output_transform.h"
 #include "output_p.h"
+#include "util/debug.h"
 #include "util/quirks.h"
 #include "xwayland.h"
 
@@ -369,10 +370,13 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
 
 static void handle_output_present(struct wl_listener *listener, void *data)
 {
+    KY_PROFILE_ZONE(zone, __func__);
+
     struct output *output = wl_container_of(listener, output, present);
     output->scene_commit = false;
 
     if (!output->has_pending) {
+        KY_PROFILE_ZONE_END(zone);
         return;
     }
 
@@ -382,15 +386,26 @@ static void handle_output_present(struct wl_listener *listener, void *data)
     } else {
         output->has_pending = false;
     }
+
+    KY_PROFILE_ZONE_END(zone);
 }
 
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     struct output *output = wl_container_of(listener, output, frame);
+
+    if (output_manager->primary_output == &output->base) {
+        KY_PROFILE_FRAME();
+    }
+    KY_PROFILE_FRAME_NAME(output->wlr_output->name);
+
+    KY_PROFILE_ZONE(zone, __func__);
+
     /* skip rendering if has_pending, otherwise drm may report busy */
     if (output->has_pending) {
         output->wlr_output->frame_pending = true;
         output->has_pending = false;
+        KY_PROFILE_ZONE_END(zone);
         return;
     }
 
@@ -399,6 +414,7 @@ static void handle_output_frame(struct wl_listener *listener, void *data)
     struct timespec now = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &now);
     ky_scene_output_send_frame_done(output->scene_output, &now);
+    KY_PROFILE_ZONE_END(zone);
 }
 
 static void output_damage_set_enabled(bool enabled)
@@ -427,17 +443,21 @@ static void output_damage_set_enabled(bool enabled)
 
 static void handle_output_precommit(struct wl_listener *listener, void *data)
 {
+    KY_PROFILE_ZONE(zone, __func__);
+
     struct output *output = wl_container_of(listener, output, precommit);
     const struct wlr_output_event_precommit *event = data;
     struct pixman_region32 *region = &output->damage_region;
 
     if (wl_list_empty(&output_manager->events.damage.listener_list)) {
         output_damage_set_enabled(false);
+        KY_PROFILE_ZONE_END(zone);
         return;
     }
 
     if (event->state->committed & WLR_OUTPUT_STATE_DAMAGE) {
         if (!pixman_region32_not_empty(&event->state->damage)) {
+            KY_PROFILE_ZONE_END(zone);
             return;
         }
 
@@ -464,12 +484,15 @@ static void handle_output_precommit(struct wl_listener *listener, void *data)
     }
 
     if (!pixman_region32_not_empty(region)) {
+        KY_PROFILE_ZONE_END(zone);
         return;
     }
 
     wl_signal_emit_mutable(&output_manager->events.damage, output);
 
     pixman_region32_clear(region);
+
+    KY_PROFILE_ZONE_END(zone);
 }
 
 static void output_destroy(struct output *output)
@@ -1626,8 +1649,12 @@ struct kywc_output *kywc_output_at_point(double lx, double ly)
     return wlr_output ? &output_from_wlr_output(wlr_output)->base : NULL;
 }
 
+#ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 void output_layout_get_workarea(struct wlr_box *box)
 {

@@ -145,3 +145,7 @@ option('ukui_output',
 option('ukui_blur',
        type: 'boolean',
        value: true, description: 'Enable ukui blur protocol support')
+
+option('tracy',
+       type: 'boolean',
+       value: false, description: 'Enable tracy profiler')

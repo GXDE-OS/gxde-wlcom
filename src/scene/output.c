@@ -13,6 +13,7 @@
 #include "effect/effect.h"
 #include "output.h"
 #include "scene_p.h"
+#include "util/debug.h"
 
 static void scene_output_set_position(struct ky_scene_output *scene_output, int lx, int ly);
 
@@ -346,14 +347,18 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
                                 struct wlr_output_state *state,
                                 struct ky_scene_render_target *target)
 {
+    KY_PROFILE_ZONE(zone, __func__);
+
     struct wlr_output *output = scene_output->output;
     if (!wlr_output_configure_primary_swapchain(output, state, &output->swapchain)) {
+        KY_PROFILE_ZONE_END(zone);
         return false;
     }
 
     int buffer_age;
     struct wlr_buffer *buffer = wlr_swapchain_acquire(output->swapchain, &buffer_age);
     if (buffer == NULL) {
+        KY_PROFILE_ZONE_END(zone);
         return false;
     }
 
@@ -361,6 +366,8 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
         wlr_renderer_begin_buffer_pass(output->renderer, buffer, NULL);
     if (render_pass == NULL) {
         wlr_buffer_unlock(buffer);
+
+        KY_PROFILE_ZONE_END(zone);
         return false;
     }
 
@@ -382,6 +389,8 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
         wlr_buffer_unlock(buffer);
         pixman_region32_fini(&frame_damage);
         wlr_damage_ring_add_whole(&scene_output->damage_ring);
+
+        KY_PROFILE_ZONE_END(zone);
         return false;
     }
 
@@ -395,6 +404,7 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     wlr_buffer_unlock(buffer);
     pixman_region32_fini(&frame_damage);
 
+    KY_PROFILE_ZONE_END(zone);
     return true;
 }
 

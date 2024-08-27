@@ -160,6 +160,15 @@ if msgfmt.found()
   subdir('po')
 endif
 
+if get_option('tracy')
+  tracy = dependency(
+    'tracy',
+    default_options: ['default_library=static'],
+    version: ['>=0.11.0', '<0.12.0'],)
+  add_project_arguments('-DTRACY_ENABLE', language: 'c')
+  wlcom_deps += tracy
+endif
+
 subdir('data')
 subdir('protocols')
 subdir('src')

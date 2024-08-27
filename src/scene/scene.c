@@ -13,9 +13,14 @@
 
 #include "output.h"
 #include "scene_p.h"
+#include "util/debug.h"
 
+#ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 /**
  * basic scene node
@@ -413,6 +418,8 @@ void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *
 
 void ky_scene_collect_damage(struct ky_scene *scene)
 {
+    KY_PROFILE_ZONE(zone, __func__);
+
     /* skip collect damage if no pushed_damage */
     if (pixman_region32_not_empty(&scene->pushed_damage)) {
         pixman_region32_t invisible;
@@ -434,6 +441,7 @@ void ky_scene_collect_damage(struct ky_scene *scene)
     }
 
     if (!pixman_region32_not_empty(&scene->collected_damage)) {
+        KY_PROFILE_ZONE_END(zone);
         return;
     }
 
@@ -451,6 +459,8 @@ void ky_scene_collect_damage(struct ky_scene *scene)
     }
 
     pixman_region32_clear(&scene->collected_damage);
+
+    KY_PROFILE_ZONE_END(zone);
 }
 
 void ky_scene_add_damage(struct ky_scene *scene, const pixman_region32_t *damage)
