@@ -69,6 +69,7 @@ struct xwayland_server {
     struct wl_listener new_xwayland_surface;
     struct wl_listener server_destroy;
     struct wl_listener output_configured;
+    struct wl_listener seat_destroy;
 
     xcb_atom_t atoms[ATOM_LAST];
 

@@ -323,6 +323,9 @@ void xwayland_update_seat(struct seat *seat)
     }
 
     wlr_xwayland_set_seat(xwayland->wlr_xwayland, seat->wlr_seat);
+    wl_list_remove(&xwayland->seat_destroy.link);
+    wl_signal_add(&seat->events.destroy, &xwayland->seat_destroy);
+
     /* update xwayland cursor */
     xwayland_set_cursor(seat);
 }
@@ -540,6 +543,14 @@ static void handle_surface_destroy(struct wl_listener *listener, void *data)
     xwayland->hoverd_surface = NULL;
 }
 
+static void handle_seat_destroy(struct wl_listener *listener, void *data)
+{
+    wl_list_remove(&xwayland->seat_destroy.link);
+    wl_list_init(&xwayland->seat_destroy.link);
+
+    xwayland_update_seat(input_manager_get_default_seat());
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -575,6 +586,8 @@ bool xwayland_server_create(struct server *server)
     server_add_destroy_listener(server, &xwayland->server_destroy);
     xwayland->output_configured.notify = handle_output_configured;
     output_manager_add_configured_listener(&xwayland->output_configured);
+    xwayland->seat_destroy.notify = handle_seat_destroy;
+    wl_list_init(&xwayland->seat_destroy.link);
 
     xwayland->surface_destroy.notify = handle_surface_destroy;
     wl_list_init(&xwayland->surface_destroy.link);
@@ -596,6 +609,7 @@ void xwayland_server_destroy(void)
 
     wl_list_remove(&xwayland->xwayland_ready.link);
     wl_list_remove(&xwayland->new_xwayland_surface.link);
+    wl_list_remove(&xwayland->seat_destroy.link);
 
     if (xwayland->event_source) {
         wl_event_source_remove(xwayland->event_source);
