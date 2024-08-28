@@ -30,7 +30,7 @@ static const struct quirks quirks_table[] = {
         "nvidia-drm",
         "NVIDIA",
         .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
-        .render_mask = QUIRKS_MASK_EXPLICIT_SYNC,
+        .render_mask = QUIRKS_MASK_EXPLICIT_SYNC | QUIRKS_MASK_PREFER_OPENGL,
     },
     {
         "nouveau",
