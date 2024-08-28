@@ -669,7 +669,6 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
         return;
     }
 
-    wl_list_init(&relay->input_popups);
     relay->wlr_input_method = input_method;
 
     relay->input_method_commit.notify = handle_input_method_commit;
@@ -744,6 +743,18 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data)
         handle_input_method_destroy(&relay->input_method_destroy, relay->wlr_input_method);
     }
 
+    struct text_input *input, *tmp_input;
+    wl_list_for_each_safe(input, tmp_input, &relay->text_inputs, link) {
+        wl_list_remove(&input->link);
+        wl_list_init(&input->link);
+    }
+
+    struct input_popup *popup, *tmp_popup;
+    wl_list_for_each_safe(popup, tmp_popup, &relay->input_popups, link) {
+        wl_list_remove(&popup->link);
+        wl_list_init(&popup->link);
+    }
+
     free(relay);
 }
 
@@ -759,6 +770,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     }
 
     wl_list_init(&relay->text_inputs);
+    wl_list_init(&relay->input_popups);
     seat->relay = relay;
 
     relay->seat = seat;
