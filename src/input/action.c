@@ -820,7 +820,7 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllAction", "", "a(ss)", list_input_actions, 0),
+    SD_BUS_METHOD("ListAllActions", "", "a(ss)", list_input_actions, 0),
     SD_BUS_METHOD("AddAction", "ssss", "", add_input_action, 0),
     SD_BUS_METHOD("ControlAction", "ss", "", control_input_action, 0),
     SD_BUS_VTABLE_END,
