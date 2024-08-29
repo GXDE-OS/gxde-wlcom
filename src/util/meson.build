@@ -12,6 +12,7 @@ wlcom_sources += files(
   'vec2.c',
   'queue.c',
   'quirks.c',
+  'region.c',
   'spawn.c',
   'sysfs.c',
   'time.c',

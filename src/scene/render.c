@@ -9,6 +9,7 @@
 #include "effect/effect.h"
 #include "render/pass.h"
 #include "scene/render.h"
+#include "util/region.h"
 
 static int scale_length(int length, int offset, float scale)
 {
@@ -169,6 +170,9 @@ void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
         }
         if (scale_w != 1.0f || scale_h != 1.0f) {
             wlr_region_scale_xy(&blur.region, &blur.region, scale_w, scale_h);
+        }
+        if (opts->blur.scale && (*opts->blur.scale != floor(*opts->blur.scale))) {
+            ky_region_expand(&blur.region, &blur.region, -2);
         }
 
         struct ky_render_round_corner radius = {
