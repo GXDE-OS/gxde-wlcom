@@ -304,7 +304,7 @@ bool fade_effect_create(struct effect_manager *manager)
 
     fade->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
-    fade->effect = effect_create("fade", 10, enabled, &fade_effect_impl);
+    fade->effect = effect_create("fade", 10, enabled, &fade_effect_impl, NULL);
     if (!fade->effect) {
         free(fade);
         fade = NULL;

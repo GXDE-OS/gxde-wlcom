@@ -177,7 +177,7 @@ bool showfps_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("showfps", 0, false, NULL);
+    effect->effect = effect_create("showfps", 0, false, NULL, NULL);
     if (!effect->effect) {
         free(effect);
         return false;

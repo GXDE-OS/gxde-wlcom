@@ -380,7 +380,7 @@ bool slide_effect_create(struct effect_manager *manager)
 
     slide_effect->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
-    slide_effect->effect = effect_create("slide", 5, enabled, &slide_effect_impl);
+    slide_effect->effect = effect_create("slide", 5, enabled, &slide_effect_impl, NULL);
     if (!slide_effect->effect) {
         free(slide_effect);
         slide_effect = NULL;

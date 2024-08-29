@@ -430,7 +430,7 @@ bool output_transform_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    transform_effect->effect = effect_create("output_transform", 105, true, &effect_impl);
+    transform_effect->effect = effect_create("output_transform", 105, true, &effect_impl, NULL);
     if (!transform_effect->effect) {
         free(transform_effect);
         transform_effect = NULL;

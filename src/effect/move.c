@@ -187,7 +187,7 @@ bool move_effect_create(struct effect_manager *effect_manager)
         return false;
     }
 
-    effect->effect = effect_create("move", 0, false, NULL);
+    effect->effect = effect_create("move", 0, false, NULL, NULL);
     if (!effect->effect) {
         free(effect);
         effect = NULL;

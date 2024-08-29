@@ -335,7 +335,7 @@ bool touchclick_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("touchclick", 100, true, &effect_impl);
+    effect->effect = effect_create("touchclick", 100, true, &effect_impl, NULL);
     if (!effect->effect) {
         free(effect);
         return false;

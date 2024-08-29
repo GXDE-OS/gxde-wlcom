@@ -198,7 +198,7 @@ bool translation_effect_create(struct effect_manager *manager)
     translation_effect->renderer = manager->server->renderer;
 
     bool enable = !ky_renderer_is_software(manager->server->renderer);
-    translation_effect->effect = effect_create("translation", 105, enable, &effect_impl);
+    translation_effect->effect = effect_create("translation", 105, enable, &effect_impl, NULL);
     if (!translation_effect->effect) {
         free(translation_effect);
         translation_effect = NULL;

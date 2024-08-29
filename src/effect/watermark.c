@@ -357,7 +357,7 @@ bool watermark_effect_create(struct effect_manager *manager)
     }
 
     /* enabled by default */
-    effect->effect = effect_create("watermark", 0, true, NULL);
+    effect->effect = effect_create("watermark", 0, true, NULL, NULL);
     if (!effect->effect) {
         free(effect);
         return false;

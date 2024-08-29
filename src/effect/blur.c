@@ -951,7 +951,7 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         return false;
     }
     /* the priority very hight, ensure correct display befor other effect paint. */
-    effect->effect = effect_create("blur", 0, true, &blur_impl);
+    effect->effect = effect_create("blur", 0, true, &blur_impl, NULL);
     if (!effect->effect) {
         free(effect);
         return false;

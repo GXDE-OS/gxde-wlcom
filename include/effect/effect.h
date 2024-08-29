@@ -45,6 +45,7 @@ struct effect {
     uint32_t types;
 
     const struct effect_interface *impl;
+    void *user_data;
 
     struct {
         struct wl_signal enable;
@@ -90,7 +91,7 @@ struct node_effect_chain {
 bool effect_manager_create(struct server *server);
 
 struct effect *effect_create(const char *name, int priority, bool enabled,
-                             const struct effect_interface *impl);
+                             const struct effect_interface *impl, void *data);
 
 void effect_destroy(struct effect *effect);
 

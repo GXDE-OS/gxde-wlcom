@@ -472,7 +472,7 @@ bool scale_effect_create(struct effect_manager *manager)
 
     scale->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
     bool enabled = !ky_renderer_is_software(manager->server->renderer);
-    scale->effect = effect_create("scale", 2, enabled, &scale_effect_impl);
+    scale->effect = effect_create("scale", 2, enabled, &scale_effect_impl, NULL);
     if (!scale->effect) {
         free(scale);
         scale = NULL;

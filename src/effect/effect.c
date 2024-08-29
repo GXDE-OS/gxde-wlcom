@@ -663,7 +663,7 @@ void effect_destroy(struct effect *effect)
 }
 
 struct effect *effect_create(const char *name, int priority, bool enabled,
-                             const struct effect_interface *impl)
+                             const struct effect_interface *impl, void *data)
 {
     struct effect *effect = calloc(1, sizeof(*effect));
     if (!effect) {
@@ -676,6 +676,7 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
     effect->impl = impl;
     effect->enabled = enabled;
     effect->types = get_effect_types(impl);
+    effect->user_data = data;
 
     wl_list_init(&effect->entities);
     wl_signal_init(&effect->events.enable);
