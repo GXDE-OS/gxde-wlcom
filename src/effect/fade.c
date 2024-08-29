@@ -59,13 +59,6 @@ static bool fade_data_create_animator(struct fade_effect_data *data, struct fade
 static struct fade_effect_data *fade_data_create(struct fade_options *options,
                                                  struct ky_scene_node *node);
 
-static void fade_entity_push_damage(struct effect_entity *entity)
-{
-    struct effect_chain *chain = entity->slot.chain;
-    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
-    ky_scene_node_push_damage(node_chain->node, KY_SCENE_DAMAGE_BOTH, NULL);
-}
-
 static void calc_geometry(struct kywc_box *node_geometry, int offset, float factor,
                           struct kywc_box *geometry)
 {
@@ -121,7 +114,7 @@ static bool fade_frame_render_pre(struct effect_entity *entity,
     const struct animation_data *animation_data =
         animator_value(data->animator, current_time_msec());
     data->current = *animation_data;
-    fade_entity_push_damage(entity);
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
 
     return true;
 }
@@ -208,7 +201,7 @@ static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
 static bool fade_frame_render_post(struct effect_entity *entity,
                                    struct ky_scene_render_target *target)
 {
-    fade_entity_push_damage(entity);
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
