@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <wlr/types/wlr_output.h>
 
@@ -44,6 +45,8 @@ struct showfps_effect {
     struct wl_listener destroy;
 
     struct effect_manager *manager;
+    /* always schedule frame by default */
+    bool always_repaint;
 };
 
 static void frame_output_destroy(struct frame_output *output)
@@ -70,7 +73,7 @@ static void output_handle_frame(struct wl_listener *listener, void *data)
     char text[4];
     snprintf(text, 4, "%3d", output->fps);
     widget_set_text(output->widget, text, TEXT_ALIGN_LEFT, TEXT_ATTR_NONE);
-    widget_update(output->widget, false);
+    widget_update(output->widget, !output->effect->always_repaint);
 
     ky_scene_node_set_position(output->node, output->output->x + 5, output->output->y + 5);
 }
@@ -170,6 +173,33 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     free(effect);
 }
 
+static bool handle_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (strcmp(option->key, "always_repaint")) {
+        return false;
+    }
+
+    struct showfps_effect *showfps = effect->user_data;
+    if (showfps->always_repaint == option->value.boolean) {
+        return false;
+    }
+
+    showfps->always_repaint = option->value.boolean;
+    /* schedule all outputs if always_repaint changes to true */
+    if (showfps->always_repaint) {
+        struct frame_output *output;
+        wl_list_for_each(output, &showfps->outputs, link) {
+            output_schedule_frame(output->output->output);
+        }
+    }
+
+    return true;
+}
+
+static const struct effect_interface showfps_effect_impl = {
+    .configure = handle_effect_configure,
+};
+
 bool showfps_effect_create(struct effect_manager *manager)
 {
     struct showfps_effect *effect = calloc(1, sizeof(*effect));
@@ -177,13 +207,15 @@ bool showfps_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("showfps", 0, false, NULL, NULL);
+    effect->effect = effect_create("showfps", 0, false, &showfps_effect_impl, effect);
     if (!effect->effect) {
         free(effect);
         return false;
     }
 
     effect->manager = manager;
+    effect->always_repaint = effect_get_option_boolean(effect->effect, "always_repaint", true);
+
     wl_list_init(&effect->outputs);
     wl_list_init(&effect->new_enabled_output.link);
 
@@ -193,6 +225,10 @@ bool showfps_effect_create(struct effect_manager *manager)
     wl_signal_add(&effect->effect->events.disable, &effect->disable);
     effect->destroy.notify = handle_effect_destroy;
     wl_signal_add(&effect->effect->events.destroy, &effect->destroy);
+
+    if (effect->effect->enabled) {
+        handle_effect_enable(&effect->enable, NULL);
+    }
 
     return true;
 }
