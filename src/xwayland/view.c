@@ -14,6 +14,7 @@
 #include "output.h"
 #include "painter.h"
 #include "scene/surface.h"
+#include "theme.h"
 #include "view/action.h"
 #include "view/workspace.h"
 #include "xwayland_p.h"
@@ -262,9 +263,10 @@ static void xwayland_view_configure(struct view *view)
 static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, float scale)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
+    struct theme *theme = theme_manager_get_current();
     struct draw_info info = {
-        .width = 24,
-        .height = 24,
+        .width = theme->icon_size,
+        .height = theme->icon_size,
         .scale = scale,
         .svg = NULL,
         .png_path = NULL,

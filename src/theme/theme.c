@@ -629,9 +629,10 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
         return NULL;
     }
 
+    struct theme *theme = theme_manager_get_current();
     struct draw_info info = {
-        .width = 24,
-        .height = 24,
+        .width = theme->icon_size,
+        .height = theme->icon_size,
         .scale = scale,
         .svg = NULL,
         .png_path = NULL,
