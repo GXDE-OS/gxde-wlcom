@@ -18,7 +18,6 @@ struct effect_manager {
 
 bool effect_manager_config_init(struct effect_manager *effect_manager);
 
-struct effect *effect_by_uuid(const char *uuid);
 
 struct effect *effect_by_name(const char *name);
 

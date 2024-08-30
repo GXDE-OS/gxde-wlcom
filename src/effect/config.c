@@ -14,12 +14,11 @@ static int list_effects(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
 
     sd_bus_message *reply = NULL;
     CK(sd_bus_message_new_method_return(m, &reply));
-    CK(sd_bus_message_open_container(reply, 'a', "(ssub)"));
+    CK(sd_bus_message_open_container(reply, 'a', "(sub)"));
 
     struct effect *effect;
     wl_list_for_each(effect, &manager->effects, link) {
-        sd_bus_message_append(reply, "(ssub)", effect->uuid, effect->name, effect->priority,
-                              effect->enabled);
+        sd_bus_message_append(reply, "(sub)", effect->name, effect->priority, effect->enabled);
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -44,7 +43,7 @@ static int enable_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllEffects", "", "a(ssub)", list_effects, 0),
+    SD_BUS_METHOD("ListAllEffects", "", "a(sub)", list_effects, 0),
     SD_BUS_METHOD("EnableEffect", "sb", "", enable_effect, 0),
     SD_BUS_VTABLE_END,
 };

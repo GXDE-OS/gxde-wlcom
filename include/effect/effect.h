@@ -39,7 +39,7 @@ struct effect {
     struct wl_list link;
     struct wl_list entities; // effect_entity->link
 
-    const char *uuid, *name;
+    const char *name;
     int priority;
     bool enabled; // true default
     uint32_t types;

@@ -6,7 +6,6 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include <kywc/identifier.h>
 #include <kywc/log.h>
 
 #include "effect/animator.h"
@@ -657,7 +656,6 @@ void effect_destroy(struct effect *effect)
     // assert(wl_list_empty(&effect->entities));
 
     wl_list_remove(&effect->link);
-    free((void *)effect->uuid);
     free((void *)effect->name);
     free(effect);
 }
@@ -670,7 +668,6 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
         return NULL;
     }
 
-    effect->uuid = kywc_identifier_uuid_generate();
     effect->name = strdup(name);
     effect->priority = priority;
     effect->impl = impl;
@@ -685,17 +682,6 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
     wl_list_insert(&manager->effects, &effect->link);
 
     return effect;
-}
-
-struct effect *effect_by_uuid(const char *uuid)
-{
-    struct effect *effect;
-    wl_list_for_each(effect, &manager->effects, link) {
-        if (strcmp(effect->uuid, uuid) == 0) {
-            return effect;
-        }
-    }
-    return NULL;
 }
 
 struct effect *effect_by_name(const char *name)
