@@ -275,8 +275,9 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
     }
 
     if (menu->fade_enabled) {
+        struct output *output = menu->root ? menu->root->output : NULL;
         popup_add_fade_effect(&menu->tree->node, &menu->tree->node, enabled, !menu->parent,
-                              !menu->parent);
+                              !menu->parent, output ? output->base.state.scale : 1.0f);
     }
 
     int index = 0;

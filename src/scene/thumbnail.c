@@ -288,8 +288,8 @@ static struct wlr_buffer *node_thumbnail_render(struct thumbnail_buffer *thumbna
         return NULL;
     }
 
-    int buffer_width = bounding_box.width * thumbnail_buffer->scale;
-    int buffer_height = bounding_box.height * thumbnail_buffer->scale;
+    int buffer_width = round(bounding_box.width * thumbnail_buffer->scale);
+    int buffer_height = round(bounding_box.height * thumbnail_buffer->scale);
 
     struct wlr_buffer *buffer = thumbnail_buffer_allocate(
         thumbnail_buffer, buffer_width, buffer_height, scene_output->output->allocator);
@@ -343,8 +343,8 @@ static struct wlr_buffer *view_thumbnail_render(struct thumbnail_buffer *thumbna
     view_thumbnail->source_offset_x = -bounding_box.x;
     view_thumbnail->source_offset_y = -bounding_box.y;
 
-    int buffer_width = bounding_box.width * thumbnail_buffer->scale;
-    int buffer_height = bounding_box.height * thumbnail_buffer->scale;
+    int buffer_width = round(bounding_box.width * thumbnail_buffer->scale);
+    int buffer_height = round(bounding_box.height * thumbnail_buffer->scale);
 
     struct wlr_buffer *buffer = thumbnail_buffer_allocate(
         thumbnail_buffer, buffer_width, buffer_height, scene_output->output->allocator);

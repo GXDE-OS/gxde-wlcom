@@ -188,7 +188,7 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
 
         struct ky_scene_node *node = ky_scene_node_from_widget(widget);
         if (node->enabled) {
-            popup_add_fade_effect(node, node, FADE_OUT, true, false);
+            popup_add_fade_effect(node, node, FADE_OUT, true, false, widget_get_scale(widget));
         }
         /* make sure restore and maximize widgets both are disabled */
         if (part->type == SSD_BUTTON_MAXIMIZE) {
@@ -234,7 +234,7 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     struct ky_scene_node *node = ky_scene_node_from_widget(widget);
     ky_scene_node_set_position(node, x, y);
     ky_scene_node_raise_to_top(node);
-    popup_add_fade_effect(node, node, FADE_IN, true, false);
+    popup_add_fade_effect(node, node, FADE_IN, true, false, widget_get_scale(widget));
 
     tooltip->timer_for_hidden = true;
     wl_event_source_timer_update(tooltip->timer, 10000);

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <wlr/render/wlr_texture.h>
+#include <wlr/types/wlr_compositor.h>
 
 #include <kywc/log.h>
 
@@ -34,6 +35,7 @@ struct fade_effect_data {
     struct ky_scene_buffer *buffer;
     struct wl_listener buffer_destroy;
 
+    float thumbnail_scale;
     int thumbnail_radius[4];
     int node_offset_x, node_offset_y;
     struct thumbnail *thumbnail;
@@ -260,6 +262,7 @@ static bool fade_node_render(struct effect_entity *entity, int lx, int ly,
             .offset_x = data->node_offset_x,
             .offset_y = data->node_offset_y,
             .radius = &data->thumbnail_radius,
+            .scale = &data->thumbnail_scale,
         },
     };
     ky_scene_render_target_add_texture(target, &opts);
@@ -442,7 +445,8 @@ static struct fade_effect_data *fade_data_create(struct fade_options *options,
 
     data->buffer = NULL;
     data->options = *options;
-    data->thumbnail = thumbnail_create_from_node(node, 1.0f);
+    data->thumbnail_scale = options->thumbnail_scale <= 0 ? 1.0f : options->thumbnail_scale;
+    data->thumbnail = thumbnail_create_from_node(node, data->thumbnail_scale);
     if (!data->thumbnail) {
         free(data);
         return false;
@@ -536,6 +540,7 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
     }
 
     struct fade_options options = { 0 };
+    options.thumbnail_scale = view->surface ? view->surface->current.scale : 1.0f;
     options.action = action;
     options.start_time = current_time_msec();
     options.duration = action ? 300 : 200;
@@ -552,13 +557,14 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
 }
 
 bool popup_add_fade_effect(struct ky_scene_node *entity_node, struct ky_scene_node *node,
-                           enum fade_action action, bool topmost, bool seat)
+                           enum fade_action action, bool topmost, bool seat, float scale)
 {
     if (!fade || !fade->effect->enabled) {
         return false;
     }
 
     struct fade_options options = { 0 };
+    options.thumbnail_scale = scale;
     options.action = action;
     options.start_time = current_time_msec();
     options.entity_node = entity_node;
