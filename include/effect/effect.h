@@ -11,7 +11,18 @@
 #include "scene/scene.h"
 
 struct server;
+struct effect;
 struct effect_entity;
+
+struct effect_option {
+    const char *key;
+    union {
+        int32_t num;
+        const char *str;
+        double realnum;
+        bool boolean;
+    } value;
+};
 
 struct effect_interface {
     void (*entity_create)(struct effect_entity *entity);
@@ -33,6 +44,9 @@ struct effect_interface {
     void (*frame_render)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_post)(struct effect_entity *entity, struct ky_scene_render_target *target);
+
+    /* option is saved if return true */
+    bool (*configure)(struct effect *effect, const struct effect_option *option);
 };
 
 struct effect {
@@ -41,7 +55,7 @@ struct effect {
 
     const char *name;
     int priority;
-    bool enabled; // true default
+    bool enabled, destroying;
     uint32_t types;
 
     const struct effect_interface *impl;
@@ -52,6 +66,9 @@ struct effect {
         struct wl_signal disable;
         struct wl_signal destroy;
     } events;
+
+    struct effect_manager *manager;
+    struct json_object *options;
 };
 
 struct effect_slot {
@@ -96,6 +113,24 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
 void effect_destroy(struct effect *effect);
 
 void effect_set_enabled(struct effect *effect, bool enabled);
+
+void effect_write_enabled(struct effect *effect, bool enabled);
+
+bool effect_get_option_boolean(struct effect *effect, const char *key, bool value);
+
+void effect_set_option_boolean(struct effect *effect, const char *key, bool value);
+
+int effect_get_option_int(struct effect *effect, const char *key, int value);
+
+void effect_set_option_int(struct effect *effect, const char *key, int value);
+
+double effect_get_option_double(struct effect *effect, const char *key, double value);
+
+void effect_set_option_double(struct effect *effect, const char *key, double value);
+
+const char *effect_get_option_string(struct effect *effect, const char *key, const char *value);
+
+void effect_set_option_string(struct effect *effect, const char *key, const char *value);
 
 void effect_entity_destroy(struct effect_entity *entity);
 

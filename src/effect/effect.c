@@ -649,6 +649,8 @@ void effect_set_enabled(struct effect *effect, bool enabled)
 
 void effect_destroy(struct effect *effect)
 {
+    effect->destroying = true;
+
     if (effect->enabled) {
         wl_signal_emit_mutable(&effect->events.disable, NULL);
     }
@@ -680,6 +682,9 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
     wl_signal_init(&effect->events.disable);
     wl_signal_init(&effect->events.destroy);
     wl_list_insert(&manager->effects, &effect->link);
+
+    effect->manager = manager;
+    effect->enabled = effect_init_config(effect);
 
     return effect;
 }
