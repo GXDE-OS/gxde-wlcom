@@ -16,7 +16,6 @@
 #include "ukui-shell-protocol.h"
 #include "view_p.h"
 
-#define UKUI_SURFACE_VERSION 2
 #define UKUI_SHELL_VERSION 2
 
 struct ukui_shell {
@@ -750,8 +749,8 @@ static void handle_create_surface(struct wl_client *client, struct wl_resource *
         return;
     }
 
-    struct wl_resource *resource =
-        wl_resource_create(client, &ukui_surface_interface, UKUI_SURFACE_VERSION, id);
+    int version = wl_resource_get_version(shell_resource);
+    struct wl_resource *resource = wl_resource_create(client, &ukui_surface_interface, version, id);
     if (!resource) {
         free(surface);
         wl_client_post_no_memory(client);

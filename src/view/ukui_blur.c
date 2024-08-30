@@ -14,7 +14,6 @@
 #include "view_p.h"
 
 #define UKUI_BLUR_MANAGER_VERSION 1
-#define UKUI_BLUR_SURFACE_VERSION 1
 
 enum UKUI_BLUR_STATE_MASK {
     UKUI_BLUR_STATE_NONE = 0,
@@ -216,8 +215,9 @@ static void handle_blur_manager_get_blur(struct wl_client *client,
         return;
     }
 
+    int version = wl_resource_get_version(manager_resource);
     struct wl_resource *resource =
-        wl_resource_create(client, &ukui_blur_surface_v1_interface, UKUI_BLUR_SURFACE_VERSION, id);
+        wl_resource_create(client, &ukui_blur_surface_v1_interface, version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         free(blur_surface);

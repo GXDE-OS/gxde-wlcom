@@ -14,7 +14,6 @@
 #include "scene/surface.h"
 #include "view_p.h"
 
-#define PLASMA_SURFACE_VERSION 8
 #define PLASMA_SHELL_VERSION 8
 
 struct kde_plasma_shell {
@@ -461,8 +460,9 @@ static void handle_get_surface(struct wl_client *client, struct wl_resource *she
         return;
     }
 
+    int version = wl_resource_get_version(shell_resource);
     struct wl_resource *resource =
-        wl_resource_create(client, &org_kde_plasma_surface_interface, PLASMA_SURFACE_VERSION, id);
+        wl_resource_create(client, &org_kde_plasma_surface_interface, version, id);
     if (!resource) {
         free(surface);
         wl_client_post_no_memory(client);

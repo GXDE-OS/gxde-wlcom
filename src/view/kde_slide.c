@@ -12,7 +12,6 @@
 #include "view_p.h"
 
 #define KDE_KWIN_SLIDE_MANAGER_VERSION 1
-#define KDE_KWIN_SLIDE_VERSION 1
 
 struct kde_slide_manager {
     struct wl_global *global;
@@ -179,8 +178,9 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
         }
     }
 
+    int version = wl_resource_get_version(manager_resource);
     struct wl_resource *resource =
-        wl_resource_create(client, &org_kde_kwin_slide_interface, KDE_KWIN_SLIDE_VERSION, id);
+        wl_resource_create(client, &org_kde_kwin_slide_interface, version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;

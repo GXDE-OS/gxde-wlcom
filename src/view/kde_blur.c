@@ -13,7 +13,6 @@
 #include "view_p.h"
 
 #define KDE_KWIN_BLUR_MANAGER_VERSION 1
-#define KDE_KWIN_BLUR_VERSION 1
 
 enum KDE_BLUR_STATE_MASK {
     KDE_BLUR_STATE_NONE = 0,
@@ -222,8 +221,9 @@ static void handle_create(struct wl_client *client, struct wl_resource *manager_
         }
     }
 
+    int version = wl_resource_get_version(manager_resource);
     struct wl_resource *resource =
-        wl_resource_create(client, &org_kde_kwin_blur_interface, KDE_KWIN_BLUR_VERSION, id);
+        wl_resource_create(client, &org_kde_kwin_blur_interface, version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;
