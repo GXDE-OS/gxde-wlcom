@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <wlr/types/wlr_buffer.h>
 
@@ -180,6 +181,25 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     effect = NULL;
 }
 
+static bool handle_effect_configure(struct effect *eff, const struct effect_option *option)
+{
+    if (strcmp(option->key, "move_type")) {
+        return false;
+    }
+
+    int type = option->value.num;
+    if (type != MOVE_EFFECT_BORDER && type != MOVE_EFFECT_OPACITY) {
+        return false;
+    }
+
+    effect->type = type;
+    return true;
+}
+
+static const struct effect_interface move_effect_impl = {
+    .configure = handle_effect_configure,
+};
+
 bool move_effect_create(struct effect_manager *effect_manager)
 {
     effect = calloc(1, sizeof(*effect));
@@ -187,7 +207,7 @@ bool move_effect_create(struct effect_manager *effect_manager)
         return false;
     }
 
-    effect->effect = effect_create("move", 0, false, NULL, NULL);
+    effect->effect = effect_create("move", 0, false, &move_effect_impl, NULL);
     if (!effect->effect) {
         free(effect);
         effect = NULL;
@@ -195,7 +215,7 @@ bool move_effect_create(struct effect_manager *effect_manager)
     }
 
     wl_list_init(&effect->proxies);
-    effect->type = MOVE_EFFECT_BORDER;
+    effect->type = effect_get_option_int(effect->effect, "move_type", MOVE_EFFECT_BORDER);
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);
