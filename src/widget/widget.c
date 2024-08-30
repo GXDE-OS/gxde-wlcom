@@ -516,3 +516,8 @@ void widget_get_size(struct widget *widget, int *width, int *height)
 
     painter_buffer_dest_size(buffer, width, height);
 }
+
+float widget_get_scale(struct widget *widget)
+{
+    return widget->scale;
+}

@@ -54,4 +54,6 @@ void widget_set_blurred(struct widget *widget, bool blurred);
 
 void widget_get_size(struct widget *widget, int *width, int *height);
 
+float widget_get_scale(struct widget *widget);
+
 #endif /* _WIDGET_H_ */
