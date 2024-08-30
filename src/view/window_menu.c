@@ -368,6 +368,7 @@ static struct window_menu *window_menu_create(struct seat *seat)
     struct menu_item *screen =
         menu_add_item(window_menu->root, tr("Move To _Screen"), KEY_S, NULL, NULL);
     window_menu->screen = menu_create(manager->tree, screen);
+    menu_set_fade_enabled(window_menu->screen, true);
 
     window_menu->minimize =
         menu_add_item(window_menu->root, tr("Mi_nimize"), KEY_N, window_menu_action, window_menu);
