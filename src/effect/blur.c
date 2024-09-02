@@ -702,11 +702,13 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     /* the blur damage must be refresh */
     if (pixman_region32_not_empty(damage_blur)) {
         struct wlr_box box;
-        pixman_region32_t blur_backgroud;
-        pixman_region32_init(&blur_backgroud);
         node->impl.get_bounding_box(node, &box);
-        pixman_region32_intersect_rect(&blur_backgroud, damage_blur, box.x + lx, box.y + ly,
-                                       box.width, box.height);
+
+        pixman_region32_t blur_backgroud;
+        pixman_region32_init_rect(&blur_backgroud, 0, 0, box.width, box.height);
+        pixman_region32_intersect(&blur_backgroud, &blur_backgroud, &node->clip_region);
+        pixman_region32_translate(&blur_backgroud, box.x + lx, box.y + ly);
+        pixman_region32_intersect(&blur_backgroud, &blur_backgroud, damage_blur);
         pixman_region32_union(&node->visible_region, &node->visible_region, &blur_backgroud);
         /* TODO: damage_blur sub the node opaque region */
         pixman_region32_fini(&blur_backgroud);
