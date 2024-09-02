@@ -149,11 +149,16 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     }
 
     pixman_region32_t render_region;
-    pixman_region32_init(&render_region);
     if (render_with_visibility) {
+        pixman_region32_init(&render_region);
         pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
     } else {
-        pixman_region32_copy(&render_region, &target->damage);
+        pixman_region32_init_rect(&render_region, 0, 0, rect->width, rect->height);
+        if (pixman_region32_not_empty(&node->clip_region)) {
+            pixman_region32_intersect(&render_region, &render_region, &node->clip_region);
+        }
+        pixman_region32_translate(&render_region, lx, ly);
+        pixman_region32_intersect(&render_region, &render_region, &target->damage);
     }
 
     if (!pixman_region32_not_empty(&render_region)) {
