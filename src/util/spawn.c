@@ -108,3 +108,8 @@ pid_t spawn_session(const char *session)
         return child;
     }
 }
+
+void spawn_wait(pid_t pid)
+{
+    waitpid(pid, NULL, 0);
+}

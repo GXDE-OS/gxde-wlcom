@@ -18,9 +18,12 @@
 #include "util/spawn.h"
 
 static struct server server = {
-    .options.enable_xwayland = true,
-    .options.log_to_file = true,
-    .options.log_in_realtime = true,
+    .options = {
+        .enable_xwayland = true,
+        .log_to_file = true,
+        .log_in_realtime = true,
+        .binding_session = true,
+    },
     .session_pid = -1,
 };
 static int exit_value = 0;
@@ -63,6 +66,8 @@ static void enable_debug_flag(struct server *server, const char *flag)
         server->options.log_to_file = false;
     } else if (strcmp(flag, "loginmtime") == 0) {
         server->options.log_in_realtime = false;
+    } else if (strcmp(flag, "nosessionbinding") == 0) {
+        server->options.binding_session = false;
     } else {
         printf("Unknown debug flag: %s\n", flag);
     }
@@ -135,9 +140,13 @@ static void child_handler(int signo, siginfo_t *sip, void *unused)
         break;
     }
 
-    kywc_log(KYWC_FATAL, "kylin-wlcom abort...");
+    spawn_wait(server.session_pid);
     server.session_pid = -1;
-    terminate(EXIT_SUCCESS);
+
+    if (server.options.binding_session) {
+        kywc_log(KYWC_FATAL, "kylin-wlcom abort...");
+        terminate(EXIT_SUCCESS);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -152,10 +161,9 @@ int main(int argc, char *argv[])
     bool enable_verbose = false;
     char *session_process = NULL;
 
-    int c;
     while (1) {
         int option_index = 0;
-        c = getopt_long(argc, argv, "hdD:s:vV", long_options, &option_index);
+        int c = getopt_long(argc, argv, "hdD:s:vV", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -233,11 +241,15 @@ int main(int argc, char *argv[])
     if (session_process) {
         server.session_pid = spawn_session(session_process);
         if (server.session_pid < 0) {
-            kywc_log(KYWC_ERROR, "session %s start failed, abort", session_process);
-            terminate(EXIT_FAILURE);
-            goto shutdown;
+            kywc_log(KYWC_ERROR, "session %s start failed%s", session_process,
+                     server.options.binding_session ? ", abort" : "");
+            if (server.options.binding_session) {
+                terminate(EXIT_FAILURE);
+                goto shutdown;
+            }
+        } else {
+            kywc_log(KYWC_INFO, "session %s(%d) started", session_process, server.session_pid);
         }
-        kywc_log(KYWC_INFO, "session %s(%d) started", session_process, server.session_pid);
     }
 
     server_run(&server);

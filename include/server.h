@@ -23,6 +23,8 @@ struct server {
         bool enable_xwayland;
         bool log_to_file;
         bool log_in_realtime;
+        /* Mutual binding, living and dying together */
+        bool binding_session;
     } options;
 
     struct {
