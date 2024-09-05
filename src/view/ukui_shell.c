@@ -587,7 +587,8 @@ static void surface_handle_view_position(struct wl_listener *listener, void *dat
     ukui_surface_set_usable_area(surface, true);
 
     if (wl_resource_get_version(surface->resource) >= UKUI_SURFACE_POSITION_SINCE_VERSION) {
-        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x, surface->view->base.geometry.y);
+        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x,
+                                   surface->view->base.geometry.y);
     }
 }
 
@@ -620,7 +621,8 @@ static void surface_handle_view_map(struct wl_listener *listener, void *data)
     wl_signal_add(&surface->view->events.output, &surface->view_output);
 
     if (wl_resource_get_version(surface->resource) >= UKUI_SURFACE_POSITION_SINCE_VERSION) {
-        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x, surface->view->base.geometry.y);
+        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x,
+                                   surface->view->base.geometry.y);
     }
 }
 
