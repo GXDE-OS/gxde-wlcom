@@ -292,6 +292,9 @@ void text_input_v2_send_leave(struct text_input_v2 *text_input)
     assert(text_input->surface != NULL);
     zwp_text_input_v2_send_leave(text_input->resource, text_input->serial,
                                  text_input->surface->resource);
+    text_input->surface = NULL;
+    wl_list_remove(&text_input->surface_destroy.link);
+    wl_list_init(&text_input->surface_destroy.link);
 }
 
 void text_input_v2_send_preedit_string(struct text_input_v2 *text_input, const char *text,

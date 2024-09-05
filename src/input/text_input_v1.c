@@ -305,6 +305,9 @@ void text_input_v1_send_enter(struct text_input_v1 *text_input, struct wlr_surfa
 void text_input_v1_send_leave(struct text_input_v1 *text_input)
 {
     zwp_text_input_v1_send_leave(text_input->resource);
+    text_input->surface = NULL;
+    wl_list_remove(&text_input->surface_destroy.link);
+    wl_list_init(&text_input->surface_destroy.link);
 }
 
 void text_input_v1_send_preedit_string(struct text_input_v1 *text_input, const char *text,
