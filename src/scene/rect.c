@@ -20,7 +20,7 @@ struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node)
     return rect;
 };
 
-static struct ky_scene_node *rect_accpet_input(struct ky_scene_node *node, int lx, int ly,
+static struct ky_scene_node *rect_accept_input(struct ky_scene_node *node, int lx, int ly,
                                                double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
@@ -248,7 +248,7 @@ void ky_scene_rect_init(struct ky_scene_rect *rect, struct ky_scene_tree *parent
     rect->node_destroy = rect->node.impl.destroy;
     rect->node.impl.destroy = rect_destroy;
 
-    rect->node.impl.accpet_input = rect_accpet_input;
+    rect->node.impl.accept_input = rect_accept_input;
     rect->node.impl.update_outputs = rect_update_outputs;
     rect->node.impl.collect_damage = rect_collect_damage;
     rect->node.impl.render = rect_render;

@@ -80,7 +80,7 @@ static void buffer_get_opaque_region(struct ky_scene_buffer *scene_buffer, int w
     }
 }
 
-static struct ky_scene_node *buffer_accpet_input(struct ky_scene_node *node, int lx, int ly,
+static struct ky_scene_node *buffer_accept_input(struct ky_scene_node *node, int lx, int ly,
                                                  double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
@@ -488,7 +488,7 @@ void ky_scene_buffer_init(struct ky_scene_buffer *scene_buffer, struct ky_scene_
     scene_buffer->node_destroy = scene_buffer->node.impl.destroy;
     scene_buffer->node.impl.destroy = buffer_destroy;
 
-    scene_buffer->node.impl.accpet_input = buffer_accpet_input;
+    scene_buffer->node.impl.accept_input = buffer_accept_input;
     scene_buffer->node.impl.update_outputs = buffer_update_outputs;
     scene_buffer->node.impl.collect_damage = buffer_collect_damage;
     scene_buffer->node.impl.render = buffer_render;

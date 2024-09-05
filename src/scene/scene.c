@@ -21,10 +21,10 @@
  * basic scene node
  */
 
-static struct ky_scene_node *node_accpet_input(struct ky_scene_node *node, int lx, int ly,
+static struct ky_scene_node *node_accept_input(struct ky_scene_node *node, int lx, int ly,
                                                double px, double py, double *rx, double *ry)
 {
-    kywc_log(KYWC_ERROR, "Need to implement accpet_input interface!");
+    kywc_log(KYWC_ERROR, "Need to implement accept_input interface!");
     assert(false);
     return NULL;
 }
@@ -106,7 +106,7 @@ void ky_scene_node_init(struct ky_scene_node *node, struct ky_scene_tree *parent
         .blur.iterations = 3,
         .blur.offset = 2.6f,
         .impl = {
-            .accpet_input = node_accpet_input,
+            .accept_input = node_accept_input,
             .update_outputs = node_update_outputs,
             .collect_damage = node_collect_damage,
             .render = node_render,
@@ -141,7 +141,7 @@ struct ky_scene_tree *ky_scene_tree_from_node(struct ky_scene_node *node)
     return tree;
 }
 
-static struct ky_scene_node *tree_accpet_input(struct ky_scene_node *node, int lx, int ly,
+static struct ky_scene_node *tree_accept_input(struct ky_scene_node *node, int lx, int ly,
                                                double px, double py, double *rx, double *ry)
 {
     /* skip disabled or input bypassed nodes */
@@ -154,7 +154,7 @@ static struct ky_scene_node *tree_accpet_input(struct ky_scene_node *node, int l
     double nx, ny;
 
     wl_list_for_each_reverse(child, &scene_tree->children, link) {
-        found = child->impl.accpet_input(child, lx + child->x, ly + child->y, px, py, &nx, &ny);
+        found = child->impl.accept_input(child, lx + child->x, ly + child->y, px, py, &nx, &ny);
         if (found) {
             *rx = nx;
             *ry = ny;
@@ -264,7 +264,7 @@ static void ky_scene_tree_init(struct ky_scene_tree *tree, struct ky_scene_tree 
     tree->node.type = KY_SCENE_NODE_TREE;
 
     /* override node interface */
-    tree->node.impl.accpet_input = tree_accpet_input;
+    tree->node.impl.accept_input = tree_accept_input;
     tree->node.impl.update_outputs = tree_update_outputs;
     tree->node.impl.collect_damage = tree_collect_damage;
     tree->node.impl.render = tree_render;
@@ -619,7 +619,7 @@ struct ky_scene_node *ky_scene_node_at(struct ky_scene_node *node, double lx, do
     int x, y;
 
     ky_scene_node_coords(node, &x, &y);
-    found = node->impl.accpet_input(node, x, y, lx, ly, &sx, &sy);
+    found = node->impl.accept_input(node, x, y, lx, ly, &sx, &sy);
     if (!found) {
         return NULL;
     }
@@ -718,8 +718,8 @@ static void scene_node_get_blur_region(struct ky_scene_node *node, pixman_region
 
 /* the x、y value is the offset relative to the first node */
 static void node_for_each_enabled(struct ky_scene_node *node, int x, int y,
-                                 void (*callback)(struct ky_scene_node *, int, int, void *),
-                                 void *data)
+                                  void (*callback)(struct ky_scene_node *, int, int, void *),
+                                  void *data)
 {
     if (!node->enabled) {
         return;

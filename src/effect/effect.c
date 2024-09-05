@@ -241,7 +241,7 @@ static struct ky_scene_node *node_chain_accept_input(struct ky_scene_node *node,
                                                      double px, double py, double *rx, double *ry)
 {
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
-    return chain->impl.accpet_input(node, lx, ly, px, py, rx, ry);
+    return chain->impl.accept_input(node, lx, ly, px, py, rx, ry);
 }
 
 static void node_chain_update_outputs(struct ky_scene_node *node, int lx, int ly,
@@ -352,7 +352,7 @@ static void node_chain_destroy(struct ky_scene_node *node)
 }
 
 static const struct ky_scene_node_interface node_effect_impl = {
-    .accpet_input = node_chain_accept_input,
+    .accept_input = node_chain_accept_input,
     .update_outputs = node_chain_update_outputs,
     .collect_damage = node_chain_collect_damage,
     .render = node_chain_render,

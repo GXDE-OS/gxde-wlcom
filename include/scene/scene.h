@@ -30,7 +30,7 @@ struct ky_scene_render_target;
 
 typedef void (*ky_scene_node_destroy_func_t)(struct ky_scene_node *node);
 
-typedef struct ky_scene_node *(*ky_scene_node_accpet_input_func_t)(struct ky_scene_node *node,
+typedef struct ky_scene_node *(*ky_scene_node_accept_input_func_t)(struct ky_scene_node *node,
                                                                    int lx, int ly, double px,
                                                                    double py, double *rx,
                                                                    double *ry);
@@ -60,7 +60,7 @@ struct ky_scene_node_interface {
     /**
      * Check the node is accepted input event in the box.
      */
-    ky_scene_node_accpet_input_func_t accpet_input;
+    ky_scene_node_accept_input_func_t accept_input;
     /**
      * Update node output state.
      */
