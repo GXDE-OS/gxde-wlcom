@@ -16,7 +16,7 @@
 #include "ukui-shell-protocol.h"
 #include "view_p.h"
 
-#define UKUI_SHELL_VERSION 2
+#define UKUI_SHELL_VERSION 3
 
 struct ukui_shell {
     struct wl_global *global;
@@ -26,6 +26,8 @@ struct ukui_shell {
 };
 
 struct ukui_surface {
+    struct wl_resource *resource;
+
     struct wlr_surface *wlr_surface;
     struct wl_listener surface_map;
     struct wl_listener surface_destroy;
@@ -583,6 +585,10 @@ static void surface_handle_view_position(struct wl_listener *listener, void *dat
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, view_position);
     ukui_surface_set_usable_area(surface, true);
+
+    if (wl_resource_get_version(surface->resource) >= UKUI_SURFACE_POSITION_SINCE_VERSION) {
+        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x, surface->view->base.geometry.y);
+    }
 }
 
 static void surface_handle_view_output(struct wl_listener *listener, void *data)
@@ -612,6 +618,10 @@ static void surface_handle_view_map(struct wl_listener *listener, void *data)
     wl_signal_add(&surface->view->base.events.position, &surface->view_position);
     surface->view_output.notify = surface_handle_view_output;
     wl_signal_add(&surface->view->events.output, &surface->view_output);
+
+    if (wl_resource_get_version(surface->resource) >= UKUI_SURFACE_POSITION_SINCE_VERSION) {
+        ukui_surface_send_position(surface->resource, surface->view->base.geometry.x, surface->view->base.geometry.y);
+    }
 }
 
 static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
@@ -756,6 +766,7 @@ static void handle_create_surface(struct wl_client *client, struct wl_resource *
         wl_client_post_no_memory(client);
         return;
     }
+    surface->resource = resource;
 
     wl_resource_set_implementation(resource, &ukui_surface_impl, surface,
                                    ukui_surface_handle_resource_destroy);
