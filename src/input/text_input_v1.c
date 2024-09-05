@@ -62,15 +62,15 @@ static void text_input_deactivate(struct wl_client *client, struct wl_resource *
         return;
     }
 
+    text_input->activated = false;
+    wl_signal_emit_mutable(&text_input->events.deactivate, NULL);
+
     text_input->surface = NULL;
     text_input->seat = NULL;
     wl_list_remove(&text_input->surface_destroy.link);
     wl_list_init(&text_input->surface_destroy.link);
     wl_list_remove(&text_input->seat_destroy.link);
     wl_list_init(&text_input->seat_destroy.link);
-
-    text_input->activated = false;
-    wl_signal_emit_mutable(&text_input->events.deactivate, NULL);
 }
 
 static void text_input_show_input_panel(struct wl_client *client, struct wl_resource *resource)

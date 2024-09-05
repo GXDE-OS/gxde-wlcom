@@ -55,12 +55,12 @@ static void text_input_disable(struct wl_client *client, struct wl_resource *res
         return;
     }
 
+    text_input->enabled = false;
+    wl_signal_emit_mutable(&text_input->events.disable, NULL);
+
     text_input->surface = NULL;
     wl_list_remove(&text_input->surface_destroy.link);
     wl_list_init(&text_input->surface_destroy.link);
-
-    text_input->enabled = false;
-    wl_signal_emit_mutable(&text_input->events.disable, NULL);
 }
 
 static void text_input_show_input_panel(struct wl_client *client, struct wl_resource *resource)
