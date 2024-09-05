@@ -104,6 +104,28 @@ static struct wlr_surface *text_input_focused_surface(struct text_input *text_in
     }
 }
 
+static void text_input_send_leave(struct text_input *text_input)
+{
+    if (text_input->text_input_v3) {
+        wlr_text_input_v3_send_leave(text_input->text_input_v3);
+    } else if (text_input->text_input_v2) {
+        text_input_v2_send_leave(text_input->text_input_v2);
+    } else {
+        text_input_v1_send_leave(text_input->text_input_v1);
+    }
+}
+
+static void text_input_send_enter(struct text_input *text_input, struct wlr_surface *surface)
+{
+    if (text_input->text_input_v3) {
+        wlr_text_input_v3_send_enter(text_input->text_input_v3, surface);
+    } else if (text_input->text_input_v2) {
+        text_input_v2_send_enter(text_input->text_input_v2, surface);
+    } else {
+        text_input_v1_send_enter(text_input->text_input_v1, surface);
+    }
+}
+
 static struct text_input *relay_get_focused_text_input(struct input_method_relay *relay)
 {
     struct text_input *text_input = NULL;
@@ -307,11 +329,11 @@ static void relay_disable_text_input(struct input_method_relay *relay,
 static void handle_text_input_disable(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_disable);
-
     if (!text_input_focused_surface(text_input)) {
         kywc_log(KYWC_DEBUG, "Disabling text input, but no longer focused");
         return;
     }
+
     relay_disable_text_input(text_input->relay, text_input);
 }
 
@@ -331,10 +353,10 @@ static void text_input_set_pending_focused_surface(struct text_input *text_input
 static void handle_text_input_destroy(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_destroy);
+
     if (text_input_is_enabeld(text_input)) {
         relay_disable_text_input(text_input->relay, text_input);
     }
-
     text_input_set_pending_focused_surface(text_input, NULL);
 
     wl_list_remove(&text_input->link);
@@ -546,13 +568,7 @@ static void handle_input_method_destroy(struct wl_listener *listener, void *data
         // the input method returns
         struct wlr_surface *focused_surface = text_input_focused_surface(text_input);
         text_input_set_pending_focused_surface(text_input, focused_surface);
-        if (text_input->text_input_v3) {
-            wlr_text_input_v3_send_leave(text_input->text_input_v3);
-        } else if (text_input->text_input_v2) {
-            text_input_v2_send_leave(text_input->text_input_v2);
-        } else {
-            text_input_v1_send_leave(text_input->text_input_v1);
-        }
+        text_input_send_leave(text_input);
     }
 }
 
@@ -688,16 +704,7 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
         if (!text_input->pending_focused_surface) {
             continue;
         }
-        if (text_input->text_input_v3) {
-            wlr_text_input_v3_send_enter(text_input->text_input_v3,
-                                         text_input->pending_focused_surface);
-        } else if (text_input->text_input_v2) {
-            text_input_v2_send_enter(text_input->text_input_v2,
-                                     text_input->pending_focused_surface);
-        } else {
-            text_input_v1_send_enter(text_input->text_input_v1,
-                                     text_input->pending_focused_surface);
-        }
+        text_input_send_enter(text_input, text_input->pending_focused_surface);
         text_input_set_pending_focused_surface(text_input, NULL);
         break;
     }
@@ -866,13 +873,7 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
         } else if (focused_surface) {
             if (surface != focused_surface) {
                 relay_disable_text_input(relay, text_input);
-                if (text_input->text_input_v3) {
-                    wlr_text_input_v3_send_leave(text_input->text_input_v3);
-                } else if (text_input->text_input_v2) {
-                    text_input_v2_send_leave(text_input->text_input_v2);
-                } else {
-                    text_input_v1_send_leave(text_input->text_input_v1);
-                }
+                text_input_send_leave(text_input);
             } else {
                 kywc_log(KYWC_DEBUG, "IM relay set_focus already focused");
                 continue;
@@ -881,13 +882,7 @@ void input_method_set_focus(struct seat *seat, struct wlr_surface *surface)
 
         if (surface && text_input_match_surface(text_input, surface)) {
             if (relay->wlr_input_method) {
-                if (text_input->text_input_v3) {
-                    wlr_text_input_v3_send_enter(text_input->text_input_v3, surface);
-                } else if (text_input->text_input_v2) {
-                    text_input_v2_send_enter(text_input->text_input_v2, surface);
-                } else {
-                    text_input_v1_send_enter(text_input->text_input_v1, surface);
-                }
+                text_input_send_enter(text_input, surface);
             } else {
                 text_input_set_pending_focused_surface(text_input, surface);
             }
