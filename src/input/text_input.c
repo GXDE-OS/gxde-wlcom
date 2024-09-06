@@ -60,6 +60,8 @@ struct input_method_relay {
 
     struct wl_list input_popups;
     struct wl_listener new_popup_surface;
+
+    struct text_input *pending_enabled_text_input;
 };
 
 struct text_input {
@@ -202,10 +204,7 @@ static void relay_send_input_method_state(struct input_method_relay *relay,
                                           struct text_input *text_input)
 {
     struct wlr_input_method_v2 *input_method = relay->wlr_input_method;
-    if (!input_method) {
-        kywc_log(KYWC_INFO, "Sending IM_DONE but im is gone");
-        return;
-    }
+
     // TODO: only send each of those if they were modified
     if (text_input->text_input_v3) {
         if (text_input->text_input_v3->active_features &
@@ -272,6 +271,7 @@ static void handle_text_input_enable(struct wl_listener *listener, void *data)
 #endif
 
     if (text_input->relay->wlr_input_method == NULL) {
+        text_input->relay->pending_enabled_text_input = text_input;
         kywc_log(KYWC_INFO, "Enabling text input when input method is gone");
         return;
     }
@@ -298,7 +298,7 @@ static void handle_text_input_commit(struct wl_listener *listener, void *data)
         kywc_log(KYWC_DEBUG, "Inactive text input tried to commit an update");
         return;
     }
-    kywc_log(KYWC_DEBUG, "Text input committed update");
+    // kywc_log(KYWC_DEBUG, "Text input committed update");
     if (text_input->relay->wlr_input_method == NULL) {
         kywc_log(KYWC_INFO, "Text input committed, but input method is gone");
         return;
@@ -329,6 +329,11 @@ static void relay_disable_text_input(struct input_method_relay *relay,
 static void handle_text_input_disable(struct wl_listener *listener, void *data)
 {
     struct text_input *text_input = wl_container_of(listener, text_input, text_input_disable);
+
+    if (text_input->relay->pending_enabled_text_input == text_input) {
+        text_input->relay->pending_enabled_text_input = NULL;
+    }
+
     if (!text_input_focused_surface(text_input)) {
         kywc_log(KYWC_DEBUG, "Disabling text input, but no longer focused");
         return;
@@ -358,6 +363,10 @@ static void handle_text_input_destroy(struct wl_listener *listener, void *data)
         relay_disable_text_input(text_input->relay, text_input);
     }
     text_input_set_pending_focused_surface(text_input, NULL);
+
+    if (text_input->relay->pending_enabled_text_input == text_input) {
+        text_input->relay->pending_enabled_text_input = NULL;
+    }
 
     wl_list_remove(&text_input->link);
     wl_list_remove(&text_input->text_input_commit.link);
@@ -707,6 +716,12 @@ static void handle_new_input_method(struct wl_listener *listener, void *data)
         text_input_send_enter(text_input, text_input->pending_focused_surface);
         text_input_set_pending_focused_surface(text_input, NULL);
         break;
+    }
+
+    if (relay->pending_enabled_text_input) {
+        wlr_input_method_v2_send_activate(input_method);
+        relay_send_input_method_state(relay, relay->pending_enabled_text_input);
+        relay->pending_enabled_text_input = NULL;
     }
 }
 
