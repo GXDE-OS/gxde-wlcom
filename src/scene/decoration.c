@@ -710,17 +710,17 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         ky_scene_render_region(&border, target);
 
         wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
-			.box = dst_box,
-			.color = {
-				.r = deco->border_color[0],
-				.g = deco->border_color[1],
-				.b = deco->border_color[2],
-				.a = deco->border_color[3],
-			},
+            .box = dst_box,
+            .color = {
+                .r = deco->border_color[0],
+                .g = deco->border_color[1],
+                .b = deco->border_color[2],
+                .a = deco->border_color[3],
+            },
             .clip = &border,
             .blend_mode = deco->border_color[3] != 1 ? 
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
-		});
+        });
         pixman_region32_fini(&border);
     }
 
@@ -734,17 +734,17 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         ky_scene_render_region(&title, target);
 
         wlr_render_pass_add_rect(target->render_pass, &(struct wlr_render_rect_options){
-			.box = dst_box,
-			.color = {
-				.r = deco->title_color[0],
-				.g = deco->title_color[1],
-				.b = deco->title_color[2],
-				.a = deco->title_color[3],
-			},
+            .box = dst_box,
+            .color = {
+                .r = deco->title_color[0],
+                .g = deco->title_color[1],
+                .b = deco->title_color[2],
+                .a = deco->title_color[3],
+            },
             .clip = &title,
             .blend_mode = deco->title_color[3] != 1 ? 
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
-		});
+        });
         pixman_region32_fini(&title);
     }
 
