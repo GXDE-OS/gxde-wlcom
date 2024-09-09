@@ -275,4 +275,10 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
 
 void view_set_icon_name(struct view *view, const char *icon_name);
 
+void view_move_to_center(struct view *view);
+
+bool view_has_descendant(struct view *view, struct view *descendant);
+
+bool view_has_ancestor(struct view *view, struct view *ancestor);
+
 #endif /* __VIEW_H_ */

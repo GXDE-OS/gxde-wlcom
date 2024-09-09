@@ -1890,6 +1890,68 @@ struct view_mode *view_manager_mode_from_name(const char *name)
     return NULL;
 }
 
+void view_manager_set_view_mode(struct view_mode *view_mode)
+{
+    if (view_manager->mode == view_mode) {
+        return;
+    }
+
+    if (view_manager->mode && view_manager->mode->impl->view_mode_leave) {
+        view_manager->mode->impl->view_mode_leave();
+    }
+    view_manager->mode = view_mode;
+    if (view_manager->mode->impl->view_mode_enter) {
+        view_manager->mode->impl->view_mode_enter();
+    }
+}
+
+bool view_has_descendant(struct view *view, struct view *descendant)
+{
+    if (!descendant) {
+        return !wl_list_empty(&view->children);
+    }
+
+    struct view *tmp;
+    wl_list_for_each(tmp, &view->children, parent_link) {
+        if (tmp == descendant) {
+            return true;
+        }
+        if (view_has_descendant(tmp, descendant)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool view_has_ancestor(struct view *view, struct view *ancestor)
+{
+    if (!view->parent) {
+        return false;
+    }
+
+    if (!ancestor) {
+        return !!view->parent;
+    }
+
+    if (view->parent == ancestor) {
+        return true;
+    }
+
+    return view_has_ancestor(view->parent, ancestor);
+}
+
+void view_move_to_center(struct view *view)
+{
+    struct output *output = output_from_kywc_output(view->output);
+    int x_center = output->geometry.x + output->geometry.width / 2;
+    int y_center = output->geometry.y + output->geometry.height / 2;
+    int x = x_center - view->base.geometry.width / 2;
+    int y = y_center - view->base.geometry.height / 2;
+
+    view_do_move(view, x, y);
+}
+
 struct view_mode *view_manager_mode_register(const struct view_mode_interface *impl)
 {
     struct view_mode *mode = malloc(sizeof(struct view_mode));

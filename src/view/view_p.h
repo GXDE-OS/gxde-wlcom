@@ -132,6 +132,8 @@ bool maximize_switcher_create(struct view_manager *view_manager);
 
 void modal_create(struct view *view);
 
+void view_manager_set_view_mode(struct view_mode *view_mode);
+
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
                       struct view_layer *layer, bool use_usable_area);
