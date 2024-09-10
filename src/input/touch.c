@@ -471,6 +471,8 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     }
 
     struct seat *seat = touch->input->seat;
+    cursor_move(seat->cursor, &event->touch->base, event->x, event->y, false, true);
+
     if (seat->touch_grab && seat->touch_grab->interface->touch &&
         seat->touch_grab->interface->touch(seat->touch_grab, event->time_msec, true)) {
         return true;
@@ -626,6 +628,8 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     }
 
     struct seat *seat = touch->input->seat;
+    cursor_move(seat->cursor, &event->touch->base, event->x, event->y, false, true);
+
     if (seat->touch_grab && seat->touch_grab->interface->motion &&
         seat->touch_grab->interface->motion(seat->touch_grab, event->time_msec, seat->cursor->lx,
                                             seat->cursor->ly)) {

@@ -421,8 +421,11 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 
 void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolute)
 {
-    cursor_move(seat->cursor, NULL, x, y, !absolute, false);
-    cursor_feed_motion(seat->cursor, current_time_msec());
+    if (absolute) {
+        x = x - seat->cursor->lx;
+        y = y - seat->cursor->ly;
+    }
+    cursor_feed_motion(seat->cursor, current_time_msec(), NULL, x, y, x, y);
     wlr_seat_pointer_notify_frame(seat->wlr_seat);
 }
 

@@ -195,7 +195,8 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
  * seat pointer and keyboard feed event
  */
 
-void cursor_feed_motion(struct cursor *cursor, uint32_t time);
+void cursor_feed_motion(struct cursor *cursor, uint32_t time, struct wlr_input_device *device,
+                        double dx, double dy, double dx_unaccel, double dy_unaccel);
 
 void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, uint32_t time,
                         uint32_t double_click_time);

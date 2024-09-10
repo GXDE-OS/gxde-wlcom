@@ -126,20 +126,33 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     }
 }
 
-void cursor_feed_motion(struct cursor *cursor, uint32_t time)
+void cursor_feed_motion(struct cursor *cursor, uint32_t time, struct wlr_input_device *device,
+                        double dx, double dy, double dx_unaccel, double dy_unaccel)
 {
-    struct seat *seat = cursor->seat;
-
     wlr_relative_pointer_manager_v1_send_relative_motion(
-        seat->manager->relative_pointer, cursor->seat->wlr_seat, (uint64_t)time * 1000, cursor->dx,
-        cursor->dy, cursor->dx_unaccel, cursor->dy_unaccel);
+        cursor->seat->manager->relative_pointer, cursor->seat->wlr_seat, (uint64_t)time * 1000, dx,
+        dy, dx_unaccel, dy_unaccel);
 
-    if (seat->pointer_grab && seat->pointer_grab->interface->motion &&
-        seat->pointer_grab->interface->motion(seat->pointer_grab, time, cursor->lx, cursor->ly)) {
+    cursor_move(cursor, device, dx, dy, true, false);
+
+    struct seat_pointer_grab *pointer_grab = cursor->seat->pointer_grab;
+    if (pointer_grab && pointer_grab->interface->motion &&
+        pointer_grab->interface->motion(pointer_grab, time, cursor->lx, cursor->ly)) {
         return;
     }
 
     _cursor_feed_motion(cursor, time);
+}
+
+static void cursor_motion_absolute(struct cursor *cursor, uint32_t time,
+                                   struct wlr_input_device *dev, double x, double y)
+{
+    double lx, ly;
+    wlr_cursor_absolute_to_layout_coords(cursor->wlr_cursor, dev, x, y, &lx, &ly);
+
+    double dx = lx - cursor->lx;
+    double dy = ly - cursor->ly;
+    cursor_feed_motion(cursor, time, dev, dx, dy, dx, dy);
 }
 
 static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
@@ -265,11 +278,8 @@ static void cursor_handle_motion(struct wl_listener *listener, void *data)
     idle_manager_notify_activity(cursor->seat);
 
     cursor_set_hidden(cursor, false);
-    cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y, true, false);
-
-    cursor->dx_unaccel = event->unaccel_dx;
-    cursor->dy_unaccel = event->unaccel_dy;
-    cursor_feed_motion(cursor, event->time_msec);
+    cursor_feed_motion(cursor, event->time_msec, &event->pointer->base, event->delta_x,
+                       event->delta_y, event->unaccel_dx, event->unaccel_dy);
 }
 
 static void cursor_handle_motion_absolute(struct wl_listener *listener, void *data)
@@ -279,8 +289,7 @@ static void cursor_handle_motion_absolute(struct wl_listener *listener, void *da
     idle_manager_notify_activity(cursor->seat);
 
     cursor_set_hidden(cursor, false);
-    cursor_move(cursor, &event->pointer->base, event->x, event->y, false, true);
-    cursor_feed_motion(cursor, event->time_msec);
+    cursor_motion_absolute(cursor, event->time_msec, &event->pointer->base, event->x, event->y);
 }
 
 static void cursor_handle_button(struct wl_listener *listener, void *data)
@@ -353,23 +362,17 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
 
     bool change_x = event->updated_axes & WLR_TABLET_TOOL_AXIS_X;
     bool change_y = event->updated_axes & WLR_TABLET_TOOL_AXIS_Y;
-    if (change_x || change_y) {
-        switch (event->tool->type) {
-        case WLR_TABLET_TOOL_TYPE_LENS:
-        case WLR_TABLET_TOOL_TYPE_MOUSE:
-            cursor_move(cursor, &event->tablet->base, event->dx, event->dy, true, false);
-            break;
-        default:
-            cursor_move(cursor, &event->tablet->base, change_x ? event->x : NAN,
-                        change_y ? event->y : NAN, false, true);
-            break;
+    if (cursor->tablet_tool_tip_simulation_pointer && (change_x || change_y)) {
+        if (event->tool->type == WLR_TABLET_TOOL_TYPE_LENS ||
+            event->tool->type == WLR_TABLET_TOOL_TYPE_MOUSE) {
+            cursor_feed_motion(cursor, event->time_msec, &event->tablet->base, event->dx, event->dy,
+                               event->dx, event->dy);
+        } else {
+            cursor_motion_absolute(cursor, event->time_msec, &event->tablet->base,
+                                   change_x ? event->x : NAN, change_y ? event->y : NAN);
         }
-
-        if (cursor->tablet_tool_tip_simulation_pointer) {
-            cursor_feed_motion(cursor, event->time_msec);
-            wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
-            return;
-        }
+        wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
+        return;
     }
 
     if (!cursor->tablet_tool_tip_simulation_pointer) {
@@ -383,7 +386,6 @@ static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, vo
     struct wlr_tablet_tool_proximity_event *event = data;
     idle_manager_notify_activity(cursor->seat);
     cursor_set_hidden(cursor, false);
-    cursor_move(cursor, &event->tablet->base, event->x, event->y, false, true);
 
     if (!cursor->tablet_tool_tip_simulation_pointer && tablet_handle_tool_proximity(event)) {
         return;
@@ -393,7 +395,7 @@ static void cursor_handle_tablet_tool_proximity(struct wl_listener *listener, vo
         return;
     }
 
-    cursor_feed_motion(cursor, event->time_msec);
+    cursor_motion_absolute(cursor, event->time_msec, &event->tablet->base, event->x, event->y);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 }
 
@@ -407,7 +409,7 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
     cursor_set_hidden(cursor, false);
 
     /* workaround: tablet simulate pointer drag to fix peony drag */
-    cursor_feed_motion(cursor, event->time_msec);
+    cursor_motion_absolute(cursor, event->time_msec, &event->tablet->base, event->x, event->y);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 
     if (cursor->tablet_tool_tip_simulation_pointer && event->state == WLR_TABLET_TOOL_TIP_UP) {
@@ -491,10 +493,9 @@ static void cursor_handle_touch_down(struct wl_listener *listener, void *data)
     struct wlr_touch_down_event *event = data;
     idle_manager_notify_activity(cursor->seat);
     cursor_set_hidden(cursor, true);
-    cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
 
     /* workaround to fix peony drag icon position */
-    cursor_feed_motion(cursor, event->time_msec);
+    cursor_motion_absolute(cursor, event->time_msec, &event->touch->base, event->x, event->y);
     wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 
     if (touch_handle_down(event)) {
@@ -513,13 +514,12 @@ static void cursor_handle_touch_motion(struct wl_listener *listener, void *data)
     struct cursor *cursor = wl_container_of(listener, cursor, touch_motion);
     struct wlr_touch_motion_event *event = data;
     idle_manager_notify_activity(cursor->seat);
-    cursor_move(cursor, &event->touch->base, event->x, event->y, false, true);
 
     touch_handle_motion(event, !cursor->touch_simulation_pointer);
 
     if ((cursor->seat->pointer_grab || cursor->touch_simulation_pointer) &&
         cursor->pointer_touch_id == event->touch_id) {
-        cursor_feed_motion(cursor, event->time_msec);
+        cursor_motion_absolute(cursor, event->time_msec, &event->touch->base, event->x, event->y);
     }
 }
 
@@ -967,9 +967,6 @@ void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, 
     } else {
         wlr_cursor_warp(wlr_cursor, dev, x, y);
     }
-
-    cursor->dx_unaccel = cursor->dx = wlr_cursor->x - cursor->lx;
-    cursor->dy_unaccel = cursor->dy = wlr_cursor->y - cursor->ly;
 
     cursor->lx = wlr_cursor->x;
     cursor->ly = wlr_cursor->y;

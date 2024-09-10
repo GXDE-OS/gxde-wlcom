@@ -93,8 +93,6 @@ struct cursor {
     struct cursor_node focus;
     /* current curosr position in node coord */
     double sx, sy;
-    /* relative motion event */
-    double dx, dy, dx_unaccel, dy_unaccel;
 
     /* special: hold a pressed button and leave surface */
     bool hold_mode;
@@ -116,6 +114,7 @@ void cursor_set_resize_image(struct cursor *cursor, uint32_t edges);
 
 void cursor_rebase(struct cursor *cursor);
 
+/* only move the cursor, no event process */
 void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, double y,
                  bool delta, bool absolute);
 

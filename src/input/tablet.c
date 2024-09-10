@@ -450,6 +450,9 @@ bool tablet_handle_tool_proximity(struct wlr_tablet_tool_proximity_event *event)
         return true;
     }
 
+    struct cursor *cursor = tablet_tool->tablet->input->seat->cursor;
+    cursor_move(cursor, &event->tablet->base, event->x, event->y, false, true);
+
     return tablet_handle_tool_position(tablet_tool);
 }
 
@@ -460,8 +463,20 @@ void tablet_handle_tool_axis(struct wlr_tablet_tool_axis_event *event)
         return;
     }
 
-    if (event->updated_axes & WLR_TABLET_TOOL_AXIS_X ||
-        event->updated_axes & WLR_TABLET_TOOL_AXIS_Y) {
+    bool change_x = event->updated_axes & WLR_TABLET_TOOL_AXIS_X;
+    bool change_y = event->updated_axes & WLR_TABLET_TOOL_AXIS_Y;
+    if (change_x || change_y) {
+        struct cursor *cursor = tablet_tool->tablet->input->seat->cursor;
+        switch (event->tool->type) {
+        case WLR_TABLET_TOOL_TYPE_LENS:
+        case WLR_TABLET_TOOL_TYPE_MOUSE:
+            cursor_move(cursor, &event->tablet->base, event->dx, event->dy, true, false);
+            break;
+        default:
+            cursor_move(cursor, &event->tablet->base, change_x ? event->x : NAN,
+                        change_y ? event->y : NAN, false, true);
+            break;
+        }
         tablet_handle_tool_position(tablet_tool);
     }
 
