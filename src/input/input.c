@@ -10,6 +10,7 @@
 #include <wlr/backend/session.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h>
+#include <wlr/types/wlr_pointer_constraints_v1.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/types/wlr_relative_pointer_v1.h>
 #include <wlr/types/wlr_seat.h>
@@ -325,6 +326,13 @@ static void handle_new_shortcuts_inhibitor(struct wl_listener *listener, void *d
     wlr_keyboard_shortcuts_inhibitor_v1_activate(inhibitor);
 }
 
+static void handle_new_pointer_constraint(struct wl_listener *listener, void *data)
+{
+    struct wlr_pointer_constraint_v1 *constraint = data;
+    struct seat *seat = seat_from_wlr_seat(constraint->seat);
+    cursor_constraint_create(seat->cursor, constraint);
+}
+
 struct input_manager *input_manager_create(struct server *server)
 {
     input_manager = calloc(1, sizeof(struct input_manager));
@@ -356,10 +364,16 @@ struct input_manager *input_manager_create(struct server *server)
 
     input_manager->pointer_gestures = wlr_pointer_gestures_v1_create(server->display);
     input_manager->relative_pointer = wlr_relative_pointer_manager_v1_create(server->display);
+
     input_manager->shortcuts_inhibit = wlr_keyboard_shortcuts_inhibit_v1_create(server->display);
     input_manager->new_shortcuts_inhibit.notify = handle_new_shortcuts_inhibitor;
     wl_signal_add(&input_manager->shortcuts_inhibit->events.new_inhibitor,
                   &input_manager->new_shortcuts_inhibit);
+
+    input_manager->pointer_constraints = wlr_pointer_constraints_v1_create(server->display);
+    input_manager->new_pointer_constraint.notify = handle_new_pointer_constraint;
+    wl_signal_add(&input_manager->pointer_constraints->events.new_constraint,
+                  &input_manager->new_pointer_constraint);
 
     input_manager_config_init(input_manager);
     selection_manager_create(input_manager);

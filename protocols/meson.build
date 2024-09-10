@@ -12,6 +12,7 @@ protocols = {
   'xdg-decoration': wl_protocol_dir / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml',
   'xdg-dialog': wl_protocol_dir / 'staging/xdg-dialog/xdg-dialog-v1.xml',
   'org-kde-kwin-idle': 'idle.xml',
+  'zwp-pointer-constraints-v1': wl_protocol_dir / 'unstable/pointer-constraints/pointer-constraints-unstable-v1.xml',
 }
 
 protocols += {

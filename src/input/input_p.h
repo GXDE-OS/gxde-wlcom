@@ -42,6 +42,8 @@ struct input_manager {
     struct wl_listener new_virtual_keyboard;
     struct wl_listener new_shortcuts_inhibit;
     struct wl_listener server_destroy;
+    struct wlr_pointer_constraints_v1 *pointer_constraints;
+    struct wl_listener new_pointer_constraint;
 };
 
 bool input_manager_config_init(struct input_manager *input_manager);
@@ -203,6 +205,15 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
 
 void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t source, double delta,
                       int32_t delta_discrete, uint32_t time);
+
+/**
+ * seat pointer constraint
+ */
+
+struct cursor_constraint *cursor_constraint_create(struct cursor *cursor,
+                                                   struct wlr_pointer_constraint_v1 *constraint);
+
+void cursor_constraint_set_focus(struct seat *seat, struct wlr_surface *surface);
 
 /**
  * keeps track of the states of capslock, numlock, scrolllock

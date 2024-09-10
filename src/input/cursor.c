@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_pointer.h>
+#include <wlr/types/wlr_pointer_constraints_v1.h>
 #include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/types/wlr_relative_pointer_v1.h>
 #include <wlr/types/wlr_seat.h>
@@ -21,8 +22,8 @@
 #include <kywc/log.h>
 #include <kywc/view.h>
 
-#include "input/cursor.h"
 #include "input_p.h"
+#include "scene/surface.h"
 #include "util/time.h"
 #include "xwayland.h"
 
@@ -126,12 +127,20 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     }
 }
 
+/* return true if pointer is locked */
+static bool cursor_apply_constraint(struct cursor *cursor, struct wlr_input_device *device,
+                                    double *dx, double *dy);
+
 void cursor_feed_motion(struct cursor *cursor, uint32_t time, struct wlr_input_device *device,
                         double dx, double dy, double dx_unaccel, double dy_unaccel)
 {
     wlr_relative_pointer_manager_v1_send_relative_motion(
         cursor->seat->manager->relative_pointer, cursor->seat->wlr_seat, (uint64_t)time * 1000, dx,
         dy, dx_unaccel, dy_unaccel);
+
+    if (cursor_apply_constraint(cursor, device, &dx, &dy)) {
+        return;
+    }
 
     cursor_move(cursor, device, dx, dy, true, false);
 
@@ -985,4 +994,257 @@ void cursor_set_hidden(struct cursor *cursor, bool hidden)
         cursor->hidden = false;
         cursor_rebase(cursor);
     }
+}
+
+static void cursor_constraint_warp_to_hint(struct cursor_constraint *constraint)
+{
+    struct wlr_pointer_constraint_v1_state *current = &constraint->constraint->current;
+
+    if (!(current->committed & WLR_POINTER_CONSTRAINT_V1_STATE_CURSOR_HINT)) {
+        return;
+    }
+
+    struct wlr_surface *surface = constraint->constraint->surface;
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface);
+    if (!buffer) {
+        return;
+    }
+
+    int lx, ly;
+    ky_scene_node_coords(&buffer->node, &lx, &ly);
+
+    double sx = current->cursor_hint.x;
+    double sy = current->cursor_hint.y;
+    cursor_move(constraint->cursor, NULL, lx + sx, ly + sy, false, false);
+    wlr_seat_pointer_warp(constraint->cursor->seat->wlr_seat, sx, sy);
+}
+
+static void cursor_constraint_deactivate(void *data)
+{
+    struct cursor_constraint *constraint = data;
+    wlr_pointer_constraint_v1_send_deactivated(constraint->constraint);
+}
+
+static void cursor_active_constraint(struct cursor *cursor, struct cursor_constraint *constraint,
+                                     bool deactivate_later)
+{
+    struct cursor_constraint *old_constraint = cursor->active_constraint;
+    if (old_constraint == constraint) {
+        return;
+    }
+    cursor->active_constraint = constraint;
+
+    if (old_constraint) {
+        wl_list_remove(&old_constraint->surface_unmap.link);
+        wl_list_init(&old_constraint->surface_unmap.link);
+        wl_list_remove(&old_constraint->set_region.link);
+        wl_list_init(&old_constraint->set_region.link);
+
+        if (!constraint) {
+            cursor_constraint_warp_to_hint(old_constraint);
+        }
+
+        if (deactivate_later) {
+            struct wl_event_loop *loop = wl_display_get_event_loop(cursor->seat->wlr_seat->display);
+            wl_event_loop_add_idle(loop, cursor_constraint_deactivate, old_constraint);
+        } else {
+            wlr_pointer_constraint_v1_send_deactivated(old_constraint->constraint);
+        }
+    }
+
+    if (!constraint) {
+        return;
+    }
+
+    cursor->pending_constraint = NULL;
+    wlr_pointer_constraint_v1_send_activated(constraint->constraint);
+
+    struct wlr_surface *surface = constraint->constraint->surface;
+    wl_signal_add(&surface->events.unmap, &constraint->surface_unmap);
+}
+
+static bool cursor_constraint_check_region(struct cursor_constraint *constraint)
+{
+    struct wlr_surface *surface = constraint->constraint->surface;
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface);
+    if (!buffer) {
+        return false;
+    }
+
+    int lx, ly;
+    ky_scene_node_coords(&buffer->node, &lx, &ly);
+
+    int sx = constraint->cursor->lx - lx;
+    int sy = constraint->cursor->ly - ly;
+
+    return pixman_region32_contains_point(&constraint->constraint->region, sx, sy, NULL);
+}
+
+static void cursor_set_constraint(struct cursor *cursor, struct cursor_constraint *constraint);
+
+static void cursor_constraint_handle_set_region(struct wl_listener *listener, void *data)
+{
+    struct cursor_constraint *constraint = wl_container_of(listener, constraint, set_region);
+    struct wlr_pointer_constraint_v1 *wlr_constraint = constraint->constraint;
+    struct cursor *cursor = constraint->cursor;
+    /* check if the cursor is in the region */
+    bool in_region = cursor_constraint_check_region(constraint);
+
+    /* type always be WLR_POINTER_CONSTRAINT_V1_CONFINED */
+    if (cursor->pending_constraint == constraint && in_region) {
+        cursor_active_constraint(cursor, cursor->pending_constraint, false);
+    } else if (cursor->active_constraint == constraint && !in_region) {
+        /* deactivate the constraint and set pending if not oneshot */
+        bool oneshot = wlr_constraint->lifetime == ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT;
+        cursor_active_constraint(cursor, NULL, oneshot);
+        if (!oneshot) {
+            cursor_set_constraint(cursor, constraint);
+        }
+    }
+}
+
+static void cursor_set_constraint(struct cursor *cursor, struct cursor_constraint *constraint)
+{
+    if (cursor->active_constraint) {
+        if (cursor->active_constraint == constraint) {
+            return;
+        }
+        /* clear activated constraint always */
+        cursor_active_constraint(cursor, NULL, false);
+    }
+
+    if (cursor->pending_constraint == constraint) {
+        return;
+    }
+
+    if (cursor->pending_constraint) {
+        wl_list_remove(&cursor->pending_constraint->set_region.link);
+        wl_list_init(&cursor->pending_constraint->set_region.link);
+    }
+
+    cursor->pending_constraint = constraint;
+    if (!constraint) {
+        return;
+    }
+
+    if (constraint->constraint->type == WLR_POINTER_CONSTRAINT_V1_CONFINED) {
+        wl_signal_add(&constraint->constraint->events.set_region, &constraint->set_region);
+    }
+    /* activate this constraint if cursor is in the region */
+    if (cursor_constraint_check_region(constraint)) {
+        cursor_active_constraint(cursor, constraint, false);
+    }
+}
+
+static bool cursor_apply_constraint(struct cursor *cursor, struct wlr_input_device *device,
+                                    double *dx, double *dy)
+{
+    struct cursor_constraint *constraint = cursor->active_constraint;
+    if (!constraint) {
+        constraint = cursor->pending_constraint;
+    }
+    bool has_constraint = constraint && (!device || device->type == WLR_INPUT_DEVICE_POINTER);
+    if (!has_constraint) {
+        return false;
+    }
+
+    /* no need to check the region once locked */
+    if (cursor->active_constraint &&
+        cursor->active_constraint->constraint->type == WLR_POINTER_CONSTRAINT_V1_LOCKED) {
+        return true;
+    }
+
+    struct wlr_surface *surface = constraint->constraint->surface;
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(surface);
+    if (!buffer) {
+        return false;
+    }
+
+    int lx, ly;
+    ky_scene_node_coords(&buffer->node, &lx, &ly);
+
+    double sx = constraint->cursor->lx - lx, sy = constraint->cursor->ly - ly;
+    double sx_confined, sy_confined;
+    if (!wlr_region_confine(&constraint->constraint->region, sx, sy, sx + *dx, sy + *dy,
+                            &sx_confined, &sy_confined)) {
+        return false;
+    }
+
+    /* activate the pending constraint */
+    if (constraint == cursor->pending_constraint) {
+        cursor_active_constraint(cursor, constraint, false);
+    }
+
+    if (!cursor->active_constraint) {
+        return false;
+    }
+    if (cursor->active_constraint->constraint->type == WLR_POINTER_CONSTRAINT_V1_LOCKED) {
+        return true;
+    }
+
+    *dx = sx_confined - sx;
+    *dy = sy_confined - sy;
+
+    return false;
+}
+
+static void cursor_constraint_handle_surface_unmap(struct wl_listener *listener, void *data)
+{
+    struct cursor_constraint *constraint = wl_container_of(listener, constraint, surface_unmap);
+    cursor_active_constraint(constraint->cursor, NULL, false);
+}
+
+static void cursor_constraint_handle_destroy(struct wl_listener *listener, void *data)
+{
+    struct cursor_constraint *constraint = wl_container_of(listener, constraint, destroy);
+    struct cursor *cursor = constraint->cursor;
+
+    wl_list_remove(&constraint->destroy.link);
+    wl_list_remove(&constraint->set_region.link);
+    wl_list_remove(&constraint->surface_unmap.link);
+
+    if (cursor->active_constraint == constraint) {
+        cursor_constraint_warp_to_hint(constraint);
+        cursor->active_constraint = NULL;
+    } else if (cursor->pending_constraint == constraint) {
+        cursor->pending_constraint = NULL;
+    }
+
+    free(constraint);
+}
+
+struct cursor_constraint *cursor_constraint_create(struct cursor *cursor,
+                                                   struct wlr_pointer_constraint_v1 *constraint)
+{
+    struct cursor_constraint *cursor_constraint = calloc(1, sizeof(*cursor_constraint));
+    if (!cursor_constraint) {
+        return NULL;
+    }
+
+    cursor_constraint->cursor = cursor;
+    cursor_constraint->constraint = constraint;
+    constraint->data = cursor_constraint;
+
+    cursor_constraint->set_region.notify = cursor_constraint_handle_set_region;
+    wl_list_init(&cursor_constraint->set_region.link);
+    cursor_constraint->destroy.notify = cursor_constraint_handle_destroy;
+    wl_signal_add(&constraint->events.destroy, &cursor_constraint->destroy);
+    cursor_constraint->surface_unmap.notify = cursor_constraint_handle_surface_unmap;
+    wl_list_init(&cursor_constraint->surface_unmap.link);
+
+    struct wlr_surface *surface = cursor->seat->wlr_seat->keyboard_state.focused_surface;
+    if (surface && surface == constraint->surface) {
+        cursor_set_constraint(cursor, cursor_constraint);
+    }
+
+    return cursor_constraint;
+}
+
+void cursor_constraint_set_focus(struct seat *seat, struct wlr_surface *surface)
+{
+    struct wlr_pointer_constraint_v1 *constraint =
+        wlr_pointer_constraints_v1_constraint_for_surface(seat->manager->pointer_constraints,
+                                                          surface, seat->wlr_seat);
+    struct cursor_constraint *cursor_constraint = constraint ? constraint->data : NULL;
+    cursor_set_constraint(seat->cursor, cursor_constraint);
 }

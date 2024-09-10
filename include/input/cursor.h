@@ -67,6 +67,9 @@ struct cursor {
     struct wl_listener surface_precommit;
     struct wl_listener surface_destroy;
 
+    struct cursor_constraint *active_constraint;
+    struct cursor_constraint *pending_constraint;
+
     struct gesture_state gestures;
 
     bool touch_simulation_pointer;
@@ -98,6 +101,14 @@ struct cursor {
     bool hold_mode;
 
     bool hidden;
+};
+
+struct cursor_constraint {
+    struct cursor *cursor;
+    struct wlr_pointer_constraint_v1 *constraint;
+    struct wl_listener set_region;
+    struct wl_listener destroy;
+    struct wl_listener surface_unmap;
 };
 
 struct cursor *cursor_create(struct seat *seat);

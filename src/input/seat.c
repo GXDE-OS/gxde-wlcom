@@ -415,8 +415,9 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
         wlr_seat_keyboard_notify_clear_focus(wlr_seat);
     }
 
-    input_method_set_focus(seat, surface);
     tablet_set_focus(seat, surface);
+    input_method_set_focus(seat, surface);
+    cursor_constraint_set_focus(seat, surface);
 }
 
 void seat_feed_pointer_motion(struct seat *seat, double x, double y, bool absolute)
