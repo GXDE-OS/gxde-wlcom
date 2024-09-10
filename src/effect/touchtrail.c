@@ -23,7 +23,9 @@
 #include "touchtrail_frag.h"
 #include "touchtrail_vert.h"
 
+#ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 struct touch_point {
     struct wl_list link;

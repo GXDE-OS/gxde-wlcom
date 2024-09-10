@@ -14,9 +14,10 @@
 #include <kywc/log.h>
 
 #include "render/opengl.h"
+#include "render/profile.h"
+#include "util/debug.h"
 #include "util/matrix.h"
 #include "util/quirks.h"
-#include "util/debug.h"
 
 #define MAX_QUADS 86 // 4kb
 
@@ -248,6 +249,8 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     ky_mat3_uvofbox_to_texture(&uv2tex, options->base.transform, &src_kywcbox);
 
     ky_opengl_push_debug(renderer);
+    KY_PROFILE_RENDER_ZONE(&renderer->wlr_renderer, gzone, __func__);
+
     if (has_radius) {
         // radius clip alway need blend
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
@@ -304,6 +307,8 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     render(&dst_box, options->base.clip, shader->uv_attrib);
 
     glBindTexture(texture->target, 0);
+
+    KY_PROFILE_RENDER_ZONE_END(&renderer->wlr_renderer);
     ky_opengl_pop_debug(renderer);
 }
 
@@ -326,6 +331,8 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
     wlr_render_rect_options_get_box(&options->base, pass->buffer->buffer, &box);
 
     ky_opengl_push_debug(renderer);
+    KY_PROFILE_RENDER_ZONE(&renderer->wlr_renderer, gzone, __func__);
+
     if (has_radius) {
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
     } else {
@@ -362,6 +369,7 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
     }
     render(&box, options->base.clip, shader->uv_attrib);
 
+    KY_PROFILE_RENDER_ZONE_END(&renderer->wlr_renderer);
     ky_opengl_pop_debug(renderer);
 }
 

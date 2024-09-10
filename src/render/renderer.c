@@ -19,6 +19,7 @@
 #include <kywc/log.h>
 
 #include "render/opengl.h"
+#include "render/profile.h"
 #include "render/renderer.h"
 #include "renderer_p.h"
 
@@ -141,6 +142,8 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
         kywc_log(KYWC_ERROR, "Failed to create a pixman renderer");
         kywc_log(KYWC_ERROR, "Could not initialize renderer");
     }
+
+    KY_PROFILE_RENDER_CREATE(renderer);
 
     return renderer;
 }

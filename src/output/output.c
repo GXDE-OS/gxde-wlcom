@@ -20,6 +20,7 @@
 #include "backend/fbdev.h"
 #include "effect/output_transform.h"
 #include "output_p.h"
+#include "render/profile.h"
 #include "util/debug.h"
 #include "util/quirks.h"
 #include "xwayland.h"
@@ -449,6 +450,8 @@ static void handle_output_present(struct wl_listener *listener, void *data)
 
     struct output *output = wl_container_of(listener, output, present);
     output->scene_commit = false;
+
+    KY_PROFILE_RENDER_COLLECT(output->wlr_output->renderer);
 
     if (!output->has_pending) {
         KY_PROFILE_ZONE_END(zone);

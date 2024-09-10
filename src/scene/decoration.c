@@ -9,6 +9,7 @@
 #include "decoration_vert.h"
 #include "effect/blur.h"
 #include "render/opengl.h"
+#include "render/profile.h"
 #include "scene/decoration.h"
 #include "scene/render.h"
 #include "scene_p.h"
@@ -308,6 +309,8 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     struct ky_mat3 inverseTransform;
     ky_mat3_invert_output_transform(&inverseTransform, target->transform);
 
+    KY_PROFILE_RENDER_ZONE(target->output->output->renderer, gzone, __func__);
+
     glEnable(GL_BLEND);
     glUseProgram(gl_shader);
 
@@ -352,6 +355,8 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     glDrawArrays(GL_TRIANGLES, 0, rects_len * 6);
     glUseProgram(0);
     glDisableVertexAttribArray(gl_locations.in_uv);
+
+    KY_PROFILE_RENDER_ZONE_END(target->output->output->renderer);
 
     pixman_region32_fini(&region);
 }

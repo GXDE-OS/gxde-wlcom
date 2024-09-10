@@ -194,4 +194,15 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 GLuint ky_opengl_create_program(struct ky_opengl_renderer *renderer, const GLchar *vert_src,
                                 const GLchar *frag_src);
 
+#ifdef TRACY_ENABLE
+#include <tracy/TracyC.h>
+
+void ky_profile_gl_create(struct wlr_renderer *renderer);
+void ky_profile_gl_destroy(void);
+void ky_profile_gl_begin(const struct ___tracy_source_location_data *data);
+void ky_profile_gl_end(void);
+void ky_profile_gl_collect(void);
+
+#endif /* TRACY_ENABLE */
+
 #endif /* _RENDER_OPENGL_H_ */

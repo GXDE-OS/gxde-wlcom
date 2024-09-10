@@ -6,4 +6,8 @@ wlcom_sources += files(
   'wayland_drm.c',
 )
 
+if get_option('tracy')
+  wlcom_sources += files('profile.c', 'opengl/profile.c')
+endif
+
 subdir('opengl')

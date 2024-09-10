@@ -22,6 +22,7 @@
 #include "effect/effect.h"
 #include "effect_p.h"
 #include "render/opengl.h"
+#include "render/profile.h"
 #include "scene/scene.h"
 #include "util/time.h"
 
@@ -556,6 +557,8 @@ static void blur_render(struct ky_scene_render_target *target,
                         const struct blur_render_options *options,
                         const pixman_region32_t *blur_region)
 {
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
+
     GLint old_fbo;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
 
@@ -650,6 +653,8 @@ static void blur_render(struct ky_scene_render_target *target,
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glUseProgram(0);
+
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 void blur_render_with_target(struct ky_scene_render_target *target,
