@@ -21,27 +21,31 @@ struct input_manager {
     struct wl_list seats;
     struct wl_list inputs;
 
-    struct seat *default_seat;
-
-    struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard;
-    struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
-    struct wlr_pointer_gestures_v1 *pointer_gestures;
-    struct wlr_relative_pointer_manager_v1 *relative_pointer;
-    struct wlr_keyboard_shortcuts_inhibit_manager_v1 *shortcuts_inhibit;
-
     struct {
         struct wl_signal new_input;
         struct wl_signal new_seat;
     } events;
 
+    struct seat *default_seat;
+
     struct config *config;
     struct config *seat_config;
 
     struct wl_listener new_input;
-    struct wl_listener new_virtual_pointer;
-    struct wl_listener new_virtual_keyboard;
-    struct wl_listener new_shortcuts_inhibit;
     struct wl_listener server_destroy;
+
+    struct wlr_pointer_gestures_v1 *pointer_gestures;
+    struct wlr_relative_pointer_manager_v1 *relative_pointer;
+
+    struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard;
+    struct wl_listener new_virtual_keyboard;
+
+    struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
+    struct wl_listener new_virtual_pointer;
+
+    struct wlr_keyboard_shortcuts_inhibit_manager_v1 *shortcuts_inhibit;
+    struct wl_listener new_shortcuts_inhibit;
+
     struct wlr_pointer_constraints_v1 *pointer_constraints;
     struct wl_listener new_pointer_constraint;
 };
