@@ -23,9 +23,9 @@ wayland协议支持情况
 
 | 协议名称        | 支持情况 | 说明  |
 | :-------------- | :------: | :---- |
-| wp_presentation |    1     | check |
+| wp_presentation |    1     |       |
 | wp_viewporter   |    1     |       |
-| xdg_wm_base     |    5     | check |
+| xdg_wm_base     |    5     |       |
 
 ### staging
 
@@ -38,7 +38,7 @@ wayland协议支持情况
 | ext_idle_notifier_v1              |    1     |       |
 | ext_session_lock_manager_v1       |    no    | 1     |
 | ext_transient_seat_manager_v1     |    no    | 1     |
-| wp_fractional_scale_manager_v1    |    1     | check |
+| wp_fractional_scale_manager_v1    |    1     |       |
 | wp_security_context_manager_v1    |    no    | 1     |
 | wp_single_pixel_buffer_manager_v1 |    no    | 1     |
 | wp_tearing_control_manager_v1     |    no    | 1     |
@@ -55,9 +55,9 @@ wayland协议支持情况
 | zwp_input_method_context_v1               |    no    |             |
 | zwp_input_timestamps_manager_v1           |    1     |             |
 | zwp_keyboard_shortcuts_inhibit_manager_v1 |    1     |             |
-| zwp_linux_dmabuf_v1                       |    4     | check       |
+| zwp_linux_dmabuf_v1                       |    4     |             |
 | zwp_linux_explicit_synchronization_v1     |    no    | 2           |
-| zwp_pointer_constraints_v1                |    no    | 1           |
+| zwp_pointer_constraints_v1                |    1     |             |
 | zwp_pointer_gestures_v1                   |    3     |             |
 | zwp_primary_selection_device_manager_v1   |    1     |             |
 | zwp_relative_pointer_manager_v1           |    no    | 1           |
@@ -79,8 +79,8 @@ wayland协议支持情况
 | 协议名称                         | 支持情况 | 说明  |
 | :------------------------------- | :------: | :---- |
 | zwlr_data_control_manager_v1     |    2     |       |
-| zwlr_export_dmabuf_manager_v1    |    1     | check |
-| zwlr_foreign_toplevel_manager_v1 |    3     | check |
+| zwlr_export_dmabuf_manager_v1    |    1     |       |
+| zwlr_foreign_toplevel_manager_v1 |    3     |       |
 | zwlr_gamma_control_manager_v1    |    no    | 1     |
 | zwlr_input_inhibit_manager_v1    |    no    | deprecated |
 | zwlr_layer_shell_v1              |    4     |       |
@@ -107,11 +107,11 @@ wayland协议支持情况
 | kde_primary_output_v1                          |    2     |       |
 | kde_screen_edge_manager_v1                     |    no    | 1     |
 | org_kde_kwin_keystate                          |    4     |       |
-| org_kde_plasma_virtual_desktop_management      |    2     | check |
+| org_kde_plasma_virtual_desktop_management      |    2     |       |
 | org_kde_kwin_outputmanagement                  |    -     | 4 v2  |
 | org_kde_kwin_outputdevice                      |    -     | 4 v2  |
 | org_kde_plasma_shell                           |    6     | ukui  |
-| org_kde_plasma_window_management               |    16    | check |
+| org_kde_plasma_window_management               |    16    |       |
 | org_kde_kwin_remote_access_manager             |    no    | 1     |
 | org_kde_kwin_server_decoration_palette_manager |    no    | 1     |
 | org_kde_kwin_server_decoration_manager         |    1     |       |
@@ -147,3 +147,13 @@ wayland协议支持情况
 | zwp_text_input_v2       |    1     |      |
 | qt_surface_extension    |    no    | 1    |
 | gtk_shell1              |    no    | 5    |
+
+## ukui
+> https://gitee.com/openkylin/kylin-wayland-protocols
+
+| 协议名称                  | 支持情况 | 说明 |
+| :------------------------ | :------: | :--- |
+| ukui_blur_manager_v1      |    1     |      |
+| ukui_output_management_v1 |    1     |      |
+| ukui_shell                |    3     |      |
+| ukui_window_management    |    1     |      |
