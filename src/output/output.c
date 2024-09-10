@@ -1229,6 +1229,28 @@ bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *
     return true;
 }
 
+bool output_state_attempt_vrr(struct output *output, struct wlr_output_state *state,
+                              bool fullscreen)
+{
+    if (!(output->base.prop.capabilities & KYWC_OUTPUT_CAPABILITY_VRR)) {
+        return false;
+    }
+
+    if (output->vrr_policy == KYWC_OUTPUT_VRR_POLICY_NEVER ||
+        (output->vrr_policy == KYWC_OUTPUT_VRR_POLICY_AUTO && !fullscreen)) {
+        if (output->wlr_output->adaptive_sync_status) {
+            wlr_output_state_set_adaptive_sync_enabled(state, false);
+        }
+        return true;
+    }
+
+    if (!output->wlr_output->adaptive_sync_status) {
+        wlr_output_state_set_adaptive_sync_enabled(state, true);
+    }
+
+    return true;
+}
+
 static bool output_set_state(struct output *output, struct kywc_output_state *state)
 {
     struct wlr_output *wlr_output = output->wlr_output;

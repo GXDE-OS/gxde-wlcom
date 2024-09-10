@@ -131,6 +131,9 @@ struct output *output_find_specified_output(struct output *output, enum layout_e
 struct wlr_output_state;
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state);
 
+bool output_state_attempt_vrr(struct output *output, struct wlr_output_state *state,
+                              bool fullscreen);
+
 bool output_use_hardware_gamma(struct output *output);
 
 void output_layout_get_workarea(struct wlr_box *box);

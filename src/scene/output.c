@@ -485,6 +485,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     struct wlr_output_state state;
     wlr_output_state_init(&state);
     output_state_attempt_gamma(output_from_wlr_output(output), &state);
+    /* TODO: VRR-Automatic policy, enable vrr when an app is outputting in fullscreen */
+    output_state_attempt_vrr(output_from_wlr_output(output), &state, false);
 
     bool ok = false;
     if (scene_output_render(scene_output, &state, &target)) {
