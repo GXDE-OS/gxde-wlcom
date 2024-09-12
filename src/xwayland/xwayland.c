@@ -440,7 +440,7 @@ int xwayland_read_wm_icon(xcb_window_t window_id)
     }
 
     struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
-    if (!surface) {
+    if (!surface || !surface->surface) {
         free(reply);
         return 0;
     }
