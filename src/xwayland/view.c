@@ -802,7 +802,7 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
     view_unmap(&xwayland_view->view);
 }
 
-static void xwayalnd_view_handle_surface_tree_destroy(struct wl_listener *listener, void *data)
+static void xwayland_view_handle_surface_tree_destroy(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view =
         wl_container_of(listener, xwayland_view, surface_tree_destroy);
@@ -867,7 +867,7 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);
     xwayland_view->map.notify = xwayland_view_handle_map;
     wl_signal_add(&wlr_xwayland_surface->surface->events.map, &xwayland_view->map);
-    xwayland_view->surface_tree_destroy.notify = xwayalnd_view_handle_surface_tree_destroy;
+    xwayland_view->surface_tree_destroy.notify = xwayland_view_handle_surface_tree_destroy;
     wl_signal_add(&xwayland_view->view.surface_tree->node.events.destroy,
                   &xwayland_view->surface_tree_destroy);
 }
