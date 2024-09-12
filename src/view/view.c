@@ -1408,7 +1408,7 @@ static bool view_has_modal_child(struct view *view)
     return false;
 }
 
-static bool view_has_modal_property(struct view *view)
+bool view_has_modal_property(struct view *view)
 {
     return view->base.modal || view_has_modal_child(view);
 }

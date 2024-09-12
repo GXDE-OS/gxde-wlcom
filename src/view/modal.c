@@ -33,6 +33,7 @@ struct modal {
     struct wl_listener unset_modal;
 
     struct wl_listener parent_unmap;
+    struct wl_listener parent_size;
 
     /* attributes used for the shake effect. */
     struct {
@@ -201,6 +202,7 @@ static void modal_destroy(struct modal *modal)
 {
     modal->view->modal = NULL;
     wl_list_remove(&modal->parent_unmap.link);
+    wl_list_remove(&modal->parent_size.link);
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
 
@@ -219,6 +221,23 @@ static void handle_parent_unmap(struct wl_listener *listener, void *data)
 {
     struct modal *modal = wl_container_of(listener, modal, parent_unmap);
     modal_destroy(modal);
+}
+
+static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct view *view);
+
+static void handle_parent_size(struct wl_listener *listener, void *data)
+{
+    struct modal *modal = wl_container_of(listener, modal, parent_size);
+    struct kywc_view *parent = &modal->view->parent->base;
+    struct kywc_box geo = {
+        .x = -parent->margin.off_x,
+        .y = -parent->margin.off_y,
+        .width = parent->geometry.width + parent->margin.off_width,
+        .height = parent->geometry.height + parent->margin.off_height,
+    };
+    ky_scene_rect_set_size(modal->modal_box, geo.width, geo.height);
+    ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
+    modal_box_set_round_corner(modal->modal_box, modal->view->parent);
 }
 
 static void handle_unset_modal(struct wl_listener *listener, void *data)
@@ -284,6 +303,8 @@ void modal_create(struct view *view)
 
     modal->parent_unmap.notify = handle_parent_unmap;
     wl_signal_add(&parent->events.unmap, &modal->parent_unmap);
+    modal->parent_size.notify = handle_parent_size;
+    wl_signal_add(&parent->events.size, &modal->parent_size);
 
     /* create timer for modal shake effect*/
     struct seat *seat = input_manager_get_default_seat();
