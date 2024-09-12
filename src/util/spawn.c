@@ -111,5 +111,5 @@ pid_t spawn_session(const char *session)
 
 void spawn_wait(pid_t pid)
 {
-    waitpid(pid, NULL, 0);
+    waitpid(pid, NULL, WNOHANG);
 }
