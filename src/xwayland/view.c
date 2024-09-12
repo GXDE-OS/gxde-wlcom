@@ -887,6 +887,14 @@ static void xwayland_view_handle_dissociate(struct wl_listener *listener, void *
     wl_list_remove(&xwayland_view->unmap.link);
 }
 
+static void xwayland_view_icon_destroy(struct net_wm_icon *icon)
+{
+    wl_list_remove(&icon->link);
+    wlr_buffer_drop(icon->buffer);
+    free(icon->data);
+    free(icon);
+}
+
 static void xwayland_view_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, destroy);
@@ -902,10 +910,7 @@ static void xwayland_view_handle_destroy(struct wl_listener *listener, void *dat
 
     struct net_wm_icon *icon, *tmp;
     wl_list_for_each_safe(icon, tmp, &xwayland_view->net_wm_icons, link) {
-        wl_list_remove(&icon->link);
-        wlr_buffer_drop(icon->buffer);
-        free(icon->data);
-        free(icon);
+        xwayland_view_icon_destroy(icon);
     }
 
     view_destroy(&xwayland_view->view);
@@ -1017,11 +1022,17 @@ void xwayland_view_add_new_wm_icon(struct wlr_xwayland_surface *surface, uint32_
         return;
     }
 
+    struct net_wm_icon *old_icon, *tmp;
+    wl_list_for_each_safe(old_icon, tmp, &xwayland_view->net_wm_icons, link) {
+        if (old_icon->width == width && old_icon->height == height) {
+            xwayland_view_icon_destroy(old_icon);
+        }
+    }
+
     struct net_wm_icon *icon = calloc(1, sizeof(struct net_wm_icon));
     if (!icon) {
         return;
     }
-
     wl_list_insert(&xwayland_view->net_wm_icons, &icon->link);
     icon->width = width;
     icon->height = height;
