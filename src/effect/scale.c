@@ -511,6 +511,11 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
         return false;
     }
 
+    /* do not display maximize effect when view minimized */
+    if (view->base.minimized && action == SCALE_MAXIMIZE) {
+        return false;
+    }
+
     struct effect_entity *entity = ky_scene_node_add_effect(&view->tree->node, scale->effect);
     if (!entity) {
         return false;
