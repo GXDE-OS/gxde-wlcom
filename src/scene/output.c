@@ -373,14 +373,22 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
 
     target->buffer = buffer;
     target->render_pass = render_pass;
-    pixman_region32_clear(&target->damage);
-    wlr_damage_ring_get_buffer_damage(&scene_output->damage_ring, buffer_age, &target->damage);
-
-    ky_scene_render_damage_in_target(scene_output->scene, target);
 
     pixman_region32_t frame_damage;
     pixman_region32_init(&frame_damage);
-    pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
+
+    // target damage is accumulated damage in the output, but in layout coord
+    wlr_damage_ring_get_buffer_damage(&scene_output->damage_ring, buffer_age, &target->damage);
+
+    if (pixman_region32_not_empty(&target->damage)) {
+        // translate to scene layout coord
+        pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
+
+        ky_scene_render_damage_in_target(scene_output->scene, target);
+
+        pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
+    }
+
     wlr_damage_ring_rotate(&scene_output->damage_ring);
 
     ky_scene_output_render_post(target);
@@ -428,28 +436,30 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     target.logical.width = target.trans_width / output->scale;
     target.logical.height = target.trans_height / output->scale;
 
-    pixman_region32_init(&target.excluded_damage);
+    pixman_region32_t damage;
     // current scene damage in the output box
-    pixman_region32_init_rect(&target.damage, target.logical.x, target.logical.y,
-                              target.logical.width, target.logical.height);
+    pixman_region32_init_rect(&damage, target.logical.x, target.logical.y, target.logical.width,
+                              target.logical.height);
     ky_scene_collect_damage(scene_output->scene);
-    pixman_region32_intersect(&target.damage, &target.damage, &scene_output->collected_damage);
+    pixman_region32_intersect(&damage, &damage, &scene_output->collected_damage);
     pixman_region32_clear(&scene_output->collected_damage);
 
     // union all damage in the output layout box
-    pixman_region32_translate(&target.damage, -target.logical.x, -target.logical.y);
+    pixman_region32_translate(&damage, -target.logical.x, -target.logical.y);
     if (floor(target.scale) != target.scale) {
-        wlr_region_expand(&target.damage, &target.damage, 1);
+        wlr_region_expand(&damage, &damage, 1);
     }
-    wlr_damage_ring_add(&scene_output->damage_ring, &target.damage);
+    /* union damage from output damage event */
+    wlr_damage_ring_add(&scene_output->damage_ring, &damage);
+    pixman_region32_fini(&damage);
 
     if (!scene_output->output->needs_frame &&
         !pixman_region32_not_empty(&scene_output->damage_ring.current)) {
-        pixman_region32_fini(&target.damage);
-        pixman_region32_fini(&target.excluded_damage);
         return false;
     }
 
+    pixman_region32_init(&target.damage);
+    pixman_region32_init(&target.excluded_damage);
     // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
     struct wlr_output_state state;
