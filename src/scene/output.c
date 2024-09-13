@@ -383,6 +383,7 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     if (pixman_region32_not_empty(&target->damage)) {
         // translate to scene layout coord
         pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
+        pixman_region32_copy(&frame_damage, &target->damage);
 
         // render all nodes and effects
         ky_scene_render_damage_in_target(scene_output->scene, target);
@@ -396,6 +397,13 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
         // trying to render software cursors
         ky_scene_render_target_add_software_cursors(target);
 
+        // damage extended in render, translate to output coord
+        pixman_region32_subtract(&frame_damage, &target->damage, &frame_damage);
+        // substract the excluded damage
+        pixman_region32_subtract(&frame_damage, &frame_damage, &target->excluded_damage);
+        pixman_region32_translate(&frame_damage, -target->logical.x, -target->logical.y);
+
+        wlr_damage_ring_add(&scene_output->damage_ring, &frame_damage);
         pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
     }
 
