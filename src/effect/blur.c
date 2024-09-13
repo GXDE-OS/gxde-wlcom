@@ -804,10 +804,6 @@ static bool blur_frame_render_end(struct effect_entity *entity,
         return true;
     }
 
-    pixman_region32_translate(&output_data->unaffected_region, -target->logical.x,
-                              -target->logical.y);
-    ky_scene_render_region(&output_data->unaffected_region, target);
-
     /**
      * if sub the unaffected region from target damage,
      * the new target damage (to framebuffer coord) union (+) unaffected region (to framebuffer
@@ -816,6 +812,10 @@ static bool blur_frame_render_end(struct effect_entity *entity,
      */
     pixman_region32_union(&target->excluded_damage, &target->excluded_damage,
                           &output_data->unaffected_region);
+
+    pixman_region32_translate(&output_data->unaffected_region, -target->logical.x,
+                              -target->logical.y);
+    ky_scene_render_region(&output_data->unaffected_region, target);
 
     struct wlr_texture *texture =
         wlr_texture_from_buffer(target->output->output->renderer, output_data->output_buffer);

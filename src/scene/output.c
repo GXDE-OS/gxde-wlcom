@@ -384,7 +384,17 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
         // translate to scene layout coord
         pixman_region32_translate(&target->damage, target->logical.x, target->logical.y);
 
+        // render all nodes and effects
         ky_scene_render_damage_in_target(scene_output->scene, target);
+
+        // update target excluded_buffer_damage from excluded_damage
+        pixman_region32_copy(&target->excluded_buffer_damage, &target->excluded_damage);
+        pixman_region32_translate(&target->excluded_buffer_damage, -target->logical.x,
+                                  -target->logical.y);
+        ky_scene_render_region(&target->excluded_buffer_damage, target);
+
+        // trying to render software cursors
+        ky_scene_render_target_add_software_cursors(target);
 
         pixman_region32_copy(&frame_damage, &scene_output->damage_ring.current);
     }
@@ -460,6 +470,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     pixman_region32_init(&target.damage);
     pixman_region32_init(&target.excluded_damage);
+    pixman_region32_init(&target.excluded_buffer_damage);
     // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
     struct wlr_output_state state;
@@ -479,5 +490,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     wlr_output_state_finish(&state);
     pixman_region32_fini(&target.damage);
     pixman_region32_fini(&target.excluded_damage);
+    pixman_region32_fini(&target.excluded_buffer_damage);
+
     return ok;
 }

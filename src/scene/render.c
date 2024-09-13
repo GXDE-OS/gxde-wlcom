@@ -60,24 +60,27 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
     }
 
     ky_scene_output_render_end(target);
+}
 
-    // for software cursor
+void ky_scene_render_target_add_software_cursors(struct ky_scene_render_target *target)
+{
+    struct wlr_output *output = target->output->output;
+
     pixman_region32_t damage;
     pixman_region32_init(&damage);
     pixman_region32_copy(&damage, &target->damage);
     pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
     wlr_region_scale(&damage, &damage, target->scale);
 
-    pixman_region32_t cursor_excluded_damage;
-    struct wlr_output *wlr_output = target->output->output;
-    pixman_region32_init(&cursor_excluded_damage);
-    wlr_region_transform(&cursor_excluded_damage, &target->excluded_damage, wlr_output->transform,
-                         wlr_output->width, wlr_output->height);
-    pixman_region32_subtract(&damage, &damage, &cursor_excluded_damage);
-    pixman_region32_fini(&cursor_excluded_damage);
+    pixman_region32_t excluded_damage;
+    pixman_region32_init(&excluded_damage);
+    wlr_region_transform(&excluded_damage, &target->excluded_buffer_damage, output->transform,
+                         output->width, output->height);
+    pixman_region32_subtract(&damage, &damage, &excluded_damage);
+    pixman_region32_fini(&excluded_damage);
 
-    wlr_output_add_software_cursors_to_render_pass(target->output->output, target->render_pass,
-                                                   &damage);
+    // output cursor render in output scaled logical coord
+    wlr_output_add_software_cursors_to_render_pass(output, target->render_pass, &damage);
     pixman_region32_fini(&damage);
 }
 

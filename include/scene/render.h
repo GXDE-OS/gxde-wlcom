@@ -31,8 +31,10 @@ struct ky_scene_render_target {
 
     /* current layout damage in logical coord */
     pixman_region32_t damage;
-    /* excluded buffer damage */
+    /* excluded layout damage in logical coord */
     pixman_region32_t excluded_damage;
+    /* excluded buffer damage in buffer-local coord */
+    pixman_region32_t excluded_buffer_damage;
 
     /* options when render to this target */
     uint32_t options;
@@ -82,6 +84,8 @@ void ky_scene_render_region(pixman_region32_t *region, struct ky_scene_render_ta
 
 void ky_scene_render_damage_in_target(struct ky_scene *scene,
                                       struct ky_scene_render_target *target);
+
+void ky_scene_render_target_add_software_cursors(struct ky_scene_render_target *target);
 
 void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
                                         const struct ky_scene_render_texture_options *opts);
