@@ -25,10 +25,13 @@ struct ky_render_rect_options {
 };
 
 struct ky_render_pass_impl {
+    bool (*submit)(struct wlr_render_pass *pass, uint32_t quirks);
     void (*add_texture)(struct wlr_render_pass *pass,
                         const struct ky_render_texture_options *options);
     void (*add_rect)(struct wlr_render_pass *pass, const struct ky_render_rect_options *options);
 };
+
+bool ky_render_pass_submit(struct wlr_render_pass *render_pass, uint32_t quirks);
 
 void ky_render_pass_add_texture(struct wlr_render_pass *render_pass,
                                 const struct ky_render_texture_options *options);

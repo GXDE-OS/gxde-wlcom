@@ -5,6 +5,19 @@
 #include "render/pass.h"
 #include "render/opengl.h"
 
+bool ky_render_pass_submit(struct wlr_render_pass *render_pass, uint32_t quirks)
+{
+    if (wlr_render_pass_is_opengl(render_pass)) {
+        struct ky_opengl_render_pass *opengl_pass =
+            ky_opengl_render_pass_from_wlr_render_pass(render_pass);
+        if (opengl_pass->impl && opengl_pass->impl->submit) {
+            return opengl_pass->impl->submit(render_pass, quirks);
+        }
+    }
+
+    return wlr_render_pass_submit(render_pass);
+}
+
 void ky_render_pass_add_texture(struct wlr_render_pass *render_pass,
                                 const struct ky_render_texture_options *options)
 {

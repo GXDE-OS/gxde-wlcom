@@ -35,7 +35,7 @@ ky_opengl_render_pass_from_wlr_render_pass(struct wlr_render_pass *wlr_pass)
     return pass;
 }
 
-static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
+static bool _render_pass_submit(struct wlr_render_pass *wlr_pass, uint32_t quirks)
 {
     KY_PROFILE_ZONE(zone, __func__);
 
@@ -57,7 +57,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
         clock_gettime(CLOCK_MONOTONIC, &timer->cpu_end);
     }
 
-    if (renderer->egl->quirks & QUIRKS_MASK_EXPLICIT_SYNC) {
+    if (quirks & QUIRKS_MASK_EXPLICIT_SYNC) {
         glFinish();
     } else {
         glFlush();
@@ -73,6 +73,11 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
 
     KY_PROFILE_ZONE_END(zone);
     return true;
+}
+
+static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
+{
+    return _render_pass_submit(wlr_pass, 0);
 }
 
 static void render(const struct wlr_box *box, const pixman_region32_t *clip, GLint attrib)
@@ -169,6 +174,11 @@ static const struct wlr_render_pass_impl render_pass_impl = {
 static bool options_has_radius(const struct ky_render_round_corner *radius)
 {
     return radius->lb > 0 || radius->lt > 0 || radius->rb > 0 || radius->rt > 0;
+}
+
+static bool ky_opengl_render_pass_submit(struct wlr_render_pass *wlr_pass, uint32_t quirks)
+{
+    return _render_pass_submit(wlr_pass, quirks);
 }
 
 void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
@@ -356,6 +366,7 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 }
 
 static const struct ky_render_pass_impl ky_render_pass_impl = {
+    .submit = ky_opengl_render_pass_submit,
     .add_texture = ky_opengl_render_pass_add_texture,
     .add_rect = ky_opengl_render_pass_add_rect,
 };
