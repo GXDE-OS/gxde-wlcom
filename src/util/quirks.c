@@ -11,53 +11,19 @@
 struct quirks {
     const char *name;   /* dc name */
     const char *vendor; /* gpu egl-vendor */
-    uint32_t drm_mask;
-    uint32_t render_mask;
+    uint32_t mask;
 };
 
 static const struct quirks quirks_table[] = {
-    {
-        "hisi",
-        "ARM",
-        .render_mask = QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND,
-    },
-    {
-        "hisi-dpu",
-        "HUAWEI",
-        .render_mask = QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND,
-    },
-    {
-        "nvidia-drm",
-        "NVIDIA",
-        .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
-        .render_mask = QUIRKS_MASK_EXPLICIT_SYNC | QUIRKS_MASK_PREFER_OPENGL,
-    },
-    {
-        "nouveau",
-        NULL,
-        .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
-    },
-    {
-        "virtio_gpu",
-        "Mesa Project",
-        .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
-        .render_mask = QUIRKS_MASK_EXPLICIT_SYNC,
-    },
-    {
-        "vmwgfx",
-        NULL,
-        .drm_mask = QUIRKS_MASK_SOFTWARE_CURSOR,
-    },
-    {
-        "mtgpu",
-        "MTT Mesa Client",
-        .render_mask = QUIRKS_MASK_NO_MODIFIFIERS,
-    },
-    {
-        "mwv207",
-        "Mesa Project",
-        .render_mask = QUIRKS_MASK_NO_MODIFIFIERS,
-    },
+    { "hisi", "ARM", QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND },
+    { "hisi-dpu", "HUAWEI", QUIRKS_MASK_MASTER_FD | QUIRKS_MASK_EGL_WAYLAND },
+    { "nvidia-drm", "NVIDIA",
+      QUIRKS_MASK_SOFTWARE_CURSOR | QUIRKS_MASK_EXPLICIT_SYNC | QUIRKS_MASK_PREFER_OPENGL },
+    { "nouveau", NULL, QUIRKS_MASK_SOFTWARE_CURSOR },
+    { "virtio_gpu", "Mesa Project", QUIRKS_MASK_SOFTWARE_CURSOR | QUIRKS_MASK_EXPLICIT_SYNC },
+    { "vmwgfx", NULL, QUIRKS_MASK_SOFTWARE_CURSOR },
+    { "mtgpu", "MTT Mesa Client", QUIRKS_MASK_NO_MODIFIFIERS },
+    { "mwv207", "Mesa Project", QUIRKS_MASK_NO_MODIFIFIERS },
 };
 
 uint32_t quirks_by_backend(int drm_fd)
@@ -78,7 +44,7 @@ uint32_t quirks_by_backend(int drm_fd)
 
     drmFreeVersion(version);
 
-    return quirks ? quirks->drm_mask : 0;
+    return quirks ? quirks->mask : 0;
 }
 
 uint32_t quirks_by_renderer(int drm_fd, const char *vendor_name)
@@ -104,5 +70,5 @@ uint32_t quirks_by_renderer(int drm_fd, const char *vendor_name)
 
     drmFreeVersion(version);
 
-    return quirks ? quirks->render_mask : 0;
+    return quirks ? quirks->mask : 0;
 }
