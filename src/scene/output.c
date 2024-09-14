@@ -12,6 +12,7 @@
 
 #include "effect/effect.h"
 #include "output.h"
+#include "render/pass.h"
 #include "scene_p.h"
 #include "util/debug.h"
 
@@ -411,7 +412,7 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
 
     ky_scene_output_render_post(target);
 
-    if (!wlr_render_pass_submit(render_pass)) {
+    if (!ky_render_pass_submit(render_pass, output_from_wlr_output(output)->quirks)) {
         wlr_buffer_unlock(buffer);
         pixman_region32_fini(&frame_damage);
         wlr_damage_ring_add_whole(&scene_output->damage_ring);
@@ -482,9 +483,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
     struct wlr_output_state state;
-    struct output *_output = output_from_wlr_output(output);
     wlr_output_state_init(&state);
-    output_state_attempt_gamma(_output, &state);
+    output_state_attempt_gamma(output_from_wlr_output(output), &state);
 
     bool ok = false;
     if (scene_output_render(scene_output, &state, &target)) {

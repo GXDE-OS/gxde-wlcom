@@ -212,18 +212,20 @@ static void fallback_output_set_state(struct kywc_output *kywc_output, bool enab
     kywc_output_set_state(kywc_output, &state);
 }
 
-static void output_lock_software_cursors(struct output *output)
+static void output_init_quirks(struct output *output)
 {
     if (!wlr_output_is_drm(output->wlr_output)) {
         return;
     }
 
     int drm_fd = wlr_drm_backend_get_non_master_fd(output->wlr_output->backend);
-    uint32_t quirks = quirks_by_backend(drm_fd);
-    /*  using software curosr, depending on the qurks mask */
-    if (quirks & QUIRKS_MASK_SOFTWARE_CURSOR) {
+    output->quirks = quirks_by_backend(drm_fd);
+
+    /*  using software curosr, depending on the quirks mask */
+    if (output->quirks & QUIRKS_MASK_SOFTWARE_CURSOR) {
         wlr_output_lock_software_cursors(output->wlr_output, true);
     }
+
     close(drm_fd);
 }
 
@@ -357,7 +359,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
     output->initialized = true;
 
-    output_lock_software_cursors(output);
+    output_init_quirks(output);
 
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 

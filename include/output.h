@@ -67,6 +67,8 @@ struct output {
 
     bool scene_commit, has_pending;
     struct kywc_output_state pending_state;
+
+    uint32_t quirks;
 };
 
 typedef void (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);
