@@ -115,6 +115,7 @@ static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
     }
 
     struct ky_scene_node *node = &popup->popup_tree->node;
+    ky_scene_node_set_enabled(node, true);
     popup_add_fade_effect(node, node, FADE_IN, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
 }
@@ -132,6 +133,7 @@ static void handle_xdg_popup_unmap(struct wl_listener *listener, void *data)
     struct ky_scene_node *node = &popup->popup_tree->node;
     popup_add_fade_effect(node, &buffer->node, FADE_OUT, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
+    ky_scene_node_set_enabled(node, false);
 }
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
@@ -150,6 +152,7 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
 
     /* add popup surface to view tree, popup map and unmap is handled in scene */
     popup->popup_tree = ky_scene_xdg_surface_create(parent, wlr_xdg_popup->base);
+    ky_scene_node_set_enabled(&popup->popup_tree->node, wlr_xdg_popup->base->surface->mapped);
 
     popup->destroy.notify = handle_xdg_popup_destroy;
     wl_signal_add(&wlr_xdg_popup->base->events.destroy, &popup->destroy);

@@ -225,6 +225,14 @@ static bool subsurface_tree_create_subsurface(struct ky_scene_subsurface_tree *p
 
     child->parent = parent;
 
+    child->surface_map.notify = subsurface_tree_handle_surface_map;
+    wl_signal_add(&subsurface->surface->events.map, &child->surface_map);
+
+    child->surface_unmap.notify = subsurface_tree_handle_surface_unmap;
+    wl_signal_add(&subsurface->surface->events.unmap, &child->surface_unmap);
+
+    ky_scene_node_set_enabled(&child->tree->node, subsurface->surface->mapped);
+
     wlr_addon_init(&child->surface_addon, &subsurface->surface->addons, parent,
                    &subsurface_tree_addon_impl);
 
@@ -292,16 +300,11 @@ static struct ky_scene_subsurface_tree *scene_surface_tree_create(struct ky_scen
     subsurface_tree->surface_commit.notify = subsurface_tree_handle_surface_commit;
     wl_signal_add(&surface->events.commit, &subsurface_tree->surface_commit);
 
-    subsurface_tree->surface_map.notify = subsurface_tree_handle_surface_map;
-    wl_signal_add(&surface->events.map, &subsurface_tree->surface_map);
-
-    subsurface_tree->surface_unmap.notify = subsurface_tree_handle_surface_unmap;
-    wl_signal_add(&surface->events.unmap, &subsurface_tree->surface_unmap);
-
     subsurface_tree->surface_new_subsurface.notify = subsurface_tree_handle_surface_new_subsurface;
     wl_signal_add(&surface->events.new_subsurface, &subsurface_tree->surface_new_subsurface);
 
-    ky_scene_node_set_enabled(&subsurface_tree->tree->node, surface->mapped);
+    wl_list_init(&subsurface_tree->surface_map.link);
+    wl_list_init(&subsurface_tree->surface_unmap.link);
 
     return subsurface_tree;
 
