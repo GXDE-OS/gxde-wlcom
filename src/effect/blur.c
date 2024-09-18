@@ -706,7 +706,9 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
 
         pixman_region32_t blur_backgroud;
         pixman_region32_init_rect(&blur_backgroud, 0, 0, box.width, box.height);
-        pixman_region32_intersect(&blur_backgroud, &blur_backgroud, &node->clip_region);
+        if (pixman_region32_not_empty(&node->clip_region)) {
+            pixman_region32_intersect(&blur_backgroud, &blur_backgroud, &node->clip_region);
+        }
         pixman_region32_translate(&blur_backgroud, box.x + lx, box.y + ly);
         pixman_region32_intersect(&blur_backgroud, &blur_backgroud, damage_blur);
         pixman_region32_union(&node->visible_region, &node->visible_region, &blur_backgroud);
