@@ -769,10 +769,9 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     }
 
     xwayland_view->view.pid = wlr_xwayland_surface->pid;
-    xwayland_view->view.base.modal = wlr_xwayland_surface->modal;
+    xwayland_view->view.base.modal = wlr_xwayland_surface->parent && wlr_xwayland_surface->modal;
 
-    if (wlr_xwayland_surface->modal &&
-        (!wlr_xwayland_surface->parent || !wlr_xwayland_surface->parent->surface)) {
+    if (xwayland_view->view.base.modal && !wlr_xwayland_surface->parent->surface) {
         xwayland_view_fixup_parent(xwayland_view);
     }
 
