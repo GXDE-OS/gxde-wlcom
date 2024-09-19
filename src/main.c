@@ -149,6 +149,20 @@ static void child_handler(int signo, siginfo_t *sip, void *unused)
     }
 }
 
+static void start_session(void *data)
+{
+    server.session_pid = spawn_session(server.session_process);
+    if (server.session_pid < 0) {
+        kywc_log(KYWC_ERROR, "session %s start failed%s", server.session_process,
+                 server.options.binding_session ? ", abort" : "");
+        if (server.options.binding_session) {
+            terminate(EXIT_FAILURE);
+        }
+    } else {
+        kywc_log(KYWC_INFO, "session %s(%d) started", server.session_process, server.session_pid);
+    }
+}
+
 int main(int argc, char *argv[])
 {
 #if HAVE_NLS
@@ -159,7 +173,6 @@ int main(int argc, char *argv[])
 
     bool enable_debug = false;
     bool enable_verbose = false;
-    char *session_process = NULL;
 
     while (1) {
         int option_index = 0;
@@ -179,7 +192,7 @@ int main(int argc, char *argv[])
             enable_debug_flag(&server, optarg);
             break;
         case 's':
-            session_process = optarg;
+            server.session_process = optarg;
             break;
         case 'v': // version
             printf("kylin-wlcom version " KYWC_VERSION "\n");
@@ -236,18 +249,8 @@ int main(int argc, char *argv[])
     /* child terminated or stopped */
     set_signal(SIGCHLD, child_handler);
 
-    if (session_process) {
-        server.session_pid = spawn_session(session_process);
-        if (server.session_pid < 0) {
-            kywc_log(KYWC_ERROR, "session %s start failed%s", session_process,
-                     server.options.binding_session ? ", abort" : "");
-            if (server.options.binding_session) {
-                terminate(EXIT_FAILURE);
-                goto shutdown;
-            }
-        } else {
-            kywc_log(KYWC_INFO, "session %s(%d) started", session_process, server.session_pid);
-        }
+    if (server.session_process) {
+        wl_event_loop_add_idle(server.event_loop, start_session, NULL);
     }
 
     server_run(&server);

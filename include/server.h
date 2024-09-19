@@ -59,6 +59,8 @@ struct server {
     struct wlr_output_layout *layout;
 
     struct queue queue;
+
+    const char *session_process;
     pid_t session_pid;
 };
 
