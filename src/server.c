@@ -201,6 +201,14 @@ static bool wlroots_server_init(struct server *server)
     return true;
 }
 
+static int handle_exit(int signal, void *data)
+{
+    kywc_log(KYWC_SILENT, "Received signal %s(%u), exit...", strsignal(signal), signal);
+    struct server *server = data;
+    wl_display_terminate(server->display);
+    return 0;
+}
+
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
@@ -213,6 +221,12 @@ bool server_init(struct server *server)
     wl_signal_init(&server->events.suspend);
     wl_signal_init(&server->events.resume);
     wl_signal_init(&server->events.active);
+
+    /* use wl event source to sync these signals in multi-thread */
+    server->sources.sighup =
+        wl_event_loop_add_signal(server->event_loop, SIGHUP, handle_exit, server);
+    server->sources.sigterm =
+        wl_event_loop_add_signal(server->event_loop, SIGTERM, handle_exit, server);
 
     listen_logind_manager_signal(server);
 
@@ -277,6 +291,10 @@ void server_run(struct server *server)
 void server_finish(struct server *server)
 {
     server->terminate = true;
+
+    wl_event_source_remove(server->sources.sighup);
+    wl_event_source_remove(server->sources.sigterm);
+
     wl_signal_emit_mutable(&server->events.terminate, NULL);
 
     queue_destroy(&server->queue);

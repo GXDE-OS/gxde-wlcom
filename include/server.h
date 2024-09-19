@@ -38,6 +38,13 @@ struct server {
         struct wl_signal active;
     } events;
 
+    struct {
+        /* exit signal sources */
+        struct wl_event_source *sighup;
+        struct wl_event_source *sigterm;
+    } sources;
+
+    struct wlr_session *session;
     struct wl_listener session_active;
 
     struct wlr_renderer *renderer;
@@ -45,7 +52,6 @@ struct server {
     struct wlr_backend *backend;
     /* create for the virtual output */
     struct wlr_backend *headless_backend;
-    struct wlr_session *session;
     struct wlr_compositor *compositor;
 
     struct ky_scene *scene;
