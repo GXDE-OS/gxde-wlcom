@@ -97,11 +97,18 @@ static void set_signal(int sig, void *handler)
 
 static void sig_handler(int signo, siginfo_t *sip, void *unused)
 {
+    if (signo == SIGINT && server.terminate) {
+        return;
+    }
+
     if (sip->si_code == SI_USER) {
         kywc_log(KYWC_SILENT, "Received signal %s(%u) sent by process %u, uid %u", strsignal(signo),
                  signo, sip->si_pid, sip->si_uid);
     } else {
         switch (signo) {
+        case SIGINT:
+            kywc_log(KYWC_SILENT, "Received signal %s(%u) by Ctrl+C", strsignal(signo), signo);
+            break;
         case SIGSEGV:
         case SIGBUS:
         case SIGILL:
@@ -226,9 +233,8 @@ int main(int argc, char *argv[])
 
     /* ignore SIGPIPE */
     set_signal(SIGPIPE, SIG_IGN);
-    /* exit signals */
+    /* ctrl+c signal */
     set_signal(SIGINT, sig_handler);
-    set_signal(SIGQUIT, sig_handler);
     /* crash signals */
     set_signal(SIGSEGV, sig_handler);
     set_signal(SIGBUS, sig_handler);
