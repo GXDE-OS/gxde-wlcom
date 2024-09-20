@@ -186,6 +186,8 @@ void view_do_fullscreen(struct view *view, bool fullscreen, struct kywc_output *
 
 void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output);
 
+void view_do_activate(struct view *view);
+
 struct view_manager *view_manager_create(struct server *server);
 
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
@@ -284,5 +286,7 @@ void view_move_to_center(struct view *view);
 bool view_has_descendant(struct view *view, struct view *descendant);
 
 bool view_has_ancestor(struct view *view, struct view *ancestor);
+
+void view_raise_to_top(struct view *view, bool find_parent);
 
 #endif /* __VIEW_H_ */

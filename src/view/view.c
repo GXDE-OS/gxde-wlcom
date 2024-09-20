@@ -1000,7 +1000,7 @@ static void view_set_activated(struct view *view, bool activated)
     wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
 }
 
-static void view_activate(struct view *view)
+void view_do_activate(struct view *view)
 {
     if (view && !view_is_activatable(view)) {
         return;
@@ -1043,7 +1043,7 @@ void view_topmost_activate(struct workspace *workspace)
         if (!view->base.mapped || view->base.minimized || !view_is_activatable(view)) {
             continue;
         }
-        view_activate(view);
+        view_do_activate(view);
         seat_focus_surface(input_manager_get_default_seat(), view->surface);
         if (view->base.fullscreen) {
             view_reparent_fullscreen(view, true);
@@ -1062,7 +1062,7 @@ void view_topmost_activate(struct workspace *workspace)
     }
 }
 
-static void view_raise_to_top(struct view *view, bool find_parent)
+void view_raise_to_top(struct view *view, bool find_parent)
 {
     if (!view) {
         return;
@@ -1094,8 +1094,14 @@ static void view_raise_to_top(struct view *view, bool find_parent)
 void kywc_view_activate(struct kywc_view *kywc_view)
 {
     struct view *view = kywc_view ? view_from_kywc_view(kywc_view) : NULL;
-    view_activate(view);
-    view_raise_to_top(view, true);
+    if (!view) {
+        view_do_activate(NULL);
+        return;
+    }
+
+    if (view_manager->mode->impl->view_request_activate) {
+        view_manager->mode->impl->view_request_activate(view_from_kywc_view(kywc_view));
+    }
 }
 
 void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output)

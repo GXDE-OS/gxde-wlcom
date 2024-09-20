@@ -25,6 +25,7 @@ struct view_mode_interface {
                                     struct kywc_output *kywc_output);
     void (*view_request_tiled)(struct view *view, enum kywc_tile tile,
                                struct kywc_output *kywc_output);
+    void (*view_request_activate)(struct view *view);
 
     void (*view_request_show_menu)(struct view *view, struct seat *seat, int x, int y);
 

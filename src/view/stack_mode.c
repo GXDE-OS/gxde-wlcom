@@ -65,6 +65,16 @@ static void stack_mode_view_tiled(struct view *view, enum kywc_tile tile,
     view_do_tiled(view, tile, kywc_output);
 }
 
+static void stack_mode_view_activate(struct view *view)
+{
+    if (!view_is_activatable(view)) {
+        return;
+    }
+
+    view_do_activate(view);
+    view_raise_to_top(view, true);
+}
+
 static void stack_mode_view_show_menu(struct view *view, struct seat *seat, int x, int y)
 {
     if (!view->current_proxy) {
@@ -101,6 +111,7 @@ static const struct view_mode_interface stack_mode_impl = {
     .view_request_maximized = stack_mode_view_maximized,
     .view_request_fullscreen = stack_mode_view_fullscreen,
     .view_request_tiled = stack_mode_view_tiled,
+    .view_request_activate = stack_mode_view_activate,
 
     .view_request_show_menu = stack_mode_view_show_menu,
 
