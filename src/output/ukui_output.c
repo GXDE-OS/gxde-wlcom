@@ -168,6 +168,7 @@ static void handle_new_enabled_output(struct wl_listener *listener, void *data)
         return;
     }
 
+    ukui_output->kywc_output = kywc_output;
     ukui_output->management = management;
     wl_list_init(&ukui_output->clients);
     wl_list_insert(&management->outputs, &ukui_output->link);
