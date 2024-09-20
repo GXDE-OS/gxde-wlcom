@@ -17,6 +17,7 @@ wlcom_sources += files(
   'text_input_v1.c',
   'text_input_v2.c',
   'touch.c',
+  'transient_seat.c',
   'seat.c',
   'selection.c',
 )

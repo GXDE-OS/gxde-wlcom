@@ -233,4 +233,6 @@ kde_keystate_manager_create(struct input_manager *input_manager)
 }
 #endif
 
+bool transient_seat_manager_create(struct input_manager *input_manager);
+
 #endif /* _INPUT_P_H_ */

@@ -13,6 +13,7 @@ protocols = {
   'xdg-dialog': wl_protocol_dir / 'staging/xdg-dialog/xdg-dialog-v1.xml',
   'org-kde-kwin-idle': 'idle.xml',
   'zwp-pointer-constraints-v1': wl_protocol_dir / 'unstable/pointer-constraints/pointer-constraints-unstable-v1.xml',
+  'ext-transient-seat-v1': wl_protocol_dir / 'staging/ext-transient-seat/ext-transient-seat-v1.xml',
 }
 
 protocols += {
