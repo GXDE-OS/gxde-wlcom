@@ -1062,40 +1062,32 @@ void view_topmost_activate(struct workspace *workspace)
     }
 }
 
-static void view_activate_with_workspace(struct view *view, bool find_parent)
+static void view_raise_to_top(struct view *view, bool find_parent)
 {
     if (!view) {
         return;
     }
-    if (view->parent && find_parent) {
-        view_activate_with_workspace(view->parent, true);
-    }
-    struct view_proxy *view_proxy;
-    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
-        wl_list_remove(&view_proxy->workspace_link);
-        wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
-        ky_scene_node_raise_to_top(&view_proxy->tree->node);
-    }
-    /* raise children if any */
-    struct view *child;
-    wl_list_for_each(child, &view->children, parent_link) {
-        view_activate_with_workspace(child, false);
-    }
-}
 
-static void view_activate_without_workspace(struct view *view, bool find_parent)
-{
-    if (!view) {
-        return;
-    }
     if (view->parent && find_parent) {
-        view_activate_without_workspace(view->parent, true);
+        view_raise_to_top(view->parent, true);
     }
-    ky_scene_node_raise_to_top(&view->tree->node);
+
+    if (view->current_proxy) {
+        /* insert view proxy in workspace topmost */
+        struct view_proxy *view_proxy;
+        wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
+            wl_list_remove(&view_proxy->workspace_link);
+            wl_list_insert(&view_proxy->workspace->view_proxies, &view_proxy->workspace_link);
+            ky_scene_node_raise_to_top(&view_proxy->tree->node);
+        }
+    } else {
+        ky_scene_node_raise_to_top(&view->tree->node);
+    }
+
     /* raise children if any */
     struct view *child;
     wl_list_for_each(child, &view->children, parent_link) {
-        view_activate_without_workspace(child, false);
+        view_raise_to_top(child, false);
     }
 }
 
@@ -1103,17 +1095,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
 {
     struct view *view = kywc_view ? view_from_kywc_view(kywc_view) : NULL;
     view_activate(view);
-
-    if (!view) {
-        return;
-    }
-
-    /* insert view proxy in workspace topmost */
-    if (view->current_proxy) {
-        view_activate_with_workspace(view, true);
-    } else {
-        view_activate_without_workspace(view, true);
-    }
+    view_raise_to_top(view, true);
 }
 
 void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output)
