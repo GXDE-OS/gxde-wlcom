@@ -5,67 +5,50 @@
 #include <stdlib.h>
 
 #include <wlr/render/wlr_texture.h>
-#include <wlr/util/box.h>
 
 #include <kywc/log.h>
 
 #include "effect/animator.h"
 #include "effect/slide.h"
+#include "effect/transform.h"
 #include "effect_p.h"
 #include "output.h"
-#include "render/opengl.h"
-#include "render/renderer.h"
 #include "scene/surface.h"
-#include "scene/thumbnail.h"
-#include "theme.h"
 #include "util/time.h"
 
-struct slide_data {
+struct slide_entity {
+    struct transform *transform;
     struct ky_scene_node *node;
+    int location;
+    int offset;
 
-    struct ky_scene_buffer *buffer;
+    bool slide_in;
 
-    struct slide slide;
-    bool slide_out;
-
-    int64_t start_time;
-    int duration;
-
-    bool need_blur;
-    struct blur_info blur_info;
-
-    struct kywc_box start_geometry;
-    struct kywc_box end_geometry;
-
-    struct animator *animator;
-    struct animation_data current;
-
-    int thumbnail_radius[4];
-    int node_offset_x, node_offset_y;
-    struct thumbnail *node_thumbnail;
-    struct wlr_buffer *thumbnail_buffer;
-    struct wlr_texture *thumbnail_texture;
-
-    struct wl_listener thumbnail_update;
-    struct wl_listener thumbnail_destroy;
-    /* listen node or scene buffer destroy */
-    struct wl_listener node_destroy;
+    /* No need to monitor view destroy signal */
+    struct wl_listener destroy;
 };
 
 struct slide_effect {
-    struct effect *effect;
-    struct ky_scene *scene;
-    struct wlr_renderer *renderer;
-
-    int duration;
-    struct wl_listener destroy;
-    bool is_opengl_renderer;
+    struct transform_effect *effect;
 };
 
-struct slide_effect *slide_effect = NULL;
+static struct slide_effect *slide_effect = NULL;
 
-static void slide_calc_start_and_end_geometry(struct slide_data *data,
-                                              struct kywc_box *node_geometry)
+static void slide_get_node_origin_geometry(struct ky_scene_node *node, struct kywc_box *geometry)
+{
+    struct wlr_box box;
+    node->impl.get_bounding_box(node, &box);
+    ky_scene_node_coords(node, &geometry->x, &geometry->y);
+    geometry->x += box.x;
+    geometry->y += box.y;
+    geometry->width = box.width;
+    geometry->height = box.height;
+}
+
+static void slide_calc_start_and_end_geometry(struct slide_entity *slide_entity,
+                                              const struct kywc_box *node_geometry, bool slide_in,
+                                              struct kywc_box *start_geometry,
+                                              struct kywc_box *end_geometry)
 {
     double center_x = node_geometry->x + node_geometry->width / 2.0;
     double center_y = node_geometry->y + node_geometry->height / 2.0;
@@ -73,302 +56,101 @@ static void slide_calc_start_and_end_geometry(struct slide_data *data,
     struct output *output = output_from_kywc_output(kywc_output);
 
     struct kywc_box slide_geometry = *node_geometry;
-    switch (data->slide.location) {
+    switch (slide_entity->location) {
     case SLIDE_LOCATION_LEFT:
-        slide_geometry.x = output->geometry.x + data->slide.offset;
+        slide_geometry.x = output->geometry.x + slide_entity->offset;
         slide_geometry.width = 0;
         break;
     case SLIDE_LOCATION_TOP:
-        slide_geometry.y = output->geometry.y + data->slide.offset;
+        slide_geometry.y = output->geometry.y + slide_entity->offset;
         slide_geometry.height = 0;
         break;
     case SLIDE_LOCATION_BOTTOM:
-        slide_geometry.y = output->geometry.y + output->geometry.height - data->slide.offset;
+        slide_geometry.y = output->geometry.y + output->geometry.height - slide_entity->offset;
         slide_geometry.height = 0;
         break;
     case SLIDE_LOCATION_RIGHT:
-        slide_geometry.x = output->geometry.x + output->geometry.width - data->slide.offset;
+        slide_geometry.x = output->geometry.x + output->geometry.width - slide_entity->offset;
         slide_geometry.width = 0;
         break;
     }
 
-    if (data->slide_out) {
-        data->start_geometry = slide_geometry;
-        data->end_geometry = *node_geometry;
+    if (slide_in) {
+        *start_geometry = slide_geometry;
+        *end_geometry = *node_geometry;
     } else {
-        data->start_geometry = *node_geometry;
-        data->end_geometry = slide_geometry;
+        *start_geometry = *node_geometry;
+        *end_geometry = slide_geometry;
     }
 }
 
-static void get_node_origin_box(struct effect_entity *entity, struct kywc_box *layout_box)
+static void slide_update_transform_options(struct transform_effect *effect,
+                                           struct transform *transform,
+                                           struct transform_options *options,
+                                           struct animation_data *current, bool interrupted,
+                                           void *data)
 {
-    struct effect_chain *chain = entity->slot.chain;
-    if (!chain) {
-        *layout_box = (struct kywc_box){ 0 };
+    struct slide_entity *slide_entity = transform_get_user_data(transform);
+    if (!slide_entity->slide_in) {
         return;
     }
 
-    struct wlr_box box;
-    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
-    node_chain->impl.get_bounding_box(node_chain->node, &box);
-    ky_scene_node_coords(node_chain->node, &layout_box->x, &layout_box->y);
+    if (interrupted) {
+        options->start_time = current_time_msec();
+    }
 
-    layout_box->x += box.x;
-    layout_box->y += box.y;
-    layout_box->width = box.width;
-    layout_box->height = box.height;
+    struct kywc_box node_geometry;
+    slide_get_node_origin_geometry(slide_entity->node, &node_geometry);
+    slide_calc_start_and_end_geometry(slide_entity, &node_geometry, slide_entity->slide_in,
+                                      &options->start.geometry, &options->end.geometry);
 }
 
-static void handle_thumbnail_update(struct wl_listener *listener, void *data)
+static void slide_get_render_src_box(struct transform_effect *effect, struct transform *transform,
+                                     struct animation_data *current, struct kywc_fbox *src_fbox,
+                                     void *data)
 {
-    struct slide_data *slide_data = wl_container_of(listener, slide_data, thumbnail_update);
-
-    struct thumbnail_update_event *event = data;
-    if (!event->buffer_changed) {
-        return;
-    }
-
-    if (slide_data->thumbnail_texture) {
-        wlr_texture_destroy(slide_data->thumbnail_texture);
-    }
-    slide_data->thumbnail_buffer = event->buffer;
-    slide_data->thumbnail_texture = wlr_texture_from_buffer(slide_effect->renderer, event->buffer);
-
-    if (!slide_data->node) {
-        return;
-    }
-
-    if (slide_data->need_blur &&
-        !thumbnail_get_node_offset(slide_data->node_thumbnail, slide_data->node,
-                                   &slide_data->node_offset_x, &slide_data->node_offset_y)) {
-        kywc_log(KYWC_INFO, "when slide thumbnail update, thumbnail get node offset failed.");
-    }
-}
-
-static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
-{
-    struct slide_data *slide_data = wl_container_of(listener, slide_data, thumbnail_destroy);
-    wl_list_remove(&slide_data->thumbnail_destroy.link);
-    wl_list_remove(&slide_data->thumbnail_update.link);
-
-    slide_data->node_thumbnail = NULL;
-}
-
-static void slide_get_src_box(struct slide_data *data, struct kywc_fbox *src_fbox)
-{
-    src_fbox->x = 0, src_fbox->y = 0;
-    src_fbox->width = data->thumbnail_texture->width;
-    src_fbox->height = data->thumbnail_texture->height;
-
+    struct slide_entity *slide_entity = transform_get_user_data(transform);
     /* thumbnail no scale */
-    switch (data->slide.location) {
+    switch (slide_entity->location) {
     case SLIDE_LOCATION_LEFT:
-        src_fbox->x = src_fbox->width - data->current.geometry.width;
-        src_fbox->width = src_fbox->x < 0 ? 0 : data->current.geometry.width;
-        src_fbox->x = src_fbox->x < 0 ? 0 : src_fbox->x;
+        src_fbox->x = (src_fbox->width - current->geometry.width) < 0
+                          ? 0
+                          : (src_fbox->width - current->geometry.width);
+        src_fbox->width = current->geometry.width;
         break;
     case SLIDE_LOCATION_RIGHT:
-        src_fbox->width = data->current.geometry.width < src_fbox->width
-                              ? data->current.geometry.width
-                              : src_fbox->width;
+        src_fbox->width =
+            current->geometry.width < src_fbox->width ? current->geometry.width : src_fbox->width;
         break;
     case SLIDE_LOCATION_TOP:
-        data->start_geometry.y = src_fbox->height - data->current.geometry.height;
-        src_fbox->height = src_fbox->y < 0 ? 0 : data->current.geometry.height;
-        src_fbox->y = src_fbox->y < 0 ? 0 : src_fbox->y;
+        src_fbox->y = src_fbox->height - current->geometry.height;
+        src_fbox->height = current->geometry.height;
         break;
     case SLIDE_LOCATION_BOTTOM:
-        src_fbox->height = data->current.geometry.height < src_fbox->height
-                               ? data->current.geometry.height
-                               : src_fbox->height;
+        src_fbox->height = current->geometry.height < src_fbox->height ? current->geometry.height
+                                                                       : src_fbox->height;
         break;
     }
 }
 
-static void slide_data_destroy(struct slide_data *data)
+static void slide_effect_destroy(struct transform_effect *effect, void *data)
 {
-    if (data->buffer) {
-        ky_scene_node_destroy(&data->buffer->node);
-    }
-    if (data->node_thumbnail) {
-        wl_list_remove(&data->thumbnail_destroy.link);
-        wl_list_remove(&data->thumbnail_update.link);
-        thumbnail_destroy(data->node_thumbnail);
-    }
-    if (data->thumbnail_texture) {
-        wlr_texture_destroy(data->thumbnail_texture);
-    }
-    if (data->animator) {
-        animator_destroy(data->animator);
-    }
-
-    pixman_region32_fini(&data->blur_info.region);
-    wl_list_remove(&data->node_destroy.link);
-    free(data);
-}
-
-static void slide_entity_destroy(struct effect_entity *entity)
-{
-    struct slide_data *data = entity->user_data;
-    slide_data_destroy(data);
-}
-
-static bool slide_entity_bounding_box(struct effect_entity *entity, struct kywc_box *box)
-{
-    /* effect entity must on node, couldn't be NULL */
-    struct effect_chain *chain = entity->slot.chain;
-    struct node_effect_chain *node_chain = wl_container_of(chain, node_chain, base);
-
-    struct slide_data *data = entity->user_data;
-    *box = data->current.geometry;
-    if (box->width <= 0 || box->height <= 0) {
-        struct wlr_box node_box;
-        node_chain->impl.get_bounding_box(node_chain->node, &node_box);
-        box->x = node_box.x;
-        box->y = node_box.y;
-        box->width = node_box.width;
-        box->height = node_box.height;
-        return false;
-    }
-
-    int lx, ly;
-    ky_scene_node_coords(node_chain->node, &lx, &ly);
-    box->x -= lx;
-    box->y -= ly;
-    return false;
-}
-
-static bool slide_node_push_damage(struct effect_entity *entity, struct ky_scene_node *damage_node,
-                                   uint32_t *damage_type, pixman_region32_t *damage)
-{
-    struct kywc_box box;
-    slide_entity_bounding_box(entity, &box);
-    pixman_region32_union_rect(damage, damage, box.x, box.y, box.width, box.height);
-
-    struct slide_data *data = entity->user_data;
-    if (data->node && data->need_blur) {
-        ky_scene_node_get_blur_info(data->node, &data->blur_info);
-    }
-    return true;
-}
-
-static bool slide_node_render(struct effect_entity *entity, int lx, int ly,
-                              struct ky_scene_render_target *target)
-{
-    struct slide_data *data = entity->user_data;
-    if (!data->thumbnail_texture) {
-        return false;
-    }
-
-    struct kywc_fbox src_box;
-    slide_get_src_box(data, &src_box);
-
-    /* if data need blur is false, blur region is empty */
-    bool has_blur = pixman_region32_not_empty(&data->blur_info.region);
-
-    struct animation_data *current = &data->current;
-    const struct ky_scene_render_texture_options opts = {
-        .texture = data->thumbnail_texture,
-        .geometry_box = &current->geometry,
-        .alpha = &current->alpha,
-        .src = &src_box,
-        .blur = {
-            .alpha = &current->alpha,
-            .info = has_blur ? &data->blur_info : NULL,
-            .offset_x = data->node_offset_x,
-            .offset_y = data->node_offset_y,
-            .radius = &data->thumbnail_radius,
-        }
-
-    };
-    ky_scene_render_target_add_texture(target, &opts);
-
-    return false;
-}
-
-static bool slide_data_create_animation(struct slide_data *data)
-{
-    data->current.alpha = 1;
-    data->current.angle = 0;
-    data->current.geometry = data->start_geometry;
-    struct animation_type_group type = {
-        .geometry = ANIMATION_TYPE_EASE,
-    };
-    data->animator =
-        animator_create(&data->current, type, data->start_time, data->start_time + data->duration);
-    if (!data->animator) {
-        return false;
-    }
-
-    animator_set_position(data->animator, data->end_geometry.x, data->end_geometry.y);
-    animator_set_size(data->animator, data->end_geometry.width, data->end_geometry.height);
-    return true;
-}
-
-static bool slide_frame_render_pre(struct effect_entity *entity,
-                                   struct ky_scene_output *scene_output)
-{
-    struct slide_data *data = entity->user_data;
-    int64_t time = current_time_msec();
-    if (time > data->start_time + data->duration) {
-        effect_entity_destroy(entity);
-        return true;
-    }
-
-    if (data->slide_out) {
-        struct kywc_box layout_box;
-        get_node_origin_box(entity, &layout_box);
-
-        if (!kywc_box_equal(&data->end_geometry, &layout_box)) {
-            slide_calc_start_and_end_geometry(data, &layout_box);
-
-            if (data->animator) {
-                animator_destroy(data->animator);
-            }
-            if (!slide_data_create_animation(data)) {
-                effect_entity_destroy(entity);
-                return true;
-            }
-        }
-    }
-
-    if (data->buffer) {
-        ky_scene_node_raise_to_top(&data->buffer->node);
-    }
-    const struct animation_data *animation_data = animator_value(data->animator, time);
-    data->current = *animation_data;
-
-    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
-    return true;
-}
-
-static bool slide_frame_render_post(struct effect_entity *entity,
-                                    struct ky_scene_render_target *target)
-{
-    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
-    return true;
-}
-
-static void handle_effect_destroy(struct wl_listener *listener, void *data)
-{
-    struct effect_entity *entity, *tmp;
-    wl_list_for_each_safe(entity, tmp, &slide_effect->effect->entities, effect_link) {
-        effect_entity_destroy(entity);
-    }
-
-    wl_list_remove(&slide_effect->destroy.link);
+    struct slide_effect *slide_effect = data;
     free(slide_effect);
     slide_effect = NULL;
 }
 
-static const struct effect_interface slide_effect_impl = {
-    .entity_destroy = slide_entity_destroy,
-    .entity_bounding_box = slide_entity_bounding_box,
-    .node_push_damage = slide_node_push_damage,
-    .node_render = slide_node_render,
-    .frame_render_pre = slide_frame_render_pre,
-    .frame_render_post = slide_frame_render_post,
+static void slide_handle_transform_destroy(struct wl_listener *listener, void *data)
+{
+    struct slide_entity *slide_entity = wl_container_of(listener, slide_entity, destroy);
+    wl_list_remove(&slide_entity->destroy.link);
+    free(slide_entity);
+}
+
+struct transform_effect_interface slide_impl = {
+    .update_transform_options = slide_update_transform_options,
+    .get_render_src_box = slide_get_render_src_box,
+    .destroy = slide_effect_destroy,
 };
 
 bool slide_effect_create(struct effect_manager *manager)
@@ -378,236 +160,67 @@ bool slide_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    slide_effect->is_opengl_renderer = wlr_renderer_is_opengl(manager->server->renderer);
-    bool enabled = !ky_renderer_is_software(manager->server->renderer);
-    slide_effect->effect = effect_create("slide", 5, enabled, &slide_effect_impl, NULL);
+    slide_effect->effect = transform_effect_create(manager, &slide_impl, "slide", 5, NULL);
     if (!slide_effect->effect) {
         free(slide_effect);
-        slide_effect = NULL;
         return false;
     }
-
-    slide_effect->duration = 300;
-    slide_effect->scene = manager->server->scene;
-    slide_effect->renderer = manager->server->renderer;
-
-    slide_effect->destroy.notify = handle_effect_destroy;
-    wl_signal_add(&slide_effect->effect->events.destroy, &slide_effect->destroy);
 
     return true;
 }
 
-static struct slide_data *slide_data_create(struct ky_scene_node *node, const struct slide *slide,
-                                            bool slide_out)
+static struct slide_entity *create_slide_entity(struct ky_scene_node *node, int location,
+                                                int offset, bool mapped, bool is_view)
 {
-    struct slide_data *data = calloc(1, sizeof(*data));
-    if (!data) {
+    struct slide_entity *slide_entity = calloc(1, sizeof(*slide_entity));
+    if (!slide_entity) {
         return NULL;
     }
 
-    data->node = node;
-    data->buffer = NULL;
-    data->slide = *slide;
-    data->slide_out = slide_out;
-    data->start_time = current_time_msec();
-    data->duration = slide_effect->duration; // ms
+    slide_entity->offset = offset;
+    slide_entity->location = location;
+    slide_entity->slide_in = mapped;
+    slide_entity->node = node;
+    struct transform_options options = { 0 };
+    options.start.alpha = 1.0;
+    options.end.alpha = 1.0;
+    options.duration = 200;
+    options.type.geometry = ANIMATION_TYPE_EASE;
+    options.start_time = current_time_msec();
 
-    pixman_region32_init(&data->blur_info.region);
-    data->need_blur = slide_effect->is_opengl_renderer;
-    if (data->need_blur) {
-        ky_scene_node_get_blur_info(data->node, &data->blur_info);
-        ky_scene_node_get_radius(data->node, data->thumbnail_radius);
-    }
+    slide_entity->node->role = is_view ? KY_SCENE_NODE_TOPLEVEL : KY_SCENE_NODE_POPUP;
+    struct kywc_box node_geometry;
+    slide_get_node_origin_geometry(slide_entity->node, &node_geometry);
+    slide_calc_start_and_end_geometry(slide_entity, &node_geometry, mapped, &options.start.geometry,
+                                      &options.end.geometry);
 
-    data->node_thumbnail = thumbnail_create_from_node(node, 1.0f);
-    if (!data->node_thumbnail) {
-        free(data);
-        return NULL;
-    }
-
-    data->thumbnail_update.notify = handle_thumbnail_update;
-    thumbnail_add_update_listener(data->node_thumbnail, &data->thumbnail_update);
-    data->thumbnail_destroy.notify = handle_thumbnail_destroy;
-    thumbnail_add_destroy_listener(data->node_thumbnail, &data->thumbnail_destroy);
-
-    if (!slide_out) {
-        thumbnail_update(data->node_thumbnail);
-    }
-
-    struct wlr_box box;
-    struct kywc_box layout_box;
-    node->impl.get_bounding_box(node, &box);
-    ky_scene_node_coords(node, &layout_box.x, &layout_box.y);
-    layout_box.x += box.x;
-    layout_box.y += box.y;
-    layout_box.width = box.width;
-    layout_box.height = box.height;
-
-    slide_calc_start_and_end_geometry(data, &layout_box);
-
-    if (!slide_data_create_animation(data)) {
-        wl_list_remove(&data->thumbnail_destroy.link);
-        wl_list_remove(&data->thumbnail_update.link);
-        thumbnail_destroy(data->node_thumbnail);
-        free(data);
-        return NULL;
-    }
-
-    return data;
-}
-
-static struct ky_scene_tree *get_node_layer_tree(struct ky_scene_node *node)
-{
-    struct ky_scene_tree *tree = node->parent;
-
-    int deep = 0;
-    while (tree) {
-        deep++;
-        tree = tree->node.parent;
-    }
-
-    struct ky_scene_tree *view_parent = node->parent;
-    view_parent = deep >= 4 ? view_parent->node.parent : view_parent;
-
-    return view_parent;
-}
-
-static void slide_data_handle_buffer_node_destroy(struct wl_listener *listener, void *data)
-{
-    struct slide_data *slide_data = wl_container_of(listener, slide_data, node_destroy);
-
-    /**
-     * node destroy before effect entity destroy.
-     * so when slide data destroy, node_destroy already remove.
-     */
-    wl_list_remove(&slide_data->node_destroy.link);
-    wl_list_init(&slide_data->node_destroy.link);
-
-    slide_data->buffer = NULL;
-}
-
-static void slide_data_handle_node_destroy(struct wl_listener *listener, void *data)
-{
-    struct slide_data *slide_data = wl_container_of(listener, slide_data, node_destroy);
-
-    /**
-     * node destroy before effect entity destroy.
-     * so when slide data destroy, node_destroy already remove.
-     */
-    wl_list_remove(&slide_data->node_destroy.link);
-    wl_list_init(&slide_data->node_destroy.link);
-
-    if (slide_data->slide_out || !slide_data->thumbnail_buffer) {
-        return;
-    }
-
-    struct ky_scene_tree *layer_tree = get_node_layer_tree(slide_data->node);
-    if (!layer_tree) {
-        kywc_log(KYWC_WARN, "node don't in layer");
-    }
-
-    struct ky_scene_buffer *buffer =
-        ky_scene_buffer_create(layer_tree, slide_data->thumbnail_buffer);
-    if (!buffer) {
-        return;
-    }
-    ky_scene_node_set_input_bypassed(&buffer->node, true);
-
-    struct effect_entity *entity = ky_scene_node_add_effect(&buffer->node, slide_effect->effect);
-    if (!entity) {
-        ky_scene_node_destroy(&buffer->node);
-        return;
-    }
-
-    struct slide_data *new_data = calloc(1, sizeof(*new_data));
-    if (!new_data) {
-        ky_scene_node_destroy(&buffer->node);
-        return;
-    }
-
-    new_data->node = NULL;
-    new_data->slide = slide_data->slide;
-    new_data->slide_out = slide_data->slide_out;
-    new_data->start_time = slide_data->start_time;
-    new_data->duration = slide_data->duration; // ms
-
-    new_data->need_blur = slide_data->need_blur;
-    new_data->node_offset_x = slide_data->node_offset_x;
-    new_data->node_offset_y = slide_data->node_offset_y;
-
-    memcpy(new_data->thumbnail_radius, slide_data->thumbnail_radius,
-           sizeof(new_data->thumbnail_radius));
-
-    pixman_region32_init(&new_data->blur_info.region);
-    pixman_region32_copy(&new_data->blur_info.region, &slide_data->blur_info.region);
-    new_data->blur_info.iterations = slide_data->blur_info.iterations;
-    new_data->blur_info.offset = slide_data->blur_info.offset;
-
-    new_data->thumbnail_texture = slide_data->thumbnail_texture;
-    new_data->thumbnail_buffer = slide_data->thumbnail_buffer;
-    new_data->node_thumbnail = NULL;
-
-    new_data->start_geometry = slide_data->start_geometry;
-    new_data->end_geometry = slide_data->end_geometry;
-
-    new_data->current = slide_data->current;
-    new_data->animator = slide_data->animator;
-
-    new_data->buffer = buffer;
-    new_data->node_destroy.notify = slide_data_handle_buffer_node_destroy;
-    wl_signal_add(&buffer->node.events.destroy, &new_data->node_destroy);
-
-    entity->user_data = new_data;
-
-    /* must be NULL, otherwise slide data will destroy it when effect entity destroy */
-    slide_data->animator = NULL;
-    slide_data->thumbnail_texture = NULL;
-}
-
-bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset, bool slid_out)
-{
-    if (!slide_effect || !slide_effect->effect->enabled || !node->enabled) {
+    slide_entity->transform = transform_effect_get_or_create_transform(
+        slide_effect->effect, &options, slide_entity->node, slide_entity);
+    if (!slide_entity->transform) {
+        free(slide_entity);
         return false;
     }
 
-    struct slide_data *data = NULL;
-    struct effect_entity *entity = ky_scene_node_find_effect_entity(node, slide_effect->effect);
-    if (entity) {
-        data = entity->user_data;
-        data->slide_out = slid_out;
-        data->start_time = current_time_msec();
+    slide_entity->destroy.notify = slide_handle_transform_destroy;
+    transform_add_destroy_listener(slide_entity->transform, &slide_entity->destroy);
+    return slide_entity;
+}
 
-        struct kywc_box box;
-        /* get node origin box, don't affecte by effect */
-        get_node_origin_box(entity, &box);
-        slide_calc_start_and_end_geometry(data, &box);
-        animator_set_time(data->animator, data->start_time + data->duration);
-        animator_set_position(data->animator, data->end_geometry.x, data->end_geometry.y);
-        animator_set_size(data->animator, data->end_geometry.width, data->end_geometry.height);
-        return true;
-    }
-
-    struct slide slide = { .location = location, .offset = offset };
-    data = slide_data_create(node, &slide, slid_out);
-    if (!data) {
+bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset, bool slide_out)
+{
+    if (!slide_effect || !node->enabled) {
         return false;
     }
 
-    entity = ky_scene_node_add_effect(node, slide_effect->effect);
-    if (!entity) {
-        slide_data_destroy(data);
-        return false;
-    }
-
-    data->node_destroy.notify = slide_data_handle_node_destroy;
-    wl_signal_add(&node->events.destroy, &data->node_destroy);
-
-    entity->user_data = data;
-    return true;
+    return create_slide_entity(node, location, offset, slide_out, false);
 }
 
 bool view_add_slide_effect(struct view *view, bool mapped)
 {
+    if (!slide_effect) {
+        return false;
+    }
+
     if (!view->surface) {
         return false;
     }
@@ -617,5 +230,5 @@ bool view_add_slide_effect(struct view *view, bool mapped)
         return false;
     }
 
-    return node_add_slide_effect(&view->tree->node, slide.location, slide.offset, mapped);
+    return create_slide_entity(&view->tree->node, slide.location, slide.offset, mapped, true);
 }
