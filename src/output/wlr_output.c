@@ -58,6 +58,11 @@ static void manager_update_configuration(void)
         if (head->kywc_output->destroying) {
             continue;
         }
+
+        if (head->kywc_output == output_manager_get_fallback() &&
+            !head->kywc_output->state.enabled) {
+            continue;
+        }
         struct wlr_output_configuration_head_v1 *head_v1 =
             wlr_output_configuration_head_v1_create(config, wlr_output);
         head_v1->state.enabled = head->kywc_output->state.enabled;
@@ -80,9 +85,6 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_new_output(struct wl_listener *listener, void *data)
 {
     struct kywc_output *kywc_output = data;
-    if (output_manager_get_fallback() == kywc_output) {
-        return;
-    }
 
     struct output_head *head = calloc(1, sizeof(struct output_head));
     if (!head) {
