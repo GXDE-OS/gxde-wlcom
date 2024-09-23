@@ -305,9 +305,48 @@ static void manager_update_idle_source(struct ky_output_manager *manager)
         wl_event_loop_add_idle(manager->event_loop, manager_idle_send_done, manager);
 }
 
+static void manager_create_output_client_for_fallback_output(struct ky_output *ky_output)
+{
+    /* fallback_output has already been used by client */
+    if (!wl_list_empty(&ky_output->clients)) {
+        return;
+    }
+
+    struct wl_resource *resource;
+    struct ky_output_client *ky_client;
+    struct ky_output_manager *manager = ky_output->manager;
+    wl_resource_for_each(resource, &manager->resources) {
+        ky_client = create_output_client_for_resource(ky_output, resource);
+        send_details_to_output_client(ky_client);
+        kywc_output_manager_v1_send_done(resource);
+    }
+}
+
+static void manager_destroy_output_client_for_fallback_output(struct ky_output *ky_output)
+{
+    struct ky_output_client *client, *tmp;
+    wl_list_for_each_safe(client, tmp, &ky_output->clients, link) {
+        struct wl_resource *resource, *tmp;
+        wl_resource_for_each_safe(resource, tmp, &client->mode_resources) {
+            kywc_output_mode_v1_send_finished(resource);
+            wl_list_remove(wl_resource_get_link(resource));
+            wl_list_init(wl_resource_get_link(resource));
+            wl_resource_set_user_data(resource, NULL);
+        }
+        kywc_output_v1_send_finished(client->resource);
+        wl_resource_set_user_data(client->resource, NULL);
+        wl_list_remove(&client->link);
+        free(client);
+    }
+}
+
 static void handle_output_on(struct wl_listener *listener, void *data)
 {
     struct ky_output *ky_output = wl_container_of(listener, ky_output, on);
+
+    if (output_manager_get_fallback() == ky_output->kywc_output) {
+        manager_create_output_client_for_fallback_output(ky_output);
+    }
 
     struct ky_output_client *client;
     wl_list_for_each(client, &ky_output->clients, link) {
@@ -325,6 +364,10 @@ static void handle_output_off(struct wl_listener *listener, void *data)
     struct ky_output_client *client;
     wl_list_for_each(client, &ky_output->clients, link) {
         kywc_output_v1_send_enabled(client->resource, false);
+    }
+
+    if (output_manager_get_fallback() == ky_output->kywc_output) {
+        manager_destroy_output_client_for_fallback_output(ky_output);
     }
 
     manager_update_idle_source(ky_output->manager);
@@ -452,9 +495,6 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_new_output(struct wl_listener *listener, void *data)
 {
     struct kywc_output *kywc_output = data;
-    if (output_manager_get_fallback() == kywc_output) {
-        return;
-    }
 
     struct ky_output *ky_output = calloc(1, sizeof(*ky_output));
     if (!ky_output) {
@@ -492,6 +532,10 @@ static void handle_new_output(struct wl_listener *listener, void *data)
         manager->primary = ky_output;
     }
 
+    /* if the new fallback output disabled, return */
+    if (output_manager_get_fallback() == kywc_output && !kywc_output->state.enabled) {
+        return;
+    }
     /* send output and details */
     struct wl_resource *resource;
     struct ky_output_client *ky_client;
