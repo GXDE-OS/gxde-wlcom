@@ -71,6 +71,8 @@ bool output_manager_layout_init(struct output_manager *output_manager);
 
 void output_manager_get_layout_configs(struct output_manager *output_manager);
 
+bool output_manager_has_actual_outputs(void);
+
 bool xdg_output_manager_v1_create(struct server *server);
 
 void xdg_output_update_scale(float scale);

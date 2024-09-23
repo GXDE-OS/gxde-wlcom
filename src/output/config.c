@@ -18,6 +18,9 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
 
     struct output *output;
     wl_list_for_each(output, &om->outputs, link) {
+        if (output->base.prop.is_virtual || output->base.prop.is_fbdev) {
+            continue;
+        }
         json_object *config = json_object_object_get(om->config->json, output->base.name);
         const char *cfg = json_object_to_json_string(config);
         sd_bus_message_append(reply, "(ss)", output->base.name, cfg);

@@ -165,6 +165,9 @@ static void output_manager_generate_layout(struct output_manager *output_manager
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
         struct kywc_output *kywc_output = &output->base;
+        if (kywc_output == output_manager_get_fallback()) {
+            continue;
+        }
         if (is_active_layout && !kywc_output->state.enabled) {
             continue;
         }
@@ -206,7 +209,7 @@ void output_manager_get_layout_configs(struct output_manager *output_manager)
         return;
     }
 
-    if (wl_list_empty(&output_manager->outputs)) {
+    if (!output_manager_has_actual_outputs()) {
         return;
     }
     /* update current outputs layout */
@@ -239,10 +242,6 @@ void output_manager_get_layout_configs(struct output_manager *output_manager)
 
 static void output_manager_save_layouts(struct output_manager *manager)
 {
-    if (wl_list_empty(&manager->outputs)) {
-        return;
-    }
-
     char active_layout[UUID_SIZE];
     output_manager_generate_layout(manager, active_layout, true);
     output_manager_set_active_layout(manager, active_layout);
@@ -273,7 +272,7 @@ static void output_manager_handle_configured(struct wl_listener *listener, void 
 {
     struct output_manager *output_manager = wl_container_of(listener, output_manager, configured);
 
-    if (wl_list_empty(&output_manager->outputs)) {
+    if (!output_manager->has_layout_manager || !output_manager_has_actual_outputs()) {
         return;
     }
 
