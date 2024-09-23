@@ -116,22 +116,16 @@ static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
 
     struct ky_scene_node *node = &popup->popup_tree->node;
     ky_scene_node_set_enabled(node, true);
-    popup_add_fade_effect(node, node, FADE_IN, popup->topmost_popup, seat,
+    popup_add_fade_effect(node, FADE_IN, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
 }
 
 static void handle_xdg_popup_unmap(struct wl_listener *listener, void *data)
 {
     struct xdg_popup *popup = wl_container_of(listener, popup, unmap);
-    struct ky_scene_buffer *buffer =
-        ky_scene_buffer_try_from_surface(popup->wlr_xdg_popup->base->surface);
-    if (!buffer) {
-        return;
-    }
-
     struct wlr_seat *seat = popup->wlr_xdg_popup->seat;
     struct ky_scene_node *node = &popup->popup_tree->node;
-    popup_add_fade_effect(node, &buffer->node, FADE_OUT, popup->topmost_popup, seat,
+    popup_add_fade_effect(node, FADE_OUT, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
     ky_scene_node_set_enabled(node, false);
 }
