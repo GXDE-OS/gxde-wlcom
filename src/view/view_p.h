@@ -26,6 +26,8 @@ struct view_mode_interface {
     void (*view_request_tiled)(struct view *view, enum kywc_tile tile,
                                struct kywc_output *kywc_output);
 
+    void (*view_request_show_menu)(struct view *view, struct seat *seat, int x, int y);
+
     void (*view_click)(struct seat *seat, struct view *view, uint32_t button, bool pressed,
                        enum click_state state);
     void (*view_hover)(struct seat *seat, struct view *view);

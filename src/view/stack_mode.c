@@ -65,6 +65,14 @@ static void stack_mode_view_tiled(struct view *view, enum kywc_tile tile,
     view_do_tiled(view, tile, kywc_output);
 }
 
+static void stack_mode_view_show_menu(struct view *view, struct seat *seat, int x, int y)
+{
+    if (!view->current_proxy) {
+        return;
+    }
+    window_menu_show(view, seat, x, y);
+}
+
 static void stack_mode_view_click(struct seat *seat, struct view *view, uint32_t button,
                                   bool pressed, enum click_state state)
 {
@@ -93,6 +101,8 @@ static const struct view_mode_interface stack_mode_impl = {
     .view_request_maximized = stack_mode_view_maximized,
     .view_request_fullscreen = stack_mode_view_fullscreen,
     .view_request_tiled = stack_mode_view_tiled,
+
+    .view_request_show_menu = stack_mode_view_show_menu,
 
     .view_click = stack_mode_view_click,
     .view_hover = NULL,

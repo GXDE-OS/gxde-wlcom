@@ -1666,11 +1666,9 @@ void view_close_popups(struct view *view)
 
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
 {
-    /* still show window menu even if no ssd used */
-    if (!view->current_proxy) {
-        return;
+    if (view_manager->mode->impl->view_request_show_menu) {
+        view_manager->mode->impl->view_request_show_menu(view, seat, x, y);
     }
-    window_menu_show(view, seat, x, y);
 }
 
 void view_manager_show_desktop(bool enabled, bool apply)
