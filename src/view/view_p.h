@@ -48,7 +48,6 @@ struct view_manager {
     struct {
         struct wl_signal new_view;
         struct wl_signal new_mapped_view;
-        struct wl_signal window_menu;
         struct wl_signal show_desktop;
     } events;
 
@@ -82,12 +81,6 @@ struct view_manager {
 
     struct wl_list view_modes; // struct view_mode.link
     struct view_mode *mode;
-};
-
-struct view_show_window_menu_event {
-    struct view *view;
-    struct seat *seat;
-    int x, y;
 };
 
 bool view_manager_config_init(struct view_manager *view_manager);
@@ -127,6 +120,8 @@ bool window_actions_create(struct view_manager *view_manager);
 bool view_manager_actions_create(struct view_manager *view_manager);
 
 bool window_menu_manager_create(struct view_manager *view_manager);
+
+void window_menu_show(struct view *view, struct seat *seat, int x, int y);
 
 bool maximize_switcher_create(struct view_manager *view_manager);
 

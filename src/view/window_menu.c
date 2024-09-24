@@ -418,11 +418,14 @@ static struct window_menu *window_menu_by_seat(struct seat *seat)
     return window_menu_create(seat);
 }
 
-static void handle_window_menu(struct wl_listener *listener, void *data)
+void window_menu_show(struct view *view, struct seat *seat, int x, int y)
 {
-    struct view_show_window_menu_event *event = data;
+    if (!manager) {
+        return;
+    }
+
     /* create or find a window menu for this seat */
-    struct window_menu *window_menu = window_menu_by_seat(event->seat);
+    struct window_menu *window_menu = window_menu_by_seat(seat);
     if (!window_menu) {
         return;
     }
@@ -431,10 +434,10 @@ static void handle_window_menu(struct wl_listener *listener, void *data)
         window_menu_set_enabled(window_menu, false);
     }
 
-    window_menu->view = event->view;
+    window_menu->view = view;
     /* workaround: menu is too close to the menu */
-    window_menu->x = event->x + 8;
-    window_menu->y = event->y;
+    window_menu->x = x + 8;
+    window_menu->y = y;
     window_menu_set_enabled(window_menu, true);
 }
 
@@ -491,7 +494,6 @@ static void handle_new_workspace(struct wl_listener *listener, void *data)
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
-    wl_list_remove(&manager->window_menu.link);
     wl_list_remove(&manager->output_configured.link);
     wl_list_remove(&manager->new_workspace.link);
 
@@ -517,8 +519,6 @@ bool window_menu_manager_create(struct view_manager *view_manager)
 
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(view_manager->server, &manager->server_destroy);
-    manager->window_menu.notify = handle_window_menu;
-    wl_signal_add(&view_manager->events.window_menu, &manager->window_menu);
 
     wl_list_init(&manager->menus);
     manager->tree = ky_scene_tree_create(view_manager->layers[LAYER_POPUP].tree);
