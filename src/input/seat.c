@@ -173,6 +173,8 @@ static void seat_update_capabilities(struct seat *seat)
     }
 
     wlr_seat_set_capabilities(seat->wlr_seat, seat->caps);
+    /* auto hide cursor if no pointer cap */
+    cursor_set_hidden(seat->cursor, !(seat->caps & WL_SEAT_CAPABILITY_POINTER));
 }
 
 void seat_add_input(struct seat *seat, struct input *input)
