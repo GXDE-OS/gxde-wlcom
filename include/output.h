@@ -72,7 +72,7 @@ struct output {
     uint32_t quirks;
 };
 
-typedef void (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);
+typedef bool (*output_iterator_func_t)(struct kywc_output *output, int index, void *data);
 
 uint32_t output_manager_for_each_output(output_iterator_func_t iterator, bool enabled, void *data);
 

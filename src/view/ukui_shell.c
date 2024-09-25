@@ -402,10 +402,11 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
     .cancel = keyboard_grab_cancel,
 };
 
-static void end_remain_grab(struct seat *seat, int index, void *data)
+static bool end_remain_grab(struct seat *seat, int index, void *data)
 {
     wlr_seat_keyboard_end_grab(seat->wlr_seat);
     wlr_seat_keyboard_clear_focus(seat->wlr_seat);
+    return false;
 }
 
 static struct ukui_keyboard_grab *get_or_create_keyboard_grab(struct ukui_surface *surface,
@@ -429,10 +430,11 @@ static struct ukui_keyboard_grab *get_or_create_keyboard_grab(struct ukui_surfac
     return grab;
 }
 
-static void start_grab_keyboard_foreach(struct seat *seat, int index, void *data)
+static bool start_grab_keyboard_foreach(struct seat *seat, int index, void *data)
 {
     struct ukui_surface *surface = data;
     get_or_create_keyboard_grab(surface, seat);
+    return false;
 }
 
 static void end_ukui_grab_keyboard(struct ukui_keyboard_grab *ukui_keyboard_grab)
@@ -801,11 +803,12 @@ static void handle_create_surface(struct wl_client *client, struct wl_resource *
     }
 }
 
-static void send_seat_output(struct seat *seat, int index, void *data)
+static bool send_seat_output(struct seat *seat, int index, void *data)
 {
     struct wl_resource *resource = data;
     struct kywc_output *kywc_output = kywc_output_at_point(seat->cursor->lx, seat->cursor->ly);
     ukui_shell_send_current_output(resource, kywc_output->name, seat->name);
+    return false;
 }
 
 static void handle_get_current_output(struct wl_client *client, struct wl_resource *shell_resource)

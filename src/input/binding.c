@@ -605,12 +605,14 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
 
 void kywc_key_binding_for_each(binding_iterator_func_t iterator)
 {
-
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
         struct key_binding *binding;
         struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_for_each(binding, &keysyms_binding->bindings, link) {
-            iterator(binding, binding->keybind, binding->desc, binding->modifiers, binding->keysym);
+            if (iterator(binding, binding->keybind, binding->desc, binding->modifiers,
+                         binding->keysym)) {
+                return;
+            }
         }
     }
 }

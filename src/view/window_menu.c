@@ -239,7 +239,7 @@ static bool move_screen_action(struct menu_item *item, uint32_t key, void *data)
     return true;
 }
 
-static void screen_update(struct kywc_output *output, int index, void *data)
+static bool screen_update(struct kywc_output *output, int index, void *data)
 {
     assert(index < MAX_OUTPUTS);
 
@@ -258,6 +258,8 @@ static void screen_update(struct kywc_output *output, int index, void *data)
     menu_item_set_checked(screen->item, window_menu->view->output == output);
     screen->window_menu = window_menu;
     screen->output = output;
+
+    return false;
 }
 
 static void window_menu_update_screen(struct window_menu *window_menu)

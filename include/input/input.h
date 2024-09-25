@@ -130,7 +130,7 @@ struct input {
     struct wl_listener destroy;
 };
 
-typedef void (*seat_iterator_func_t)(struct seat *seat, int index, void *data);
+typedef bool (*seat_iterator_func_t)(struct seat *seat, int index, void *data);
 
 uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data);
 

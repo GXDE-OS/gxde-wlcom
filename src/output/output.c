@@ -1019,7 +1019,9 @@ uint32_t output_manager_for_each_output(output_iterator_func_t iterator, bool en
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
         if (output->base.state.enabled == enabled) {
-            iterator(&output->base, index++, data);
+            if (iterator(&output->base, index++, data)) {
+                break;
+            }
         }
     }
     return index;

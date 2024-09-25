@@ -1124,7 +1124,7 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
 
 static const char *component_builtin = "kylin-wlcom";
 
-static void kglobalaccel_builtin_shortcuts(struct key_binding *binding, char *unique_name,
+static bool kglobalaccel_builtin_shortcuts(struct key_binding *binding, char *unique_name,
                                            char *friendly_name, int32_t modifiers, int32_t key)
 {
     struct global_shortcut *shortcut =
@@ -1144,6 +1144,8 @@ static void kglobalaccel_builtin_shortcuts(struct key_binding *binding, char *un
     shortcut->key = modifiers_to_qtkey(modifiers) | keysym_to_qtkey(key);
     shortcut->is_present = true;
     shortcut->is_registered = true;
+
+    return false;
 }
 
 bool kde_global_accel_manager_create(struct config_manager *config_manager)

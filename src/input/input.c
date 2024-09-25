@@ -289,7 +289,9 @@ uint32_t input_manager_for_each_seat(seat_iterator_func_t iterator, void *data)
     uint32_t index = 0;
     struct seat *seat;
     wl_list_for_each(seat, &input_manager->seats, link) {
-        iterator(seat, index++, data);
+        if (iterator(seat, index++, data)) {
+            break;
+        }
     }
     return index;
 }

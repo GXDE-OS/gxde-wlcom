@@ -619,11 +619,12 @@ static struct capture_request *capture_request_create(struct output *output,
     return request;
 }
 
-static void create_request(struct kywc_output *kywc_output, int index, void *data)
+static bool create_request(struct kywc_output *kywc_output, int index, void *data)
 {
     struct output *output = output_from_kywc_output(kywc_output);
     struct capture_buffer *buffer = data;
     capture_request_create(output, buffer);
+    return false;
 }
 
 static struct capture_buffer *capture_buffer_get_or_create(enum capture_type type, uint32_t options,

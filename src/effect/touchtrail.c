@@ -401,10 +401,11 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     seat_touch_create(effect, seat);
 }
 
-static void handle_seat(struct seat *seat, int index, void *data)
+static bool handle_seat(struct seat *seat, int index, void *data)
 {
     struct touchtrail_effect *effect = data;
     seat_touch_create(effect, seat);
+    return false;
 }
 
 static void handle_effect_enable(struct wl_listener *listener, void *data)

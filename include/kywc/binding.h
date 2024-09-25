@@ -93,7 +93,7 @@ void kywc_key_binding_unregister(struct key_binding *binding);
 
 bool kywc_key_binding_is_registered(struct key_binding *binding);
 
-typedef void (*binding_iterator_func_t)(struct key_binding *binding, char *keybind, char *desc,
+typedef bool (*binding_iterator_func_t)(struct key_binding *binding, char *keybind, char *desc,
                                         int32_t modifiers, int32_t key);
 
 void kywc_key_binding_for_each(binding_iterator_func_t iterator);
