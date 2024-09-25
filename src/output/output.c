@@ -1306,7 +1306,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
         wlr_output_state_finish(&wlr_state);
     }
 
-    /* fix gamma supoort by get gamma_size again */
+    /* fix gamma support by get gamma_size again */
     output->base.prop.gamma_size = wlr_output_get_gamma_size(wlr_output);
     /* gamma settings for brightness and color temperature */
     output->color_temp = state->color_temp;

@@ -15,7 +15,7 @@ struct cursor_output {
     struct wl_list link;
     struct input_monitor *monitor;
 
-    struct kywc_output *ouput;
+    struct kywc_output *output;
     struct wl_listener on;
     struct wl_listener destroy;
 };
@@ -102,7 +102,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_output_on(struct wl_listener *listener, void *data)
 {
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, on);
-    struct kywc_output *kywc_output = cursor_output->ouput;
+    struct kywc_output *kywc_output = cursor_output->output;
 
     input_restore_mapped_output(cursor_output->monitor, kywc_output);
 }
@@ -118,7 +118,7 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     struct kywc_output *kywc_output = data;
 
     cursor_output->monitor = input_monitor;
-    cursor_output->ouput = kywc_output;
+    cursor_output->output = kywc_output;
     wl_list_insert(&input_monitor->outputs, &cursor_output->link);
 
     cursor_output->on.notify = handle_output_on;
