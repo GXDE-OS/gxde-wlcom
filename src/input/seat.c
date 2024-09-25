@@ -150,23 +150,6 @@ void seat_destroy(struct seat *seat)
     wlr_seat_destroy(wlr_seat);
 }
 
-void seat_consider_destroy(struct seat *seat)
-{
-    struct input *input;
-    wl_list_for_each(input, &seat->inputs, seat_link) {
-        if (!input->prop.is_virtual) {
-            return;
-        }
-    }
-
-    if (seat->manager->default_seat == seat) {
-        kywc_log(KYWC_WARN, "the default seat(seat0) can't be destroyed");
-        return;
-    }
-
-    seat_destroy(seat);
-}
-
 static void seat_update_capabilities(struct seat *seat)
 {
     struct input *input;

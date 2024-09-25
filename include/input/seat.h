@@ -106,7 +106,6 @@ struct seat {
 struct seat *seat_create(struct input_manager *input_manager, const char *name);
 
 void seat_destroy(struct seat *seat);
-void seat_consider_destroy(struct seat *seat);
 
 void seat_add_input(struct seat *seat, struct input *input);
 

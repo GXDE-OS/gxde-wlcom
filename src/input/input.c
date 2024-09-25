@@ -93,10 +93,8 @@ static void input_destroy(struct input *input)
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 
-    struct seat *seat = input->seat;
-    if (seat) {
+    if (input->seat) {
         seat_remove_input(input);
-        seat_consider_destroy(seat);
     }
 
     free((void *)input->name);
@@ -404,9 +402,7 @@ void input_set_seat(struct input *input, const char *seat)
             return;
         } else {
             /* remove from prev seat */
-            struct seat *prev = input->seat;
             seat_remove_input(input);
-            seat_consider_destroy(prev);
         }
     }
 
