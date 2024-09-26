@@ -696,8 +696,9 @@ static void output_update_idle_source(struct kde_output_device *output_device)
 static void kde_output_device_handle_on(struct wl_listener *listener, void *data)
 {
     struct kde_output_device *output_device = wl_container_of(listener, output_device, on);
-    if (output_device->kywc_output == output_manager_get_fallback() && !output_device->global) {
-        /* create the fallback global */
+
+    /* create the fallback global */
+    if (output_device->kywc_output == output_manager_get_fallback()) {
         output_device->global =
             wl_global_create(management->display, &kde_output_device_v2_interface,
                              OUTPUT_DEVICE_VERSION, output_device, kde_output_device_bind);
@@ -717,18 +718,19 @@ static void kde_output_device_handle_off(struct wl_listener *listener, void *dat
 {
     struct kde_output_device *output_device = wl_container_of(listener, output_device, off);
 
+    /* destroy the fallback global */
+    if (output_device->kywc_output == output_manager_get_fallback()) {
+        wl_global_destroy_safe(output_device->global);
+        output_device->global = NULL;
+        return;
+    }
+
     struct kde_output_device_client *client;
     wl_list_for_each(client, &output_device->clients, link) {
         kde_output_device_v2_send_enabled(client->resource, false);
     }
 
     output_update_idle_source(output_device);
-
-    /* destroy the fallback global */
-    if (output_device->kywc_output == output_manager_get_fallback()) {
-        wl_global_destroy_safe(output_device->global);
-        output_device->global = NULL;
-    }
 }
 
 static void kde_output_device_handle_mode(struct wl_listener *listener, void *data)
