@@ -30,6 +30,10 @@ void ky_output_destroy(struct ky_output *output)
         output->destroy(output);
     }
 
+    if (output == output->manager->primary) {
+        output->manager->primary = NULL;
+    }
+
     wl_list_remove(&output->link);
 
     free((void *)output->base.uuid);
