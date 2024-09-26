@@ -29,8 +29,7 @@ struct key_binding {
     void *data;
 };
 
-struct keysyms_binding_type {
-    enum key_binding_type type;
+struct keysyms_binding {
     struct wl_list bindings; /* key binding */
 };
 
@@ -49,7 +48,7 @@ struct gesture_binding {
 };
 
 static struct bindings {
-    struct keysyms_binding_type keysyms_binding[KEY_BINDING_TYPE_NUM];
+    struct keysyms_binding keysyms_binding[KEY_BINDING_TYPE_NUM];
     struct wl_list gesture_bindings;
     struct wl_listener server_destroy;
 
@@ -172,7 +171,7 @@ static bool key_binding_is_valid(struct key_binding *binding, uint32_t keysym, u
 {
     for (int i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
         struct key_binding *bind;
-        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_for_each(bind, &keysyms_binding->bindings, link) {
             /* skip itself */
             if (bind == binding) {
@@ -201,7 +200,7 @@ bool kywc_key_binding_register(struct key_binding *binding, enum key_binding_typ
         return false;
     }
 
-    struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[type];
+    struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[type];
     wl_list_insert(&keysyms_binding->bindings, &binding->link);
     bindings->keysyms_binding_masks |= 1 << type;
 
@@ -250,7 +249,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&bindings->server_destroy.link);
 
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
-        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
         struct key_binding *key_binding, *key_binding_tmp;
         wl_list_for_each_safe(key_binding, key_binding_tmp, &keysyms_binding->bindings, link) {
             kywc_key_binding_destroy(key_binding);
@@ -276,7 +275,7 @@ bool bindings_create(struct input_manager *input_manager)
     bindings->keysym_bindings_block = false;
 
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
-        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_init(&keysyms_binding->bindings);
     }
     wl_list_init(&bindings->gesture_bindings);
@@ -310,7 +309,7 @@ bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *re
         }
 
         struct key_binding *binding;
-        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_for_each(binding, &keysyms_binding->bindings, link) {
             if ((keyboard_state->only_one_modifier && binding->keysym) ||
                 (!keyboard_state->only_one_modifier && !binding->keysym)) {
@@ -607,7 +606,7 @@ void kywc_key_binding_for_each(binding_iterator_func_t iterator)
 {
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
         struct key_binding *binding;
-        struct keysyms_binding_type *keysyms_binding = &bindings->keysyms_binding[i];
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
         wl_list_for_each(binding, &keysyms_binding->bindings, link) {
             if (iterator(binding, binding->keybind, binding->desc, binding->modifiers,
                          binding->keysym)) {
