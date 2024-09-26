@@ -15,7 +15,6 @@ struct ky_output_manager {
 
     struct wl_list resources;
     struct wl_list outputs;
-    struct ky_output *primary;
 
     struct wl_listener new_output;
     struct wl_listener primary_output;
@@ -276,8 +275,9 @@ static void ky_output_manager_bind(struct wl_client *client, void *data, uint32_
         ky_client = output_client_find_for_client(ky_output, client);
         send_details_to_output_client(ky_client);
     }
-    if (manager->primary) {
-        ky_client = output_client_find_for_client(manager->primary, client);
+    ky_output = ky_output_from_kywc_output(manager, kywc_output_get_primary());
+    if (ky_output) {
+        ky_client = output_client_find_for_client(ky_output, client);
         kywc_output_manager_v1_send_primary(resource, ky_client->resource);
     }
     kywc_output_manager_v1_send_done(resource);
@@ -307,10 +307,7 @@ static void manager_update_idle_source(struct ky_output_manager *manager)
 
 static void manager_create_output_client_for_fallback_output(struct ky_output *ky_output)
 {
-    /* fallback_output has already been used by client */
-    if (!wl_list_empty(&ky_output->clients)) {
-        return;
-    }
+    wl_list_insert(&ky_output->manager->outputs, &ky_output->link);
 
     struct wl_resource *resource;
     struct ky_output_client *ky_client;
@@ -318,6 +315,9 @@ static void manager_create_output_client_for_fallback_output(struct ky_output *k
     wl_resource_for_each(resource, &manager->resources) {
         ky_client = create_output_client_for_resource(ky_output, resource);
         send_details_to_output_client(ky_client);
+        if (kywc_output_get_primary() == ky_output->kywc_output) {
+            kywc_output_manager_v1_send_primary(resource, ky_client->resource);
+        }
         kywc_output_manager_v1_send_done(resource);
     }
 }
@@ -338,6 +338,9 @@ static void manager_destroy_output_client_for_fallback_output(struct ky_output *
         wl_list_remove(&client->link);
         free(client);
     }
+
+    wl_list_remove(&ky_output->link);
+    wl_list_init(&ky_output->link);
 }
 
 static void handle_output_on(struct wl_listener *listener, void *data)
@@ -346,6 +349,7 @@ static void handle_output_on(struct wl_listener *listener, void *data)
 
     if (output_manager_get_fallback() == ky_output->kywc_output) {
         manager_create_output_client_for_fallback_output(ky_output);
+        return;
     }
 
     struct ky_output_client *client;
@@ -361,13 +365,14 @@ static void handle_output_off(struct wl_listener *listener, void *data)
 {
     struct ky_output *ky_output = wl_container_of(listener, ky_output, off);
 
+    if (output_manager_get_fallback() == ky_output->kywc_output) {
+        manager_destroy_output_client_for_fallback_output(ky_output);
+        return;
+    }
+
     struct ky_output_client *client;
     wl_list_for_each(client, &ky_output->clients, link) {
         kywc_output_v1_send_enabled(client->resource, false);
-    }
-
-    if (output_manager_get_fallback() == ky_output->kywc_output) {
-        manager_destroy_output_client_for_fallback_output(ky_output);
     }
 
     manager_update_idle_source(ky_output->manager);
@@ -494,8 +499,6 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 
 static void handle_new_output(struct wl_listener *listener, void *data)
 {
-    struct kywc_output *kywc_output = data;
-
     struct ky_output *ky_output = calloc(1, sizeof(*ky_output));
     if (!ky_output) {
         return;
@@ -504,8 +507,8 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     struct ky_output_manager *manager = wl_container_of(listener, manager, new_output);
     ky_output->manager = manager;
     wl_list_init(&ky_output->clients);
-    wl_list_insert(&manager->outputs, &ky_output->link);
 
+    struct kywc_output *kywc_output = data;
     ky_output->kywc_output = kywc_output;
     ky_output->on.notify = handle_output_on;
     wl_signal_add(&kywc_output->events.on, &ky_output->on);
@@ -528,20 +531,23 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     ky_output->destroy.notify = handle_output_destroy;
     wl_signal_add(&kywc_output->events.destroy, &ky_output->destroy);
 
-    if (kywc_output == kywc_output_get_primary()) {
-        manager->primary = ky_output;
-    }
-
     /* if the new fallback output disabled, return */
     if (output_manager_get_fallback() == kywc_output && !kywc_output->state.enabled) {
+        wl_list_init(&ky_output->link);
         return;
     }
+
+    wl_list_insert(&manager->outputs, &ky_output->link);
+
     /* send output and details */
     struct wl_resource *resource;
     struct ky_output_client *ky_client;
     wl_resource_for_each(resource, &manager->resources) {
         ky_client = create_output_client_for_resource(ky_output, resource);
         send_details_to_output_client(ky_client);
+        if (kywc_output == kywc_output_get_primary()) {
+            kywc_output_manager_v1_send_primary(resource, ky_client->resource);
+        }
         kywc_output_manager_v1_send_done(resource);
     }
 }
@@ -550,15 +556,15 @@ static void handle_primary_output(struct wl_listener *listener, void *data)
 {
     struct ky_output_manager *manager = wl_container_of(listener, manager, primary_output);
     struct kywc_output *kywc_output = data;
-    manager->primary = ky_output_from_kywc_output(manager, kywc_output);
-    if (!manager->primary) {
+    struct ky_output *primary = ky_output_from_kywc_output(manager, kywc_output);
+    if (!primary) {
         return;
     }
 
     struct wl_resource *resource;
     struct ky_output_client *client;
     wl_resource_for_each(resource, &manager->resources) {
-        client = output_client_find_for_client(manager->primary, wl_resource_get_client(resource));
+        client = output_client_find_for_client(primary, wl_resource_get_client(resource));
         kywc_output_manager_v1_send_primary(resource, client->resource);
         kywc_output_manager_v1_send_done(resource);
     }
