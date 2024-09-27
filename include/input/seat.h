@@ -56,6 +56,20 @@ struct seat_keyboard_shortcuts_inhibitor {
     struct wl_listener destroy;
 };
 
+struct seat_cursor_motion_event {
+    struct input *device;
+    uint32_t time_msec;
+    /* cursor in layout coord */
+    double lx, ly;
+};
+
+struct seat_keyboard_key_event {
+    struct input *device;
+    uint32_t time_msec;
+    uint32_t keycode;
+    bool pressed;
+};
+
 struct seat {
     struct wlr_seat *wlr_seat;
     char *name;
@@ -89,6 +103,9 @@ struct seat {
     struct selection *selection;
 
     struct {
+        struct wl_signal cursor_motion;
+        struct wl_signal cursor_configure;
+        struct wl_signal keyboard_key;
         struct wl_signal destroy;
     } events;
 

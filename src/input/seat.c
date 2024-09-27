@@ -124,6 +124,10 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
     wl_list_init(&seat->inputs);
     wl_list_init(&seat->keyboards);
     wl_list_init(&seat->keyboard_shortcuts_inhibitors);
+
+    wl_signal_init(&seat->events.cursor_motion);
+    wl_signal_init(&seat->events.cursor_configure);
+    wl_signal_init(&seat->events.keyboard_key);
     wl_signal_init(&seat->events.destroy);
 
     seat->state.cursor_theme = NULL;

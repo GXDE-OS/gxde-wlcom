@@ -145,6 +145,14 @@ void cursor_feed_motion(struct cursor *cursor, uint32_t time, struct wlr_input_d
 
     cursor_move(cursor, device, dx, dy, true, false);
 
+    struct seat_cursor_motion_event event = {
+        .device = device ? input_from_wlr_input(device) : NULL,
+        .time_msec = time,
+        .lx = cursor->lx,
+        .ly = cursor->ly,
+    };
+    wl_signal_emit_mutable(&cursor->seat->events.cursor_motion, &event);
+
     struct seat_pointer_grab *pointer_grab = cursor->seat->pointer_grab;
     if (pointer_grab && pointer_grab->interface->motion &&
         pointer_grab->interface->motion(pointer_grab, time, cursor->lx, cursor->ly)) {
@@ -771,11 +779,15 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     /* apply the new configuration */
     cursor_rebase(cursor);
 
-    if (saved) {
-        free((void *)cursor->seat->state.cursor_theme);
-        cursor->seat->state.cursor_theme = strdup(cursor->xcursor_manager->name);
-        cursor->seat->state.cursor_size = cursor->xcursor_manager->size;
+    if (!saved) {
+        return;
     }
+
+    free((void *)cursor->seat->state.cursor_theme);
+    cursor->seat->state.cursor_theme = strdup(cursor->xcursor_manager->name);
+    cursor->seat->state.cursor_size = cursor->xcursor_manager->size;
+
+    wl_signal_emit_mutable(&cursor->seat->events.cursor_configure, NULL);
 }
 
 struct cursor *cursor_create(struct seat *seat)

@@ -276,6 +276,14 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, uint32_t 
         return;
     }
 
+    struct seat_keyboard_key_event event = {
+        .device = input_from_wlr_input(&keyboard->wlr_keyboard->base),
+        .time_msec = time,
+        .keycode = key,
+        .pressed = pressed,
+    };
+    wl_signal_emit_mutable(&seat->events.keyboard_key, &event);
+
     if (seat->keyboard_grab && seat->keyboard_grab->interface->key &&
         seat->keyboard_grab->interface->key(seat->keyboard_grab, time, key, pressed, modifiers)) {
         keyboard_state_clear(&keyboard->state);
