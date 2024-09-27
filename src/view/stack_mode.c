@@ -8,6 +8,95 @@
 #include "theme.h"
 #include "view_p.h"
 
+struct stack_mode_view {
+    struct wl_list link;
+
+    char *uuid;
+    struct {
+        bool maximized, fullscreen;
+        enum kywc_tile tiled;
+        struct kywc_box geometry;
+    } saved;
+};
+
+static struct stack_mode_manager {
+    struct wl_list stack_views;
+
+    struct view_manager *view_manager;
+} *manager = NULL;
+
+static struct stack_mode_view *stack_mode_view_from_uuid(const char *uuid)
+{
+    if (!uuid) {
+        return NULL;
+    }
+
+    struct stack_mode_view *stack_view;
+    wl_list_for_each(stack_view, &manager->stack_views, link) {
+        if (strcmp(stack_view->uuid, uuid) == 0) {
+            return stack_view;
+        }
+    }
+
+    return NULL;
+}
+
+static void stack_mode_view_destroy(struct stack_mode_view *stack_view)
+{
+    wl_list_remove(&stack_view->link);
+    free(stack_view->uuid);
+    free(stack_view);
+}
+
+static void stack_mode_view_save(struct view *view)
+{
+    struct stack_mode_view *stack_view = calloc(1, sizeof(struct stack_mode_view));
+    if (!stack_view) {
+        return;
+    }
+
+    wl_list_insert(&manager->stack_views, &stack_view->link);
+    stack_view->uuid = strdup(view->base.uuid);
+    stack_view->saved.maximized = view->base.maximized;
+    stack_view->saved.fullscreen = view->base.fullscreen;
+    stack_view->saved.tiled = view->base.tiled;
+    stack_view->saved.geometry = view->base.geometry;
+}
+
+static void stack_mode_view_restore(struct view *view)
+{
+    struct stack_mode_view *stack_view = stack_mode_view_from_uuid(view->base.uuid);
+    if (!stack_view) {
+        return;
+    }
+
+    if (stack_view->saved.fullscreen) {
+        view_do_fullscreen(view, true, view->output);
+    } else if (stack_view->saved.maximized) {
+        if (view->base.fullscreen) {
+            view_do_fullscreen(view, false, view->output);
+        }
+        view_do_maximized(view, true, view->output);
+    } else if (stack_view->saved.tiled) {
+        if (view->base.fullscreen) {
+            view_do_fullscreen(view, false, view->output);
+        }
+        if (view->base.maximized) {
+            view_do_maximized(view, false, view->output);
+        }
+        view_do_tiled(view, stack_view->saved.tiled, view->output);
+    } else {
+        if (view->base.fullscreen) {
+            view_do_fullscreen(view, false, view->output);
+        }
+        if (view->base.maximized) {
+            view_do_maximized(view, false, view->output);
+        }
+        view_do_resize(view, &stack_view->saved.geometry);
+    }
+    stack_mode_view_destroy(stack_view);
+}
+
 static void stack_mode_view_map(struct view *view)
 {
     /* init view position */
@@ -97,6 +186,49 @@ static void stack_mode_enter(void)
 {
     theme_manager_set_interface(NULL);
     theme_manager_set_theme(theme_manager_get_current()->theme_type);
+
+    struct view *view;
+    struct view_manager *view_manager = manager->view_manager;
+    wl_list_for_each(view, &view_manager->views, link) {
+        if (!view->base.mapped || view->base.minimized ||
+            view->base.role != KYWC_VIEW_ROLE_NORMAL) {
+            continue;
+        }
+        stack_mode_view_restore(view);
+    }
+
+    struct stack_mode_view *stack_view, *tmp;
+    wl_list_for_each_safe(stack_view, tmp, &manager->stack_views, link) {
+        stack_mode_view_destroy(stack_view);
+    }
+}
+
+static void stack_mode_leave(void)
+{
+    struct view_manager *view_manager = manager->view_manager;
+
+    struct view *view;
+    wl_list_for_each(view, &view_manager->views, link) {
+        if (!view->base.mapped || view->base.role != KYWC_VIEW_ROLE_NORMAL) {
+            continue;
+        }
+        stack_mode_view_save(view);
+    }
+}
+
+static void stack_mode_destroy(void)
+{
+    if (!manager) {
+        return;
+    }
+
+    struct stack_mode_view *stack_view, *tmp;
+    wl_list_for_each_safe(stack_view, tmp, &manager->stack_views, link) {
+        stack_mode_view_destroy(stack_view);
+    }
+
+    free(manager);
+    manager = NULL;
 }
 
 static const struct view_mode_interface stack_mode_impl = {
@@ -119,12 +251,23 @@ static const struct view_mode_interface stack_mode_impl = {
     .view_hover = NULL,
 
     .view_mode_enter = stack_mode_enter,
-    .view_mode_leave = NULL,
+    .view_mode_leave = stack_mode_leave,
 
-    .mode_destroy = NULL,
+    .mode_destroy = stack_mode_destroy,
 };
 
 void stack_mode_register(struct view_manager *view_manager)
 {
-    view_manager_mode_register(&stack_mode_impl);
+    struct view_mode *mode = view_manager_mode_register(&stack_mode_impl);
+    if (!mode) {
+        return;
+    }
+
+    manager = calloc(1, sizeof(struct stack_mode_manager));
+    if (!manager) {
+        view_manager_mode_unregister(mode);
+        return;
+    }
+    wl_list_init(&manager->stack_views);
+    manager->view_manager = view_manager;
 }
