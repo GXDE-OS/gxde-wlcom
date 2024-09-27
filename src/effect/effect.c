@@ -803,14 +803,18 @@ bool effect_manager_create(struct server *server)
     watermark_effect_create(manager);
     move_effect_create(manager);
     scale_effect_create(manager);
+
     soft_gamma_effect_create(manager);
     touchclick_effect_create(manager);
     touchtrail_effect_create(manager);
     long_touch_effect_create(manager);
+
     fade_effect_create(manager);
     slide_effect_create(manager);
     translation_effect_create(manager);
     output_transform_effect_create(manager);
+
+    shake_cursor_effect_create(manager);
 
     return true;
 }
