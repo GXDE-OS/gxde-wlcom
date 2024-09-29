@@ -349,6 +349,8 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     free(effect);
 }
 
+static const struct effect_interface watemark_effect_impl = { 0 };
+
 bool watermark_effect_create(struct effect_manager *manager)
 {
     struct watermark_effect *effect = calloc(1, sizeof(*effect));
@@ -357,7 +359,7 @@ bool watermark_effect_create(struct effect_manager *manager)
     }
 
     /* enabled by default */
-    effect->effect = effect_create("watermark", 0, true, NULL, NULL);
+    effect->effect = effect_create("watermark", 0, true, &watemark_effect_impl, NULL);
     if (!effect->effect) {
         free(effect);
         return false;
