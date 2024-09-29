@@ -85,6 +85,7 @@ cairo = dependency('cairo')
 pango = dependency('pango')
 pangocairo = dependency('pangocairo')
 rsvg  = dependency('librsvg-2.0', version: '>=2.46')
+jpeg = dependency('libjpeg')
 udev = dependency('libudev')
 unwind = dependency('libunwind', required : get_option('libunwind'))
 
@@ -101,7 +102,7 @@ wlcom_deps = [
   wlroots, xkbcommon, drm, input, udev,
   pixman, xcb, jsonc, sdbus,
   math, dl, rt, thread, unwind,
-  cairo, pango, pangocairo, rsvg,
+  cairo, pango, pangocairo, rsvg, jpeg,
 ]
 
 wlcom_inc = include_directories('include')

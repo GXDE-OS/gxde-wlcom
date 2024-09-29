@@ -23,6 +23,9 @@ struct cairo_buffer *cairo_buffer_from_wlr_buffer(struct wlr_buffer *wlr_buffer)
 static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer)
 {
     struct cairo_buffer *buffer = cairo_buffer_from_wlr_buffer(wlr_buffer);
+    if (buffer->own_data) {
+        free(cairo_image_surface_get_data(buffer->surface));
+    }
     cairo_destroy(buffer->cairo);
     cairo_surface_destroy(buffer->surface);
     free(buffer);
@@ -32,7 +35,6 @@ static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer, ui
                                                void **data, uint32_t *format, size_t *stride)
 {
     struct cairo_buffer *buffer = cairo_buffer_from_wlr_buffer(wlr_buffer);
-
     *format = DRM_FORMAT_ARGB8888;
     *data = cairo_image_surface_get_data(buffer->surface);
     *stride = cairo_image_surface_get_stride(buffer->surface);
@@ -125,6 +127,26 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
 
     buffer->dst_width = width ? width : src_width;
     buffer->dst_height = height ? height : src_height;
+
+    return buffer;
+}
+
+struct cairo_buffer *cairo_buffer_create_from_jpeg(uint32_t width, uint32_t height,
+                                                   const char *jpeg_path)
+{
+    uint32_t src_width, src_height;
+    uint8_t *src_data = decode_jpeg(jpeg_path, &src_width, &src_height);
+    if (!src_data) {
+        return NULL;
+    }
+
+    struct cairo_buffer *buffer =
+        cairo_buffer_create_from_pixel(width, height, src_width, src_height, src_data);
+    if (buffer) {
+        buffer->own_data = true;
+    } else {
+        free(src_data);
+    }
 
     return buffer;
 }

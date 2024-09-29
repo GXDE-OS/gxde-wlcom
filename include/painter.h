@@ -78,9 +78,10 @@ struct draw_info {
     /* blur support */
     int blur_margin;
 
-    /* image: svg and png */
+    /* image: svg, png and jpeg */
     const char *svg, *hover_svg;
     const char *png_path;
+    const char *jpeg_path;
     struct {
         uint32_t width, height;
         void *data; // pixel data  can be null
