@@ -108,6 +108,7 @@ struct theme_manager {
         struct wl_signal icon_update;
     } events;
 
+    struct server *server;
     struct wl_listener display_destroy;
     struct wl_listener server_destroy;
 };

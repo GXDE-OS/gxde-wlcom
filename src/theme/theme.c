@@ -19,6 +19,7 @@
 #include "config.h"
 #include "nls.h"
 #include "painter.h"
+#include "render/renderer.h"
 #include "server.h"
 #include "theme_p.h"
 
@@ -170,13 +171,7 @@ static int handle_manager_timer(void *data)
 
 static struct wlr_buffer *draw_svg(const char *svg, int width, int height, float scale)
 {
-    struct draw_info info = {
-        .width = width,
-        .height = height,
-        .scale = scale,
-        .svg = svg,
-    };
-
+    struct draw_info info = { .width = width, .height = height, .scale = scale, .svg = svg };
     return painter_draw_buffer(&info);
 }
 
@@ -187,11 +182,26 @@ static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
         return NULL;
     }
 
+    struct wlr_buffer *buffer =
+        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 3, scale);
+    if (!buffer) {
+        free(buffers);
+        return NULL;
+    }
+
     buffers->scale = scale;
     wl_list_insert(&theme->scaled_buffers, &buffers->link);
 
-    buffers->buf =
-        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 3, scale);
+    int width, height;
+    painter_buffer_size(buffer, &width, &height);
+
+    buffers->buf = ky_renderer_upload_pixels(manager->server->renderer, manager->server->allocator,
+                                             width, height, buffer);
+    if (buffers->buf) {
+        wlr_buffer_drop(buffer);
+    } else {
+        buffers->buf = buffer;
+    }
 
     return buffers;
 }
@@ -345,6 +355,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     wl_signal_init(&manager->events.update);
     wl_signal_init(&manager->events.icon_update);
 
+    manager->server = server;
     manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &manager->display_destroy);
     manager->server_destroy.notify = handle_server_destroy;
