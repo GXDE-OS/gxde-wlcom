@@ -230,3 +230,45 @@ bool ky_renderer_is_software(struct wlr_renderer *renderer)
 
     return false;
 }
+
+struct wlr_buffer *ky_renderer_upload_pixels(struct wlr_renderer *renderer,
+                                             struct wlr_allocator *alloc, int width, int height,
+                                             struct wlr_buffer *pixels)
+{
+    /* upload is meaningless when pixman */
+    if (wlr_renderer_is_pixman(renderer)) {
+        return NULL;
+    }
+
+    void *data = NULL;
+    uint32_t drm_format;
+    size_t stride;
+    if (!wlr_buffer_begin_data_ptr_access(pixels, WLR_BUFFER_DATA_PTR_ACCESS_READ, &data,
+                                          &drm_format, &stride)) {
+        return NULL;
+    }
+    wlr_buffer_end_data_ptr_access(pixels);
+
+    struct wlr_buffer *buffer =
+        ky_renderer_create_buffer(renderer, alloc, width, height, drm_format, false);
+    if (!buffer) {
+        return NULL;
+    }
+
+    struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(renderer, buffer, NULL);
+    if (!pass) {
+        wlr_buffer_drop(buffer);
+        return NULL;
+    }
+
+    struct wlr_texture *tex = wlr_texture_from_buffer(renderer, pixels);
+    struct wlr_render_texture_options options = {
+        .texture = tex,
+        .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+    };
+    wlr_render_pass_add_texture(pass, &options);
+    wlr_texture_destroy(tex);
+    wlr_render_pass_submit(pass);
+
+    return buffer;
+}

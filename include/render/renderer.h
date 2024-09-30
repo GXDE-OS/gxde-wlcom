@@ -26,4 +26,8 @@ struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
 
 bool ky_renderer_is_software(struct wlr_renderer *renderer);
 
+struct wlr_buffer *ky_renderer_upload_pixels(struct wlr_renderer *renderer,
+                                             struct wlr_allocator *alloc, int width, int height,
+                                             struct wlr_buffer *pixels);
+
 #endif /* _RENDER_H_ */
