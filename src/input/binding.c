@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -52,7 +53,8 @@ static struct bindings {
     struct wl_list gesture_bindings;
     struct wl_listener server_destroy;
 
-    bool keysym_bindings_block;
+    size_t keysym_bindings_block;
+    size_t type_nlocks[KEY_BINDING_TYPE_NUM];
     uint32_t keysyms_binding_masks; /* binding mask */
 } *bindings = NULL;
 
@@ -202,7 +204,10 @@ bool kywc_key_binding_register(struct key_binding *binding, enum key_binding_typ
 
     struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[type];
     wl_list_insert(&keysyms_binding->bindings, &binding->link);
-    bindings->keysyms_binding_masks |= 1 << type;
+    /* Make sure the type is unblocking */
+    if (!bindings->type_nlocks[type]) {
+        bindings->keysyms_binding_masks |= 1 << type;
+    }
 
     if (action) {
         binding->action = action;
@@ -271,8 +276,6 @@ bool bindings_create(struct input_manager *input_manager)
     if (!bindings) {
         return false;
     }
-
-    bindings->keysym_bindings_block = false;
 
     for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
         struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
@@ -618,8 +621,11 @@ void kywc_key_binding_for_each(binding_iterator_func_t iterator)
 
 void kywc_key_binding_block_all(bool block)
 {
-    if (bindings->keysym_bindings_block != block) {
-        bindings->keysym_bindings_block = block;
+    if (block) {
+        bindings->keysym_bindings_block++;
+    } else {
+        assert(bindings->keysym_bindings_block > 0);
+        bindings->keysym_bindings_block--;
     }
 }
 
@@ -627,8 +633,13 @@ void kywc_key_binding_block_type(enum key_binding_type type, bool block)
 {
     if (block) {
         bindings->keysyms_binding_masks &= ~(1 << type);
+        bindings->type_nlocks[type]++;
     } else {
-        bindings->keysyms_binding_masks |= (1 << type);
+        assert(bindings->type_nlocks[type] > 0);
+        bindings->type_nlocks[type]--;
+        if (!bindings->type_nlocks[type]) {
+            bindings->keysyms_binding_masks |= (1 << type);
+        }
     }
 }
 
