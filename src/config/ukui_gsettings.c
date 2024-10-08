@@ -18,13 +18,8 @@ struct ukui_settings {
 
     struct {
         GSettings *settings;
-        char *style_name;
-        char *icon_theme;
-        char *accent_color;
         char *font_name;
         char *font_size;
-        int window_radius;
-        int menu_transparency;
     } style;
 
     struct wl_listener destroy;
@@ -53,15 +48,11 @@ static const char *menu_transparency_key = "menu-transparency";
 
 static struct ukui_accent_color {
     char *name;
-    float accent_color[4];
+    int32_t color;
 } ukui_accent_colors[] = {
-    { "daybreakBlue", { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 } },
-    { "jamPurple", { 114.0 / 255, 46.0 / 255, 209.0 / 255, 1.0 } },
-    { "magenta", { 235.0 / 255, 48.0 / 255, 150.0 / 255, 1.0 } },
-    { "sunRed", { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 } },
-    { "sunsetOrange", { 246.0 / 255, 140.0 / 255, 39.0 / 255, 1.0 } },
-    { "dustGold", { 255.0 / 255, 217.0 / 255, 102.0 / 255, 1.0 } },
-    { "polarGreen", { 82.0 / 255, 196.0 / 255, 41.0 / 255, 1.0 } },
+    { "daybreakBlue", 0x3790FA }, { "jamPurple", 0x722ED1 },    { "magenta", 0xEB3096 },
+    { "sunRed", 0xF3222D },       { "sunsetOrange", 0xF68C27 }, { "dustGold", 0xFFD966 },
+    { "polarGreen", 0x52C429 },
 };
 
 static struct ukui_settings *settings = NULL;
@@ -90,20 +81,18 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 
 static void style_name_changed(GSettings *style, const char *key)
 {
-    free(settings->style.style_name);
-    settings->style.style_name = g_settings_get_string(style, key);
-    if (!strcmp(settings->style.style_name, UKUI_THEME_LIGHT)) {
+    const char *style_name = g_settings_get_string(style, key);
+    if (!strcmp(style_name, UKUI_THEME_LIGHT)) {
         theme_manager_set_theme(THEME_TYPE_LIGHT);
-    } else if (!strcmp(settings->style.style_name, UKUI_THEME_DARK)) {
+    } else if (!strcmp(style_name, UKUI_THEME_DARK)) {
         theme_manager_set_theme(THEME_TYPE_DARK);
     }
 }
 
 static void icon_theme_changed(GSettings *style, const char *key)
 {
-    free(settings->style.icon_theme);
-    settings->style.icon_theme = g_settings_get_string(style, key);
-    theme_manager_set_icon_theme(settings->style.icon_theme);
+    const char *icon_theme = g_settings_get_string(style, key);
+    theme_manager_set_icon_theme(icon_theme);
 }
 
 static void font_style_changed(GSettings *style, const char *key)
@@ -120,42 +109,28 @@ static void font_style_changed(GSettings *style, const char *key)
     }
 }
 
-static int32_t get_color_int(float *rgba)
+static void accent_color_changed(GSettings *style, const char *key)
 {
-    int32_t color = (int)(rgba[0] * 255) << 16;
-    color |= (int)(rgba[1] * 255) << 8;
-    color |= (int)(rgba[2] * 255);
-    return color;
-}
+    const char *accent_color = g_settings_get_string(style, key);
 
-static void theme_manager_apply_accent_color(void)
-{
     for (size_t i = 0; i < sizeof(ukui_accent_colors) / sizeof(struct ukui_accent_color); i++) {
-        if (strcmp(settings->style.accent_color, ukui_accent_colors[i].name) == 0) {
-            uint32_t color = get_color_int(ukui_accent_colors[i].accent_color);
-            theme_manager_set_accent_color(color);
+        if (strcmp(accent_color, ukui_accent_colors[i].name) == 0) {
+            theme_manager_set_accent_color(ukui_accent_colors[i].color);
             return;
         }
     }
 }
 
-static void accent_color_changed(GSettings *style, const char *key)
-{
-    free(settings->style.accent_color);
-    settings->style.accent_color = g_settings_get_string(style, key);
-    theme_manager_apply_accent_color();
-}
-
 static void window_radius_changed(GSettings *style, const char *key)
 {
-    settings->style.window_radius = g_settings_get_int(style, key);
-    theme_manager_set_corner_radius(settings->style.window_radius);
+    int window_radius = g_settings_get_int(style, key);
+    theme_manager_set_corner_radius(window_radius);
 }
 
 static void menu_transparency_changed(GSettings *style, const char *key)
 {
-    settings->style.menu_transparency = g_settings_get_int(style, key);
-    theme_manager_set_opacity(settings->style.menu_transparency);
+    int menu_transparency = g_settings_get_int(style, key);
+    theme_manager_set_opacity(menu_transparency);
 }
 
 static void handle_style_settings_changed(GSettings *style, const char *key)
@@ -238,9 +213,6 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     g_object_unref(settings->style.settings);
 
     free(settings->cursor.theme);
-    free(settings->style.style_name);
-    free(settings->style.icon_theme);
-    free(settings->style.accent_color);
     free(settings->style.font_name);
     free(settings->style.font_size);
 
