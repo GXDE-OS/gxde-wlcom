@@ -465,15 +465,16 @@ static int view_handle_configure_timeout(void *data)
 
     /* fallback for pending actions */
     if (view_action_change_size(view->pending.configure_action)) {
-        struct kywc_box *current = &view->base.geometry;
         struct kywc_box *pending = &view->pending.configure_geometry;
         int x = pending->x, y = pending->y;
-        /* fix wobbling when resize */
+        /* fix wobbling when user resize */
         if (view->pending.configure_action & VIEW_ACTION_RESIZE) {
-            if (current->x != pending->x) {
+            struct kywc_box *current = &view->base.geometry;
+            uint32_t resize_edges = view->current_resize_edges;
+            if (resize_edges & KYWC_EDGE_LEFT) {
                 x += pending->width - current->width;
             }
-            if (current->y != pending->y) {
+            if (resize_edges & KYWC_EDGE_TOP) {
                 y += pending->height - current->height;
             }
         }
