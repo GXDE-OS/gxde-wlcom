@@ -15,6 +15,7 @@ struct shortcut_service {
     char *name;
     uint32_t black_mask; /* blacklist mask */
     uint32_t white_mask; /* whitelist mask */
+    bool block_all;
 
     struct wl_list link;
 };
@@ -40,11 +41,20 @@ static int block_shortcuts_message_handler(sd_bus_message *msg, void *userdata, 
 
     const char *type_name;
     while (sd_bus_message_read(msg, "s", &type_name) > 0) {
-        enum key_binding_type type = kywc_key_binding_type_by_name(type_name);
-        if (type == KEY_BINDING_TYPE_CUSTOM_DEF) {
+        bool found;
+        enum key_binding_type type = kywc_key_binding_type_by_name(type_name, &found);
+        if (!found) {
             continue;
         }
         kywc_log(KYWC_INFO, "block keybinding type: %s", type_name);
+
+        /* blocking all */
+        if (type == KEY_BINDING_TYPE_NUM) {
+            service->block_all = true;
+            kywc_key_binding_block_all(true);
+            break;
+        }
+
         /* blocking types based on backlist */
         kywc_key_binding_block_type(type, true);
         service->black_mask |= 1 << type;
@@ -64,17 +74,18 @@ static int unblock_shortcuts_message_handler(sd_bus_message *msg, void *userdata
 
     const char *type_name;
     while (sd_bus_message_read(msg, "s", &type_name) > 0) {
-        enum key_binding_type type = kywc_key_binding_type_by_name(type_name);
-
-        if (type == KEY_BINDING_TYPE_CUSTOM_DEF) {
+        bool found;
+        enum key_binding_type type = kywc_key_binding_type_by_name(type_name, &found);
+        if (!found) {
             continue;
         }
+
         service->white_mask |= 1 << type;
     }
 
     kywc_log(KYWC_INFO, "unblock whitelist mask: %x", service->white_mask);
     if (service->white_mask) {
-        for (size_t i = KEY_BINDING_TYPE_CUSTOM_DEF + 1; i < KEY_BINDING_TYPE_NUM; i++) {
+        for (size_t i = KEY_BINDING_TYPE_CUSTOM_DEF; i < KEY_BINDING_TYPE_NUM; i++) {
             /* blocking type is not in the whitelist */
             if (!(service->white_mask & (1 << i))) {
                 kywc_log(KYWC_DEBUG, "block by binding type index: %ld", i);
@@ -91,7 +102,7 @@ static int unblock_shortcuts_message_handler(sd_bus_message *msg, void *userdata
 
 static void shortcut_service_destory(struct shortcut_service *service)
 {
-    for (size_t i = KEY_BINDING_TYPE_CUSTOM_DEF + 1; i < KEY_BINDING_TYPE_NUM; i++) {
+    for (size_t i = KEY_BINDING_TYPE_CUSTOM_DEF; i < KEY_BINDING_TYPE_NUM; i++) {
         /* recovery of blocked types that are not on the whitelist */
         if (service->white_mask && !(service->white_mask & (1 << i))) {
             kywc_key_binding_block_type(i, false);
@@ -104,6 +115,10 @@ static void shortcut_service_destory(struct shortcut_service *service)
 
         /* recovery of blocked types based on backlist */
         kywc_key_binding_block_type(i, false);
+    }
+
+    if (service->block_all) {
+        kywc_key_binding_block_all(false);
     }
 
     wl_list_remove(&service->link);

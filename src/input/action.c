@@ -590,7 +590,7 @@ static struct action_data *action_data_create_from_config(json_object *action_co
 
     if (json_object_object_get_ex(action_config, "type", &data)) {
         const char *type_str = json_object_get_string(data);
-        action_data->binding_type = kywc_key_binding_type_by_name(type_str);
+        action_data->binding_type = kywc_key_binding_type_by_name(type_str, NULL);
     }
 
     switch (type) {
@@ -693,7 +693,7 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
     action_data->desc = strdup(action_desc);
 
     if (itype == INPUT_TYPE_KEYBOARD) {
-        action_data->binding_type = kywc_key_binding_type_by_name(binding_type);
+        action_data->binding_type = kywc_key_binding_type_by_name(binding_type, NULL);
     }
 
     if (action_data->enable) {

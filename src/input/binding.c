@@ -68,6 +68,7 @@ const struct key_binding_type2string {
     { KEY_BINDING_TYPE_WINDOW_ACTION, "WLCOM_WINDOW_ACTION" },
     { KEY_BINDING_TYPE_MAXIMIZED_VIEWS, "WLCOM_MAXIMIZED_VIEWS" },
     { KEY_BINDING_TYPE_CTRL_VIEWS, "WLCOM_CTRL_VIEWS" },
+    { KEY_BINDING_TYPE_NUM, "WLCOM_ALL" },
 };
 
 static char **split_string(const char *str, const char *delims, size_t *len)
@@ -643,14 +644,21 @@ void kywc_key_binding_block_type(enum key_binding_type type, bool block)
     }
 }
 
-enum key_binding_type kywc_key_binding_type_by_name(const char *name)
+enum key_binding_type kywc_key_binding_type_by_name(const char *name, bool *found)
 {
     for (size_t i = 0; i < sizeof(key_binding_table) / sizeof(key_binding_table[0]); ++i) {
         if (strcmp(name, key_binding_table[i].name)) {
             continue;
         }
+
+        if (found) {
+            *found = true;
+        }
         return key_binding_table[i].type;
     }
 
+    if (found) {
+        *found = false;
+    }
     return KEY_BINDING_TYPE_CUSTOM_DEF;
 }
