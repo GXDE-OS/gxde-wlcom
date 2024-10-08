@@ -163,18 +163,7 @@ static void xdg_view_configure(struct view *view)
         serial = wlr_xdg_toplevel_set_tiled(wlr_xdg_toplevel, kywc_view->tiled ? 0xf : 0);
     }
 
-    struct kywc_box *current = &view->base.geometry;
     struct kywc_box *pending = &view->pending.geometry;
-
-    /* If no need to resizing, process the move immediately */
-    if (view->pending.configure_serial == 0 && current->width == pending->width &&
-        current->height == pending->height) {
-        view->pending.action &= ~VIEW_ACTION_RESIZE;
-        view_helper_move(view, pending->x, pending->y);
-        view_configure(view, serial);
-        return;
-    }
-
     serial = wlr_xdg_toplevel_set_size(wlr_xdg_toplevel, pending->width, pending->height);
 
     view_configure(view, serial);

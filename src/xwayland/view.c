@@ -236,18 +236,7 @@ static void xwayland_view_configure(struct view *view)
         wlr_xwayland_surface_set_maximized(wlr_xwayland_surface, kywc_view->maximized);
     }
 
-    struct kywc_box *current = &view->base.geometry;
     struct kywc_box *pending = &view->pending.geometry;
-
-    /* If no need to resizing, process the move immediately */
-    if (current->width == pending->width && current->height == pending->height) {
-        view->pending.action &= ~VIEW_ACTION_RESIZE;
-        xwayland_view_move(xwayland_view, pending->x, pending->y);
-        view_configure(&xwayland_view->view, 0);
-        view_configured(&xwayland_view->view);
-        return;
-    }
-
     /* there is no commit after map */
     if (view->base.has_initial_position) {
         view_helper_move(view, pending->x, pending->y);
