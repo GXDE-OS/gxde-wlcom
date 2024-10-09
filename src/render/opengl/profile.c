@@ -69,6 +69,10 @@ void ky_profile_gl_destroy(void)
 
 void ky_profile_gl_begin(const struct ___tracy_source_location_data *data)
 {
+    if (!profile.gl_renderer) {
+        return;
+    }
+
     uint32_t query_id = next_query_id();
 
     glQueryCounter(profile.queries[query_id], GL_TIMESTAMP);
@@ -83,6 +87,10 @@ void ky_profile_gl_begin(const struct ___tracy_source_location_data *data)
 
 void ky_profile_gl_end(void)
 {
+    if (!profile.gl_renderer) {
+        return;
+    }
+
     uint32_t query_id = next_query_id();
 
     glQueryCounter(profile.queries[query_id], GL_TIMESTAMP);
