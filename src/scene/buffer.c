@@ -408,6 +408,19 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         .repeated = scene_buffer->repeated,
     };
 
+    if (scene_buffer->repeated) {
+        struct wlr_fbox *box = &options.base.src_box;
+        if (wlr_fbox_empty(box)) {
+            box->x = box->y = 0;
+            box->width = scene_buffer->buffer->width;
+            box->height = scene_buffer->buffer->height;
+        }
+        box->x *= target->scale;
+        box->y *= target->scale;
+        box->width *= target->scale;
+        box->height *= target->scale;
+    }
+
     if (!(target->options & KY_SCENE_RENDER_DISABLE_BLUR)) {
         struct blur_render_options opts = {
             .lx = lx,
