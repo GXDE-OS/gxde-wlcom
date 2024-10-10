@@ -944,7 +944,12 @@ static void xwayland_view_handle_request_configure(struct wl_listener *listener,
         xwayland_view_adjust_geometry(xwayland_view, &geo);
     }
 
-    kywc_view_resize(kywc_view, &geo);
+    struct kywc_box *current = &kywc_view->geometry;
+    if (current->width == geo.width && current->height == geo.height) {
+        kywc_view_move(kywc_view, geo.x, geo.y);
+    } else {
+        kywc_view_resize(kywc_view, &geo);
+    }
 }
 
 void xwayland_view_create(struct xwayland_server *xwayland,
