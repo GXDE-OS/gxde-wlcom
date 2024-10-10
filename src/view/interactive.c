@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 #include <linux/input-event-codes.h>
-#include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "effect/move.h"
@@ -654,15 +653,15 @@ static void interactive_process_resize(struct interactive_grab *grab, double x, 
     int min_height = MAX(kywc_view->min_height, VIEW_MIN_HEIGHT);
     int max_width = kywc_view->max_width;
     int max_height = kywc_view->max_height;
-    struct wlr_box box = { 0 };
 
-    wlr_output_layout_get_box(grab->seat->layout, NULL, &box);
+    int width = 0, height = 0;
+    output_layout_get_size(&width, &height);
 
-    if (!max_width || max_width > box.width - kywc_view->margin.off_width) {
-        max_width = box.width - kywc_view->margin.off_width;
+    if (!max_width || max_width > width - kywc_view->margin.off_width) {
+        max_width = width - kywc_view->margin.off_width;
     }
-    if (!max_height || max_height > box.height - kywc_view->margin.off_height) {
-        max_height = box.height - kywc_view->margin.off_height;
+    if (!max_height || max_height > height - kywc_view->margin.off_height) {
+        max_height = height - kywc_view->margin.off_height;
     }
 
     double dx = x - grab->cursor_x;

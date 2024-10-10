@@ -138,6 +138,8 @@ bool output_use_hardware_gamma(struct output *output);
 
 void output_layout_get_workarea(struct wlr_box *box);
 
+void output_layout_get_size(int *width, int *height);
+
 void output_schedule_frame(struct wlr_output *wlr_output);
 
 #endif /* _OUTPUT_H_ */

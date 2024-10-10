@@ -1775,6 +1775,19 @@ struct kywc_output *kywc_output_at_point(double lx, double ly)
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+void output_layout_get_size(int *width, int *height)
+{
+    struct wlr_box box;
+    wlr_output_layout_get_box(output_manager->server->layout, NULL, &box);
+
+    if (width) {
+        *width = box.width;
+    }
+    if (height) {
+        *height = box.height;
+    }
+}
+
 void output_layout_get_workarea(struct wlr_box *box)
 {
     wlr_output_layout_get_box(output_manager->server->layout, NULL, box);
