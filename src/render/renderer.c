@@ -263,6 +263,7 @@ struct wlr_buffer *ky_renderer_upload_pixels(struct wlr_renderer *renderer,
 
     struct wlr_texture *tex = wlr_texture_from_buffer(renderer, pixels);
     struct wlr_render_texture_options options = {
+        .dst_box = (struct wlr_box){ 0, 0, width, height },
         .texture = tex,
         .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
     };
