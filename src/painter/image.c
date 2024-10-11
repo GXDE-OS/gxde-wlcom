@@ -5,7 +5,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -16,30 +15,22 @@
 #include "painter_p.h"
 
 // SVG signature
-static const uint8_t signature[] = { '<' };
+static const char signature[] = "<svg";
 
 bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box)
 {
-    RsvgRectangle viewport = {
-        .x = box->x,
-        .y = box->y,
-        .width = box->width,
-        .height = box->height,
-    };
-
     size_t size = strlen(data);
     // check signature, this an xml, so skip spaces from the start
     while (size && isspace(*data) != 0) {
         ++data;
         --size;
     }
-    if (size < sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
+    if (size <= sizeof(signature) || strncmp(data, signature, sizeof(signature) - 1)) {
         return false;
     }
 
     GError *err = NULL;
-    RsvgHandle *svg = NULL;
-    svg = rsvg_handle_new_from_data((guint8 *)data, size, &err);
+    RsvgHandle *svg = rsvg_handle_new_from_data((guint8 *)data, size, &err);
     if (!svg) {
         kywc_log(KYWC_ERROR, "Invalid SVG format");
         if (err && err->message) {
@@ -48,18 +39,20 @@ bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct
         return false;
     }
 
-    // render svg to surface
-    cairo_t *cairo = buffer->cairo;
-    if (!rsvg_handle_render_document(svg, cairo, &viewport, &err)) {
-        kywc_log(KYWC_ERROR, "Invalid SVG format");
-        if (err && err->message) {
-            kywc_log(KYWC_ERROR, ": %s", err->message);
-        }
-        g_object_unref(svg);
-        return false;
-    }
+    RsvgRectangle viewport = {
+        .x = box->x,
+        .y = box->y,
+        .width = box->width,
+        .height = box->height,
+    };
 
-    return true;
+    // render svg to surface
+    gboolean ok = rsvg_handle_render_document(svg, buffer->cairo, &viewport, &err);
+    g_object_unref(svg);
+    if (!ok && err && err->message) {
+        kywc_log(KYWC_ERROR, "%s", err->message);
+    }
+    return ok;
 }
 
 static const uint8_t jpeg_signature[] = { 0xff, 0xd8 };
