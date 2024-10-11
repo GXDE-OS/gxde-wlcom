@@ -87,12 +87,14 @@ static void style_name_changed(GSettings *style, const char *key)
     } else if (!strcmp(style_name, UKUI_THEME_DARK)) {
         theme_manager_set_theme(THEME_TYPE_DARK);
     }
+    free((void *)style_name);
 }
 
 static void icon_theme_changed(GSettings *style, const char *key)
 {
     const char *icon_theme = g_settings_get_string(style, key);
     theme_manager_set_icon_theme(icon_theme);
+    free((void *)icon_theme);
 }
 
 static void font_style_changed(GSettings *style, const char *key)
@@ -112,13 +114,13 @@ static void font_style_changed(GSettings *style, const char *key)
 static void accent_color_changed(GSettings *style, const char *key)
 {
     const char *accent_color = g_settings_get_string(style, key);
-
     for (size_t i = 0; i < sizeof(ukui_accent_colors) / sizeof(struct ukui_accent_color); i++) {
         if (strcmp(accent_color, ukui_accent_colors[i].name) == 0) {
             theme_manager_set_accent_color(ukui_accent_colors[i].color);
-            return;
+            break;
         }
     }
+    free((void *)accent_color);
 }
 
 static void window_radius_changed(GSettings *style, const char *key)
