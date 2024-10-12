@@ -14,18 +14,17 @@
 
 #include "painter_p.h"
 
-// SVG signature
-static const char signature[] = "<svg";
-
 bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box)
 {
-    size_t size = strlen(data);
+    size_t size = strlen(data) + 1;
     // check signature, this an xml, so skip spaces from the start
     while (size && isspace(*data) != 0) {
         ++data;
         --size;
     }
-    if (size <= sizeof(signature) || strncmp(data, signature, sizeof(signature) - 1)) {
+
+    const uint8_t signature[] = { '<' };
+    if (size <= sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return false;
     }
 
@@ -55,12 +54,11 @@ bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct
     return ok;
 }
 
-static const uint8_t jpeg_signature[] = { 0xff, 0xd8 };
-
 static uint8_t *do_decode_jpeg(void *data, size_t size, uint32_t *width, uint32_t *height)
 {
     // check signature
-    if (size < sizeof(signature) || memcmp(data, jpeg_signature, sizeof(jpeg_signature))) {
+    const uint8_t signature[] = { 0xff, 0xd8 };
+    if (size <= sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
         return NULL;
     }
 
