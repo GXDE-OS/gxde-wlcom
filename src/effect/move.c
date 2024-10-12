@@ -82,7 +82,7 @@ static void proxy_create_node(struct move_proxy *proxy)
         thumbnail_add_update_listener(proxy->thumbnail, &proxy->thumbnail_update);
         proxy->thumbnail_destroy.notify = proxy_handle_thumbnail_destroy;
         thumbnail_add_destroy_listener(proxy->thumbnail, &proxy->thumbnail_destroy);
-        // FIXME: thumbnail update is disable here, using node effect instead
+        /* thumbnail still update by ky_scene_node_force_damage_event */
         ky_scene_node_set_enabled(&proxy->view->tree->node, false);
     }
 }
