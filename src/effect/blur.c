@@ -758,31 +758,24 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
     pixman_region32_fini(&blur_region);
 }
 
-static bool blur_frame_render_pre(struct effect_entity *entity,
-                                  struct ky_scene_output *scene_output)
+static bool blur_frame_render_begin(struct effect_entity *entity,
+                                    struct ky_scene_render_target *target)
 {
     struct blur_data *data = entity->user_data;
 
     struct blur_output_data *output_data = NULL, *exits_data;
     wl_list_for_each(exits_data, &data->output_datas, link) {
-        if (exits_data->output == scene_output) {
+        if (exits_data->output == target->output) {
             output_data = exits_data;
             break;
         }
     }
     data->current_output_data = output_data;
 
-    return true;
-}
-
-static bool blur_frame_render_begin(struct effect_entity *entity,
-                                    struct ky_scene_render_target *target)
-{
-    struct blur_data *data = entity->user_data;
-    struct blur_output_data *output_data = data->current_output_data;
     if (!output_data) {
         return true;
     }
+
     pixman_region32_clear(&output_data->unaffected_region);
     pixman_region32_clear(&output_data->damage_blur_region);
 
@@ -939,7 +932,6 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 }
 
 static const struct effect_interface blur_impl = {
-    .frame_render_pre = blur_frame_render_pre,
     .frame_render_begin = blur_frame_render_begin,
     .frame_render_end = blur_frame_render_end,
     .frame_render_post = blur_frame_render_post,
