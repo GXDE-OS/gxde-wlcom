@@ -167,7 +167,7 @@ struct animator *animator_create(struct animation_data *start, struct animation_
     animator->geometry.animation = animation_manager_get(type.geometry);
     animator->alpha.animation = animation_manager_get(type.alpha);
     animator->angle.animation = animation_manager_get(type.angle);
-    if (!animator->geometry.animation || !animator->alpha.animation || !animator->angle.animation) {
+    if (!animator->geometry.animation && !animator->alpha.animation && !animator->angle.animation) {
         free(animator);
         return NULL;
     }
@@ -179,9 +179,7 @@ struct animator *animator_create(struct animation_data *start, struct animation_
     animator->start_time = start_time;
     animator->current_time = start_time;
     animator->end_time = end_time;
-    animator->geometry.value = 0;
-    animator->alpha.value = 0;
-    animator->angle.value = 0;
+    animator->alpha.value = 1;
 
     return animator;
 }
@@ -200,7 +198,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 struct animation *animation_manager_get(enum animation_type type)
 {
-    if (!manager || type < ANIMATION_TYPE_NONE || type >= ANIMATION_TYPES) {
+    if (!manager || type <= ANIMATION_TYPE_NONE || type >= ANIMATION_TYPES) {
         return NULL;
     }
 
@@ -223,7 +221,7 @@ bool animation_manager_create(struct server *server)
     wl_list_init(&manager->animations);
 
     /* create all animations */
-    for (int i = ANIMATION_TYPE_NONE; i < ANIMATION_TYPES; i++) {
+    for (int i = ANIMATION_TYPE_LINER; i < ANIMATION_TYPES; i++) {
         _animation_create(i, &curves[i].p1, &curves[i].p2);
     }
 
@@ -247,9 +245,15 @@ static void animator_update_animation_value(struct animator *animator, int curre
     int64_t delta_time = animator->current_time - animator->start_time;
     int64_t delta_max_time = animator->end_time - animator->start_time;
     float x = delta_time * 1.0f / delta_max_time;
-    animator->geometry.value = animation_value(animator->geometry.animation, x);
-    animator->alpha.value = animation_value(animator->alpha.animation, x);
-    animator->angle.value = animation_value(animator->angle.animation, x);
+    if (animator->geometry.animation) {
+        animator->geometry.value = animation_value(animator->geometry.animation, x);
+    }
+    if (animator->alpha.animation) {
+        animator->alpha.value = animation_value(animator->alpha.animation, x);
+    }
+    if (animator->angle.animation) {
+        animator->angle.value = animation_value(animator->angle.animation, x);
+    }
 }
 
 void animator_set_time(struct animator *animator, int64_t end_time)
@@ -278,6 +282,9 @@ void animator_set_time_ex(struct animator *animator, int64_t start_time, int64_t
 
 void animator_set_angle(struct animator *animator, float end_angle)
 {
+    if (!animator->angle.animation) {
+        return;
+    }
     if (end_angle == animator->end.angle) {
         return;
     }
@@ -289,6 +296,9 @@ void animator_set_angle(struct animator *animator, float end_angle)
 
 void animator_set_alpha(struct animator *animator, float end_alpha)
 {
+    if (!animator->alpha.animation) {
+        return;
+    }
     if (end_alpha == animator->end.alpha) {
         return;
     }
@@ -300,6 +310,9 @@ void animator_set_alpha(struct animator *animator, float end_alpha)
 
 void animator_set_position(struct animator *animator, int end_x, int end_y)
 {
+    if (!animator->geometry.animation) {
+        return;
+    }
     if (end_x != animator->end.geometry.x) {
         animator->masks |= ANIMATOR_GEOMETRY_X;
         animator->end.geometry.x = end_x;
@@ -317,6 +330,9 @@ void animator_set_position(struct animator *animator, int end_x, int end_y)
 
 void animator_set_size(struct animator *animator, int end_width, int end_height)
 {
+    if (!animator->geometry.animation) {
+        return;
+    }
     if (end_width != animator->end.geometry.width) {
         animator->masks |= ANIMATOR_GEOMETRY_W;
         animator->end.geometry.width = end_width;
