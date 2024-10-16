@@ -552,7 +552,9 @@ static void render(const struct kywc_box *box, const pixman_region32_t *blur, GL
     glDisableVertexAttribArray(sdfpos_attrib);
 }
 
+// clang-format off
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
+// clang-format on
 
 static void blur_render(struct ky_scene_render_target *target,
                         const struct blur_render_options *options,
