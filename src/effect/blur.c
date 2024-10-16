@@ -144,8 +144,6 @@ static void glrtt_pool_release_timeout_texture(struct glrtt_pool *pool)
     }
 }
 
-static struct glrtt_pool *glrtt_pool = NULL;
-
 struct blur_tex_program {
     GLuint id;
 
@@ -209,6 +207,8 @@ static struct blur_render_config blur_config = {
 struct blur_effect {
     struct effect *effect;
     struct ky_scene *scene;
+    struct glrtt_pool *glrtt_pool;
+
     struct wl_listener enable;
     struct wl_listener disable;
     struct wl_listener destroy;
@@ -421,6 +421,7 @@ static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_te
 
 static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
 {
+    struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
     // iterations must > 0
     int iterations = data->iterations;
     float offset = data->offset;
@@ -566,6 +567,7 @@ static void blur_render(struct ky_scene_render_target *target,
         ky_opengl_render_pass_from_wlr_render_pass(target->render_pass);
 
     struct blur_data *data = &effect_blur_data;
+    struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
     data->iterations = options->blur->iterations;
     data->offset = options->blur->offset;
 
@@ -927,13 +929,12 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
-    glrtt_pool_destroy(glrtt_pool);
-
     struct blur_effect *effect = wl_container_of(listener, effect, destroy);
     wl_list_remove(&effect->destroy.link);
     wl_list_remove(&effect->enable.link);
     wl_list_remove(&effect->disable.link);
     blur_data_destroy(&effect_blur_data);
+    glrtt_pool_destroy(effect->glrtt_pool);
     free(effect);
 }
 
@@ -965,6 +966,13 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         free(effect);
         return false;
     }
+
+    effect->glrtt_pool = glrtt_pool_create(GL_RGBA, GL_LINEAR, 3000);
+    if (!effect->glrtt_pool) {
+        free(effect);
+        return false;
+    }
+
     effect->scene = effect_manager->server->scene;
 
     effect->enable.notify = handle_effect_enable;
@@ -983,8 +991,6 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         return false;
     }
     entity->user_data = &effect_blur_data;
-
-    glrtt_pool = glrtt_pool_create(GL_RGBA, GL_LINEAR, 3000);
 
     return true;
 }
