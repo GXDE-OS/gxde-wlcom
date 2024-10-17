@@ -179,7 +179,6 @@ struct animator *animator_create(struct animation_data *start, struct animation_
     animator->start_time = start_time;
     animator->current_time = start_time;
     animator->end_time = end_time;
-    animator->alpha.value = 1;
 
     return animator;
 }
