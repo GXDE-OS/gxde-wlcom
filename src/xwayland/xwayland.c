@@ -478,6 +478,7 @@ int xwayland_read_wm_window_opacity(xcb_window_t window_id)
 
     uint32_t *value = (uint32_t *)xcb_get_property_value(reply);
     float opacity = value[0] == 0xffffffff ? 1.0 : value[0] * 1.0 / 0xffffffff;
+    free(reply);
 
     if (!xwayland_unmanaged_set_opacity(xwayland, window_id, opacity)) {
         return xwayland_view_set_opacity(xwayland, window_id, opacity);
