@@ -83,7 +83,8 @@ struct cursor {
     enum cursor_name name;
     /* current cursor position in layout coord */
     double lx, ly;
-    bool client_requested;
+    int image_locks;
+    bool client_requested, hidden;
 
     /* cached button clicked info */
     uint32_t last_click_time;
@@ -99,8 +100,6 @@ struct cursor {
 
     /* special: hold a pressed button and leave surface */
     bool hold_mode;
-
-    bool hidden;
 };
 
 struct cursor_constraint {
@@ -130,5 +129,7 @@ void cursor_move(struct cursor *cursor, struct wlr_input_device *dev, double x, 
                  bool delta, bool absolute);
 
 void cursor_set_hidden(struct cursor *cursor, bool hidden);
+
+void cursor_lock_image(struct cursor *cursor, bool lock);
 
 #endif /* _CURSOR_H_ */

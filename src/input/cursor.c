@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <stdlib.h>
 
 #include <linux/input-event-codes.h>
@@ -739,7 +740,10 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
     struct wlr_seat_client *focused_client = cursor->seat->wlr_seat->pointer_state.focused_client;
     struct seat_pointer_grab *grab = cursor->seat->pointer_grab;
 
-    if (grab || cursor->hidden || focused_client != event->seat_client) {
+    if (cursor->image_locks > 0 || cursor->hidden) {
+        return;
+    }
+    if (grab || focused_client != event->seat_client) {
         return;
     }
 
@@ -925,7 +929,7 @@ static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool
         return;
     }
 
-    if (cursor->hidden) {
+    if (cursor->image_locks > 0 || cursor->hidden) {
         return;
     }
 
@@ -1011,6 +1015,16 @@ void cursor_set_hidden(struct cursor *cursor, bool hidden)
     } else {
         cursor->hidden = false;
         cursor_rebase(cursor);
+    }
+}
+
+void cursor_lock_image(struct cursor *cursor, bool lock)
+{
+    if (lock) {
+        ++cursor->image_locks;
+    } else {
+        assert(cursor->image_locks > 0);
+        --cursor->image_locks;
     }
 }
 
