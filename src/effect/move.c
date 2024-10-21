@@ -14,8 +14,8 @@
 #include "scene/thumbnail.h"
 
 enum move_effect_type {
-    MOVE_EFFECT_BORDER = 0, // no window content shown
-    MOVE_EFFECT_OPACITY,
+    MOVE_EFFECT_TYPE_BORDER = 0, // no window content shown
+    MOVE_EFFECT_TYPE_OPACITY,
 };
 
 struct move_proxy {
@@ -68,11 +68,11 @@ static void proxy_create_node(struct move_proxy *proxy)
 {
     struct ky_scene_tree *tree = proxy->view->tree->node.parent;
 
-    if (effect->type == MOVE_EFFECT_BORDER) {
+    if (effect->type == MOVE_EFFECT_TYPE_BORDER) {
         float color[4] = { 0.5, 0.5, 0.5, 1.0 };
         proxy->box = ky_scene_box_create(tree, proxy->width, proxy->height, color, 1);
         proxy->node = ky_scene_node_from_box(proxy->box);
-    } else if (effect->type == MOVE_EFFECT_OPACITY) {
+    } else if (effect->type == MOVE_EFFECT_TYPE_OPACITY) {
         proxy->buffer = ky_scene_buffer_create(tree, NULL);
         proxy->node = &proxy->buffer->node;
         ky_scene_buffer_set_opacity(proxy->buffer, 0.5);
@@ -183,12 +183,16 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 
 static bool handle_effect_configure(struct effect *eff, const struct effect_option *option)
 {
-    if (strcmp(option->key, "move_type")) {
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    if (strcmp(option->key, "type")) {
         return false;
     }
 
     int type = option->value.num;
-    if (type != MOVE_EFFECT_BORDER && type != MOVE_EFFECT_OPACITY) {
+    if (type != MOVE_EFFECT_TYPE_BORDER && type != MOVE_EFFECT_TYPE_OPACITY) {
         return false;
     }
 
@@ -215,7 +219,7 @@ bool move_effect_create(struct effect_manager *effect_manager)
     }
 
     wl_list_init(&effect->proxies);
-    effect->type = effect_get_option_int(effect->effect, "move_type", MOVE_EFFECT_BORDER);
+    effect->type = effect_get_option_int(effect->effect, "type", MOVE_EFFECT_TYPE_BORDER);
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);

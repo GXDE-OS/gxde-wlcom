@@ -280,7 +280,12 @@ void effect_set_option_string(struct effect *effect, const char *key, const char
     json_object_object_add(effect->options, key, json_object_new_string(value));
 }
 
-void effect_write_enabled(struct effect *effect, bool enabled)
+void effect_write_enabled_option(struct effect *effect, bool enabled)
 {
     effect_set_option_boolean(effect, ENABLED_KEY, enabled);
+}
+
+bool effect_option_is_enabled_option(const struct effect_option *option)
+{
+    return option->key && strcmp(option->key, ENABLED_KEY) == 0;
 }

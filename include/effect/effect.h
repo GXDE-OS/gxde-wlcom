@@ -140,7 +140,9 @@ void effect_destroy(struct effect *effect);
 
 void effect_set_enabled(struct effect *effect, bool enabled);
 
-void effect_write_enabled(struct effect *effect, bool enabled);
+void effect_write_enabled_option(struct effect *effect, bool enabled);
+
+bool effect_option_is_enabled_option(const struct effect_option *option);
 
 bool effect_get_option_boolean(struct effect *effect, const char *key, bool value);
 
