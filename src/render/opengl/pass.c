@@ -172,11 +172,6 @@ static const struct wlr_render_pass_impl render_pass_impl = {
     .add_rect = render_pass_add_rect,
 };
 
-static bool options_has_radius(const struct ky_render_round_corner *radius)
-{
-    return radius->lb > 0 || radius->lt > 0 || radius->rb > 0 || radius->rt > 0;
-}
-
 static bool ky_opengl_render_pass_submit(struct wlr_render_pass *wlr_pass, uint32_t quirks)
 {
     return _render_pass_submit(wlr_pass, quirks);
@@ -190,7 +185,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     struct ky_opengl_texture *texture = ky_opengl_texture_from_wlr_texture(wlr_options->texture);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct wlr_buffer *target_buffer = pass->buffer->buffer;
-    bool has_radius = options_has_radius(&options->radius);
+    bool has_radius = ky_render_pass_options_has_radius(&options->radius);
 
     struct ky_opengl_tex_ex_shader *shader = NULL;
     switch (texture->target) {
@@ -318,7 +313,7 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
     struct ky_opengl_render_pass *pass = ky_opengl_render_pass_from_wlr_render_pass(wlr_pass);
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct wlr_buffer *target_buffer = pass->buffer->buffer;
-    bool has_radius = options_has_radius(&options->radius);
+    bool has_radius = ky_render_pass_options_has_radius(&options->radius);
     struct ky_opengl_rect_ex_shader *shader;
     if (has_radius) {
         shader = &renderer->shaders.quad_ex;

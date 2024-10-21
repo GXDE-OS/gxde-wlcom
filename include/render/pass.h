@@ -31,6 +31,8 @@ struct ky_render_pass_impl {
     void (*add_rect)(struct wlr_render_pass *pass, const struct ky_render_rect_options *options);
 };
 
+bool ky_render_pass_options_has_radius(const struct ky_render_round_corner *radius);
+
 bool ky_render_pass_submit(struct wlr_render_pass *render_pass, uint32_t quirks);
 
 void ky_render_pass_add_texture(struct wlr_render_pass *render_pass,
