@@ -124,3 +124,14 @@ void ky_render_pass_add_rect(struct wlr_render_pass *render_pass,
 
     wlr_render_pass_add_rect(render_pass, &options->base);
 }
+
+struct wlr_renderer *ky_render_pass_get_renderer(struct wlr_render_pass *render_pass)
+{
+    if (wlr_render_pass_is_opengl(render_pass)) {
+        struct ky_opengl_render_pass *opengl_pass =
+            ky_opengl_render_pass_from_wlr_render_pass(render_pass);
+        return &opengl_pass->renderer->wlr_renderer;
+    }
+
+    return NULL;
+}

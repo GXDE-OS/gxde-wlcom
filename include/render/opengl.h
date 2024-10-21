@@ -124,6 +124,7 @@ struct ky_opengl_texture {
 struct ky_opengl_render_pass {
     struct wlr_render_pass base;
     const struct ky_render_pass_impl *impl;
+    struct ky_opengl_renderer *renderer;
     struct ky_opengl_buffer *buffer;
     float projection_matrix[9];
     struct ky_egl_context prev_ctx;

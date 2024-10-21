@@ -411,6 +411,7 @@ struct ky_opengl_render_pass *ky_opengl_begin_buffer_pass(struct ky_opengl_buffe
 
     pass->impl = &ky_render_pass_impl;
     wlr_render_pass_init(&pass->base, &render_pass_impl);
+    pass->renderer = renderer;
     wlr_buffer_lock(wlr_buffer);
     pass->buffer = buffer;
     pass->timer = timer;

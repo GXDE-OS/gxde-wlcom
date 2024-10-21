@@ -41,4 +41,6 @@ void ky_render_pass_add_texture(struct wlr_render_pass *render_pass,
 void ky_render_pass_add_rect(struct wlr_render_pass *render_pass,
                              const struct ky_render_rect_options *options);
 
+struct wlr_renderer *ky_render_pass_get_renderer(struct wlr_render_pass *render_pass);
+
 #endif /* _RENDER_PASS_H_ */
