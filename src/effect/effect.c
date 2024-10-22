@@ -473,6 +473,23 @@ static const struct wlr_addon_interface effect_addon_impl = {
     .destroy = node_effect_chain_addon_destroy,
 };
 
+static void node_effect_chain_set_visible_region(struct node_effect_chain *chain,
+                                                 struct ky_scene_node *node)
+{
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *child_node;
+        wl_list_for_each(child_node, &tree->children, link) {
+            node_effect_chain_set_visible_region(chain, child_node);
+        }
+    }
+
+    if (pixman_region32_not_empty(&node->visible_region)) {
+        pixman_region32_union(&chain->visible_region, &chain->visible_region,
+                              &node->visible_region);
+    }
+}
+
 static struct node_effect_chain *node_effect_chain_create(struct ky_scene_node *node)
 {
     struct node_effect_chain *chain = calloc(1, sizeof(*chain));
@@ -491,24 +508,12 @@ static struct node_effect_chain *node_effect_chain_create(struct ky_scene_node *
     node->impl = node_effect_impl;
     wlr_addon_init(&chain->addon, &node->addons, node, &effect_addon_impl);
 
+    /* node isn't root */
+    if (node->parent) {
+        node_effect_chain_set_visible_region(chain, node);
+    }
+
     return chain;
-}
-
-static void node_effect_chain_set_visible_region(struct node_effect_chain *chain,
-                                                 struct ky_scene_node *node)
-{
-    if (node->type == KY_SCENE_NODE_TREE) {
-        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
-        struct ky_scene_node *child_node;
-        wl_list_for_each(child_node, &tree->children, link) {
-            node_effect_chain_set_visible_region(chain, child_node);
-        }
-    }
-
-    if (pixman_region32_not_empty(&node->visible_region)) {
-        pixman_region32_union(&chain->visible_region, &chain->visible_region,
-                              &node->visible_region);
-    }
 }
 
 static void entity_handle_chain_destroy(struct wl_listener *listener, void *data)
@@ -538,11 +543,14 @@ static void entity_handle_effect_disable(struct wl_listener *listener, void *dat
     wl_list_init(&entity->frame_slot.link);
 }
 
-static struct wl_list *find_insertion_location(struct effect_entity *entity, bool frame)
+static void entity_insert_to_chain(struct effect_entity *entity, bool frame)
 {
     struct effect_chain *chain = frame ? entity->frame_slot.chain : entity->slot.chain;
-    struct wl_list *list = &chain->slots;
+    if (!chain) {
+        return;
+    }
 
+    struct wl_list *list = &chain->slots;
     struct effect_entity *_entity;
     struct effect_slot *slot;
     wl_list_for_each(slot, &chain->slots, link) {
@@ -554,22 +562,28 @@ static struct wl_list *find_insertion_location(struct effect_entity *entity, boo
         list = &slot->link;
     }
 
-    return list;
+    if (frame) {
+        wl_list_insert(list, &entity->frame_slot.link);
+    } else {
+        struct node_effect_chain *node_chain = (struct node_effect_chain *)chain;
+        if (wl_list_empty(&chain->slots) &&
+            !pixman_region32_not_empty(&node_chain->visible_region)) {
+            node_effect_chain_set_visible_region(node_chain, node_chain->node);
+        }
+        wl_list_insert(list, &entity->slot.link);
+    }
 }
 
 static void entity_handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct effect_entity *entity = wl_container_of(listener, entity, effect_enable);
-    struct wl_list *list;
 
     if (entity->slot.chain) {
-        list = find_insertion_location(entity, false);
-        wl_list_insert(list, &entity->slot.link);
+        entity_insert_to_chain(entity, false);
     }
 
     if (entity->frame_slot.chain) {
-        list = find_insertion_location(entity, true);
-        wl_list_insert(list, &entity->frame_slot.link);
+        entity_insert_to_chain(entity, true);
     }
 }
 
@@ -612,49 +626,32 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
         return NULL;
     }
 
-    /* find a list to insert */
-    struct wl_list *list = &chain->base.slots;
-    struct effect_entity *entity;
-
-    struct effect_slot *slot;
-    wl_list_for_each(slot, &chain->base.slots, link) {
-        entity = is_root ? wl_container_of(slot, entity, frame_slot)
-                         : wl_container_of(slot, entity, slot);
-        if (entity->effect == effect && !is_root) {
-            kywc_log(KYWC_DEBUG, "effect %s is already added", effect->name);
-            return entity;
-        }
-        /* update list by priority */
-        if (entity->effect->priority < effect->priority) {
-            break;
-        }
-        list = &slot->link;
-    }
-
     /**
      * add effects through general nodes. usually, occur when both the
      * scene effects interface and the node effects interface are implemented.
      */
     if ((effect->types & EFFECT_TYPE_SCENE) && !is_root) {
         struct ky_scene *scene = ky_scene_from_node(node);
-        entity = ky_scene_add_effect(scene, effect);
+        struct effect_entity *entity = ky_scene_add_effect(scene, effect);
         if (!entity) {
             return NULL;
         }
+
         if (effect->types & EFFECT_TYPE_NODE) {
             entity->slot.chain = &chain->base;
-            wl_list_insert(list, &entity->slot.link);
+            wl_list_init(&entity->slot.link);
             entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
             wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
 
-            if (!pixman_region32_not_empty(&chain->visible_region)) {
-                node_effect_chain_set_visible_region(chain, node);
+            if (effect->enabled) {
+                entity_insert_to_chain(entity, false);
             }
         }
+
         return entity;
     }
 
-    entity = calloc(1, sizeof(*entity));
+    struct effect_entity *entity = calloc(1, sizeof(*entity));
     if (!entity) {
         return NULL;
     }
@@ -663,20 +660,16 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
 
     if (!is_root) {
         entity->slot.chain = &chain->base;
-        wl_list_insert(list, &entity->slot.link);
+        wl_list_init(&entity->slot.link);
         entity->slot.chain_destroy.notify = entity_handle_chain_destroy;
         wl_signal_add(&chain->base.events.destroy, &entity->slot.chain_destroy);
         wl_list_init(&entity->frame_slot.link);
         wl_list_init(&entity->frame_slot.chain_destroy.link);
-
-        if (!pixman_region32_not_empty(&chain->visible_region)) {
-            node_effect_chain_set_visible_region(chain, node);
-        }
     } else {
         wl_list_init(&entity->slot.link);
         wl_list_init(&entity->slot.chain_destroy.link);
         entity->frame_slot.chain = &chain->base;
-        wl_list_insert(list, &entity->frame_slot.link);
+        wl_list_init(&entity->frame_slot.link);
         entity->frame_slot.chain_destroy.notify = frame_entity_handle_chain_destroy;
         wl_signal_add(&chain->base.events.destroy, &entity->frame_slot.chain_destroy);
     }
@@ -689,6 +682,10 @@ struct effect_entity *ky_scene_node_add_effect(struct ky_scene_node *node, struc
     wl_signal_add(&effect->events.disable, &entity->effect_disable);
     entity->effect_destroy.notify = entity_handle_effect_destroy;
     wl_signal_add(&effect->events.destroy, &entity->effect_destroy);
+
+    if (effect->enabled) {
+        entity_insert_to_chain(entity, is_root);
+    }
 
     if (effect->impl->entity_create) {
         effect->impl->entity_create(entity);
