@@ -12,6 +12,7 @@
 #include "effect/blur.h"
 #include "render/pass.h"
 #include "render/pixel_format.h"
+#include "render/profile.h"
 #include "scene_p.h"
 #include "security.h"
 
@@ -387,6 +388,7 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
     enum wl_output_transform transform = wlr_output_transform_invert(scene_buffer->transform);
     transform = wlr_output_transform_compose(transform, target->transform);
 
+    KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
     bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
     struct ky_render_texture_options options = {
         .base = {
@@ -437,6 +439,8 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
 
     pixman_region32_fini(&render_region);
     pixman_region32_fini(&opaque);
+
+    KY_PROFILE_RENDER_ZONE_END(ky_render_pass_get_renderer(target->render_pass));
 
     if (target->options & KY_SCENE_RENDER_ENABLE_PRESENTATION) {
         struct ky_scene_output_sample_event sample_event = {

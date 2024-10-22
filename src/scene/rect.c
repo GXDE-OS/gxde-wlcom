@@ -11,6 +11,7 @@
 #include "effect/blur.h"
 #include "render/opengl.h"
 #include "render/pass.h"
+#include "render/profile.h"
 #include "scene_p.h"
 
 struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node)
@@ -177,6 +178,7 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
     ky_scene_render_region(&render_region, target);
 
+    KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
     bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
     struct ky_render_rect_options options = {
         .base = {
@@ -214,6 +216,7 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
     ky_render_pass_add_rect(target->render_pass, &options);
 
     pixman_region32_fini(&render_region);
+    KY_PROFILE_RENDER_ZONE_END(ky_render_pass_get_renderer(target->render_pass));
 }
 
 static void rect_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)

@@ -8,6 +8,7 @@
 #include "effect/blur.h"
 #include "effect/effect.h"
 #include "render/pass.h"
+#include "render/profile.h"
 #include "scene/render.h"
 #include "util/region.h"
 
@@ -135,6 +136,7 @@ void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
         tex_opts.base.src_box.height = opts->src->height;
     }
 
+    KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
     if (!(target->options & KY_SCENE_RENDER_DISABLE_BLUR) && opts->blur.info) {
         const struct blur_info *info = opts->blur.info;
         struct blur_info blur = {
@@ -194,4 +196,5 @@ void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
 
     ky_render_pass_add_texture(target->render_pass, &tex_opts);
     pixman_region32_fini(&render_region);
+    KY_PROFILE_RENDER_ZONE_END(ky_render_pass_get_renderer(target->render_pass));
 }

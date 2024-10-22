@@ -81,7 +81,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass)
     return _render_pass_submit(wlr_pass, 0);
 }
 
-static void render(const struct wlr_box *box, const pixman_region32_t *clip, GLint attrib)
+static void render(struct wlr_renderer *renderer, const struct wlr_box *box, const pixman_region32_t *clip, GLint attrib)
 {
     pixman_region32_t region;
     pixman_region32_init_rect(&region, box->x, box->y, box->width, box->height);
@@ -97,6 +97,7 @@ static void render(const struct wlr_box *box, const pixman_region32_t *clip, GLi
         return;
     }
 
+    KY_PROFILE_RENDER_ZONE(renderer, gzone_render, __func__);
     glEnableVertexAttribArray(attrib);
 
     for (int i = 0; i < rects_len;) {
@@ -127,7 +128,7 @@ static void render(const struct wlr_box *box, const pixman_region32_t *clip, GLi
     }
 
     glDisableVertexAttribArray(attrib);
-
+    KY_PROFILE_RENDER_ZONE_END(renderer);
     pixman_region32_fini(&region);
 }
 
@@ -299,7 +300,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
                     options->radius.lb * one_pixel_distance,
                     options->radius.lt * one_pixel_distance);
     }
-    render(&dst_box, options->base.clip, shader->uv_attrib);
+    render(&renderer->wlr_renderer, &dst_box, options->base.clip, shader->uv_attrib);
 
     glBindTexture(texture->target, 0);
 
@@ -362,7 +363,7 @@ void ky_opengl_render_pass_add_rect(struct wlr_render_pass *wlr_pass,
                     options->radius.lb * one_pixel_distance,
                     options->radius.lt * one_pixel_distance);
     }
-    render(&box, options->base.clip, shader->uv_attrib);
+    render(&renderer->wlr_renderer, &box, options->base.clip, shader->uv_attrib);
 
     KY_PROFILE_RENDER_ZONE_END(&renderer->wlr_renderer);
     ky_opengl_pop_debug(renderer);

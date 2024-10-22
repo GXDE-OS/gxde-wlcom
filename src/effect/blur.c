@@ -224,6 +224,7 @@ static int calculate_blur_radius(int iterations, float offset)
 static void gl_texture_copy(struct glrtt_pool_texture *tex, struct ky_opengl_buffer *src,
                             struct kywc_box *box)
 {
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tex->fbo);
     glBlitFramebuffer(box->x, box->y, box->x + box->width, box->y + box->height, 0, 0, box->width,
@@ -232,6 +233,7 @@ static void gl_texture_copy(struct glrtt_pool_texture *tex, struct ky_opengl_buf
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 #if 0
@@ -407,6 +409,7 @@ static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_te
     width = width < 1 ? 1 : width;
     height = height < 1 ? 1 : height;
 
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     glBindFramebuffer(GL_FRAMEBUFFER, out->fbo);
     glViewport(0, 0, out->width, out->height);
 
@@ -415,6 +418,7 @@ static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_te
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
@@ -427,6 +431,7 @@ static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
     int height = src_tex->height;
 
     GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
 
@@ -491,6 +496,7 @@ static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D, 0);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 static void render(const struct kywc_box *box, const pixman_region32_t *blur, GLint attrib,
@@ -499,6 +505,7 @@ static void render(const struct kywc_box *box, const pixman_region32_t *blur, GL
     int rects_len;
     const pixman_box32_t *rects = pixman_region32_rectangles(blur, &rects_len);
 
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     glEnableVertexAttribArray(sdfpos_attrib);
     glEnableVertexAttribArray(attrib);
     for (int i = 0; i < rects_len;) {
@@ -548,6 +555,7 @@ static void render(const struct kywc_box *box, const pixman_region32_t *blur, GL
 
     glDisableVertexAttribArray(attrib);
     glDisableVertexAttribArray(sdfpos_attrib);
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 // clang-format off
@@ -819,6 +827,7 @@ static bool blur_frame_render_end(struct effect_entity *entity,
                               -target->logical.y);
     ky_scene_render_region(&output_data->unaffected_region, target);
 
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     struct wlr_texture *texture =
         wlr_texture_from_buffer(target->output->output->renderer, output_data->output_buffer);
     struct wlr_render_texture_options options = {
@@ -828,6 +837,7 @@ static bool blur_frame_render_end(struct effect_entity *entity,
     };
     wlr_render_pass_add_texture(target->render_pass, &options);
     wlr_texture_destroy(texture);
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 
     return true;
 }
