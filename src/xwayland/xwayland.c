@@ -615,6 +615,7 @@ void xwayland_server_destroy(void)
     if (xwayland->event_source) {
         wl_event_source_remove(xwayland->event_source);
     }
+    xcb_disconnect(xwayland->xcb_conn);
 
     struct wlr_xwayland *wlr_xwayland = xwayland->wlr_xwayland;
     /* prevent xwayland_update_seat in hover */
