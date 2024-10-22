@@ -298,6 +298,8 @@ void ky_scene_output_destroy(struct ky_scene_output *scene_output)
     wlr_addon_finish(&scene_output->addon);
     wlr_damage_ring_finish(&scene_output->damage_ring);
     pixman_region32_fini(&scene_output->collected_damage);
+    wlr_buffer_unlock(scene_output->buffer);
+
     wl_list_remove(&scene_output->link);
     wl_list_remove(&scene_output->output_commit.link);
     wl_list_remove(&scene_output->output_damage.link);
