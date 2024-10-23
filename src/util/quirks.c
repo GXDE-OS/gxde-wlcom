@@ -22,8 +22,8 @@ static const struct quirks quirks_table[] = {
     { "nouveau", NULL, QUIRKS_MASK_SOFTWARE_CURSOR },
     { "virtio_gpu", "Mesa Project", QUIRKS_MASK_SOFTWARE_CURSOR | QUIRKS_MASK_EXPLICIT_SYNC },
     { "vmwgfx", NULL, QUIRKS_MASK_SOFTWARE_CURSOR },
-    { "mtgpu", "MTT Mesa Client", QUIRKS_MASK_NO_MODIFIFIERS },
-    { "mwv207", "Mesa Project", QUIRKS_MASK_NO_MODIFIFIERS },
+    { "mtgpu", "MTT Mesa Client", QUIRKS_MASK_NO_MODIFIERS },
+    { "mwv207", "Mesa Project", QUIRKS_MASK_NO_MODIFIERS },
 };
 
 uint32_t quirks_by_backend(int drm_fd)

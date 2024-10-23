@@ -195,7 +195,7 @@ static void init_dmabuf_formats(struct ky_egl *egl)
 {
     char *env = getenv("KYWC_EGL_NO_MODIFIERS");
     bool no_modifiers = env && strcmp(env, "1") == 0;
-    no_modifiers = no_modifiers || egl->quirks & QUIRKS_MASK_NO_MODIFIFIERS;
+    no_modifiers = no_modifiers || egl->quirks & QUIRKS_MASK_NO_MODIFIERS;
     if (no_modifiers) {
         kywc_log(KYWC_INFO, "KYWC_EGL_NO_MODIFIERS set, disabling modifiers for EGL");
     }
