@@ -815,6 +815,7 @@ bool effect_manager_create(struct server *server)
     output_transform_effect_create(manager);
 
     shake_cursor_effect_create(manager);
+    locate_pointer_effect_create(manager);
 
     return true;
 }
