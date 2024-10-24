@@ -24,6 +24,7 @@
 
 #include "input_p.h"
 #include "scene/surface.h"
+#include "server.h"
 #include "util/time.h"
 #include "xwayland.h"
 
@@ -907,6 +908,11 @@ void cursor_remove_input(struct input *input)
 
 static void _cursor_set_image(struct cursor *cursor, enum cursor_name name, bool force)
 {
+    struct server *server = cursor->seat->manager->server;
+    if (server->terminate) {
+        return;
+    }
+
     if (cursor->hidden) {
         return;
     }
