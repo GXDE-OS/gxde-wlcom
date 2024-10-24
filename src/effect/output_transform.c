@@ -412,11 +412,21 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     transform_effect = NULL;
 }
 
+static bool handle_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
 static const struct effect_interface effect_impl = {
     .entity_destroy = entity_destroy,
     .frame_render_pre = frame_render_pre,
     .frame_render_end = frame_render_end,
     .frame_render_post = frame_render_post,
+    .configure = handle_effect_configure,
 };
 
 bool output_transform_effect_create(struct effect_manager *manager)

@@ -74,6 +74,15 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     return true;
 }
 
+static bool handle_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
 static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
 {
     struct wlr_output *wlr_output = cursor_buffer->output->wlr_output;
@@ -192,6 +201,7 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 
 static const struct effect_interface effect_impl = {
     .frame_render_post = frame_render_post,
+    .configure = handle_effect_configure,
 };
 
 bool soft_gamma_effect_create(struct effect_manager *manager)

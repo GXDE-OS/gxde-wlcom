@@ -318,6 +318,16 @@ static bool transform_effect_frame_render_post(struct effect_entity *entity,
     return true;
 }
 
+static bool handle_transform_effect_configure(struct effect *effect,
+                                              const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
 static void transform_do_destroy(struct transform *transform)
 {
     transform->references--;
@@ -402,6 +412,7 @@ static const struct effect_interface transform_effect_impl = {
     .node_render = transform_effect_node_render,
     .frame_render_pre = transform_effect_frame_render_pre,
     .frame_render_post = transform_effect_frame_render_post,
+    .configure = handle_transform_effect_configure,
 };
 
 static void transform_handle_buffer_node_destroy(struct wl_listener *listener, void *data)

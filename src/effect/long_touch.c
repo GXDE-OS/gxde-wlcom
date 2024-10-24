@@ -208,6 +208,15 @@ static bool frame_render_end(struct effect_entity *entity, struct ky_scene_rende
     return true;
 }
 
+static bool handle_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
 static void handle_touch_down(struct wl_listener *listener, void *data)
 {
     struct wlr_touch_down_event *event = data;
@@ -358,6 +367,7 @@ static const struct effect_interface effect_impl = {
     .frame_render_pre = frame_render_pre,
     .frame_render_end = frame_render_end,
     .frame_render_post = frame_render_post,
+    .configure = handle_effect_configure,
 };
 
 bool long_touch_effect_create(struct effect_manager *manager)

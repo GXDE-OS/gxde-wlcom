@@ -195,13 +195,11 @@ static struct blur_data {
 } effect_blur_data = { 0 };
 
 struct blur_render_config {
-    bool enable;
     struct ky_opengl_renderer *renderer;
 };
 
 static struct blur_render_config blur_config = {
     .renderer = NULL,
-    .enable = true,
 };
 
 struct blur_effect {
@@ -664,9 +662,9 @@ static void blur_render(struct ky_scene_render_target *target,
 void blur_render_with_target(struct ky_scene_render_target *target,
                              const struct blur_render_options *options)
 {
-    if (options->blur == NULL || !blur_config.renderer || !blur_config.enable ||
-        !get_or_generate_blur_text_program() || !get_or_generate_blur_program() ||
-        (options->alpha && *options->alpha <= 0.0f)) {
+    if (options->blur == NULL || !blur_config.renderer ||
+        !effect_blur_data.effect->effect->enabled || !get_or_generate_blur_text_program() ||
+        !get_or_generate_blur_program() || (options->alpha && *options->alpha <= 0.0f)) {
         return;
     }
 
@@ -911,15 +909,22 @@ static bool blur_frame_render_post(struct effect_entity *entity,
 static void handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct blur_effect *effect = wl_container_of(listener, effect, enable);
-    blur_config.enable = true;
     ky_scene_damage_whole(effect->scene);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct blur_effect *effect = wl_container_of(listener, effect, disable);
-    blur_config.enable = false;
     ky_scene_damage_whole(effect->scene);
+}
+
+static bool handle_blur_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
 }
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
@@ -937,6 +942,7 @@ static const struct effect_interface blur_impl = {
     .frame_render_begin = blur_frame_render_begin,
     .frame_render_end = blur_frame_render_end,
     .frame_render_post = blur_frame_render_post,
+    .configure = handle_blur_effect_configure,
 };
 
 bool blur_effect_create(struct effect_manager *effect_manager)
@@ -948,7 +954,6 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         return false;
     }
     blur_config.renderer = ky_opengl_renderer_from_wlr_renderer(renderer);
-    blur_config.enable = true;
 
     struct blur_effect *effect = calloc(1, sizeof(*effect));
     if (!effect) {

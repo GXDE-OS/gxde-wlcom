@@ -349,7 +349,18 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     free(effect);
 }
 
-static const struct effect_interface watemark_effect_impl = { 0 };
+static bool handle_effect_configure(struct effect *effect, const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
+static const struct effect_interface watemark_effect_impl = {
+    .configure = handle_effect_configure,
+};
 
 bool watermark_effect_create(struct effect_manager *manager)
 {

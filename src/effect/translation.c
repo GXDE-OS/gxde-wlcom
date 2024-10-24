@@ -179,11 +179,22 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
     translation_effect = NULL;
 }
 
+static bool handle_translation_effect_configure(struct effect *effect,
+                                                const struct effect_option *option)
+{
+    if (effect_option_is_enabled_option(option)) {
+        return true;
+    }
+
+    return false;
+}
+
 static const struct effect_interface effect_impl = {
     .entity_destroy = translation_effect_entity_destroy,
     .frame_render_pre = translation_frame_render_pre,
     .frame_render = translation_frame_render,
     .frame_render_post = translation_frame_render_post,
+    .configure = handle_translation_effect_configure,
 };
 
 bool translation_effect_create(struct effect_manager *manager)
