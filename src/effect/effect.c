@@ -556,7 +556,7 @@ static void entity_insert_to_chain(struct effect_entity *entity, bool frame)
     wl_list_for_each(slot, &chain->slots, link) {
         _entity = frame ? wl_container_of(slot, _entity, frame_slot)
                         : wl_container_of(slot, _entity, slot);
-        if (_entity->effect->priority < entity->effect->priority) {
+        if (_entity->effect->priority > entity->effect->priority) {
             break;
         }
         list = &slot->link;
