@@ -1,4 +1,5 @@
 #ifdef GL_ES
+#extension GL_OES_standard_derivatives : enable
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -12,16 +13,12 @@ uniform float radius;
 uniform float attenuation;
 
 void main() {
-    float r = radius;
-    float l = length(uv - vec2(0.5, 0.5));
-    float d = step(0.0, l - r);
-    d = 1.0 - d;
+    float dist = distance(uv, vec2(0.5, 0.5));
+    float aa = fwidth(dist);
+    float dist2 = smoothstep(-aa, aa, radius - dist);
 
-    // attenuation
-    if (d > 0.0) {
-        gl_FragColor = vec4(d, d, d, 1.0 - (r - l + attenuation));
-    }
-    else {
-        gl_FragColor = vec4(d);
-    }
+    float alpha = radius - dist;
+    alpha = 1.0 - alpha - attenuation;
+    alpha *= dist2;
+    gl_FragColor = vec4(vec3(dist2), alpha);
 }
