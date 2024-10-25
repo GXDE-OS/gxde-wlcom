@@ -138,6 +138,8 @@ struct effect *effect_create(const char *name, int priority, bool enabled,
 
 void effect_destroy(struct effect *effect);
 
+struct effect *effect_by_name(const char *name);
+
 void effect_set_enabled(struct effect *effect, bool enabled);
 
 void effect_write_enabled_option(struct effect *effect, bool enabled);

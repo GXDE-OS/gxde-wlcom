@@ -20,8 +20,6 @@ bool effect_manager_config_init(struct effect_manager *effect_manager);
 
 bool effect_init_config(struct effect *effect);
 
-struct effect *effect_by_name(const char *name);
-
 bool showfps_effect_create(struct effect_manager *manager);
 
 bool capture_manager_create(struct server *server);
