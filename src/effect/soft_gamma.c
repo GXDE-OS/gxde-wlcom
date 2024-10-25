@@ -221,6 +221,14 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
         return false;
     }
 
+    struct effect_entity *entity = ky_scene_add_effect(manager->server->scene, effect->effect);
+    if (!entity) {
+        effect_destroy(effect->effect);
+        free(effect);
+        return false;
+    }
+
+    entity->user_data = effect;
     effect->manager = manager;
     wl_list_init(&effect->cursor_buffers);
 
@@ -234,10 +242,6 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
     if (effect->effect->enabled) {
         handle_effect_enable(&effect->enable, NULL);
     }
-
-    struct ky_scene *scene = effect->manager->server->scene;
-    struct effect_entity *entity = ky_scene_add_effect(scene, effect->effect);
-    entity->user_data = effect;
 
     return true;
 }

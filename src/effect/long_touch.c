@@ -155,7 +155,7 @@ static void gl_render_finger_effect(struct long_touch_effect *effect, struct tou
     glDisableVertexAttribArray(gl_shader.in_uv);
 }
 
-static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_output *output)
+static bool frame_render_begin(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
     struct long_touch_effect *effect = entity->user_data;
     struct touch_finger *finger = effect->touch_finger;
@@ -364,7 +364,7 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 }
 
 static const struct effect_interface effect_impl = {
-    .frame_render_pre = frame_render_pre,
+    .frame_render_begin = frame_render_begin,
     .frame_render_end = frame_render_end,
     .frame_render_post = frame_render_post,
     .configure = handle_effect_configure,
@@ -387,6 +387,14 @@ bool long_touch_effect_create(struct effect_manager *manager)
         return false;
     }
 
+    struct effect_entity *entity = ky_scene_add_effect(manager->server->scene, effect->effect);
+    if (!entity) {
+        effect_destroy(effect->effect);
+        free(effect);
+        return false;
+    }
+
+    entity->user_data = effect;
     effect->manager = manager;
     effect->config.anti_acciden = 0.01f;
     effect->config.animate_delay = 200;
@@ -410,10 +418,6 @@ bool long_touch_effect_create(struct effect_manager *manager)
     if (effect->effect->enabled) {
         handle_effect_enable(&effect->enable, NULL);
     }
-
-    struct ky_scene *scene = effect->manager->server->scene;
-    struct effect_entity *entity = ky_scene_add_effect(scene, effect->effect);
-    entity->user_data = effect;
 
     return true;
 }
