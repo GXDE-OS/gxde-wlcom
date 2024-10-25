@@ -5,6 +5,7 @@
 #include <gio/gio.h>
 
 #include "config_p.h"
+#include "effect/effect.h"
 #include "input/input.h"
 #include "server.h"
 #include "theme.h"
@@ -36,6 +37,8 @@ static const char *style_path = "/org/ukui/style/";
 static const char *cursor_schema = "org.ukui.peripherals-mouse";
 static const char *cursor_theme_key = "cursor-theme";
 static const char *cursor_size_key = "cursor-size";
+static const char *locate_pointer_key = "locate-pointer";
+static const char *shake_cursor_key = "shake-cursor";
 
 static const char *style_schema = "org.ukui.style";
 static const char *style_name_key = "style-name";
@@ -65,6 +68,22 @@ static GSettingsSchema *is_schema_installed(const char *schema_id)
 
 static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 {
+    if (strcmp(key, locate_pointer_key) == 0) {
+        bool enabled = g_settings_get_boolean(mouse, key);
+        struct effect *effect = effect_by_name("locate_pointer");
+        if (effect) {
+            effect_set_enabled(effect, enabled);
+        }
+        return;
+    } else if (strcmp(key, shake_cursor_key) == 0) {
+        bool enabled = g_settings_get_boolean(mouse, key);
+        struct effect *effect = effect_by_name("shake_cursor");
+        if (effect) {
+            effect_set_enabled(effect, enabled);
+        }
+        return;
+    }
+
     if (strcmp(key, cursor_theme_key) == 0) {
         free(settings->cursor.theme);
         settings->cursor.theme = g_settings_get_string(mouse, key);
