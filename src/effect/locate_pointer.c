@@ -10,7 +10,6 @@
 #include "effect_p.h"
 #include "input/cursor.h"
 #include "input/seat.h"
-#include "output.h"
 #include "render/pass.h"
 #include "theme.h"
 #include "util/time.h"
@@ -62,7 +61,12 @@ static void handle_keyboard_key(struct wl_listener *listener, void *data)
 
     pointer->animation_start_time = event->time_msec;
     if (!pointer->shown) {
-        output_schedule_frame(input_current_output(pointer->seat)->wlr_output);
+        pixman_region32_t region;
+        // pointer position may be different when render, but we only need damage here
+        pixman_region32_init_rect(&region, pointer->seat->cursor->lx - RADIUS,
+                                  pointer->seat->cursor->ly - RADIUS, RADIUS * 2, RADIUS * 2);
+        ky_scene_add_damage(pointer->effect->server->scene, &region);
+        pixman_region32_fini(&region);
     }
 }
 
@@ -131,7 +135,8 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
     }
 }
 
-static bool handle_frame_render_pre(struct effect_entity *entity, struct ky_scene_output *output)
+static bool handle_frame_render_begin(struct effect_entity *entity,
+                                      struct ky_scene_render_target *target)
 {
     struct locate_pointer_effect *effect = entity->user_data;
 
@@ -247,7 +252,7 @@ static bool handle_effect_configure(struct effect *effect, const struct effect_o
 }
 
 static const struct effect_interface locate_pointer_effect_impl = {
-    .frame_render_pre = handle_frame_render_pre,
+    .frame_render_begin = handle_frame_render_begin,
     .frame_render_end = handle_frame_render_end,
     .frame_render_post = handle_frame_render_post,
     .configure = handle_effect_configure,
