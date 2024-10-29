@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 
+#include "theme.h"
 #include "view_p.h"
 
 static void stack_mode_view_map(struct view *view)
@@ -74,6 +75,12 @@ static void stack_mode_view_click(struct seat *seat, struct view *view, uint32_t
     seat_focus_surface(seat, view->surface);
 }
 
+static void stack_mode_enter(void)
+{
+    theme_manager_set_interface(NULL);
+    theme_manager_set_theme(theme_manager_get_current()->theme_type);
+}
+
 static const struct view_mode_interface stack_mode_impl = {
     .name = "stack_mode",
 
@@ -90,7 +97,7 @@ static const struct view_mode_interface stack_mode_impl = {
     .view_click = stack_mode_view_click,
     .view_hover = NULL,
 
-    .view_mode_enter = NULL,
+    .view_mode_enter = stack_mode_enter,
     .view_mode_leave = NULL,
 
     .mode_destroy = NULL,

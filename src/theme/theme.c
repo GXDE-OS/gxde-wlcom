@@ -27,6 +27,9 @@ static struct theme_manager *manager = NULL;
 
 /* default light theme from ukui-white */
 static struct theme light = {
+    .theme_name = "default-light",
+    .theme_type = THEME_TYPE_LIGHT,
+
     .builtin = true,
     .font_name = "sans",
     .font_size = 11,
@@ -39,15 +42,15 @@ static struct theme light = {
     .active_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 1.0 },
     .inactive_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 0.3 },
     .text_justify = JUSTIFY_LEFT,
+    .ssd_need_maximize_button = true,
     .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
-
-    .theme_type = THEME_TYPE_LIGHT,
 
     .icon_size = 24,
     .button_width = 30,
 
     .border_width = 1,
     .title_height = 38,
+    .subtitle_height = 38,
     .shadow_border = 30,
 
     .button_svg = base_light_svg_src,
@@ -55,6 +58,9 @@ static struct theme light = {
 
 /* default dark theme from ukui-dark */
 static struct theme dark = {
+    .theme_name = "default-dark",
+    .theme_type = THEME_TYPE_DARK,
+
     .builtin = true,
     .font_name = "sans",
     .font_size = 11,
@@ -68,15 +74,15 @@ static struct theme dark = {
     .inactive_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0,
                              0.3 }, // 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0
     .text_justify = JUSTIFY_LEFT,
+    .ssd_need_maximize_button = true,
     .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
-
-    .theme_type = THEME_TYPE_DARK,
 
     .icon_size = 24,
     .button_width = 30,
 
     .border_width = 1,
     .title_height = 38,
+    .subtitle_height = 38,
     .shadow_border = 30,
 
     .button_svg = base_dark_svg_src,
@@ -239,15 +245,26 @@ static void theme_override_config(struct theme *theme)
     }
 }
 
-static struct theme *theme_create(enum theme_type theme_type, float scale)
+static struct theme *theme_from_theme_type(enum theme_type theme_type)
 {
     struct theme *theme = NULL;
+    if (manager->impl && manager->impl->get_theme) {
+        theme = manager->impl->get_theme(theme_type);
+    }
 
-    if (theme_type == THEME_TYPE_LIGHT) {
-        theme = &light;
-    } else if (theme_type == THEME_TYPE_DARK) {
-        theme = &dark;
-    } else {
+    if (!theme) {
+        if (theme_type == THEME_TYPE_LIGHT) {
+            theme = &light;
+        } else if (theme_type == THEME_TYPE_DARK) {
+            theme = &dark;
+        }
+    }
+    return theme;
+}
+
+static struct theme *theme_init(struct theme *theme, float scale)
+{
+    if (!theme) {
         // TODO: load theme from file
         return NULL;
     }
@@ -322,17 +339,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
-const char *theme_name_from_theme_type(enum theme_type theme_type)
-{
-    switch (theme_type) {
-    case THEME_TYPE_LIGHT:
-        return WLCOM_THEME_LIGHT;
-    case THEME_TYPE_DARK:
-        return WLCOM_THEME_DARK;
-    }
-    return NULL;
-}
-
 static enum theme_type theme_type_from_name(const char *theme_name)
 {
     enum theme_type theme_type = THEME_TYPE_DEFAULT;
@@ -370,13 +376,14 @@ struct theme_manager *theme_manager_create(struct server *server)
     icon_load_desktop(&manager->desktop_infos);
 
     /* load theme from config */
-    const char *theme = theme_manager_read_config(manager);
-    enum theme_type theme_type = theme ? theme_type_from_name(theme) : THEME_TYPE_DEFAULT;
-    manager->current = theme_create(theme_type, 1.0);
+    const char *theme_name = theme_manager_read_config(manager);
+    enum theme_type theme_type = theme_name ? theme_type_from_name(theme_name) : THEME_TYPE_DEFAULT;
+    struct theme *theme = theme_from_theme_type(theme_type);
     /* theme load failed, fallback to default theme */
-    if (!manager->current) {
-        manager->current = theme_create(THEME_TYPE_DEFAULT, 1.0);
+    if (!theme) {
+        theme = theme_from_theme_type(THEME_TYPE_DEFAULT);
     }
+    manager->current = theme_init(theme, 1.0);
 
     manager->hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
     const char *icon_theme = theme_manager_read_icon_config(manager);
@@ -393,7 +400,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     manager->fallback_icon = icon_fallback_create();
     assert(manager->fallback_icon);
 
-    theme_manager_write_config(manager, theme_name_from_theme_type(manager->current->theme_type));
+    theme_manager_write_config(manager, manager->current->theme_name);
     if (manager->icon_theme) {
         theme_manager_write_icon_config(manager, manager->icon_theme->name);
     }
@@ -497,13 +504,19 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
 bool theme_manager_set_theme(enum theme_type theme_type)
 {
     struct theme *old = manager->current;
+    const char *theme_name;
+    struct theme *theme = theme_from_theme_type(theme_type);
+    if (!theme) {
+        return false;
+    }
+    theme_name = theme->theme_name;
     /* current theme is not changed */
-    if (old && old->theme_type == theme_type) {
+    if (old && !strcmp(old->theme_name, theme_name)) {
         return true;
     }
 
     /* not found, keep current theme */
-    struct theme *new = theme_create(theme_type, 1.0);
+    struct theme *new = theme_init(theme, 1.0);
     if (!new) {
         return false;
     }
@@ -520,7 +533,7 @@ bool theme_manager_set_theme(enum theme_type theme_type)
     if (old) {
         theme_destroy(old);
     }
-    theme_manager_write_config(manager, theme_name_from_theme_type(theme_type));
+    theme_manager_write_config(manager, manager->current->theme_name);
     return true;
 }
 
@@ -835,4 +848,9 @@ struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale)
 
     struct icon_buffer *buf = icon_get_buffer(icon, scale);
     return buf ? buf->buffer : NULL;
+}
+
+void theme_manager_set_interface(struct theme_interface *impl)
+{
+    manager->impl = impl;
 }

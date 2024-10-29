@@ -71,6 +71,8 @@ struct theme_update_event {
 
 struct theme {
     struct wl_list link;
+
+    const char *theme_name;
     enum theme_type theme_type;
     bool builtin;
 
@@ -95,6 +97,8 @@ struct theme {
     bool layout_is_right_to_left;
     bool text_is_right_align;
 
+    bool ssd_need_maximize_button;
+
     float accent_color[4];
 
     /* icon size */
@@ -104,12 +108,17 @@ struct theme {
     /* not changed or ignored parameter */
     int border_width;
     int title_height;
+    int subtitle_height;
     int shadow_border;
 
     /* button svg string */
     const char *button_svg;
 
     struct wl_list scaled_buffers;
+};
+
+struct theme_interface {
+    struct theme *(*get_theme)(enum theme_type theme_type);
 };
 
 struct theme_manager *theme_manager_create(struct server *server);
@@ -119,6 +128,8 @@ void theme_manager_add_update_listener(struct wl_listener *listener);
 void theme_manager_add_icon_update_listener(struct wl_listener *listener);
 
 struct theme *theme_manager_get_current(void);
+
+void theme_manager_set_interface(struct theme_interface *impl);
 
 bool theme_manager_set_theme(enum theme_type theme_type);
 

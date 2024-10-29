@@ -143,6 +143,8 @@ static const char *ssd_part_name[SSD_PART_COUNT] = {
 
 static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat);
 
+static void ssd_check_buttons(struct ssd *ssd);
+
 static struct ssd_tooltip *ssd_tooltip_from_seat(struct seat *seat)
 {
     struct ssd_tooltip *tooltip;
@@ -594,7 +596,9 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
 static void ssd_update_title_icon(struct ssd *ssd)
 {
     struct theme *theme = theme_manager_get_current();
-    int y = theme->border_width + (theme->title_height - theme->icon_size) / 2;
+    struct view *view = view_from_kywc_view(ssd->kywc_view);
+    int title_height = view->parent ? theme->subtitle_height : theme->title_height;
+    int y = theme->border_width + (title_height - theme->icon_size) / 2;
     if (theme->layout_is_right_to_left) {
         int view_w = ssd->kywc_view->geometry.width + 2 * theme->border_width;
         ky_scene_node_set_position(ssd->parts[SSD_TITLE_ICON].node,
@@ -608,7 +612,9 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
     struct kywc_view *view = ssd->kywc_view;
+    struct view *tmp = view_from_kywc_view(view);
 
+    int title_height = tmp->parent ? theme->subtitle_height : theme->title_height;
     int max_width = view->geometry.width - (ssd->button_count + 1.5) * theme->button_width;
     /* no space left for title text */
     if (max_width <= 0) {
@@ -623,7 +629,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
         widget_set_font(ssd->title_text, theme->font_name, theme->font_size);
     }
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
-        widget_set_max_size(ssd->title_text, max_width, theme->title_height);
+        widget_set_max_size(ssd->title_text, max_width, title_height);
         widget_set_auto_resize(ssd->title_text, AUTO_RESIZE_ONLY);
     }
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
@@ -644,7 +650,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 
     /* calc the text position by jystify */
     int x, y;
-    y = theme->border_width + (theme->title_height - text_height) / 2;
+    y = theme->border_width + (title_height - text_height) / 2;
     if (theme->text_justify == JUSTIFY_LEFT) {
         x = theme->layout_is_right_to_left ? ssd->button_count * theme->button_width
                                            : theme->button_width;
@@ -667,20 +673,20 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
 {
     struct theme *theme = theme_manager_get_current();
-    struct kywc_view *view = ssd->kywc_view;
+    struct view *view = view_from_kywc_view(ssd->kywc_view);
 
     int border_w = theme->border_width;
     int button_w = theme->button_width;
-    int title_h = theme->title_height;
-    int view_w = view->geometry.width;
+    int title_h = view->parent ? theme->subtitle_height : theme->title_height;
+    int view_w = ssd->kywc_view->geometry.width;
 
     /* set titlebar subtree position if theme changed */
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         ky_scene_node_set_position(&ssd->titlebar_tree->node, -border_w, -(title_h + border_w));
     }
 
-    /* only set button tree position when view w changed */
-    if (cause & SSD_UPDATE_CAUSE_SIZE && ssd->view_width != view_w) {
+    /* set button tree position when view w or title height changed */
+    if (cause & SSD_UPDATE_CAUSE_SIZE) {
         int pad = (title_h - button_w) / 2;
         int x = theme->layout_is_right_to_left ? pad : (view_w + border_w - 3 * button_w - pad);
         int y = pad + border_w;
@@ -769,14 +775,15 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
+        struct view *tmp = view_from_kywc_view(view);
         int border = view->ssd & KYWC_SSD_BORDER ? theme->border_width : 0;
-        int title = view->ssd & KYWC_SSD_TITLE ? theme->title_height : 0;
+        int title = view->ssd & KYWC_SSD_TITLE
+                        ? tmp->parent ? theme->subtitle_height : theme->title_height
+                        : 0;
         int resize = view->ssd & KYWC_SSD_RESIZE ? RESIZE_BORDER : 0;
         int size = theme->shadow_border + border;
-        int bottom = ssd->kywc_view->has_round_corner ? theme->corner_radius : 0;
-        int top = (view->ssd & KYWC_SSD_TITLE || ssd->kywc_view->has_round_corner)
-                      ? theme->corner_radius
-                      : 0;
+        int bottom = view->has_round_corner ? theme->corner_radius : 0;
+        int top = (view->ssd & KYWC_SSD_TITLE || view->has_round_corner) ? theme->corner_radius : 0;
 
         ky_scene_decoration_set_resize_width(frame, resize);
         ky_scene_decoration_set_margin(frame, title, border, theme->shadow_border);
@@ -789,8 +796,10 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
 static void ssd_update_margin(struct ssd *ssd)
 {
     struct kywc_view *view = ssd->kywc_view;
+    struct view *tmp = view_from_kywc_view(view);
     struct theme *theme = theme_manager_get_current();
-    int title = view->ssd & KYWC_SSD_TITLE ? theme->title_height : 0;
+    int title =
+        view->ssd & KYWC_SSD_TITLE ? tmp->parent ? theme->subtitle_height : theme->title_height : 0;
 
     view->margin.off_x = 0;
     view->margin.off_y = title;
@@ -894,6 +903,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
                        THEME_UPDATE_MASK_CORNER_RADIUS;
     if (update_event->update_mask & allowed_mask) {
         ssd_update_margin(ssd);
+        ssd_check_buttons(ssd);
         ssd_update_parts(ssd, SSD_UPDATE_CAUSE_ALL);
     }
 }
@@ -945,13 +955,14 @@ static void handle_view_fullscreen(struct wl_listener *listener, void *data)
 
 static void ssd_check_buttons(struct ssd *ssd)
 {
+    struct theme *theme = theme_manager_get_current();
     struct kywc_view *kywc_view = ssd->kywc_view;
 
     /* always has a close button */
     ssd->buttons = BUTTON_MASK_ALL;
     ssd->button_count = 3;
 
-    if (!kywc_view->maximizable || kywc_view->modal ||
+    if (!kywc_view->maximizable || kywc_view->modal || !theme->ssd_need_maximize_button ||
         (kywc_view->max_width != 0 && kywc_view->max_height != 0 &&
          kywc_view->min_width == kywc_view->max_width &&
          kywc_view->min_height == kywc_view->max_height)) {

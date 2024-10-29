@@ -22,7 +22,7 @@ static int list_themes(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
 
     struct theme *theme;
     wl_list_for_each(theme, &manager->themes, link) {
-        sd_bus_message_append(reply, "s", theme_name_from_theme_type(theme->theme_type));
+        sd_bus_message_append(reply, "s", theme->theme_name);
     }
 
     CK(sd_bus_message_close_container(reply));
@@ -34,8 +34,7 @@ static int list_themes(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
 static int current_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     struct theme_manager *manager = userdata;
-    return sd_bus_reply_method_return(msg, "s",
-                                      theme_name_from_theme_type(manager->current->theme_type));
+    return sd_bus_reply_method_return(msg, "s", manager->current->theme_name);
 }
 
 static int set_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)

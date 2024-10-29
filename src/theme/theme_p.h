@@ -103,6 +103,8 @@ struct theme_manager {
     /* fallback icon */
     struct icon *fallback_icon;
 
+    struct theme_interface *impl;
+
     struct {
         struct wl_signal update;
         struct wl_signal icon_update;
@@ -122,8 +124,6 @@ void theme_manager_write_config(struct theme_manager *manager, const char *name)
 const char *theme_manager_read_icon_config(struct theme_manager *manager);
 
 void theme_manager_write_icon_config(struct theme_manager *manager, const char *name);
-
-const char *theme_name_from_theme_type(enum theme_type theme_type);
 
 struct icon_theme *icon_theme_load(const char *name);
 
