@@ -16,7 +16,7 @@
 #include "ukui-shell-protocol.h"
 #include "view_p.h"
 
-#define UKUI_SHELL_VERSION 3
+#define UKUI_SHELL_VERSION 4
 
 struct ukui_shell {
     struct wl_global *global;
@@ -492,6 +492,18 @@ static void handle_set_icon(struct wl_client *client, struct wl_resource *resour
     surface->icon_name = icon_name ? strdup(icon_name) : NULL;
 }
 
+static void handle_activate(struct wl_client *client, struct wl_resource *resource)
+{
+    struct ukui_surface *surface = wl_resource_get_user_data(resource);
+
+    if (surface->wlr_surface && surface->view && surface->wlr_surface->mapped) {
+        /* activation request */
+        kywc_view_activate(&surface->view->base);
+        seat_focus_surface(input_manager_get_default_seat(), surface->view->surface);
+        return;
+    }
+}
+
 static const struct ukui_surface_interface ukui_surface_impl = {
     .destroy = handle_destroy,
     .set_output = handle_set_output,
@@ -505,6 +517,7 @@ static const struct ukui_surface_interface ukui_surface_impl = {
     .set_panel_takes_focus = handle_set_panel_takes_focus,
     .grab_keyboard = handle_grab_keyboard,
     .set_icon = handle_set_icon,
+    .activate = handle_activate,
 };
 
 static void surface_handle_output_update_usable_area(struct wl_listener *listener, void *data)
