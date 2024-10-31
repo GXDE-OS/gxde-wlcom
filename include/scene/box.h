@@ -18,4 +18,6 @@ void ky_scene_box_set_size(struct ky_scene_box *scene_box, int width, int height
 
 void ky_scene_box_set_border_width(struct ky_scene_box *scene_box, int width);
 
+void ky_scene_box_set_radius(struct ky_scene_box *scene_box, const int radius[static 4]);
+
 #endif /* _SCENE_BOX_H_ */
