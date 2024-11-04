@@ -265,20 +265,35 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
     state->vrr_policy = output->vrr_policy;
 }
 
-static void fallback_output_set_state(struct kywc_output *kywc_output, bool enabled)
+static void fallback_output_set_state(struct kywc_output *kywc_output, bool enabled,
+                                      struct kywc_output *mirror)
 {
-    struct kywc_output_state state = kywc_output->state;
-
-    if (!state.enabled && enabled) {
-        state.power = true;
-        state.scale = 1.0;
-
-        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
-        state.width = mode->width;
-        state.height = mode->height;
-        state.refresh = mode->refresh;
+    if (!kywc_output->state.enabled && !enabled) {
+        return;
     }
+
+    struct kywc_output_state state = kywc_output->state;
     state.enabled = enabled;
+
+    if (enabled) {
+        state.power = true;
+        state.lx = state.ly = 0;
+
+        if (mirror) {
+            state.scale = mirror->state.scale;
+            state.transform = mirror->state.transform;
+            state.width = mirror->state.width;
+            state.height = mirror->state.height;
+            state.refresh = mirror->state.refresh;
+        } else {
+            state.scale = 1.0;
+            state.transform = WL_OUTPUT_TRANSFORM_NORMAL;
+            struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
+            state.width = mode->width;
+            state.height = mode->height;
+            state.refresh = mode->refresh;
+        }
+    }
 
     kywc_output_set_state(kywc_output, &state);
 }
@@ -613,7 +628,7 @@ static void output_destroy(struct output *output)
     if (!output_manager->server->terminate && output_manager->fallback_output &&
         !output_manager_has_enabled_outputs()) {
         kywc_output_set_primary(output_manager->fallback_output);
-        fallback_output_set_state(output_manager->fallback_output, true);
+        fallback_output_set_state(output_manager->fallback_output, true, kywc_output);
         output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
     }
 
@@ -931,7 +946,7 @@ bool output_manager_configure_outputs(void)
 
     /* disable the fallback when an actual enabled output exists */
     if (output_manager->fallback_output && output_manager_has_enabled_outputs()) {
-        fallback_output_set_state(output_manager->fallback_output, false);
+        fallback_output_set_state(output_manager->fallback_output, false, NULL);
     }
 
     if (kywc_log_get_level() >= KYWC_INFO) {
