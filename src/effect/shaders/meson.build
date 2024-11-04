@@ -1,5 +1,7 @@
 shaders = [
   'blur_tex.vert',
+  'blur_first_down.frag',
+  'blur_first_down.vert',
   'blur_tex_rgba.frag',
   'blur.vert',
   'blur_up.frag',

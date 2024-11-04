@@ -13,6 +13,8 @@
 #include <kywc/log.h>
 
 #include "blur_down_frag.h"
+#include "blur_first_down_frag.h"
+#include "blur_first_down_vert.h"
 #include "blur_tex_rgba_frag.h"
 #include "blur_tex_vert.h"
 #include "blur_up_frag.h"
@@ -158,17 +160,29 @@ struct blur_tex_program {
         GLint rounded_corner_radius;
         GLint pos_attrib;
         GLint sdfpos_attrib;
+
+        GLint offset;
+        GLint halfpixel;
     } shaders;
+};
+
+struct first_blur_shaders {
+    GLint uv2tex;
+    GLint min_uv;
+    GLint max_uv;
 };
 
 struct blur_program {
     GLuint id;
 
     struct {
+        GLint texture;
         GLint offset;
         GLint position;
         GLint halfpixel;
     } shaders;
+
+    void *extension_data;
 };
 
 struct blur_output_data {
@@ -183,14 +197,22 @@ struct blur_output_data {
     struct wl_listener buffer_destroy;
 };
 
+enum blur_program_type {
+    BLUR_PROGRAM_FIRST_DOWN,
+    BLUR_PROGRAM_DOWN,
+    BLUR_PROGRAM_UP,
+    BLUR_PROGRAM_TYPE_COUNT
+};
+
 static struct blur_data {
     struct blur_effect *effect;
     struct wl_list output_datas;
     struct blur_output_data *current_output_data;
+    struct ky_opengl_texture *current_output_texture;
 
     float offset;
     uint32_t iterations;
-    struct blur_program blur_prog[2];
+    struct blur_program blur_prog[BLUR_PROGRAM_TYPE_COUNT];
     struct blur_tex_program blur_tex_prog;
 } effect_blur_data = { 0 };
 
@@ -219,21 +241,6 @@ static void blur_output_data_destroy(struct blur_output_data *data);
 static int calculate_blur_radius(int iterations, float offset)
 {
     return pow(2, iterations + 1) * offset;
-}
-
-static void gl_texture_copy(struct glrtt_pool_texture *tex, struct ky_opengl_buffer *src,
-                            struct kywc_box *box)
-{
-    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->fbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, tex->fbo);
-    glBlitFramebuffer(box->x, box->y, box->x + box->width, box->y + box->height, 0, 0, box->width,
-                      box->height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
 #if 0
@@ -299,28 +306,52 @@ static void blur_program_generate(struct blur_program *prog, const char *vertex_
     if (prog_id > 0) {
         prog->id = prog_id;
         prog->shaders.position = glGetAttribLocation(prog_id, "position");
+        prog->shaders.texture = glGetUniformLocation(prog_id, "texture");
         prog->shaders.offset = glGetUniformLocation(prog_id, "offset");
         prog->shaders.halfpixel = glGetUniformLocation(prog_id, "halfpixel");
+    }
+}
+
+static void first_blur_program_generate(struct blur_program *prog, const char *vertex_source,
+                                        const char *frag_source)
+{
+    blur_program_generate(prog, vertex_source, frag_source);
+    if (prog->id <= 0) {
+        return;
+    }
+
+    struct first_blur_shaders *shaders = calloc(1, sizeof(*shaders));
+    if (shaders) {
+        shaders->uv2tex = glGetUniformLocation(prog->id, "uv2tex");
+        shaders->max_uv = glGetUniformLocation(prog->id, "max_uv");
+        shaders->min_uv = glGetUniformLocation(prog->id, "min_uv");
+        prog->extension_data = shaders;
     }
 }
 
 static struct blur_program *get_or_generate_blur_program(void)
 {
     struct blur_program *blur_prog = effect_blur_data.blur_prog;
-    if (blur_prog[0].id <= 0) {
-        blur_program_generate(&blur_prog[0], blur_vert, blur_down_frag);
+    if (blur_prog[BLUR_PROGRAM_FIRST_DOWN].id <= 0) {
+        first_blur_program_generate(&blur_prog[BLUR_PROGRAM_FIRST_DOWN], blur_first_down_vert,
+                                    blur_first_down_frag);
+    }
+    if (blur_prog[BLUR_PROGRAM_DOWN].id <= 0) {
+        blur_program_generate(&blur_prog[BLUR_PROGRAM_DOWN], blur_vert, blur_down_frag);
     }
 
-    if (blur_prog[1].id <= 0) {
-        blur_program_generate(&blur_prog[1], blur_vert, blur_up_frag);
+    if (blur_prog[BLUR_PROGRAM_UP].id <= 0) {
+        blur_program_generate(&blur_prog[BLUR_PROGRAM_UP], blur_vert, blur_up_frag);
     }
 
-    if (blur_prog[0].id > 0 && blur_prog[1].id > 0) {
-        return blur_prog;
+    for (int i = 0; i < BLUR_PROGRAM_TYPE_COUNT; ++i) {
+        if (blur_prog[i].id <= 0) {
+            kywc_log(KYWC_ERROR, "Blur shader compile error!");
+            return NULL;
+        }
     }
 
-    kywc_log(KYWC_ERROR, "Blur shader compile error!");
-    return NULL;
+    return blur_prog;
 }
 
 static struct blur_tex_program *get_or_generate_blur_text_program(void)
@@ -343,6 +374,8 @@ static struct blur_tex_program *get_or_generate_blur_text_program(void)
             glGetUniformLocation(prog, "roundedCornerRadius");
         blur_tex_prog->shaders.pos_attrib = glGetAttribLocation(prog, "pos");
         blur_tex_prog->shaders.sdfpos_attrib = glGetAttribLocation(prog, "sdfpos");
+        blur_tex_prog->shaders.offset = glGetUniformLocation(prog, "offset");
+        blur_tex_prog->shaders.halfpixel = glGetUniformLocation(prog, "halfpixel");
         return blur_tex_prog;
     }
     kywc_log(KYWC_ERROR, "Blur shader compile error!");
@@ -353,12 +386,18 @@ static void blur_data_destroy(struct blur_data *data)
 {
     ky_egl_make_current(blur_config.renderer->egl, NULL);
 
-    if (data->blur_prog[0].id > 0) {
-        glDeleteProgram(data->blur_prog[0].id);
+    for (int i = 0; i < BLUR_PROGRAM_TYPE_COUNT; ++i) {
+        if (data->blur_prog[i].id <= 0) {
+            continue;
+        }
+
+        if (data->blur_prog[i].extension_data) {
+            free(data->blur_prog[i].extension_data);
+        }
+
+        glDeleteProgram(data->blur_prog[i].id);
     }
-    if (data->blur_prog[1].id > 0) {
-        glDeleteProgram(data->blur_prog[1].id);
-    }
+
     if (data->blur_tex_prog.id > 0) {
         glDeleteProgram(data->blur_tex_prog.id);
     }
@@ -379,7 +418,7 @@ static void set_proj_matrix(GLint loc, float proj[9], const struct kywc_box *box
     glUniformMatrix3fv(loc, 1, GL_FALSE, gl_matrix);
 }
 
-static void set_tex_matrix(GLint loc, enum wl_output_transform trans, const struct wlr_fbox *box)
+static void set_tex_matrix(GLint loc, enum wl_output_transform trans, const struct kywc_fbox *box)
 {
     float tex_matrix[9];
     wlr_matrix_identity(tex_matrix);
@@ -404,11 +443,6 @@ static void set_tex_matrix(GLint loc, enum wl_output_transform trans, const stru
 static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_texture *out,
                              int width, int height)
 {
-    /* Special case for small regions where we can't really blur, because we */
-    /* simply have too few pixels */
-    width = width < 1 ? 1 : width;
-    height = height < 1 ? 1 : height;
-
     KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     glBindFramebuffer(GL_FRAMEBUFFER, out->fbo);
     glViewport(0, 0, out->width, out->height);
@@ -421,30 +455,106 @@ static void render_iteration(struct glrtt_pool_texture *in, struct glrtt_pool_te
     KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
+static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
+                                                  struct ky_opengl_buffer *gl_buffer,
+                                                  struct kywc_box *blur_src_box)
+{
+    struct ky_opengl_texture *gl_texture = data->current_output_texture;
+    struct blur_program *first_down_prog = &data->blur_prog[BLUR_PROGRAM_FIRST_DOWN];
+    struct first_blur_shaders *extension_shaders = first_down_prog->extension_data;
+    if (!gl_texture || !extension_shaders) {
+        return NULL;
+    }
+
+    KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
+
+    int sample_width = blur_src_box->width / 2;
+    int sample_height = blur_src_box->height / 2;
+    struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
+    struct glrtt_pool_texture *out_tex =
+        glrtt_pool_get_texture(glrtt_pool, sample_width, sample_height);
+    if (!out_tex) {
+        return NULL;
+    }
+
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    glDisable(GL_BLEND);
+    // down scale
+    glUseProgram(first_down_prog->id);
+    glEnableVertexAttribArray(first_down_prog->shaders.position);
+    GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
+    glVertexAttribPointer(first_down_prog->shaders.position, 2, GL_FLOAT, GL_FALSE, 0, pos_vertex);
+
+    struct kywc_fbox src_fbox = {
+        .x = blur_src_box->x * 1.0f / gl_texture->wlr_texture.width,
+        .y = blur_src_box->y * 1.0f / gl_texture->wlr_texture.height,
+        .width = blur_src_box->width * 1.0f / gl_texture->wlr_texture.width,
+        .height = blur_src_box->height * 1.0f / gl_texture->wlr_texture.height,
+    };
+    set_tex_matrix(extension_shaders->uv2tex, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
+    glUniform2f(extension_shaders->min_uv, src_fbox.x, src_fbox.y);
+    /**
+     * the srcbox may be greater than 1, and texture sampling may exceed the texture boundary.
+     * using GL_CAMP_TO_EDGE can ensure correct blur results.
+     */
+    glUniform2f(extension_shaders->max_uv, src_fbox.x + src_fbox.width,
+                src_fbox.y + src_fbox.height);
+
+    glUniform1i(first_down_prog->shaders.texture, 0);
+    glUniform1f(first_down_prog->shaders.offset, data->offset);
+    glUniform2f(first_down_prog->shaders.halfpixel, 0.5f / sample_width, 0.5f / sample_height);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(gl_texture->target, gl_texture->tex);
+    glTexParameteri(gl_texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(gl_texture->target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(gl_texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(gl_texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, out_tex->fbo);
+    glViewport(0, 0, out_tex->width, out_tex->height);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(gl_texture->target, 0);
+
+    glDisableVertexAttribArray(first_down_prog->shaders.position);
+    glUseProgram(0);
+    glEnable(GL_BLEND);
+
+    KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
+    return out_tex;
+}
+
 static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
 {
     struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
     // iterations must > 0
-    int iterations = data->iterations;
+    int iterations = data->iterations - 1;
     float offset = data->offset;
     int width = src_tex->width;
     int height = src_tex->height;
 
-    GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
     KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
 
     struct blur_program *prog = data->blur_prog;
-    struct blur_program *down_prog = &prog[0];
-    struct blur_program *up_prog = &prog[1];
+    struct blur_program *down_prog = &prog[BLUR_PROGRAM_DOWN];
+    struct blur_program *up_prog = &prog[BLUR_PROGRAM_UP];
 
     glDisable(GL_BLEND);
     // down scale
     glUseProgram(down_prog->id);
     glEnableVertexAttribArray(down_prog->shaders.position);
+    GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
     glVertexAttribPointer(down_prog->shaders.position, 2, GL_FLOAT, GL_FALSE, 0, pos_vertex);
     glUniform1f(down_prog->shaders.offset, offset);
+    glUniform1i(down_prog->shaders.texture, 0);
 
     struct glrtt_pool_texture *last_tex = src_tex;
     for (int i = 0; i < iterations; i++) {
@@ -473,6 +583,7 @@ static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
     glEnableVertexAttribArray(up_prog->shaders.position);
     glVertexAttribPointer(up_prog->shaders.position, 2, GL_FLOAT, GL_FALSE, 0, pos_vertex);
     glUniform1f(up_prog->shaders.offset, offset);
+    glUniform1i(up_prog->shaders.texture, 0);
     for (int i = iterations - 1; i >= 0; i--) {
         int sample_width = width / (1 << i);
         int sample_height = height / (1 << i);
@@ -593,13 +704,10 @@ static void blur_render(struct ky_scene_render_target *target,
         .height = ALIGN(cpy_box->y2 - cpy_box->y1, align_num),
     };
 
-    struct glrtt_pool_texture *src_tex =
-        glrtt_pool_get_texture(glrtt_pool, buffer_cpy_box.width, buffer_cpy_box.height);
+    struct glrtt_pool_texture *src_tex = blur_first_down(data, gl_pass->buffer, &buffer_cpy_box);
     if (!src_tex) {
         return;
     }
-
-    gl_texture_copy(src_tex, gl_pass->buffer, &buffer_cpy_box);
 
     blur_fb0(data, src_tex);
 
@@ -612,6 +720,8 @@ static void blur_render(struct ky_scene_render_target *target,
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, src_tex->texture);
 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (target->scale - floor(target->scale) > 0.001) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -620,13 +730,14 @@ static void blur_render(struct ky_scene_render_target *target,
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     }
 
-    struct wlr_fbox src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
-
     glUniform1i(prog->shaders.tex, 0);
+    glUniform1f(prog->shaders.offset, data->offset);
+    glUniform2f(prog->shaders.halfpixel, 0.5f / src_tex->width, 0.5f / src_tex->height);
 
     float alpha = options->alpha ? *options->alpha : 1.0f;
     glUniform1f(prog->shaders.alpha, alpha);
 
+    struct kywc_fbox src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
     set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, &buffer_cpy_box);
     set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
     set_tex_matrix(prog->shaders.shape_proj, target->transform, &src_fbox);
@@ -771,6 +882,12 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
 {
     struct blur_data *data = entity->user_data;
 
+    struct ky_opengl_render_pass *gl_pass =
+        ky_opengl_render_pass_from_wlr_render_pass(target->render_pass);
+    struct wlr_texture *src_tex =
+        ky_opengl_texture_from_buffer(&blur_config.renderer->wlr_renderer, gl_pass->buffer->buffer);
+    data->current_output_texture = ky_opengl_texture_from_wlr_texture(src_tex);
+
     struct blur_output_data *output_data = NULL, *exits_data;
     wl_list_for_each(exits_data, &data->output_datas, link) {
         if (exits_data->output == target->output) {
@@ -808,6 +925,11 @@ static bool blur_frame_render_end(struct effect_entity *entity,
                                   struct ky_scene_render_target *target)
 {
     struct blur_data *data = entity->user_data;
+
+    if (data->current_output_texture) {
+        wlr_texture_destroy(&data->current_output_texture->wlr_texture);
+    }
+
     struct blur_output_data *output_data = data->current_output_data;
     if (!output_data || !output_data->output_buffer ||
         !pixman_region32_not_empty(&output_data->unaffected_region)) {
