@@ -31,9 +31,11 @@ bool spawn_invoke(const char *command)
         return false;
     case 0:
         setsid();
+        /* do not give our signal mask to the new process */
         sigset_t set;
-        sigemptyset(&set);
-        sigprocmask(SIG_SETMASK, &set, NULL);
+        sigfillset(&set);
+        sigprocmask(SIG_UNBLOCK, &set, NULL);
+
         limit_unset_nofile();
 
         pid_t grandchild = fork();
@@ -85,7 +87,14 @@ pid_t spawn_session(const char *session)
         return -1;
     case 0:
         /* child */
+        setsid();
+        /* do not give our signal mask to the new process */
+        sigset_t set;
+        sigfillset(&set);
+        sigprocmask(SIG_UNBLOCK, &set, NULL);
+
         limit_unset_nofile();
+
         /* close stdout/stderr */
         int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0666);
         if (devnull < 0) {
