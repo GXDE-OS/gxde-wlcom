@@ -140,6 +140,25 @@ static void xwayland_get_atoms(xcb_connection_t *xcb_conn)
     }
 }
 
+static void xwayland_get_shape_extension(xcb_connection_t *xcb_conn)
+{
+    xwayland->shape = xcb_get_extension_data(xcb_conn, &xcb_shape_id);
+    if (!xwayland->shape || !xwayland->shape->present) {
+        kywc_log(KYWC_WARN, "shape not available");
+        xwayland->shape = NULL;
+        return;
+    }
+
+    xcb_shape_query_version_cookie_t shape_cookie;
+    xcb_shape_query_version_reply_t *shape_reply;
+    shape_cookie = xcb_shape_query_version(xcb_conn);
+    shape_reply = xcb_shape_query_version_reply(xcb_conn, shape_cookie, NULL);
+
+    kywc_log(KYWC_INFO, "shape version: %" PRIu32 ".%" PRIu32, shape_reply->major_version,
+             shape_reply->minor_version);
+    free(shape_reply);
+}
+
 static void xwayland_get_resources(xcb_connection_t *xcb_conn)
 {
     xcb_prefetch_extension_data(xcb_conn, &xcb_shape_id);
@@ -159,20 +178,7 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
                         xwayland->atoms[NET_WM_NAME], xwayland->atoms[UTF8_STRING], 8, strlen(name),
                         name);
 
-    xwayland->shape = xcb_get_extension_data(xcb_conn, &xcb_shape_id);
-    if (!xwayland->shape || !xwayland->shape->present) {
-        kywc_log(KYWC_WARN, "shape not available");
-        return;
-    }
-
-    xcb_shape_query_version_cookie_t shape_cookie;
-    xcb_shape_query_version_reply_t *shape_reply;
-    shape_cookie = xcb_shape_query_version(xcb_conn);
-    shape_reply = xcb_shape_query_version_reply(xcb_conn, shape_cookie, NULL);
-
-    kywc_log(KYWC_DEBUG, "shape version: %" PRIu32 ".%" PRIu32, shape_reply->major_version,
-             shape_reply->minor_version);
-    free(shape_reply);
+    xwayland_get_shape_extension(xcb_conn);
 }
 
 void xwayland_surface_shape_select_input(struct wlr_xwayland_surface *surface, bool enabled)
@@ -284,7 +290,7 @@ static int xwayland_event_handler(int fd, uint32_t mask, void *data)
         count++;
 
         const uint8_t response_type = event->response_type & 0x7f;
-        if (response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
+        if (xwayland->shape && response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
             xwayland_handle_shape_notify((xcb_shape_notify_event_t *)event);
         }
 
@@ -392,7 +398,7 @@ int xwayland_read_wm_state(xcb_window_t window_id)
         xwayland->xcb_conn, 0, window_id, xwayland->atoms[NET_WM_STATE], XCB_ATOM_ANY, 0, 2048);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
     if (reply == NULL) {
-        kywc_log(KYWC_ERROR, "Failed to get window property");
+        kywc_log(KYWC_ERROR, "Failed to get window state property");
         return 0;
     }
 
