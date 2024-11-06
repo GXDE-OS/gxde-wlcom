@@ -238,7 +238,6 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
     }
 
     struct ky_scene_node *node = &view->tree->node;
-    node->role = KY_SCENE_NODE_TOPLEVEL;
     scale_entity->transform = transform_effect_get_or_create_transform(
         scale_effect->effect, &options, node, scale_entity);
     if (!scale_entity->transform) {

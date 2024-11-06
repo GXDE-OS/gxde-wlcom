@@ -181,8 +181,6 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
                            &options.end.geometry);
     }
 
-    node->role = KY_SCENE_NODE_TOPLEVEL;
-
     fade_entity_create_transform(fade_entity, fade_effect->effect, &options, node);
 
     return true;

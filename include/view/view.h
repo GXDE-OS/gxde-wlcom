@@ -188,6 +188,8 @@ bool view_manager_get_show_activte_only(void);
 
 uint32_t view_manager_get_adsorption(void);
 
+struct ky_scene_tree *view_manager_get_layer_tree(struct ky_scene_node *node);
+
 struct view *view_from_kywc_view(struct kywc_view *kywc_view);
 
 struct view *view_try_from_wlr_surface(struct wlr_surface *wlr_surface);

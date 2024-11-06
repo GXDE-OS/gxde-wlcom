@@ -508,23 +508,6 @@ static struct transform *transform_create(struct transform_options *options,
     return transform;
 }
 
-static struct ky_scene_tree *get_node_layer_tree(struct ky_scene_node *node)
-{
-    struct ky_scene_tree *tree = node->parent;
-
-    int deep = 0;
-    while (tree) {
-        deep++;
-        tree = tree->node.parent;
-    }
-
-    struct ky_scene_tree *view_parent = node->parent;
-    /* determine if it is in the workspace, and if so, take the parent's parent */
-    view_parent = deep >= 4 ? view_parent->node.parent : view_parent;
-
-    return view_parent;
-}
-
 static void transform_handle_node_destroy(struct wl_listener *listener, void *data)
 {
     struct transform *transform = wl_container_of(listener, transform, node_destroy);
@@ -538,13 +521,7 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
         return;
     }
 
-    struct ky_scene_node *node = transform->node;
-    struct ky_scene_tree *layer_tree;
-    if (node->role == KY_SCENE_NODE_TOPLEVEL) {
-        layer_tree = get_node_layer_tree(node);
-    } else {
-        layer_tree = view_manager_get_layer(LAYER_POPUP, false)->tree;
-    }
+    struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(transform->node);
     if (!layer_tree) {
         kywc_log(KYWC_ERROR, "node is not in layer");
         return;

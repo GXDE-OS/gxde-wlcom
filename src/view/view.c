@@ -1734,6 +1734,18 @@ uint32_t view_manager_get_adsorption(void)
     return view_manager->state.view_adsorption;
 }
 
+struct ky_scene_tree *view_manager_get_layer_tree(struct ky_scene_node *node)
+{
+    struct ky_scene_tree *tree = node->parent;
+
+    while (tree && tree->node.role != KY_SCENE_NODE_WORKSPACE &&
+           tree->node.role != KY_SCENE_NODE_LAYER) {
+        tree = tree->node.parent;
+    }
+
+    return tree;
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);

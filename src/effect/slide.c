@@ -188,7 +188,6 @@ static struct slide_entity *create_slide_entity(struct ky_scene_node *node, int 
     options.type.geometry = ANIMATION_TYPE_EASE;
     options.start_time = current_time_msec();
 
-    slide_entity->node->role = is_view ? KY_SCENE_NODE_TOPLEVEL : KY_SCENE_NODE_POPUP;
     struct kywc_box node_geometry;
     slide_get_node_origin_geometry(slide_entity->node, &node_geometry);
     slide_calc_start_and_end_geometry(slide_entity, &node_geometry, mapped, &options.start.geometry,
