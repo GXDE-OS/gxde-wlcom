@@ -98,6 +98,8 @@ enum ky_scene_node_prop {
 
     // bit 3 ... 6, node role: root, layer, workspace, toplevel, xwayland, popup, ssd,  ...
     KY_SCENE_NODE_ROOT = 1 << 3,
+    KY_SCENE_NODE_LAYER,
+    KY_SCENE_NODE_WORKSPACE,
     KY_SCENE_NODE_TOPLEVEL,
     KY_SCENE_NODE_SUBSURFACE,
     KY_SCENE_NODE_POPUP,

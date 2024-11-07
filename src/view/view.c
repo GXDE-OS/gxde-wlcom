@@ -1813,6 +1813,7 @@ struct view_manager *view_manager_create(struct server *server)
     for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
         view_manager->layers[layer].layer = layer;
         view_manager->layers[layer].tree = ky_scene_tree_create(&server->scene->tree);
+        view_manager->layers[layer].tree->node.role = KY_SCENE_NODE_LAYER;
     }
 
     view_manager_config_init(view_manager);
