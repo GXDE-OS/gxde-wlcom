@@ -75,7 +75,6 @@ struct xwayland_server {
 
     xcb_connection_t *xcb_conn;
     xcb_screen_t *screen;
-    struct wl_event_source *event_source;
     const xcb_query_extension_reply_t *shape;
 
     struct wlr_surface *hoverd_surface;

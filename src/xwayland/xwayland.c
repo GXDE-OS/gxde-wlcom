@@ -256,14 +256,14 @@ void xwayland_surface_apply_shape_region(struct wlr_xwayland_surface *surface)
     free(reply);
 }
 
-static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
+static int xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
 {
     pixman_region32_t region;
     pixman_region32_init(&region);
 
     if (!xwayland_get_shape_region(notify->affected_window, notify->shape_kind, &region, NULL)) {
         pixman_region32_fini(&region);
-        return;
+        return 1;
     }
 
     if (!xwayland_unmanaged_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
@@ -271,37 +271,9 @@ static void xwayland_handle_shape_notify(xcb_shape_notify_event_t *notify)
         xwayland_view_set_shape_region(xwayland, notify->affected_window, notify->shape_kind,
                                        &region);
     }
+
     pixman_region32_fini(&region);
-}
-
-static int xwayland_event_handler(int fd, uint32_t mask, void *data)
-{
-    int count = 0;
-    xcb_generic_event_t *event;
-
-    if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR)) {
-        kywc_log(KYWC_ERROR, "xwayland is crashed");
-        wl_event_source_remove(xwayland->event_source);
-        xwayland->event_source = NULL;
-        return 0;
-    }
-
-    while ((event = xcb_poll_for_event(xwayland->xcb_conn))) {
-        count++;
-
-        const uint8_t response_type = event->response_type & 0x7f;
-        if (xwayland->shape && response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
-            xwayland_handle_shape_notify((xcb_shape_notify_event_t *)event);
-        }
-
-        free(event);
-    }
-
-    if (count) {
-        xcb_flush(xwayland->xcb_conn);
-    }
-
-    return count;
+    return 1;
 }
 
 void xwayland_set_cursor(struct seat *seat)
@@ -354,22 +326,10 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
 {
     kywc_log(KYWC_INFO, "xwayland is ready");
 
-    xwayland->xcb_conn = xcb_connect(NULL, NULL);
-    int err = xcb_connection_has_error(xwayland->xcb_conn);
-    if (err) {
-        kywc_log(KYWC_ERROR, "XCB connect failed: %d", err);
-        return;
-    }
-
+    xwayland->xcb_conn = wlr_xwayland_get_xwm_connection(xwayland->wlr_xwayland);
     xcb_screen_iterator_t screen_iterator =
         xcb_setup_roots_iterator(xcb_get_setup(xwayland->xcb_conn));
     xwayland->screen = screen_iterator.data;
-
-    xwayland->event_source =
-        wl_event_loop_add_fd(wl_display_get_event_loop(xwayland->server->display),
-                             xcb_get_file_descriptor(xwayland->xcb_conn), WL_EVENT_READABLE,
-                             xwayland_event_handler, NULL);
-    wl_event_source_check(xwayland->event_source);
 
     /* use the default seat0 */
     xwayland_update_seat(input_manager_get_default_seat());
@@ -523,7 +483,9 @@ static int xwayland_handle_wm_state_message(xcb_client_message_event_t *client_m
 /* return 0 as we only handle few things */
 static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
 {
-    if ((event->response_type & 0x7f) == XCB_PROPERTY_NOTIFY) {
+    const uint8_t response_type = event->response_type & 0x7f;
+
+    if (response_type == XCB_PROPERTY_NOTIFY) {
         xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;
         if (ev->atom == xwayland->atoms[NET_WM_STATE]) {
             return xwayland_read_wm_state(ev->window);
@@ -532,11 +494,14 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
         } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
             return xwayland_read_wm_window_opacity(ev->window);
         }
-    } else if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE) {
+    } else if (response_type == XCB_CLIENT_MESSAGE) {
         xcb_client_message_event_t *ev = (xcb_client_message_event_t *)event;
         if (ev->type == xwayland->atoms[NET_WM_STATE]) {
             return xwayland_handle_wm_state_message((xcb_client_message_event_t *)event);
         }
+    } else if (xwayland->shape &&
+               response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
+        return xwayland_handle_shape_notify((xcb_shape_notify_event_t *)event);
     }
 
     return 0;
@@ -617,11 +582,6 @@ void xwayland_server_destroy(void)
     wl_list_remove(&xwayland->xwayland_ready.link);
     wl_list_remove(&xwayland->new_xwayland_surface.link);
     wl_list_remove(&xwayland->seat_destroy.link);
-
-    if (xwayland->event_source) {
-        wl_event_source_remove(xwayland->event_source);
-    }
-    xcb_disconnect(xwayland->xcb_conn);
 
     struct wlr_xwayland *wlr_xwayland = xwayland->wlr_xwayland;
     /* prevent xwayland_update_seat in hover */
