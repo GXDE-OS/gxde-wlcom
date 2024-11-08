@@ -324,7 +324,7 @@ static struct wlr_texture *gl_texture_from_dmabuf_buffer(struct ky_opengl_render
         struct ky_opengl_texture *texture = wl_container_of(addon, texture, buffer_addon);
         if (!ky_opengl_texture_invalidate(texture)) {
             kywc_log(KYWC_ERROR, "Failed to invalidate texture");
-            return false;
+            return NULL;
         }
         wlr_buffer_lock(texture->buffer);
         return &texture->wlr_texture;
@@ -332,7 +332,7 @@ static struct wlr_texture *gl_texture_from_dmabuf_buffer(struct ky_opengl_render
 
     struct wlr_texture *wlr_texture = gl_texture_from_dmabuf(&renderer->wlr_renderer, dmabuf);
     if (wlr_texture == NULL) {
-        return false;
+        return NULL;
     }
 
     struct ky_opengl_texture *texture = ky_opengl_texture_from_wlr_texture(wlr_texture);
