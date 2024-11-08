@@ -9,7 +9,7 @@
 
 #include "output_p.h"
 
-#define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25100 ? 25100 : (val)))
+#define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25000 ? 25000 : (val)))
 
 /**
  * From Redshift project:
