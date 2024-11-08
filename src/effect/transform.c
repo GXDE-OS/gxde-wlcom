@@ -521,6 +521,17 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
         return;
     }
 
+    /**
+     * when node destroy, if visible is empty, there is no need to render, not add effect.
+     * when node was just created, it was never rendered, visible is also empty, but it needs to
+     * render and add effect.
+     */
+    struct effect_entity *_entity = transform->entity;
+    struct node_effect_chain *node_chain = wl_container_of(_entity->slot.chain, node_chain, base);
+    if (!pixman_region32_not_empty(&node_chain->visible_region)) {
+        return;
+    }
+
     struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(transform->node);
     if (!layer_tree) {
         kywc_log(KYWC_ERROR, "node is not in layer");
