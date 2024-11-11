@@ -16,7 +16,7 @@
 
 bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box)
 {
-    size_t size = strlen(data) + 1;
+    size_t size = strlen(data);
     // check signature, this an xml, so skip spaces from the start
     while (size && isspace(*data) != 0) {
         ++data;
