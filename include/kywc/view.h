@@ -85,6 +85,8 @@ struct kywc_view {
     enum kywc_ssd ssd;
     bool has_initial_position;
     bool has_round_corner;
+    /* no constraints by usable area if it`s true */
+    bool unconstrained;
 
     /* have a buffer attached and can shown in screen */
     bool mapped;

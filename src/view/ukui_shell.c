@@ -571,6 +571,7 @@ static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enab
             wl_list_remove(&surface->output_update_usable_area.link);
             wl_list_init(&surface->output_update_usable_area.link);
             output_update_usable_area(surface->view->output);
+            surface->view->base.unconstrained = false;
         }
         return;
     }
@@ -579,6 +580,7 @@ static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enab
         surface->output_update_usable_area.notify = surface_handle_output_update_usable_area;
         output_add_update_usable_area_listener(surface->view->output,
                                                &surface->output_update_usable_area, false);
+        surface->view->base.unconstrained = true;
     }
 
     output_update_usable_area(surface->view->output);

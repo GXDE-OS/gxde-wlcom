@@ -483,6 +483,10 @@ static void window_adsorb_edges_constraints(struct kywc_view *kywc_view, struct 
 
 void window_move_constraints(struct kywc_view *kywc_view, struct output *output, int *x, int *y)
 {
+    if (kywc_view->unconstrained) {
+        return;
+    }
+
     /* get current seat constraints output */
     struct kywc_box *usable = &output->usable_area;
     struct kywc_box *current = &kywc_view->geometry;
@@ -574,9 +578,13 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
 
 static void interactive_resize_constraints(struct interactive_grab *grab, struct kywc_box *box)
 {
+    struct kywc_view *kywc_view = &grab->view->base;
+    if (kywc_view->unconstrained) {
+        return;
+    }
+
     /* get current seat constraints output */
     struct kywc_box *usable = &grab->output->usable_area;
-    struct kywc_view *kywc_view = &grab->view->base;
     struct kywc_box *current = &kywc_view->geometry;
 
     /* pending view coord */
