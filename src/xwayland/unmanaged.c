@@ -85,6 +85,7 @@ static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
 
     struct seat *seat = seat_from_wlr_seat(unmanaged->xwayland->wlr_xwayland->seat);
     seat_focus_surface(seat, unmanaged->wlr_xwayland_surface->surface);
+    kywc_view_activate(NULL);
 }
 
 static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
@@ -141,6 +142,7 @@ static void unmanaged_handle_request_activate(struct wl_listener *listener, void
     struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
     struct seat *seat = seat_from_wlr_seat(unmanaged->xwayland->wlr_xwayland->seat);
     seat_focus_surface(seat, wlr_xwayland_surface->surface);
+    kywc_view_activate(NULL);
 }
 
 static void unmanaged_handle_request_configure(struct wl_listener *listener, void *data)
