@@ -983,11 +983,11 @@ static void view_set_activated(struct view *view, bool activated)
 
 static void view_activate(struct view *view)
 {
-    struct view *last = view_manager->activated.view;
-    if (!view_is_activatable(view)) {
+    if (view && !view_is_activatable(view)) {
         return;
     }
 
+    struct view *last = view_manager->activated.view;
     if (last != view) {
         if (view_manager->show_activte_only_enabled) {
             view_manager_show_active_only(false, false);
@@ -995,7 +995,13 @@ static void view_activate(struct view *view)
         if (last) {
             view_set_activated(last, false);
         }
-        view_set_activated(view, true);
+        if (view) {
+            view_set_activated(view, true);
+        }
+    }
+
+    if (!view) {
+        return;
     }
 
     struct workspace *workspace = view->current_proxy ? view->current_proxy->workspace : NULL;
@@ -1076,8 +1082,12 @@ static void view_activate_without_workspace(struct view *view, bool find_parent)
 
 void kywc_view_activate(struct kywc_view *kywc_view)
 {
-    struct view *view = view_from_kywc_view(kywc_view);
+    struct view *view = kywc_view ? view_from_kywc_view(kywc_view) : NULL;
     view_activate(view);
+
+    if (!view) {
+        return;
+    }
 
     /* insert view proxy in workspace topmost */
     if (view->current_proxy) {
