@@ -139,10 +139,7 @@ static const struct input_event_node_impl xwayland_unmanaged_event_node_impl = {
 static void unmanaged_handle_request_activate(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, request_activate);
-    struct wlr_xwayland_surface *wlr_xwayland_surface = unmanaged->wlr_xwayland_surface;
-    struct seat *seat = seat_from_wlr_seat(unmanaged->xwayland->wlr_xwayland->seat);
-    seat_focus_surface(seat, wlr_xwayland_surface->surface);
-    kywc_view_activate(NULL);
+    xwayland_unmanaged_focus(unmanaged);
 }
 
 static void unmanaged_handle_request_configure(struct wl_listener *listener, void *data)
