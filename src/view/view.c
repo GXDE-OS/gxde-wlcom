@@ -952,14 +952,14 @@ static void handle_activated_view_minimized(struct wl_listener *listener, void *
     }
 
     view_set_activated(view, false);
-    view_topmost_activate(workspace_manager_get_current());
+    view_activate_topmost();
 }
 
 static void handle_activated_view_unmap(struct wl_listener *listener, void *data)
 {
     struct view *view = view_manager->activated.view;
     view_set_activated(view, false);
-    view_topmost_activate(workspace_manager_get_current());
+    view_activate_topmost();
 }
 
 static void view_reparent_fullscreen(struct view *view, bool active);
@@ -1038,7 +1038,7 @@ void view_do_activate(struct view *view)
     }
 }
 
-void view_topmost_activate(struct workspace *workspace)
+void view_activate_topmost(void)
 {
     struct view *view = view_manager_get_global_authentication();
     if (view) {
@@ -1047,11 +1047,8 @@ void view_topmost_activate(struct workspace *workspace)
         return;
     }
 
-    if (!workspace) {
-        workspace = workspace_manager_get_current();
-    }
-
     struct view_proxy *view_proxy;
+    struct workspace *workspace = workspace_manager_get_current();
     /* find topmost enabled(mapped and not minimized) view and activate it */
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
         view = view_proxy->view;
@@ -1716,7 +1713,7 @@ void view_manager_show_desktop(bool enabled, bool apply)
     }
 
     if (apply && !enabled) {
-        view_topmost_activate(workspace);
+        view_activate_topmost();
     }
 
     wl_signal_emit_mutable(&view_manager->events.show_desktop, NULL);

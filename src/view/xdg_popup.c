@@ -51,7 +51,7 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     }
 
     if (popup->topmost_clear_focus) {
-        view_topmost_activate(NULL);
+        view_activate_topmost();
     }
 
     free(popup);

@@ -122,7 +122,7 @@ static void layer_shell_keyboard_interactivity(struct layer_shell *layer_shell, 
         }
         // XXX: auto focus layer_shell
         if (seat->wlr_seat->keyboard_state.focused_surface == layer_surface->surface) {
-            view_topmost_activate(NULL);
+            view_activate_topmost();
         }
     }
 }

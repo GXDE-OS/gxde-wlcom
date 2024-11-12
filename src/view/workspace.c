@@ -403,7 +403,7 @@ void workspace_activate(struct workspace *workspace)
     workspace_set_activated(workspace, true);
 
     /* auto activate topmost enabled view */
-    view_topmost_activate(workspace);
+    view_activate_topmost();
 
     input_rebase_all_cursor();
     kywc_log(KYWC_INFO, "workspace %s(%d) is activated", workspace->name, workspace->position);
