@@ -32,6 +32,26 @@ static int set_view_adsorption(sd_bus_message *m, void *userdata, sd_bus_error *
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_csd_round_corner(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct view_manager *manager = userdata;
+    uint32_t enabled;
+    CK(sd_bus_message_read(m, "b", &enabled));
+
+    if (manager->state.csd_round_corner != enabled) {
+        manager->state.csd_round_corner = enabled;
+
+        struct view *view;
+        wl_list_for_each(view, &manager->views, link) {
+            if (view->base.ssd == KYWC_SSD_NONE) {
+                view_update_round_corner(view);
+            }
+        }
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int list_all_views(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     struct view_manager *manager = userdata;
@@ -108,7 +128,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("GetViewAdsorption", "", "u", get_view_adsorption, 0),
     SD_BUS_METHOD("SetViewAdsorption", "u", "", set_view_adsorption, 0),
-
+    SD_BUS_METHOD("SetCSDRoundCorner", "b", "", set_csd_round_corner, 0),
     SD_BUS_METHOD("ListAllViews", "", "a(ssi)", list_all_views, 0),
     SD_BUS_METHOD("ListViewStates", "s", "a(sai)", list_view_states, 0),
     SD_BUS_VTABLE_END,
@@ -131,9 +151,11 @@ bool view_read_config(struct view_manager *view_manager)
     if (json_object_object_get_ex(view_manager->config->json, "num_workspaces", &data)) {
         view_manager->state.num_workspaces = json_object_get_int(data);
     }
-
     if (json_object_object_get_ex(view_manager->config->json, "view_adsorption", &data)) {
         view_manager->state.view_adsorption = json_object_get_int(data);
+    }
+    if (json_object_object_get_ex(view_manager->config->json, "csd_round_corner", &data)) {
+        view_manager->state.csd_round_corner = json_object_get_boolean(data);
     }
 
     return true;
@@ -147,7 +169,8 @@ void view_write_config(struct view_manager *view_manager)
 
     json_object_object_add(view_manager->config->json, "num_workspaces",
                            json_object_new_int(workspace_manager_get_count()));
-
     json_object_object_add(view_manager->config->json, "view_adsorption",
                            json_object_new_int(view_manager->state.view_adsorption));
+    json_object_object_add(view_manager->config->json, "csd_round_corner",
+                           json_object_new_boolean(view_manager->state.csd_round_corner));
 }

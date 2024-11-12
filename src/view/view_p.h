@@ -36,6 +36,7 @@ struct view_manager {
     struct {
         uint32_t num_workspaces;
         uint32_t view_adsorption;
+        bool csd_round_corner;
     } state;
 
     struct wl_listener theme_update;
@@ -66,6 +67,8 @@ void view_write_config(struct view_manager *view_manager);
 void view_show_window_menu(struct view *view, struct seat *seat, int x, int y);
 
 void view_close_popups(struct view *view);
+
+void view_update_round_corner(struct view *view);
 
 bool xdg_shell_init(struct view_manager *view_manager);
 

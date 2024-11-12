@@ -327,7 +327,7 @@ struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 }
 
 /* set surface round corner by ssd type, tiled, fullscreen and maximized state */
-static void view_update_round_corner(struct view *view)
+void view_update_round_corner(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
     if (!kywc_view->mapped) {
@@ -347,8 +347,10 @@ static void view_update_round_corner(struct view *view)
 
     /* don't draw top round corner if ssd has title */
     struct theme *theme = theme_manager_get_current();
-    bool need_corner =
-        !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled && kywc_view->ssd;
+    bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
+    if (!view_manager->state.csd_round_corner) {
+        need_corner &= kywc_view->ssd != KYWC_SSD_NONE;
+    }
     bool need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
 
     radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? theme->corner_radius : 0;
