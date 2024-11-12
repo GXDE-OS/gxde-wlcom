@@ -1589,6 +1589,9 @@ void view_apply_role(struct view *view)
     case KYWC_VIEW_ROLE_SCREENLOCK:
         layer = view_manager_get_layer(LAYER_SCREEN_LOCK, false);
         break;
+    case KYWC_VIEW_ROLE_AUTHENTICATION:
+        layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+        break;
     }
 
     if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
@@ -1601,7 +1604,8 @@ void view_apply_role(struct view *view)
         kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
     kywc_view->closeable =
         kywc_view->role != KYWC_VIEW_ROLE_DESKTOP && kywc_view->role != KYWC_VIEW_ROLE_PANEL;
-    kywc_view->movable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL;
+    kywc_view->movable = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
+                         kywc_view->role == KYWC_VIEW_ROLE_AUTHENTICATION;
     kywc_view->resizable =
         kywc_view->role == KYWC_VIEW_ROLE_NORMAL || kywc_view->role == KYWC_VIEW_ROLE_PANEL;
     kywc_view->activatable = kywc_view->role != KYWC_VIEW_ROLE_PANEL &&
@@ -1614,11 +1618,13 @@ void view_apply_role(struct view *view)
                            kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
                            kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK ||
                            kywc_view->role == KYWC_VIEW_ROLE_APPLETPOPUP ||
-                           kywc_view->role == KYWC_VIEW_ROLE_ONSCREENDISPLAY;
+                           kywc_view->role == KYWC_VIEW_ROLE_ONSCREENDISPLAY ||
+                           kywc_view->role == KYWC_VIEW_ROLE_AUTHENTICATION;
 
     kywc_view->has_round_corner = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
                                   kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
-                                  kywc_view->role == KYWC_VIEW_ROLE_APPLETPOPUP;
+                                  kywc_view->role == KYWC_VIEW_ROLE_APPLETPOPUP ||
+                                  kywc_view->role == KYWC_VIEW_ROLE_AUTHENTICATION;
 
     view_update_round_corner(view_from_kywc_view(kywc_view));
 }

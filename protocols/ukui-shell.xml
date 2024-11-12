@@ -158,6 +158,7 @@
       <entry name="logout" value="12"/>
       <entry name="screenlocknotification" value="13"/>
       <entry name="switcher" value="14"/>
+      <entry name="authentication" value="15"/>
     </enum>
 
     <request name="set_role">

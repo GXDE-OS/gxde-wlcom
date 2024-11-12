@@ -204,6 +204,9 @@ static void ukui_surface_apply_role(struct ukui_surface *surface)
     case UKUI_SURFACE_ROLE_SWITCHER:
         kywc_view->role = KYWC_VIEW_ROLE_SWITCHER;
         break;
+    case UKUI_SURFACE_ROLE_AUTHENTICATION:
+        kywc_view->role = KYWC_VIEW_ROLE_AUTHENTICATION;
+        break;
     }
 
     view_apply_role(view_from_kywc_view(kywc_view));

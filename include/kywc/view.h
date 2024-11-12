@@ -60,6 +60,7 @@ enum kywc_view_role {
     KYWC_VIEW_ROLE_WATERMARK,
     KYWC_VIEW_ROLE_APPLETPOPUP,
     KYWC_VIEW_ROLE_SWITCHER,
+    KYWC_VIEW_ROLE_AUTHENTICATION,
 };
 
 struct kywc_view {
