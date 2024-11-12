@@ -433,6 +433,9 @@ void view_unmap(struct view *view)
         !kywc_view->minimized) {
         view_add_fade_effect(view, FADE_OUT);
     }
+    if (view == view_manager_get_global_authentication()) {
+        view_manager_set_global_authentication(NULL);
+    }
 
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
 
@@ -1037,11 +1040,17 @@ void view_do_activate(struct view *view)
 
 void view_topmost_activate(struct workspace *workspace)
 {
+    struct view *view = view_manager_get_global_authentication();
+    if (view) {
+        view_do_activate(view);
+        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        return;
+    }
+
     if (!workspace) {
         workspace = workspace_manager_get_current();
     }
 
-    struct view *view;
     struct view_proxy *view_proxy;
     /* find topmost enabled(mapped and not minimized) view and activate it */
     wl_list_for_each(view_proxy, &workspace->view_proxies, workspace_link) {
@@ -1799,6 +1808,16 @@ struct ky_scene_tree *view_manager_get_layer_tree(struct ky_scene_node *node)
     }
 
     return tree;
+}
+
+void view_manager_set_global_authentication(struct view *view)
+{
+    view_manager->global_authentication_view = view;
+}
+
+struct view *view_manager_get_global_authentication(void)
+{
+    return view_manager->global_authentication_view;
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)

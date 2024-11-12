@@ -78,11 +78,17 @@ static void handle_configured_output(struct wl_listener *listener, void *data)
 
 void global_authentication_create(struct view *view)
 {
+    if (view_manager_get_global_authentication()) {
+        kywc_log(KYWC_DEBUG, "Open multiple global authentication views at the same time.");
+        return;
+    }
+
     struct global_authentication *authentication = calloc(1, sizeof(struct global_authentication));
     if (!authentication) {
         return;
     }
 
+    view_manager_set_global_authentication(view);
     authentication->view = view;
     struct view_layer *layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
     authentication->tree = ky_scene_tree_create(layer->tree);

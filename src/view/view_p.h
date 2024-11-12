@@ -48,6 +48,8 @@ struct view_manager {
     struct server *server;
     struct wl_list views;
 
+    struct view *global_authentication_view;
+
     struct {
         struct wl_signal new_view;
         struct wl_signal new_mapped_view;
@@ -132,6 +134,10 @@ bool maximize_switcher_create(struct view_manager *view_manager);
 void modal_create(struct view *view);
 
 void global_authentication_create(struct view *view);
+
+void view_manager_set_global_authentication(struct view *view);
+
+struct view *view_manager_get_global_authentication(void);
 
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
