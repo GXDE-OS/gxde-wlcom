@@ -12,6 +12,7 @@ wlcom_sources += files(
   'showfps.c',
   'scale.c',
   'shake_cursor.c',
+  'shake_view.c',
   'soft_gamma.c',
   'touchclick.c',
   'touchtrail.c',

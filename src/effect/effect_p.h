@@ -78,6 +78,8 @@ bool output_transform_effect_create(struct effect_manager *manager);
 
 bool shake_cursor_effect_create(struct effect_manager *manager);
 
+bool shake_view_effect_create(struct effect_manager *effect_manager);
+
 bool locate_pointer_effect_create(struct effect_manager *manager);
 
 #endif /* _EFFECT_P_H_ */
