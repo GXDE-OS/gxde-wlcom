@@ -2,6 +2,7 @@ wlcom_sources += files(
   'action.c',
   'config.c',
   'decoration.c',
+  'global_authentication.c',
   'interactive.c',
   'maximize_switcher.c',
   'modal.c',

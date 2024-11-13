@@ -1591,6 +1591,7 @@ void view_apply_role(struct view *view)
         break;
     case KYWC_VIEW_ROLE_AUTHENTICATION:
         layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+        global_authentication_create(view);
         break;
     }
 
