@@ -11,6 +11,7 @@ struct seat;
 struct server;
 struct wl_client;
 struct wl_global;
+struct view;
 
 #if HAVE_XWAYLAND
 
@@ -19,6 +20,8 @@ bool xwayland_server_create(struct server *server);
 void xwayland_server_destroy(void);
 
 bool xwayland_check_client(const struct wl_client *client);
+
+bool xwayland_check_view(struct view *view);
 
 int xwayland_unscale(int value);
 
@@ -41,6 +44,8 @@ INLINE bool xwayland_server_create(struct server *server) { return false; }
 INLINE void xwayland_server_destroy(void) {}
 
 INLINE bool xwayland_check_client(const struct wl_client *client) { return false; }
+
+INLINE bool xwayland_check_view(struct view *view) { return false; }
 
 INLINE int xwayland_unscale(int value) { return value; }
 

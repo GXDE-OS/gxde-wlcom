@@ -1083,3 +1083,8 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
 
     return true;
 }
+
+bool xwayland_check_view(struct view *view)
+{
+    return view->impl == &xwl_surface_impl;
+}
