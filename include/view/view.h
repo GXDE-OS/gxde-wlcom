@@ -289,4 +289,4 @@ bool view_has_ancestor(struct view *view, struct view *ancestor);
 
 void view_raise_to_top(struct view *view, bool find_parent);
 
-#endif /* __VIEW_H_ */
+#endif /* _VIEW_H_ */

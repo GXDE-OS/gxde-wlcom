@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <kywc/log.h>
+
 #include "config_p.h"
-#include "kywc/log.h"
-#include "server.h"
 #include "view/view.h"
 
 static int handle_mode_change_signal(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)

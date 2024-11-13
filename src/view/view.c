@@ -1100,7 +1100,7 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     }
 
     if (view_manager->mode->impl->view_request_activate) {
-        view_manager->mode->impl->view_request_activate(view_from_kywc_view(kywc_view));
+        view_manager->mode->impl->view_request_activate(view);
     }
 }
 
