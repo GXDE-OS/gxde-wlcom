@@ -237,9 +237,10 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
                                                    &options.end.geometry);
     }
 
-    struct ky_scene_node *node = &view->tree->node;
+    options.buffer = transform_get_zero_copy_buffer(view);
+
     scale_entity->transform = transform_effect_get_or_create_transform(
-        scale_effect->effect, &options, node, scale_entity);
+        scale_effect->effect, &options, &view->tree->node, scale_entity);
     if (!scale_entity->transform) {
         free(scale_entity);
         return false;

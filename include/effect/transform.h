@@ -6,6 +6,7 @@
 #define _EFFECT_TRANSFORM_H_
 
 #include "effect/animator.h"
+#include "view/view.h"
 
 struct transform;
 struct transform_effect;
@@ -18,6 +19,8 @@ struct transform_options {
     int duration;
     /* thumbnail scale */
     float scale;
+    /* for zero copy */
+    struct ky_scene_buffer *buffer;
 };
 
 struct transform_effect_interface {
@@ -44,6 +47,8 @@ struct transform *transform_effect_get_or_create_transform(struct transform_effe
 void transform_set_user_data(struct transform *transform, void *data);
 
 void *transform_get_user_data(struct transform *transform);
+
+struct ky_scene_buffer *transform_get_zero_copy_buffer(struct view *view);
 
 void transform_block_source_update(struct transform *transform, bool block);
 

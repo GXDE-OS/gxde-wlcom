@@ -169,8 +169,9 @@ bool slide_effect_create(struct effect_manager *manager)
     return true;
 }
 
-static struct slide_entity *create_slide_entity(struct ky_scene_node *node, int location,
-                                                int offset, bool mapped, bool is_view)
+static struct slide_entity *create_slide_entity(struct ky_scene_node *node,
+                                                struct ky_scene_buffer *zero_copy_buffer,
+                                                int location, int offset, bool mapped, bool is_view)
 {
     struct slide_entity *slide_entity = calloc(1, sizeof(*slide_entity));
     if (!slide_entity) {
@@ -182,9 +183,10 @@ static struct slide_entity *create_slide_entity(struct ky_scene_node *node, int 
     slide_entity->slide_in = mapped;
     slide_entity->node = node;
     struct transform_options options = { 0 };
+    options.buffer = zero_copy_buffer;
     options.start.alpha = 1.0;
     options.end.alpha = 1.0;
-    options.duration = 200;
+    options.duration = 300;
     options.type.geometry = ANIMATION_TYPE_EASE;
     options.start_time = current_time_msec();
 
@@ -211,7 +213,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
         return false;
     }
 
-    return create_slide_entity(node, location, offset, slide_out, false);
+    return create_slide_entity(node, NULL, location, offset, slide_out, false);
 }
 
 bool view_add_slide_effect(struct view *view, bool mapped)
@@ -229,5 +231,8 @@ bool view_add_slide_effect(struct view *view, bool mapped)
         return false;
     }
 
-    return create_slide_entity(&view->tree->node, slide.location, slide.offset, mapped, true);
+    struct ky_scene_buffer *zero_copy_buffer = mapped ? transform_get_zero_copy_buffer(view) : NULL;
+
+    return create_slide_entity(&view->tree->node, zero_copy_buffer, slide.location, slide.offset,
+                               mapped, true);
 }

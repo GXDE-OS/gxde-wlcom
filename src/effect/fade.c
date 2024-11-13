@@ -15,7 +15,7 @@
 #include "util/time.h"
 
 struct fade_entity {
-    struct transform *data;
+    struct transform *transform;
     bool fade_in;
     int offset;
     float factor;
@@ -127,20 +127,20 @@ static void fade_entity_create_transform(struct fade_entity *fade_entity,
                                          struct transform_options *options,
                                          struct ky_scene_node *node)
 {
-    fade_entity->data =
+    fade_entity->transform =
         transform_effect_get_or_create_transform(effect, options, node, fade_entity);
-    if (!fade_entity->data) {
+    if (!fade_entity->transform) {
         free(fade_entity);
         return;
     }
 
     /* prohibit updating thumbnail when fade out */
     if (!fade_entity->fade_in) {
-        transform_block_source_update(fade_entity->data, true);
+        transform_block_source_update(fade_entity->transform, true);
     }
 
     fade_entity->destroy.notify = fade_handle_transform_destroy;
-    transform_add_destroy_listener(fade_entity->data, &fade_entity->destroy);
+    transform_add_destroy_listener(fade_entity->transform, &fade_entity->destroy);
 }
 
 bool view_add_fade_effect(struct view *view, enum fade_action action)
@@ -173,12 +173,16 @@ bool view_add_fade_effect(struct view *view, enum fade_action action)
     } else {
         fade_entity->fade_in = false;
         fade_entity->factor = 0.8;
-        options.duration = 200;
+        options.duration = 260;
         options.start.alpha = 1.0;
         options.end.alpha = 0;
         fade_get_node_geometry(node, &options.start.geometry);
         fade_calc_geometry(&options.start.geometry, fade_entity->offset, fade_entity->factor,
                            &options.end.geometry);
+    }
+
+    if (action == FADE_IN) {
+        options.buffer = transform_get_zero_copy_buffer(view);
     }
 
     fade_entity_create_transform(fade_entity, fade_effect->effect, &options, node);
@@ -250,8 +254,6 @@ bool popup_add_fade_effect(struct ky_scene_node *node, enum fade_action action, 
         options.type.alpha = ANIMATION_TYPE_EASE;
         options.type.geometry = ANIMATION_TYPE_EASE;
     }
-
-    node->role = KY_SCENE_NODE_POPUP;
 
     fade_entity_create_transform(fade_entity, fade_effect->effect, &options, node);
 

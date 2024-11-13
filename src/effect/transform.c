@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <wlr/render/wlr_texture.h>
+#include <wlr/types/wlr_compositor.h>
 
 #include <kywc/log.h>
 
@@ -15,8 +16,10 @@
 #include "render/opengl.h"
 #include "render/renderer.h"
 #include "scene/scene.h"
+#include "scene/surface.h"
 #include "scene/thumbnail.h"
 #include "util/time.h"
+#include "xwayland.h"
 
 struct transform {
     struct effect_entity *entity;
@@ -37,6 +40,8 @@ struct transform {
     struct ky_scene_buffer *buffer;
     int node_offset_x, node_offset_y;
 
+    struct ky_scene_buffer *zero_copy_buffer;
+
     struct {
         struct thumbnail *thumbnail;
         /* current used in the popup */
@@ -52,6 +57,8 @@ struct transform {
 
     struct ky_scene_node *node;
     struct wl_listener node_destroy;
+
+    struct wl_listener surface_commit;
 
     struct {
         struct wl_signal destroy;
@@ -302,6 +309,18 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     }
 }
 
+static void handle_texture_update(struct wl_listener *listener, void *data)
+{
+    struct transform *transform = wl_container_of(listener, transform, surface_commit);
+    if (transform->thumbnail_info.texture) {
+        wlr_texture_destroy(transform->thumbnail_info.texture);
+    }
+
+    transform->thumbnail_info.buffer = transform->zero_copy_buffer->buffer;
+    transform->thumbnail_info.texture =
+        wlr_texture_from_buffer(transform->effect->renderer, transform->zero_copy_buffer->buffer);
+}
+
 static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
 {
     struct transform *transform = wl_container_of(listener, transform, thumbnail_info.destroy);
@@ -333,6 +352,10 @@ static void transform_do_destroy(struct transform *transform)
     transform->references--;
     if (transform->references != 0) {
         return;
+    }
+
+    if (transform->zero_copy_buffer) {
+        wl_list_remove(&transform->surface_commit.link);
     }
 
     wl_signal_emit_mutable(&transform->events.destroy, transform);
@@ -386,11 +409,22 @@ static bool transform_effect_node_render(struct effect_entity *entity, int lx, i
     /* if data need blur is false, blur region is empty */
     bool need_blur = pixman_region32_not_empty(&transform->blur_info.region);
 
+    struct ky_scene_node *zero_node = NULL;
+    int radius[4] = { 0 };
+    if (transform->zero_copy_buffer) {
+        zero_node = &transform->zero_copy_buffer->node;
+        radius[0] = zero_node->radius[0];
+        radius[1] = zero_node->radius[1];
+        radius[2] = zero_node->radius[2];
+        radius[3] = zero_node->radius[3];
+    }
+
     const struct ky_scene_render_texture_options opts = {
         .texture = transform->thumbnail_info.texture,
         .geometry_box = &transform->current.geometry,
         .alpha = &transform->current.alpha,
         .src = &src_box,
+        .radius = &radius,
         .blur ={
             .alpha = &transform->current.alpha,
             .info = need_blur ? &transform->blur_info : NULL,
@@ -467,7 +501,9 @@ static struct transform *transform_create(struct transform_options *options,
     transform->user_data = data;
     transform->references = 1;
     transform->interruped = false;
+    transform->zero_copy_buffer = options->buffer;
 
+    wl_list_init(&transform->surface_commit.link);
     wl_signal_init(&transform->events.destroy);
     wl_list_init(&transform->node_destroy.link);
 
@@ -485,6 +521,22 @@ static struct transform *transform_create(struct transform_options *options,
     }
 
     transform->thumbnail_info.scale = options->scale <= 0 ? 1.0f : options->scale;
+
+    if (transform->zero_copy_buffer) {
+        transform->thumbnail_info.buffer = transform->zero_copy_buffer->buffer;
+        transform->thumbnail_info.texture = transform->zero_copy_buffer->texture;
+        if (!transform->thumbnail_info.texture) {
+            transform->thumbnail_info.texture = wlr_texture_from_buffer(
+                transform->effect->renderer, transform->zero_copy_buffer->buffer);
+        }
+
+        struct wlr_surface *surface = wlr_surface_try_from_node(&transform->zero_copy_buffer->node);
+        transform->surface_commit.notify = handle_texture_update;
+        wl_signal_add(&surface->events.commit, &transform->surface_commit);
+
+        return transform;
+    }
+
     transform->thumbnail_info.thumbnail =
         thumbnail_create_from_node(node, transform->thumbnail_info.scale);
     if (!transform->thumbnail_info.thumbnail) {
@@ -561,11 +613,26 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
      */
     transform->node = &buffer->node;
 
+    transform->zero_copy_buffer = NULL;
+
     entity->user_data = transform;
     transform->references++;
 
     transform->node_destroy.notify = transform_handle_buffer_node_destroy;
     wl_signal_add(&buffer->node.events.destroy, &transform->node_destroy);
+}
+
+struct ky_scene_buffer *transform_get_zero_copy_buffer(struct view *view)
+{
+    if (xwayland_check_view(view) && view->base.ssd == KYWC_SSD_NONE) {
+        struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
+        if (!buffer) {
+            return NULL;
+        }
+
+        return buffer;
+    }
+    return NULL;
 }
 
 void transform_add_destroy_listener(struct transform *transform, struct wl_listener *listener)
@@ -590,7 +657,9 @@ struct transform *transform_effect_get_or_create_transform(struct transform_effe
         transform->interruped = true;
         /* update thumbnail immediately when effect interruped */
         transform_block_source_update(transform, false);
-        thumbnail_update(transform->thumbnail_info.thumbnail);
+        if (transform->thumbnail_info.thumbnail) {
+            thumbnail_update(transform->thumbnail_info.thumbnail);
+        }
         /* new data to transform */
         transform->user_data = data;
         return transform;
