@@ -123,6 +123,7 @@ static void shortcut_service_destory(struct shortcut_service *service)
 
     wl_list_remove(&service->link);
     free(service->name);
+    free(service);
 }
 
 static void ukui_shortcut_service_destory(const char *name)
