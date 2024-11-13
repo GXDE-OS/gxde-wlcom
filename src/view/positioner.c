@@ -694,7 +694,9 @@ static void entry_handle_view_unmap(struct wl_listener *listener, void *data)
 {
     struct entry *entry = wl_container_of(listener, entry, view_unmap);
 
-    place_remove_entry(entry->place, entry);
+    if (entry->place) {
+        place_remove_entry(entry->place, entry);
+    }
 
     wl_list_remove(&entry->view_unmap.link);
     wl_list_remove(&entry->view_minimize.link);
@@ -712,10 +714,8 @@ static void entry_handle_view_workspace(struct wl_listener *listener, void *data
 
     /* view no longer in workspace */
     if (!view->current_proxy) {
-        wl_list_remove(&entry->view_unmap.link);
         wl_list_remove(&entry->view_minimize.link);
         wl_list_remove(&entry->view_position.link);
-        wl_list_init(&entry->view_unmap.link);
         wl_list_init(&entry->view_minimize.link);
         wl_list_init(&entry->view_position.link);
         if (entry->place) {
@@ -733,7 +733,6 @@ static void entry_handle_view_workspace(struct wl_listener *listener, void *data
     if (!entry->place) {
         wl_signal_add(&kywc_view->events.position, &entry->view_position);
         wl_signal_add(&kywc_view->events.minimize, &entry->view_minimize);
-        wl_signal_add(&kywc_view->events.unmap, &entry->view_unmap);
 
         struct positioner *pos = positioner_from_output(view->output);
         struct place *place = positioner_get_place(pos, view);
