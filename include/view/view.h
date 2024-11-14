@@ -194,6 +194,8 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
 
 struct view *view_manager_get_activated(void);
 
+void view_manager_add_activate_view_listener(struct wl_listener *listener);
+
 void view_manager_show_desktop(bool enabled, bool apply);
 
 bool view_manager_get_show_desktop(void);

@@ -52,6 +52,7 @@ struct view_manager {
         struct wl_signal new_view;
         struct wl_signal new_mapped_view;
         struct wl_signal show_desktop;
+        struct wl_signal activate_view;
     } events;
 
     struct view_layer layers[LAYER_NUMBER];

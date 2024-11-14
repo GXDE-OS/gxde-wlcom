@@ -29,6 +29,11 @@ struct view *view_manager_get_activated(void)
     return view_manager->activated.view;
 }
 
+void view_manager_add_activate_view_listener(struct wl_listener *listener)
+{
+    wl_signal_add(&view_manager->events.activate_view, listener);
+}
+
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
 {
     if (!in_workspace) {
@@ -998,6 +1003,7 @@ static void view_set_activated(struct view *view, bool activated)
     }
 
     wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
+    wl_signal_emit_mutable(&view_manager->events.activate_view, view_manager->activated.view);
 }
 
 void view_do_activate(struct view *view)
@@ -1979,6 +1985,7 @@ struct view_manager *view_manager_create(struct server *server)
     wl_signal_init(&view_manager->events.new_view);
     wl_signal_init(&view_manager->events.new_mapped_view);
     wl_signal_init(&view_manager->events.show_desktop);
+    wl_signal_init(&view_manager->events.activate_view);
 
     view_manager->theme_update.notify = handle_theme_update;
     theme_manager_add_update_listener(&view_manager->theme_update);
