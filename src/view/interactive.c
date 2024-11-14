@@ -653,51 +653,47 @@ static void interactive_resize_constraints(struct interactive_grab *grab, struct
 }
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define CLAMP(value, min, max) (((value) < (min)) ? (min) : ((value) > (max)) ? (max) : (value))
+
 static void interactive_process_resize(struct interactive_grab *grab, double x, double y)
 {
     struct kywc_view *kywc_view = &grab->view->base;
 
-    int min_width = MAX(kywc_view->min_width, VIEW_MIN_WIDTH);
-    int min_height = MAX(kywc_view->min_height, VIEW_MIN_HEIGHT);
+    int min_width = kywc_view->min_width;
+    int min_height = kywc_view->min_height;
+    if (!kywc_view->unconstrained) {
+        min_width = MAX(kywc_view->min_width, VIEW_MIN_WIDTH);
+        min_height = MAX(kywc_view->min_height, VIEW_MIN_HEIGHT);
+    }
+
     int max_width = kywc_view->max_width;
     int max_height = kywc_view->max_height;
-
     int width = 0, height = 0;
     output_layout_get_size(&width, &height);
-
-    if (!max_width || max_width > width - kywc_view->margin.off_width) {
+    if (max_width <= 0 || max_width > width - kywc_view->margin.off_width) {
         max_width = width - kywc_view->margin.off_width;
     }
-    if (!max_height || max_height > height - kywc_view->margin.off_height) {
+    if (max_height <= 0 || max_height > height - kywc_view->margin.off_height) {
         max_height = height - kywc_view->margin.off_height;
     }
 
+    struct kywc_box pending = kywc_view->geometry;
     double dx = x - grab->cursor_x;
     double dy = y - grab->cursor_y;
-
-    struct kywc_box pending = kywc_view->geometry;
 
     if (grab->resize_edges & KYWC_EDGE_TOP) {
         pending.height = grab->geo.height - dy;
     } else if (grab->resize_edges & KYWC_EDGE_BOTTOM) {
         pending.height = grab->geo.height + dy;
     }
-    if (pending.height < min_height) {
-        pending.height = min_height;
-    } else if (pending.height > max_height) {
-        pending.height = max_height;
-    }
+    pending.height = CLAMP(pending.height, min_height, max_height);
 
     if (grab->resize_edges & KYWC_EDGE_LEFT) {
         pending.width = grab->geo.width - dx;
     } else if (grab->resize_edges & KYWC_EDGE_RIGHT) {
         pending.width = grab->geo.width + dx;
     }
-    if (pending.width < min_width) {
-        pending.width = min_width;
-    } else if (pending.width > max_width) {
-        pending.width = max_width;
-    }
+    pending.width = CLAMP(pending.width, min_width, max_width);
 
     if (grab->resize_edges & KYWC_EDGE_TOP) {
         /* anchor bottom edge */
