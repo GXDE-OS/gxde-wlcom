@@ -607,7 +607,7 @@ static void output_destroy(struct output *output)
         pending_config->state.color_temp = state->color_temp;
     }
 
-    /* fix primary output that is being destoryed */
+    /* fix primary output that is being destroyed */
     if (output_manager->primary_output == &output->base) {
         output_manager->primary_output = NULL;
 
@@ -1326,7 +1326,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
                        output->initialized) {
                 output->pending_state = *state;
                 output->has_pending = true;
-                kywc_log(KYWC_WARN, "drm output commit need waitting for pageflip");
+                kywc_log(KYWC_WARN, "drm output commit need waiting for pageflip");
                 return true;
             }
 
@@ -1389,7 +1389,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
         wlr_output_layout_remove(server->layout, wlr_output);
         output->scene_output = NULL;
     } else if (need_layout && have_layout && (loutput->x != state->lx || loutput->y != state->ly)) {
-        /* if output logical size changed, layout_change alreay is emited in
+        /* if output logical size changed, layout_change already is emitted in
          * output_commit. only need move when (x, y) of output is different.
          */
         wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);

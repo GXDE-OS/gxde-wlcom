@@ -37,7 +37,7 @@ struct plugin {
     /* config entries */
     struct wl_list entries;
     bool loaded, enabled;
-    // bool invaild;
+    // bool invalid;
 };
 
 struct plugin_manager {
@@ -49,7 +49,7 @@ struct plugin_manager {
 };
 
 /**
- * load all plugins specificed in config file.
+ * load all plugins specified in config file.
  */
 struct plugin_manager *plugin_manager_create(struct server *server);
 
@@ -67,7 +67,7 @@ void plugin_read_config(struct plugin *plugin);
 void plugin_write_config(struct plugin *plugin);
 
 /**
- * load a plugin specificed by name.
+ * load a plugin specified by name.
  */
 struct plugin *plugin_manager_get_plugin(const char *name);
 

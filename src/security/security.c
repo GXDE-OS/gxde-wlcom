@@ -80,7 +80,7 @@ static void client_handle_new_resource(struct wl_listener *listener, void *data)
     struct security_client *client = wl_container_of(listener, client, new_resource);
     // struct wl_resource *wl_resource = data;
 
-    // kywc_log(KYWC_DEBUG, "client(pid=%d) %s create resouce for %s", client->pid, client->path,
+    // kywc_log(KYWC_DEBUG, "client(pid=%d) %s create resource for %s", client->pid, client->path,
     //          wl_resource_get_class(wl_resource));
 }
 

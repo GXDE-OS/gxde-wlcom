@@ -574,7 +574,7 @@ static int set_mapped_output(sd_bus *bus, const char *path, const char *interfac
         struct kywc_output *kywc_output = kywc_output_by_name(output_name);
         if (!kywc_output || !kywc_output->state.enabled) {
             const sd_bus_error error =
-                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild output or disabled.");
+                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid output or disabled.");
             return sd_bus_reply_method_error(reply, &error);
         }
     }

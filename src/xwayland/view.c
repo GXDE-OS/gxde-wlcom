@@ -329,7 +329,7 @@ static void xwayland_view_handle_commit(struct wl_listener *listener, void *data
 
     enum view_action pending_action = xwayland_view->view.pending.configure_action;
     if (pending_action == VIEW_ACTION_NOP) {
-        /* fix postion when resizing by left or top edges */
+        /* fix position when resizing by left or top edges */
         int x = resize_edges & KYWC_EDGE_LEFT ? geo.x + geo.width - current->width : geo.x;
         int y = resize_edges & KYWC_EDGE_TOP ? geo.y + geo.height - current->height : geo.y;
         if (x != geo.x || y != geo.y) {
@@ -760,7 +760,7 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
         xwayland_restack_view(xwayland_view);
     }
 
-    /* fix postion if not special state */
+    /* fix position if not special state */
     if (!xwayland_view->view.base.maximized && !xwayland_view->view.base.fullscreen &&
         !xwayland_view->view.base.tiled) {
         xwayland_view_fixup_position(xwayland_view);

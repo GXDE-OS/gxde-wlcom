@@ -151,7 +151,7 @@ static struct slot *place_find_slot(struct place *place, int slot)
     if (slot < 0 || slot > pos->max_slot) {
         return NULL;
     }
-    /* slot is alreay allocated */
+    /* slot is already allocated */
     if (place->alloc_number > slot) {
         return &place->slots[slot];
     }
@@ -518,7 +518,7 @@ static void place_update_slot(struct place *place, int slot)
 {
     struct slot *slot_p = place_find_slot(place, slot);
 
-    /* if insert to a new slot, mark all skiped slot as free */
+    /* if insert to a new slot, mark all skipped slot as free */
     if (slot >= place->last_slot) {
         for (int i = place->last_slot; i < slot; i++) {
             place_insert_free_slot(place, i);

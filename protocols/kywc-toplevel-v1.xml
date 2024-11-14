@@ -93,7 +93,7 @@
     <event name="primary_output">
       <description summary="toplevel's primary output changes">
         This event is emitted whenever the output that the largest area of this toplevel
-        is displayed on has channged.
+        is displayed on has changed.
       </description>
       <arg name="output" type="string" summary="the output unique id"/>
     </event>

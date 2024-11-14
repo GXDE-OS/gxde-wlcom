@@ -451,23 +451,23 @@ static void global_shortcut_set_inactive(struct global_shortcut *shortcut)
 }
 
 /**
- * dbus process fuctions for org.kde.kglobalaccel.Component
+ * dbus process functions for org.kde.kglobalaccel.Component
  */
 
 // SD_BUS_PROPERTY("friendlyName", "s", friendly_name, 0, SD_BUS_VTABLE_PROPERTY_EMITS_CHANGE),
 static int friendly_name(sd_bus *bus, const char *path, const char *interface, const char *property,
                          sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
 {
-    struct global_shortcut_component *componet = userdata;
-    CK(sd_bus_message_append_basic(reply, 's', componet->friendly_name));
+    struct global_shortcut_component *component = userdata;
+    CK(sd_bus_message_append_basic(reply, 's', component->friendly_name));
     return 0;
 }
 
 static int unique_name(sd_bus *bus, const char *path, const char *interface, const char *property,
                        sd_bus_message *reply, void *userdata, sd_bus_error *ret_error)
 {
-    struct global_shortcut_component *componet = userdata;
-    CK(sd_bus_message_append_basic(reply, 's', componet->unique_name));
+    struct global_shortcut_component *component = userdata;
+    CK(sd_bus_message_append_basic(reply, 's', component->unique_name));
     return 0;
 }
 
@@ -686,7 +686,7 @@ static void global_shortcut_component_destroy(struct global_shortcut_component *
 }
 
 /**
- * dbus process fuctions for org.kde.KGlobalAccel
+ * dbus process functions for org.kde.KGlobalAccel
  */
 
 // SD_BUS_METHOD("actionList", "(ai)", "as", action_list, 0),
@@ -848,10 +848,10 @@ static int do_register(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
         global_shortcut_registry_get_shortcut_by_name(component_unique, action_unique);
     if (shortcut) {
         /* replace friendly names */
-        struct global_shortcut_component *componet = shortcut->context->component;
-        if (*component_friendly && strcmp(componet->friendly_name, component_friendly)) {
-            free(componet->friendly_name);
-            componet->friendly_name = strdup(component_friendly);
+        struct global_shortcut_component *component = shortcut->context->component;
+        if (*component_friendly && strcmp(component->friendly_name, component_friendly)) {
+            free(component->friendly_name);
+            component->friendly_name = strdup(component_friendly);
         }
         if (*action_friendly && strcmp(shortcut->friendly_name, action_friendly)) {
             free(shortcut->friendly_name);
@@ -1112,7 +1112,7 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&registry->destroy.link);
 
-    /* free all components contexts shorcuts */
+    /* free all components contexts shortcuts */
     struct global_shortcut_component *component, *tmp;
     wl_list_for_each_safe(component, tmp, &registry->components, link) {
         global_shortcut_component_destroy(component);

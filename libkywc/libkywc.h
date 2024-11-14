@@ -28,7 +28,7 @@ enum kywc_context_capability {
 };
 
 struct kywc_context_interface {
-    /* called when context is created sucessfully but before wayland roundtrip */
+    /* called when context is created successfully but before wayland roundtrip */
     void (*create)(kywc_context *ctx, void *data);
     void (*destroy)(kywc_context *ctx, void *data);
     void (*new_output)(kywc_context *ctx, kywc_output *output, void *data);
@@ -154,7 +154,7 @@ enum kywc_output_state_mask {
     KYWC_OUTPUT_STATE_ENABLED = 1 << 0,
     KYWC_OUTPUT_STATE_MODE = 1 << 1,
     KYWC_OUTPUT_STATE_POSITION = 1 << 2,
-    KYWC_OUTPUT_STATE_TRANSFROM = 1 << 3,
+    KYWC_OUTPUT_STATE_TRANSFORM = 1 << 3,
     KYWC_OUTPUT_STATE_SCALE = 1 << 4,
     KYWC_OUTPUT_STATE_POWER = 1 << 5,
     KYWC_OUTPUT_STATE_PRIMARY = 1 << 6,
@@ -296,7 +296,7 @@ enum kywc_thumbnail_buffer_flag {
      */
     KYWC_THUMBNAIL_BUFFER_IS_DMABUF = 1 << 0,
     /**
-     * buffer is resued, so we can skip the import sometimes
+     * buffer is reused, so we can skip the import sometimes
      */
     KYWC_THUMBNAIL_BUFFER_IS_REUSED = 1 << 1,
 };

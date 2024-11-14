@@ -29,7 +29,7 @@ struct transform {
     struct animation_data current;
     struct transform_options pending_options;
     struct transform_options options;
-    bool interruped;
+    bool interrupted;
 
     /* reuse transforms */
     int references;
@@ -126,7 +126,7 @@ static bool transform_effect_frame_render_pre(struct effect_entity *entity,
     /* update transform options */
     if (effect->impl->update_transform_options) {
         effect->impl->update_transform_options(effect, transform, &transform->pending_options,
-                                               &transform->current, transform->interruped,
+                                               &transform->current, transform->interrupted,
                                                effect->user_data);
     }
 
@@ -157,7 +157,7 @@ static bool transform_effect_frame_render_pre(struct effect_entity *entity,
         }
     }
 
-    transform->interruped = false;
+    transform->interrupted = false;
     transform->options = transform->pending_options;
     const struct animation_data *animation_data = animator_value(transform->animator, time);
     transform->current = *animation_data;
@@ -514,7 +514,7 @@ static struct transform *transform_create(struct transform_options *options,
     transform->options = *options;
     transform->user_data = data;
     transform->references = 1;
-    transform->interruped = false;
+    transform->interrupted = false;
     transform->zero_copy_buffer = options->buffer;
 
     wl_signal_init(&transform->events.destroy);
@@ -673,8 +673,8 @@ struct transform *transform_effect_get_or_create_transform(struct transform_effe
         struct transform *transform = entity->user_data;
         transform->options = transform->pending_options;
         transform->pending_options.end = options->end;
-        transform->interruped = true;
-        /* update thumbnail immediately when effect interruped */
+        transform->interrupted = true;
+        /* update thumbnail immediately when effect interrupted */
         transform_block_source_update(transform, false);
         if (transform->thumbnail_info.thumbnail) {
             thumbnail_update(transform->thumbnail_info.thumbnail);

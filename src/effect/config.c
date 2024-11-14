@@ -37,7 +37,7 @@ static int print_effect_options(sd_bus_message *m, void *userdata, sd_bus_error 
     struct effect *effect = effect_by_name(name);
     if (!effect || !effect->options) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild effect name or no option.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid effect name or no option.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -59,7 +59,7 @@ static int enable_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     struct effect *effect = effect_by_name(name);
     if (!effect) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild effect name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid effect name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -75,7 +75,7 @@ static int set_effect_option(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct effect *effect = effect_by_name(name);
     if (!effect) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild effect name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid effect name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -97,7 +97,7 @@ static int set_effect_option(sd_bus_message *m, void *userdata, sd_bus_error *re
         opt_type = json_type_string;
     } else {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild option type.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid option type.");
         return sd_bus_reply_method_error(m, &error);
     }
 

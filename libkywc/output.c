@@ -166,7 +166,7 @@ void ky_output_update_transform(struct ky_output *output, int transform)
     }
 
     output->base.transform = transform;
-    output->pending_mask |= KYWC_OUTPUT_STATE_TRANSFROM;
+    output->pending_mask |= KYWC_OUTPUT_STATE_TRANSFORM;
 }
 
 void ky_output_update_scale(struct ky_output *output, float scale)

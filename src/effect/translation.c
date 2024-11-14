@@ -319,10 +319,10 @@ static struct translation_entity *translation_entity_create(struct workspace_out
 static struct translation_entity *find_translation_entity(struct workspace_output *ws_output,
                                                           struct workspace *workspace)
 {
-    struct translation_entity *exsit_entity;
-    wl_list_for_each_reverse(exsit_entity, &ws_output->entities, link) {
-        if (exsit_entity->workspace == workspace) {
-            return exsit_entity;
+    struct translation_entity *exist_entity;
+    wl_list_for_each_reverse(exist_entity, &ws_output->entities, link) {
+        if (exist_entity->workspace == workspace) {
+            return exist_entity;
         }
     }
 
@@ -333,26 +333,26 @@ static void workspace_output_reset_entities_animator(struct workspace_output *ws
                                                      int end_time)
 {
     int64_t current_time = current_time_msec();
-    struct translation_entity *exsit_entity;
-    wl_list_for_each(exsit_entity, &ws_output->entities, link) {
-        if (exsit_entity->animator) {
-            animator_set_time_ex(exsit_entity->animator, current_time, end_time);
-            animator_set_position(exsit_entity->animator, exsit_entity->end_geometry.x,
-                                  exsit_entity->end_geometry.y);
+    struct translation_entity *exist_entity;
+    wl_list_for_each(exist_entity, &ws_output->entities, link) {
+        if (exist_entity->animator) {
+            animator_set_time_ex(exist_entity->animator, current_time, end_time);
+            animator_set_position(exist_entity->animator, exist_entity->end_geometry.x,
+                                  exist_entity->end_geometry.y);
             continue;
         }
 
         struct animation_type_group type_group = {
             .geometry = ANIMATION_TYPE_EASE_OUT,
         };
-        exsit_entity->animator =
-            animator_create(&exsit_entity->current, type_group, current_time, end_time);
-        if (!exsit_entity->animator) {
+        exist_entity->animator =
+            animator_create(&exist_entity->current, type_group, current_time, end_time);
+        if (!exist_entity->animator) {
             continue;
         }
 
-        animator_set_position(exsit_entity->animator, exsit_entity->end_geometry.x,
-                              exsit_entity->end_geometry.y);
+        animator_set_position(exist_entity->animator, exist_entity->end_geometry.x,
+                              exist_entity->end_geometry.y);
     }
 }
 
@@ -360,21 +360,21 @@ static void workspace_output_add_translation_entity(struct workspace_output *ws_
                                                     struct translation_entity *translation_entity,
                                                     enum direction direct, int end_time)
 {
-    struct translation_entity *exsit_entity, *head_entity = NULL;
+    struct translation_entity *exist_entity, *head_entity = NULL;
     /* translation_entity don't in list */
     if (translation_entity->index == -1) {
-        wl_list_for_each_reverse(exsit_entity, &ws_output->entities, link) {
+        wl_list_for_each_reverse(exist_entity, &ws_output->entities, link) {
             if (direct == DIRECTION_LEFT) {
-                exsit_entity->end_geometry.x += ws_output->width;
+                exist_entity->end_geometry.x += ws_output->width;
             } else if (direct == DIRECTION_RIGHT) {
-                exsit_entity->end_geometry.x -= ws_output->width;
+                exist_entity->end_geometry.x -= ws_output->width;
             } else if (direct == DIRECTION_UP) {
-                exsit_entity->end_geometry.y += ws_output->height;
+                exist_entity->end_geometry.y += ws_output->height;
             } else if (direct == DIRECTION_DOWN) {
-                exsit_entity->end_geometry.y -= ws_output->height;
+                exist_entity->end_geometry.y -= ws_output->height;
             }
-            exsit_entity->index += 1;
-            head_entity = exsit_entity;
+            exist_entity->index += 1;
+            head_entity = exist_entity;
         }
         if (head_entity) {
             translation_entity_calc_start_pos(translation_entity, head_entity, ws_output->width,
@@ -391,14 +391,14 @@ static void workspace_output_add_translation_entity(struct workspace_output *ws_
     int index_offset = 1;
     int offset_x = translation_entity->end_geometry.x;
     int offset_y = translation_entity->end_geometry.y;
-    wl_list_for_each(exsit_entity, &ws_output->entities, link) {
+    wl_list_for_each(exist_entity, &ws_output->entities, link) {
         /* index don't change that entity after inserted entity in list */
-        if (exsit_entity == translation_entity) {
+        if (exist_entity == translation_entity) {
             index_offset = 0;
         }
-        exsit_entity->index += index_offset;
-        exsit_entity->end_geometry.x -= offset_x;
-        exsit_entity->end_geometry.y -= offset_y;
+        exist_entity->index += index_offset;
+        exist_entity->end_geometry.x -= offset_x;
+        exist_entity->end_geometry.y -= offset_y;
     }
 
     wl_list_remove(&translation_entity->link);
@@ -410,9 +410,9 @@ static void workspace_output_add_translation_entity(struct workspace_output *ws_
 
 static void workspace_output_destroy(struct workspace_output *ws_output)
 {
-    struct translation_entity *exsit_entity, *tmp;
-    wl_list_for_each_safe(exsit_entity, tmp, &ws_output->entities, link) {
-        translation_entity_destroy(exsit_entity);
+    struct translation_entity *exist_entity, *tmp;
+    wl_list_for_each_safe(exist_entity, tmp, &ws_output->entities, link) {
+        translation_entity_destroy(exist_entity);
     }
 
     wl_list_remove(&ws_output->link);

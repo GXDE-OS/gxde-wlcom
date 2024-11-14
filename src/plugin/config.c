@@ -64,7 +64,7 @@ static int print_plugin_info(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct plugin *plugin = plugin_manager_get_plugin(name);
     if (!plugin) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild plugin name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid plugin name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -92,7 +92,7 @@ static int print_plugin_config(sd_bus_message *m, void *userdata, sd_bus_error *
     struct plugin *plugin = plugin_manager_get_plugin(name);
     if (!plugin) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild plugin name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid plugin name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -126,7 +126,7 @@ static int load_plugin(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
     struct plugin *plugin = plugin_manager_get_plugin(name);
     if (!plugin) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild plugin name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid plugin name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -148,7 +148,7 @@ static int enable_plugin(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     struct plugin *plugin = plugin_manager_get_plugin(name);
     if (!plugin) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild plugin name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid plugin name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -173,7 +173,7 @@ static int set_plugin_option(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct plugin *plugin = plugin_manager_get_plugin(name);
     if (!plugin) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild plugin name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid plugin name.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -193,7 +193,7 @@ static int set_plugin_option(sd_bus_message *m, void *userdata, sd_bus_error *re
         opt.type = option_type_string;
     } else {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild option type.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid option type.");
         return sd_bus_reply_method_error(m, &error);
     }
 

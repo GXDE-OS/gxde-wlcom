@@ -426,7 +426,7 @@ static void touch_point_reset(struct touch_point *point, bool cancelled)
     struct gesture_state *state = &point->touch->gestures;
     if (state->type != GESTURE_TYPE_NONE) {
         /* touch point up to set hold canceled in hold state,
-         * and canceles gesture when touch point count is more than 1
+         * and cancels gesture when touch point count is more than 1
          */
         if (state->type == GESTURE_TYPE_HOLD) {
             point->touch->hold_canceled = true;

@@ -309,7 +309,7 @@ struct plugin_manager *plugin_manager_create(struct server *server)
 
     struct plugin *plugin, *plugin_tmp;
     wl_list_for_each_safe(plugin, plugin_tmp, &plugin_manager->plugins, link) {
-        /* load plugin, remove if invaild */
+        /* load plugin, remove if invalid */
         if (!load_plugin(plugin, false) || !plugin_manager_enable_plugin(plugin, true)) {
             plugin_manager_unload_plugin(plugin);
             // cleanup_plugin(plugin);

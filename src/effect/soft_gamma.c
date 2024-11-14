@@ -68,7 +68,7 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
 
     pixman_region32_fini(&damage);
 
-    // defalut blend function - premul alpha
+    // default blend function - premul alpha
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     return true;
@@ -119,7 +119,7 @@ static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
         });
     wlr_render_pass_submit(render_pass);
 
-    // defalut blend function - premul alpha
+    // default blend function - premul alpha
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 

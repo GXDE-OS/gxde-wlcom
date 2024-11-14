@@ -402,7 +402,7 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
 
         // damage extended in render, translate to output coord
         pixman_region32_subtract(&frame_damage, &target->damage, &frame_damage);
-        // substract the excluded damage
+        // subtract the excluded damage
         pixman_region32_subtract(&frame_damage, &frame_damage, &target->excluded_damage);
         pixman_region32_translate(&frame_damage, -target->logical.x, -target->logical.y);
 

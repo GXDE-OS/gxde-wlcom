@@ -100,7 +100,7 @@ static int unblock_shortcuts_message_handler(sd_bus_message *msg, void *userdata
     return 0;
 }
 
-static void shortcut_service_destory(struct shortcut_service *service)
+static void shortcut_service_destroy(struct shortcut_service *service)
 {
     for (size_t i = KEY_BINDING_TYPE_CUSTOM_DEF; i < KEY_BINDING_TYPE_NUM; i++) {
         /* recovery of blocked types that are not on the whitelist */
@@ -126,14 +126,14 @@ static void shortcut_service_destory(struct shortcut_service *service)
     free(service);
 }
 
-static void ukui_shortcut_service_destory(const char *name)
+static void ukui_shortcut_service_destroy(const char *name)
 {
     struct shortcut_service *service, *service_tmp;
     wl_list_for_each_safe(service, service_tmp, &shortcut_manager->services, link) {
         if (strcmp(service->name, name)) {
             continue;
         }
-        shortcut_service_destory(service);
+        shortcut_service_destroy(service);
     }
 }
 
@@ -172,7 +172,7 @@ static int service_message_handler(sd_bus_message *msg, void *userdata, sd_bus_e
         ukui_shortcut_service_create(name);
         kywc_log(KYWC_INFO, "service: %s registered with owner %s", name, new_owner);
     } else if (new_owner && !*new_owner) {
-        ukui_shortcut_service_destory(name);
+        ukui_shortcut_service_destroy(name);
         kywc_log(KYWC_INFO, "service: %s unregistered from owner %s", name, old_owner);
     }
 
@@ -185,7 +185,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
 
     struct shortcut_service *service, *service_tmp;
     wl_list_for_each_safe(service, service_tmp, &shortcut_manager->services, link) {
-        shortcut_service_destory(service);
+        shortcut_service_destroy(service);
     }
 
     free(shortcut_manager);

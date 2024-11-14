@@ -99,7 +99,7 @@ static void keystate_keyboard_destroy(struct keystate_keyboard *keyboard)
     free(keyboard);
 }
 
-static void handle_display_destory(struct wl_listener *listener, void *data)
+static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&keystate_manager->display_destroy.link);
     wl_list_remove(&keystate_manager->new_seat.link);
@@ -113,7 +113,7 @@ static void handle_display_destory(struct wl_listener *listener, void *data)
     }
 }
 
-static void handle_server_destory(struct wl_listener *listener, void *data)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&keystate_manager->server_destroy.link);
     free(keystate_manager);
@@ -209,10 +209,10 @@ bool kde_keystate_manager_create(struct input_manager *input_manager)
         return false;
     }
 
-    keystate_manager->display_destroy.notify = handle_display_destory;
+    keystate_manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(input_manager->server->display,
                                     &keystate_manager->display_destroy);
-    keystate_manager->server_destroy.notify = handle_server_destory;
+    keystate_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(input_manager->server, &keystate_manager->server_destroy);
 
     keystate_manager->new_seat.notify = handle_new_seat;

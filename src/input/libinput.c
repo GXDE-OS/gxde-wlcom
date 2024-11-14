@@ -175,23 +175,23 @@ bool libinput_set_state(struct input *input, struct input_state *state)
     }
 
     struct input_state *current = &input->state;
-    bool sucess = true;
+    bool success = true;
 
     if (current->send_events_mode != state->send_events_mode) {
         kywc_log(KYWC_DEBUG, "send_events_set_mode(%d)", state->send_events_mode);
-        sucess &= log_status(
+        success &= log_status(
             libinput_device_config_send_events_set_mode(device, state->send_events_mode));
     }
 
     if (current->click_method != state->click_method) {
         kywc_log(KYWC_DEBUG, "click_set_method(%d)", state->click_method);
-        sucess &= log_status(libinput_device_config_click_set_method(device, state->click_method));
+        success &= log_status(libinput_device_config_click_set_method(device, state->click_method));
     }
 
     if (input->prop.tap_finger_count > 0) {
         if (current->tap_to_click != state->tap_to_click) {
             kywc_log(KYWC_DEBUG, "tap_set_enabled(%d)", state->tap_to_click);
-            sucess &=
+            success &=
                 log_status(libinput_device_config_tap_set_enabled(device, state->tap_to_click));
         }
 
@@ -201,17 +201,17 @@ bool libinput_set_state(struct input *input, struct input_state *state)
 
         if (current->tap_and_drag != state->tap_and_drag) {
             kywc_log(KYWC_DEBUG, "tap_set_drag_enabled(%d)", state->tap_and_drag);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_tap_set_drag_enabled(device, state->tap_and_drag));
         }
         if (current->tap_drag_lock != state->tap_drag_lock) {
             kywc_log(KYWC_DEBUG, "tap_set_drag_lock_enabled(%d)", state->tap_drag_lock);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_tap_set_drag_lock_enabled(device, state->tap_drag_lock));
         }
         if (current->tap_button_map != state->tap_button_map) {
             kywc_log(KYWC_DEBUG, "tap_set_button_map(%d)", state->tap_button_map);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_tap_set_button_map(device, state->tap_button_map));
         }
     }
@@ -229,7 +229,7 @@ bool libinput_set_state(struct input *input, struct input_state *state)
                      state->calibration_matrix[0], state->calibration_matrix[1],
                      state->calibration_matrix[2], state->calibration_matrix[3],
                      state->calibration_matrix[4], state->calibration_matrix[5]);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_calibration_set_matrix(device, state->calibration_matrix));
         }
     }
@@ -237,66 +237,66 @@ bool libinput_set_state(struct input *input, struct input_state *state)
     if (input->prop.has_pointer_accel) {
         if (current->pointer_accel_speed != state->pointer_accel_speed) {
             kywc_log(KYWC_DEBUG, "accel_set_speed(%f)", state->pointer_accel_speed);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_accel_set_speed(device, state->pointer_accel_speed));
         }
         if (current->accel_profile != state->accel_profile) {
             kywc_log(KYWC_DEBUG, "accel_set_profile(%d)", state->accel_profile);
-            sucess &=
+            success &=
                 log_status(libinput_device_config_accel_set_profile(device, state->accel_profile));
         }
     }
 
     if (input->prop.has_natural_scroll && current->natural_scroll != state->natural_scroll) {
         kywc_log(KYWC_DEBUG, "scroll_set_natural_scroll_enabled(%d)", state->natural_scroll);
-        sucess &= log_status(libinput_device_config_scroll_set_natural_scroll_enabled(
+        success &= log_status(libinput_device_config_scroll_set_natural_scroll_enabled(
             device, state->natural_scroll));
     }
 
     if (input->prop.has_left_handed && current->left_handed != state->left_handed) {
         kywc_log(KYWC_DEBUG, "left_handed_set(%d)", state->left_handed);
-        sucess &= log_status(libinput_device_config_left_handed_set(device, state->left_handed));
+        success &= log_status(libinput_device_config_left_handed_set(device, state->left_handed));
     }
 
     if (input->prop.has_middle_emulation && current->middle_emulation != state->middle_emulation) {
         kywc_log(KYWC_DEBUG, "middle_emulation_set_enabled(%d)", state->middle_emulation);
-        sucess &= log_status(
+        success &= log_status(
             libinput_device_config_middle_emulation_set_enabled(device, state->middle_emulation));
     }
 
     if (current->scroll_method != state->scroll_method) {
         kywc_log(KYWC_DEBUG, "scroll_set_method(%d)", state->scroll_method);
-        sucess &=
+        success &=
             log_status(libinput_device_config_scroll_set_method(device, state->scroll_method));
     }
     if (state->scroll_method == LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN) {
         if (current->scroll_button != state->scroll_button) {
             kywc_log(KYWC_DEBUG, "scroll_set_button(%d)", state->scroll_button);
-            sucess &=
+            success &=
                 log_status(libinput_device_config_scroll_set_button(device, state->scroll_button));
         }
         if (current->scroll_button_lock != state->scroll_button_lock) {
             kywc_log(KYWC_DEBUG, "scroll_set_button_lock(%d)", state->scroll_button_lock);
-            sucess &= log_status(
+            success &= log_status(
                 libinput_device_config_scroll_set_button_lock(device, state->scroll_button_lock));
         }
     }
 
     if (input->prop.has_dwt && current->dwt != state->dwt) {
         kywc_log(KYWC_DEBUG, "dwt_set_enabled(%d)", state->dwt);
-        sucess &= log_status(libinput_device_config_dwt_set_enabled(device, state->dwt));
+        success &= log_status(libinput_device_config_dwt_set_enabled(device, state->dwt));
     }
 
     if (input->prop.has_dwtp && current->dwtp != state->dwtp) {
         kywc_log(KYWC_DEBUG, "dwtp_set_enabled(%d)", state->dwtp);
-        sucess &= log_status(libinput_device_config_dwtp_set_enabled(device, state->dwtp));
+        success &= log_status(libinput_device_config_dwtp_set_enabled(device, state->dwtp));
     }
 
     if (input->prop.has_rotation && current->rotation_angle != state->rotation_angle) {
         kywc_log(KYWC_DEBUG, "rotation_set_angle(%d)", state->rotation_angle);
-        sucess &=
+        success &=
             log_status(libinput_device_config_rotation_set_angle(device, state->rotation_angle));
     }
 
-    return sucess;
+    return success;
 }

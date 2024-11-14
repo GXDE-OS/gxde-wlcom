@@ -494,7 +494,7 @@ static void capture_buffer_update_damage(struct capture_request *request, bool h
         buffer->was_damaged = true;
         return;
     }
-    /* check damage reigon and src_box */
+    /* check damage region and src_box */
     pixman_region32_t box;
     pixman_region32_init_rect(&box, request->src_box.x, request->src_box.y, request->src_box.width,
                               request->src_box.height);

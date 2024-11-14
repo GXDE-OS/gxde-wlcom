@@ -53,15 +53,15 @@ void MainWindow::init_workspace_widget(QWidget *widget)
 
     tableWidget_0 = new QTableWidget();
 
-    QStringList col_list_lable; // 列标题
+    QStringList col_list_label; // 列标题
 
-    col_list_lable << QString("uuid");
-    col_list_lable << QString("name");
-    col_list_lable << QString("position");
-    col_list_lable << QString("activated");
-    int col_list_lable_cnt = col_list_lable.count();
-    tableWidget_0->setColumnCount(col_list_lable_cnt);
-    tableWidget_0->setHorizontalHeaderLabels(col_list_lable);
+    col_list_label << QString("uuid");
+    col_list_label << QString("name");
+    col_list_label << QString("position");
+    col_list_label << QString("activated");
+    int col_list_label_cnt = col_list_label.count();
+    tableWidget_0->setColumnCount(col_list_label_cnt);
+    tableWidget_0->setHorizontalHeaderLabels(col_list_label);
 
     tableWidget_0->setSelectionBehavior(QAbstractItemView::SelectRows); // 是否可选中
     tableWidget_0->setStyleSheet("selection-background-color:pink");
@@ -113,7 +113,7 @@ void MainWindow::init_output_widget(QWidget *widget)
 
     tableWidget_1 = new QTableWidget(widget);
 
-    QStringList col_list_lable; // 列标题
+    QStringList col_list_label; // 列标题
 
     QLabel *label = new QLabel("Primary output :", widget);
     label->setFont(QFont("Helvetica"));
@@ -126,26 +126,26 @@ void MainWindow::init_output_widget(QWidget *widget)
 
     tableWidget_1->setGeometry(0, 30, 100, 100);
 
-    col_list_lable << QString("uuid");
-    col_list_lable << QString("name");
-    col_list_lable << QString("make");
-    col_list_lable << QString("model");
-    col_list_lable << QString("serial");
-    col_list_lable << QString("description");
-    col_list_lable << QString("phisical size");
-    col_list_lable << QString("capabilities");
-    col_list_lable << QString("modes");
-    col_list_lable << QString("current modes");
-    col_list_lable << QString("position");
-    col_list_lable << QString("transform");
-    col_list_lable << QString("scale");
-    col_list_lable << QString("enabled");
-    col_list_lable << QString("power");
-    col_list_lable << QString("brightness");
-    col_list_lable << QString("color_temp");
-    int col_list_lable_cnt = col_list_lable.count();
-    tableWidget_1->setColumnCount(col_list_lable_cnt);
-    tableWidget_1->setHorizontalHeaderLabels(col_list_lable);
+    col_list_label << QString("uuid");
+    col_list_label << QString("name");
+    col_list_label << QString("make");
+    col_list_label << QString("model");
+    col_list_label << QString("serial");
+    col_list_label << QString("description");
+    col_list_label << QString("physical size");
+    col_list_label << QString("capabilities");
+    col_list_label << QString("modes");
+    col_list_label << QString("current modes");
+    col_list_label << QString("position");
+    col_list_label << QString("transform");
+    col_list_label << QString("scale");
+    col_list_label << QString("enabled");
+    col_list_label << QString("power");
+    col_list_label << QString("brightness");
+    col_list_label << QString("color_temp");
+    int col_list_label_cnt = col_list_label.count();
+    tableWidget_1->setColumnCount(col_list_label_cnt);
+    tableWidget_1->setHorizontalHeaderLabels(col_list_label);
 
     tableWidget_1->resize(940, 240);
     tableWidget_1->horizontalScrollBar()->setEnabled(true);
@@ -182,27 +182,27 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
     connect(tableWidget_2, SIGNAL(customContextMenuRequested(QPoint)), this,
             SLOT(show_menu(QPoint)));
 
-    QStringList col_list_lable; // 列标题
+    QStringList col_list_label; // 列标题
 
-    col_list_lable << QString("uuid");
-    col_list_lable << QString("title");
-    col_list_lable << QString("app_id");
-    col_list_lable << QString("icon");
-    col_list_lable << QString("position");
-    col_list_lable << QString("size");
+    col_list_label << QString("uuid");
+    col_list_label << QString("title");
+    col_list_label << QString("app_id");
+    col_list_label << QString("icon");
+    col_list_label << QString("position");
+    col_list_label << QString("size");
 
-    col_list_lable << QString("capabilities");
-    col_list_lable << QString("parent");
-    col_list_lable << QString("primary output");
-    col_list_lable << QString("activited");
-    col_list_lable << QString("minimizad");
-    col_list_lable << QString("maximized");
-    col_list_lable << QString("fullscreen");
-    col_list_lable << QString("workespaces");
+    col_list_label << QString("capabilities");
+    col_list_label << QString("parent");
+    col_list_label << QString("primary output");
+    col_list_label << QString("activited");
+    col_list_label << QString("minimizad");
+    col_list_label << QString("maximized");
+    col_list_label << QString("fullscreen");
+    col_list_label << QString("workespaces");
 
-    int col_list_lable_cnt = col_list_lable.count();
-    tableWidget_2->setColumnCount(col_list_lable_cnt);
-    tableWidget_2->setHorizontalHeaderLabels(col_list_lable);
+    int col_list_label_cnt = col_list_label.count();
+    tableWidget_2->setColumnCount(col_list_label_cnt);
+    tableWidget_2->setHorizontalHeaderLabels(col_list_label);
 
     tableWidget_2->horizontalScrollBar()->setEnabled(true);
     tableWidget_2->setEditTriggers(QAbstractItemView::NoEditTriggers);  // 是否可编辑
@@ -339,10 +339,10 @@ void MainWindow::add_output_item(Output *output)
     tableWidget_1->item(outputs_count, 4)->setText(output->serial());
     tableWidget_1->item(outputs_count, 5)->setText(output->description());
 
-    QString phisical_size = QString("%1 x %2 mm")
+    QString physical_size = QString("%1 x %2 mm")
                                 .arg(output->physicalSize().width())
                                 .arg(output->physicalSize().height());
-    tableWidget_1->item(outputs_count, 6)->setText(phisical_size);
+    tableWidget_1->item(outputs_count, 6)->setText(physical_size);
 
     QString caps;
     if (output->capabilities() & Output::Capability::Power)
@@ -751,10 +751,10 @@ void MainWindow::toplevel_menu(const QPoint pos)
     QModelIndex index = tableWidget_2->indexAt(QPoint(x, y));
     int row = index.row(); // 获得QTableWidget列表点击的行数
 
-    QMenu *moreWorspace = new QMenu();
+    QMenu *moreWorkspace = new QMenu();
     for (int i = 0; i < tableWidget_0->rowCount(); i++) {
         QAction *action = new QAction(tableWidget_0->item(i, 1)->text());
-        moreWorspace->addAction(action);
+        moreWorkspace->addAction(action);
         connect(action, SIGNAL(triggered()), this, SLOT(toplevel_enter_workspace()));
     }
 
@@ -771,19 +771,19 @@ void MainWindow::toplevel_menu(const QPoint pos)
         }
     }
 
-    QMenu *moveWorspace = new QMenu();
+    QMenu *moveWorkspace = new QMenu();
     for (int i = 0; i < tableWidget_0->rowCount(); i++) {
         QAction *action = new QAction(tableWidget_0->item(i, 1)->text());
-        moveWorspace->addAction(action);
+        moveWorkspace->addAction(action);
         connect(action, SIGNAL(triggered()), this, SLOT(toplevel_move_to_workspace()));
     }
 
     QWidget *widget = tableWidget_2->cellWidget(row, 13);
     QComboBox *combox = (QComboBox *)widget;
     if (combox->count() != 0) {
-        action9->setMenu(moreWorspace);
+        action9->setMenu(moreWorkspace);
         action10->setMenu(leaveWorspaces);
-        action11->setMenu(moveWorspace);
+        action11->setMenu(moveWorkspace);
     }
 
     QMenu *moreOutput = new QMenu();

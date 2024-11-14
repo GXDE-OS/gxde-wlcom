@@ -151,7 +151,7 @@ static void input_popup_update(struct input_popup *popup, struct seat *seat)
     }
 
     struct wlr_surface *focused_surface = text_input_focused_surface(text_input);
-    /* workaround: view_destroy is emited before surface_destroy */
+    /* workaround: view_destroy is emitted before surface_destroy */
     if (!focused_surface || !focused_surface->mapped) {
         return;
     }

@@ -248,7 +248,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     KY_PROFILE_RENDER_ZONE(&renderer->wlr_renderer, gzone, __func__);
 
     if (has_radius) {
-        // radius clip alway need blend
+        // radius clip always need blend
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
     } else {
         setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE

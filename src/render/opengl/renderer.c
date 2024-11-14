@@ -291,7 +291,7 @@ static bool gl_begin(struct wlr_renderer *wlr_renderer, uint32_t width, uint32_t
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     // XXX: maybe we should save output projection and remove some of the need
-    // for users to sling matricies themselves
+    // for users to sling matrices themselves
 
     ky_opengl_pop_debug(renderer);
 

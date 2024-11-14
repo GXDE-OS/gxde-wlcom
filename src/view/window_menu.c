@@ -159,10 +159,10 @@ static bool move_desktop_action(struct menu_item *item, uint32_t key, void *data
 static void window_menu_update_desktop_item(struct window_menu *window_menu)
 {
     uint32_t count = workspace_manager_get_count();
-    bool actived = count == MAX_WORKSPACES ? false : true;
+    bool activated = count == MAX_WORKSPACES ? false : true;
 
-    menu_item_set_actived(window_menu->add_to, actived);
-    menu_item_set_actived(window_menu->move_to, actived);
+    menu_item_set_activated(window_menu->add_to, activated);
+    menu_item_set_activated(window_menu->move_to, activated);
 
     menu_item_lower_to_bottom(window_menu->add_to);
     menu_item_lower_to_bottom(window_menu->move_to);
@@ -281,11 +281,11 @@ static void window_menu_update_view_action(struct window_menu *window_menu)
 {
     struct kywc_view *kywc_view = &window_menu->view->base;
 
-    menu_item_set_actived(window_menu->maximize, view_is_maximizable(window_menu->view));
-    menu_item_set_actived(window_menu->minimize, view_is_minimizable(window_menu->view));
-    menu_item_set_actived(window_menu->move, view_is_movable(window_menu->view));
-    menu_item_set_actived(window_menu->resize, view_is_resizable(window_menu->view));
-    menu_item_set_actived(window_menu->fullscreen, view_is_fullscreenable(window_menu->view));
+    menu_item_set_activated(window_menu->maximize, view_is_maximizable(window_menu->view));
+    menu_item_set_activated(window_menu->minimize, view_is_minimizable(window_menu->view));
+    menu_item_set_activated(window_menu->move, view_is_movable(window_menu->view));
+    menu_item_set_activated(window_menu->resize, view_is_resizable(window_menu->view));
+    menu_item_set_activated(window_menu->fullscreen, view_is_fullscreenable(window_menu->view));
 
     menu_item_set_checked(window_menu->maximize, kywc_view->maximized);
     menu_item_set_checked(window_menu->minimize, kywc_view->minimized);

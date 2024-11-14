@@ -272,7 +272,7 @@ void widget_set_border(struct widget *widget, const float color[static 4], uint3
     }
 }
 
-void widget_set_backgrond_color(struct widget *widget, const float color[static 4])
+void widget_set_background_color(struct widget *widget, const float color[static 4])
 {
     if (memcmp(widget->background_color, color, sizeof(widget->background_color)) == 0) {
         return;

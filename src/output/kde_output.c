@@ -466,7 +466,7 @@ static void kde_output_management_bind(struct wl_client *client, void *data, uin
     wl_list_insert(&management->resources, wl_resource_get_link(resource));
 }
 
-static void kde_output_management_handle_server_destory(struct wl_listener *listener, void *data)
+static void kde_output_management_handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&management->server_destroy.link);
 
@@ -474,7 +474,7 @@ static void kde_output_management_handle_server_destory(struct wl_listener *list
     management = NULL;
 }
 
-static void kde_output_management_handle_display_destory(struct wl_listener *listener, void *data)
+static void kde_output_management_handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&management->display_destroy.link);
     wl_list_remove(&management->new_output.link);
@@ -1013,9 +1013,9 @@ bool kde_output_management_create(struct server *server)
         return false;
     }
 
-    management->display_destroy.notify = kde_output_management_handle_display_destory;
+    management->display_destroy.notify = kde_output_management_handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &management->display_destroy);
-    management->server_destroy.notify = kde_output_management_handle_server_destory;
+    management->server_destroy.notify = kde_output_management_handle_server_destroy;
     server_add_destroy_listener(server, &management->server_destroy);
 
     /* listener new_output signal */
@@ -1036,7 +1036,7 @@ bool kde_output_management_create(struct server *server)
         kywc_log(KYWC_WARN, "%s global create failed", kde_primary_output_v1_interface.name);
     }
 
-    /* org_kde_kwin_dpms_manager suppport */
+    /* org_kde_kwin_dpms_manager support */
     management->dpms_manager.global =
         wl_global_create(server->display, &org_kde_kwin_dpms_manager_interface,
                          ORG_KDE_KWIN_DPMS_MANAGER_VERSION, management, kde_dpms_manager_bind);

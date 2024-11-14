@@ -343,7 +343,7 @@ static bool fbdev_output_disable(struct fbdev_output *output)
     output->frame_timer = NULL;
     output->wlr_output.enabled = false;
 
-    kywc_log(KYWC_INFO, "fbdev output disbled");
+    kywc_log(KYWC_INFO, "fbdev output disabled");
 
     return true;
 }
@@ -541,7 +541,7 @@ static bool fbdev_output_commit(struct wlr_output *wlr_output, const struct wlr_
 
     struct fbdev_state pending = { .base = state };
     if (!fbdev_output_test(wlr_output, &pending)) {
-        kywc_log(KYWC_ERROR, "fbdev output test faield");
+        kywc_log(KYWC_ERROR, "fbdev output test failed");
         return false;
     }
 

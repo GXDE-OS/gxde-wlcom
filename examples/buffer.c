@@ -669,7 +669,7 @@ static struct kywc_buffer *helper_get_buffer(struct kywc_buffer_helper *helper,
     return NULL;
 }
 
-struct kywc_buffer *kywc_buffer_hepler_import_thumbnail(struct kywc_buffer_helper *helper,
+struct kywc_buffer *kywc_buffer_helper_import_thumbnail(struct kywc_buffer_helper *helper,
                                                         kywc_thumbnail *thumbnail,
                                                         const struct kywc_thumbnail_buffer *buffer)
 {

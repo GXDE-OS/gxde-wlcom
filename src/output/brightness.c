@@ -73,7 +73,7 @@ static bool get_backlight_info(char **ddir, uint64_t *cur_brightness, uint64_t *
     *ddir = dir;
     char file_name[MAX_NAME] = { 0x00 };
 
-    // TODO: fix mulitiple outputs support brightness match dev name
+    // TODO: fix multiple outputs support brightness match dev name
     sprintf(file_name, "%s/brightness", dir);
 
     bool ret = sysfs_read_uint64(file_name, cur_brightness);
@@ -96,12 +96,12 @@ bool output_set_backlight(uint32_t value)
     uint64_t max_brightness = 0;
     bool ret = get_backlight_info(&ddir, &cur_brightness, &max_brightness);
     if (!ret) {
-        kywc_log(KYWC_ERROR, "cannot get the syfs infomation");
+        kywc_log(KYWC_ERROR, "cannot get the sysfs information");
         return false;
     }
 
     char file_name[MAX_NAME] = { 0x00 };
-    // TODO: fix mulitiple outputs support brightness match dev name
+    // TODO: fix multiple outputs support brightness match dev name
     sprintf(file_name, "%s/brightness", ddir);
 
     double temp = (double)max_brightness * (double)value / 100.0;
@@ -128,7 +128,7 @@ static bool brightness_get(uint32_t *brightness)
 
     bool ret = get_backlight_info(&ddir, &cur_brightness, &max_brightness);
     if (!ret) {
-        kywc_log(KYWC_ERROR, "cannot get the syfs infomation");
+        kywc_log(KYWC_ERROR, "cannot get the sysfs information");
         if (ddir) {
             free(ddir);
         }

@@ -47,30 +47,30 @@ kde_input_manager_create(struct config_manager *config_manager)
 #endif
 
 #if HAVE_UKUI_SHORTCUT
-bool ukui_shortcut_manager_create(struct config_manager *config_mananger);
+bool ukui_shortcut_manager_create(struct config_manager *config_manager);
 #else
 static __attribute__((unused)) inline bool
-ukui_shortcut_manager_create(struct config_manager *config_mananger)
+ukui_shortcut_manager_create(struct config_manager *config_manager)
 {
     return false;
 }
 #endif
 
 #if HAVE_UKUI_GSETTINGS
-bool ukui_gsettings_create(struct config_manager *config_mananger);
+bool ukui_gsettings_create(struct config_manager *config_manager);
 #else
 static __attribute__((unused)) inline bool
-ukui_gsettings_create(struct config_manager *config_mananger)
+ukui_gsettings_create(struct config_manager *config_manager)
 {
     return false;
 }
 #endif
 
 #if HAVE_UKUI_VIEW_MODE
-bool ukui_view_mode_manager_create(struct config_manager *config_mananger);
+bool ukui_view_mode_manager_create(struct config_manager *config_manager);
 #else
 static __attribute__((unused)) inline bool
-ukui_view_mode_manager_create(struct config_manager *config_mananger)
+ukui_view_mode_manager_create(struct config_manager *config_manager)
 {
     return false;
 }

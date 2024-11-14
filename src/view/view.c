@@ -51,7 +51,7 @@ static void view_update_output(struct view *view)
 
     if (view->base.mapped) {
         struct kywc_box *geo = &view->base.geometry;
-        /* udpate view most-at output */
+        /* update view most-at output */
         lx = geo->x + geo->width / 2;
         ly = geo->y + geo->height / 2;
     } else if (view->output) {
@@ -88,7 +88,7 @@ static void view_fix_geometry_position(struct view *view, struct kywc_box *geo,
                                        struct kywc_box *src_box, struct kywc_box *dst_box)
 {
     struct kywc_view *kywc_view = &view->base;
-    /* actual view geomtry with margin */
+    /* actual view geometry with margin */
     int x = geo->x - kywc_view->margin.off_x;
     int y = geo->y - kywc_view->margin.off_y;
     int w = geo->width + kywc_view->margin.off_width;
@@ -370,7 +370,7 @@ void view_map(struct view *view)
     if (view_manager->mode->impl->view_map) {
         view_manager->mode->impl->view_map(view);
     }
-    /* assume that request_minimize may emited before map */
+    /* assume that request_minimize may emitted before map */
     ky_scene_node_set_enabled(&view->tree->node, !kywc_view->minimized);
 
     kywc_view->mapped = true;
@@ -1375,7 +1375,7 @@ void view_helper_move(struct view *view, int x, int y)
 
     /* if we have two monitor and place a window on the left one,
      * then unplug the left one, window will be placed to the right one by positioner.
-     * the postion will not change as the right one become (0,0).
+     * the position will not change as the right one become (0,0).
      */
     view_update_output(view);
 

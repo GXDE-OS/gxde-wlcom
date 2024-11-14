@@ -341,7 +341,7 @@ static void node_chain_collect_damage(struct ky_scene_node *node, int lx, int ly
     chain->damage_type = KY_SCENE_DAMAGE_NONE;
     /**
      * although the node already has effect entities,
-     * it's damage_tpye can still be modified by ky_scene_node_push_damage.
+     * it's damage_type can still be modified by ky_scene_node_push_damage.
      */
     node->damage_type = KY_SCENE_DAMAGE_NONE;
 }
@@ -370,17 +370,17 @@ static void node_chain_push_damage(struct ky_scene_node *node, struct ky_scene_n
 
     struct effect_entity *entity;
     struct effect_slot *slot, *tmp;
-    uint32_t tmp_damage_tpye = damage_type;
+    uint32_t tmp_damage_type = damage_type;
     wl_list_for_each_reverse_safe(slot, tmp, &chain->base.slots, link) {
         entity = wl_container_of(slot, entity, slot);
         if (entity->effect->impl->node_push_damage &&
-            !entity->effect->impl->node_push_damage(entity, damage_node, &tmp_damage_tpye,
+            !entity->effect->impl->node_push_damage(entity, damage_node, &tmp_damage_type,
                                                     damage)) {
             break;
         }
     }
 
-    chain->damage_type = tmp_damage_tpye | damage_type;
+    chain->damage_type = tmp_damage_type | damage_type;
     pixman_region32_translate(damage, node->x, node->y);
     node->parent->node.impl.push_damage(&node->parent->node, damage_node, chain->damage_type,
                                         damage);

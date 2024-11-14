@@ -206,7 +206,7 @@ enum blur_program_type {
 
 static struct blur_data {
     struct blur_effect *effect;
-    struct wl_list output_datas;
+    struct wl_list output_data;
     struct blur_output_data *current_output_data;
     struct ky_opengl_texture *current_output_texture;
 
@@ -272,7 +272,7 @@ static void save_texture_to_rgba(int frame_count, GLuint texture_id, GLuint fb, 
     }
     /**
      * read texture data to PBO.
-     * nullptr indicates reading data to PBO, not to cpu memeory.
+     * nullptr indicates reading data to PBO, not to cpu memory.
      */
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     /* Map PBO to CPU address space */
@@ -403,7 +403,7 @@ static void blur_data_destroy(struct blur_data *data)
     }
 
     struct blur_output_data *output_data, *tmp;
-    wl_list_for_each_safe(output_data, tmp, &data->output_datas, link) {
+    wl_list_for_each_safe(output_data, tmp, &data->output_data, link) {
         blur_output_data_destroy(output_data);
     }
 }
@@ -830,16 +830,16 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
         struct wlr_box box;
         node->impl.get_bounding_box(node, &box);
 
-        pixman_region32_t blur_backgroud;
-        pixman_region32_init_rect(&blur_backgroud, 0, 0, box.width, box.height);
+        pixman_region32_t blur_background;
+        pixman_region32_init_rect(&blur_background, 0, 0, box.width, box.height);
         if (pixman_region32_not_empty(&node->clip_region)) {
-            pixman_region32_intersect(&blur_backgroud, &blur_backgroud, &node->clip_region);
+            pixman_region32_intersect(&blur_background, &blur_background, &node->clip_region);
         }
-        pixman_region32_translate(&blur_backgroud, box.x + lx, box.y + ly);
-        pixman_region32_intersect(&blur_backgroud, &blur_backgroud, damage_blur);
-        pixman_region32_union(&node->visible_region, &node->visible_region, &blur_backgroud);
+        pixman_region32_translate(&blur_background, box.x + lx, box.y + ly);
+        pixman_region32_intersect(&blur_background, &blur_background, damage_blur);
+        pixman_region32_union(&node->visible_region, &node->visible_region, &blur_background);
         /* TODO: damage_blur sub the node opaque region */
-        pixman_region32_fini(&blur_backgroud);
+        pixman_region32_fini(&blur_background);
     }
 
     if (!node->has_blur) {
@@ -889,7 +889,7 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
     data->current_output_texture = ky_opengl_texture_from_wlr_texture(src_tex);
 
     struct blur_output_data *output_data = NULL, *exits_data;
-    wl_list_for_each(exits_data, &data->output_datas, link) {
+    wl_list_for_each(exits_data, &data->output_data, link) {
         if (exits_data->output == target->output) {
             output_data = exits_data;
             break;
@@ -1004,7 +1004,7 @@ static bool blur_frame_render_post(struct effect_entity *entity,
     struct blur_data *data = entity->user_data;
     struct wlr_buffer *buffer = target->buffer;
     struct blur_output_data *output_data = NULL, *exits_data;
-    wl_list_for_each(exits_data, &data->output_datas, link) {
+    wl_list_for_each(exits_data, &data->output_data, link) {
         if (exits_data->output == target->output) {
             output_data = exits_data;
             break;
@@ -1024,7 +1024,7 @@ static bool blur_frame_render_post(struct effect_entity *entity,
     if (!output_data) {
         return true;
     }
-    wl_list_insert(&data->output_datas, &output_data->link);
+    wl_list_insert(&data->output_data, &output_data->link);
 
     pixman_region32_init(&output_data->unaffected_region);
     pixman_region32_init(&output_data->damage_blur_region);
@@ -1091,7 +1091,7 @@ bool blur_effect_create(struct effect_manager *effect_manager)
     if (!effect) {
         return false;
     }
-    /* the priority very hight, ensure correct display befor other effect paint. */
+    /* the priority very high, ensure correct display before other effect paint. */
     effect->effect = effect_create("blur", 0, true, &blur_impl, NULL);
     if (!effect->effect) {
         free(effect);
@@ -1114,7 +1114,7 @@ bool blur_effect_create(struct effect_manager *effect_manager)
     wl_signal_add(&effect->effect->events.destroy, &effect->destroy);
 
     effect_blur_data.effect = effect;
-    wl_list_init(&effect_blur_data.output_datas);
+    wl_list_init(&effect_blur_data.output_data);
 
     struct effect_entity *entity = ky_scene_add_effect(effect->scene, effect->effect);
     if (!entity) {

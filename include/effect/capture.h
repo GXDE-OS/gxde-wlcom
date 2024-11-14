@@ -18,7 +18,7 @@ enum capture_option {
     CAPTURE_NEED_UNSCALED = 1 << 0,
     /**
      * embed cursor into buffer.
-     * there is no guarantee the cursor will be embeded or not,
+     * there is no guarantee the cursor will be embedded or not,
      * caused by hardware cursor is not support or
      * other capture request is different in cursor option.
      */

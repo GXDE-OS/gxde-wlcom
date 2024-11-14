@@ -76,7 +76,7 @@ void main() {
     float shadow_mask = shapeWindowWithBorder + shapeTitle;
 
     // blend all color
-    vec4 result = vec4(0.0); // todo from backgroud
+    vec4 result = vec4(0.0); // todo from background
     result = mix(result, shadowColor, shadow * shadow_mask);
     result = mix(result, titleColor, shapeTitle);
     result += shapeBorder * borderColor; // todo replace with mix

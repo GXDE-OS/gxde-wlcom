@@ -64,7 +64,7 @@ void Output::Private::stateHandle(kywc_output *output, uint32_t mask)
         masks |= Output::Mask::Position;
     }
 
-    if (mask & KYWC_OUTPUT_STATE_TRANSFROM) {
+    if (mask & KYWC_OUTPUT_STATE_TRANSFORM) {
         o_output->pri->transform = output->transform;
         masks |= Output::Mask::Transform;
     }

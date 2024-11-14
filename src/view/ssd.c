@@ -254,7 +254,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
     widget_set_auto_resize(widget, AUTO_RESIZE_EXTEND);
 
     float *color = theme->inactive_bg_color;
-    widget_set_backgrond_color(widget,
+    widget_set_background_color(widget,
                                (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
     widget_set_front_color(widget, theme->active_text_color);
     widget_set_border(widget, theme->active_border_color, BORDER_MASK_ALL, theme->border_width);

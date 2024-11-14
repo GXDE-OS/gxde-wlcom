@@ -164,7 +164,7 @@ struct ky_scene_node {
     pixman_region32_t visible_region;
     /* region that can accept input */
     pixman_region32_t input_region;
-    /* reigon that can render */
+    /* region that can render */
     pixman_region32_t clip_region;
 
     /* impl.xxx MUST not be NULL */

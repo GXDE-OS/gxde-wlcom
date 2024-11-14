@@ -27,7 +27,7 @@ static int set_log_level(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     }
 
     const sd_bus_error error =
-        SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild args, please input [0-5].");
+        SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid args, please input [0-5].");
     return sd_bus_reply_method_error(m, &error);
 }
 

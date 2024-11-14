@@ -398,7 +398,7 @@ struct input_manager *input_manager_create(struct server *server)
 
 void input_set_seat(struct input *input, const char *seat)
 {
-    /* alreay have attached to seat */
+    /* already have attached to seat */
     if (input->seat) {
         if (!strcmp(seat, input->seat->name)) {
             return;
@@ -498,7 +498,7 @@ bool input_set_state(struct input *input, struct input_state *state)
 {
     struct kywc_output *old_mapped_output = input->mapped_output;
 
-    bool sucess = _input_set_state(input, state);
+    bool success = _input_set_state(input, state);
     /* update state anyway */
     input_get_state(input, &input->state);
 
@@ -520,7 +520,7 @@ bool input_set_state(struct input *input, struct input_state *state)
     if (!input->prop.is_virtual) {
         input_write_config(input);
     }
-    return sucess;
+    return success;
 }
 
 struct input *input_by_name(const char *name)

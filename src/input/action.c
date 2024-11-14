@@ -665,7 +665,7 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
         itype = INPUT_TYPE_GESTURE;
     } else {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_type.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input_type.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -675,14 +675,14 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
             : (void *)kywc_gesture_binding_create_by_string(input_bindings, action_desc);
     if (!binding) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_bindings.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input_bindings.");
         return sd_bus_reply_method_error(m, &error);
     }
 
     struct action_data *action_data = action_data_create_from_busstring(action_dat);
     if (!action_data) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild action_data.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid action_data.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -745,7 +745,7 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
         ctype = CONTROL_TYPE_ENABLE;
     } else {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild control_type.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid control_type.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -761,7 +761,7 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
 
     if (!found) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input_bindings.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input_bindings.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -853,7 +853,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     free(manager);
 }
 
-static void intput_action_create_with_keyboard(struct input_action_manager *manager,
+static void input_action_create_with_keyboard(struct input_action_manager *manager,
                                                json_object *keyboard_obj, bool user)
 {
     json_object_object_foreach(keyboard_obj, keybind, action_config) {
@@ -893,7 +893,7 @@ static void intput_action_create_with_keyboard(struct input_action_manager *mana
     }
 }
 
-static void intput_action_create_with_gesture(struct input_action_manager *manager,
+static void input_action_create_with_gesture(struct input_action_manager *manager,
                                               json_object *gesture_obj, bool user)
 {
     json_object_object_foreach(gesture_obj, gesture, action_config) {
@@ -944,22 +944,22 @@ static bool input_action_manager_read_config(struct input_action_manager *manage
     /* get system default config */
     if (manager->config->sys_json &&
         json_object_object_get_ex(manager->config->sys_json, "keyboard", &data)) {
-        intput_action_create_with_keyboard(manager, data, false);
+        input_action_create_with_keyboard(manager, data, false);
     }
 
     if (manager->config->sys_json &&
         json_object_object_get_ex(manager->config->sys_json, "gesture", &data)) {
-        intput_action_create_with_gesture(manager, data, false);
+        input_action_create_with_gesture(manager, data, false);
     }
 
     /* get user config */
     if (manager->config->json &&
         json_object_object_get_ex(manager->config->json, "keyboard", &data)) {
-        intput_action_create_with_keyboard(manager, data, true);
+        input_action_create_with_keyboard(manager, data, true);
     }
 
     if (json_object_object_get_ex(manager->config->json, "gesture", &data)) {
-        intput_action_create_with_gesture(manager, data, true);
+        input_action_create_with_gesture(manager, data, true);
     }
     return true;
 }

@@ -28,7 +28,7 @@ static bool thumbnail_handle_buffer(kywc_thumbnail *thumbnail,
     }
 
     struct kywc_buffer *kywc_buffer =
-        kywc_buffer_hepler_import_thumbnail(helper, thumbnail, buffer);
+        kywc_buffer_helper_import_thumbnail(helper, thumbnail, buffer);
     if (!kywc_buffer) {
         return false;
     }

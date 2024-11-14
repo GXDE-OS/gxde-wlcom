@@ -322,7 +322,7 @@ static void kde_idle_bind(struct wl_client *client, void *data, uint32_t version
     wl_resource_set_implementation(resource, &kde_idle_impl, NULL, NULL);
 }
 
-static void handle_display_destory(struct wl_listener *listener, void *data)
+static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&idle_manager->display_destroy.link);
 
@@ -334,7 +334,7 @@ static void handle_display_destory(struct wl_listener *listener, void *data)
     }
 }
 
-static void handle_server_destory(struct wl_listener *listener, void *data)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&idle_manager->server_destroy.link);
     free(idle_manager);
@@ -347,9 +347,9 @@ bool idle_manager_create(struct server *server)
         return false;
     }
 
-    idle_manager->display_destroy.notify = handle_display_destory;
+    idle_manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &idle_manager->display_destroy);
-    idle_manager->server_destroy.notify = handle_server_destory;
+    idle_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &idle_manager->server_destroy);
 
     idle_manager->idle_notifier_global =

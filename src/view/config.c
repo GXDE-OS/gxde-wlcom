@@ -23,7 +23,7 @@ static int set_view_adsorption(sd_bus_message *m, void *userdata, sd_bus_error *
 
     if (adsorption > VIEW_ADSORPTION_ALL) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild adsorption.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid adsorption.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -84,7 +84,7 @@ static int list_view_states(sd_bus_message *m, void *userdata, sd_bus_error *ret
     struct kywc_view *kywc_view = kywc_view_by_uuid(uuid);
     if (!kywc_view) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild uuid.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid uuid.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -150,7 +150,7 @@ static int set_view_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 
     if (!view_manager_set_view_mode(name)) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild mode name.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid mode name.");
         return sd_bus_reply_method_error(m, &error);
     }
 

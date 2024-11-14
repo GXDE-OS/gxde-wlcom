@@ -27,7 +27,7 @@ struct menu_item {
     char *text;
     char *shortcut;
     bool first, last, checked, separator;
-    bool enabled, redraw, actived, shown;
+    bool enabled, redraw, activated, shown;
 
     enum item_type item_type;
     uint32_t key; // shortcut key
@@ -98,7 +98,7 @@ void menu_item_set_checked(struct menu_item *item, bool checked);
 
 void menu_item_set_separator(struct menu_item *item, bool separator);
 
-void menu_item_set_actived(struct menu_item *item, bool actived);
+void menu_item_set_activated(struct menu_item *item, bool activated);
 
 void menu_item_update_text(struct menu_item *item, const char *text);
 

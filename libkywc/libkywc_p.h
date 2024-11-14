@@ -59,7 +59,7 @@ struct ky_workspace {
     const struct kywc_workspace_interface *impl;
     void *user_data;
 
-    void (*set_position)(struct ky_workspace *workspace, uint32_t postion);
+    void (*set_position)(struct ky_workspace *workspace, uint32_t position);
     void (*activate)(struct ky_workspace *workspace);
     void (*remove)(struct ky_workspace *workspace);
     void (*destroy)(struct ky_workspace *workspace);

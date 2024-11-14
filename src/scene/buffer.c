@@ -285,7 +285,7 @@ static void buffer_collect_damage(struct ky_scene_node *node, int lx, int ly, bo
             pixman_region32_intersect(&region, &region, &node->clip_region);
         }
 
-        /* substract round corners */
+        /* subtract round corners */
         pixman_region32_t corner;
         pixman_region32_init(&corner);
         ky_scene_corner_region(&corner, width, height, node->radius);

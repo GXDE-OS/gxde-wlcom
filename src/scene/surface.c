@@ -205,7 +205,7 @@ struct ky_scene_surface *ky_scene_surface_try_from_buffer(struct ky_scene_buffer
 
 static void surface_node_addon_destroy(struct wlr_addon *addon)
 {
-    /* do nothing, surface destroy singal emitted before surface addon_set finish
+    /* do nothing, surface destroy signal emitted before surface addon_set finish
      * scene node destroy will call surface_addon_destroy.
      */
 }

@@ -98,7 +98,7 @@ const char *kywc_plugin_get_option_string(void *plugin, int32_t token);
 
 /**
  * called every time the plugin is enabled,
- * teardown_data will passed to teardown fuction to release resources.
+ * teardown_data will passed to teardown function to release resources.
  */
 typedef bool (*plugin_setup_func)(void *plugin, void **teardown_data);
 

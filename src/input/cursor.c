@@ -85,9 +85,9 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
 
     bool left_button_pressed =
         LEFT_BUTTON_PRESSED(cursor->last_click_button, cursor->last_click_pressed);
-    /* if hold press moving but not draging */
+    /* if hold press moving but not dragging */
     if (left_button_pressed && cursor->focus.node && cursor->focus.node != cursor->hover.node &&
-        !selection_is_draging(seat)) {
+        !selection_is_dragging(seat)) {
         struct input_event_node *inode = input_event_node_from_node(cursor->focus.node);
         if (inode && inode->impl->hover) {
             cursor->hold_mode = inode->impl->hover(seat, cursor->focus.node, cursor->lx, cursor->ly,
@@ -221,14 +221,14 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     struct input_event_node *old_inode = input_event_node_from_node(old_focus);
     struct input_event_node *inode = input_event_node_from_node(cursor->focus.node);
 
-    /* exit hold mode if any botton clicked */
+    /* exit hold mode if any button clicked */
     if (cursor->hold_mode) {
         /* send button release to last focus node */
         if (old_inode && old_inode->impl->click) {
             old_inode->impl->click(seat, old_focus, BTN_LEFT, false, time, CLICK_STATE_NONE,
                                    old_inode->data);
         }
-        /* leave focus node, otherwise wrong curser image */
+        /* leave focus node, otherwise wrong cursor image */
         if (old_inode && old_inode->impl->leave) {
             bool leave = input_event_node_root(old_inode) != input_event_node_root(inode);
             old_inode->impl->leave(seat, old_focus, leave, old_inode->data);
@@ -257,7 +257,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
                                    CLICK_STATE_FOCUS_LOST, old_inode->data);
         }
         /* fix cursor image sometimes */
-        if (!selection_is_draging(seat)) {
+        if (!selection_is_dragging(seat)) {
             cursor_feed_fake_motion(cursor, false);
         }
         return;
@@ -280,7 +280,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
     }
 
     /* update surface coord if surface size changed when click, like maximize */
-    if (cursor->hover.node == cursor->focus.node && !selection_is_draging(seat)) {
+    if (cursor->hover.node == cursor->focus.node && !selection_is_dragging(seat)) {
         cursor_feed_fake_motion(cursor, false);
     }
 
@@ -441,7 +441,7 @@ static void cursor_handle_tablet_tool_tip(struct wl_listener *listener, void *da
         return;
     }
 
-    if (selection_is_draging(cursor->seat)) {
+    if (selection_is_dragging(cursor->seat)) {
         return;
     }
 
@@ -460,7 +460,7 @@ static void cursor_handle_tablet_tool_button(struct wl_listener *listener, void 
     struct wlr_tablet_tool_button_event *event = data;
     idle_manager_notify_activity(cursor->seat);
 
-    if (selection_is_draging(cursor->seat)) {
+    if (selection_is_dragging(cursor->seat)) {
         return;
     }
 

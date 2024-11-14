@@ -147,7 +147,7 @@ static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -156,7 +156,7 @@ static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
         struct kywc_output *kywc_output = kywc_output_by_name(output_name);
         if (!kywc_output || !kywc_output->state.enabled) {
             const sd_bus_error error =
-                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild output or disabled.");
+                SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid output or disabled.");
             return sd_bus_reply_method_error(m, &error);
         }
     }
@@ -180,13 +180,13 @@ static int change_seat(sd_bus_message *m, void *userdata, sd_bus_error *ret_erro
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
     if (strncmp(seat_name, "seat", 4)) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid seat.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -207,7 +207,7 @@ static int get_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -224,13 +224,13 @@ static int set_send_events(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
     if (input->prop.send_events_modes < mode) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild mode.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid mode.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -251,7 +251,7 @@ static int get_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *ret
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -268,7 +268,7 @@ static int enable_tap_to_click(sd_bus_message *m, void *userdata, sd_bus_error *
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -289,7 +289,7 @@ static int get_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *ret
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -306,7 +306,7 @@ static int enable_tap_and_drag(sd_bus_message *m, void *userdata, sd_bus_error *
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -327,7 +327,7 @@ static int get_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -344,13 +344,13 @@ static int set_pointer_speed(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
     if (speed < -1.0f || speed > 1.0f) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild speed.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid speed.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -371,7 +371,7 @@ static int get_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -388,7 +388,7 @@ static int set_accel_profile(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -410,7 +410,7 @@ static int get_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -427,7 +427,7 @@ static int set_scroll_method(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -448,7 +448,7 @@ static int get_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_er
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -464,7 +464,7 @@ static int set_disable_while_typing(sd_bus_message *m, void *userdata, sd_bus_er
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -485,7 +485,7 @@ static int get_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error *r
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -502,7 +502,7 @@ static int enable_natural_scroll(sd_bus_message *m, void *userdata, sd_bus_error
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -523,7 +523,7 @@ static int get_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -540,7 +540,7 @@ static int enable_left_handed(sd_bus_message *m, void *userdata, sd_bus_error *r
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -561,7 +561,7 @@ static int get_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -579,7 +579,7 @@ static int set_repeat_info(sd_bus_message *m, void *userdata, sd_bus_error *ret_
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -602,7 +602,7 @@ static int get_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -619,7 +619,7 @@ static int set_scroll_factor(sd_bus_message *m, void *userdata, sd_bus_error *re
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -640,7 +640,7 @@ static int get_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -657,7 +657,7 @@ static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error
     struct input *input = input_by_name(input_name);
     if (!input) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild input.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid input.");
         return sd_bus_reply_method_error(m, &error);
     }
 
@@ -732,7 +732,7 @@ static int set_cursor(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
     struct seat *seat = seat_by_name(seat_name);
     if (!seat) {
         const sd_bus_error error =
-            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invaild seat.");
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid seat.");
         return sd_bus_reply_method_error(m, &error);
     }
 

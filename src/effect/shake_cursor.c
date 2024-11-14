@@ -96,7 +96,7 @@ static bool in_same_sign(double a, double b)
 static bool cursor_shake_detect(struct seat_cursor *cursor, double lx, double ly,
                                 uint32_t time_msec)
 {
-    // remove old point in the histroy points
+    // remove old point in the history points
     size_t index = cursor->head, count = cursor->count;
     for (size_t i = 0; i < count; i++) {
         if (time_msec - cursor->points[index].time_msec < INTERVAL) {
@@ -162,7 +162,7 @@ static bool cursor_shake_detect(struct seat_cursor *cursor, double lx, double ly
     }
 
     if (distance / diagonal > 4) {
-        // clear points histroy
+        // clear points history
         cursor->head = cursor->tail;
         cursor->count = 0;
         return true;

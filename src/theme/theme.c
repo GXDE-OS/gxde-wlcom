@@ -463,7 +463,7 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
 
 bool theme_manager_set_icon_theme(const char *icon_theme_name)
 {
-    /* invaild or empty name */
+    /* invalid or empty name */
     if (!icon_theme_name || !*icon_theme_name) {
         return false;
     }

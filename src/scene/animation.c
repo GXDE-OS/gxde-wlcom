@@ -128,7 +128,7 @@ static void animation_entity_addon_destroy(struct wlr_addon *addon)
 }
 
 static const struct wlr_addon_interface animation_entity_addon_impl = {
-    .name = "animaiton_entity",
+    .name = "animation_entity",
     .destroy = animation_entity_addon_destroy,
 };
 

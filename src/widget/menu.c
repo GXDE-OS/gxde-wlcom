@@ -67,11 +67,11 @@ static void menu_draw_item(struct menu_item *item, bool force)
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
 
-    float *backgrond_color = theme->active_bg_color;
-    float *front_color = item->actived ? theme->active_text_color : theme->inactive_text_color;
-    widget_set_backgrond_color(item->content,
-                               (float[4]){ backgrond_color[0], backgrond_color[1],
-                                           backgrond_color[2], theme->opacity / 100.0 });
+    float *background_color = theme->active_bg_color;
+    float *front_color = item->activated ? theme->active_text_color : theme->inactive_text_color;
+    widget_set_background_color(item->content,
+                               (float[4]){ background_color[0], background_color[1],
+                                           background_color[2], theme->opacity / 100.0 });
     widget_set_front_color(item->content, front_color);
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
     widget_set_round_corner(item->content, corner_mask, theme->corner_radius);
@@ -438,7 +438,7 @@ static struct menu_item *menu_first_item(struct menu *menu)
 {
     struct menu_item *item;
     wl_list_for_each_reverse(item, &menu->items, link) {
-        if (item->enabled && item->actived && item->item_type == ITEM_TYPE_NORMAL) {
+        if (item->enabled && item->activated && item->item_type == ITEM_TYPE_NORMAL) {
             return item;
         }
     }
@@ -454,7 +454,7 @@ static struct menu_item *menu_prev_or_next_item(struct menu *menu, struct wl_lis
     }
 
     struct menu_item *item = wl_container_of(node, item, link);
-    bool skip = !item->enabled || !item->actived || item->item_type == ITEM_TYPE_FLIP_UP ||
+    bool skip = !item->enabled || !item->activated || item->item_type == ITEM_TYPE_FLIP_UP ||
                 item->item_type == ITEM_TYPE_FLIP_DOWN;
     return skip ? menu_prev_or_next_item(menu, node, next) : item;
 }
@@ -541,7 +541,7 @@ static bool menu_item_hover(struct seat *seat, struct ky_scene_node *node, doubl
 {
     struct menu_item *item = data;
 
-    if (!item->actived) {
+    if (!item->activated) {
         return false;
     }
 
@@ -595,7 +595,7 @@ static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint3
 {
     struct menu_item *item = data;
     /* do actions when released */
-    if (!item->actived || pressed) {
+    if (!item->activated || pressed) {
         return;
     }
 
@@ -628,7 +628,7 @@ static bool menu_shortcut(struct menu *menu, uint32_t key)
 {
     struct menu_item *item;
     wl_list_for_each(item, &menu->items, link) {
-        if (!item->enabled || !item->actived || item->key != key) {
+        if (!item->enabled || !item->activated || item->key != key) {
             continue;
         }
         if (menu_item_action(item)) {
@@ -840,12 +840,12 @@ void menu_item_set_separator(struct menu_item *item, bool separator)
     item->menu->redraw = true;
 }
 
-void menu_item_set_actived(struct menu_item *item, bool actived)
+void menu_item_set_activated(struct menu_item *item, bool activated)
 {
-    if (item->actived == actived) {
+    if (item->activated == activated) {
         return;
     }
-    item->actived = actived;
+    item->activated = activated;
     item->redraw = true;
     item->menu->redraw = true;
 }
@@ -944,7 +944,7 @@ struct menu_item *menu_add_item(struct menu *menu, const char *text, uint32_t ke
     item->menu->redraw = true;
     item->redraw = true;
     item->enabled = true;
-    item->actived = true;
+    item->activated = true;
     item->shown = true;
 
     item->data = data;

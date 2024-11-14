@@ -768,7 +768,7 @@ static struct Xkb2Qt {
     { XKB_KEY_XF86ApplicationRight, Key_ApplicationRight },
     { XKB_KEY_XF86Book, Key_Book },
     { XKB_KEY_XF86CD, Key_CD },
-    { XKB_KEY_XF86Calculater, Key_Calculator },
+    { XKB_KEY_XF86Calculator, Key_Calculator },
     { XKB_KEY_XF86Clear, Key_Clear },
     { XKB_KEY_XF86ClearGrab, Key_ClearGrab },
     { XKB_KEY_XF86Close, Key_Close },

@@ -541,7 +541,7 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint
                                                     uint8_t fingers, const char *desc)
 {
     if (!gesture_checked(type, devices, directions, edges, fingers)) {
-        kywc_log(KYWC_ERROR, "gesture checkes are illega");
+        kywc_log(KYWC_ERROR, "gesture checks are illega");
         return NULL;
     }
 

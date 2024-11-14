@@ -58,10 +58,10 @@ static void workspace_destroy(struct ky_workspace *workspace)
     wl_display_flush(workspace->manager->ctx->display);
 }
 
-static void workspace_set_position(struct ky_workspace *workspace, uint32_t postion)
+static void workspace_set_position(struct ky_workspace *workspace, uint32_t position)
 {
     struct kywc_workspace_v1 *kywc_workspace_v1 = workspace->data;
-    kywc_workspace_v1_set_position(kywc_workspace_v1, postion);
+    kywc_workspace_v1_set_position(kywc_workspace_v1, position);
     wl_display_flush(workspace->manager->ctx->display);
 }
 

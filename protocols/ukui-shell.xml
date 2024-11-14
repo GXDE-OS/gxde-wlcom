@@ -38,7 +38,7 @@
 
     <event name="current_output" since="2">
       <description summary="send the output name under cursor">
-        Emitted after bind ukui_shell or recieve get_current_output request.
+        Emitted after bind ukui_shell or receive get_current_output request.
       </description>
       <arg name="output_name" type="string" summary="name of current output"/>
       <arg name="seat_name" type="string" summary="seat name of cursor under output"/>

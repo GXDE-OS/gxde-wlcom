@@ -58,7 +58,7 @@ struct selection {
     int clipboard_selection_pid;
     int primary_selection_pid;
 #endif
-    bool draging;
+    bool dragging;
 };
 
 #if HAVE_KDE_CLIPBOARD
@@ -255,7 +255,7 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
     struct wlr_drag *wlr_drag = data;
     struct wlr_drag_icon *drag_icon = wlr_drag->icon;
 
-    selection->draging = true;
+    selection->dragging = true;
     selection->drag_icon = drag_icon;
     wl_signal_add(&wlr_drag->events.destroy, &selection->destroy_drag);
 
@@ -289,7 +289,7 @@ static void handle_destroy_drag(struct wl_listener *listener, void *data)
 {
     struct selection *selection = wl_container_of(listener, selection, destroy_drag);
     wl_list_remove(&selection->destroy_drag.link);
-    selection->draging = false;
+    selection->dragging = false;
 }
 
 static void handle_request_set_primary_selection(struct wl_listener *listener, void *data)
@@ -301,7 +301,7 @@ static void handle_request_set_primary_selection(struct wl_listener *listener, v
     wlr_seat_set_primary_selection(seat, event->source, event->serial);
 }
 
-static void handle_seat_destory(struct wl_listener *listener, void *data)
+static void handle_seat_destroy(struct wl_listener *listener, void *data)
 {
     struct selection *selection = wl_container_of(listener, selection, seat_destroy);
 
@@ -331,7 +331,7 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     selection->seat = seat;
     seat->selection = selection;
 
-    selection->seat_destroy.notify = handle_seat_destory;
+    selection->seat_destroy.notify = handle_seat_destroy;
     wl_signal_add(&seat->events.destroy, &selection->seat_destroy);
 
     selection->request_start_drag.notify = handle_request_start_drag;
@@ -392,7 +392,7 @@ bool selection_manager_create(struct input_manager *input_manager)
 
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly)
 {
-    if (!seat->selection || !seat->selection->draging || !seat->selection->icon_node) {
+    if (!seat->selection || !seat->selection->dragging || !seat->selection->icon_node) {
         return;
     }
 
@@ -400,7 +400,7 @@ void selection_handle_cursor_move(struct seat *seat, int lx, int ly)
     ky_scene_node_set_position(seat->selection->icon_node, lx, ly);
 }
 
-bool selection_is_draging(struct seat *seat)
+bool selection_is_dragging(struct seat *seat)
 {
-    return seat->selection && seat->selection->draging;
+    return seat->selection && seat->selection->dragging;
 }
