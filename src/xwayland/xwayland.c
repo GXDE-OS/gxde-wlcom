@@ -22,6 +22,7 @@
 #include "scene/surface.h"
 #include "security.h"
 #include "server.h"
+#include "view/view.h"
 #include "xwayland_p.h"
 
 static const char *const atom_map[ATOM_LAST] = {
@@ -342,6 +343,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&xwayland->server_destroy.link);
     wl_list_remove(&xwayland->output_configured.link);
     wl_list_remove(&xwayland->surface_destroy.link);
+    wl_list_remove(&xwayland->activate_view.link);
     free(xwayland);
     xwayland = NULL;
 }
@@ -523,6 +525,25 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data)
     xwayland_update_seat(input_manager_get_default_seat());
 }
 
+static void handle_activate_view(struct wl_listener *listener, void *data)
+{
+    /* xwayland server is destroyed or not ready */
+    if (!xwayland->wlr_xwayland || !xwayland->wlr_xwayland->xwm) {
+        return;
+    }
+    if (!xwayland->activated_surface) {
+        return;
+    }
+
+    struct kywc_view *view = data;
+    if (!view || xwayland_check_view(view_from_kywc_view(view))) {
+        return;
+    }
+
+    wlr_xwayland_surface_activate(xwayland->activated_surface, false);
+    xwayland->activated_surface = NULL;
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -560,6 +581,8 @@ bool xwayland_server_create(struct server *server)
     output_manager_add_configured_listener(&xwayland->output_configured);
     xwayland->seat_destroy.notify = handle_seat_destroy;
     wl_list_init(&xwayland->seat_destroy.link);
+    xwayland->activate_view.notify = handle_activate_view;
+    view_manager_add_activate_view_listener(&xwayland->activate_view);
 
     xwayland->surface_destroy.notify = handle_surface_destroy;
     wl_list_init(&xwayland->surface_destroy.link);

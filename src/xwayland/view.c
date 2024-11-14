@@ -206,8 +206,9 @@ static void xwayland_view_configure(struct view *view)
         if (kywc_view->activated && wlr_xwayland_surface->minimized) {
             wlr_xwayland_surface_set_minimized(wlr_xwayland_surface, false);
         }
-        wlr_xwayland_surface_activate(wlr_xwayland_surface, kywc_view->activated);
         if (kywc_view->activated) {
+            wlr_xwayland_surface_activate(wlr_xwayland_surface, true);
+            xwayland_view->xwayland->activated_surface = wlr_xwayland_surface;
             xwayland_restack_view(xwayland_view);
         }
     }
@@ -794,6 +795,10 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&xwayland_view->set_parent.link);
     wl_list_remove(&xwayland_view->set_hints.link);
     wl_list_remove(&xwayland_view->set_decorations.link);
+
+    if (xwayland_view->xwayland->activated_surface == xwayland_view->wlr_xwayland_surface) {
+        xwayland_view->xwayland->activated_surface = NULL;
+    }
 
     /* surface_tree is destroyed by scene subsurface */
     view_unmap(&xwayland_view->view);

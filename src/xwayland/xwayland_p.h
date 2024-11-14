@@ -80,6 +80,9 @@ struct xwayland_server {
     struct wlr_surface *hoverd_surface;
     struct wl_listener surface_destroy;
 
+    struct wl_listener activate_view;
+    struct wlr_xwayland_surface *activated_surface;
+
     float scale;
 };
 
