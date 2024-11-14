@@ -41,6 +41,7 @@ struct transform {
     int node_offset_x, node_offset_y;
 
     struct ky_scene_buffer *zero_copy_buffer;
+    struct wl_listener zero_buffer_destroy;
 
     struct {
         struct thumbnail *thumbnail;
@@ -330,6 +331,15 @@ static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
     transform->thumbnail_info.thumbnail = NULL;
 }
 
+static void handle_zero_buffer_destroy(struct wl_listener *listener, void *data)
+{
+    struct transform *transform = wl_container_of(listener, transform, zero_buffer_destroy);
+    wl_list_remove(&transform->zero_buffer_destroy.link);
+    wl_list_remove(&transform->surface_commit.link);
+
+    transform->zero_copy_buffer = NULL;
+}
+
 static bool transform_effect_frame_render_post(struct effect_entity *entity,
                                                struct ky_scene_render_target *target)
 {
@@ -355,6 +365,7 @@ static void transform_do_destroy(struct transform *transform)
     }
 
     if (transform->zero_copy_buffer) {
+        wl_list_remove(&transform->zero_buffer_destroy.link);
         wl_list_remove(&transform->surface_commit.link);
     }
 
@@ -503,9 +514,10 @@ static struct transform *transform_create(struct transform_options *options,
     transform->interruped = false;
     transform->zero_copy_buffer = options->buffer;
 
-    wl_list_init(&transform->surface_commit.link);
     wl_signal_init(&transform->events.destroy);
+    wl_list_init(&transform->surface_commit.link);
     wl_list_init(&transform->node_destroy.link);
+    wl_list_init(&transform->zero_buffer_destroy.link);
 
     pixman_region32_init(&transform->blur_info.region);
     transform->need_blur = effect->is_opengl_renderer;
@@ -533,6 +545,10 @@ static struct transform *transform_create(struct transform_options *options,
         struct wlr_surface *surface = wlr_surface_try_from_node(&transform->zero_copy_buffer->node);
         transform->surface_commit.notify = handle_texture_update;
         wl_signal_add(&surface->events.commit, &transform->surface_commit);
+
+        transform->zero_buffer_destroy.notify = handle_zero_buffer_destroy;
+        wl_signal_add(&transform->zero_copy_buffer->node.events.destroy,
+                      &transform->zero_buffer_destroy);
 
         return transform;
     }
