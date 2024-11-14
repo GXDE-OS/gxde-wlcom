@@ -1700,7 +1700,7 @@ void view_manager_show_desktop(bool enabled, bool apply)
     wl_signal_emit_mutable(&view_manager->events.show_desktop, NULL);
 }
 
-void view_add_show_desktop_listener(struct wl_listener *listener)
+void view_manager_add_show_desktop_listener(struct wl_listener *listener)
 {
     wl_signal_add(&view_manager->events.show_desktop, listener);
 }

@@ -200,7 +200,7 @@ bool view_manager_get_show_desktop(void);
 
 bool view_manager_get_show_switcher(void);
 
-void view_add_show_desktop_listener(struct wl_listener *listener);
+void view_manager_add_show_desktop_listener(struct wl_listener *listener);
 
 void view_manager_show_active_only(bool enabled, bool apply);
 

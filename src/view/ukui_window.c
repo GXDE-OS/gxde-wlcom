@@ -862,7 +862,7 @@ bool ukui_window_management_create(struct server *server)
     management->new_mapped_view.notify = handle_new_mapped_view;
     kywc_view_add_new_mapped_listener(&management->new_mapped_view);
     management->show_desktop.notify = handle_shown_desktop;
-    view_add_show_desktop_listener(&management->show_desktop);
+    view_manager_add_show_desktop_listener(&management->show_desktop);
 
     return true;
 }
