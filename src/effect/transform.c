@@ -609,14 +609,21 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
         return;
     }
 
+    struct ky_scene_node *sibing = transform->node;
+    struct ky_scene_tree *parent = sibing->parent;
+    while (parent != layer_tree) {
+        sibing = &parent->node;
+        parent = parent->node.parent;
+    }
+
     struct ky_scene_buffer *buffer =
-        ky_scene_buffer_create(layer_tree, transform->thumbnail_info.buffer);
+        ky_scene_buffer_create(parent, transform->thumbnail_info.buffer);
     if (!buffer) {
         return;
     }
 
     transform->buffer = buffer;
-    ky_scene_node_raise_to_top(&buffer->node);
+    ky_scene_node_place_above(&buffer->node, sibing);
     ky_scene_node_set_input_bypassed(&buffer->node, true);
 
     struct effect_entity *entity =
