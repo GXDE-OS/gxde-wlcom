@@ -266,6 +266,7 @@ static void node_chain_collect_damage(struct ky_scene_node *node, int lx, int ly
     bool is_root = node->parent == NULL;
     struct node_effect_chain *chain = node_effect_chain_from_node(node);
     if (wl_list_empty(&chain->base.slots) || is_root) {
+        pixman_region32_union(damage, damage, &chain->visible_region);
         pixman_region32_clear(&chain->visible_region);
         chain->impl.collect_damage(node, lx, ly, parent_enabled, damage_type, damage, invisible,
                                    affected);
