@@ -13,7 +13,6 @@
 #include "scene/surface.h"
 #include "theme.h"
 #include "util/time.h"
-#include "view/workspace.h"
 
 struct padding {
     int top, bottom, left, right;
@@ -88,11 +87,6 @@ static void scale_calc_minimize_start_and_end_geometry(struct view *view, struct
 static void scale_handle_transform_destroy(struct wl_listener *listener, void *data)
 {
     struct scale_entity *scale_entity = wl_container_of(listener, scale_entity, destroy);
-    struct view *view = scale_entity->view;
-    if (view->base.minimized) {
-        view->current_proxy ? ky_scene_node_lower_to_bottom(&view->current_proxy->tree->node)
-                            : ky_scene_node_lower_to_bottom(&view->tree->node);
-    }
     wl_list_remove(&scale_entity->view_destroy.link);
     wl_list_remove(&scale_entity->destroy.link);
     free(scale_entity);
