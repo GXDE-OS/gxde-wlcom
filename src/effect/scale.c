@@ -224,8 +224,6 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
             options.end.alpha = 0;
             options.type.geometry = ANIMATION_TYPE_0_40_20_100;
             options.type.alpha = ANIMATION_TYPE_33_0_100_75;
-            ky_scene_node_raise_to_top(view->current_proxy ? &view->current_proxy->tree->node
-                                                           : &view->tree->node);
         } else {
             options.start.alpha = 0;
             options.end.alpha = 1.0;
