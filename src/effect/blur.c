@@ -487,11 +487,13 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
     GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
     glVertexAttribPointer(first_down_prog->shaders.position, 2, GL_FLOAT, GL_FALSE, 0, pos_vertex);
 
+    int width = gl_texture->wlr_texture.width;
+    int height = gl_texture->wlr_texture.height;
     struct kywc_fbox src_fbox = {
-        .x = blur_src_box->x * 1.0f / gl_texture->wlr_texture.width,
-        .y = blur_src_box->y * 1.0f / gl_texture->wlr_texture.height,
-        .width = blur_src_box->width * 1.0f / gl_texture->wlr_texture.width,
-        .height = blur_src_box->height * 1.0f / gl_texture->wlr_texture.height,
+        .x = blur_src_box->x * 1.0f / width,
+        .y = blur_src_box->y * 1.0f / height,
+        .width = blur_src_box->width * 1.0f / width,
+        .height = blur_src_box->height * 1.0f / height,
     };
     set_tex_matrix(extension_shaders->uv2tex, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
     glUniform2f(extension_shaders->min_uv, src_fbox.x, src_fbox.y);
@@ -504,7 +506,7 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
 
     glUniform1i(first_down_prog->shaders.texture, 0);
     glUniform1f(first_down_prog->shaders.offset, data->offset);
-    glUniform2f(first_down_prog->shaders.halfpixel, 0.5f / sample_width, 0.5f / sample_height);
+    glUniform2f(first_down_prog->shaders.halfpixel, 0.5f / width, 0.5f / height);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(gl_texture->target, gl_texture->tex);
@@ -722,13 +724,8 @@ static void blur_render(struct ky_scene_render_target *target,
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    if (target->scale - floor(target->scale) > 0.001) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    } else {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     glUniform1i(prog->shaders.tex, 0);
     glUniform1f(prog->shaders.offset, data->offset);
