@@ -7,11 +7,9 @@
 
 #include <wayland-server-core.h>
 
-#define WLCOM_THEME_LIGHT "builtin-light"
-#define WLCOM_THEME_DARK "builtin-dark"
-
 enum theme_type {
-    THEME_TYPE_DEFAULT = 0,
+    THEME_TYPE_UNDEFINED = -1,
+    THEME_TYPE_DEFAULT,
     THEME_TYPE_LIGHT = THEME_TYPE_DEFAULT,
     THEME_TYPE_DARK,
 };

@@ -1,6 +1,6 @@
 {
     "theme": {
-        "name": "builtin-light",
+        "type": 0,
         "icon_theme_name": "ukui-icon-theme-default"
     },
     "outputs": {},

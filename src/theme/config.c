@@ -9,6 +9,9 @@
 #include "config.h"
 #include "theme_p.h"
 
+#define WLCOM_THEME_LIGHT "default-light"
+#define WLCOM_THEME_DARK "default-dark"
+
 static const char *service_path = "/com/kylin/Wlcom/Theme";
 static const char *service_interface = "com.kylin.Wlcom.Theme";
 
@@ -102,10 +105,10 @@ bool theme_manager_config_init(struct theme_manager *manager)
     return !!manager->config;
 }
 
-const char *theme_manager_read_config(struct theme_manager *manager)
+enum theme_type theme_manager_read_config(struct theme_manager *manager)
 {
     if (!manager->config || !manager->config->json) {
-        return NULL;
+        return THEME_TYPE_DEFAULT;
     }
 
     json_object *data;
@@ -135,23 +138,23 @@ const char *theme_manager_read_config(struct theme_manager *manager)
         manager->override.opacity = -1;
     }
 
-    if (json_object_object_get_ex(manager->config->json, "name", &data)) {
-        return json_object_get_string(data);
+    if (json_object_object_get_ex(manager->config->json, "type", &data)) {
+        return json_object_get_int(data);
     }
 
     /* get system default config */
     if (manager->config->sys_json &&
-        json_object_object_get_ex(manager->config->sys_json, "name", &data)) {
-        return json_object_get_string(data);
+        json_object_object_get_ex(manager->config->sys_json, "type", &data)) {
+        return json_object_get_int(data);
     }
 
-    return NULL;
+    return THEME_TYPE_DEFAULT;
 }
 
-void theme_manager_write_config(struct theme_manager *manager, const char *name)
+void theme_manager_write_config(struct theme_manager *manager, enum theme_type theme_type)
 {
-    if (name && name[0]) {
-        json_object_object_add(manager->config->json, "name", json_object_new_string(name));
+    if (theme_type > THEME_TYPE_UNDEFINED) {
+        json_object_object_add(manager->config->json, "type", json_object_new_int(theme_type));
     }
 
     if (manager->override.font_name) {

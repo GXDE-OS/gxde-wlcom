@@ -117,9 +117,9 @@ struct theme_manager {
 
 bool theme_manager_config_init(struct theme_manager *manager);
 
-const char *theme_manager_read_config(struct theme_manager *manager);
+enum theme_type theme_manager_read_config(struct theme_manager *manager);
 
-void theme_manager_write_config(struct theme_manager *manager, const char *name);
+void theme_manager_write_config(struct theme_manager *manager, enum theme_type name);
 
 const char *theme_manager_read_icon_config(struct theme_manager *manager);
 

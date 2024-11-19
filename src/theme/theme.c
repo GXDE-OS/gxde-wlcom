@@ -339,17 +339,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
-static enum theme_type theme_type_from_name(const char *theme_name)
-{
-    enum theme_type theme_type = THEME_TYPE_DEFAULT;
-    if (!strcmp(theme_name, WLCOM_THEME_LIGHT)) {
-        theme_type = THEME_TYPE_LIGHT;
-    } else if (!strcmp(theme_name, WLCOM_THEME_DARK)) {
-        theme_type = THEME_TYPE_DARK;
-    }
-    return theme_type;
-}
-
 struct theme_manager *theme_manager_create(struct server *server)
 {
     manager = calloc(1, sizeof(struct theme_manager));
@@ -376,8 +365,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     icon_load_desktop(&manager->desktop_infos);
 
     /* load theme from config */
-    const char *theme_name = theme_manager_read_config(manager);
-    enum theme_type theme_type = theme_name ? theme_type_from_name(theme_name) : THEME_TYPE_DEFAULT;
+    enum theme_type theme_type = theme_manager_read_config(manager);
     struct theme *theme = theme_from_theme_type(theme_type);
     /* theme load failed, fallback to default theme */
     if (!theme) {
@@ -400,7 +388,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     manager->fallback_icon = icon_fallback_create();
     assert(manager->fallback_icon);
 
-    theme_manager_write_config(manager, manager->current->theme_name);
+    theme_manager_write_config(manager, manager->current->theme_type);
     if (manager->icon_theme) {
         theme_manager_write_icon_config(manager, manager->icon_theme->name);
     }
@@ -533,7 +521,7 @@ bool theme_manager_set_theme(enum theme_type theme_type)
     if (old) {
         theme_destroy(old);
     }
-    theme_manager_write_config(manager, manager->current->theme_name);
+    theme_manager_write_config(manager, manager->current->theme_type);
     return true;
 }
 
@@ -564,7 +552,7 @@ bool theme_manager_set_font(const char *name, int size)
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
-    theme_manager_write_config(manager, NULL);
+    theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
     return true;
 }
 
@@ -593,7 +581,7 @@ bool theme_manager_set_accent_color(int32_t color)
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
-    theme_manager_write_config(manager, NULL);
+    theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
     return true;
 }
 
@@ -614,7 +602,7 @@ bool theme_manager_set_corner_radius(int32_t radius)
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
-    theme_manager_write_config(manager, NULL);
+    theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
     return true;
 }
 
@@ -635,7 +623,7 @@ bool theme_manager_set_opacity(int32_t opacity)
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
-    theme_manager_write_config(manager, NULL);
+    theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
     return true;
 }
 

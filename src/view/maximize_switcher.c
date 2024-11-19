@@ -656,6 +656,7 @@ bool maximize_switcher_create(struct view_manager *view_manager)
     ky_scene_node_set_enabled(&switcher->tree->node, false);
 
     switch (theme->theme_type) {
+    case THEME_TYPE_UNDEFINED:
     case THEME_TYPE_LIGHT:
         switcher->color = &light;
         break;
