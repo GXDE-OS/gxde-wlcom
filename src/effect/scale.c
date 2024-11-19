@@ -56,32 +56,39 @@ static void scale_get_node_geometry(struct ky_scene_node *node, struct kywc_box 
 static void scale_calc_minimize_start_and_end_geometry(struct view *view, struct kywc_box *start,
                                                        struct kywc_box *end)
 {
-    struct kywc_box end_box = { 0, 0, 10, 10 };
+    *start = view->base.geometry;
+    end->width = view->base.geometry.width * 0.4;
+    end->height = view->base.geometry.height * 0.4;
+
     if (view->minimized_when_show_desktop) {
         struct output *output = output_from_kywc_output(view->output);
-        end_box.x = output->geometry.x + (output->geometry.width - end_box.width) / 2;
-        end_box.y = output->geometry.y + (output->geometry.height - end_box.height) / 2;
-    } else {
-        if (view->minimized_geometry.panel_surface) {
-            int lx, ly;
-            struct ky_scene_buffer *buffer =
-                ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
-            ky_scene_node_coords(&buffer->node, &lx, &ly);
+        end->x = output->geometry.x + (output->geometry.width - end->width) / 2;
+        end->y = output->geometry.y + (output->geometry.height - end->height) / 2;
 
-            end_box.x = view->minimized_geometry.x + lx;
-            end_box.y = view->minimized_geometry.y + ly;
-            end_box.width = view->minimized_geometry.width;
-            end_box.height = view->minimized_geometry.height;
-        } else {
-            end_box.x = view->base.geometry.x + view->base.geometry.width / 2;
-            end_box.y = view->base.geometry.y + view->base.geometry.height / 2;
-        }
+        struct kywc_box *start_geometry = view->base.minimized ? start : end;
+        scale_calc_view_box(&view->base, start_geometry, start);
+        return;
     }
 
-    struct kywc_box start_geometry = view->base.minimized ? view->base.geometry : end_box;
-    scale_calc_view_box(&view->base, &start_geometry, start);
-    struct kywc_box end_geometry = view->base.minimized ? end_box : view->base.geometry;
-    scale_calc_view_box(&view->base, &end_geometry, end);
+    if (view->minimized_geometry.panel_surface) {
+        int lx, ly;
+        struct ky_scene_buffer *buffer =
+            ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
+        ky_scene_node_coords(&buffer->node, &lx, &ly);
+
+        end->x = view->minimized_geometry.x + lx;
+        end->y = view->minimized_geometry.y + ly;
+        end->width = view->minimized_geometry.width;
+        end->height = view->minimized_geometry.height;
+    } else {
+        end->x = view->base.geometry.x + view->base.geometry.width / 2;
+        end->y = view->base.geometry.y + view->base.geometry.height / 2;
+    }
+
+    struct kywc_box *start_geometry = view->base.minimized ? start : end;
+    scale_calc_view_box(&view->base, start_geometry, start);
+    struct kywc_box *end_geometry = view->base.minimized ? end : start;
+    scale_calc_view_box(&view->base, end_geometry, end);
 }
 
 static void scale_handle_transform_destroy(struct wl_listener *listener, void *data)
@@ -216,7 +223,8 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
             options.duration = 260;
             options.start.alpha = 1.0;
             options.end.alpha = 0;
-            options.type.geometry = ANIMATION_TYPE_0_40_20_100;
+            options.type.geometry = view->minimized_when_show_desktop ? ANIMATION_TYPE_33_0_100_75
+                                                                      : ANIMATION_TYPE_0_40_20_100;
             options.type.alpha = ANIMATION_TYPE_33_0_100_75;
         } else {
             options.start.alpha = 0;
