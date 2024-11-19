@@ -656,6 +656,14 @@ struct ky_scene_buffer *transform_get_zero_copy_buffer(struct view *view)
             return NULL;
         }
 
+        if (pixman_region32_not_empty(&buffer->node.clip_region)) {
+            return NULL;
+        }
+
+        if (!wlr_fbox_empty(&buffer->src_box)) {
+            return NULL;
+        }
+
         return buffer;
     }
     return NULL;
