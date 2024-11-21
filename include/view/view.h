@@ -135,8 +135,6 @@ struct view {
         /* records the current output and status when it is send to output */
         struct kywc_output *output;
         enum kywc_tile tiled;
-        /* restore view to layer when ... */
-        enum layer layer;
     } saved;
 
     /* minimized geometry */

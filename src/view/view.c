@@ -832,6 +832,66 @@ void view_add_all_workspace(struct view *view)
     view->show_in_all_workspaces = true;
 }
 
+static enum layer view_get_layer_by_tree(struct ky_scene_tree *layer_tree)
+{
+    if (!layer_tree) {
+        return LAYER_UNKNOWN;
+    }
+
+    struct ky_scene_tree *tree = layer_tree;
+    if (layer_tree->node.role == KY_SCENE_NODE_WORKSPACE) {
+        tree = layer_tree->node.parent;
+    }
+    for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
+        if (view_manager->layers[layer].tree == tree) {
+            return view_manager->layers[layer].layer;
+        }
+    }
+    return LAYER_UNKNOWN;
+}
+
+static void view_set_layer_in_workspace(struct view *view, enum layer layer)
+{
+    if (!view || !view->current_proxy) {
+        return;
+    }
+    struct view_layer *view_layer = NULL;
+    if (layer == LAYER_ACTIVE) {
+        view_layer = view_manager_get_layer(LAYER_ACTIVE, false);
+        ky_scene_node_reparent(&view->tree->node, view_layer->tree);
+        return;
+    }
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &view->view_proxies, view_link) {
+        view_layer = workspace_layer(proxy->workspace, layer);
+        if (!view_layer) {
+            continue;
+        }
+        ky_scene_node_reparent(&proxy->tree->node, view_layer->tree);
+    }
+}
+
+static void view_follow_parent_layer(struct view *view, struct view *parent)
+{
+    struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(&parent->tree->node);
+    enum layer layer = view_get_layer_by_tree(layer_tree);
+    if (layer == LAYER_UNKNOWN) {
+        return;
+    }
+
+    if (view->current_proxy && parent->current_proxy) {
+        view_set_layer_in_workspace(view, layer);
+    } else if (view->current_proxy && !parent->current_proxy) {
+        struct view_layer *view_layer = view_manager_get_layer(layer, false);
+        view_unset_workspace(view, view_layer);
+    } else if (!view->current_proxy && parent->current_proxy) {
+        view_add_workspace(view, parent->current_proxy->workspace);
+        view_set_layer_in_workspace(view, layer);
+    } else {
+        ky_scene_node_reparent(&view->tree->node, layer_tree);
+    }
+}
+
 void view_set_parent(struct view *view, struct view *parent)
 {
     if (view->parent == parent) {
@@ -841,17 +901,7 @@ void view_set_parent(struct view *view, struct view *parent)
     wl_list_remove(&view->parent_link);
     if (parent) {
         wl_list_insert(&parent->children, &view->parent_link);
-
-        view->saved.layer = parent->saved.layer;
-        struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(&parent->tree->node);
-        if (wl_list_empty(&view->view_proxies)) {
-            ky_scene_node_reparent(&view->tree->node, layer_tree);
-        } else {
-            struct view_proxy *view_proxy;
-            wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
-                ky_scene_node_reparent(&view_proxy->tree->node, layer_tree);
-            }
-        }
+        view_follow_parent_layer(view, parent);
     } else {
         wl_list_init(&view->parent_link);
     }
@@ -1293,22 +1343,16 @@ void kywc_view_toggle_maximized(struct kywc_view *kywc_view)
 
 static void view_reparent_fullscreen(struct view *view, bool active)
 {
-    struct kywc_view *kywc_view = &view->base;
-    struct view_proxy *view_proxy = NULL;
     struct view_layer *layer = NULL;
     if (active) {
-        view->saved.layer = kywc_view->kept_above
-                                ? LAYER_ABOVE
-                                : (kywc_view->kept_below ? LAYER_BELOW : LAYER_NORMAL);
         layer = view_manager_get_layer(LAYER_ACTIVE, false);
-    }
-
-    wl_list_for_each(view_proxy, &view->view_proxies, view_link) {
-        if (!active) {
-            /* restore fullscreen view to workspace */
-            layer = workspace_layer(view_proxy->workspace, view->saved.layer);
+        if (layer->tree == view->tree->node.parent) {
+            ky_scene_node_raise_to_top(&view->tree->node);
+        } else {
+            ky_scene_node_reparent(&view->tree->node, layer->tree);
         }
-        ky_scene_node_reparent(&view_proxy->tree->node, layer->tree);
+    } else if (view->current_proxy) {
+        ky_scene_node_reparent(&view->tree->node, view->current_proxy->tree);
     }
 
     struct view *child;
