@@ -263,7 +263,6 @@ bool server_start(struct server *server)
         return false;
     }
 
-    setenv("WAYLAND_DISPLAY", socket, true);
     if (setenv("WAYLAND_DISPLAY", socket, true) < 0) {
         kywc_log_errno(KYWC_ERROR, "unable to set WAYLAND_DISPLAY");
     } else {
