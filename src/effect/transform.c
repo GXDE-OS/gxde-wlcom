@@ -650,23 +650,20 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
 
 struct ky_scene_buffer *transform_get_zero_copy_buffer(struct view *view)
 {
-    if (xwayland_check_view(view) && view->base.ssd == KYWC_SSD_NONE) {
-        struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
-        if (!buffer) {
-            return NULL;
-        }
-
-        if (pixman_region32_not_empty(&buffer->node.clip_region)) {
-            return NULL;
-        }
-
-        if (!wlr_fbox_empty(&buffer->src_box)) {
-            return NULL;
-        }
-
-        return buffer;
+    if (!xwayland_check_view(view) || view->base.ssd != KYWC_SSD_NONE) {
+        return NULL;
     }
-    return NULL;
+
+    struct ky_scene_buffer *buffer = ky_scene_buffer_try_from_surface(view->surface);
+    if (!buffer) {
+        return NULL;
+    }
+
+    if (pixman_region32_not_empty(&buffer->node.clip_region) || !wlr_fbox_empty(&buffer->src_box)) {
+        return NULL;
+    }
+
+    return buffer;
 }
 
 void transform_add_destroy_listener(struct transform *transform, struct wl_listener *listener)
