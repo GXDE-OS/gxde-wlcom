@@ -1165,12 +1165,15 @@ void view_do_minimized(struct view *view, bool minimized)
         return;
     }
 
-    ky_scene_node_set_enabled(&view->tree->node, !minimized);
-
     kywc_view->minimized = minimized;
     view->pending.action |= VIEW_ACTION_MINIMIZE;
 
-    if (kywc_view->mapped && view->impl->configure) {
+    if (!kywc_view->mapped) {
+        return;
+    }
+
+    ky_scene_node_set_enabled(&view->tree->node, !minimized);
+    if (view->impl->configure) {
         view->impl->configure(view);
     }
 
