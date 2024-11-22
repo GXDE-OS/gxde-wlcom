@@ -6,8 +6,8 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
-static const char *service_path = "/com/kylin/Wlcom/Views";
-static const char *service_interface = "com.kylin.Wlcom.Views";
+static const char *service_path = "/com/kylin/Wlcom/View";
+static const char *service_interface = "com.kylin.Wlcom.View";
 
 static int get_view_adsorption(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
