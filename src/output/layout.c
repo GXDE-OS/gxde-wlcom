@@ -222,14 +222,18 @@ void output_manager_get_layout_configs(struct output_manager *output_manager)
     /* get all outputs configuration */
     struct output *output;
     wl_list_for_each(output, &output_manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        if (kywc_output == output_manager_get_fallback()) {
+            continue;
+        }
+
         struct kywc_output_state pending = { 0 };
         if (output_read_layout_config(output, &pending, active_layout)) {
             output_manager_add_output_pending_state(output, &pending);
             continue;
         }
-        struct kywc_output *kywc_output = &output->base;
-        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
 
+        struct kywc_output_mode *mode = kywc_output_preferred_mode(kywc_output);
         pending.enabled = pending.power = true;
         pending.lx = pending.ly = -1;
         pending.width = mode->width;
@@ -248,6 +252,10 @@ static void output_manager_save_layouts(struct output_manager *manager)
 
     struct output *output;
     wl_list_for_each(output, &manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        if (kywc_output == output_manager_get_fallback()) {
+            continue;
+        }
         output_write_layout_config(output, active_layout);
     }
 
@@ -257,6 +265,9 @@ static void output_manager_save_layouts(struct output_manager *manager)
 
         wl_list_for_each(output, &manager->outputs, link) {
             struct kywc_output *kywc_output = &output->base;
+            if (kywc_output == output_manager_get_fallback()) {
+                continue;
+            }
             struct kywc_output_state *state = &kywc_output->state;
             bool primary = kywc_output_get_primary() == kywc_output;
             kywc_log(KYWC_INFO,
