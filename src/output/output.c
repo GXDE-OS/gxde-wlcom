@@ -1372,30 +1372,26 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
         }
     }
 
-    /* after output commit, we get actual status */
-    struct wlr_output_layout_output *loutput = wlr_output_layout_get(server->layout, wlr_output);
-    bool need_layout = state->enabled;
-    bool have_layout = !!loutput;
-    bool going_on = need_layout && !have_layout;
-    bool going_off = !need_layout && have_layout;
-
     /* if output disabled, skip output_layout_add */
-    if (going_on && (state->lx == -1 || state->ly == -1)) {
-        loutput = wlr_output_layout_add_auto(server->layout, wlr_output);
-    } else if (going_on) {
-        loutput = wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
-    } else if (going_off) {
+    if (!state->enabled) {
         ky_scene_output_destroy(output->scene_output);
         wlr_output_layout_remove(server->layout, wlr_output);
         output->scene_output = NULL;
-    } else if (need_layout && have_layout && (loutput->x != state->lx || loutput->y != state->ly)) {
-        /* if output logical size changed, layout_change already is emitted in
-         * output_commit. only need move when (x, y) of output is different.
-         */
-        wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
+        return true;
     }
 
-    if (going_on && loutput) {
+    struct wlr_output_layout_output *loutput = NULL;
+    /* force to reconfigure even if have loutput */
+    if (state->lx == -1 || state->ly == -1) {
+        loutput = wlr_output_layout_add_auto(server->layout, wlr_output);
+    } else {
+        loutput = wlr_output_layout_get(server->layout, wlr_output);
+        if (!loutput || loutput->x != state->lx || loutput->y != state->ly) {
+            loutput = wlr_output_layout_add(server->layout, wlr_output, state->lx, state->ly);
+        }
+    }
+
+    if (!output->scene_output && loutput) {
         output->scene_output = ky_scene_output_create(server->scene, wlr_output);
         ky_scene_output_layout_add_output(server->scene_layout, loutput, output->scene_output);
     }
@@ -1513,7 +1509,7 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     struct kywc_output_state old = kywc_output->state;
     output_get_state(output, current);
 
-    // XXX: fix current.enabled for dpms power
+    // fix current.enabled for dpms power
     current->enabled = state->enabled;
 
     /* update geometry and usable area before all signals */
