@@ -255,7 +255,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 
     float *color = theme->inactive_bg_color;
     widget_set_background_color(widget,
-                               (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
+                                (float[4]){ color[0], color[1], color[2], theme->opacity / 100.0 });
     widget_set_front_color(widget, theme->active_text_color);
     widget_set_border(widget, theme->active_border_color, BORDER_MASK_ALL, theme->border_width);
     widget_set_round_corner(widget, CORNER_MASK_ALL, theme->corner_radius);
@@ -438,8 +438,9 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
         if (!part->ssd->kywc_view->maximized &&
             view_is_resizable(view_from_kywc_view(part->ssd->kywc_view))) {
             cursor_set_resize_image(seat->cursor, get_resize_type(part, x, y));
+            break;
         }
-        break;
+        // fallthrough
     default:
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
