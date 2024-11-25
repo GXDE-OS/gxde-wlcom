@@ -156,12 +156,11 @@ bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backe
     }
 
     if (!wlr_renderer_get_dmabuf_texture_formats(renderer)) {
+        kywc_log(KYWC_WARN, "Unable to initialize dmabuf");
         return true;
     }
 
-    if (!wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer)) {
-        return false;
-    }
+    wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer);
 
     if (!ky_wayland_buffer_create(wl_display, renderer)) {
         /* create wl_drm if not created in driver */
