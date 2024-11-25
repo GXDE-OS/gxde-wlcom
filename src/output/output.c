@@ -1384,6 +1384,9 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     /* force to reconfigure even if have loutput */
     if (state->lx == -1 || state->ly == -1) {
         loutput = wlr_output_layout_add_auto(server->layout, wlr_output);
+        if (loutput) {
+            loutput->auto_configured = false;
+        }
     } else {
         loutput = wlr_output_layout_get(server->layout, wlr_output);
         if (!loutput || loutput->x != state->lx || loutput->y != state->ly) {
