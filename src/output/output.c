@@ -254,10 +254,6 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
     }
 
     struct kywc_output *kywc_output = &output->base;
-    if (kywc_output == output_manager->fallback_output) {
-        state->lx = 0;
-        state->ly = 0;
-    }
     if (!output_get_backlight(kywc_output, &state->brightness)) {
         state->brightness = output->brightness;
     }
@@ -414,7 +410,11 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     /* use parttial config(scale,brightness,color_temp) */
     if (!found) {
         pending.enabled = pending.power = true;
-        pending.lx = pending.ly = -1;
+        if (output_manager->fallback_output == kywc_output) {
+            pending.lx = pending.ly = 0;
+        } else {
+            pending.lx = pending.ly = -1;
+        }
         pending.brightness = pending.brightness == 0 ? 100 : pending.brightness;
         pending.color_temp = pending.color_temp == 0 ? 6500 : pending.color_temp;
 
@@ -424,7 +424,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         pending.refresh = mode->refresh;
     }
 
-    if (!output_manager->has_layout_manager || output_manager->fallback_output == &output->base) {
+    if (!output_manager->has_layout_manager || output_manager->fallback_output == kywc_output) {
         output_manager_add_output_pending_state(output, &pending);
         if (pending.primary) {
             output_set_pending_primary(output);
@@ -894,6 +894,11 @@ bool output_manager_configure_outputs(void)
     }
 
     wl_list_for_each(pending_config, &output_manager->output_configs, link) {
+        output = pending_config->output;
+        if (&output->base == output_manager->fallback_output) {
+            continue;
+        }
+
         struct kywc_output_state *state = &pending_config->state;
         bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
         if (!is_zero_coord) {
@@ -905,7 +910,6 @@ bool output_manager_configure_outputs(void)
             continue;
         }
 
-        output = pending_config->output;
         if (output->initialized) {
             continue;
         }
@@ -990,16 +994,16 @@ void output_manager_add_output_pending_state(struct output *output, struct kywc_
     if (!pending_config) {
         return;
     }
-    pending_config->output = output;
 
+    pending_config->output = output;
     pending_config->state = *state;
+    wl_list_insert(&output_manager->output_configs, &pending_config->link);
 
     kywc_log(KYWC_DEBUG,
              "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
              output->base.name, state->width, state->height, state->refresh, state->scale,
              state->lx, state->ly, state->transform, state->enabled ? "enabled" : "disabled",
              output_manager->pending_primary == &output->base ? "primary" : "");
-    wl_list_insert(&output_manager->output_configs, &pending_config->link);
 }
 
 struct output_manager *output_manager_create(struct server *server)
