@@ -459,10 +459,9 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
                                                   struct ky_opengl_buffer *gl_buffer,
                                                   struct kywc_box *blur_src_box)
 {
-    struct ky_opengl_texture *gl_texture = data->current_output_texture;
     struct blur_program *first_down_prog = &data->blur_prog[BLUR_PROGRAM_FIRST_DOWN];
     struct first_blur_shaders *extension_shaders = first_down_prog->extension_data;
-    if (!gl_texture || !extension_shaders) {
+    if (!extension_shaders) {
         return NULL;
     }
 
@@ -486,6 +485,16 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
     glEnableVertexAttribArray(first_down_prog->shaders.position);
     GLfloat pos_vertex[8] = { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
     glVertexAttribPointer(first_down_prog->shaders.position, 2, GL_FLOAT, GL_FALSE, 0, pos_vertex);
+
+    struct ky_opengl_texture *gl_texture = data->current_output_texture;
+    if (!gl_texture) {
+        struct wlr_texture *src_tex =
+            ky_opengl_texture_from_buffer(&blur_config.renderer->wlr_renderer, gl_buffer->buffer);
+        gl_texture = ky_opengl_texture_from_wlr_texture(src_tex);
+    }
+    if (!gl_texture) {
+        return NULL;
+    }
 
     int width = gl_texture->wlr_texture.width;
     int height = gl_texture->wlr_texture.height;
@@ -528,6 +537,9 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
     glUseProgram(0);
     glEnable(GL_BLEND);
 
+    if (!data->current_output_texture) {
+        wlr_texture_destroy(&gl_texture->wlr_texture);
+    }
     KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
     return out_tex;
 }
@@ -925,6 +937,7 @@ static bool blur_frame_render_end(struct effect_entity *entity,
 
     if (data->current_output_texture) {
         wlr_texture_destroy(&data->current_output_texture->wlr_texture);
+        data->current_output_texture = NULL;
     }
 
     struct blur_output_data *output_data = data->current_output_data;
