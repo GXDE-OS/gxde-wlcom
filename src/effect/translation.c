@@ -427,8 +427,8 @@ static struct workspace_output *workspace_output_create(struct ky_scene_output *
     }
 
     workspace_output->scene_output = output;
-    wlr_output_transformed_resolution(output->output, &workspace_output->width,
-                                      &workspace_output->height);
+    wlr_output_effective_resolution(output->output, &workspace_output->width,
+                                    &workspace_output->height);
 
     wl_list_init(&workspace_output->entities);
     wl_list_init(&workspace_output->link);
