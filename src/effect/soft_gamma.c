@@ -215,7 +215,7 @@ bool soft_gamma_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("soft_gamma", 0, true, &effect_impl, NULL);
+    effect->effect = effect_create("soft_gamma", 150, true, &effect_impl, NULL);
     if (!effect->effect) {
         free(effect);
         return false;
