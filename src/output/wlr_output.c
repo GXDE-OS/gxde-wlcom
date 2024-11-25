@@ -138,6 +138,9 @@ static void handle_output_apply(struct wl_listener *listener, void *data)
         };
 
         struct output *output = output_from_wlr_output(head_v1->state.output);
+        // fixup brightness and color temp
+        pending.brightness = output->base.state.brightness;
+        pending.color_temp = output->base.state.color_temp;
         output_manager_add_output_pending_state(output, &pending);
     }
 

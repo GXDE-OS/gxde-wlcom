@@ -1000,10 +1000,12 @@ void output_manager_add_output_pending_state(struct output *output, struct kywc_
     wl_list_insert(&output_manager->output_configs, &pending_config->link);
 
     kywc_log(KYWC_DEBUG,
-             "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s",
+             "%s pending_configs: mode (%d x %d @ %d) scale %f pos (%d, %d) transform %d %s %s "
+             "brightness %d colortemp %d",
              output->base.name, state->width, state->height, state->refresh, state->scale,
              state->lx, state->ly, state->transform, state->enabled ? "enabled" : "disabled",
-             output_manager->pending_primary == &output->base ? "primary" : "");
+             output_manager->pending_primary == &output->base ? "primary" : "", state->brightness,
+             state->color_temp);
 }
 
 struct output_manager *output_manager_create(struct server *server)
