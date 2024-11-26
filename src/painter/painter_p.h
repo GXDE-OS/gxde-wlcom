@@ -51,4 +51,6 @@ struct cairo_buffer *cairo_buffer_from_wlr_buffer(struct wlr_buffer *wlr_buffer)
 
 uint8_t *decode_jpeg(const char *file, uint32_t *width, uint32_t *height);
 
+bool cairo_surface_write_to_bmp(cairo_surface_t *surface, const char *filename);
+
 #endif /* _BUFFER_H_ */

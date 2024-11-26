@@ -310,7 +310,14 @@ void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name)
     if (!buf) {
         return;
     }
-    cairo_surface_write_to_png(buf->surface, name);
+
+    size_t len = strlen(name);
+    const char *suffix = name + len - 3;
+    if (len > 3 && strncmp(suffix, "bmp", 3) == 0) {
+        cairo_surface_write_to_bmp(buf->surface, name);
+    } else {
+        cairo_surface_write_to_png(buf->surface, name);
+    }
 }
 
 struct wlr_buffer *painter_create_buffer(int width, int height, float scale)

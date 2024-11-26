@@ -141,3 +141,64 @@ uint8_t *decode_jpeg(const char *file, uint32_t *width, uint32_t *height)
 
     return buffer;
 }
+
+bool cairo_surface_write_to_bmp(cairo_surface_t *surface, const char *filename)
+{
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        kywc_log(KYWC_ERROR, "cannot open file: %s", filename);
+        return false;
+    }
+
+    int width = cairo_image_surface_get_width(surface);
+    int height = cairo_image_surface_get_height(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+    uint8_t *data = cairo_image_surface_get_data(surface);
+
+    struct {
+        unsigned int biSize;
+        int biWidth;
+        int biHeight;
+        unsigned short biPlanes;
+        unsigned short biBitCount;
+        unsigned int biCompression;
+        unsigned int biSizeImage;
+        int biXPelsPerMeter;
+        int biYPelsPerMeter;
+        unsigned int biClrUsed;
+        unsigned int biClrImportant;
+    } info_header = {
+        .biSize = sizeof(info_header),
+        .biWidth = width,
+        .biHeight = -height,
+        .biPlanes = 1,
+        .biBitCount = 32,
+        .biCompression = 0,
+        .biSizeImage = stride * height,
+        .biXPelsPerMeter = 0,
+        .biYPelsPerMeter = 0,
+        .biClrUsed = 0,
+        .biClrImportant = 0,
+    };
+
+    struct {
+        unsigned int bfSize;
+        unsigned short bfReserved1;
+        unsigned short bfReserved2;
+        unsigned int bfOffBits;
+    } file_header = {
+        .bfSize = 2 + sizeof(file_header) + sizeof(info_header) + stride * height,
+        .bfReserved1 = 0,
+        .bfReserved2 = 0,
+        .bfOffBits = 2 + sizeof(file_header) + sizeof(info_header),
+    };
+
+    unsigned short type = 0x4D42;
+    fwrite(&type, sizeof(type), 1, file);
+    fwrite(&file_header, sizeof(file_header), 1, file);
+    fwrite(&info_header, sizeof(info_header), 1, file);
+    fwrite(data, stride, height, file);
+    fclose(file);
+
+    return true;
+}
