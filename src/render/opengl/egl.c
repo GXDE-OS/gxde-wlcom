@@ -305,7 +305,9 @@ static struct ky_egl *egl_create(void)
         return NULL;
     }
 
-    egl->exts.KHR_platform_gbm = epoxy_extension_in_string(client_exts_str, "EGL_KHR_platform_gbm");
+    egl->exts.KHR_platform_gbm =
+        epoxy_extension_in_string(client_exts_str, "EGL_KHR_platform_gbm") ||
+        epoxy_extension_in_string(client_exts_str, "EGL_MESA_platform_gbm");
     egl->exts.EXT_platform_device =
         epoxy_extension_in_string(client_exts_str, "EGL_EXT_platform_device");
     egl->exts.KHR_display_reference =
