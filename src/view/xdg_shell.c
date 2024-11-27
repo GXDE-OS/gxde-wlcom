@@ -441,6 +441,7 @@ static void xdg_view_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&xdg_view->map.link);
     wl_list_remove(&xdg_view->unmap.link);
 
+    xdg_view->wlr_xdg_surface->surface->data = NULL;
     /* scene tree destroy will be called before by scene */
     view_destroy(&xdg_view->view);
 }
