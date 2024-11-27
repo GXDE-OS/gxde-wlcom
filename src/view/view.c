@@ -1009,6 +1009,22 @@ static void view_set_activated(struct view *view, bool activated)
     wl_signal_emit_mutable(&view_manager->events.activate_view, view_manager->activated.view);
 }
 
+static struct view *view_find_fullscreen_ancestor(struct view *view)
+{
+    if (!view || !view->parent) {
+        return NULL;
+    }
+
+    struct view *ancestor = NULL;
+    while (view->parent) {
+        if (view->parent->base.fullscreen) {
+            ancestor = view->parent;
+        }
+        view = view->parent;
+    }
+    return ancestor;
+}
+
 void view_do_activate(struct view *view)
 {
     if (view && !view_is_activatable(view)) {
@@ -1026,6 +1042,14 @@ void view_do_activate(struct view *view)
         if (view) {
             view_set_activated(view, true);
         }
+    } else if (view) {
+        struct view *ancestor = view_find_fullscreen_ancestor(view);
+        if (!ancestor) {
+            ancestor = view;
+        }
+        if (ancestor->base.fullscreen) {
+            view_reparent_fullscreen(ancestor, true);
+        }
     }
 
     if (!view) {
@@ -1035,6 +1059,27 @@ void view_do_activate(struct view *view)
     struct workspace *workspace = view->current_proxy ? view->current_proxy->workspace : NULL;
     if (workspace && workspace != workspace_manager_get_current()) {
         workspace_activate_with_effect(view->current_proxy->workspace);
+    }
+}
+
+static void view_hide_fullscreen_view_in_empty_workspace(void)
+{
+    struct workspace *workspace = workspace_manager_get_current();
+    struct view *view = view_manager->activated.view;
+    if (!view) {
+        return;
+    }
+
+    struct view *ancestor = view_find_fullscreen_ancestor(view);
+    if (!ancestor) {
+        ancestor = view;
+    }
+    if (ancestor->base.fullscreen) {
+        struct view_proxy *view_proxy = view_proxy_by_workspace(ancestor, workspace);
+        if (!view_proxy) {
+            view_reparent_fullscreen(ancestor, false);
+            view_set_activated(ancestor, false);
+        }
     }
 }
 
@@ -1057,21 +1102,11 @@ void view_activate_topmost(void)
         }
         view_do_activate(view);
         seat_focus_surface(input_manager_get_default_seat(), view->surface);
-        if (view->base.fullscreen) {
-            view_reparent_fullscreen(view, true);
-        }
         return;
     }
 
     /* workaround to hide fullscreen view when no view in workspace */
-    view = view_manager->activated.view;
-    if (view && view->base.fullscreen) {
-        view_proxy = view_proxy_by_workspace(view, workspace);
-        if (!view_proxy) {
-            view_reparent_fullscreen(view, false);
-            view_set_activated(view, false);
-        }
-    }
+    view_hide_fullscreen_view_in_empty_workspace();
 }
 
 void view_raise_to_top(struct view *view, bool find_parent)
