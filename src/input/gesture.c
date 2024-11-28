@@ -15,6 +15,16 @@
 #define GESTURE_TOUCHPAD_TIMEOUT (20)
 #define GESTURE_TOUCHSCREEN_HOLD_TIMEOUT (800)
 
+/**
+ * touchpad:
+ * Relative motion deltas are normalized to represent those of a device with 1000dpi resolution
+ * https://wayland.freedesktop.org/libinput/doc/latest/api/group__event__gesture.html#ga3888052854155ad133fa837e4f28d771
+ * we set 0.5 inch be triggered by default
+ */
+#define GESTURE_TOUCHPAD_TRIGGER_THRESHOLD (500)
+/* touchscreen: chase kwin, full width height is 1 */
+#define GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD (0.15)
+
 static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 
 static void gesture_state_reset(struct gesture_state *state)
@@ -92,6 +102,31 @@ static int gesture_handle_timer(void *data)
     return 0;
 }
 
+static void gesture_swipe_state_update(struct gesture_state *state, double dx, double dy)
+{
+    state->dx += dx;
+    state->dy += dy;
+
+    if (!state->triggered) {
+        if ((state->device == GESTURE_DEVICE_TOUCHSCREEN &&
+             (state->dx < -GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD ||
+              state->dx > GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD ||
+              state->dy < -GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD ||
+              state->dy > GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD)) ||
+            (state->device == GESTURE_DEVICE_TOUCHPAD &&
+             (state->dx < -GESTURE_TOUCHPAD_TRIGGER_THRESHOLD ||
+              state->dx > GESTURE_TOUCHPAD_TRIGGER_THRESHOLD ||
+              state->dy < -GESTURE_TOUCHPAD_TRIGGER_THRESHOLD ||
+              state->dy > GESTURE_TOUCHPAD_TRIGGER_THRESHOLD))) {
+            gesture_state_trigger(state);
+        } else {
+            // follow before triggered
+        }
+    } else {
+        // follow after triggered
+    }
+}
+
 void gesture_state_init(struct gesture_state *state, void *display)
 {
     struct wl_event_loop *loop = wl_display_get_event_loop(display);
@@ -119,7 +154,7 @@ void gesture_state_begin(struct gesture_state *state, enum gesture_type type,
     state->rotation = 0.0;
     state->edge = edge;
 
-    if (state->timer) {
+    if (state->timer && state->type != GESTURE_TYPE_SWIPE) {
         int timeout = GESTURE_DEFAULT_TIMEOUT;
         if (state->device == GESTURE_DEVICE_TOUCHPAD) {
             timeout = GESTURE_TOUCHPAD_TIMEOUT;
@@ -146,12 +181,15 @@ void gesture_state_update(struct gesture_state *state, enum gesture_type type,
         return;
     }
 
-    state->dx += dx;
-    state->dy += dy;
-
     if (state->type == GESTURE_TYPE_PINCH) {
+        state->dx += dx;
+        state->dy += dy;
         state->scale = scale;
         state->rotation += rotation;
+    }
+
+    if (state->type == GESTURE_TYPE_SWIPE) {
+        gesture_swipe_state_update(state, dx, dy);
     }
 
     kywc_log(KYWC_DEBUG, "gesture %s state update: fingers: %u gesture: %f %f %f %f",
