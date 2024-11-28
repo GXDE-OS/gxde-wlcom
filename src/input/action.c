@@ -28,6 +28,12 @@ enum action_type {
     ACTION_TYPE_SEND_KEY,
 };
 
+enum key_action {
+    KEY_ACTION_PRESS = 1 << 0,
+    KEY_ACTION_RELEASE = 1 << 1,
+    KEY_ACTION_CLICK = (1 << 2) - 1,
+};
+
 enum input_type { INPUT_TYPE_NONE = 0, INPUT_TYPE_KEYBOARD, INPUT_TYPE_GESTURE };
 
 enum dbus_type { DBUS_TYPE_NONE = 0, DBUS_TYPE_SESSION, DBUS_TYPE_SYSTEM };
@@ -51,6 +57,7 @@ struct action_button_data {
 };
 
 struct keycodes {
+    enum key_action action;
     uint32_t *code;
     uint32_t len;
 };
@@ -247,8 +254,13 @@ static struct keycodes *keycodes_create(const char *str)
         return NULL;
     }
 
+    size_t action_len = 0;
+    char **split_action = split_string(str, ":", &action_len);
+    if (action_len > 2) {
+        kywc_log(KYWC_ERROR, "split key action error");
+    }
     size_t len = 0;
-    char **split_str = split_string(str, "+", &len);
+    char **split_str = split_string(split_action[0], "+", &len);
     for (size_t i = 0, j = 0; i < len; i++) {
         if (!keycode_map(split_str[i])) {
             continue;
@@ -258,6 +270,15 @@ static struct keycodes *keycodes_create(const char *str)
         keycodes->len++;
     }
     free_split_string(&split_str, len);
+    keycodes->action = KEY_ACTION_CLICK;
+    if (action_len == 2) {
+        if (strcmp(split_action[1], "press") == 0) {
+            keycodes->action = KEY_ACTION_PRESS;
+        } else if (strcmp(split_action[1], "release") == 0) {
+            keycodes->action = KEY_ACTION_RELEASE;
+        }
+    }
+    free_split_string(&split_action, action_len);
 
     return keycodes;
 }
@@ -387,16 +408,24 @@ static void action_call_send_key(struct action_key_data *data)
     struct seat *seat = input_manager_get_default_seat();
 
     for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
-        seat_feed_keyboard_key(seat, data->modifiers->code[i], true);
+        if (data->modifiers->action & KEY_ACTION_PRESS) {
+            seat_feed_keyboard_key(seat, data->modifiers->code[i], true);
+        }
     }
     for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
-        seat_feed_keyboard_key(seat, data->keys->code[i], true);
+        if (data->keys->action & KEY_ACTION_PRESS) {
+            seat_feed_keyboard_key(seat, data->keys->code[i], true);
+        }
     }
     for (uint32_t i = 0; data->modifiers && i < data->modifiers->len; ++i) {
-        seat_feed_keyboard_key(seat, data->modifiers->code[i], false);
+        if (data->modifiers->action & KEY_ACTION_RELEASE) {
+            seat_feed_keyboard_key(seat, data->modifiers->code[i], false);
+        }
     }
     for (uint32_t i = 0; data->keys && i < data->keys->len; ++i) {
-        seat_feed_keyboard_key(seat, data->keys->code[i], false);
+        if (data->keys->action & KEY_ACTION_RELEASE) {
+            seat_feed_keyboard_key(seat, data->keys->code[i], false);
+        }
     }
 }
 
@@ -854,7 +883,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 }
 
 static void input_action_create_with_keyboard(struct input_action_manager *manager,
-                                               json_object *keyboard_obj, bool user)
+                                              json_object *keyboard_obj, bool user)
 {
     json_object_object_foreach(keyboard_obj, keybind, action_config) {
         struct action_data *action_data = action_data_create_from_config(action_config);
@@ -894,7 +923,7 @@ static void input_action_create_with_keyboard(struct input_action_manager *manag
 }
 
 static void input_action_create_with_gesture(struct input_action_manager *manager,
-                                              json_object *gesture_obj, bool user)
+                                             json_object *gesture_obj, bool user)
 {
     json_object_object_foreach(gesture_obj, gesture, action_config) {
         struct action_data *action_data = action_data_create_from_config(action_config);
