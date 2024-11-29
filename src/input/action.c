@@ -461,7 +461,8 @@ static void input_manager_keybinding_action(struct key_binding *binding, void *d
     handle_input_action(data);
 }
 
-static void input_manager_gesturebinding_action(struct gesture_binding *binding, void *data)
+static void input_manager_gesturebinding_action(struct gesture_binding *binding, void *data,
+                                                double dx, double dy)
 {
     handle_input_action(data);
 }

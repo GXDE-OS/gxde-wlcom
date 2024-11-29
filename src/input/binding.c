@@ -38,13 +38,14 @@ struct gesture_binding {
     struct wl_list link;
 
     enum gesture_type type;
+    enum gesture_phase phase;
     uint8_t fingers;
     uint32_t devices;
     uint32_t directions;
     uint32_t edges;
     char *desc;
 
-    void (*action)(struct gesture_binding *binding, void *data);
+    void (*action)(struct gesture_binding *binding, void *data, double dx, double dy);
     void *data;
 };
 
@@ -349,8 +350,8 @@ void kywc_gesture_binding_destroy(struct gesture_binding *binding)
 }
 
 static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gesture_type type,
-                                     uint32_t devices, uint32_t directions, uint8_t fingers,
-                                     uint8_t edges)
+                                     enum gesture_phase phase, uint32_t devices,
+                                     uint32_t directions, uint8_t fingers, uint8_t edges)
 {
     struct gesture_binding *bind;
     wl_list_for_each(bind, &bindings->gesture_bindings, link) {
@@ -358,7 +359,7 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
         if (bind == binding) {
             continue;
         }
-        if (bind->type == type && (bind->devices & devices) &&
+        if (bind->type == type && (bind->devices & devices) && (bind->phase == phase) &&
             (GESTURE_DIRECTION_NONE == bind->directions || (bind->directions & directions)) &&
             (GESTURE_EDGE_NONE == bind->edges || (edges & bind->edges)) &&
             bind->fingers == fingers) {
@@ -441,14 +442,18 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
     uint32_t devices;
     uint32_t directions;
     uint32_t edges = GESTURE_EDGE_NONE;
+    enum gesture_phase phase = GESTURE_PHASE_TRIGGER;
 
     size_t len = 0;
     char **split_str = split_string(gestures, ":", &len);
-    if (len != 4 && len != 5) {
-        kywc_log(KYWC_ERROR, "expected <gesture>:<device>:<fingers>:<direction>[:edges] got %s",
+    if (len != 4 && len != 5 && len != 6) {
+        kywc_log(KYWC_ERROR,
+                 "expected "
+                 "<gesture>:<device>:<fingers>:<directions>[:edges][:phase] got %s",
                  gestures);
         goto err;
     }
+
     // type
     if (strcmp(split_str[0], "hold") == 0) {
         type = GESTURE_TYPE_HOLD;
@@ -460,6 +465,7 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
         kywc_log(KYWC_ERROR, "expected hold|pinch|swipe, got %s", gestures);
         goto err;
     }
+
     // device
     if (strcmp(split_str[1], "any") == 0) {
         devices = GESTURE_DEVICE_TOUCHPAD | GESTURE_DEVICE_TOUCHSCREEN;
@@ -471,24 +477,43 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
         kywc_log(KYWC_ERROR, "expected any|touch|touchpad, got %s", gestures);
         goto err;
     }
+
     /* fingers: 1 - 9 */
-    /* direction: up down left right inward outward clockwise counterclockwise */
-    /* edge: top bottom left right */
+    /* directions: up down left right inward outward clockwise counterclockwise */
     if ('1' <= split_str[2][0] && split_str[2][0] <= '9') {
         fingers = atoi(split_str[2]);
         directions = gesture_string_parse_directions(split_str[3]);
-        if (len > 4) {
-            edges = gesture_string_parse_edges(split_str[4]);
-        }
     } else {
         kywc_log(KYWC_ERROR, "expected 1 - 9 got %s", gestures);
         goto err;
     }
 
+    /* edge: top bottom left right */
+    /* phase: before trigger after stop */
+    switch (len) {
+    case 6:
+        if (strcmp(split_str[5], "before") == 0) {
+            phase = GESTURE_PHASE_BEFORE;
+        } else if (strcmp(split_str[5], "trigger") == 0) {
+            phase = GESTURE_PHASE_TRIGGER;
+        } else if (strcmp(split_str[5], "after") == 0) {
+            phase = GESTURE_PHASE_AFTER;
+        } else if (strcmp(split_str[5], "stop") == 0) {
+            phase = GESTURE_PHASE_STOP;
+        } else {
+            kywc_log(KYWC_ERROR, "expected before|trigger|after|stop, got %s", gestures);
+            goto err;
+        }
+        // fallthrough
+    case 5:
+        edges = gesture_string_parse_edges(split_str[4]);
+        break;
+    }
+
     free_split_string(&split_str, len);
 
     kywc_log(KYWC_DEBUG, "gesture binding: %s", gestures);
-    return kywc_gesture_binding_create(type, devices, directions, edges, fingers, desc);
+    return kywc_gesture_binding_create(type, phase, devices, directions, edges, fingers, desc);
 
 err:
     free_split_string(&split_str, len);
@@ -536,7 +561,8 @@ static bool gesture_checked(enum gesture_type type, uint32_t devices, uint32_t d
     return true;
 }
 
-struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint32_t devices,
+struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
+                                                    enum gesture_phase phase, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
                                                     uint8_t fingers, const char *desc)
 {
@@ -551,6 +577,7 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint
     }
 
     binding->type = type;
+    binding->phase = phase;
     binding->devices = devices;
     binding->directions = directions;
     binding->fingers = fingers;
@@ -564,14 +591,15 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type, uint
 }
 
 bool kywc_gesture_binding_register(struct gesture_binding *binding,
-                                   void (*action)(struct gesture_binding *binding, void *data),
+                                   void (*action)(struct gesture_binding *binding, void *data,
+                                                  double dx, double dy),
                                    void *data)
 {
     if (!wl_list_empty(&binding->link)) {
         return true;
     }
-    if (!gesture_binding_is_valid(binding, binding->type, binding->devices, binding->directions,
-                                  binding->fingers, binding->edges)) {
+    if (!gesture_binding_is_valid(binding, binding->type, binding->phase, binding->devices,
+                                  binding->directions, binding->fingers, binding->edges)) {
         return false;
     }
 
@@ -592,13 +620,17 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
         if (gesture_state->fingers != binding->fingers) {
             continue;
         }
+        if (gesture_state->phase != binding->phase) {
+            continue;
+        }
+
         if ((gesture_state->device & binding->devices) &&
             (binding->directions == GESTURE_DIRECTION_NONE ||
              gesture_state->directions & binding->directions) &&
             (binding->edges == GESTURE_EDGE_NONE || gesture_state->edge & binding->edges)) {
             kywc_log(KYWC_DEBUG, "start gesture binding: %s", binding->desc);
             if (binding->action) {
-                binding->action(binding, binding->data);
+                binding->action(binding, binding->data, gesture_state->dx, gesture_state->dy);
             }
             return true;
         }

@@ -30,6 +30,7 @@ static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 static void gesture_state_reset(struct gesture_state *state)
 {
     state->type = GESTURE_TYPE_NONE;
+    state->phase = GESTURE_PHASE_NONE;
     state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
     state->edge = GESTURE_EDGE_NONE;
@@ -92,6 +93,30 @@ static void gesture_state_trigger(struct gesture_state *state)
              state->fingers, state->directions);
 
     state->triggered = true;
+    state->phase = GESTURE_PHASE_TRIGGER;
+    state->handled = bindings_handle_gesture_binding(state);
+}
+
+static void gesture_state_follow(struct gesture_state *state, double dx, double dy,
+                                 bool before_triggered)
+{
+    // only support swipe for now
+    if (state->type != GESTURE_TYPE_SWIPE) {
+        return;
+    }
+
+    state->phase = before_triggered ? GESTURE_PHASE_BEFORE : GESTURE_PHASE_AFTER;
+    state->handled = bindings_handle_gesture_binding(state);
+}
+
+static void gesture_state_stop(struct gesture_state *state)
+{
+    // only support swipe for now
+    if (state->type != GESTURE_TYPE_SWIPE) {
+        return;
+    }
+
+    state->phase = GESTURE_PHASE_STOP;
     state->handled = bindings_handle_gesture_binding(state);
 }
 
@@ -120,10 +145,10 @@ static void gesture_swipe_state_update(struct gesture_state *state, double dx, d
               state->dy > GESTURE_TOUCHPAD_TRIGGER_THRESHOLD))) {
             gesture_state_trigger(state);
         } else {
-            // follow before triggered
+            gesture_state_follow(state, dx, dy, true);
         }
     } else {
-        // follow after triggered
+        gesture_state_follow(state, dx, dy, false);
     }
 }
 
@@ -206,6 +231,7 @@ bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
 
     if (cancelled) {
         kywc_log(KYWC_DEBUG, "gesture %s state cancelled", gestures[state->type]);
+        gesture_state_stop(state);
         gesture_state_reset(state);
         return false;
     }
@@ -215,6 +241,7 @@ bool gesture_state_end(struct gesture_state *state, enum gesture_type type,
     }
 
     bool handled = state->handled;
+    gesture_state_stop(state);
     gesture_state_reset(state);
     return handled;
 }

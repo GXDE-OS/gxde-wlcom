@@ -58,7 +58,7 @@ static void shortcut_action(struct key_binding *binding, void *data)
     printf("simple plugin call action: %s\n", shortcut->desc);
 }
 
-static void gesture_action(struct gesture_binding *binding, void *data)
+static void gesture_action(struct gesture_binding *binding, void *data, double dx, double dy)
 {
     struct gesture *gesture = data;
 
