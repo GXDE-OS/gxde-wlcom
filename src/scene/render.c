@@ -66,22 +66,59 @@ void ky_scene_render_damage_in_target(struct ky_scene *scene, struct ky_scene_re
 void ky_scene_render_target_add_software_cursors(struct ky_scene_render_target *target)
 {
     struct wlr_output *output = target->output->output;
+    bool need_render = false;
 
     pixman_region32_t damage;
     pixman_region32_init(&damage);
-    pixman_region32_copy(&damage, &target->damage);
-    pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
-    wlr_region_scale(&damage, &damage, target->scale);
 
-    pixman_region32_t excluded_damage;
-    pixman_region32_init(&excluded_damage);
-    wlr_region_transform(&excluded_damage, &target->excluded_buffer_damage, output->transform,
-                         output->width, output->height);
-    pixman_region32_subtract(&damage, &damage, &excluded_damage);
-    pixman_region32_fini(&excluded_damage);
+    struct wlr_output_cursor *cursor;
+    wl_list_for_each(cursor, &output->cursors, link) {
+        if (!cursor->enabled || !cursor->visible || output->hardware_cursor == cursor) {
+            continue;
+        }
 
-    // output cursor render in output scaled logical coord
-    wlr_output_add_software_cursors_to_render_pass(output, target->render_pass, &damage);
+        struct wlr_texture *texture = cursor->texture;
+        if (texture == NULL) {
+            continue;
+        }
+
+        if (!need_render) {
+            pixman_region32_copy(&damage, &target->damage);
+            pixman_region32_translate(&damage, -target->logical.x, -target->logical.y);
+            ky_scene_render_region(&damage, target);
+            pixman_region32_subtract(&damage, &damage, &target->excluded_buffer_damage);
+            need_render = true;
+        }
+
+        struct wlr_box box = {
+            .x = cursor->x - cursor->hotspot_x,
+            .y = cursor->y - cursor->hotspot_y,
+            .width = cursor->width,
+            .height = cursor->height,
+        };
+        // box is already scaled by output scale
+        enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
+        wlr_box_transform(&box, &box, transform, target->trans_width, target->trans_height);
+
+        pixman_region32_t cursor_damage;
+        pixman_region32_init_rect(&cursor_damage, box.x, box.y, box.width, box.height);
+        pixman_region32_intersect(&cursor_damage, &cursor_damage, &damage);
+        if (!pixman_region32_not_empty(&cursor_damage)) {
+            pixman_region32_fini(&cursor_damage);
+            continue;
+        }
+
+        struct wlr_render_texture_options options = {
+            .texture = texture,
+            .src_box = cursor->src_box,
+            .dst_box = box,
+            .clip = &cursor_damage,
+            .transform = output->transform,
+        };
+        wlr_render_pass_add_texture(target->render_pass, &options);
+        pixman_region32_fini(&cursor_damage);
+    }
+
     pixman_region32_fini(&damage);
 }
 
