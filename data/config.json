@@ -44,12 +44,18 @@
                 "method": "mainWindowSwitch",
                 "desc": "global search"
             },
-            "swipe:touchpad:3:left+right": {
+            "swipe:touchpad:3:left+right:none:trigger": {
                 "enable": true,
                 "actiontype": "key",
-                "modifiers": "Alt_L",
+                "modifiers": "Alt_L:press",
                 "keys": "Tab",
-                "desc": "switch windows"
+                "desc": "trigger switch windows"
+            },
+            "swipe:touchpad:3:left+right:none:stop": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Alt_L:release",
+                "desc": "stop switch windows"
             },
             "hold:touchpad:4:none": {
                 "enable": true,
@@ -82,12 +88,18 @@
                 "method": "showWindow",
                 "desc": "global search"
             },
-            "swipe:touch:4:left+right": {
+            "swipe:touch:4:left+right:none:trigger": {
                 "enable": true,
                 "actiontype": "key",
-                "modifiers": "Alt_L",
+                "modifiers": "Alt_L:press",
                 "keys": "Tab",
-                "desc": "switch windows"
+                "desc": "trigger switch windows"
+            },
+            "swipe:touch:4:left+right:none:stop": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Alt_L:release",
+                "desc": "stop switch windows"
             }
         }
     },
