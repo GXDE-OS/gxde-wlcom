@@ -810,9 +810,7 @@ bool output_manager_configure_outputs(void)
     }
 
     /* if all outputs will be disabled in config, find others not in config */
-    int auto_coord_outputs = 0;
     bool have_enabled_output = false;
-    bool have_auto_coord = false;
     bool have_zero_coord = false;
     bool have_actual_output = output_manager_has_actual_outputs();
 
@@ -828,11 +826,6 @@ bool output_manager_configure_outputs(void)
             have_enabled_output |= pending_config->state.enabled;
             have_zero_coord |= pending_config->state.enabled && pending_config->state.lx == 0 &&
                                pending_config->state.ly == 0;
-            have_auto_coord = pending_config->state.enabled && pending_config->state.lx == -1 &&
-                              pending_config->state.ly == -1;
-            if (have_auto_coord) {
-                auto_coord_outputs++;
-            }
         } else {
             have_enabled_output |= kywc_output->state.enabled;
             have_zero_coord |= kywc_output->state.enabled && kywc_output->state.lx == 0 &&
@@ -859,68 +852,12 @@ bool output_manager_configure_outputs(void)
             struct kywc_output *kywc_output = &pending_config->output->base;
             kywc_log(KYWC_WARN, "Fixup output %s coord to zero", kywc_output->name);
             pending_config->state.lx = pending_config->state.ly = 0;
-            have_zero_coord = true;
         }
-    }
-
-    if (!have_zero_coord && auto_coord_outputs == wl_list_length(&output_manager->output_configs)) {
-        have_zero_coord = true;
     }
 
     if (!have_enabled_output) {
         kywc_log(KYWC_WARN, "All outputs will be disabled, reject this configuration");
         goto failed;
-    }
-    if (!have_zero_coord) {
-        kywc_log(KYWC_WARN, "No zero coord found, reject this configuration");
-        goto failed;
-    }
-
-    struct kywc_output_state *zero_coord_state = NULL;
-    wl_list_for_each(output, &output_manager->outputs, link) {
-        kywc_output = &output->base;
-        if (kywc_output == output_manager->fallback_output) {
-            continue;
-        }
-        if (get_output_pending_config(output)) {
-            continue;
-        }
-        struct kywc_output_state *state = &output->base.state;
-        bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
-        if (is_zero_coord) {
-            zero_coord_state = state;
-            break;
-        }
-    }
-
-    wl_list_for_each(pending_config, &output_manager->output_configs, link) {
-        output = pending_config->output;
-        if (&output->base == output_manager->fallback_output) {
-            continue;
-        }
-
-        struct kywc_output_state *state = &pending_config->state;
-        bool is_zero_coord = state->enabled && state->lx == 0 && state->ly == 0;
-        if (!is_zero_coord) {
-            continue;
-        }
-
-        if (!zero_coord_state) {
-            zero_coord_state = state;
-            continue;
-        }
-
-        if (output->initialized) {
-            continue;
-        }
-
-        if (zero_coord_state->width != state->width || zero_coord_state->height != state->height ||
-            zero_coord_state->scale != state->scale ||
-            zero_coord_state->transform != state->transform) {
-            kywc_log(KYWC_WARN, "Fixup output %s coord to auto", output->base.name);
-            state->lx = -1;
-            state->ly = -1;
-        }
     }
 
     /* 2.config outputs */

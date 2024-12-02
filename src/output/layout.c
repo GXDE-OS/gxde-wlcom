@@ -282,8 +282,9 @@ static void output_manager_save_layouts(struct output_manager *manager)
 static void output_manager_handle_configured(struct wl_listener *listener, void *data)
 {
     struct output_manager *output_manager = wl_container_of(listener, output_manager, configured);
-
-    if (!output_manager->has_layout_manager || !output_manager_has_actual_outputs()) {
+    struct configure_event *event = data;
+    if (!output_manager->has_layout_manager || !output_manager_has_actual_outputs() ||
+        event->type != CONFIGURE_TYPE_UPDATE) {
         return;
     }
 
