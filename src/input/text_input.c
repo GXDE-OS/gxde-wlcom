@@ -678,6 +678,9 @@ static void handle_new_popup_surface(struct wl_listener *listener, void *data)
     wl_signal_add(&popup->popup_surface->surface->events.commit, &popup->surface_commit);
     popup->popup_surface_destroy.notify = handle_input_popup_destroy;
     wl_signal_add(&popup->popup_surface->events.destroy, &popup->popup_surface_destroy);
+
+    /* update popup position when surface is mapped */
+    input_popup_update(popup, relay->seat);
 }
 
 static void handle_new_input_method(struct wl_listener *listener, void *data)
