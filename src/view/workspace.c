@@ -90,9 +90,9 @@ static void workspace_switch_to(int switch_workspace)
         }
     }
 
-    if (!workspace_add_translation_effect(workspace_manager->workspaces[current],
-                                          workspace_manager->workspaces[pending],
-                                          switch_workspace)) {
+    if (!workspace_add_automatic_translation_effect(workspace_manager->workspaces[current],
+                                                    workspace_manager->workspaces[pending],
+                                                    switch_workspace)) {
         workspace_activate(workspace_manager->workspaces[pending]);
     }
 }
@@ -418,7 +418,7 @@ void workspace_activate_with_effect(struct workspace *workspace)
     enum direction direction =
         current->position < workspace->position ? DIRECTION_RIGHT : DIRECTION_LEFT;
 
-    if (!workspace_add_translation_effect(current, workspace, direction)) {
+    if (!workspace_add_automatic_translation_effect(current, workspace, direction)) {
         workspace_activate(workspace);
     }
 }
