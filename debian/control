@@ -1,0 +1,37 @@
+Source: kylin-wayland-compositor
+Section: x11
+Priority: optional
+Maintainer: Morose <chenlinxiang@kylinos.cn>
+Build-Depends:
+ debhelper-compat (= 13),
+ meson (>= 0.59.0),
+ pkg-config,
+ libwlroots-dev (>= 0.17.4-ok4),
+ libcairo2-dev,
+ libpango1.0-dev,
+ librsvg2-dev,
+ libjson-c-dev (>= 0.15),
+ libssl-dev,
+ libepoxy-dev,
+ libwayland-dev,
+ libxcb-shape0-dev,
+ libunwind-dev,
+ libjpeg-dev,
+ quilt,
+Standards-Version: 4.6.2
+
+Package: kylin-wayland-compositor
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Breaks: kylin-wayland-compositor-effects
+Description: Kylin wayland compositor
+
+Package: kylin-wayland-compositor-client
+Architecture: any
+Depends:
+ kylin-wayland-compositor,
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Client library for kylin wayland compositor

@@ -1,0 +1,243 @@
+kylin-wayland-compositor (1.3.1-ok1) huanghe; urgency=medium
+
+  * Commit: ca539b3
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 04 Dec 2024 14:20:39 +0800
+
+kylin-wayland-compositor (1.3.0-ok44) nile; urgency=medium
+
+  * Commit: fb6bcff
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 27 Nov 2024 15:23:17 +0800
+
+kylin-wayland-compositor (1.3.0-ok43) nile; urgency=medium
+
+  * Commit: e2aa5a7
+
+ -- zhoulei <zhoulei@kylinos.cn>  Fri, 22 Nov 2024 15:50:22 +0800
+
+kylin-wayland-compositor (1.3.0-ok42) nile; urgency=medium
+
+  * Commit: 32629b7
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 20 Nov 2024 16:56:52 +0800
+
+kylin-wayland-compositor (1.3.0-ok41) nile; urgency=medium
+
+  * Commit: 5fe425d
+  * Fixes: #IB3BT2
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 13 Nov 2024 09:46:31 +0800
+
+kylin-wayland-compositor (1.3.0-ok40) nile; urgency=medium
+
+  * Commit: b7a3d91
+
+ -- zhoulei <zhoulei@kylinos.cn>  Fri, 08 Nov 2024 16:41:49 +0800
+
+kylin-wayland-compositor (1.3.0-ok39) nile; urgency=medium
+
+  * Commit: 5bb5fde
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 25 Oct 2024 17:12:49 +0800
+
+kylin-wayland-compositor (1.3.0-ok38) nile; urgency=medium
+
+  * Commit: 53e654c
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 17:22:18 +0800
+
+kylin-wayland-compositor (1.3.0-ok37) nile; urgency=medium
+
+  * Commit: b136f91
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 16:09:56 +0800
+
+kylin-wayland-compositor (1.3.0-ok36) nile; urgency=medium
+
+  * Commit: b136f91
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 16:04:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok35) nile; urgency=medium
+
+  * Commit: dc75b64
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 30 Sep 2024 15:15:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok34) nile; urgency=medium
+
+  * change build arch
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 21 Sep 2024 19:08:24 +0800
+
+kylin-wayland-compositor (1.3.0-ok33) nile; urgency=medium
+
+  * Commit: 50a13fb
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 21 Sep 2024 16:56:03 +0800
+
+kylin-wayland-compositor (1.3.0-ok32) nile; urgency=medium
+
+  * Commit: 04c8540
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 06 Sep 2024 16:35:45 +0800
+
+kylin-wayland-compositor (1.3.0-ok31) nile; urgency=medium
+
+  * Commit: e7044b2
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 30 Aug 2024 14:49:27 +0800
+
+kylin-wayland-compositor (1.3.0-ok30) nile; urgency=medium
+
+  * Commit: 75fa2d6
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 23 Aug 2024 15:36:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok29) nile; urgency=medium
+
+  * Commit: 97d6c93
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 16 Aug 2024 15:14:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok28) nile; urgency=medium
+
+  * Commit: 259fc78
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 09 Aug 2024 14:45:15 +0800
+
+kylin-wayland-compositor (1.3.0-ok27) nile; urgency=medium
+
+  * Commit: b395736
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 02 Aug 2024 14:07:02 +0800
+
+kylin-wayland-compositor (1.3.0-ok26) nile; urgency=medium
+
+  * Commit: f222d29
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 26 Jul 2024 16:20:17 +0800
+
+kylin-wayland-compositor (1.3.0-ok25) nile; urgency=medium
+
+  * Commit: a2effa8
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 24 Jul 2024 08:51:59 +0800
+
+kylin-wayland-compositor (1.3.0-ok24) nile; urgency=medium
+
+  * Commit: 18aae8d
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 22 Jul 2024 17:31:30 +0800
+
+kylin-wayland-compositor (1.3.0-ok23) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 11 Jul 2024 10:40:08 +0800
+
+kylin-wayland-compositor (1.3.0-ok22) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 28 Jun 2024 15:10:24 +0800
+
+kylin-wayland-compositor (1.3.0-ok21) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 20 Jun 2024 16:28:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok20) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 19 Jun 2024 18:03:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok19) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 19 Jun 2024 15:35:27 +0800
+
+kylin-wayland-compositor (1.3.0-ok18) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 15 Jun 2024 16:11:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok17) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 05 Jun 2024 17:28:22 +0800
+
+kylin-wayland-compositor (1.3.0-ok16) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 01 Jun 2024 17:43:08 +0800
+
+kylin-wayland-compositor (1.3.0-ok15) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 31 May 2024 17:12:50 +0800
+
+kylin-wayland-compositor (1.3.0-ok14) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Tue, 28 May 2024 21:01:12 +0800
+
+kylin-wayland-compositor (1.3.0-ok13) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 11 May 2024 16:40:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok12) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 24 Apr 2024 14:46:10 +0800
+
+kylin-wayland-compositor (1.3.0-ok11) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 11 Mar 2024 9:03:25 +0800
+
+kylin-wayland-compositor (1.3.0-ok10) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 26 Jan 2024 14:03:25 +0800
+
+kylin-wayland-compositor (1.3.0-ok9) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 19 Jan 2024 14:45:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok8) nile; urgency=medium
+
+  * Fix round corner error
+  * Do nor remove ssd for ukui apps
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 08 Jan 2024 12:31:13 +0800
+
+kylin-wayland-compositor (1.3.0-ok7) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 05 Jan 2024 16:23:38 +0800
+
+kylin-wayland-compositor (1.3.0-ok6) nile; urgency=medium
+
+  * Import v1.3.0
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 14 Dec 2023 10:50:42 +0800
