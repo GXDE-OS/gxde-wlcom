@@ -79,6 +79,7 @@ struct view_manager {
     struct wl_listener theme_icon_update;
     struct wl_listener new_xdg_surface;
     struct wl_listener server_terminate;
+    struct wl_listener server_ready;
     struct wl_listener server_destroy;
 
     bool show_desktop_enabled;

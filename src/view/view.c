@@ -1899,6 +1899,16 @@ struct view *view_manager_get_global_authentication(void)
     return view_manager->global_authentication_view;
 }
 
+static void handle_server_ready(struct wl_listener *listener, void *data)
+{
+    if (!view_manager->mode) {
+        view_manager->mode = view_manager_mode_from_name("stack_mode");
+    }
+    if (view_manager->mode->impl->view_mode_enter) {
+        view_manager->mode->impl->view_mode_enter();
+    }
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&view_manager->server_destroy.link);
@@ -1994,6 +2004,11 @@ bool view_manager_set_view_mode(const char *name)
     }
 
     if (view_manager->mode == view_mode) {
+        return true;
+    }
+
+    if (!view_manager->server->ready) {
+        view_manager->mode = view_mode;
         return true;
     }
 
@@ -2098,6 +2113,8 @@ struct view_manager *view_manager_create(struct server *server)
     theme_manager_add_icon_update_listener(&view_manager->theme_icon_update);
     view_manager->server_terminate.notify = handle_server_terminate;
     wl_signal_add(&server->events.terminate, &view_manager->server_terminate);
+    view_manager->server_ready.notify = handle_server_ready;
+    wl_signal_add(&server->events.ready, &view_manager->server_ready);
     view_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &view_manager->server_destroy);
 
@@ -2118,12 +2135,6 @@ struct view_manager *view_manager_create(struct server *server)
     view_manager->state.view_adsorption = VIEW_ADSORPTION_ALL;
     view_read_config(view_manager);
 
-    if (!view_manager->mode) {
-        view_manager->mode = view_manager_mode_from_name("stack_mode");
-    }
-    if (view_manager->mode->impl->view_mode_enter) {
-        view_manager->mode->impl->view_mode_enter();
-    }
     workspace_manager_create(view_manager);
     decoration_manager_create(view_manager);
     server_decoration_manager_create(view_manager);
