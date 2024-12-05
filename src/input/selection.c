@@ -42,6 +42,7 @@ struct selection {
     struct wl_listener request_set_selection;
     struct wl_listener request_set_primary_selection;
 
+    struct wlr_drag *drag;
     /* only one drag_icon in seat at the same time */
     struct wlr_drag_icon *drag_icon;
     struct ky_scene_node *icon_node;
@@ -58,7 +59,6 @@ struct selection {
     int clipboard_selection_pid;
     int primary_selection_pid;
 #endif
-    bool dragging;
 };
 
 #if HAVE_KDE_CLIPBOARD
@@ -255,7 +255,7 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
     struct wlr_drag *wlr_drag = data;
     struct wlr_drag_icon *drag_icon = wlr_drag->icon;
 
-    selection->dragging = true;
+    selection->drag = wlr_drag;
     selection->drag_icon = drag_icon;
     wl_signal_add(&wlr_drag->events.destroy, &selection->destroy_drag);
 
@@ -289,7 +289,7 @@ static void handle_destroy_drag(struct wl_listener *listener, void *data)
 {
     struct selection *selection = wl_container_of(listener, selection, destroy_drag);
     wl_list_remove(&selection->destroy_drag.link);
-    selection->dragging = false;
+    selection->drag = NULL;
 }
 
 static void handle_request_set_primary_selection(struct wl_listener *listener, void *data)
@@ -392,15 +392,17 @@ bool selection_manager_create(struct input_manager *input_manager)
 
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly)
 {
-    if (!seat->selection || !seat->selection->dragging || !seat->selection->icon_node) {
+    if (!seat->selection || !seat->selection->drag) {
         return;
     }
 
     /* update dnd icon if support */
-    ky_scene_node_set_position(seat->selection->icon_node, lx, ly);
+    if (seat->selection->icon_node) {
+        ky_scene_node_set_position(seat->selection->icon_node, lx, ly);
+    }
 }
 
 bool selection_is_dragging(struct seat *seat)
 {
-    return seat->selection && seat->selection->dragging;
+    return seat->selection && seat->selection->drag;
 }
