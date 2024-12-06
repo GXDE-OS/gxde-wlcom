@@ -235,4 +235,14 @@ kde_keystate_manager_create(struct input_manager *input_manager)
 
 bool transient_seat_manager_create(struct input_manager *input_manager);
 
+/**
+ * xdg toplevel drag support
+ */
+
+struct wlr_data_source;
+
+bool toplevel_drag_manager_create(struct server *server);
+
+void toplevel_drag_move(struct wlr_data_source *source, int lx, int ly);
+
 #endif /* _INPUT_P_H_ */

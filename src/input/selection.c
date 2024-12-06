@@ -261,7 +261,7 @@ static void handle_start_drag(struct wl_listener *listener, void *data)
 
     /* drag icon may be NULL */
     if (!drag_icon) {
-        kywc_log(KYWC_INFO, "Started drag but not set a drag icon");
+        kywc_log(KYWC_DEBUG, "Started drag but not set a drag icon");
         return;
     }
 
@@ -380,6 +380,7 @@ bool selection_manager_create(struct input_manager *input_manager)
     wlr_data_device_manager_create(input_manager->server->display);
     wlr_data_control_manager_v1_create(input_manager->server->display);
     wlr_primary_selection_v1_device_manager_create(input_manager->server->display);
+    toplevel_drag_manager_create(input_manager->server);
 
     manager->new_seat.notify = handle_new_seat;
     wl_signal_add(&input_manager->events.new_seat, &manager->new_seat);
@@ -399,6 +400,8 @@ void selection_handle_cursor_move(struct seat *seat, int lx, int ly)
     /* update dnd icon if support */
     if (seat->selection->icon_node) {
         ky_scene_node_set_position(seat->selection->icon_node, lx, ly);
+    } else {
+        toplevel_drag_move(seat->selection->drag->source, lx, ly);
     }
 }
 

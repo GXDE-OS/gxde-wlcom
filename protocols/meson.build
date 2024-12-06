@@ -14,6 +14,7 @@ protocols = {
   'org-kde-kwin-idle': 'idle.xml',
   'zwp-pointer-constraints-v1': wl_protocol_dir / 'unstable/pointer-constraints/pointer-constraints-unstable-v1.xml',
   'ext-transient-seat-v1': wl_protocol_dir / 'staging/ext-transient-seat/ext-transient-seat-v1.xml',
+  'xdg-toplevel-drag-manager-v1': wl_protocol_dir / 'staging/xdg-toplevel-drag/xdg-toplevel-drag-v1.xml',
 }
 
 protocols += {

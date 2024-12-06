@@ -45,6 +45,7 @@ wayland协议支持情况
 | xdg_activation_v1                 |    1     |       |
 | xdg_wm_dialog_v1                  |    1     |       |
 | xwayland_shell_v1                 |    1     |       |
+| xdg_toplevel_drag_manager_v1      |    1     |       |
 
 ### unstable
 
