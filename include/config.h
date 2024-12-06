@@ -37,7 +37,7 @@ struct config *config_manager_add_config(const char *name, const char *bus, cons
 
 void config_destroy(struct config *config);
 
-void config_notify(const char *title, const char *body, const char *icon);
+void config_notify(const char *app_name, const char *summary, const char *body, const char *icon);
 
 bool config_call_method(const char *service, const char *path, const char *interface,
                         const char *method);

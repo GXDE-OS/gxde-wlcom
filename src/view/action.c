@@ -105,7 +105,7 @@ static int handle_capture(void *data)
 #else
 static void capture_done(const char *path, void *data)
 {
-    config_notify(tr("Capture saved to"), path, "kylin-screenshot");
+    config_notify(tr("Screenshot"), tr("Capture saved to"), path, "kylin-screenshot");
     free(data);
 }
 
