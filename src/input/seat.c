@@ -395,13 +395,13 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
     if (surface) {
         struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(wlr_seat);
         if (keyboard) {
-            wlr_seat_keyboard_notify_enter(wlr_seat, surface, keyboard->keycodes,
-                                           keyboard->num_keycodes, &keyboard->modifiers);
+            wlr_seat_keyboard_enter(wlr_seat, surface, keyboard->keycodes, keyboard->num_keycodes,
+                                    &keyboard->modifiers);
         } else {
-            wlr_seat_keyboard_notify_enter(wlr_seat, surface, NULL, 0, NULL);
+            wlr_seat_keyboard_enter(wlr_seat, surface, NULL, 0, NULL);
         }
     } else {
-        wlr_seat_keyboard_notify_clear_focus(wlr_seat);
+        wlr_seat_keyboard_clear_focus(wlr_seat);
     }
 
     tablet_set_focus(seat, surface);
