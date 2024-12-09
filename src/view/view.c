@@ -12,6 +12,7 @@
 #include <kywc/log.h>
 
 #include "effect/fade.h"
+#include "effect/magic_lamp.h"
 #include "effect/scale.h"
 #include "effect/slide.h"
 #include "input/seat.h"
@@ -1280,7 +1281,14 @@ void view_do_minimized(struct view *view, bool minimized)
     }
 
     /* if view is the activated view, process it in activated.minimize listener */
-    view_add_scale_effect(view, SCALE_MINIMIZE);
+    if (view_manager->state.minimize_effect_type == MINIMIZE_EFFECT_TYPE_MAGIC_LAMP) {
+        if (!view_add_magic_lamp_effect(view)) {
+            view_add_scale_effect(view, SCALE_MINIMIZE);
+        }
+    } else {
+        view_add_scale_effect(view, SCALE_MINIMIZE);
+    }
+
     wl_signal_emit_mutable(&kywc_view->events.minimize, NULL);
 
     if (!kywc_view->minimized) {

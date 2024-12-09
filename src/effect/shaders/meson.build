@@ -12,6 +12,8 @@ shaders = [
   'touchtrail.frag',
   'long_touch.vert',
   'long_touch.frag',
+  'magic_lamp.vert',
+  'magic_lamp.frag',
 ]
 
 foreach name : shaders

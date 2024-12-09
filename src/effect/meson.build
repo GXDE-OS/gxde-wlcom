@@ -7,6 +7,7 @@ wlcom_sources += files(
   'fade.c',
   'locate_pointer.c',
   'long_touch.c',
+  'magic_lamp.c',
   'move.c',
   'output_transform.c',
   'showfps.c',

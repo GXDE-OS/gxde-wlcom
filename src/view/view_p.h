@@ -39,6 +39,12 @@ struct view_mode_interface {
     void (*mode_destroy)(void);
 };
 
+enum minimize_effect_type {
+    MINIMIZE_EFFECT_TYPE_SCALE,
+    MINIMIZE_EFFECT_TYPE_MAGIC_LAMP,
+    MINIMIZE_EFFECT_TYPE_NUM,
+};
+
 struct view_mode {
     struct wl_list link;
     const struct view_mode_interface *impl;
@@ -73,6 +79,7 @@ struct view_manager {
         uint32_t num_workspaces;
         uint32_t view_adsorption;
         bool csd_round_corner;
+        enum minimize_effect_type minimize_effect_type;
     } state;
 
     struct wl_listener theme_update;

@@ -53,6 +53,19 @@ static int set_csd_round_corner(sd_bus_message *m, void *userdata, sd_bus_error 
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_minimize_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct view_manager *manager = userdata;
+    uint32_t minimize_effect;
+    CK(sd_bus_message_read(m, "u", &minimize_effect));
+
+    if (minimize_effect < MINIMIZE_EFFECT_TYPE_NUM) {
+        manager->state.minimize_effect_type = minimize_effect;
+    }
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int list_all_views(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     struct view_manager *manager = userdata;
@@ -164,6 +177,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("GetViewAdsorption", "", "u", get_view_adsorption, 0),
     SD_BUS_METHOD("SetViewAdsorption", "u", "", set_view_adsorption, 0),
     SD_BUS_METHOD("SetCSDRoundCorner", "b", "", set_csd_round_corner, 0),
+    SD_BUS_METHOD("SetMinimizeEffect", "u", "", set_minimize_effect, 0),
     SD_BUS_METHOD("ListAllViews", "", "a(ssi)", list_all_views, 0),
     SD_BUS_METHOD("ListViewStates", "s", "a(sai)", list_view_states, 0),
 
@@ -202,6 +216,12 @@ bool view_read_config(struct view_manager *view_manager)
         const char *name = json_object_get_string(data);
         view_manager->mode = view_manager_mode_from_name(name);
     }
+    if (json_object_object_get_ex(view_manager->config->json, "minimize_effect", &data)) {
+        int minimize_effect = json_object_get_int(data);
+        if (minimize_effect < MINIMIZE_EFFECT_TYPE_NUM) {
+            view_manager->state.minimize_effect_type = minimize_effect;
+        }
+    }
 
     return true;
 }
@@ -220,4 +240,6 @@ void view_write_config(struct view_manager *view_manager)
                            json_object_new_boolean(view_manager->state.csd_round_corner));
     json_object_object_add(view_manager->config->json, "view_mode",
                            json_object_new_string(view_manager->mode->impl->name));
+    json_object_object_add(view_manager->config->json, "minimize_effect",
+                           json_object_new_int(view_manager->state.minimize_effect_type));
 }
