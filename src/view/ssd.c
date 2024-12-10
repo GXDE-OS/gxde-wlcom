@@ -479,6 +479,10 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
         ssd_tooltip_show(seat, part, false);
     }
 
+    /* active current view */
+    kywc_view_activate(kywc_view);
+    seat_focus_surface(seat, view->surface);
+
     if (CLICK_STATE_DOUBLE == state) {
         if (button != BTN_LEFT) {
             return;
@@ -553,10 +557,6 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
     if (edges != KYWC_EDGE_NONE && pressed && button == BTN_LEFT) {
         window_begin_resize(view, edges, seat);
     }
-
-    /* active current view */
-    kywc_view_activate(kywc_view);
-    seat_focus_surface(seat, view->surface);
 }
 
 static struct ky_scene_node *ssd_get_root(void *data)
