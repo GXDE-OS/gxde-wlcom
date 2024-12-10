@@ -190,6 +190,8 @@ struct view_manager *view_manager_create(struct server *server);
 
 struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
 
+struct view_layer *view_manager_get_layer_by_node(struct ky_scene_node *node, bool in_workspace);
+
 struct view *view_manager_get_activated(void);
 
 void view_manager_add_activate_view_listener(struct wl_listener *listener);
@@ -207,8 +209,6 @@ void view_manager_show_active_only(bool enabled, bool apply);
 bool view_manager_get_show_activte_only(void);
 
 uint32_t view_manager_get_adsorption(void);
-
-struct ky_scene_tree *view_manager_get_layer_tree(struct ky_scene_node *node);
 
 bool view_manager_set_view_mode(const char *name);
 

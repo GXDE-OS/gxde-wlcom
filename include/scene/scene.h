@@ -88,24 +88,28 @@ struct ky_scene_node_interface {
     ky_scene_node_destroy_func_t destroy;
 };
 
-/* scene node props */
-enum ky_scene_node_prop {
-    KY_SCENE_NODE_INVALID = 0,
-    // bit 0 ... 2, node type [1, 7]
-    KY_SCENE_NODE_TREE = 1 << 0,
+/* scene node type */
+enum ky_scene_node_type {
+    KY_SCENE_NODE_TREE,
     KY_SCENE_NODE_RECT,
     KY_SCENE_NODE_BUFFER,
+};
 
-    // bit 3 ... 6, node role: root, layer, workspace, toplevel, xwayland, popup, ssd,  ...
-    KY_SCENE_NODE_ROOT = 1 << 3,
-    KY_SCENE_NODE_LAYER,
-    KY_SCENE_NODE_WORKSPACE,
-    KY_SCENE_NODE_TOPLEVEL,
-    KY_SCENE_NODE_SUBSURFACE,
-    KY_SCENE_NODE_POPUP,
-
-    // bit 7, node from: external(client)
-    KY_SCENE_NODE_EXTERNAL = 1 << 7,
+/* scene role type */
+enum ky_scene_role_type {
+    KY_SCENE_ROLE_NONE = 0,
+    KY_SCENE_ROLE_ROOT,
+    KY_SCENE_ROLE_LAYER,
+    KY_SCENE_ROLE_WORKSPACE,
+    KY_SCENE_ROLE_VIEW,
+    KY_SCENE_ROLE_XDG_TOPLEVEL,
+    KY_SCENE_ROLE_XDG_POPUP,
+    KY_SCENE_ROLE_XWAYLAND,
+    KY_SCENE_ROLE_XWAYLAND_UNMANAGED,
+    KY_SCENE_ROLE_LAYER_SHELL,
+    KY_SCENE_ROLE_DRAG_ICON,
+    KY_SCENE_ROLE_SURFACE,
+    KY_SCENE_ROLE_SUBSURFACE,
 };
 
 enum ky_scene_damage_type {
@@ -135,14 +139,11 @@ struct ky_scene_node {
     struct ky_scene_tree *parent;
     struct wl_list link;
 
-    union {
-        struct {
-            uint8_t type : 3;
-            uint8_t role : 4;
-            uint8_t from : 1;
-        };
-        uint8_t prop;
-    };
+    enum ky_scene_node_type type;
+    struct {
+        enum ky_scene_role_type type;
+        void *data;
+    } role;
 
     bool enabled;
     bool input_bypassed;

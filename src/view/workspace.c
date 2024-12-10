@@ -287,13 +287,16 @@ struct workspace *workspace_create(const char *name, uint32_t position)
     struct view_layer *layers = workspace_manager->view_manager->layers;
     workspace->layers[0].layer = LAYER_BELOW;
     workspace->layers[0].tree = ky_scene_tree_create(layers[LAYER_BELOW].tree);
-    workspace->layers[0].tree->node.role = KY_SCENE_NODE_WORKSPACE;
+    workspace->layers[0].tree->node.role.type = KY_SCENE_ROLE_WORKSPACE;
+    workspace->layers[0].tree->node.role.data = &workspace->layers[0];
     workspace->layers[1].layer = LAYER_NORMAL;
     workspace->layers[1].tree = ky_scene_tree_create(layers[LAYER_NORMAL].tree);
-    workspace->layers[1].tree->node.role = KY_SCENE_NODE_WORKSPACE;
+    workspace->layers[1].tree->node.role.type = KY_SCENE_ROLE_WORKSPACE;
+    workspace->layers[1].tree->node.role.data = &workspace->layers[1];
     workspace->layers[2].layer = LAYER_ABOVE;
     workspace->layers[2].tree = ky_scene_tree_create(layers[LAYER_ABOVE].tree);
-    workspace->layers[2].tree->node.role = KY_SCENE_NODE_WORKSPACE;
+    workspace->layers[2].tree->node.role.type = KY_SCENE_ROLE_WORKSPACE;
+    workspace->layers[2].tree->node.role.data = &workspace->layers[2];
     workspace_set_enabled(workspace, false);
 
     /* insert to workspace manager workspaces */

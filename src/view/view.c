@@ -50,6 +50,18 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace)
     }
 }
 
+struct view_layer *view_manager_get_layer_by_node(struct ky_scene_node *node, bool in_workspace)
+{
+    struct ky_scene_tree *tree = node->parent;
+
+    while (tree && (!in_workspace || tree->node.role.type != KY_SCENE_ROLE_WORKSPACE) &&
+           tree->node.role.type != KY_SCENE_ROLE_LAYER) {
+        tree = tree->node.parent;
+    }
+
+    return tree->node.role.data;
+}
+
 static void view_update_output(struct view *view)
 {
     int lx = 0, ly = 0;
@@ -832,24 +844,6 @@ void view_add_all_workspace(struct view *view)
     view->show_in_all_workspaces = true;
 }
 
-static enum layer view_get_layer_by_tree(struct ky_scene_tree *layer_tree)
-{
-    if (!layer_tree) {
-        return LAYER_UNKNOWN;
-    }
-
-    struct ky_scene_tree *tree = layer_tree;
-    if (layer_tree->node.role == KY_SCENE_NODE_WORKSPACE) {
-        tree = layer_tree->node.parent;
-    }
-    for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
-        if (view_manager->layers[layer].tree == tree) {
-            return view_manager->layers[layer].layer;
-        }
-    }
-    return LAYER_UNKNOWN;
-}
-
 static void view_set_layer_in_workspace(struct view *view, enum layer layer)
 {
     if (!view || !view->current_proxy) {
@@ -873,22 +867,20 @@ static void view_set_layer_in_workspace(struct view *view, enum layer layer)
 
 static void view_follow_parent_layer(struct view *view, struct view *parent)
 {
-    struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(&parent->tree->node);
-    enum layer layer = view_get_layer_by_tree(layer_tree);
-    if (layer == LAYER_UNKNOWN) {
+    struct view_layer *layer = view_manager_get_layer_by_node(&parent->tree->node, false);
+    if (!layer) {
         return;
     }
 
     if (view->current_proxy && parent->current_proxy) {
-        view_set_layer_in_workspace(view, layer);
+        view_set_layer_in_workspace(view, layer->layer);
     } else if (view->current_proxy && !parent->current_proxy) {
-        struct view_layer *view_layer = view_manager_get_layer(layer, false);
-        view_unset_workspace(view, view_layer);
+        view_unset_workspace(view, layer);
     } else if (!view->current_proxy && parent->current_proxy) {
         view_add_workspace(view, parent->current_proxy->workspace);
-        view_set_layer_in_workspace(view, layer);
+        view_set_layer_in_workspace(view, layer->layer);
     } else {
-        ky_scene_node_reparent(&view->tree->node, layer_tree);
+        ky_scene_node_reparent(&view->tree->node, layer->tree);
     }
 }
 
@@ -1877,18 +1869,6 @@ uint32_t view_manager_get_adsorption(void)
     return view_manager->state.view_adsorption;
 }
 
-struct ky_scene_tree *view_manager_get_layer_tree(struct ky_scene_node *node)
-{
-    struct ky_scene_tree *tree = node->parent;
-
-    while (tree && tree->node.role != KY_SCENE_NODE_WORKSPACE &&
-           tree->node.role != KY_SCENE_NODE_LAYER) {
-        tree = tree->node.parent;
-    }
-
-    return tree;
-}
-
 void view_manager_set_global_authentication(struct view *view)
 {
     view_manager->global_authentication_view = view;
@@ -2125,7 +2105,8 @@ struct view_manager *view_manager_create(struct server *server)
     for (int layer = LAYER_FIRST; layer < LAYER_NUMBER; layer++) {
         view_manager->layers[layer].layer = layer;
         view_manager->layers[layer].tree = ky_scene_tree_create(&server->scene->tree);
-        view_manager->layers[layer].tree->node.role = KY_SCENE_NODE_LAYER;
+        view_manager->layers[layer].tree->node.role.type = KY_SCENE_ROLE_LAYER;
+        view_manager->layers[layer].tree->node.role.data = &view_manager->layers[layer];
     }
 
     view_manager_modes_register(view_manager);

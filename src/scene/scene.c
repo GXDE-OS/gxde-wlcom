@@ -350,7 +350,8 @@ struct ky_scene *ky_scene_create(void)
     }
 
     ky_scene_tree_init(&scene->tree, NULL);
-    scene->tree.node.role = KY_SCENE_NODE_ROOT;
+    scene->tree.node.role.type = KY_SCENE_ROLE_ROOT;
+    scene->tree.node.role.data = scene;
 
     scene->tree_destroy = scene->tree.node.impl.destroy;
     scene->tree.node.impl.destroy = scene_destroy;

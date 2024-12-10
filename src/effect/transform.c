@@ -603,15 +603,15 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
         return;
     }
 
-    struct ky_scene_tree *layer_tree = view_manager_get_layer_tree(transform->node);
-    if (!layer_tree) {
+    struct view_layer *layer = view_manager_get_layer_by_node(transform->node, true);
+    if (!layer) {
         kywc_log(KYWC_ERROR, "node is not in layer");
         return;
     }
 
     struct ky_scene_node *sibing = transform->node;
     struct ky_scene_tree *parent = sibing->parent;
-    while (parent != layer_tree) {
+    while (parent != layer->tree) {
         sibing = &parent->node;
         parent = parent->node.parent;
     }
