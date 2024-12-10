@@ -14,8 +14,10 @@ struct gesture_state {
     enum gesture_edge edge;
     uint8_t fingers;
     uint32_t directions;
+    uint32_t follow_direction;
 
     double dx, dy;
+    double follow_dx, follow_dy;
     double scale;
     double rotation;
     bool triggered;

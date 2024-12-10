@@ -80,7 +80,8 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
                                                     enum gesture_phase phase, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
-                                                    uint8_t fingers, const char *desc);
+                                                    uint8_t fingers, uint32_t follow_direction,
+                                                    double follow_threshold, const char *desc);
 
 void kywc_gesture_binding_destroy(struct gesture_binding *binding);
 

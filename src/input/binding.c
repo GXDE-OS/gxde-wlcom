@@ -42,7 +42,9 @@ struct gesture_binding {
     uint8_t fingers;
     uint32_t devices;
     uint32_t directions;
+    uint32_t follow_direction;
     uint32_t edges;
+    double follow_threshold;
     char *desc;
 
     void (*action)(struct gesture_binding *binding, void *data, double dx, double dy);
@@ -351,7 +353,8 @@ void kywc_gesture_binding_destroy(struct gesture_binding *binding)
 
 static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gesture_type type,
                                      enum gesture_phase phase, uint32_t devices,
-                                     uint32_t directions, uint8_t fingers, uint8_t edges)
+                                     uint32_t directions, uint32_t follow_direction,
+                                     uint8_t fingers, uint8_t edges)
 {
     struct gesture_binding *bind;
     wl_list_for_each(bind, &bindings->gesture_bindings, link) {
@@ -362,7 +365,7 @@ static bool gesture_binding_is_valid(struct gesture_binding *binding, enum gestu
         if (bind->type == type && (bind->devices & devices) && (bind->phase == phase) &&
             (GESTURE_DIRECTION_NONE == bind->directions || (bind->directions & directions)) &&
             (GESTURE_EDGE_NONE == bind->edges || (edges & bind->edges)) &&
-            bind->fingers == fingers) {
+            bind->fingers == fingers && bind->follow_direction == follow_direction) {
             return false;
         }
     }
@@ -443,13 +446,16 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
     uint32_t directions;
     uint32_t edges = GESTURE_EDGE_NONE;
     enum gesture_phase phase = GESTURE_PHASE_TRIGGER;
+    double follow_threshold = 0.0;
+    uint32_t follow_direction = GESTURE_DIRECTION_NONE;
 
     size_t len = 0;
     char **split_str = split_string(gestures, ":", &len);
-    if (len != 4 && len != 5 && len != 6) {
+    if (len != 4 && len != 5 && len != 6 && len != 7 && len != 8) {
         kywc_log(KYWC_ERROR,
                  "expected "
-                 "<gesture>:<device>:<fingers>:<directions>[:edges][:phase] got %s",
+                 "<gesture>:<device>:<fingers>:<directions>[:edges][:phase][:follow_threshold][:"
+                 "follow_direction] got %s",
                  gestures);
         goto err;
     }
@@ -491,6 +497,12 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
     /* edge: top bottom left right */
     /* phase: before trigger after stop */
     switch (len) {
+    case 8:
+        follow_direction = gesture_string_parse_directions(split_str[7]);
+        // fallthrough
+    case 7:
+        follow_threshold = atof(split_str[6]);
+        // fallthrough
     case 6:
         if (strcmp(split_str[5], "before") == 0) {
             phase = GESTURE_PHASE_BEFORE;
@@ -513,7 +525,8 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
     free_split_string(&split_str, len);
 
     kywc_log(KYWC_DEBUG, "gesture binding: %s", gestures);
-    return kywc_gesture_binding_create(type, phase, devices, directions, edges, fingers, desc);
+    return kywc_gesture_binding_create(type, phase, devices, directions, edges, fingers,
+                                       follow_direction, follow_threshold, desc);
 
 err:
     free_split_string(&split_str, len);
@@ -564,7 +577,8 @@ static bool gesture_checked(enum gesture_type type, uint32_t devices, uint32_t d
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
                                                     enum gesture_phase phase, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
-                                                    uint8_t fingers, const char *desc)
+                                                    uint8_t fingers, uint32_t follow_direction,
+                                                    double follow_threshold, const char *desc)
 {
     if (!gesture_checked(type, devices, directions, edges, fingers)) {
         kywc_log(KYWC_ERROR, "gesture checks are illega");
@@ -582,6 +596,8 @@ struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
     binding->directions = directions;
     binding->fingers = fingers;
     binding->edges = edges;
+    binding->follow_threshold = follow_threshold > 0.0 ? follow_threshold : 0.0;
+    binding->follow_direction = follow_direction;
     if (desc) {
         binding->desc = strdup(desc);
     }
@@ -599,7 +615,8 @@ bool kywc_gesture_binding_register(struct gesture_binding *binding,
         return true;
     }
     if (!gesture_binding_is_valid(binding, binding->type, binding->phase, binding->devices,
-                                  binding->directions, binding->fingers, binding->edges)) {
+                                  binding->directions, binding->follow_direction, binding->fingers,
+                                  binding->edges)) {
         return false;
     }
 
@@ -622,6 +639,17 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
         }
         if (gesture_state->phase != binding->phase) {
             continue;
+        }
+        /* do not trigger follow if interval < follow_threshold */
+        if (gesture_state->phase == GESTURE_PHASE_BEFORE ||
+            gesture_state->phase == GESTURE_PHASE_AFTER) {
+            if ((gesture_state->follow_direction != binding->follow_direction) ||
+                (gesture_state->follow_dx > -binding->follow_threshold &&
+                 gesture_state->follow_dx < binding->follow_threshold &&
+                 gesture_state->follow_dy > -binding->follow_threshold &&
+                 gesture_state->follow_dy < binding->follow_threshold)) {
+                continue;
+            }
         }
 
         if ((gesture_state->device & binding->devices) &&

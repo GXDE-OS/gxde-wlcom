@@ -33,6 +33,7 @@ static void gesture_state_reset(struct gesture_state *state)
     state->phase = GESTURE_PHASE_NONE;
     state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
+    state->follow_direction = GESTURE_DIRECTION_NONE;
     state->edge = GESTURE_EDGE_NONE;
     state->triggered = false;
     state->handled = false;
@@ -94,6 +95,9 @@ static void gesture_state_trigger(struct gesture_state *state)
 
     state->triggered = true;
     state->phase = GESTURE_PHASE_TRIGGER;
+    state->follow_dx = 0.0;
+    state->follow_dy = 0.0;
+    state->follow_direction = GESTURE_DIRECTION_NONE;
     state->handled = bindings_handle_gesture_binding(state);
 }
 
@@ -105,8 +109,28 @@ static void gesture_state_follow(struct gesture_state *state, double dx, double 
         return;
     }
 
+    state->follow_dx += dx;
+    state->follow_dy += dy;
+    if (fabs(dx) > fabs(dy)) {
+        if (dx > 0) {
+            state->follow_direction = GESTURE_DIRECTION_RIGHT;
+        } else {
+            state->follow_direction = GESTURE_DIRECTION_LEFT;
+        }
+    } else {
+        if (dy > 0) {
+            state->follow_direction = GESTURE_DIRECTION_DOWN;
+        } else {
+            state->follow_direction = GESTURE_DIRECTION_UP;
+        }
+    }
+
     state->phase = before_triggered ? GESTURE_PHASE_BEFORE : GESTURE_PHASE_AFTER;
     state->handled = bindings_handle_gesture_binding(state);
+    if (state->handled) {
+        state->follow_dx = 0.0;
+        state->follow_dy = 0.0;
+    }
 }
 
 static void gesture_state_stop(struct gesture_state *state)

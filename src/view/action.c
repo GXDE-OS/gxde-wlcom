@@ -352,6 +352,8 @@ static struct gesture {
     uint32_t devices;
     uint32_t directions;
     uint32_t edges;
+    uint32_t follow_direction;
+    double follow_threshold;
     char *desc;
     enum direction direction;
 } gestures[] = {
@@ -362,6 +364,8 @@ static struct gesture {
         GESTURE_DEVICE_TOUCHPAD,
         GESTURE_DIRECTION_UP,
         GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_NONE,
+        0.0,
         "switch app or switcher",
         DIRECTION_UP,
     },
@@ -372,6 +376,8 @@ static struct gesture {
         GESTURE_DEVICE_TOUCHPAD,
         GESTURE_DIRECTION_DOWN,
         GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_NONE,
+        0.0,
         "hide switcher or show desktop",
         DIRECTION_DOWN,
     },
@@ -449,7 +455,7 @@ bool view_manager_actions_create(struct view_manager *view_manager)
         struct gesture *gesture = &gestures[i];
         struct gesture_binding *binding = kywc_gesture_binding_create(
             gesture->type, gesture->phase, gesture->devices, gesture->directions, gesture->edges,
-            gesture->fingers, gesture->desc);
+            gesture->fingers, gesture->follow_direction, gesture->follow_threshold, gesture->desc);
         if (!binding) {
             continue;
         }
