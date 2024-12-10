@@ -51,6 +51,30 @@
                 "keys": "Tab",
                 "desc": "trigger switch windows"
             },
+            "swipe:touchpad:3:left+right:none:after:500:up": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Up",
+                "desc": "switch up windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:500:down": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Down",
+                "desc": "switch down windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:500:left": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Left",
+                "desc": "switch left windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:500:right": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Right",
+                "desc": "switch right windows"
+            },
             "swipe:touchpad:3:left+right:none:stop": {
                 "enable": true,
                 "actiontype": "key",
@@ -94,6 +118,30 @@
                 "modifiers": "Alt_L:press",
                 "keys": "Tab",
                 "desc": "trigger switch windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:up": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Up",
+                "desc": "switch up windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:down": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Down",
+                "desc": "switch down windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:left": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Left",
+                "desc": "switch left windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:right": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Right",
+                "desc": "switch right windows"
             },
             "swipe:touch:4:left+right:none:stop": {
                 "enable": true,
