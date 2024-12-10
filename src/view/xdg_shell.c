@@ -259,16 +259,14 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
 static void xdg_view_handle_new_popup(struct wl_listener *listener, void *data)
 {
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, new_popup);
+    struct view *view = &xdg_view->view;
     struct wlr_xdg_popup *wlr_xdg_popup = data;
 
-    struct kywc_view *kywc_view = &xdg_view->view.base;
-    enum layer layer = LAYER_POPUP;
-    if (kywc_view->role == KYWC_VIEW_ROLE_LOGOUT || kywc_view->role == KYWC_VIEW_ROLE_SCREENLOCK) {
-        layer = LAYER_SCREEN_LOCK_NOTIFICATION;
-    }
+    struct view_layer *view_layer = view_manager_get_layer_by_node(&view->tree->node, false);
+    enum layer layer = view_layer->layer > LAYER_POPUP ? view_layer->layer : LAYER_POPUP;
     struct view_layer *popup_layer = view_manager_get_layer(layer, false);
     xdg_popup_create(wlr_xdg_popup, xdg_view->view.surface_tree, popup_layer,
-                     kywc_view->role == KYWC_VIEW_ROLE_PANEL);
+                     view->base.role == KYWC_VIEW_ROLE_PANEL);
 }
 
 static void xdg_view_handle_request_move(struct wl_listener *listener, void *data)
