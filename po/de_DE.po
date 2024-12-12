@@ -18,7 +18,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/view/action.c:173
+#: src/view/action.c:108
+msgid "Screenshot"
+msgstr "Bildschirmfoto"
+
+#: src/view/action.c:108
 msgid "Capture saved to"
 msgstr "Bildschirmfoto wurde gespeichert unter"
 

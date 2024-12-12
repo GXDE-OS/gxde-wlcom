@@ -18,7 +18,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/view/action.c:173
+#: src/view/action.c:108
+msgid "Screenshot"
+msgstr "Capture d'écran"
+
+#: src/view/action.c:108
 msgid "Capture saved to"
 msgstr "Capture enregistrée à"
 
@@ -52,7 +56,7 @@ msgstr "Écran"
 
 #: src/view/window_menu.c:342
 msgid "_Take Screenshot"
-msgstr "Raccourci(_T)"
+msgstr "Faire une cap_ture d'écran"
 
 #: src/view/window_menu.c:346
 msgid "_Desktop"

@@ -17,7 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/view/action.c:173
+#: src/view/action.c:108
+msgid "Screenshot"
+msgstr "ᠵᠢᠷᠤᠭ ᠣᠭᠲᠣᠯᠬᠤ"
+
+#: src/view/action.c:108
 msgid "Capture saved to"
 msgstr "ᠣᠯᠵᠠᠯᠠᠬᠤ ᠪᠥᠭᠡᠳ ᠬᠠᠳᠠᠭᠠᠯᠠᠬᠤ"
 
