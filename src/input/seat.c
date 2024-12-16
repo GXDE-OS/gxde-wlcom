@@ -394,7 +394,7 @@ void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 
     if (surface) {
         struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(wlr_seat);
-        if (keyboard) {
+        if (keyboard && !seat->keyboard_grab) {
             wlr_seat_keyboard_enter(wlr_seat, surface, keyboard->keycodes, keyboard->num_keycodes,
                                     &keyboard->modifiers);
         } else {
