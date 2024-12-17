@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "config.h"
 #include "plugin.h"
+#include "util/dbus.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Plugin";
 static const char *service_interface = "com.kylin.Wlcom.Plugin";
@@ -244,9 +245,13 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool plugin_manager_config_init(struct plugin_manager *plugin_manager)
 {
-    plugin_manager->config = config_manager_add_config(
-        "plugins", NULL, service_path, service_interface, service_vtable, plugin_manager);
-    return !!plugin_manager->config;
+    plugin_manager->config = config_manager_add_config("plugins");
+    if (!plugin_manager->config) {
+        return false;
+    }
+
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                                plugin_manager);
 }
 
 static void option_from_json(struct kywc_plugin_option *option, json_object *value)

@@ -18,6 +18,7 @@
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "server.h"
+#include "util/dbus.h"
 #include "util/spawn.h"
 
 enum action_type {
@@ -366,24 +367,20 @@ err:
     return action_data;
 }
 
-static void action_call_sdbus_method(struct action_dbus_data *dbus_data)
+static void action_call_dbus_method(struct action_dbus_data *dbus_data)
 {
-    sd_bus *bus = NULL;
+    bool ret = false;
 
     if (dbus_data->type == DBUS_TYPE_SESSION) {
-        bus = sd_bus_slot_get_bus(manager->config->slot);
+        ret = dbus_call_method(dbus_data->service, dbus_data->path, dbus_data->interface,
+                               dbus_data->method, NULL, NULL);
     } else if (dbus_data->type == DBUS_TYPE_SYSTEM) {
-        bus = manager->server->sys_bus;
+        ret = dbus_call_system_method(dbus_data->service, dbus_data->path, dbus_data->interface,
+                                      dbus_data->method, NULL, NULL);
     }
 
-    if (!bus) {
-        kywc_log(KYWC_WARN, "sd bus is null!");
-        return;
-    }
-
-    if (sd_bus_call_method_async(bus, NULL, dbus_data->service, dbus_data->path,
-                                 dbus_data->interface, dbus_data->method, NULL, NULL, NULL) < 0) {
-        kywc_log(KYWC_ERROR, "sd bus call failed: %s %s %s %s", dbus_data->service, dbus_data->path,
+    if (!ret) {
+        kywc_log(KYWC_ERROR, "dbus call failed: %s %s %s %s", dbus_data->service, dbus_data->path,
                  dbus_data->interface, dbus_data->method);
     }
 }
@@ -438,7 +435,7 @@ static void handle_input_action(struct input_action *input_action)
     struct action_data *action_data = input_action->action;
     switch (action_data->type) {
     case ACTION_TYPE_DBUS_ACTION:
-        action_call_sdbus_method(&action_data->data.dbus);
+        action_call_dbus_method(&action_data->data.dbus);
         break;
     case ACTION_TYPE_RUN_COMMAND:
         spawn_invoke(action_data->data.command.cmd);
@@ -996,9 +993,11 @@ static bool input_action_manager_read_config(struct input_action_manager *manage
 
 static bool input_action_manager_config_init(struct input_action_manager *manager)
 {
-    manager->config = config_manager_add_config("InputAction", NULL, service_path,
-                                                service_interface, service_vtable, manager);
-    return !!manager->config;
+    manager->config = config_manager_add_config("InputAction");
+    if (!manager->config) {
+        return false;
+    }
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable, manager);
 }
 
 bool input_action_manager_create(struct server *server)

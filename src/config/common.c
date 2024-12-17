@@ -6,6 +6,7 @@
 
 #include "config_p.h"
 #include "server.h"
+#include "util/dbus.h"
 #include "util/logger.h"
 
 static const char *service_path = "/com/kylin/Wlcom";
@@ -90,8 +91,8 @@ static void handle_destroy(struct wl_listener *listener, void *data)
 
 bool config_manager_common_init(struct config_manager *config_manager)
 {
-    if (!config_manager_add_config(NULL, NULL, service_path, service_interface, service_vtable,
-                                   config_manager)) {
+    if (!dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                              config_manager)) {
         return false;
     }
 

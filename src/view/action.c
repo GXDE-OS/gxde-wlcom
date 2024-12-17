@@ -8,13 +8,13 @@
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_seat.h>
 
-#include "config.h"
 #include "effect/capture.h"
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "nls.h"
 #include "output.h"
 #include "scene/thumbnail.h"
+#include "util/dbus.h"
 #include "util/dir.h"
 #include "view/action.h"
 #include "view_p.h"
@@ -105,7 +105,7 @@ static int handle_capture(void *data)
 #else
 static void capture_done(const char *path, void *data)
 {
-    config_notify(tr("Screenshot"), tr("Capture saved to"), path, "kylin-screenshot");
+    dbus_notify(tr("Screenshot"), tr("Capture saved to"), path, "kylin-screenshot");
     free(data);
 }
 
@@ -407,8 +407,8 @@ static void shortcuts_action(struct key_binding *binding, void *data)
 
 static void view_manager_show_switcher(bool show)
 {
-    if (!config_call_method("org.kylin.switch", "/MultitaskView", "org.kylin.switch.MultitaskView",
-                            show ? "show" : "hide")) {
+    if (!dbus_call_method("org.kylin.switch", "/MultitaskView", "org.kylin.switch.MultitaskView",
+                          show ? "show" : "hide", NULL, NULL)) {
         kywc_log(KYWC_ERROR, "dbus call Multitaskview failed");
     }
 }

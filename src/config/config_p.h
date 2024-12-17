@@ -15,11 +15,6 @@ struct config_manager {
     json_object *json;     /* user config */
     json_object *sys_json; /* system default config */
 
-    /* dbus support */
-    struct wl_event_source *event;
-    sd_bus *bus;
-
-    struct wl_listener display_destroy;
     struct wl_listener server_ready;
     struct wl_listener server_destroy;
 };

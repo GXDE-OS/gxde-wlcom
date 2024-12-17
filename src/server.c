@@ -38,30 +38,9 @@
 #include "security.h"
 #include "server.h"
 #include "theme.h"
+#include "util/dbus.h"
 #include "view/view.h"
 #include "xwayland.h"
-
-static const char *dbus_logind_service = "org.freedesktop.login1";
-static const char *dbus_logind_path = "/org/freedesktop/login1";
-static const char *dbus_logind_manager_interface = "org.freedesktop.login1.Manager";
-
-static int dbus_event(int fd, uint32_t mask, void *data)
-{
-    struct server *server = data;
-    if (mask & WL_EVENT_ERROR) {
-        kywc_log(KYWC_ERROR, "IPC system dbus error");
-        return 0;
-    }
-    if (mask & WL_EVENT_HANGUP) {
-        kywc_log(KYWC_DEBUG, "System dbus hung up");
-        return 0;
-    }
-
-    while (sd_bus_process(server->sys_bus, NULL) > 0) {
-        ;
-    }
-    return 0;
-}
 
 static int prepare_for_sleep(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
@@ -80,27 +59,6 @@ static int prepare_for_sleep(sd_bus_message *msg, void *userdata, sd_bus_error *
         wl_signal_emit_mutable(&server->events.suspend, NULL);
     }
     return 0;
-}
-
-static void listen_logind_manager_signal(struct server *server)
-{
-    int ret = sd_bus_default_system(&server->sys_bus);
-    if (ret < 0) {
-        kywc_log(KYWC_ERROR, "Failed to connect to system bus: %s", strerror(-ret));
-        return;
-    }
-
-    int fd = sd_bus_get_fd(server->sys_bus);
-    server->dbus =
-        wl_event_loop_add_fd(server->event_loop, fd, WL_EVENT_READABLE, dbus_event, server);
-    wl_event_source_check(server->dbus);
-
-    ret = sd_bus_match_signal(server->sys_bus, NULL, dbus_logind_service, dbus_logind_path,
-                              dbus_logind_manager_interface, "PrepareForSleep", prepare_for_sleep,
-                              server);
-    if (ret < 0) {
-        kywc_log(KYWC_ERROR, "Failed to add D-Bus signal match : sleep");
-    }
 }
 
 void server_add_destroy_listener(struct server *server, struct wl_listener *listener)
@@ -228,7 +186,10 @@ bool server_init(struct server *server)
     server->sources.sigterm =
         wl_event_loop_add_signal(server->event_loop, SIGTERM, handle_exit, server);
 
-    listen_logind_manager_signal(server);
+    dbus_context_create(server);
+    dbus_match_system_signal("org.freedesktop.login1", "/org/freedesktop/login1",
+                             "org.freedesktop.login1.Manager", "PrepareForSleep", prepare_for_sleep,
+                             server);
 
     config_manager_create(server);
     security_manager_create(server);
@@ -297,7 +258,6 @@ void server_finish(struct server *server)
     wl_signal_emit_mutable(&server->events.terminate, NULL);
 
     queue_destroy(&server->queue);
-    wl_event_source_remove(server->dbus);
 
     wl_display_destroy_clients(server->display);
     /* make sure all xwayland-shells are destroyed */

@@ -15,6 +15,8 @@
 
 #include "config_p.h"
 #include "qtkey_map_table.h"
+#include "server.h"
+#include "util/dbus.h"
 
 /**
  * convert qtkey to xkb keysym and modifiers
@@ -180,7 +182,6 @@ enum SetShortcutFlag {
 };
 
 struct global_shortcut_registry {
-    struct config *config;
     struct wl_list components;
 
     struct wl_listener destroy;
@@ -190,7 +191,6 @@ struct global_shortcut_component {
     struct wl_list link;
 
     /* dbus for per component */
-    struct config *config;
     const char *dbus_path;
 
     char *unique_name;
@@ -405,10 +405,9 @@ global_shortcut_registry_get_shortcut_by_name(const char *component_unique,
 static void global_shortcut_action(struct key_binding *bindbing, void *data)
 {
     struct global_shortcut *shortcut = data;
-    sd_bus_emit_signal(sd_bus_slot_get_bus(registry->config->slot),
-                       shortcut->context->component->dbus_path, component_interface,
-                       "globalShortcutPressed", "ssx", shortcut->context->component->unique_name,
-                       shortcut->unique_name, 0);
+    dbus_emit_signal(shortcut->context->component->dbus_path, component_interface,
+                     "globalShortcutPressed", "ssx", shortcut->context->component->unique_name,
+                     shortcut->unique_name, 0);
 }
 
 static void global_shortcut_create_binding(struct global_shortcut *shortcut)
@@ -553,10 +552,9 @@ static int invoke_shortcut(sd_bus_message *msg, void *userdata, sd_bus_error *re
         struct global_shortcut *shortcut =
             global_shortcut_context_get_shortcut_by_name(context, shortcut_unique);
         if (shortcut) {
-            sd_bus_emit_signal(sd_bus_slot_get_bus(registry->config->slot),
-                               shortcut->context->component->dbus_path, component_interface,
-                               "globalShortcutPressed", "ssx",
-                               shortcut->context->component->unique_name, shortcut->unique_name, 0);
+            dbus_emit_signal(shortcut->context->component->dbus_path, component_interface,
+                             "globalShortcutPressed", "ssx",
+                             shortcut->context->component->unique_name, shortcut->unique_name, 0);
         }
     }
 
@@ -663,9 +661,8 @@ static struct global_shortcut_component *global_shortcut_component_create(const 
 
     /* register component dbus */
     component->dbus_path = get_dbus_path(unique_name);
-    component->config =
-        config_manager_add_config(NULL, NULL, component->dbus_path, component_interface,
-                                  kglobalaccel_component_vtable, component);
+    dbus_register_object(NULL, component->dbus_path, component_interface,
+                         kglobalaccel_component_vtable, component);
     return component;
 }
 
@@ -961,11 +958,10 @@ static int set_foreign_shortcut_keys(sd_bus_message *msg, void *userdata, sd_bus
         global_shortcut_registry_get_shortcut_by_name(component_unique, action_unique);
     if (shortcut) {
         shortcut->key = key;
-        sd_bus_emit_signal(sd_bus_slot_get_bus(registry->config->slot), registry_path,
-                           registry_interface, "yourShortcutsChanged", "asa(ai)", 4,
-                           shortcut->context->component->unique_name, shortcut->unique_name,
-                           shortcut->context->component->friendly_name, shortcut->friendly_name, 1,
-                           4, shortcut->key, 0, 0, 0);
+        dbus_emit_signal(registry_path, registry_interface, "yourShortcutsChanged", "asa(ai)", 4,
+                         shortcut->context->component->unique_name, shortcut->unique_name,
+                         shortcut->context->component->friendly_name, shortcut->friendly_name, 1, 4,
+                         shortcut->key, 0, 0, 0);
     }
 
     return sd_bus_reply_method_return(msg, NULL);
@@ -1108,7 +1104,7 @@ static const sd_bus_vtable kglobalaccel_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
-static void handle_config_destroy(struct wl_listener *listener, void *data)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&registry->destroy.link);
 
@@ -1155,9 +1151,8 @@ bool kde_global_accel_manager_create(struct config_manager *config_manager)
         return false;
     }
 
-    registry->config = config_manager_add_config(NULL, registry_bus, registry_path,
-                                                 registry_interface, kglobalaccel_vtable, registry);
-    if (!registry->config) {
+    if (!dbus_register_object(registry_bus, registry_path, registry_interface, kglobalaccel_vtable,
+                              registry)) {
         free(registry);
         registry = NULL;
         return false;
@@ -1167,8 +1162,8 @@ bool kde_global_accel_manager_create(struct config_manager *config_manager)
 
     kywc_key_binding_for_each(kglobalaccel_builtin_shortcuts);
 
-    registry->destroy.notify = handle_config_destroy;
-    wl_signal_add(&registry->config->events.destroy, &registry->destroy);
+    registry->destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(config_manager->server, &registry->destroy);
 
     return true;
 }

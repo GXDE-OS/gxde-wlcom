@@ -21,10 +21,10 @@
 #include "input_p.h"
 #include "scene/surface.h"
 #include "server.h"
+#include "util/dbus.h"
 #include "view/view.h"
 
 struct selection_manager {
-    struct config *config;
     struct wl_listener new_seat;
     struct wl_listener server_destroy;
 };
@@ -156,8 +156,7 @@ static void send_selection_pid_changed(struct selection *selection, struct wlr_s
     }
 
     if (signal_name) {
-        sd_bus *bus = sd_bus_slot_get_bus(selection->manager->config->slot);
-        sd_bus_emit_signal(bus, service_path, service_interface, signal_name, "i", current_pid);
+        dbus_emit_signal(service_path, service_interface, signal_name, "i", current_pid);
     }
 }
 
@@ -370,9 +369,8 @@ bool selection_manager_create(struct input_manager *input_manager)
     }
 
 #if HAVE_KDE_CLIPBOARD
-    manager->config = config_manager_add_config(NULL, service_bus, service_path, service_interface,
-                                                clipboard_vtable, manager);
-    if (!manager->config) {
+    if (!dbus_register_object(service_bus, service_path, service_interface, clipboard_vtable,
+                              manager)) {
         free(manager);
         return false;
     }

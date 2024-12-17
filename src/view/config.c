@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include "config.h"
+#include "util/dbus.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
@@ -173,9 +174,12 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool view_manager_config_init(struct view_manager *view_manager)
 {
-    view_manager->config = config_manager_add_config("Views", NULL, service_path, service_interface,
-                                                     service_vtable, view_manager);
-    return !!view_manager->config;
+    view_manager->config = config_manager_add_config("Views");
+    if (!view_manager->config) {
+        return false;
+    }
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                                view_manager);
 }
 
 bool view_read_config(struct view_manager *view_manager)

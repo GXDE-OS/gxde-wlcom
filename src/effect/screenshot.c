@@ -10,10 +10,10 @@
 #include <kywc/identifier.h>
 #include <kywc/log.h>
 
-#include "config.h"
 #include "effect/capture.h"
 #include "effect_p.h"
 #include "server.h"
+#include "util/dbus.h"
 
 static const char *registry_bus = "org.ukui.KWin";
 static const char *registry_path = "/Screenshot";
@@ -244,7 +244,7 @@ static const sd_bus_vtable screenshot2_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
-static void handle_config_destroy(struct wl_listener *listener, void *data)
+static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->destroy.link);
     free(manager);
@@ -258,20 +258,19 @@ bool screenshot_effect_create(struct effect_manager *effect_manager)
         return false;
     }
 
-    struct config *config = config_manager_add_config(NULL, registry_bus, registry_path,
-                                                      registry_interface, screenshot_vtable, NULL);
-    if (!config) {
+    if (!dbus_register_object(registry_bus, registry_path, registry_interface, screenshot_vtable,
+                              NULL)) {
         free(manager);
         manager = NULL;
         return false;
     }
 
-    config_manager_add_config(NULL, "org.kde.KWin", registry_path, "org.kde.kwin.Screenshot",
-                              screenshot2_vtable, NULL);
+    dbus_register_object("org.kde.KWin", registry_path, "org.kde.kwin.Screenshot",
+                         screenshot2_vtable, NULL);
 
     manager->server = effect_manager->server;
-    manager->destroy.notify = handle_config_destroy;
-    wl_signal_add(&config->events.destroy, &manager->destroy);
+    manager->destroy.notify = handle_server_destroy;
+    server_add_destroy_listener(manager->server, &manager->destroy);
 
     manager->capture_update.notify = handle_capture_update;
     manager->capture_destroy.notify = handle_capture_destroy;

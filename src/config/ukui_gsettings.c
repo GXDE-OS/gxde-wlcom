@@ -9,6 +9,7 @@
 #include "input/input.h"
 #include "server.h"
 #include "theme.h"
+#include "util/dbus.h"
 
 struct ukui_settings {
     struct {
@@ -257,8 +258,8 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
     }
 
     /* monitor dconf dbus notify */
-    sd_bus_match_signal(config_manager->bus, NULL, NULL, "/ca/desrt/dconf/Writer/user",
-                        "ca.desrt.dconf.Writer", "Notify", dconf_notify, NULL);
+    dbus_match_signal(NULL, "/ca/desrt/dconf/Writer/user", "ca.desrt.dconf.Writer", "Notify",
+                      dconf_notify, NULL);
 
     settings->destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(config_manager->server->display, &settings->destroy);

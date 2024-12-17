@@ -10,6 +10,7 @@
 #include "input/input.h"
 #include "kywc/output.h"
 #include "server.h"
+#include "util/dbus.h"
 
 static const char *service_path = "/org/kde/KWin/InputDevice";
 static const char *kde_input_path = "/org/kde/KWin/InputDevice/";
@@ -24,7 +25,7 @@ static const char *kde_input_interface = "org.kde.KWin.InputDevice";
 
 struct kde_input {
     struct wl_list link;
-    struct config *config;
+    struct dbus_object *dbus;
     char *sys_name;
     struct input *input;
     struct wl_listener destroy;
@@ -672,32 +673,12 @@ static const sd_bus_vtable ukui_kwin_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
-static void kde_input_notify_destroy(struct kde_input *input)
-{
-    if (!input->config) {
-        return;
-    }
-
-    sd_bus *bus = sd_bus_slot_get_bus(input->config->slot);
-    sd_bus_emit_signal(bus, service_path, service_interface, "deviceRemoved", "s", input->sys_name);
-}
-
-static void kde_input_notify_create(struct kde_input *input)
-{
-    if (!input->config) {
-        return;
-    }
-
-    sd_bus *bus = sd_bus_slot_get_bus(input->config->slot);
-    sd_bus_emit_signal(bus, service_path, service_interface, "deviceAdded", "s", input->sys_name);
-}
-
 static void kde_input_destroy(struct kde_input *input)
 {
-    kde_input_notify_destroy(input);
+    dbus_emit_signal(service_path, service_interface, "deviceRemoved", "s", input->sys_name);
     wl_list_remove(&input->link);
     wl_list_remove(&input->destroy.link);
-    config_destroy(input->config);
+    dbus_unregister_object(input->dbus);
     free(input->sys_name);
     free(input);
 }
@@ -731,10 +712,11 @@ static void handle_new_kde_input(struct wl_listener *listener, void *data)
     size_t size = 1 + strlen(kde_input_path) + strlen(sys_name);
     char *path = calloc(size, sizeof(char));
     snprintf(path, size, "%s%s", kde_input_path, kde_input->sys_name);
-    kde_input->config =
-        config_manager_add_config(NULL, NULL, path, kde_input_interface, input_vtable, kde_input);
+    kde_input->dbus =
+        dbus_register_object(NULL, path, kde_input_interface, input_vtable, kde_input);
     free(path);
-    kde_input_notify_create(kde_input);
+
+    dbus_emit_signal(service_path, service_interface, "deviceAdded", "s", kde_input->sys_name);
 }
 
 static void handle_destroy(struct wl_listener *listener, void *data)
@@ -758,9 +740,8 @@ bool kde_input_manager_create(struct config_manager *config_manager)
         return false;
     }
 
-    kde_input_manager->config = config_manager_add_config(
-        NULL, "org.kde.KWin", service_path, service_interface, service_vtable, kde_input_manager);
-    if (!kde_input_manager->config) {
+    if (!dbus_register_object("org.kde.KWin", service_path, service_interface, service_vtable,
+                              kde_input_manager)) {
         free(kde_input_manager);
         kde_input_manager = NULL;
         return false;
@@ -774,8 +755,8 @@ bool kde_input_manager_create(struct config_manager *config_manager)
     kde_input_manager->destroy.notify = handle_destroy;
     server_add_destroy_listener(config_manager->server, &kde_input_manager->destroy);
 
-    config_manager_add_config(NULL, "org.ukui.KWin", "/KWin", "org.ukui.KWin", ukui_kwin_vtable,
-                              kde_input_manager);
+    dbus_register_object("org.ukui.KWin", "/KWin", "org.ukui.KWin", ukui_kwin_vtable,
+                         kde_input_manager);
 
     return true;
 }

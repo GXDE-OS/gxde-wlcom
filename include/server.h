@@ -15,10 +15,6 @@ struct server {
     struct wl_event_loop *event_loop;
     bool ready, start, terminate, active;
 
-    /* system bus */
-    struct sd_bus *sys_bus;
-    struct wl_event_source *dbus;
-
     struct {
         bool enable_xwayland;
         bool log_to_file;

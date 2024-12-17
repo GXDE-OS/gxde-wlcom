@@ -8,6 +8,7 @@
 
 #include "config.h"
 #include "theme_p.h"
+#include "util/dbus.h"
 
 #define WLCOM_THEME_LIGHT "default-light"
 #define WLCOM_THEME_DARK "default-dark"
@@ -100,9 +101,11 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool theme_manager_config_init(struct theme_manager *manager)
 {
-    manager->config = config_manager_add_config("theme", NULL, service_path, service_interface,
-                                                service_vtable, manager);
-    return !!manager->config;
+    manager->config = config_manager_add_config("theme");
+    if (!manager->config) {
+        return false;
+    }
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable, manager);
 }
 
 enum theme_type theme_manager_read_config(struct theme_manager *manager)

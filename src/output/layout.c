@@ -299,8 +299,7 @@ bool output_manager_layout_init(struct output_manager *output_manager)
         return false;
     }
 
-    output_manager->layout_config =
-        config_manager_add_config("layouts", NULL, NULL, NULL, NULL, output_manager);
+    output_manager->layout_config = config_manager_add_config("layouts");
     /* listener output configured signal */
     output_manager->configured.notify = output_manager_handle_configured;
     output_manager_add_configured_listener(&output_manager->configured);

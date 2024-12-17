@@ -8,6 +8,7 @@
 
 #include "config.h"
 #include "input_p.h"
+#include "util/dbus.h"
 
 static const char *service_input_path = "/com/kylin/Wlcom/Input";
 static const char *service_input_interface = "com.kylin.Wlcom.Input";
@@ -772,9 +773,8 @@ void input_notify_destroy(struct input *input)
         return;
     }
 
-    sd_bus *bus = sd_bus_slot_get_bus(manager->config->slot);
-    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_destroy", "s",
-                       input->name);
+    dbus_emit_signal(service_input_path, service_input_interface, "input_destroy", "s",
+                     input->name);
 }
 
 void input_notify_create(struct input *input)
@@ -788,21 +788,27 @@ void input_notify_create(struct input *input)
         return;
     }
 
-    sd_bus *bus = sd_bus_slot_get_bus(manager->config->slot);
-    sd_bus_emit_signal(bus, service_input_path, service_input_interface, "input_create", "su",
-                       input->name, input->prop.prop);
+    dbus_emit_signal(service_input_path, service_input_interface, "input_create", "su", input->name,
+                     input->prop.prop);
 }
 
 bool input_manager_config_init(struct input_manager *input_manager)
 {
-    input_manager->config =
-        config_manager_add_config("Inputs", NULL, service_input_path, service_input_interface,
-                                  service_input_vtable, input_manager);
-    input_manager->seat_config =
-        config_manager_add_config("Seats", NULL, service_seat_path, service_seat_interface,
-                                  service_seat_vtable, input_manager);
+    input_manager->config = config_manager_add_config("Inputs");
+    if (!input_manager->config) {
+        return false;
+    }
+    dbus_register_object(NULL, service_input_path, service_input_interface, service_input_vtable,
+                         input_manager);
 
-    return !!input_manager->config && !!input_manager->seat_config;
+    input_manager->seat_config = config_manager_add_config("Seats");
+    if (!input_manager->seat_config) {
+        return false;
+    }
+    dbus_register_object(NULL, service_seat_path, service_seat_interface, service_seat_vtable,
+                         input_manager);
+
+    return true;
 }
 
 bool input_read_config(struct input *input, struct input_state *state)

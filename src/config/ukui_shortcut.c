@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #define _POSIX_C_SOURCE 200809L
-
-#include <kywc/log.h>
 #include <string.h>
 
+#include <kywc/binding.h>
+#include <kywc/log.h>
+
 #include "config_p.h"
-#include "kywc/binding.h"
 #include "server.h"
+#include "util/dbus.h"
 
 struct shortcut_service {
     char *name;
@@ -21,8 +22,6 @@ struct shortcut_service {
 };
 
 struct ukui_shortcut_manager {
-    sd_bus *bus;
-
     struct wl_list services;
 
     struct wl_listener destroy;
@@ -144,15 +143,13 @@ static void ukui_shortcut_service_create(const char *name)
         return;
     }
 
-    if (sd_bus_call_method_async(shortcut_manager->bus, NULL, name, service_path, service_interface,
-                                 "blockShortcuts", block_shortcuts_message_handler, service,
-                                 NULL) < 0) {
+    if (!dbus_call_method(name, service_path, service_interface, "blockShortcuts",
+                          block_shortcuts_message_handler, service)) {
         kywc_log_errno(KYWC_ERROR, "dbus call service:%s bolckShortcuts method failed", name);
     }
 
-    if (sd_bus_call_method_async(shortcut_manager->bus, NULL, name, service_path, service_interface,
-                                 "unblockShortcuts", unblock_shortcuts_message_handler, service,
-                                 NULL) < 0) {
+    if (!dbus_call_method(name, service_path, service_interface, "unblockShortcuts",
+                          unblock_shortcuts_message_handler, service)) {
         kywc_log_errno(KYWC_ERROR, "dbus call service:%s unblockShortcuts method failed", name);
     }
 
@@ -194,8 +191,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
 bool ukui_shortcut_manager_create(struct config_manager *config_manager)
 {
     const char *match = "type=signal,interface=org.freedesktop.DBus,member=NameOwnerChanged";
-    if (sd_bus_add_match_async(config_manager->bus, NULL, match, service_message_handler, NULL,
-                               NULL) < 0) {
+    if (!dbus_add_match(match, service_message_handler, NULL)) {
         kywc_log(KYWC_ERROR, "ukui_shortcuts_manager listener dbus service failed");
         return false;
     }
@@ -204,8 +200,6 @@ bool ukui_shortcut_manager_create(struct config_manager *config_manager)
     if (!shortcut_manager) {
         return false;
     }
-
-    shortcut_manager->bus = config_manager->bus;
 
     wl_list_init(&shortcut_manager->services);
 

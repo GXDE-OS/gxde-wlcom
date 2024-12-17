@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "effect_p.h"
+#include "util/dbus.h"
 
 #define ENABLED_KEY "enabled"
 
@@ -157,10 +158,13 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool effect_manager_config_init(struct effect_manager *effect_manager)
 {
-    effect_manager->config = config_manager_add_config(
-        "Effects", NULL, service_path, service_interface, service_vtable, effect_manager);
+    effect_manager->config = config_manager_add_config("Effects");
+    if (!effect_manager->config) {
+        return false;
+    }
 
-    return !!effect_manager->config;
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                                effect_manager);
 }
 
 bool effect_init_config(struct effect *effect)

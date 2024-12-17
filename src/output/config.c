@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "output_p.h"
+#include "util/dbus.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Output";
 static const char *service_interface = "com.kylin.Wlcom.Output";
@@ -73,9 +74,12 @@ static const sd_bus_vtable service_vtable[] = {
 
 bool output_manager_config_init(struct output_manager *output_manager)
 {
-    output_manager->config = config_manager_add_config(
-        "outputs", NULL, service_path, service_interface, service_vtable, output_manager);
-    return !!output_manager->config;
+    output_manager->config = config_manager_add_config("outputs");
+    if (!output_manager->config) {
+        return false;
+    }
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                                output_manager);
 }
 
 bool output_read_config(struct output *output, struct kywc_output_state *state)

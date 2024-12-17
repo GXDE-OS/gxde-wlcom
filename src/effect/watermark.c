@@ -8,10 +8,10 @@
 
 #include <wlr/types/wlr_buffer.h>
 
-#include "config.h"
 #include "effect_p.h"
 #include "output.h"
 #include "painter.h"
+#include "util/dbus.h"
 #include "view/view.h"
 
 enum expand_type {
@@ -56,7 +56,7 @@ struct watermark_effect {
     struct wl_listener destroy;
 
     struct effect_manager *manager;
-    struct config *config; // for dbus
+    struct dbus_object *dbus; // for dbus
     struct wl_listener new_enabled_output;
 
     struct ky_scene_tree *tree;
@@ -328,15 +328,15 @@ static void handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, enable);
     assert(wl_list_empty(&effect->watermarks));
-    effect->config = config_manager_add_config(NULL, registry_bus, registry_path,
-                                               registry_interface, watermark_vtable, effect);
+    effect->dbus = dbus_register_object(registry_bus, registry_path, registry_interface,
+                                        watermark_vtable, effect);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, disable);
     effect_destroy_watermarks(effect);
-    config_destroy(effect->config);
+    dbus_unregister_object(effect->dbus);
 }
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
