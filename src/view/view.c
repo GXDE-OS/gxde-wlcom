@@ -24,6 +24,8 @@
 
 static struct view_manager *view_manager = NULL;
 
+static struct view *view_find_fullscreen_ancestor(struct view *view);
+
 struct view *view_manager_get_activated(void)
 {
     return view_manager->activated.view;
@@ -1032,8 +1034,9 @@ static void view_set_activated(struct view *view, bool activated)
     }
 
     /* change parent fullscreen layer if parent is fullscreen */
-    if (view->parent && view->parent->base.fullscreen) {
-        view_reparent_fullscreen(view->parent, activated);
+    struct view *ancestor = view_find_fullscreen_ancestor(view);
+    if (ancestor) {
+        view_reparent_fullscreen(ancestor, activated);
     }
 
     if (kywc_view->minimized && activated) {
