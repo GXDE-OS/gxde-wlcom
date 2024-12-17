@@ -114,6 +114,9 @@ static bool wlroots_server_init(struct server *server)
         server->active = server->session->active;
         server->session_active.notify = handle_session_active;
         wl_signal_add(&server->session->events.active, &server->session_active);
+    } else {
+        // mark active if in nested backend
+        server->active = true;
     }
 
     server->headless_backend = wlr_headless_backend_create(server->display);
