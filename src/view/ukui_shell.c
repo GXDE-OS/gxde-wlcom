@@ -230,7 +230,7 @@ static void ukui_surface_apply_property(struct ukui_surface *surface)
     surface->property_state = 0;
 }
 
-static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enabled);
+static void ukui_surface_set_usable_area(struct ukui_surface *surface);
 
 static void handle_set_role(struct wl_client *client, struct wl_resource *resource, uint32_t role)
 {
@@ -247,7 +247,7 @@ static void handle_set_role(struct wl_client *client, struct wl_resource *resour
     if (surface->view && surface->role_changed) {
         ukui_surface_apply_role(surface);
         /* if plasma shell change role after map */
-        ukui_surface_set_usable_area(surface, true);
+        ukui_surface_set_usable_area(surface);
     }
 }
 
@@ -338,14 +338,15 @@ static void handle_set_panel_auto_hide(struct wl_client *client, struct wl_resou
                                        uint32_t hide)
 {
     struct ukui_surface *surface = wl_resource_get_user_data(resource);
-    if (!surface->wlr_surface || surface->role != UKUI_SURFACE_ROLE_PANEL) {
+    if (!surface->wlr_surface || surface->role != UKUI_SURFACE_ROLE_PANEL ||
+        surface->panel_auto_hide == hide) {
         return;
     }
 
     surface->panel_auto_hide = hide;
 
     if (surface->view) {
-        ukui_surface_set_usable_area(surface, !surface->panel_auto_hide);
+        ukui_surface_set_usable_area(surface);
         panel_change_layer(surface->view, surface->panel_auto_hide);
     }
 }
@@ -564,17 +565,17 @@ static void surface_handle_output_update_usable_area(struct wl_listener *listene
     usable_area->height = geo.height < usable_area->height ? geo.height : usable_area->height;
 }
 
-static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enabled)
+static void ukui_surface_set_usable_area(struct ukui_surface *surface)
 {
     bool had_area = !wl_list_empty(&surface->output_update_usable_area.link);
-    bool has_area = enabled && surface->role == UKUI_SURFACE_ROLE_PANEL;
+    bool has_area = surface->view->base.mapped && !surface->view->base.minimized &&
+                    surface->role == UKUI_SURFACE_ROLE_PANEL && !surface->panel_auto_hide;
 
     if (!has_area) {
         if (had_area) {
             wl_list_remove(&surface->output_update_usable_area.link);
             wl_list_init(&surface->output_update_usable_area.link);
             output_update_usable_area(surface->view->output);
-            surface->view->base.unconstrained = false;
         }
         return;
     }
@@ -583,7 +584,6 @@ static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enab
         surface->output_update_usable_area.notify = surface_handle_output_update_usable_area;
         output_add_update_usable_area_listener(surface->view->output,
                                                &surface->output_update_usable_area, false);
-        surface->view->base.unconstrained = true;
     }
 
     output_update_usable_area(surface->view->output);
@@ -592,19 +592,19 @@ static void ukui_surface_set_usable_area(struct ukui_surface *surface, bool enab
 static void surface_handle_view_minimize(struct wl_listener *listener, void *data)
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, view_minimize);
-    ukui_surface_set_usable_area(surface, !surface->view->base.minimized);
+    ukui_surface_set_usable_area(surface);
 }
 
 static void surface_handle_view_size(struct wl_listener *listener, void *data)
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, view_size);
-    ukui_surface_set_usable_area(surface, true);
+    ukui_surface_set_usable_area(surface);
 }
 
 static void surface_handle_view_position(struct wl_listener *listener, void *data)
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, view_position);
-    ukui_surface_set_usable_area(surface, true);
+    ukui_surface_set_usable_area(surface);
 
     if (wl_resource_get_version(surface->resource) >= UKUI_SURFACE_POSITION_SINCE_VERSION) {
         ukui_surface_send_position(surface->resource, surface->view->base.geometry.x,
@@ -623,13 +623,13 @@ static void surface_handle_view_output(struct wl_listener *listener, void *data)
         output_update_usable_area(old_output);
     }
 
-    ukui_surface_set_usable_area(surface, true);
+    ukui_surface_set_usable_area(surface);
 }
 
 static void surface_handle_view_map(struct wl_listener *listener, void *data)
 {
     struct ukui_surface *surface = wl_container_of(listener, surface, view_map);
-    ukui_surface_set_usable_area(surface, !surface->panel_auto_hide);
+    ukui_surface_set_usable_area(surface);
 
     surface->view_minimize.notify = surface_handle_view_minimize;
     wl_signal_add(&surface->view->base.events.minimize, &surface->view_minimize);
@@ -655,7 +655,7 @@ static void surface_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&surface->view_position.link);
     wl_list_remove(&surface->view_output.link);
 
-    ukui_surface_set_usable_area(surface, false);
+    ukui_surface_set_usable_area(surface);
 
     struct ukui_keyboard_grab *grab, *tmp;
     wl_list_for_each_safe(grab, tmp, &surface->ukui_keyboard_grabs, link) {

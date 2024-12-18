@@ -1701,6 +1701,8 @@ void view_apply_role(struct view *view)
                            kywc_view->role == KYWC_VIEW_ROLE_APPLETPOPUP ||
                            kywc_view->role == KYWC_VIEW_ROLE_ONSCREENDISPLAY ||
                            kywc_view->role == KYWC_VIEW_ROLE_AUTHENTICATION;
+    // panel need to be unconstrained
+    kywc_view->unconstrained = kywc_view->role == KYWC_VIEW_ROLE_PANEL;
 
     kywc_view->has_round_corner = kywc_view->role == KYWC_VIEW_ROLE_NORMAL ||
                                   kywc_view->role == KYWC_VIEW_ROLE_SYSTEMWINDOW ||
