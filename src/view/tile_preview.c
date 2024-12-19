@@ -124,6 +124,44 @@ static struct tile_preview_manager {
     int32_t fixed_height; // usable_height / 22 * 5
 } *manager = NULL;
 
+static bool exceed_half_screen_width(struct view *view, struct output *output)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (kywc_view->min_width + kywc_view->margin.off_width > output->usable_area.width * 0.5 ||
+        (kywc_view->max_width > 0 &&
+         kywc_view->max_width + kywc_view->margin.off_width < output->usable_area.width * 0.5)) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool exceed_half_screen_height(struct view *view, struct output *output)
+{
+    struct kywc_view *kywc_view = &view->base;
+    if (kywc_view->min_height + kywc_view->margin.off_height > output->usable_area.height * 0.5 ||
+        (kywc_view->max_height > 0 &&
+         kywc_view->max_height + kywc_view->margin.off_height < output->usable_area.height * 0.5)) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool view_is_support_preview(struct view *view, struct output *output, uint32_t tile)
+{
+    if (tile == KYWC_TILE_TOP || tile == KYWC_TILE_BOTTOM ||
+        exceed_half_screen_width(view, output)) {
+        return false;
+    }
+    if (tile != KYWC_TILE_LEFT && tile != KYWC_TILE_RIGHT &&
+        exceed_half_screen_height(view, output)) {
+        return false;
+    }
+
+    return true;
+}
+
 static void title_text_update(struct item *item)
 {
     struct theme *theme = theme_manager_get_theme();
@@ -491,6 +529,15 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
 
 static bool item_init(struct item *item, int gap, int border)
 {
+    if (!view_is_resizable(item->view) || exceed_half_screen_width(item->view, manager->output)) {
+        return false;
+    }
+
+    if (manager->state == QUARTER_SCREEN &&
+        exceed_half_screen_height(item->view, manager->output)) {
+        return false;
+    }
+
     int32_t item_w = manager->fixed_width;
     int32_t item_h = manager->fixed_height;
     struct theme *theme = theme_manager_get_theme();
@@ -735,6 +782,9 @@ void view_begin_tile_preview(struct view *view, struct seat *seat, struct output
         return;
     }
 
+    if (!view_is_support_preview(view, output, tile)) {
+        return;
+    }
     if (view->base.tiled != tile) {
         kywc_view_set_tiled(&view->base, tile, &output->base);
     }
