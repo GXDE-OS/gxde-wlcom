@@ -8,6 +8,7 @@
 #include "input/event.h"
 #include "scene/surface.h"
 #include "theme.h"
+#include "view/workspace.h"
 #include "view_p.h"
 
 static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 };
@@ -140,6 +141,18 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
     ky_scene_node_set_radius(&modal_box->node, radius);
 }
 
+static void modal_add_parent_workspace(struct view *view)
+{
+    if (!view || !view->parent) {
+        return;
+    }
+    struct view *parent = view->parent;
+    struct view_proxy *proxy;
+    wl_list_for_each(proxy, &parent->view_proxies, view_link) {
+        view_add_workspace(view, proxy->workspace);
+    }
+}
+
 void modal_create(struct view *view)
 {
     if (!view->base.modal || !view->parent || !view->parent->surface) {
@@ -167,6 +180,8 @@ void modal_create(struct view *view)
     modal_box_set_round_corner(modal->modal_box, view->parent);
 
     input_event_node_create(&modal->modal_box->node, &modal_impl, modal_get_root, NULL, modal);
+
+    modal_add_parent_workspace(view);
 
     modal->view_unmap.notify = handle_view_unmap;
     wl_signal_add(&view->base.events.unmap, &modal->view_unmap);
