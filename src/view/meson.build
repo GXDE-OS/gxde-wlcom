@@ -9,6 +9,7 @@ wlcom_sources += files(
   'positioner.c',
   'ssd.c',
   'stack_mode.c',
+  'tile_preview.c',
   'view.c',
   'window_menu.c',
   'workspace.c',

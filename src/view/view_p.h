@@ -146,6 +146,9 @@ void view_manager_set_global_authentication(struct view *view);
 
 struct view *view_manager_get_global_authentication(void);
 
+void view_begin_tile_preview(struct view *view, struct seat *seat, struct output *output,
+                             uint32_t tile);
+
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
                       struct view_layer *layer, bool use_usable_area);

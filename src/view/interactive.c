@@ -17,6 +17,7 @@
 #include "util/time.h"
 #include "view/action.h"
 #include "view/workspace.h"
+#include "view_p.h"
 
 #define VIEW_EDGE_GAP 20
 #define VIEW_TOP_GAP 5
@@ -325,6 +326,7 @@ static void interactivate_done_move(struct interactive_grab *grab)
 
 static void interactive_done(struct interactive_grab *grab)
 {
+    bool need_preview = false;
     if (grab->proxy) {
         wl_list_remove(&grab->proxy_destroy.link);
         move_proxy_destroy(grab->proxy);
@@ -333,10 +335,26 @@ static void interactive_done(struct interactive_grab *grab)
     /* for snap to edge */
     if (grab->view->base.mapped && grab->ongoing && grab->mode == INTERACTIVE_MODE_MOVE) {
         interactivate_done_move(grab);
+        if (grab->view->base.tiled != KYWC_TILE_NONE && grab->view->base.tiled != KYWC_TILE_ALL) {
+            need_preview = true;
+        }
     }
 
+    if (grab->mode == INTERACTIVE_MODE_TILE || grab->mode == INTERACTIVE_MODE_TILE_HALF_SCREEN) {
+        if (!grab->view->base.minimized && !grab->view->base.maximized && grab->view->base.tiled) {
+            need_preview = true;
+        }
+    }
+
+    struct view *view = grab->view;
+    struct output *output = grab->output;
+    struct seat *seat = grab->seat;
     cursor_set_image(grab->seat->cursor, CURSOR_DEFAULT);
     interactive_grab_destroy(grab);
+
+    if (need_preview) {
+        view_begin_tile_preview(view, seat, output, view->base.tiled);
+    }
 }
 
 static void window_adsorption_top_or_bottom(struct kywc_box *s_box, const struct kywc_box *l_box,
@@ -969,7 +987,6 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct k
         if (grab->mode == INTERACTIVE_MODE_TILE ||
             grab->mode == INTERACTIVE_MODE_TILE_HALF_SCREEN) {
             interactive_done(grab);
-            /* TODO: thumbnail */
             return true;
         }
     }
