@@ -78,15 +78,18 @@ struct item {
     struct widget *title_text;
     struct item_part part[PREVIEW_PART_COUNT];
 
+    struct ky_scene_node *selection;
+
     struct view *view;
     struct wl_listener view_unmap;
     struct wl_listener thumbnail_update;
     struct wl_listener thumbnail_destroy;
 
-    int32_t max_text_width;
-    int32_t text_height;
     struct thumbnail *thumbnail;
     int32_t thumbnail_width, thumbnail_height;
+
+    int32_t max_text_width;
+    int32_t text_height;
 };
 
 struct preview {
@@ -112,6 +115,7 @@ static struct tile_preview_manager {
 
     struct preview preview[MAX_SPLIT_SCREEN];
     struct preview *item_page;
+    struct item *selected;
     struct view *active_view;
 
     struct seat_pointer_grab pointer_grab;
@@ -473,16 +477,49 @@ static void preview_area_set_view(struct preview *preview, struct view *view)
     ky_scene_node_set_enabled(&preview->tree->node, false);
 }
 
+static void view_set_tiled(struct view *view, enum kywc_tile tiled)
+{
+    struct kywc_box pending = { 0 };
+    tile_size(view, &pending, tiled);
+    view_helper_move(view, pending.x, pending.y);
+
+    kywc_view_activate(&view->base);
+    kywc_view_set_tiled(&view->base, tiled, &manager->output->base);
+    kywc_view_resize(&view->base, &pending);
+}
+
+static void item_view_set_tiled(struct item *item)
+{
+    if (!item->view->base.minimized) {
+        ky_scene_node_set_enabled(&item->view->tree->node, true);
+    }
+
+    manager->active_view = item->view;
+    view_set_tiled(item->view, manager->item_page->tiled);
+    preview_area_set_view(manager->item_page, item->view);
+    item_destory(item);
+
+    item_page_update();
+}
+
 static void pointer_grab_cancel(struct seat_pointer_grab *pointer_grab) {}
 
 static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
                                 uint32_t button, bool pressed)
 {
-    if (pressed) {
+    struct seat *seat = pointer_grab->seat;
+    struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
+    struct ky_scene_node *node = input_event_node_root(inode);
+    bool is_click_node = !!node;
+
+    if (node == &manager->item_page->tree->node) {
+        inode->impl->click(seat, seat->cursor->hover.node, button, pressed, time, CLICK_STATE_NONE,
+                           inode->data);
+    } else if (pressed) {
         tile_preview_done();
     }
 
-    return true;
+    return !is_click_node;
 }
 
 static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t time, double lx,
@@ -532,10 +569,120 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct k
 
 static void keyboard_grab_cancel(struct seat_keyboard_grab *keyboard_grab) {}
 
+static bool item_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
+                       uint32_t time, bool first, bool hold, void *data)
+{
+    if (!data) {
+        return false;
+    }
+
+    struct item_part *item_part = data;
+
+    if (item_part->part == PREVIEW_BUTTON_CLOSE) {
+        set_close_buffer(item_part, BUTTON_STATE_HOVER);
+    }
+
+    int32_t i = 0;
+    struct item *item_tmp;
+    wl_list_for_each(item_tmp, &manager->items, link) {
+        if (!item_tmp->tree) {
+            continue;
+        }
+        if (i == manager->item_page->current) {
+            ky_scene_node_set_enabled(item_tmp->selection, false);
+            break;
+        }
+        i++;
+    }
+
+    ky_scene_node_set_enabled(item_part->item->selection, true);
+
+    i = 0;
+    wl_list_for_each(item_tmp, &manager->items, link) {
+        if (!item_tmp->tree) {
+            continue;
+        }
+        if (item_part->item == item_tmp) {
+            manager->item_page->current = i;
+            break;
+        }
+        i++;
+    }
+
+    return false;
+}
+
+static void item_leave(struct seat *seat, struct ky_scene_node *node, bool last, void *data)
+{
+    if (!data) {
+        return;
+    }
+
+    struct item_part *item_part = data;
+
+    if (item_part->part == PREVIEW_BUTTON_CLOSE) {
+        set_close_buffer(item_part, BUTTON_STATE_NONE);
+    }
+}
+
+static void item_click(struct seat *seat, struct ky_scene_node *node, uint32_t button, bool pressed,
+                       uint32_t time, enum click_state state, void *data)
+{
+    if (pressed || button != BTN_LEFT) {
+        return;
+    }
+
+    if (!data) {
+        tile_preview_done();
+        return;
+    }
+
+    struct item_part *item_part = data;
+
+    if (item_part->part != PREVIEW_BUTTON_CLOSE) {
+        item_view_set_tiled(item_part->item);
+        return;
+    }
+
+    if (LEFT_BUTTON_PRESSED(button, pressed)) {
+        set_close_buffer(item_part, BUTTON_STATE_CLICKED);
+    }
+    if (LEFT_BUTTON_RELEASED(button, pressed)) {
+        kywc_view_close(&item_part->item->view->base);
+    }
+}
+
+static const struct input_event_node_impl item_impl = {
+    .hover = item_hover,
+    .leave = item_leave,
+    .click = item_click,
+};
+
+static struct ky_scene_node *item_get_root(void *data)
+{
+    return &manager->item_page->tree->node;
+}
+
 static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
     .key = keyboard_grab_key,
     .cancel = keyboard_grab_cancel,
 };
+
+static struct ky_scene_node *selected_box_paint(struct ky_scene_tree *parent, int w, int h,
+                                                int border, int radius)
+{
+    uint32_t shadow_mask = SHADOW_MASK_BOTTOM_RIGHT | SHADOW_MASK_TOP_RIGHT |
+                           SHADOW_MASK_BOTTOM_LEFT | SHADOW_MASK_TOP_LEFT;
+    struct ky_scene_decoration *frame = ky_scene_decoration_create(parent);
+    ky_scene_decoration_set_margin_color(frame, (float[4]){ 0.f, 0.f, 0.f, 0.f },
+                                         manager->color->select_color,
+                                         (float[4]){ 0.f, 0.f, 0.f, 0.f });
+    ky_scene_decoration_set_surface_size(frame, w, h);
+    ky_scene_decoration_set_margin(frame, 0, border, 0, 0, 0);
+    ky_scene_decoration_set_shadow_mask(frame, shadow_mask);
+    ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ radius, radius, radius, radius });
+    return ky_scene_node_from_decoration(frame);
+}
 
 static void handle_thumbnail_update(struct wl_listener *listener, void *data)
 {
@@ -579,6 +726,7 @@ static bool item_init(struct item *item, int gap, int border)
         item_destory(item);
         return false;
     }
+
     item->thumbnail_update.notify = handle_thumbnail_update;
     thumbnail_add_update_listener(item->thumbnail, &item->thumbnail_update);
     item->thumbnail_destroy.notify = handle_thumbnail_destroy;
@@ -589,6 +737,11 @@ static bool item_init(struct item *item, int gap, int border)
     struct theme *theme = theme_manager_get_theme();
     item->tree = ky_scene_tree_create(manager->item_page->tree);
     manager->total_items++;
+
+    item->selection = selected_box_paint(item->tree, item_w - 2 * border, item_h - 2 * border,
+                                         border, theme->corner_radius);
+    ky_scene_node_set_enabled(item->selection, false);
+    ky_scene_node_set_position(item->selection, border, border);
 
     for (int32_t i = PREVIEW_ROOT; i < PREVIEW_PART_COUNT; i++) {
         item->part[i].part = i;
@@ -634,6 +787,7 @@ static bool item_init(struct item *item, int gap, int border)
 
             float tmp_ratio = (float)tmp_width / tmp_height;
             float view_ratio = (float)view_width / view_height;
+
             if (tmp_ratio < view_ratio) {
                 item->thumbnail_width = tmp_width;
                 item->thumbnail_height = tmp_width / view_ratio;
@@ -648,6 +802,8 @@ static bool item_init(struct item *item, int gap, int border)
         }
 
         ky_scene_node_set_position(item->part[i].node, x, y);
+        input_event_node_create(item->part[i].node, &item_impl, item_get_root, NULL,
+                                &item->part[i]);
     }
 
     return true;
