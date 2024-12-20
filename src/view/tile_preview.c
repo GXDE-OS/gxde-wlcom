@@ -556,6 +556,28 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
 static bool pointer_grab_axis(struct seat_pointer_grab *pointer_grab, uint32_t time, bool vertical,
                               double value)
 {
+    struct seat *seat = pointer_grab->seat;
+    struct input_event_node *inode = input_event_node_from_node(seat->cursor->hover.node);
+    struct ky_scene_node *node = input_event_node_root(inode);
+    if (node != &manager->item_page->tree->node) {
+        return false;
+    }
+
+    static uint32_t last_time = 0;
+    if (time - last_time < 100) {
+        return false;
+    }
+    last_time = time;
+
+    struct preview *preview = manager->item_page;
+    int32_t last_index = get_last_index();
+    int32_t next_index =
+        value < 0 ? preview->index_first - preview->col : preview->index_first + preview->col;
+    if (next_index >= 0 && next_index <= last_index) {
+        preview->index_first = next_index;
+    }
+
+    preview_item_show();
     return true;
 }
 
@@ -951,6 +973,8 @@ static void preview_init(struct preview *preview, enum kywc_tile tile)
     ky_scene_node_set_position(&background->node, -GAP, -GAP);
 
     struct theme *theme = theme_manager_get_theme();
+    input_event_node_create(&preview->tree->node, &item_impl, item_get_root, NULL, NULL);
+
     int radius = theme->corner_radius;
     ky_scene_node_set_radius(&preview_area->node, (int[4]){ radius, radius, radius, radius });
     /* add blur */
