@@ -67,7 +67,32 @@ static void input_clear_mapped_output(struct input *input)
     /* current mapped output is being off or destroyed */
     struct input_state state = input->state;
     state.mapped_to_output = NULL;
+
+    if (input->prop.type == WLR_INPUT_DEVICE_TOUCH) {
+        struct kywc_output *primary = kywc_output_get_primary();
+        /* if it is primary, map to NULL and listen for primary change to remap */
+        /* otherwise, map to the primary */
+        if (!primary || primary->destroying) {
+            kywc_output_add_primary_listener(&input->primary_output);
+        } else {
+            state.mapped_to_output = primary->name;
+        }
+    }
+
     input_set_state(input, &state);
+}
+
+static void handle_primary_output(struct wl_listener *listener, void *data)
+{
+    struct input *input = wl_container_of(listener, input, primary_output);
+    struct input_state state = input->state;
+
+    struct kywc_output *primary = data;
+    state.mapped_to_output = primary->name;
+    input_set_state(input, &state);
+
+    wl_list_remove(&input->primary_output.link);
+    wl_list_init(&input->primary_output.link);
 }
 
 static void handle_mapped_output_disable(struct wl_listener *listener, void *data)
@@ -85,6 +110,7 @@ static void input_destroy(struct input *input)
 
     wl_list_remove(&input->link);
     wl_list_remove(&input->mapped_output_disable.link);
+    wl_list_remove(&input->primary_output.link);
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 
@@ -180,7 +206,9 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     wl_list_insert(&input_manager->inputs, &input->link);
 
     input->mapped_output_disable.notify = handle_mapped_output_disable;
+    input->primary_output.notify = handle_primary_output;
     wl_list_init(&input->mapped_output_disable.link);
+    wl_list_init(&input->primary_output.link);
 
     if (wlr_input_device_is_libinput(wlr_input)) {
         input->device = wlr_libinput_get_device_handle(wlr_input);
@@ -194,6 +222,14 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     bool found = input_read_config(input, &state);
     if (!found) {
         // keep default
+    }
+
+    // map touch screen to primary output by default
+    if (input->prop.type == WLR_INPUT_DEVICE_TOUCH && !state.mapped_to_output) {
+        struct kywc_output *primary = kywc_output_get_primary();
+        if (primary) {
+            state.mapped_to_output = primary->name;
+        }
     }
 
     input_set_state(input, &state);

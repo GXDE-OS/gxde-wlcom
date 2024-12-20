@@ -86,6 +86,23 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_output_on(struct wl_listener *listener, void *data)
 {
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, on);
+    struct kywc_output *kywc_output = cursor_output->output;
+    if (kywc_output != kywc_output_get_primary()) {
+        return;
+    }
+
+    struct input *input;
+    struct input_manager *input_manager = cursor_output->monitor->input_manager;
+    wl_list_for_each(input, &input_manager->inputs, link) {
+        if (input->prop.type != WLR_INPUT_DEVICE_TOUCH || input->mapped_output) {
+            continue;
+        }
+
+        // mapped to primary output
+        struct input_state state = input->state;
+        state.mapped_to_output = kywc_output->name;
+        input_set_state(input, &state);
+    }
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
