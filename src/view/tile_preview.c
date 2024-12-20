@@ -260,6 +260,7 @@ static void preview_item_show(void)
             continue;
         }
 
+        ky_scene_node_set_enabled(item->selection, false);
         ky_scene_node_set_enabled(&item->tree->node, false);
     }
 
@@ -292,6 +293,11 @@ static void preview_item_show(void)
 
         ky_scene_node_set_position(&item->tree->node, node_x, node_y);
         ky_scene_node_set_enabled(&item->tree->node, true);
+
+        if (i == preview->current) {
+            manager->selected = item;
+            ky_scene_node_set_enabled(item->selection, true);
+        }
 
         i++;
     }
@@ -502,6 +508,25 @@ static void item_view_set_tiled(struct item *item)
     item_page_update();
 }
 
+static int32_t get_last_index(void)
+{
+    struct preview *preview = manager->item_page;
+    int32_t last_index = 0;
+
+    if (manager->total_items > preview->total) {
+        int32_t remainder = manager->total_items % preview->total;
+        if (remainder) {
+            int32_t row = remainder % preview->col == 0 ? remainder / preview->col
+                                                        : remainder / preview->col + 1;
+            last_index = manager->total_items - (remainder + (preview->row - row) * preview->col);
+        } else {
+            last_index = manager->total_items - preview->total;
+        }
+    }
+
+    return last_index;
+}
+
 static void pointer_grab_cancel(struct seat_pointer_grab *pointer_grab) {}
 
 static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t time,
@@ -564,6 +589,77 @@ static const struct seat_touch_grab_interface touch_grab_impl = {
 static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct keyboard *keyboard,
                               uint32_t time, uint32_t key, bool pressed, uint32_t modifiers)
 {
+    if (!pressed) {
+        return true;
+    }
+
+    if (key == KEY_LEFTMETA || key == KEY_RIGHTMETA || key == KEY_ESC) {
+        tile_preview_done();
+        return true;
+    }
+    if (key == KEY_ENTER && manager->selected) {
+        struct item *select = manager->selected;
+        manager->selected = NULL;
+        item_view_set_tiled(select);
+        return true;
+    }
+
+    if (key != KEY_UP && key != KEY_DOWN && key != KEY_LEFT && key != KEY_RIGHT) {
+        return true;
+    }
+
+    struct preview *preview = manager->item_page;
+    int32_t current = 0;
+    if (preview->current < 0) {
+        current = 0;
+    } else if (key == KEY_UP) {
+        current = preview->current - preview->col;
+        if (current < 0) {
+            int32_t row = manager->total_items / preview->col;
+            if (preview->current % preview->col < manager->total_items % preview->col) {
+                current = row * preview->col + preview->current % preview->col;
+            } else {
+                current = row * preview->col - (preview->col - preview->current % preview->col);
+            }
+            preview->index_first = get_last_index();
+        } else if (current < preview->index_first) {
+            current = preview->current - preview->col;
+            preview->index_first = preview->index_first - preview->col;
+        }
+    } else if (key == KEY_DOWN) {
+        current = preview->current + preview->col;
+        if (current >= manager->total_items) {
+            int32_t last_index = get_last_index();
+            if (preview->index_first < last_index) {
+                preview->index_first = last_index;
+                current = preview->current;
+            } else {
+                preview->index_first = 0;
+                current = preview->current % preview->col;
+            }
+        } else if (current >= preview->index_first + preview->total) {
+            preview->index_first = preview->index_first + preview->col;
+        }
+    } else if (key == KEY_LEFT) {
+        current = preview->current - 1;
+        if (current < 0) {
+            current = manager->total_items - 1;
+            preview->index_first = get_last_index();
+        } else if (current < preview->index_first) {
+            preview->index_first -= preview->col;
+        }
+    } else if (key == KEY_RIGHT) {
+        current = preview->current + 1;
+        if (current > manager->total_items - 1) {
+            current = 0;
+            preview->index_first = 0;
+        } else if (current >= preview->index_first + preview->total) {
+            preview->index_first = preview->index_first + preview->col;
+        }
+    }
+
+    preview->current = current;
+    preview_item_show();
     return true;
 }
 
@@ -994,6 +1090,7 @@ static void tiled_preview_add(struct view *view, struct seat *seat, struct outpu
 
     manager->output = output;
     manager->item_page = NULL;
+    manager->selected = NULL;
     manager->total_items = 0;
     tiled_preview_show(view, tile);
 }
