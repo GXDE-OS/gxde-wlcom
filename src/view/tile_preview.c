@@ -42,6 +42,7 @@ enum preview_part {
     PREVIEW_BUTTON_CLOSE,
     PREVIEW_TITLE_ICON,
     PREVIEW_TITLE_TEXT,
+    PREVIEW_THUMBNAIL,
     PREVIEW_PART_COUNT,
 };
 
@@ -79,9 +80,13 @@ struct item {
 
     struct view *view;
     struct wl_listener view_unmap;
+    struct wl_listener thumbnail_update;
+    struct wl_listener thumbnail_destroy;
 
     int32_t max_text_width;
     int32_t text_height;
+    struct thumbnail *thumbnail;
+    int32_t thumbnail_width, thumbnail_height;
 };
 
 struct preview {
@@ -292,6 +297,11 @@ static void item_destory(struct item *item)
 {
     wl_list_remove(&item->link);
     wl_list_remove(&item->view_unmap.link);
+
+    /* thumbnail destory */
+    if (item->thumbnail) {
+        thumbnail_destroy(item->thumbnail);
+    }
 
     if (item->tree) {
         manager->total_items--;
@@ -527,6 +537,32 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
     .cancel = keyboard_grab_cancel,
 };
 
+static void handle_thumbnail_update(struct wl_listener *listener, void *data)
+{
+    struct item *item = wl_container_of(listener, item, thumbnail_update);
+    struct thumbnail_update_event *event = data;
+    struct ky_scene_node *node = item->part[PREVIEW_THUMBNAIL].node;
+    if (!event->buffer_changed) {
+        ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMLESS, NULL);
+        return;
+    }
+
+    struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(node);
+    if (buffer->buffer != event->buffer) {
+        ky_scene_buffer_set_buffer(buffer, event->buffer);
+    }
+
+    ky_scene_buffer_set_dest_size(buffer, item->thumbnail_width, item->thumbnail_height);
+}
+
+static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
+{
+    struct item *item = wl_container_of(listener, item, thumbnail_destroy);
+    wl_list_remove(&item->thumbnail_destroy.link);
+    wl_list_remove(&item->thumbnail_update.link);
+    item->thumbnail = NULL;
+}
+
 static bool item_init(struct item *item, int gap, int border)
 {
     if (!view_is_resizable(item->view) || exceed_half_screen_width(item->view, manager->output)) {
@@ -537,6 +573,16 @@ static bool item_init(struct item *item, int gap, int border)
         exceed_half_screen_height(item->view, manager->output)) {
         return false;
     }
+
+    item->thumbnail = thumbnail_create_from_view(item->view, 0, 1.0f);
+    if (!item->thumbnail) {
+        item_destory(item);
+        return false;
+    }
+    item->thumbnail_update.notify = handle_thumbnail_update;
+    thumbnail_add_update_listener(item->thumbnail, &item->thumbnail_update);
+    item->thumbnail_destroy.notify = handle_thumbnail_destroy;
+    thumbnail_add_destroy_listener(item->thumbnail, &item->thumbnail_destroy);
 
     int32_t item_w = manager->fixed_width;
     int32_t item_h = manager->fixed_height;
@@ -578,6 +624,27 @@ static bool item_init(struct item *item, int gap, int border)
             struct ky_scene_rect *background =
                 ky_scene_rect_create(item->tree, item_w, item_h, (float[4]){ 0.f, 0.f, 0.f, 0.f });
             item->part[i].node = &background->node;
+        } else if (i == PREVIEW_THUMBNAIL) {
+            int32_t tmp_width = item_w - 2 * border;
+            int32_t tmp_height = item_h - ITEM_HEIGHT - 2 * border;
+            int32_t view_width = item->view->base.geometry.width;
+            int32_t view_height = item->view->base.geometry.height;
+            x = border;
+            y = ITEM_HEIGHT + border;
+
+            float tmp_ratio = (float)tmp_width / tmp_height;
+            float view_ratio = (float)view_width / view_height;
+            if (tmp_ratio < view_ratio) {
+                item->thumbnail_width = tmp_width;
+                item->thumbnail_height = tmp_width / view_ratio;
+                y += (tmp_height - item->thumbnail_height) / 2;
+            } else {
+                item->thumbnail_height = tmp_height;
+                item->thumbnail_width = tmp_height * view_ratio;
+                x += (tmp_width - item->thumbnail_width) / 2;
+            }
+
+            item->part[i].node = &ky_scene_buffer_create(item->tree, NULL)->node;
         }
 
         ky_scene_node_set_position(item->part[i].node, x, y);
