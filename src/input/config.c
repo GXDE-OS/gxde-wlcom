@@ -161,8 +161,7 @@ static int map_to_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
         }
     }
 
-    const char *current =
-        input->mapped_output ? input->state.mapped_to_output : input->desired_mapped_output;
+    const char *current = input->mapped_output ? input->state.mapped_to_output : NULL;
     if (input->prop.support_mapped_to_output && (!current || strcmp(current, output_name))) {
         struct input_state state = input->state;
         state.mapped_to_output = none_output ? NULL : output_name;
@@ -958,9 +957,6 @@ void input_write_config(struct input *input)
     if (state->mapped_to_output) {
         json_object_object_add(config, "mapped_to_output",
                                json_object_new_string(state->mapped_to_output));
-    } else if (input->desired_mapped_output) {
-        json_object_object_add(config, "mapped_to_output",
-                               json_object_new_string(input->desired_mapped_output));
     } else {
         json_object_object_del(config, "mapped_to_output");
     }

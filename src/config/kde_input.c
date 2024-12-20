@@ -580,8 +580,7 @@ static int set_mapped_output(sd_bus *bus, const char *path, const char *interfac
     }
 
     struct kde_input *input = userdata;
-    const char *current = input->input->mapped_output ? input->input->state.mapped_to_output
-                                                      : input->input->desired_mapped_output;
+    const char *current = input->input->mapped_output ? input->input->state.mapped_to_output : NULL;
 
     if (input->input->prop.support_mapped_to_output && (!current || strcmp(current, output_name))) {
         struct input_state state = input->input->state;

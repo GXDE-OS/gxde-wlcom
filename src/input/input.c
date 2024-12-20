@@ -64,10 +64,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
 static void input_clear_mapped_output(struct input *input)
 {
-    /* current mapped output is being off or destroyed, restore it later */
-    free(input->desired_mapped_output);
-    input->desired_mapped_output = strdup(input->mapped_output->name);
-
+    /* current mapped output is being off or destroyed */
     struct input_state state = input->state;
     state.mapped_to_output = NULL;
     input_set_state(input, &state);
@@ -88,8 +85,6 @@ static void input_destroy(struct input *input)
 
     wl_list_remove(&input->link);
     wl_list_remove(&input->mapped_output_disable.link);
-
-    free(input->desired_mapped_output);
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 
@@ -472,12 +467,6 @@ static bool _input_set_state(struct input *input, struct input_state *state)
         struct kywc_output *mapped_output = NULL;
         if (state->mapped_to_output) {
             mapped_output = kywc_output_by_name(state->mapped_to_output);
-            /* keep orig mapped output if invalid */
-            if (!mapped_output || !mapped_output->state.enabled) {
-                free(input->desired_mapped_output);
-                input->desired_mapped_output = strdup(state->mapped_to_output);
-                mapped_output = input->mapped_output;
-            }
         }
 
         struct wlr_cursor *wlr_cursor = input->seat->cursor->wlr_cursor;
@@ -509,9 +498,6 @@ bool input_set_state(struct input *input, struct input_state *state)
         if (input->mapped_output) {
             struct output *output = output_from_kywc_output(input->mapped_output);
             wl_signal_add(&output->events.disable, &input->mapped_output_disable);
-
-            free(input->desired_mapped_output);
-            input->desired_mapped_output = NULL;
 
             cursor_move_to_output_center(input->seat->cursor, input->mapped_output);
         }

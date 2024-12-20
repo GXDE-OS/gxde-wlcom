@@ -42,22 +42,6 @@ void cursor_move_to_output_center(struct cursor *cursor, struct kywc_output *kyw
     // kywc_log(KYWC_INFO, "move %s cursor to %s center", cursor->seat->name, kywc_output->name);
 }
 
-static void input_restore_mapped_output(struct input_monitor *input_monitor,
-                                        struct kywc_output *kywc_output)
-{
-    struct input *input;
-    wl_list_for_each(input, &input_monitor->input_manager->inputs, link) {
-        if (!input->desired_mapped_output ||
-            strcmp(input->desired_mapped_output, kywc_output->name)) {
-            continue;
-        }
-
-        struct input_state state = input->state;
-        state.mapped_to_output = kywc_output->name;
-        input_set_state(input, &state);
-    }
-}
-
 static struct kywc_output *seat_pick_mapped_output(struct seat *seat)
 {
     struct input *input;
@@ -102,9 +86,6 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
 static void handle_output_on(struct wl_listener *listener, void *data)
 {
     struct cursor_output *cursor_output = wl_container_of(listener, cursor_output, on);
-    struct kywc_output *kywc_output = cursor_output->output;
-
-    input_restore_mapped_output(cursor_output->monitor, kywc_output);
 }
 
 static void handle_new_output(struct wl_listener *listener, void *data)
