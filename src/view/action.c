@@ -105,7 +105,9 @@ static int handle_capture(void *data)
 #else
 static void capture_done(const char *path, void *data)
 {
-    dbus_notify(tr("Screenshot"), tr("Capture saved to"), path, "kylin-screenshot");
+    char href[512];
+    snprintf(href, 512, "<a href=\"file://%s\">%s</a>", path, path);
+    dbus_notify(tr("Screenshot"), tr("Capture saved to"), href, "kylin-screenshot");
     free(data);
 }
 
