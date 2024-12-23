@@ -230,6 +230,29 @@ static void toplevel_handle_move_to_output(struct wl_client *client, struct wl_r
     }
 }
 
+static void toplevel_handle_set_position(struct wl_client *client, struct wl_resource *resource,
+                                         int32_t x, int32_t y)
+{
+    struct ky_toplevel *toplevel = wl_resource_get_user_data(resource);
+    if (!toplevel) {
+        return;
+    }
+
+    kywc_view_move(toplevel->view, x, y);
+}
+
+static void toplevel_handle_set_size(struct wl_client *client, struct wl_resource *resource,
+                                     uint32_t width, uint32_t height)
+{
+    struct ky_toplevel *toplevel = wl_resource_get_user_data(resource);
+    if (!toplevel) {
+        return;
+    }
+
+    struct kywc_box geo = { toplevel->view->geometry.x, toplevel->view->geometry.y, width, height };
+    kywc_view_resize(toplevel->view, &geo);
+}
+
 static const struct kywc_toplevel_v1_interface ky_toplevel_impl = {
     .destroy = toplevel_handle_destroy,
     .set_maximized = toplevel_handle_set_maximized,
@@ -244,6 +267,8 @@ static const struct kywc_toplevel_v1_interface ky_toplevel_impl = {
     .leave_workspace = toplevel_handle_leave_workspace,
     .move_to_workspace = toplevel_handle_move_to_workspace,
     .move_to_output = toplevel_handle_move_to_output,
+    .set_position = toplevel_handle_set_position,
+    .set_size = toplevel_handle_set_size,
 };
 
 static void ky_toplevel_resource_destroy(struct wl_resource *resource)
@@ -318,6 +343,8 @@ static void toplevel_send_details_to_toplevel_resource(struct ky_toplevel *tople
     if (view->output) {
         kywc_toplevel_v1_send_primary_output(resource, view->output->uuid);
     }
+
+    kywc_toplevel_v1_send_pid(resource, view->pid);
 
     /* all workspaces the toplevel in */
     struct view_proxy *proxy;

@@ -272,5 +272,30 @@
       </description>
       <arg name="id" type="string" summary="the output unique id"/>
     </request>
+
+    <request name="set_position">
+      <description summary="change the window position">
+        Move the window to new coordinates.
+      </description>
+      <arg name="x" type="int" summary="x coordinate in global space"/>
+      <arg name="y" type="int" summary="y coordinate in global space"/>
+    </request>
+
+    <request name="set_size">
+      <description summary="change the window size">
+        Set the window to new size.
+
+        Window size will be consider compositor window size limits.
+      </description>
+      <arg name="width" type="uint"/>
+      <arg name="height" type="uint"/>
+    </request>
+
+    <event name="pid">
+      <description summary="process id of application owning the window">
+        This event will only be emitted once, before the first "done" event occurs.
+      </description>
+      <arg name="pid" type="uint" summary="process id"/>
+    </event>
   </interface>
 </protocol>
