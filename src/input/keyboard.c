@@ -435,10 +435,9 @@ void keyboard_add_input(struct seat *seat, struct input *input)
         struct keyboard_group *group = keyboard_group_from_wlr_keyboard(dst_keyboard);
         bool empty_group = wl_list_empty(&group->devices);
 
-        if (empty_group ||
-            (wlr_keyboard_keymaps_match(wlr_keyboard->keymap, dst_keyboard->keymap) &&
-             wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
-             wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay)) {
+        if (empty_group || (keyboard_keymaps_match(wlr_keyboard, dst_keyboard) &&
+                            wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
+                            wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay)) {
             kywc_log(KYWC_DEBUG, "Adding keyboard %s to group %p", input->name, group);
 
             if (empty_group) {
@@ -574,4 +573,18 @@ bool keyboard_has_no_input(struct keyboard *keyboard)
     struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
     struct keyboard_group *group = keyboard_group_from_wlr_keyboard(wlr_keyboard);
     return wl_list_empty(&group->devices);
+}
+
+bool keyboard_keymaps_match(struct wlr_keyboard *kb1, struct wlr_keyboard *kb2)
+{
+    const char *km1 = kb1->keymap_string;
+    const char *km2 = kb2->keymap_string;
+
+    if (!km1 && !km2) {
+        return true;
+    }
+    if (!km1 || !km2) {
+        return false;
+    }
+    return strcmp(km1, km2) == 0;
 }

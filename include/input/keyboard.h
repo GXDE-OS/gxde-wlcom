@@ -53,4 +53,6 @@ uint32_t keyboard_get_locks(struct keyboard *keyboard);
 
 bool keyboard_has_no_input(struct keyboard *keyboard);
 
+bool keyboard_keymaps_match(struct wlr_keyboard *kb1, struct wlr_keyboard *kb2);
+
 #endif /* _KEYBOARD_H_ */

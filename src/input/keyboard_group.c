@@ -13,6 +13,7 @@
 
 #include <kywc/log.h>
 
+#include "input/keyboard.h"
 #include "input/keyboard_group.h"
 
 struct keyboard_group_device {
@@ -161,10 +162,10 @@ static void handle_keyboard_keymap(struct wl_listener *listener, void *data)
     struct wlr_keyboard *keyboard = group_device->keyboard;
     struct keyboard_group *group = (struct keyboard_group *)keyboard->group;
 
-    if (!wlr_keyboard_keymaps_match(group->keyboard.keymap, keyboard->keymap)) {
+    if (!keyboard_keymaps_match(&group->keyboard, keyboard)) {
         struct keyboard_group_device *device;
         wl_list_for_each(device, &group->devices, link) {
-            if (!wlr_keyboard_keymaps_match(keyboard->keymap, device->keyboard->keymap)) {
+            if (!keyboard_keymaps_match(keyboard, device->keyboard)) {
                 wlr_keyboard_set_keymap(device->keyboard, keyboard->keymap);
                 return;
             }
@@ -226,7 +227,7 @@ bool keyboard_group_add_keyboard(struct keyboard_group *group, struct wlr_keyboa
         return false;
     }
 
-    if (!wlr_keyboard_keymaps_match(group->keyboard.keymap, keyboard->keymap)) {
+    if (!keyboard_keymaps_match(&group->keyboard, keyboard)) {
         kywc_log(KYWC_ERROR, "Device keymap does not match keyboard group's");
         return false;
     }
