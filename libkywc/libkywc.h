@@ -212,6 +212,8 @@ struct _kywc_toplevel {
     uint32_t capabilities;
     /* state */
     bool activated, minimized, maximized, fullscreen;
+
+    uint32_t pid;
 };
 
 enum kywc_toplevel_state_mask {
@@ -271,6 +273,10 @@ void kywc_toplevel_leave_workspace(kywc_toplevel *toplevel, const char *workspac
 void kywc_toplevel_move_to_workspace(kywc_toplevel *toplevel, const char *workspace);
 
 void kywc_toplevel_move_to_output(kywc_toplevel *toplevel, const char *output);
+
+void kywc_toplevel_set_position(kywc_toplevel *toplevel, int32_t x, int32_t y);
+
+void kywc_toplevel_set_size(kywc_toplevel *toplevel, uint32_t width, uint32_t height);
 
 void kywc_toplevel_set_user_data(kywc_toplevel *toplevel, void *data);
 

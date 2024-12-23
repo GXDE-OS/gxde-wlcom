@@ -209,6 +209,8 @@ struct ky_toplevel {
     void (*leave_workspace)(struct ky_toplevel *toplevel, const char *workspace);
     void (*move_to_workspace)(struct ky_toplevel *toplevel, const char *workspace);
     void (*move_to_output)(struct ky_toplevel *toplevel, const char *output);
+    void (*set_position)(struct ky_toplevel *toplevel, int32_t x, int32_t y);
+    void (*set_size)(struct ky_toplevel *toplevel, uint32_t width, uint32_t height);
     void (*destroy)(struct ky_toplevel *toplevel);
     void *data;
 
@@ -248,6 +250,8 @@ void ky_toplevel_update_icon(struct ky_toplevel *toplevel, const char *icon);
 
 void ky_toplevel_update_geometry(struct ky_toplevel *toplevel, int32_t x, int32_t y, uint32_t width,
                                  uint32_t height);
+
+void ky_toplevel_set_pid(struct ky_toplevel *toplevel, uint32_t pid);
 
 void ky_toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace);
 

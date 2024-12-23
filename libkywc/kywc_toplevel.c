@@ -97,6 +97,12 @@ static void toplevel_handle_geometry(void *data, struct kywc_toplevel_v1 *kywc_t
     ky_toplevel_update_geometry(toplevel, x, y, width, height);
 }
 
+static void toplevel_handle_pid(void *data, struct kywc_toplevel_v1 *kywc_toplevel_v1, uint32_t pid)
+{
+    struct ky_toplevel *toplevel = data;
+    ky_toplevel_set_pid(toplevel, pid);
+}
+
 static const struct kywc_toplevel_v1_listener toplevel_listener = {
     .closed = toplevel_handle_closed,
     .done = toplevel_handle_done,
@@ -110,6 +116,7 @@ static const struct kywc_toplevel_v1_listener toplevel_listener = {
     .parent = toplevel_handle_parent,
     .icon = toplevel_handle_icon,
     .geometry = toplevel_handle_geometry,
+    .pid = toplevel_handle_pid,
 };
 
 static void toplevel_destroy(struct ky_toplevel *toplevel)
@@ -203,6 +210,20 @@ static void toplevel_move_to_output(struct ky_toplevel *toplevel, const char *ou
     wl_display_flush(toplevel->manager->ctx->display);
 }
 
+static void toplevel_set_position(struct ky_toplevel *toplevel, int32_t x, int32_t y)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_set_position(kywc_toplevel_v1, x, y);
+    wl_display_flush(toplevel->manager->ctx->display);
+}
+
+static void toplevel_set_size(struct ky_toplevel *toplevel, uint32_t width, uint32_t height)
+{
+    struct kywc_toplevel_v1 *kywc_toplevel_v1 = toplevel->data;
+    kywc_toplevel_v1_set_size(kywc_toplevel_v1, width, height);
+    wl_display_flush(toplevel->manager->ctx->display);
+}
+
 static void manager_handle_toplevel(void *data,
                                     struct kywc_toplevel_manager_v1 *kywc_toplevel_manager_v1,
                                     struct kywc_toplevel_v1 *kywc_toplevel_v1, const char *uuid)
@@ -225,6 +246,8 @@ static void manager_handle_toplevel(void *data,
     toplevel->leave_workspace = toplevel_leave_workspace;
     toplevel->move_to_workspace = toplevel_move_to_workspace;
     toplevel->move_to_output = toplevel_move_to_output;
+    toplevel->set_position = toplevel_set_position;
+    toplevel->set_size = toplevel_set_size;
     toplevel->destroy = toplevel_destroy;
 
     toplevel->data = kywc_toplevel_v1;

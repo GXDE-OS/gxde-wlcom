@@ -154,6 +154,11 @@ void ky_toplevel_update_geometry(struct ky_toplevel *toplevel, int32_t x, int32_
     }
 }
 
+void ky_toplevel_set_pid(struct ky_toplevel *toplevel, uint32_t pid)
+{
+    toplevel->base.pid = pid;
+}
+
 void ky_toplevel_enter_workspace(struct ky_toplevel *toplevel, const char *workspace)
 {
     for (int i = 0; i < MAX_WORKSPACES; i++) {
@@ -397,6 +402,22 @@ void kywc_toplevel_move_to_output(kywc_toplevel *toplevel, const char *output)
     struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
     if (ky_toplevel->move_to_output) {
         ky_toplevel->move_to_output(ky_toplevel, output);
+    }
+}
+
+void kywc_toplevel_set_position(kywc_toplevel *toplevel, int32_t x, int32_t y)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->set_position) {
+        ky_toplevel->set_position(ky_toplevel, x, y);
+    }
+}
+
+void kywc_toplevel_set_size(kywc_toplevel *toplevel, uint32_t width, uint32_t height)
+{
+    struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
+    if (ky_toplevel->set_size) {
+        ky_toplevel->set_size(ky_toplevel, width, height);
     }
 }
 
