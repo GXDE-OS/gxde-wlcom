@@ -87,6 +87,7 @@ bool Thumbnail::Private::bufferHandle(kywc_thumbnail *thumbnail,
 void Thumbnail::Private::destroyHandle(kywc_thumbnail *thumbnail, void *data)
 {
     Thumbnail *thum = (Thumbnail *)data;
+    thum->pri->k_thumbnail = nullptr;
     emit thum->deleted();
 }
 
@@ -133,6 +134,13 @@ void Thumbnail::setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QSt
                       QString decoration)
 {
     pri->setup(ctx, type, uuid, output_uuid, decoration);
+}
+void Thumbnail::destory()
+{
+    if (pri->k_thumbnail) {
+        kywc_thumbnail_destroy(pri->k_thumbnail);
+        pri->k_thumbnail = nullptr;
+    }
 }
 
 int32_t Thumbnail::fd() const

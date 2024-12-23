@@ -20,6 +20,7 @@ class Toplevel::Private
     QStringList workspaces;
     QPoint point;
     QSize size;
+    uint32_t pid;
     Toplevel::Capabilities capabilities;
     bool activated, minimized, maximized, fullscreen;
 
@@ -132,6 +133,7 @@ void Toplevel::Private::setup(kywc_toplevel *toplevel)
     k_toplevel = toplevel;
     uuid = QString(toplevel->uuid);
     title = QString(toplevel->title);
+    pid = toplevel->pid;
     icon = QString(toplevel->icon);
     app_id = QString(toplevel->app_id);
     if (toplevel->parent) {
@@ -180,6 +182,11 @@ QString Toplevel::uuid() const
 QString Toplevel::title() const
 {
     return pri->title;
+}
+
+uint32_t Toplevel::pid() const
+{
+    return pri->pid;
 }
 
 QString Toplevel::icon() const
@@ -289,6 +296,16 @@ void Toplevel::setActivate()
 void Toplevel::close()
 {
     kywc_toplevel_close(pri->k_toplevel);
+}
+
+void Toplevel::setPosition(int x, int y)
+{
+    kywc_toplevel_set_position(pri->k_toplevel, x, y);
+}
+
+void Toplevel::setSize(uint32_t width, uint32_t height)
+{
+    kywc_toplevel_set_size(pri->k_toplevel, width, height);
 }
 
 void Toplevel::enterWorkspace(QString workspace)

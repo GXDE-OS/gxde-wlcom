@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QLineEdit>
@@ -200,6 +203,7 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
     col_list_label << QString("maximized");
     col_list_label << QString("fullscreen");
     col_list_label << QString("workespaces");
+    col_list_label << QString("pid");
 
     int col_list_label_cnt = col_list_label.count();
     tableWidget_2->setColumnCount(col_list_label_cnt);
@@ -529,6 +533,9 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
     tableWidget_2->item(toplevel_count, 2)->setText(toplevel->appId());
     tableWidget_2->item(toplevel_count, 1)->setText(toplevel->title());
 
+    QString pid = QString("%1").arg(toplevel->pid());
+    tableWidget_2->item(toplevel_count, 14)->setText(pid);
+
     if (toplevel->isActivated())
         tableWidget_2->item(toplevel_count, 10)->setText("true");
     else
@@ -721,6 +728,8 @@ void MainWindow::toplevel_menu(const QPoint pos)
     QAction *action11 = new QAction("toplevel_move_to_workspace", tableWidget_2);
     QAction *action12 = new QAction("send_to_output", tableWidget_2);
     QAction *action13 = new QAction("show thumbnail", tableWidget_2);
+    QAction *action16 = new QAction("set_window_position", tableWidget_2);
+    QAction *action17 = new QAction("set_window_size", tableWidget_2);
 
     menu->addAction(action1);
     menu->addAction(action2);
@@ -735,6 +744,8 @@ void MainWindow::toplevel_menu(const QPoint pos)
     menu->addAction(action11);
     menu->addAction(action12);
     menu->addAction(action13);
+    menu->addAction(action16);
+    menu->addAction(action17);
 
     menu->move(cursor().pos());
     menu->show();
@@ -747,6 +758,8 @@ void MainWindow::toplevel_menu(const QPoint pos)
     connect(action6, SIGNAL(triggered()), this, SLOT(toplevel_unset_fullscreen()));
     connect(action7, SIGNAL(triggered()), this, SLOT(toplevel_set_activate()));
     connect(action8, SIGNAL(triggered()), this, SLOT(toplevel_close()));
+    connect(action16, SIGNAL(triggered()), this, SLOT(toplevel_set_position()));
+    connect(action17, SIGNAL(triggered()), this, SLOT(toplevel_set_size()));
 
     // 获得鼠标点击的x，y坐标点
     int x = pos.x();
@@ -898,6 +911,82 @@ void MainWindow::toplevel_close()
     QString uuid = tableWidget_2->item(row, 0)->text();
     Toplevel *toplevel = context->findToplevel(uuid);
     toplevel->close();
+}
+
+static void add_lineedit_to_list(QLineEdit *lineEdit, QFormLayout *form, QList<QLineEdit *> &fields,
+                                 const QString name)
+{
+    // 限制输入类型为整型
+    lineEdit->setValidator(new QIntValidator(lineEdit));
+    form->addRow(name, lineEdit);
+    fields << lineEdit;
+}
+
+void MainWindow::toplevel_set_position()
+{
+    QDialog *dialog = new QDialog(this);
+    // Use a layout allowing to have a label next to each field
+    QFormLayout *form = new QFormLayout(dialog);
+
+    // Add some text above the fields
+    form->addRow(new QLabel("Please enter the coordinates you want to set: "));
+
+    // Add the lineEdits with their respective labels
+    QList<QLineEdit *> fields;
+    QLineEdit *lineEdit_x = new QLineEdit(dialog);
+    QLineEdit *lineEdit_y = new QLineEdit(dialog);
+    add_lineedit_to_list(lineEdit_x, form, fields, "x-coordinate");
+    add_lineedit_to_list(lineEdit_y, form, fields, "y-coordinate");
+    lineEdit_x->setText("200");
+    lineEdit_y->setText("200");
+
+    // Add some standard buttons (Cancel/Ok) at the bottom of the dialog
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal,
+                               dialog);
+    form->addRow(&buttonBox);
+    QObject::connect(&buttonBox, SIGNAL(accepted()), dialog, SLOT(accept()));
+    QObject::connect(&buttonBox, SIGNAL(rejected()), dialog, SLOT(reject()));
+
+    // Show the dialog as modal
+    if (dialog->exec() == QDialog::Accepted) {
+        int row = tableWidget_2->currentRow();
+        QString uuid = tableWidget_2->item(row, 0)->text();
+        Toplevel *toplevel = context->findToplevel(uuid);
+        toplevel->setPosition(lineEdit_x->text().toInt(), lineEdit_y->text().toInt());
+    }
+}
+
+void MainWindow::toplevel_set_size()
+{
+    QDialog *dialog = new QDialog(this);
+    // Use a layout allowing to have a label next to each field
+    QFormLayout *form = new QFormLayout(dialog);
+
+    // Add some text above the fields
+    form->addRow(new QLabel("Please enter the window size you want to set: "));
+
+    // Add the lineEdits with their respective labels
+    QList<QLineEdit *> fields;
+    QLineEdit *lineEdit_w = new QLineEdit(dialog);
+    QLineEdit *lineEdit_h = new QLineEdit(dialog);
+    add_lineedit_to_list(lineEdit_w, form, fields, "width: ");
+    add_lineedit_to_list(lineEdit_h, form, fields, "height: ");
+    lineEdit_w->setText("800");
+    lineEdit_h->setText("600");
+
+    // Add some standard buttons (Cancel/Ok) at the bottom of the dialog
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal,
+                               dialog);
+    form->addRow(&buttonBox);
+    QObject::connect(&buttonBox, SIGNAL(accepted()), dialog, SLOT(accept()));
+    QObject::connect(&buttonBox, SIGNAL(rejected()), dialog, SLOT(reject()));
+
+    if (dialog->exec() == QDialog::Accepted) {
+        int row = tableWidget_2->currentRow();
+        QString uuid = tableWidget_2->item(row, 0)->text();
+        Toplevel *toplevel = context->findToplevel(uuid);
+        toplevel->setSize(lineEdit_w->text().toInt(), lineEdit_h->text().toInt());
+    }
 }
 
 void MainWindow::toplevel_enter_workspace()

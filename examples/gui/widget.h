@@ -50,6 +50,8 @@ class MainWindow : public QMainWindow
     void toplevel_unset_fullscreen();
     void toplevel_set_activate();
     void toplevel_close();
+    void toplevel_set_position();
+    void toplevel_set_size();
     void toplevel_enter_workspace();
     void toplevel_leave_workspace();
     void toplevel_send_to_output();

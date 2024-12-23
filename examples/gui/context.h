@@ -149,6 +149,7 @@ class Toplevel : public QObject
     void setup(kywc_toplevel *toplevel);
     QString uuid() const;
     QString title() const;
+    uint32_t pid() const;
     QString icon() const;
     QString appId() const;
     QPointer<Toplevel> parent() const;
@@ -171,6 +172,8 @@ class Toplevel : public QObject
     void unsetFullscreen();
     void setActivate();
     void close();
+    void setPosition(int x, int y);
+    void setSize(uint32_t width, uint32_t height);
     void enterWorkspace(QString workspace);
     void leaveWorkspace(QString workspace);
     void moveToWorkspace(QString workspace);
@@ -209,6 +212,7 @@ class Thumbnail : public QObject
 
     void setup(kywc_context *ctx, Thumbnail::Type type, QString uuid, QString output_uuid,
                QString decoration);
+    void destory();
 
     int32_t fd() const;
     int32_t fd(int index) const;

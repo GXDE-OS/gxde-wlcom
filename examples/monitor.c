@@ -74,6 +74,7 @@ static void print_toplevel(kywc_toplevel *toplevel)
 {
     printf("toplevel \"%s\"\n", toplevel->uuid);
     printf("  app_id: %s\n", toplevel->app_id);
+    printf("  pid: %d\n", toplevel->pid);
     printf("  capabilities: %d\n", toplevel->capabilities);
     printf("  geometry: (%d, %d) %d x %d\n", toplevel->x, toplevel->y, toplevel->width,
            toplevel->height);
