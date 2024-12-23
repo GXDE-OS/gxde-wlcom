@@ -573,7 +573,9 @@ bool input_set_state(struct input *input, struct input_state *state)
             struct output *output = output_from_kywc_output(input->mapped_output);
             wl_signal_add(&output->events.disable, &input->mapped_output_disable);
 
-            cursor_move_to_output_center(input->seat->cursor, input->mapped_output);
+            if (output != input_current_output(input->seat)) {
+                cursor_move_to_output_center(input->seat->cursor, input->mapped_output);
+            }
         }
     }
 
