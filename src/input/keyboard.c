@@ -425,7 +425,7 @@ void keyboard_add_input(struct seat *seat, struct input *input)
     }
 
     /* find a suitable group */
-    struct keyboard *keyboard;
+    struct keyboard *keyboard, *empty_keyboard = NULL;
     wl_list_for_each(keyboard, &seat->keyboards, link) {
         if (keyboard->is_virtual) {
             continue;
@@ -433,23 +433,32 @@ void keyboard_add_input(struct seat *seat, struct input *input)
 
         struct wlr_keyboard *dst_keyboard = keyboard->wlr_keyboard;
         struct keyboard_group *group = keyboard_group_from_wlr_keyboard(dst_keyboard);
-        bool empty_group = wl_list_empty(&group->devices);
+        if (wl_list_empty(&group->devices)) {
+            empty_keyboard = keyboard;
+            continue;
+        }
 
-        if (empty_group || (keyboard_keymaps_match(wlr_keyboard, dst_keyboard) &&
-                            wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
-                            wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay)) {
-            kywc_log(KYWC_DEBUG, "Adding keyboard %s to group %p", input->name, group);
-
-            if (empty_group) {
-                wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
-                wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
-                                             wlr_keyboard->repeat_info.delay);
-            }
-
+        if (keyboard_keymaps_match(wlr_keyboard, dst_keyboard) &&
+            wlr_keyboard->repeat_info.rate == dst_keyboard->repeat_info.rate &&
+            wlr_keyboard->repeat_info.delay == dst_keyboard->repeat_info.delay) {
             keyboard_group_add_keyboard(group, wlr_keyboard);
             wlr_keyboard->data = group;
             return;
         }
+    }
+
+    if (empty_keyboard) {
+        struct wlr_keyboard *dst_keyboard = empty_keyboard->wlr_keyboard;
+        if (!dst_keyboard->keymap || !keyboard_keymaps_match(wlr_keyboard, dst_keyboard)) {
+            wlr_keyboard_set_keymap(dst_keyboard, wlr_keyboard->keymap);
+        }
+        wlr_keyboard_set_repeat_info(dst_keyboard, wlr_keyboard->repeat_info.rate,
+                                     wlr_keyboard->repeat_info.delay);
+
+        struct keyboard_group *group = keyboard_group_from_wlr_keyboard(dst_keyboard);
+        keyboard_group_add_keyboard(group, wlr_keyboard);
+        wlr_keyboard->data = group;
+        return;
     }
 
     /* create a new keyboard group with keyboard configuration */
@@ -513,14 +522,6 @@ void keyboard_remove_input(struct input *input)
         group = wlr_keyboard->data;
     } else {
         keyboard_group_remove_keyboard(group, wlr_keyboard);
-    }
-
-    /* destroy keyboard group if empty */
-    if (wl_list_empty(&group->devices)) {
-        keyboard = group->keyboard.data;
-        if (keyboard != keyboard->seat->keyboard) {
-            keyboard_destroy(keyboard);
-        }
     }
 }
 
