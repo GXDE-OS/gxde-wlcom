@@ -190,6 +190,21 @@ static void input_get_default_state(struct input *input, struct input_state *sta
     }
 }
 
+static void input_set_name(struct input *input, const char *name)
+{
+    static int index = 0;
+    input->name = name;
+
+    struct input *device;
+    wl_list_for_each(device, &input_manager->inputs, link) {
+        if (strcmp(device->name, name) == 0) {
+            input->name = kywc_identifier_generate("%s_%d", name, ++index);
+            free((void *)name);
+            return;
+        }
+    }
+}
+
 static struct input *input_create(const char *name, struct wlr_input_device *wlr_input)
 {
     struct input *input = calloc(1, sizeof(struct input));
@@ -199,7 +214,7 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
 
     input->wlr_input = wlr_input;
     wlr_input->data = input;
-    input->name = name;
+    input_set_name(input, name);
 
     input->manager = input_manager;
     wl_signal_init(&input->events.destroy);
