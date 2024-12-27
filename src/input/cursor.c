@@ -981,7 +981,8 @@ void cursor_set_resize_image(struct cursor *cursor, uint32_t edges)
 
 void cursor_rebase(struct cursor *cursor)
 {
-    cursor_move(cursor, NULL, 0, 0, true, false);
+    /* some app may think that moving 0 is not moving, so we add a bit of offset */
+    cursor_move(cursor, NULL, 0.01, 0.01, true, false);
     _cursor_set_image(cursor, CURSOR_DEFAULT, true);
     cursor_feed_fake_motion(cursor, true);
 }
