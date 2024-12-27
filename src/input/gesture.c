@@ -19,9 +19,9 @@
  * touchpad:
  * Relative motion deltas are normalized to represent those of a device with 1000dpi resolution
  * https://wayland.freedesktop.org/libinput/doc/latest/api/group__event__gesture.html#ga3888052854155ad133fa837e4f28d771
- * we set 0.5 inch be triggered by default
+ * some devices are below 1000dpi, so we chase kwin, default 50
  */
-#define GESTURE_TOUCHPAD_TRIGGER_THRESHOLD (500)
+#define GESTURE_TOUCHPAD_TRIGGER_THRESHOLD (50)
 /* touchscreen: chase kwin, full width height is 1 */
 #define GESTURE_TOUCHSCREEN_TRIGGER_THRESHOLD (0.15)
 

@@ -57,19 +57,19 @@
                 "keys": "Up",
                 "desc": "switch up windows"
             },
-            "swipe:touchpad:3:left+right:none:after:500:down": {
+            "swipe:touchpad:3:left+right:none:after:50:down": {
                 "enable": true,
                 "actiontype": "key",
                 "keys": "Down",
                 "desc": "switch down windows"
             },
-            "swipe:touchpad:3:left+right:none:after:500:left": {
+            "swipe:touchpad:3:left+right:none:after:50:left": {
                 "enable": true,
                 "actiontype": "key",
                 "keys": "Left",
                 "desc": "switch left windows"
             },
-            "swipe:touchpad:3:left+right:none:after:500:right": {
+            "swipe:touchpad:3:left+right:none:after:50:right": {
                 "enable": true,
                 "actiontype": "key",
                 "keys": "Right",
