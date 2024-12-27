@@ -542,7 +542,7 @@ static void handle_activate_view(struct wl_listener *listener, void *data)
     }
 
     struct kywc_view *view = data;
-    if (!view || xwayland_check_view(view_from_kywc_view(view))) {
+    if (view && xwayland_check_view(view_from_kywc_view(view))) {
         return;
     }
 
