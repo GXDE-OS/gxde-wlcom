@@ -9,7 +9,7 @@
 
 struct gesture_state {
     enum gesture_type type;
-    enum gesture_phase phase;
+    enum gesture_stage stage;
     enum gesture_device device;
     enum gesture_edge edge;
     uint8_t fingers;

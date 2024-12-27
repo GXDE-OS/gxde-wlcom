@@ -30,7 +30,7 @@ static char *gestures[] = { "none", "pinch", "swipe", "hold" };
 static void gesture_state_reset(struct gesture_state *state)
 {
     state->type = GESTURE_TYPE_NONE;
-    state->phase = GESTURE_PHASE_NONE;
+    state->stage = GESTURE_STAGE_NONE;
     state->device = GESTURE_DEVICE_NONE;
     state->directions = GESTURE_DIRECTION_NONE;
     state->follow_direction = GESTURE_DIRECTION_NONE;
@@ -94,7 +94,7 @@ static void gesture_state_trigger(struct gesture_state *state)
              state->fingers, state->directions);
 
     state->triggered = true;
-    state->phase = GESTURE_PHASE_TRIGGER;
+    state->stage = GESTURE_STAGE_TRIGGER;
     state->follow_dx = 0.0;
     state->follow_dy = 0.0;
     state->follow_direction = GESTURE_DIRECTION_NONE;
@@ -125,7 +125,7 @@ static void gesture_state_follow(struct gesture_state *state, double dx, double 
         }
     }
 
-    state->phase = before_triggered ? GESTURE_PHASE_BEFORE : GESTURE_PHASE_AFTER;
+    state->stage = before_triggered ? GESTURE_STAGE_BEFORE : GESTURE_STAGE_AFTER;
     state->handled = bindings_handle_gesture_binding(state);
     if (state->handled) {
         state->follow_dx = 0.0;
@@ -140,7 +140,7 @@ static void gesture_state_stop(struct gesture_state *state)
         return;
     }
 
-    state->phase = GESTURE_PHASE_STOP;
+    state->stage = GESTURE_STAGE_STOP;
     state->handled = bindings_handle_gesture_binding(state);
 }
 

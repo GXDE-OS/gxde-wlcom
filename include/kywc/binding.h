@@ -45,18 +45,18 @@ enum gesture_edge {
 };
 
 /**
- * 4 phases:
+ * 4 stages:
  * 1、before triggered
  * 2、trigger
  * 3、after triggered
  * 4、stop
  */
-enum gesture_phase {
-    GESTURE_PHASE_NONE = 0,
-    GESTURE_PHASE_BEFORE,
-    GESTURE_PHASE_TRIGGER,
-    GESTURE_PHASE_AFTER,
-    GESTURE_PHASE_STOP,
+enum gesture_stage {
+    GESTURE_STAGE_NONE = 0,
+    GESTURE_STAGE_BEFORE,
+    GESTURE_STAGE_TRIGGER,
+    GESTURE_STAGE_AFTER,
+    GESTURE_STAGE_STOP,
 };
 
 /* key binding type */
@@ -78,7 +78,7 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
                                                               const char *desc);
 
 struct gesture_binding *kywc_gesture_binding_create(enum gesture_type type,
-                                                    enum gesture_phase phase, uint32_t devices,
+                                                    enum gesture_stage stage, uint32_t devices,
                                                     uint32_t directions, uint32_t edges,
                                                     uint8_t fingers, uint32_t follow_direction,
                                                     double follow_threshold, const char *desc);

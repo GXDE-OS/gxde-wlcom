@@ -349,7 +349,7 @@ static struct shortcut {
 
 static struct gesture {
     enum gesture_type type;
-    enum gesture_phase phase;
+    enum gesture_stage stage;
     uint8_t fingers;
     uint32_t devices;
     uint32_t directions;
@@ -361,7 +361,7 @@ static struct gesture {
 } gestures[] = {
     {
         GESTURE_TYPE_SWIPE,
-        GESTURE_PHASE_TRIGGER,
+        GESTURE_STAGE_TRIGGER,
         3,
         GESTURE_DEVICE_TOUCHPAD,
         GESTURE_DIRECTION_UP,
@@ -373,7 +373,7 @@ static struct gesture {
     },
     {
         GESTURE_TYPE_SWIPE,
-        GESTURE_PHASE_TRIGGER,
+        GESTURE_STAGE_TRIGGER,
         3,
         GESTURE_DEVICE_TOUCHPAD,
         GESTURE_DIRECTION_DOWN,
@@ -456,7 +456,7 @@ bool view_manager_actions_create(struct view_manager *view_manager)
     for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
         struct gesture *gesture = &gestures[i];
         struct gesture_binding *binding = kywc_gesture_binding_create(
-            gesture->type, gesture->phase, gesture->devices, gesture->directions, gesture->edges,
+            gesture->type, gesture->stage, gesture->devices, gesture->directions, gesture->edges,
             gesture->fingers, gesture->follow_direction, gesture->follow_threshold, gesture->desc);
         if (!binding) {
             continue;
