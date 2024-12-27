@@ -664,6 +664,23 @@ void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool 
     }
 }
 
+void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, bool state,
+                                         bool toggle)
+{
+    struct xwayland_view *xwayland_view = surface->data;
+    if (!xwayland_view) {
+        return;
+    }
+
+    bool old_state = xwayland_view->view.base.demands_attention;
+    bool new_state = toggle ? !old_state : state;
+
+    if (old_state != new_state) {
+        xwayland_view->view.base.demands_attention = new_state;
+        wl_signal_emit_mutable(&xwayland_view->view.base.events.capabilities, NULL);
+    }
+}
+
 static void xwayland_view_fixup_position(struct xwayland_view *xwayland_view)
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;

@@ -53,6 +53,7 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_STATE_ABOVE] = "_NET_WM_STATE_ABOVE",
     [NET_WM_STATE_BELOW] = "_NET_WM_STATE_BELOW",
     [NET_WM_STATE_SKIP_TASKBAR] = "_NET_WM_STATE_SKIP_TASKBAR",
+    [NET_WM_STATE_DEMANDS_ATTENTION] = "_NET_WM_STATE_DEMANDS_ATTENTION",
     [KDE_NET_WM_STATE_SKIP_SWITCHER] = "_KDE_NET_WM_STATE_SKIP_SWITCHER",
 
     [NET_WM_ICON] = "_NET_WM_ICON",
@@ -60,7 +61,7 @@ static const char *const atom_map[ATOM_LAST] = {
 
     [UTF8_STRING] = "UTF8_STRING",
     [NET_WM_NAME] = "_NET_WM_NAME",
-    [NET_SUPPORTING_WM_CHECK] = "_NET_SUPPORTING_WM_CHECK"
+    [NET_SUPPORTING_WM_CHECK] = "_NET_SUPPORTING_WM_CHECK",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -385,6 +386,8 @@ int xwayland_read_wm_state(xcb_window_t window_id)
             xwayland_view_set_above_or_below(surface, false, true, false);
         } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
             xwayland_view_set_skip_taskbar(surface, true);
+        } else if (atoms[i] == xwayland->atoms[NET_WM_STATE_DEMANDS_ATTENTION]) {
+            xwayland_view_set_demands_attention(surface, true, false);
         } else if (atoms[i] == xwayland->atoms[KDE_NET_WM_STATE_SKIP_SWITCHER]) {
             xwayland_view_set_skip_switcher(surface, true);
         } else {
@@ -475,6 +478,9 @@ static int xwayland_handle_wm_state_message(xcb_client_message_event_t *client_m
             ret = 1;
         } else if (property == xwayland->atoms[NET_WM_STATE_BELOW]) {
             xwayland_view_set_above_or_below(surface, false, state, toggle);
+            ret = 1;
+        } else if (property == xwayland->atoms[NET_WM_STATE_DEMANDS_ATTENTION]) {
+            xwayland_view_set_demands_attention(surface, state, toggle);
             ret = 1;
         }
     }
