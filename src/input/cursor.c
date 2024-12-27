@@ -174,23 +174,15 @@ static void cursor_motion_absolute(struct cursor *cursor, uint32_t time,
     cursor_feed_motion(cursor, time, dev, dx, dy, dx, dy);
 }
 
-static void cursor_feed_fake_motion(struct cursor *cursor, bool leave)
+static void cursor_feed_fake_motion(struct cursor *cursor, bool need_frame)
 {
-    /* force leave current hover node, then re-hover it */
-    if (leave && cursor->hover.node) {
-        struct input_event_node *inode = input_event_node_from_node(cursor->hover.node);
-        if (inode && inode->impl->leave) {
-            inode->impl->leave(cursor->seat, cursor->hover.node, false, inode->data);
-        }
-    }
-
     /* skip motion when has grab */
     if (cursor->seat->pointer_grab && cursor->seat->pointer_grab->interface->motion) {
         return;
     }
 
     _cursor_feed_motion(cursor, current_time_msec());
-    if (leave) {
+    if (need_frame) {
         wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
     }
 }
