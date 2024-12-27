@@ -103,6 +103,7 @@ struct kywc_view {
     bool closeable, movable, resizable;
     bool activatable, focusable;
     bool skip_taskbar, skip_switcher;
+    bool demands_attention;
 
     const char *uuid;
     /* app_id: class when xwayland shell */

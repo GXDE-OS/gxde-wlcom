@@ -112,6 +112,7 @@ static void ukui_window_set_state(struct ukui_window *window, enum state_flag fl
     case STATE_FLAG_ON_ALL_DESKTOPS:
         break;
     case STATE_FLAG_DEMANDS_ATTENTION:
+        window->kywc_view->demands_attention = state;
         break;
     case STATE_FLAG_CLOSEABLE:
         window->kywc_view->closeable = state;
@@ -524,7 +525,7 @@ static void ukui_window_send_state(struct ukui_window *window, struct wl_resourc
     set_state(states, kywc_view->kept_above, KEEP_ABOVE);
     set_state(states, kywc_view->kept_below, KEEP_BELOW);
     // ukui_window_MANAGEMENT_STATE_ON_ALL_DESKTOPS
-    // ukui_window_MANAGEMENT_STATE_DEMANDS_ATTENTION
+    set_state(states, kywc_view->demands_attention, DEMANDS_ATTENTION);
     set_state(states, kywc_view->closeable, CLOSEABLE);
     set_state(states, kywc_view->minimizable, MINIMIZABLE);
     set_state(states, kywc_view->maximizable, MAXIMIZABLE);

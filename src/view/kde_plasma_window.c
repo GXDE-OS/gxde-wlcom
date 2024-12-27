@@ -104,6 +104,7 @@ static void kde_plasma_window_set_state(struct kde_plasma_window *window, enum s
     case STATE_FLAG_ON_ALL_DESKTOPS:
         break;
     case STATE_FLAG_DEMANDS_ATTENTION:
+        window->kywc_view->demands_attention = state;
         break;
     case STATE_FLAG_CLOSEABLE:
         window->kywc_view->closeable = state;
@@ -419,7 +420,7 @@ static void kde_plasma_window_send_state(struct kde_plasma_window *window,
     set_state(states, kywc_view->kept_above, KEEP_ABOVE);
     set_state(states, kywc_view->kept_below, KEEP_BELOW);
     // ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_ON_ALL_DESKTOPS
-    // ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_DEMANDS_ATTENTION
+    set_state(states, kywc_view->demands_attention, DEMANDS_ATTENTION);
     set_state(states, kywc_view->closeable, CLOSEABLE);
     set_state(states, kywc_view->minimizable, MINIMIZABLE);
     set_state(states, kywc_view->maximizable, MAXIMIZABLE);
