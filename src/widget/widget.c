@@ -127,12 +127,16 @@ static void widget_do_update(struct widget *widget)
         return;
     }
 
-    struct wlr_buffer *buffer = widget->content.buffer->buffer;
     /* draw it in scaled buffer update at the first time */
-    if (widget->scale == 0.0 || !buffer) {
-        widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+    if (widget->scale == 0.0) {
         widget_set_buffer(widget, NULL, false);
-        return;
+        if (widget->content.buffer->buffer) {
+            widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+            return;
+        }
+        // fallback to draw widget in 1.0
+        widget->scale = 1.0;
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_SCALE;
     }
 
     /* we need paint a new buffer if content and scale changed */
@@ -146,6 +150,11 @@ static void widget_do_update(struct widget *widget)
             widget_set_buffer(widget, buf, redraw_only);
         }
         widget->pending_cause = WIDGET_UPDATE_CAUSE_NONE;
+        return;
+    }
+
+    struct wlr_buffer *buffer = widget->content.buffer->buffer;
+    if (!buffer) {
         return;
     }
 
@@ -470,6 +479,10 @@ static void widget_destroy_buffer(struct ky_scene_buffer *buffer, void *data)
 static void widget_update_buffer(struct ky_scene_buffer *buffer, float scale, void *data)
 {
     struct widget *widget = data;
+    if (widget->scale == scale) {
+        return;
+    }
+
     widget->scale = scale;
 
     if (!widget->enabled) {
