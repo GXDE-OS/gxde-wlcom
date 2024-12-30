@@ -121,7 +121,7 @@ static void view_fix_geometry_position(struct view *view, struct kywc_box *geo,
     } else {
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
         double frac_x = (double)dst_box->width / src_box->width;
-        geo->x = ceil(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + kywc_view->margin.off_x;
+        geo->x = round(MAX(x - src_box->x, 0) * frac_x) + dst_box->x + kywc_view->margin.off_x;
     }
     if (src_box->y == y) {
         geo->y = dst_box->y + kywc_view->margin.off_y;
@@ -129,7 +129,7 @@ static void view_fix_geometry_position(struct view *view, struct kywc_box *geo,
         geo->y = dst_box->y + dst_box->height - h + kywc_view->margin.off_y;
     } else {
         double frac_y = (double)dst_box->height / src_box->height;
-        geo->y = ceil(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + kywc_view->margin.off_y;
+        geo->y = round(MAX(y - src_box->y, 0) * frac_y) + dst_box->y + kywc_view->margin.off_y;
     }
 #undef MAX
 }
