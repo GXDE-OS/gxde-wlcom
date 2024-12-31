@@ -216,10 +216,7 @@ static void xwayland_view_configure(struct view *view)
     /* direct move when not changed size */
     if (view->pending.action & VIEW_ACTION_MOVE) {
         view->pending.action &= ~VIEW_ACTION_MOVE;
-        struct kywc_box *current = &view->base.geometry;
-        struct kywc_box *configure = &view->pending.configure_geometry;
-        if (!view_action_change_size(view->pending.action) ||
-            (current->width == configure->width && current->height == configure->height)) {
+        if (!view_action_change_size(view->pending.configure_action)) {
             xwayland_view_move(xwayland_view, view->pending.geometry.x, view->pending.geometry.y);
         } else {
             kywc_log(KYWC_DEBUG, "skip move when pending configure action 0x%x",
