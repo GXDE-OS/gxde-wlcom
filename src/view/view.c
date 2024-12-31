@@ -1072,7 +1072,6 @@ static void view_set_activated(struct view *view, bool activated)
     }
 
     wl_signal_emit_mutable(&kywc_view->events.activate, NULL);
-    wl_signal_emit_mutable(&view_manager->events.activate_view, view_manager->activated.view);
 }
 
 static struct view *view_find_fullscreen_ancestor(struct view *view)
@@ -1108,6 +1107,7 @@ void view_do_activate(struct view *view)
         if (view) {
             view_set_activated(view, true);
         }
+        wl_signal_emit_mutable(&view_manager->events.activate_view, view_manager->activated.view);
     } else if (view) {
         struct view *ancestor = view_find_fullscreen_ancestor(view);
         if (!ancestor) {
@@ -1173,6 +1173,7 @@ void view_activate_topmost(void)
 
     /* workaround to hide fullscreen view when no view in workspace */
     view_hide_fullscreen_view_in_empty_workspace();
+    wl_signal_emit_mutable(&view_manager->events.activate_view, view_manager->activated.view);
 }
 
 void view_raise_to_top(struct view *view, bool find_parent)
