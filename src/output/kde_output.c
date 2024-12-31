@@ -963,10 +963,11 @@ static void kde_dpms_manager_get(struct wl_client *client, struct wl_resource *m
     wl_list_insert(&output_device->resources, wl_resource_get_link(resource));
 
     /* send current dpms state */
-    org_kde_kwin_dpms_send_supported(resource, true);
-    org_kde_kwin_dpms_send_mode(resource, output_device->kywc_output->state.power
-                                              ? ORG_KDE_KWIN_DPMS_MODE_ON
-                                              : ORG_KDE_KWIN_DPMS_MODE_OFF);
+    struct kywc_output *output = output_device->kywc_output;
+    org_kde_kwin_dpms_send_supported(resource,
+                                     output->prop.capabilities & KYWC_OUTPUT_CAPABILITY_POWER);
+    org_kde_kwin_dpms_send_mode(resource, output->state.power ? ORG_KDE_KWIN_DPMS_MODE_ON
+                                                              : ORG_KDE_KWIN_DPMS_MODE_OFF);
     org_kde_kwin_dpms_send_done(resource);
 }
 
