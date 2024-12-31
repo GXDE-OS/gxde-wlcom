@@ -175,10 +175,10 @@ static bool fbdev_query_screen_info(int fd, struct fbdev_screeninfo *info)
     return true;
 }
 
-static void fbdev_dpms_set(struct fbdev_output *output, enum dpms_mode mode)
+static bool fbdev_dpms_set(struct fbdev_output *output, enum dpms_mode mode)
 {
     if (!output->dpms_mode_support) {
-        return;
+        return false;
     }
 
     kywc_log(KYWC_DEBUG, "fbdev output dpms set");
@@ -188,16 +188,16 @@ RETRY:
     if (ioctl(output->fd, FBIOBLANK, (void *)fbmode) == -1) {
         kywc_log_errno(KYWC_ERROR, "FBIOBLANK");
         if (errno == EAGAIN) {
-            return;
+            return false;
         }
         if (errno == ERESTART || errno == EINTR) {
             goto RETRY;
         }
         output->dpms_mode_support = false;
-        return;
+        return false;
     }
 
-    output->dpms_mode_support = true;
+    return true;
 }
 
 static int fbdev_frame_buffer_open(const char *fb_dev, struct fbdev_screeninfo *screen_info)
@@ -335,7 +335,10 @@ static bool fbdev_output_disable(struct fbdev_output *output)
     }
 
     /* dpms off output */
-    fbdev_dpms_set(output, DPMS_MODE_OFF);
+    if (!fbdev_dpms_set(output, DPMS_MODE_OFF)) {
+        /* clear buffer */
+        memset(output->fb, 0x00, output->screen_info.buffer_length);
+    }
     /* Unmap frame_buffer*/
     fbdev_frame_buffer_unmap(output);
 
@@ -560,7 +563,7 @@ static bool fbdev_output_commit(struct wlr_output *wlr_output, const struct wlr_
         if (pending.base->enabled && !wlr_output->enabled) {
             fbdev_output_enable(output);
         } else if (!pending.base->enabled && wlr_output->enabled) {
-            fbdev_output_disable(output);
+            return fbdev_output_disable(output);
         }
     }
 

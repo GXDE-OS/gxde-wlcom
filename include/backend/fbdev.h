@@ -13,6 +13,6 @@ struct wlr_backend *fbdev_backend_create(struct wl_display *display, struct wlr_
 
 bool wlr_backend_is_fbdev(struct wlr_backend *backend);
 
-bool wlr_output_is_fbdev(struct wlr_output *output);
+bool wlr_output_is_fbdev(struct wlr_output *wlr_output);
 
 #endif /* _BACKEND_FBDEV_H_ */
