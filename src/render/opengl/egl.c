@@ -565,7 +565,7 @@ static bool egl_init(struct ky_egl *egl, EGLenum platform, void *remote_display)
     }
 
     display_attribs[display_attribs_len++] = EGL_NONE;
-    assert(display_attribs_len < sizeof(display_attribs) / sizeof(display_attribs[0]));
+    assert(display_attribs_len <= sizeof(display_attribs) / sizeof(display_attribs[0]));
 
     EGLDisplay display = eglGetPlatformDisplayEXT(platform, remote_display, display_attribs);
     if (display == EGL_NO_DISPLAY) {
@@ -955,7 +955,7 @@ EGLImageKHR ky_egl_create_image_from_dmabuf(struct ky_egl *egl,
     attribs[atti++] = EGL_TRUE;
 
     attribs[atti++] = EGL_NONE;
-    assert(atti < sizeof(attribs) / sizeof(attribs[0]));
+    assert(atti <= sizeof(attribs) / sizeof(attribs[0]));
 
     EGLImageKHR image =
         eglCreateImageKHR(egl->display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
