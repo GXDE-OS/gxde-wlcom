@@ -1520,6 +1520,19 @@ bool view_has_modal_property(struct view *view)
     return view->base.modal || view_has_modal_child(view);
 }
 
+struct view *view_find_descendant_modal(struct view *view)
+{
+    struct view *child;
+    wl_list_for_each(child, &view->children, parent_link) {
+        if (!child->base.modal) {
+            continue;
+        }
+        return view_find_descendant_modal(child);
+    }
+
+    return view->base.modal ? view : NULL;
+}
+
 bool view_is_minimizable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
@@ -1632,9 +1645,6 @@ bool view_is_activatable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
     if (!kywc_view->activatable) {
-        return false;
-    }
-    if (view_has_modal_child(view)) {
         return false;
     }
 

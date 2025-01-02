@@ -160,7 +160,8 @@ static void stack_mode_view_activate(struct view *view)
         return;
     }
 
-    view_do_activate(view);
+    struct view *descendant = view_find_descendant_modal(view);
+    view_do_activate(descendant ? descendant : view);
     view_raise_to_top(view, true);
 }
 

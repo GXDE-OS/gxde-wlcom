@@ -24,19 +24,6 @@ struct modal {
     struct wl_listener parent_size;
 };
 
-static struct modal *modal_find_top_modal(struct modal *modal)
-{
-    struct view *child;
-    wl_list_for_each(child, &modal->view->children, parent_link) {
-        if (!child->modal) {
-            continue;
-        }
-        return modal_find_top_modal(child->modal);
-    }
-
-    return modal;
-}
-
 static bool modal_hover(struct seat *seat, struct ky_scene_node *node, double x, double y,
                         uint32_t time, bool first, bool hold, void *data)
 {
@@ -54,7 +41,8 @@ static void modal_click(struct seat *seat, struct ky_scene_node *node, uint32_t 
 
     struct modal *modal = data;
 
-    modal = modal_find_top_modal(modal);
+    struct view *descendant = view_find_descendant_modal(modal->view);
+    modal = descendant ? descendant->modal : modal;
     /* active current view */
     kywc_view_activate(&modal->view->base);
     view_add_shake_effect(modal->view);

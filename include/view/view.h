@@ -256,6 +256,8 @@ void view_update_size(struct view *view, int width, int height, int min_width, i
 
 bool view_has_modal_property(struct view *view);
 
+struct view *view_find_descendant_modal(struct view *view);
+
 bool view_is_minimizable(struct view *view);
 
 bool view_is_maximizable(struct view *view);
