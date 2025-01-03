@@ -503,7 +503,7 @@ static void handle_activate(struct wl_client *client, struct wl_resource *resour
     if (surface->wlr_surface && surface->view && surface->wlr_surface->mapped) {
         /* activation request */
         kywc_view_activate(&surface->view->base);
-        seat_focus_surface(input_manager_get_default_seat(), surface->view->surface);
+        view_set_focus(surface->view, input_manager_get_default_seat());
         return;
     }
 }

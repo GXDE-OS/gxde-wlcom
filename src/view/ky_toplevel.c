@@ -162,8 +162,7 @@ static void toplevel_handle_activate(struct wl_client *client, struct wl_resourc
     }
 
     kywc_view_activate(toplevel->view);
-    seat_focus_surface(input_manager_get_default_seat(),
-                       view_from_kywc_view(toplevel->view)->surface);
+    view_set_focus(view_from_kywc_view(toplevel->view), input_manager_get_default_seat());
 }
 
 static void toplevel_handle_close(struct wl_client *client, struct wl_resource *resource)

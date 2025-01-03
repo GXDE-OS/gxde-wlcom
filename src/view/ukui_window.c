@@ -91,8 +91,7 @@ static void ukui_window_set_state(struct ukui_window *window, enum state_flag fl
     case STATE_FLAG_ACTIVE:
         assert(state);
         kywc_view_activate(window->kywc_view);
-        seat_focus_surface(input_manager_get_default_seat(),
-                           view_from_kywc_view(window->kywc_view)->surface);
+        view_set_focus(view_from_kywc_view(window->kywc_view), input_manager_get_default_seat());
         break;
     case STATE_FLAG_MINIMIZED:
         kywc_view_set_minimized(window->kywc_view, state);

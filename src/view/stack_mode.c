@@ -180,7 +180,7 @@ static void stack_mode_view_click(struct seat *seat, struct view *view, uint32_t
 
     /* active current view */
     kywc_view_activate(kywc_view);
-    seat_focus_surface(seat, view->surface);
+    view_set_focus(view, seat);
 }
 
 static void stack_mode_enter(void)

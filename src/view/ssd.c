@@ -481,7 +481,7 @@ static void ssd_click(struct seat *seat, struct ky_scene_node *node, uint32_t bu
 
     /* active current view */
     kywc_view_activate(kywc_view);
-    seat_focus_surface(seat, view->surface);
+    view_set_focus(view, seat);
 
     if (CLICK_STATE_DOUBLE == state) {
         if (button != BTN_LEFT) {

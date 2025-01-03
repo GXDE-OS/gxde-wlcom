@@ -245,8 +245,7 @@ static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t
 
         if (switcher->active->kywc_view) {
             kywc_view_activate(switcher->active->kywc_view);
-            struct view *view = view_from_kywc_view(switcher->active->kywc_view);
-            seat_focus_surface(keyboard_grab->seat, view->surface);
+            view_set_focus(view_from_kywc_view(switcher->active->kywc_view), keyboard_grab->seat);
         }
 
         maximize_switcher_set_enable(false);

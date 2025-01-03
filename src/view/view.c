@@ -407,7 +407,7 @@ void view_map(struct view *view)
 
     kywc_view->has_initial_position = false;
     kywc_view_activate(kywc_view);
-    seat_focus_surface(kywc_view->focused_seat, view->surface);
+    view_set_focus(view, kywc_view->focused_seat);
 
     view_update_round_corner(view);
     modal_create(view);
@@ -1155,7 +1155,7 @@ void view_activate_topmost(void)
     struct view *view = view_manager_get_global_authentication();
     if (view) {
         view_do_activate(view);
-        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        view_set_focus(view, input_manager_get_default_seat());
         return;
     }
 
@@ -1168,7 +1168,7 @@ void view_activate_topmost(void)
             continue;
         }
         view_do_activate(view);
-        seat_focus_surface(input_manager_get_default_seat(), view->surface);
+        view_set_focus(view, input_manager_get_default_seat());
         return;
     }
 
@@ -1217,6 +1217,19 @@ void kywc_view_activate(struct kywc_view *kywc_view)
     if (view_manager->mode->impl->view_request_activate) {
         view_manager->mode->impl->view_request_activate(view);
     }
+}
+
+void view_set_focus(struct view *view, struct seat *seat)
+{
+    if (!view || !seat) {
+        return;
+    }
+
+    if (!view_is_focusable(view)) {
+        return;
+    }
+
+    seat_focus_surface(seat, view->surface);
 }
 
 void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *kywc_output)

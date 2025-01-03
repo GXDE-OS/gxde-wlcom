@@ -131,8 +131,7 @@ static void handle_request_activate(struct wl_listener *listener, void *data)
     if (event->surface->mapped) {
         /* activation request */
         kywc_view_activate(&view->base);
-        seat_focus_surface(token->seat ? token->seat : input_manager_get_default_seat(),
-                           view->surface);
+        view_set_focus(view, token->seat ? token->seat : input_manager_get_default_seat());
         return;
     }
 

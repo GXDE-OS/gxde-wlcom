@@ -62,7 +62,7 @@ static void handle_request_activate(struct wl_listener *listener, void *data)
     struct kywc_view *view = foreign->toplevel_view;
 
     kywc_view_activate(view);
-    seat_focus_surface(seat_from_wlr_seat(event->seat), view_from_kywc_view(view)->surface);
+    view_set_focus(view_from_kywc_view(view), seat_from_wlr_seat(event->seat));
 }
 
 static void handle_request_fullscreen(struct wl_listener *listener, void *data)

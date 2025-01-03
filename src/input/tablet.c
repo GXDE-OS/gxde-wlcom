@@ -533,10 +533,12 @@ bool tablet_handle_tool_tip(struct wlr_tablet_tool_tip_event *event)
 
     /* activate and focus the toplevel surface */
     if (toplevel) {
-        seat_focus_surface(tablet_tool->tablet->input->seat, toplevel);
         struct view *view = view_try_from_wlr_surface(toplevel);
         if (view) {
             kywc_view_activate(&view->base);
+            view_set_focus(view, tablet_tool->tablet->input->seat);
+        } else {
+            seat_focus_surface(tablet_tool->tablet->input->seat, toplevel);
         }
     }
 

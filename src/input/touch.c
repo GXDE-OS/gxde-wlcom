@@ -507,10 +507,12 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
 
     /* activate and focus the toplevel surface */
     if (toplevel) {
-        seat_focus_surface(seat, toplevel);
         struct view *view = view_try_from_wlr_surface(toplevel);
         if (view) {
             kywc_view_activate(&view->base);
+            view_set_focus(view, seat);
+        } else {
+            seat_focus_surface(seat, toplevel);
         }
     }
 

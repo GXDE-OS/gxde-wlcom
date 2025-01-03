@@ -424,7 +424,7 @@ static void xwayland_view_handle_request_activate(struct wl_listener *listener, 
 
     struct wlr_seat *wlr_seat = xwayland_view->xwayland->wlr_xwayland->seat;
     struct seat *seat = wlr_seat ? seat_from_wlr_seat(wlr_seat) : input_manager_get_default_seat();
-    seat_focus_surface(seat, xwayland_view->wlr_xwayland_surface->surface);
+    view_set_focus(&xwayland_view->view, seat);
 }
 
 static void xwayland_view_handle_set_title(struct wl_listener *listener, void *data)

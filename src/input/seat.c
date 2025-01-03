@@ -18,7 +18,6 @@
 #include "input_p.h"
 #include "server.h"
 #include "util/time.h"
-#include "view/view.h"
 #include "xwayland.h"
 
 static void handle_server_start(struct wl_listener *listener, void *data)
@@ -374,11 +373,6 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
 
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
-    struct view *view = surface ? view_try_from_wlr_surface(surface) : NULL;
-    if (view && !view_is_focusable(view)) {
-        return;
-    }
-
     struct wlr_seat *wlr_seat = seat->wlr_seat;
     struct wlr_surface *last_surface = wlr_seat->keyboard_state.focused_surface;
     if (last_surface != surface) {

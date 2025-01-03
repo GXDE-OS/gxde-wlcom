@@ -789,7 +789,7 @@ static void interactive_tile_update(struct interactive_grab *grab, struct output
     if (grab->view->base.minimized) {
         /* kywc_view_activate will call the minimize restore interface. */
         kywc_view_activate(&grab->view->base);
-        seat_focus_surface(grab->view->base.focused_seat, grab->view->surface);
+        view_set_focus(grab->view, grab->view->base.focused_seat);
         return;
     }
 
