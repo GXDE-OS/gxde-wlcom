@@ -1225,6 +1225,11 @@ void view_set_focus(struct view *view, struct seat *seat)
         return;
     }
 
+    struct view *descendant = view_find_descendant_modal(view);
+    if (descendant) {
+        view = descendant;
+    }
+
     if (!view_is_focusable(view)) {
         return;
     }
@@ -1668,9 +1673,6 @@ bool view_is_focusable(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
     if (!kywc_view->focusable) {
-        return false;
-    }
-    if (view_has_modal_child(view)) {
         return false;
     }
 
