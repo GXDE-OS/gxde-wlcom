@@ -535,6 +535,12 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
         break;
     }
 
+    // correct x position when x too large
+    if (entry->spout_location == SPOUT_LOCATION_TOP ||
+        entry->spout_location == SPOUT_LOCATION_BOTTOM) {
+        spout_x += (spout_x - (window_x + entry->window_width * 0.5f)) * 0.04f;
+    }
+
     // calculate progress. modify quad vertex
     calculate_progress(subquads, subdiv_count, entry->progress, entry->spout_location, spout_x,
                        spout_y, entry->spout_width, entry->spout_height, window_x, window_y,
@@ -571,8 +577,6 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
     free(subquads);
 
     // render
-    GLfloat *verts = (GLfloat *)vertices;
-
     struct ky_mat3 logic2ndc;
     ky_mat3_logic_to_ndc(&logic2ndc, target->logical.width, target->logical.height,
                          target->transform);
@@ -581,10 +585,11 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
 
     glUseProgram(gl_shader.program);
     glEnableVertexAttribArray(gl_shader.in_position);
-    glVertexAttribPointer(gl_shader.in_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), verts);
+    glVertexAttribPointer(gl_shader.in_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                          vertices);
     glEnableVertexAttribArray(gl_shader.in_texcoord);
     glVertexAttribPointer(gl_shader.in_texcoord, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          verts + 2);
+                          (char *)vertices + 2 * sizeof(float));
     glUniformMatrix3fv(gl_shader.logic2ndc, 1, GL_FALSE, logic2ndc.matrix);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, ky_tex->tex);
