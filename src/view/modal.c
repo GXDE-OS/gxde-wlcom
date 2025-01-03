@@ -45,6 +45,8 @@ static void modal_click(struct seat *seat, struct ky_scene_node *node, uint32_t 
     modal = descendant ? descendant->modal : modal;
     /* active current view */
     kywc_view_activate(&modal->view->base);
+    view_set_focus(modal->view, seat);
+
     view_add_shake_effect(modal->view);
 }
 
