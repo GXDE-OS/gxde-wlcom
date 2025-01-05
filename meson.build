@@ -131,6 +131,8 @@ have_ukui_window_management = get_option('ukui_window_management')
 have_ukui_output = get_option('ukui_output')
 have_ukui_blur = get_option('ukui_blur')
 have_ukui_view_mode = get_option('ukui_view_mode')
+extra_icon_path = get_option('extra_icon_path')
+extra_apps_path = get_option('extra_apps_path')
 
 add_project_arguments([
   '-DHAVE_LIBUNWIND=@0@'.format(unwind.found().to_int()),
@@ -156,6 +158,8 @@ add_project_arguments([
   '-DHAVE_UKUI_OUTPUT=@0@'.format(have_ukui_output.to_int()),
   '-DHAVE_UKUI_BLUR=@0@'.format(have_ukui_blur.to_int()),
   '-DHAVE_UKUI_VIEW_MODE=@0@'.format(have_ukui_view_mode.to_int()),
+  '-DEXTRA_ICON_PATH="@0@"'.format(extra_icon_path),
+  '-DEXTRA_APPS_PATH="@0@"'.format(extra_apps_path),
 ], language: 'c')
 
 msgfmt = find_program('msgfmt', required: get_option('nls'))
@@ -218,6 +222,8 @@ summary({
   'ukui_output': have_ukui_output,
   'ukui_blur': have_ukui_blur,
   'ukui_view_mode': have_ukui_view_mode,
+  'extra_icon_path': extra_icon_path,
+  'extra_apps_path': extra_apps_path,
   },
   section: 'Configuration', bool_yn: true)
 

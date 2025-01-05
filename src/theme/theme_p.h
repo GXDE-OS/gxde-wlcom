@@ -7,10 +7,10 @@
 
 #include "theme.h"
 
-#define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons"
+#define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons:" EXTRA_ICON_PATH
 #define APPPATH                                                                                    \
     "~/.local/share/applications:/usr/local/share/applications:/usr/share/applications:/etc/xdg/"  \
-    "autostart"
+    "autostart:" EXTRA_APPS_PATH
 #define PIXMAPPATH "/usr/share/pixmaps"
 
 #define DEFAULT_ICON_THEME_NAME "hicolor"

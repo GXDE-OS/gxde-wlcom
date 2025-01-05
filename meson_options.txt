@@ -150,14 +150,28 @@ option('ukui_output',
 
 option('ukui_blur',
        type: 'boolean',
-       value: true, description: 'Enable ukui blur protocol support')
+       value: true,
+       description: 'Enable ukui blur protocol support'
+)
 
 option('tracy',
        type: 'boolean',
-       value: false, description: 'Enable tracy profiler')
+       value: false,
+       description: 'Enable tracy profiler'
+)
 
 option('ukui_view_mode',
        type: 'boolean',
        value: true,
        description: 'Enable ukui view mode dbus support'
+)
+
+option('extra_icon_path',
+       type: 'string',
+       description: 'Add extra icon path'
+)
+
+option('extra_apps_path',
+       type: 'string',
+       description: 'Add extra apps path'
 )
