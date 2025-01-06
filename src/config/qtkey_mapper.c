@@ -493,6 +493,7 @@ enum QtKey {
     Key_Find = 0x01000122,
     Key_Undo = 0x01000123,
     Key_Redo = 0x01000124,
+    Key_RFKill = 0x01000125,
 
     Key_MediaLast = 0x0100ffff,
 
@@ -843,6 +844,7 @@ static struct Xkb2Qt {
     { XKB_KEY_XF86TouchpadOn, Key_TouchpadOn },
     { XKB_KEY_XF86TouchpadOff, Key_TouchpadOff },
     { XKB_KEY_XF86AudioMicMute, Key_MicMute },
+    { XKB_KEY_XF86RFKill, Key_RFKill },
     { XKB_KEY_XF86Launch0, Key_Launch2 }, // ### Qt 6: remap properly
     { XKB_KEY_XF86Launch1, Key_Launch3 },
     { XKB_KEY_XF86Launch2, Key_Launch4 },
