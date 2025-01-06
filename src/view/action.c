@@ -25,26 +25,39 @@ static struct window_shortcut {
     char *keybind;
     char *desc;
     enum window_action action;
+    enum key_binding_type type;
 } window_shortcuts[] = {
-    { "Alt+F10", "window maximized", WINDOW_ACTION_MAXIMIZE },
-    { "Alt+F9", "window minimized", WINDOW_ACTION_MINIMIZE },
-    { "Alt+F4", "window closed", WINDOW_ACTION_CLOSE },
-    { "Alt+F3", "window menu", WINDOW_ACTION_MENU },
-    { "win+up", "window tile up", WINDOW_ACTION_TILE_TOP },
-    { "win+down", "window tile down", WINDOW_ACTION_TILE_BOTTOM },
-    { "win+left", "window tile left", WINDOW_ACTION_TILE_LEFT },
-    { "win+right", "window tile right", WINDOW_ACTION_TILE_RIGHT },
-    { "win+alt+up", "window tiled to top half screen", WINDOW_ACTION_TILE_TOP_HALF_SCREEN },
-    { "win+alt+down", "window tiled to bottom half screen", WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN },
-    { "win+alt+left", "window tiled to left half screen", WINDOW_ACTION_TILE_LEFT_HALF_SCREEN },
-    { "win+alt+right", "window tiled to right half screen", WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN },
-    { "win+shift+left", "window send to prev output", WINDOW_ACTION_SEND_LEFT_OUTPUT },
-    { "win+shift+right", "window send to next output", WINDOW_ACTION_SEND_RIGHT_OUTPUT },
+    { "Alt+F10", "window maximized", WINDOW_ACTION_MAXIMIZE,
+      KEY_BINDING_TYPE_WINDOW_ACTION_MAXIMIZE },
+    { "Alt+F9", "window minimized", WINDOW_ACTION_MINIMIZE,
+      KEY_BINDING_TYPE_WINDOW_ACTION_MINIMIZE },
+    { "Alt+F4", "window closed", WINDOW_ACTION_CLOSE, KEY_BINDING_TYPE_WINDOW_ACTION_CLOSE },
+    { "Alt+F3", "window menu", WINDOW_ACTION_MENU, KEY_BINDING_TYPE_WINDOW_ACTION_MENU },
+    { "win+up", "window tile up", WINDOW_ACTION_TILE_TOP, KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+down", "window tile down", WINDOW_ACTION_TILE_BOTTOM,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+left", "window tile left", WINDOW_ACTION_TILE_LEFT,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+right", "window tile right", WINDOW_ACTION_TILE_RIGHT,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+alt+up", "window tiled to top half screen", WINDOW_ACTION_TILE_TOP_HALF_SCREEN,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+alt+down", "window tiled to bottom half screen", WINDOW_ACTION_TILE_BOTTOM_HALF_SCREEN,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+alt+left", "window tiled to left half screen", WINDOW_ACTION_TILE_LEFT_HALF_SCREEN,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+alt+right", "window tiled to right half screen", WINDOW_ACTION_TILE_RIGHT_HALF_SCREEN,
+      KEY_BINDING_TYPE_WINDOW_ACTION_TILED },
+    { "win+shift+left", "window send to prev output", WINDOW_ACTION_SEND_LEFT_OUTPUT,
+      KEY_BINDING_TYPE_WINDOW_ACTION_OUTPUT },
+    { "win+shift+right", "window send to next output", WINDOW_ACTION_SEND_RIGHT_OUTPUT,
+      KEY_BINDING_TYPE_WINDOW_ACTION_OUTPUT },
     { "ctrl+shift+left", "window send to prev output and maximize",
-      WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE },
+      WINDOW_ACTION_SEND_LEFT_OUTPUT_MAXIMIZE, KEY_BINDING_TYPE_WINDOW_ACTION_SEND },
     { "ctrl+shift+right", "window send to next output and maximize",
-      WINDOW_ACTION_SEND_RIGHT_OUTPUT_MAXIMIZE },
-    { "ctrl+print", "window capture", WINDOW_ACTION_CAPTURE },
+      WINDOW_ACTION_SEND_RIGHT_OUTPUT_MAXIMIZE, KEY_BINDING_TYPE_WINDOW_ACTION_SEND },
+    { "ctrl+print", "window capture", WINDOW_ACTION_CAPTURE,
+      KEY_BINDING_TYPE_WINDOW_ACTION_CAPTURE },
 };
 
 #define MIRROR_BUFFER_DEBUG 0
@@ -317,8 +330,7 @@ bool window_actions_create(struct view_manager *view_manager)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_WINDOW_ACTION, view_shortcuts,
-                                       shortcut)) {
+        if (!kywc_key_binding_register(binding, shortcut->type, view_shortcuts, shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }
@@ -339,13 +351,16 @@ static struct shortcut {
     char *keybind;
     char *desc;
     uint32_t action;
+    enum key_binding_type type;
 } shortcuts[] = {
-    { "win+d:no", "toggle show desktop", TOGGLE_SHOW_DESKTOP },
-    { "win+h", "show desktop", SHOW_DESKTOP },
-    { "win+g", "restore desktop", RESTORE_DESKTOP },
-    { "win+m", "minimize all views", MINIMIZE_ALL_VIEWS },
-    { "win+shift+m", "restore all views", RESTORE_ALL_VIEWS },
-    { "win+home", "toggle show active window only", TOGGLE_SHOW_ACTIVE_ONLY },
+    { "win+d:no", "toggle show desktop", TOGGLE_SHOW_DESKTOP,
+      KEY_BINDING_TYPE_TOGGLE_SHOW_DESKTOP },
+    { "win+h", "show desktop", SHOW_DESKTOP, KEY_BINDING_TYPE_SHOW_DESKTOP },
+    { "win+g", "restore desktop", RESTORE_DESKTOP, KEY_BINDING_TYPE_RESTORE_DESKTOP },
+    { "win+m", "minimize all views", MINIMIZE_ALL_VIEWS, KEY_BINDING_TYPE_TOGGLE_SHOW_VIEWS },
+    { "win+shift+m", "restore all views", RESTORE_ALL_VIEWS, KEY_BINDING_TYPE_TOGGLE_SHOW_VIEWS },
+    { "win+home", "toggle show active window only", TOGGLE_SHOW_ACTIVE_ONLY,
+      KEY_BINDING_TYPE_TOGGLE_SHOW_WINDOWS },
 };
 
 static struct gesture {
@@ -447,8 +462,7 @@ bool view_manager_actions_create(struct view_manager *view_manager)
             continue;
         }
 
-        if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_CTRL_VIEWS, shortcuts_action,
-                                       shortcut)) {
+        if (!kywc_key_binding_register(binding, shortcut->type, shortcuts_action, shortcut)) {
             kywc_key_binding_destroy(binding);
             continue;
         }
