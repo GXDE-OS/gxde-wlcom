@@ -636,6 +636,7 @@ bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
 
         if ((gesture_state->device & binding->devices) &&
             (binding->directions == GESTURE_DIRECTION_NONE ||
+             binding->stage == GESTURE_STAGE_BEFORE ||
              gesture_state->directions & binding->directions) &&
             (binding->edges == GESTURE_EDGE_NONE || gesture_state->edge & binding->edges)) {
             kywc_log(KYWC_DEBUG, "start gesture binding: %s", binding->desc);
