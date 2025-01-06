@@ -80,10 +80,7 @@ static uint32_t qtkey_to_keysym(int32_t key)
     if (key & KeypadModifier && qtKey >= Key_0 && qtKey <= Key_9) {
         sym = XKB_KEY_KP_0 + qtKey - Key_0;
     } else if (qtKey < 0x1000 && !(key & KeypadModifier)) {
-        if (!(key & ShiftModifier)) {
-            qtKey = tolower(qtKey);
-        }
-        sym = qtKey;
+        sym = tolower(qtKey);
     }
 
     /* bsearch the key_map_table */
