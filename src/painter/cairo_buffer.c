@@ -105,31 +105,11 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
     return buffer;
 }
 
-struct cairo_buffer *cairo_buffer_create_from_jpeg(uint32_t width, uint32_t height,
-                                                   const char *jpeg_path)
+struct cairo_buffer *cairo_buffer_create_from_file(uint32_t width, uint32_t height,
+                                                   const char *path)
 {
     uint32_t src_width, src_height;
-    uint8_t *src_data = decode_jpeg(jpeg_path, &src_width, &src_height);
-    if (!src_data) {
-        return NULL;
-    }
-
-    struct cairo_buffer *buffer =
-        cairo_buffer_create_from_pixel(width, height, src_width, src_height, src_data);
-    if (buffer) {
-        buffer->own_data = true;
-    } else {
-        free(src_data);
-    }
-
-    return buffer;
-}
-
-struct cairo_buffer *cairo_buffer_create_from_png(uint32_t width, uint32_t height,
-                                                  const char *png_path)
-{
-    uint32_t src_width, src_height;
-    uint8_t *src_data = decode_png(png_path, &src_width, &src_height);
+    uint8_t *src_data = image_decode_file(path, &src_width, &src_height);
     if (!src_data) {
         return NULL;
     }

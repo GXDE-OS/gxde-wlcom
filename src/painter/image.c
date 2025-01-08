@@ -55,14 +55,8 @@ bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct
     return ok;
 }
 
-static uint8_t *do_decode_jpeg(void *data, size_t size, uint32_t *width, uint32_t *height)
+static uint8_t *do_decode_jpeg(const uint8_t *data, size_t size, uint32_t *width, uint32_t *height)
 {
-    // check signature
-    const uint8_t signature[] = { 0xff, 0xd8 };
-    if (size <= sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
-        return NULL;
-    }
-
     struct jpeg_decompress_struct jpg;
     struct jpeg_error_mgr err;
     jpg.err = jpeg_std_error(&err);
@@ -75,7 +69,7 @@ static uint8_t *do_decode_jpeg(void *data, size_t size, uint32_t *width, uint32_
     jpg.out_color_space = JCS_EXT_BGRA;
 #endif // LIBJPEG_TURBO_VERSION
 
-    uint32_t *buffer = calloc(jpg.output_width * jpg.output_height, 4);
+    uint32_t *buffer = malloc(jpg.output_width * jpg.output_height * 4);
     if (!buffer) {
         jpeg_destroy_decompress(&jpg);
         return NULL;
@@ -116,33 +110,6 @@ static uint8_t *do_decode_jpeg(void *data, size_t size, uint32_t *width, uint32_
     return (uint8_t *)buffer;
 }
 
-uint8_t *decode_jpeg(const char *file, uint32_t *width, uint32_t *height)
-{
-    int fd = open(file, O_RDONLY);
-    if (fd == -1) {
-        return NULL;
-    }
-
-    struct stat st;
-    if (fstat(fd, &st) == -1) {
-        close(fd);
-        return NULL;
-    }
-
-    void *data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (data == MAP_FAILED) {
-        close(fd);
-        return NULL;
-    }
-
-    uint8_t *buffer = do_decode_jpeg(data, st.st_size, width, height);
-
-    munmap(data, st.st_size);
-    close(fd);
-
-    return buffer;
-}
-
 // PNG memory reader
 struct mem_reader {
     const uint8_t *data;
@@ -161,13 +128,8 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
     }
 }
 
-static uint8_t *do_decode_png(void *data, size_t size, uint32_t *width, uint32_t *height)
+static uint8_t *do_decode_png(const uint8_t *data, size_t size, uint32_t *width, uint32_t *height)
 {
-    // check signature
-    if (png_sig_cmp(data, 0, size) != 0) {
-        return NULL;
-    }
-
     png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
         return NULL;
@@ -245,7 +207,7 @@ static uint8_t *do_decode_png(void *data, size_t size, uint32_t *width, uint32_t
     return buffer;
 }
 
-uint8_t *decode_png(const char *file, uint32_t *width, uint32_t *height)
+uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height)
 {
     int fd = open(file, O_RDONLY);
     if (fd == -1) {
@@ -264,7 +226,23 @@ uint8_t *decode_png(const char *file, uint32_t *width, uint32_t *height)
         return NULL;
     }
 
-    uint8_t *buffer = do_decode_png(data, st.st_size, width, height);
+    if (st.st_size <= 8) {
+        munmap(data, st.st_size);
+        close(fd);
+        return NULL;
+    }
+
+    uint8_t *header = data;
+    uint8_t *buffer = NULL;
+
+    if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+        header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A) {
+        buffer = do_decode_png(data, st.st_size, width, height);
+    } else if (header[0] == 0xFF && header[1] == 0xD8) {
+        buffer = do_decode_jpeg(data, st.st_size, width, height);
+    } else {
+        kywc_log(KYWC_WARN, "%s: unsupported image format", file);
+    }
 
     munmap(data, st.st_size);
     close(fd);

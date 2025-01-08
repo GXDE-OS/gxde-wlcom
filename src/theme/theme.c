@@ -646,8 +646,6 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
         .width = theme->icon_size,
         .height = theme->icon_size,
         .scale = scale,
-        .svg = NULL,
-        .png_path = NULL,
     };
 
     if (icon->svg) {
@@ -668,7 +666,7 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
             }
         }
         if (icon_png_similar) {
-            info.png_path = icon_png_similar->path;
+            info.image = icon_png_similar->path;
         }
     }
 

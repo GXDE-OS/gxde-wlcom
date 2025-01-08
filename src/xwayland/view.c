@@ -272,8 +272,6 @@ static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, fl
         .width = theme->icon_size,
         .height = theme->icon_size,
         .scale = scale,
-        .svg = NULL,
-        .png_path = NULL,
     };
 
     float scale_width = info.width * info.scale;

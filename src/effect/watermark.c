@@ -81,9 +81,7 @@ static struct watermark_buffer *watermark_get_or_create_buffer(struct watermark_
         return NULL;
     }
 
-    struct draw_info info = {
-        .png_path = effect->info.file,
-    };
+    struct draw_info info = { .image = effect->info.file };
     buffer->buffer = painter_draw_buffer(&info);
     if (!buffer->buffer) {
         free(buffer);
