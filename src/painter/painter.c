@@ -248,7 +248,7 @@ struct wlr_buffer *painter_draw_buffer(struct draw_info *info)
 
     struct cairo_buffer *buffer = NULL;
     if (info->image) {
-        buffer = cairo_buffer_create_from_file(info->width, info->height, info->image);
+        buffer = cairo_buffer_create_from_file(info->width, info->height, info->scale, info->image);
     } else if (info->pixel.data) {
         buffer = cairo_buffer_create_from_pixel(info->width, info->height, info->pixel.width,
                                                 info->pixel.height, info->pixel.data);

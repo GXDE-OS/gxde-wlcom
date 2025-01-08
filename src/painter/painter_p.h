@@ -34,7 +34,7 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
                                                     uint32_t src_width, uint32_t src_height,
                                                     unsigned char *src_data);
 
-struct cairo_buffer *cairo_buffer_create_from_file(uint32_t width, uint32_t height,
+struct cairo_buffer *cairo_buffer_create_from_file(uint32_t width, uint32_t height, float scale,
                                                    const char *path);
 
 uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height);

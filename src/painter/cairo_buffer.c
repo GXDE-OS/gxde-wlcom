@@ -105,10 +105,12 @@ struct cairo_buffer *cairo_buffer_create_from_pixel(uint32_t width, uint32_t hei
     return buffer;
 }
 
-struct cairo_buffer *cairo_buffer_create_from_file(uint32_t width, uint32_t height,
+struct cairo_buffer *cairo_buffer_create_from_file(uint32_t width, uint32_t height, float scale,
                                                    const char *path)
 {
-    uint32_t src_width, src_height;
+    uint32_t src_width = ceil(width * scale);
+    uint32_t src_height = ceil(height * scale);
+
     uint8_t *src_data = image_decode_file(path, &src_width, &src_height);
     if (!src_data) {
         return NULL;
