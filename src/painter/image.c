@@ -9,8 +9,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <jpeglib.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wexpansion-to-defined"
 #include <librsvg/rsvg.h>
+#pragma GCC diagnostic pop
+
+#include <jpeglib.h>
 #include <png.h>
 
 #include "painter_p.h"
