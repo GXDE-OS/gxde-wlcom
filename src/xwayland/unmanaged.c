@@ -282,6 +282,12 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
     if (unmanaged->surface_node) {
         ky_scene_node_set_enabled(unmanaged->surface_node, false);
     }
+
+    struct wlr_surface *wlr_surface = unmanaged->wlr_xwayland_surface->surface;
+    wlr_seat = unmanaged->xwayland->wlr_xwayland->seat;
+    if (wlr_seat && wlr_seat->keyboard_state.focused_surface == wlr_surface) {
+        view_activate_topmost();
+    }
 }
 
 static void unmanaged_handle_node_destroy(struct wl_listener *listener, void *data)

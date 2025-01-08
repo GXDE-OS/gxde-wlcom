@@ -293,4 +293,6 @@ void view_raise_to_top(struct view *view, bool find_parent);
 
 void view_set_focus(struct view *view, struct seat *seat);
 
+void view_activate_topmost(void);
+
 #endif /* _VIEW_H_ */

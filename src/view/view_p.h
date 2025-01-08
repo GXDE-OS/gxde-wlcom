@@ -115,8 +115,6 @@ bool xdg_shell_init(struct view_manager *view_manager);
 
 bool decoration_manager_create(struct view_manager *view_manager);
 
-void view_activate_topmost(void);
-
 void view_proxy_destroy(struct view_proxy *view_proxy);
 
 void view_set_current_proxy(struct view *view, struct view_proxy *view_proxy);
