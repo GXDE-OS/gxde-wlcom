@@ -250,7 +250,7 @@ uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height)
     return buffer;
 }
 
-bool cairo_surface_write_to_bmp(cairo_surface_t *surface, const char *filename)
+bool cairo_buffer_write_to_bmp(struct cairo_buffer *buffer, const char *filename)
 {
     FILE *file = fopen(filename, "wb");
     if (!file) {
@@ -258,10 +258,10 @@ bool cairo_surface_write_to_bmp(cairo_surface_t *surface, const char *filename)
         return false;
     }
 
-    int width = cairo_image_surface_get_width(surface);
-    int height = cairo_image_surface_get_height(surface);
-    int stride = cairo_image_surface_get_stride(surface);
-    uint8_t *data = cairo_image_surface_get_data(surface);
+    int width = cairo_image_surface_get_width(buffer->surface);
+    int height = cairo_image_surface_get_height(buffer->surface);
+    int stride = cairo_image_surface_get_stride(buffer->surface);
+    uint8_t *data = cairo_image_surface_get_data(buffer->surface);
 
     struct {
         unsigned int biSize;
