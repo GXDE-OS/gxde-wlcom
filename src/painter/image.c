@@ -11,6 +11,7 @@
 
 #include <jpeglib.h>
 #include <librsvg/rsvg.h>
+#include <png.h>
 
 #include "painter_p.h"
 
@@ -135,6 +136,135 @@ uint8_t *decode_jpeg(const char *file, uint32_t *width, uint32_t *height)
     }
 
     uint8_t *buffer = do_decode_jpeg(data, st.st_size, width, height);
+
+    munmap(data, st.st_size);
+    close(fd);
+
+    return buffer;
+}
+
+// PNG memory reader
+struct mem_reader {
+    const uint8_t *data;
+    const size_t size;
+    size_t position;
+};
+
+static void png_reader(png_structp png, png_bytep buffer, size_t size)
+{
+    struct mem_reader *reader = (struct mem_reader *)png_get_io_ptr(png);
+    if (reader && reader->position + size < reader->size) {
+        memcpy(buffer, reader->data + reader->position, size);
+        reader->position += size;
+    } else {
+        png_error(png, "No data in PNG reader");
+    }
+}
+
+static uint8_t *do_decode_png(void *data, size_t size, uint32_t *width, uint32_t *height)
+{
+    // check signature
+    if (png_sig_cmp(data, 0, size) != 0) {
+        return NULL;
+    }
+
+    png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) {
+        return NULL;
+    }
+    png_info *info = png_create_info_struct(png);
+    if (!info) {
+        png_destroy_read_struct(&png, NULL, NULL);
+        return NULL;
+    }
+
+    struct mem_reader reader = { .data = data, .size = size, .position = 0 };
+    // get general image info
+    png_set_read_fn(png, &reader, &png_reader);
+    png_read_info(png, info);
+
+    png_byte color_type = png_get_color_type(png, info);
+    png_byte bit_depth = png_get_bit_depth(png, info);
+
+    // setup decoder
+    if (png_get_interlace_type(png, info) != PNG_INTERLACE_NONE) {
+        png_set_interlace_handling(png);
+    }
+    if (color_type == PNG_COLOR_TYPE_PALETTE) {
+        png_set_palette_to_rgb(png);
+    }
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+        png_set_gray_to_rgb(png);
+        if (bit_depth < 8) {
+            png_set_expand_gray_1_2_4_to_8(png);
+        }
+    }
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+        png_set_tRNS_to_alpha(png);
+    }
+    if (bit_depth == 16) {
+        png_set_strip_16(png);
+    }
+
+    png_set_filler(png, 0xff, PNG_FILLER_AFTER);
+    png_set_alpha_mode(png, PNG_ALPHA_STANDARD, PNG_GAMMA_LINEAR);
+    png_set_packing(png);
+    png_set_packswap(png);
+    png_set_bgr(png);
+    png_set_expand(png);
+    png_read_update_info(png, info);
+
+    uint32_t w = png_get_image_width(png, info);
+    uint32_t h = png_get_image_height(png, info);
+
+    uint8_t *buffer = malloc(w * h * 4);
+    if (!buffer) {
+        png_destroy_read_struct(&png, &info, NULL);
+        return NULL;
+    }
+
+    png_bytep *row_ptrs = malloc(h * sizeof(*row_ptrs));
+    if (!row_ptrs) {
+        free(buffer);
+        png_destroy_read_struct(&png, &info, NULL);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < h; i++) {
+        row_ptrs[i] = buffer + w * 4 * i;
+    }
+
+    png_read_image(png, row_ptrs);
+
+    free(row_ptrs);
+    png_destroy_read_struct(&png, &info, NULL);
+
+    *width = w;
+    *height = h;
+
+    return buffer;
+}
+
+uint8_t *decode_png(const char *file, uint32_t *width, uint32_t *height)
+{
+    int fd = open(file, O_RDONLY);
+    if (fd == -1) {
+        return NULL;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        close(fd);
+        return NULL;
+    }
+
+    void *data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (data == MAP_FAILED) {
+        close(fd);
+        return NULL;
+    }
+
+    uint8_t *buffer = do_decode_png(data, st.st_size, width, height);
 
     munmap(data, st.st_size);
     close(fd);
