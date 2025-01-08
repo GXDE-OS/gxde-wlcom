@@ -41,7 +41,6 @@ struct window_menu {
 
     struct menu *desktop;
     struct desktop_item add_items[MAX_WORKSPACES];
-    struct desktop_item move_items[MAX_WORKSPACES];
     struct menu_item *add_to;
     struct menu_item *move_to;
 
@@ -149,13 +148,6 @@ static bool add_desktop_action(struct menu_item *item, uint32_t key, void *data)
     return true;
 }
 
-static bool move_desktop_action(struct menu_item *item, uint32_t key, void *data)
-{
-    struct desktop_item *desktop = data;
-    view_set_workspace(desktop->window_menu->view, desktop->workspace);
-    return true;
-}
-
 static void window_menu_update_desktop_item(struct window_menu *window_menu)
 {
     uint32_t count = workspace_manager_get_count();
@@ -202,29 +194,6 @@ static void window_menu_update_desktop(struct window_menu *window_menu)
     wl_list_for_each(view_proxy, &window_menu->view->view_proxies, view_link) {
         desktop = &window_menu->add_items[view_proxy->workspace->position];
         menu_item_set_checked(desktop->item, true);
-    }
-
-    for (uint32_t i = 0; i < MAX_WORKSPACES; i++) {
-        desktop = &window_menu->move_items[i];
-        if (i >= count) {
-            if (desktop->item) {
-                menu_item_set_enabled(desktop->item, false);
-            }
-            continue;
-        }
-
-        snprintf(name, 256, "%s %d", tr("Move To Desktop"), i + 1);
-        if (!desktop->item) {
-            desktop->item =
-                menu_add_item(window_menu->desktop, name, 0, move_desktop_action, desktop);
-        } else {
-            menu_item_update_text(desktop->item, name);
-        }
-        menu_item_set_enabled(desktop->item, true);
-        menu_item_set_separator(desktop->item, i == 0);
-        menu_item_lower_to_bottom(desktop->item);
-        desktop->window_menu = window_menu;
-        desktop->workspace = workspace_by_position(i);
     }
 
     window_menu_update_desktop_item(window_menu);
