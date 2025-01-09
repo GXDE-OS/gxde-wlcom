@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <wlr/types/wlr_buffer.h>
 
@@ -72,7 +73,7 @@ static struct watermark_buffer *watermark_get_or_create_buffer(struct watermark_
 {
     struct watermark_buffer *buffer;
     wl_list_for_each(buffer, &effect->buffers, link) {
-        /* if png is used, reuse this buffer always */
+        /* if image is used, reuse this buffer always */
         return buffer;
     }
 
@@ -224,19 +225,7 @@ static void handle_new_enabled_output(struct wl_listener *listener, void *data)
 
 static bool effect_load_image(struct watermark_effect *effect, struct watermark_info *info)
 {
-    FILE *fp = fopen(info->file, "rb");
-    if (!fp) {
-        return false;
-    }
-
-    uint8_t header[8] = { 0 }; // magic number
-    fread(header, sizeof(header), 1, fp);
-    fclose(fp);
-
-    bool is_png =
-        (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
-         header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A);
-    if (!is_png) {
+    if (access(info->file, F_OK) == -1) {
         return false;
     }
 
