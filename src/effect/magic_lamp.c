@@ -88,6 +88,7 @@ struct magic_lamp_effect {
     struct animation *animation;
     uint32_t animate_duration;
     uint32_t subdiv_count;
+    uint32_t subdiv_count2;
 };
 
 static struct magic_lamp_effect *magic_lamp_effect = NULL;
@@ -507,6 +508,7 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
 
     // subdivide window quad
     uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
+    uint32_t subdiv_count2 = magic_lamp_effect->subdiv_count2;
     quad window_quad = { { window_x, window_y, 0.0f, 0.0f },
                          { window_x + entry->window_width, window_y, 1.0f, 0.0f },
                          { window_x + entry->window_width, window_y + entry->window_height, 1.0f,
@@ -515,11 +517,11 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     switch (entry->spout_location) {
     case SPOUT_LOCATION_BOTTOM:
     case SPOUT_LOCATION_TOP:
-        subdivide_quad(window_quad, 1, subdiv_count, entry->subquads);
+        subdivide_quad(window_quad, subdiv_count2, subdiv_count, entry->subquads);
         break;
     case SPOUT_LOCATION_LEFT:
     case SPOUT_LOCATION_RIGHT:
-        subdivide_quad(window_quad, subdiv_count, 1, entry->subquads);
+        subdivide_quad(window_quad, subdiv_count, subdiv_count2, entry->subquads);
         break;
     }
 
@@ -646,6 +648,7 @@ bool magic_lamp_effect_create(struct effect_manager *manager)
     magic_lamp_effect->animation = animation_manager_get(ANIMATION_TYPE_LINER);
     magic_lamp_effect->animate_duration = 250;
     magic_lamp_effect->subdiv_count = 40;
+    magic_lamp_effect->subdiv_count2 = 10;
 
     return true;
 }
@@ -703,7 +706,7 @@ bool view_add_magic_lamp_effect(struct view *view)
     entry->window_view = view;
 
     // alloc buffer
-    entry->subquads_size = magic_lamp_effect->subdiv_count;
+    entry->subquads_size = magic_lamp_effect->subdiv_count * magic_lamp_effect->subdiv_count2;
     entry->subquads = malloc(entry->subquads_size * sizeof(quad));
     entry->vertices_size = entry->subquads_size * 6;
     entry->vertices = malloc(entry->vertices_size * sizeof(struct vertex));
