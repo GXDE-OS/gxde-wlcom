@@ -528,7 +528,10 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     // correct x position when x too large
     if (entry->spout_location == SPOUT_LOCATION_TOP ||
         entry->spout_location == SPOUT_LOCATION_BOTTOM) {
-        spout_x += (spout_x - (window_x + entry->window_width * 0.5f)) * 0.04f;
+        float x = spout_x - (window_x + entry->window_width * 0.5f);
+        x = x * 10.f / entry->window_width;
+        float value = -0.00063 * x * x * x + 0.05373 * x * x - 1.44803 * x + 7.61226;
+        spout_x -= value;
     }
 
     // calculate progress. modify quad vertex
