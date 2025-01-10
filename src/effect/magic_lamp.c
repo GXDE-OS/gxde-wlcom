@@ -59,6 +59,11 @@ static struct magic_lamp_gl_shader {
 struct magic_lamp_entry {
     struct effect_entity *effect_entity;
     struct view *window_view;
+    // mesh
+    uint32_t subquads_size;
+    quad *subquads;
+    uint32_t vertices_size;
+    struct vertex *vertices;
     // animate
     bool reversed;
     enum spout_location spout_location;
@@ -92,10 +97,8 @@ static inline float lerp(float a, float b, float t)
     return (1.f - t) * a + t * b;
 }
 
-static quad *subdivide_quad(quad quad0, uint32_t x, uint32_t y)
+static void subdivide_quad(quad quad0, uint32_t x, uint32_t y, quad *quads)
 {
-    quad *quads = malloc(x * y * sizeof(struct vertex) * 4);
-
     float step_x = 1.f / x;
     float step_y = 1.f / y;
     for (uint32_t i = 0; i < x; i++) {
@@ -137,12 +140,10 @@ static quad *subdivide_quad(quad quad0, uint32_t x, uint32_t y)
             (*sub_quad)[2].y = lerp(top2y, bottom2y, v2);
         }
     }
-
-    return quads;
 }
 
 // https://invent.kde.org/plasma/kwin/-/blob/Plasma/5.27/src/effects/magiclamp/magiclamp.cpp#L206
-static void calculate_progress(quad *subquads, uint32_t subdiv_count, float progress,
+static void calculate_progress(quad *subquads, uint32_t subquads_size, float progress,
                                enum spout_location spout_location, float spout_x, float spout_y,
                                float spout_width, float spout_height, float window_x,
                                float window_y, float window_width, float window_height)
@@ -164,7 +165,7 @@ static void calculate_progress(quad *subquads, uint32_t subdiv_count, float prog
         const float height_cube = window_height * window_height * window_height;
         const float min_y = spout_y + spout_height;
 
-        for (uint32_t i = 0; i < subdiv_count; i++) {
+        for (uint32_t i = 0; i < subquads_size; i++) {
             quad *subquad = &subquads[i];
             if ((*subquad)[0].y != last_quad[0].y || (*subquad)[2].y != last_quad[2].y) {
                 factor = window_height - (*subquad)[0].y + (*subquad)[0].y * progress;
@@ -212,7 +213,7 @@ static void calculate_progress(quad *subquads, uint32_t subdiv_count, float prog
         const float height_cube = window_height * window_height * window_height;
         const float max_y = spout_y;
 
-        for (uint32_t i = 0; i < subdiv_count; i++) {
+        for (uint32_t i = 0; i < subquads_size; i++) {
             quad *subquad = &subquads[i];
             if ((*subquad)[0].y != last_quad[0].y || (*subquad)[2].y != last_quad[2].y) {
                 factor = (*subquad)[0].y + (window_height - (*subquad)[0].y) * progress;
@@ -253,7 +254,7 @@ static void calculate_progress(quad *subquads, uint32_t subdiv_count, float prog
         const float width_cube = window_width * window_width * window_width;
         const float min_x = spout_x + spout_width;
 
-        for (uint32_t i = 0; i < subdiv_count; i++) {
+        for (uint32_t i = 0; i < subquads_size; i++) {
             quad *subquad = &subquads[i];
             if ((*subquad)[0].x != last_quad[0].x || (*subquad)[1].x != last_quad[1].x) {
                 factor = window_width - (*subquad)[0].x + (*subquad)[0].x * progress;
@@ -301,7 +302,7 @@ static void calculate_progress(quad *subquads, uint32_t subdiv_count, float prog
         const float width_cube = window_width * window_width * window_width;
         const float max_x = spout_x;
 
-        for (uint32_t i = 0; i < subdiv_count; i++) {
+        for (uint32_t i = 0; i < subquads_size; i++) {
             quad *subquad = &subquads[i];
             if ((*subquad)[0].x != last_quad[0].x || (*subquad)[1].x != last_quad[1].x) {
                 factor = (*subquad)[0].x + (window_width - (*subquad)[0].x) * progress;
@@ -340,15 +341,14 @@ static void calculate_progress(quad *subquads, uint32_t subdiv_count, float prog
     }
 }
 
-static void compute_boundbox(struct magic_lamp_entry *entry, quad *subquads, uint32_t subdiv_count,
-                             struct ky_scene_render_target *target)
+static void compute_boundbox(struct magic_lamp_entry *entry, struct ky_scene_output *output)
 {
     float min_x = FLT_MAX;
     float min_y = FLT_MAX;
     float max_x = FLT_MIN;
     float max_y = FLT_MIN;
-    for (uint32_t i = 0; i < subdiv_count; i++) {
-        quad *subquad = &subquads[i];
+    for (uint32_t i = 0; i < entry->subquads_size; i++) {
+        quad *subquad = &entry->subquads[i];
         for (uint32_t j = 0; j < 4; j++) {
             min_x = MIN(min_x, (*subquad)[j].x);
             min_y = MIN(min_y, (*subquad)[j].y);
@@ -364,8 +364,8 @@ static void compute_boundbox(struct magic_lamp_entry *entry, quad *subquads, uin
     entry->bbox.height = MAX(1, ceilf(max_y) - entry->bbox.y);
 
     // use logic coordinates for damage
-    entry->bbox.x += target->output->x;
-    entry->bbox.y += target->output->y;
+    entry->bbox.x += output->x;
+    entry->bbox.y += output->y;
 }
 
 static void create_opengl_shader(struct wlr_renderer *renderer)
@@ -436,6 +436,8 @@ static void entity_destroy(struct effect_entity *entity)
         wl_list_remove(&entry->thumbnail_destroy.link);
         thumbnail_destroy(entry->thumbnail);
     }
+    free(entry->vertices);
+    free(entry->subquads);
 
     free(entry);
 }
@@ -474,7 +476,7 @@ static bool node_push_damage(struct effect_entity *entity, struct ky_scene_node 
     return false;
 }
 
-static bool frame_render_begin(struct effect_entity *entity, struct ky_scene_render_target *target)
+static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_output *scene_output)
 {
     struct magic_lamp_entry *entry = entity->user_data;
     if (!entry) {
@@ -485,14 +487,70 @@ static bool frame_render_begin(struct effect_entity *entity, struct ky_scene_ren
     uint32_t diff_time = current_time_msec() - entry->start_time;
     if (diff_time > magic_lamp_effect->animate_duration) {
         effect_entity_destroy(entry->effect_entity);
-    } else {
-        float percent = diff_time / (float)magic_lamp_effect->animate_duration;
-        entry->progress = animation_value(magic_lamp_effect->animation, percent);
-        if (entry->reversed) {
-            entry->progress = 1.f - entry->progress;
-        }
+        return true;
+    }
+    float percent = diff_time / (float)magic_lamp_effect->animate_duration;
+    entry->progress = animation_value(magic_lamp_effect->animation, percent);
+    if (entry->reversed) {
+        entry->progress = 1.f - entry->progress;
     }
 
+    /**
+     * In the case of extending the secondary screen
+     * the x-coordinate value is too large causing spout positional deviation
+     * the current output of the view use local coordinates
+     */
+    float spout_x = entry->spout_x - scene_output->x;
+    float spout_y = entry->spout_y - scene_output->y;
+    float window_x = entry->window_x - scene_output->x;
+    float window_y = entry->window_y - scene_output->y;
+
+    // subdivide window quad
+    uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
+    quad window_quad = { { window_x, window_y, 0.0f, 0.0f },
+                         { window_x + entry->window_width, window_y, 1.0f, 0.0f },
+                         { window_x + entry->window_width, window_y + entry->window_height, 1.0f,
+                           1.0f },
+                         { window_x, window_y + entry->window_height, 0.0f, 1.0f } };
+    switch (entry->spout_location) {
+    case SPOUT_LOCATION_BOTTOM:
+    case SPOUT_LOCATION_TOP:
+        subdivide_quad(window_quad, 1, subdiv_count, entry->subquads);
+        break;
+    case SPOUT_LOCATION_LEFT:
+    case SPOUT_LOCATION_RIGHT:
+        subdivide_quad(window_quad, subdiv_count, 1, entry->subquads);
+        break;
+    }
+
+    // correct x position when x too large
+    if (entry->spout_location == SPOUT_LOCATION_TOP ||
+        entry->spout_location == SPOUT_LOCATION_BOTTOM) {
+        spout_x += (spout_x - (window_x + entry->window_width * 0.5f)) * 0.04f;
+    }
+
+    // calculate progress. modify quad vertex
+    calculate_progress(entry->subquads, entry->subquads_size, entry->progress,
+                       entry->spout_location, spout_x, spout_y, entry->spout_width,
+                       entry->spout_height, window_x, window_y, entry->window_width,
+                       entry->window_height);
+
+    // compute boundbox for damage region
+    compute_boundbox(entry, scene_output);
+
+    // triangulate
+    uint32_t vtx_count = 0;
+    for (uint32_t i = 0; i < entry->subquads_size; i++) {
+        quad *subquad = &entry->subquads[i];
+        entry->vertices[vtx_count++] = (*subquad)[0];
+        entry->vertices[vtx_count++] = (*subquad)[2];
+        entry->vertices[vtx_count++] = (*subquad)[1];
+        entry->vertices[vtx_count++] = (*subquad)[0];
+        entry->vertices[vtx_count++] = (*subquad)[3];
+        entry->vertices[vtx_count++] = (*subquad)[2];
+    }
+
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
@@ -508,88 +566,19 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
         return true;
     }
 
-    // In the case of extending the secondary screen
-    // the x-coordinate value is too large causing spout positional deviation
-    // the current output of the view use local coordinates
-    float spout_x = entry->spout_x - target->output->x;
-    float spout_y = entry->spout_y - target->output->y;
-    float window_x = entry->window_x - target->output->x;
-    float window_y = entry->window_y - target->output->y;
-
-    // subdivide window quad
-    uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
-    quad window_quad = { { window_x, window_y, 0.0f, 0.0f },
-                         { window_x + entry->window_width, window_y, 1.0f, 0.0f },
-                         { window_x + entry->window_width, window_y + entry->window_height, 1.0f,
-                           1.0f },
-                         { window_x, window_y + entry->window_height, 0.0f, 1.0f } };
-    quad *subquads = NULL;
-    switch (entry->spout_location) {
-    case SPOUT_LOCATION_BOTTOM:
-    case SPOUT_LOCATION_TOP:
-        subquads = subdivide_quad(window_quad, 1, subdiv_count);
-        break;
-    case SPOUT_LOCATION_LEFT:
-    case SPOUT_LOCATION_RIGHT:
-        subquads = subdivide_quad(window_quad, subdiv_count, 1);
-        break;
-    }
-
-    // correct x position when x too large
-    if (entry->spout_location == SPOUT_LOCATION_TOP ||
-        entry->spout_location == SPOUT_LOCATION_BOTTOM) {
-        spout_x += (spout_x - (window_x + entry->window_width * 0.5f)) * 0.04f;
-    }
-
-    // calculate progress. modify quad vertex
-    calculate_progress(subquads, subdiv_count, entry->progress, entry->spout_location, spout_x,
-                       spout_y, entry->spout_width, entry->spout_height, window_x, window_y,
-                       entry->window_width, entry->window_height);
-
-    // compute boundbox for damage region
-    compute_boundbox(entry, subquads, subdiv_count, target);
-
-    // subquads grid to triangle strip
-    const uint32_t vertices_count = subdiv_count * 4;
-    struct vertex vertices[vertices_count];
-    switch (entry->spout_location) {
-    case SPOUT_LOCATION_BOTTOM:
-    case SPOUT_LOCATION_TOP:
-        for (uint32_t i = 0; i < subdiv_count; i++) {
-            quad *subquad = &subquads[i];
-            vertices[i * 4 + 0] = (*subquad)[0];
-            vertices[i * 4 + 1] = (*subquad)[3];
-            vertices[i * 4 + 2] = (*subquad)[1];
-            vertices[i * 4 + 3] = (*subquad)[2];
-        }
-        break;
-    case SPOUT_LOCATION_LEFT:
-    case SPOUT_LOCATION_RIGHT:
-        for (uint32_t i = 0; i < subdiv_count; i++) {
-            quad *subquad = &subquads[i];
-            vertices[i * 4 + 0] = (*subquad)[0];
-            vertices[i * 4 + 1] = (*subquad)[1];
-            vertices[i * 4 + 2] = (*subquad)[3];
-            vertices[i * 4 + 3] = (*subquad)[2];
-        }
-        break;
-    }
-    free(subquads);
-
-    // render
     struct ky_mat3 logic2ndc;
     ky_mat3_logic_to_ndc(&logic2ndc, target->logical.width, target->logical.height,
                          target->transform);
 
     struct ky_opengl_texture *ky_tex = ky_opengl_texture_from_wlr_texture(entry->thumbnail_texture);
 
+    GLfloat *verts = (GLfloat *)entry->vertices;
     glUseProgram(gl_shader.program);
     glEnableVertexAttribArray(gl_shader.in_position);
-    glVertexAttribPointer(gl_shader.in_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          vertices);
+    glVertexAttribPointer(gl_shader.in_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), verts);
     glEnableVertexAttribArray(gl_shader.in_texcoord);
     glVertexAttribPointer(gl_shader.in_texcoord, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          (char *)vertices + 2 * sizeof(float));
+                          verts + 2);
     glUniformMatrix3fv(gl_shader.logic2ndc, 1, GL_FALSE, logic2ndc.matrix);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, ky_tex->tex);
@@ -597,7 +586,7 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices_count);
+    glDrawArrays(GL_TRIANGLES, 0, entry->vertices_size);
 
     glUseProgram(0);
     glDisableVertexAttribArray(gl_shader.in_position);
@@ -609,19 +598,7 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
 
 static bool frame_render_post(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
-    // add damage to trigger render event
-    struct magic_lamp_entry *entry = entity->user_data;
-    if (!entry) {
-        return true;
-    }
-
-    pixman_region32_t region;
-    pixman_region32_init_rect(&region, entry->bbox.x, entry->bbox.y, entry->bbox.width,
-                              entry->bbox.height);
-    struct ky_scene *scene = magic_lamp_effect->manager->server->scene;
-    ky_scene_add_damage(scene, &region);
-    pixman_region32_fini(&region);
-
+    effect_entity_push_damage(entity, KY_SCENE_DAMAGE_BOTH);
     return true;
 }
 
@@ -639,7 +616,7 @@ static const struct effect_interface effect_impl = {
     .entity_bounding_box = entity_bounding_box,
     .node_push_damage = node_push_damage,
     .node_render = node_render,
-    .frame_render_begin = frame_render_begin,
+    .frame_render_pre = frame_render_pre,
     .frame_render_post = frame_render_post,
     .configure = handle_effect_configure,
 };
@@ -724,6 +701,13 @@ bool view_add_magic_lamp_effect(struct view *view)
     entity->user_data = entry;
     entry->effect_entity = entity;
     entry->window_view = view;
+
+    // alloc buffer
+    entry->subquads_size = magic_lamp_effect->subdiv_count;
+    entry->subquads = malloc(entry->subquads_size * sizeof(quad));
+    entry->vertices_size = entry->subquads_size * 6;
+    entry->vertices = malloc(entry->vertices_size * sizeof(struct vertex));
+
     wl_list_init(&entry->thumbnail_update.link);
     wl_list_init(&entry->thumbnail_destroy.link);
 
