@@ -680,11 +680,16 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
 
     /* if motion out of point->surface */
     if (surface != point->surface) {
-        int lx, ly;
-        struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(point->surface);
-        ky_scene_node_coords(&scene_buffer->node, &lx, &ly);
-        sx = seat->cursor->lx - lx;
-        sy = seat->cursor->ly - ly;
+        if (!selection_is_dragging(seat)) {
+            int lx, ly;
+            struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(point->surface);
+            ky_scene_node_coords(&scene_buffer->node, &lx, &ly);
+            sx = seat->cursor->lx - lx;
+            sy = seat->cursor->ly - ly;
+        } else if (surface) {
+            wlr_seat_touch_point_focus(seat->wlr_seat, surface, event->time_msec, event->touch_id,
+                                       sx, sy);
+        }
     }
 
     if (xwayland_check_client(wl_resource_get_client(point->surface->resource))) {
