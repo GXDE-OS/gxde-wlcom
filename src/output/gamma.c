@@ -333,11 +333,6 @@ bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
         return false;
     }
 
-    if (kywc_output->prop.gamma_size <= 1) {
-        kywc_log(KYWC_DEBUG, "Could not get gamma ramp size for CRTC on graphics card");
-        return false;
-    }
-
     struct kywc_output_state state = kywc_output->state;
     state.color_temp = COLORTEMP_CLAMP(color_temp);
     kywc_output_set_state(kywc_output, &state);
