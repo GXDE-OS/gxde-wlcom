@@ -535,12 +535,17 @@ void window_move_constraints(struct kywc_view *kywc_view, struct output *output,
     }
 }
 
-static void interactive_process_move(struct interactive_grab *grab, double x, double y)
+static bool interactive_process_move(struct interactive_grab *grab, double x, double y)
 {
     struct kywc_view *kywc_view = &grab->view->base;
     struct kywc_box *geometry = &kywc_view->geometry;
 
     if (kywc_view->maximized || kywc_view->tiled) {
+        /* add move filter */
+        if (!grab->ongoing && fabs(grab->cursor_x - x) < VIEW_MOVE_STEP &&
+            fabs(grab->cursor_y - y) < VIEW_MOVE_STEP) {
+            return false;
+        }
         struct kywc_box *saved = &grab->view->saved.geometry;
         double frac = (x - geometry->x) / geometry->width;
         saved->x = x - frac * saved->width;
@@ -574,6 +579,7 @@ static void interactive_process_move(struct interactive_grab *grab, double x, do
     }
 
     interactive_move_show_snap_box(grab, x, y);
+    return true;
 }
 
 static void interactive_resize_constraints(struct interactive_grab *grab, struct kywc_box *box)
@@ -879,11 +885,13 @@ static bool pointer_grab_motion(struct seat_pointer_grab *pointer_grab, uint32_t
     grab->output = input_current_output(grab->seat);
 
     if (grab->mode == INTERACTIVE_MODE_MOVE) {
+        if (!interactive_process_move(grab, lx, ly)) {
+            return true;
+        }
         /* set moving cursor image if moving */
         if (!grab->ongoing) {
             cursor_set_image(grab->seat->cursor, CURSOR_MOVE);
         }
-        interactive_process_move(grab, lx, ly);
     } else if (grab->mode == INTERACTIVE_MODE_RESIZE) {
         interactive_process_resize(grab, lx, ly);
     }
