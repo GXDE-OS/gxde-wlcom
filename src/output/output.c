@@ -203,7 +203,6 @@ static void output_get_prop(struct output *output, struct kywc_output_prop *prop
     prop->desc = wlr_output->description;
     prop->is_virtual = wlr_output_is_headless(wlr_output);
     prop->is_fbdev = wlr_output_is_fbdev(wlr_output);
-    prop->brightness_support = output_support_brightness(output);
     prop->gamma_size = wlr_output_get_gamma_size(wlr_output);
 
     prop->capabilities = KYWC_OUTPUT_CAPABILITY_POWER;
@@ -253,10 +252,7 @@ static void output_get_state(struct output *output, struct kywc_output_state *st
         state->lx = state->ly = -1;
     }
 
-    struct kywc_output *kywc_output = &output->base;
-    if (!output_get_backlight(kywc_output, &state->brightness)) {
-        state->brightness = output->brightness;
-    }
+    state->brightness = output->brightness;
     state->color_temp = output->color_temp;
     state->vrr_policy = output->vrr_policy;
 }
@@ -1162,8 +1158,7 @@ static bool output_gamma_changed(struct output *output, const struct kywc_output
 {
     struct kywc_output_state *current_state = &output->base.state;
     return current_state->color_temp != state->color_temp ||
-           (!output->base.prop.brightness_support &&
-            current_state->brightness != state->brightness);
+           current_state->brightness != state->brightness;
 }
 
 static bool output_compare_state(struct output *output, const struct kywc_output_state *state)
@@ -1195,8 +1190,7 @@ bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *
         return false;
     }
 
-    uint32_t brightness =
-        output->base.prop.brightness_support ? 100 : output->base.state.brightness;
+    uint32_t brightness = output->base.state.brightness;
     uint32_t color_temp = output->base.state.color_temp;
 
     output_set_gamma_lut(output->wlr_output, output->base.prop.gamma_size, state, color_temp,
@@ -1285,9 +1279,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     output->base.prop.gamma_size = wlr_output_get_gamma_size(wlr_output);
     /* gamma settings for brightness and color temperature */
     output->color_temp = state->color_temp;
-    if (!output->base.prop.brightness_support) {
-        output->brightness = state->brightness;
-    }
+    output->brightness = state->brightness;
 
     output->vrr_policy = state->vrr_policy;
 
@@ -1300,14 +1292,6 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
             if (output->scene_output) {
                 ky_scene_output_damage_whole(output->scene_output);
             }
-        }
-    }
-
-    /* set brightness of backlight */
-    uint32_t brightness;
-    if (enabled && output_get_backlight(&output->base, &brightness)) {
-        if (brightness != state->brightness) {
-            output_set_backlight(state->brightness);
         }
     }
 

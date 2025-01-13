@@ -99,6 +99,8 @@ void output_manager_update_scale(float scale);
 
 bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp);
 
+bool output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness);
+
 void colortemp_get_rgb(float *rgb, uint32_t color_temp);
 
 void output_manager_add_output_pending_state(struct output *output,

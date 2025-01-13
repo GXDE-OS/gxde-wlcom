@@ -50,7 +50,6 @@ struct kywc_output_mode {
 struct kywc_output_prop {
     bool is_virtual;
     bool is_fbdev;
-    bool brightness_support;
     size_t gamma_size;
     uint32_t capabilities;
     int32_t phys_width, phys_height;          // mm

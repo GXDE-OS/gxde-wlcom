@@ -10,6 +10,7 @@
 #include "output_p.h"
 
 #define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25000 ? 25000 : (val)))
+#define BRIGHTNESS_CLAMP(val) ((val) > 100 ? 100 : (val))
 
 /**
  * From Redshift project:
@@ -339,6 +340,18 @@ bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)
 
     struct kywc_output_state state = kywc_output->state;
     state.color_temp = COLORTEMP_CLAMP(color_temp);
+    kywc_output_set_state(kywc_output, &state);
+    return true;
+}
+
+bool output_set_brightness(struct kywc_output *kywc_output, uint32_t brightness)
+{
+    if (!kywc_output->state.enabled) {
+        return false;
+    }
+
+    struct kywc_output_state state = kywc_output->state;
+    state.brightness = BRIGHTNESS_CLAMP(brightness);
     kywc_output_set_state(kywc_output, &state);
     return true;
 }

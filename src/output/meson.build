@@ -1,5 +1,4 @@
 wlcom_sources += files(
-  'brightness.c',
   'gamma.c',
   'config.c',
   'layout.c',
