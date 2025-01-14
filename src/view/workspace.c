@@ -18,8 +18,11 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
+#define TRANSLATION_THRESHOLD 0.35
+
 struct workspace_manager {
     struct view_manager *view_manager;
+    struct workspace_translation *translation; // for worskspace translation effect
 
     /* current activated workspace */
     struct workspace *current;
@@ -103,6 +106,149 @@ static void shortcut_action(struct key_binding *binding, void *data)
     workspace_switch_to(shortcut->switch_workspace);
 }
 
+static struct gesture {
+    enum gesture_type type;
+    enum gesture_stage stage;
+    uint8_t fingers;
+    uint32_t devices;
+    uint32_t directions;
+    uint32_t edges;
+    uint32_t follow_direction;
+    double follow_threshold;
+    char *desc;
+} gestures[] = {
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_BEFORE,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_NONE,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_LEFT,
+        0.0,
+        "switch workspace tridge before",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_BEFORE,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_NONE,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_RIGHT,
+        0.0,
+        "switch workspace tridge before",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_TRIGGER,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_LEFT,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_NONE,
+        0.0,
+        "switch workspace  tridge",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_TRIGGER,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_RIGHT,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_NONE,
+        0.0,
+        "switch workspace  tridge",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_AFTER,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_LEFT | GESTURE_DIRECTION_RIGHT,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_LEFT,
+        0.0,
+        "switch workspace left follow finger",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_AFTER,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_LEFT | GESTURE_DIRECTION_RIGHT,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_RIGHT,
+        0.0,
+        "switch workspace right follow finger",
+    },
+    {
+        GESTURE_TYPE_SWIPE,
+        GESTURE_STAGE_STOP,
+        4,
+        GESTURE_DEVICE_TOUCHPAD,
+        GESTURE_DIRECTION_LEFT | GESTURE_DIRECTION_RIGHT,
+        GESTURE_EDGE_NONE,
+        GESTURE_DIRECTION_NONE,
+        0.0,
+        "stop switch workspace follow finger",
+    },
+};
+
+static void gestures_action(struct gesture_binding *binding, void *data, double dx, double dy)
+{
+    struct gesture *gesture = data;
+    /* the opposite direction of the gesture for the drag effect */
+    enum direction direct = DIRECTION_UP;
+    if (gesture->follow_direction == GESTURE_DIRECTION_LEFT) {
+        direct = DIRECTION_RIGHT;
+    } else if (gesture->follow_direction == GESTURE_DIRECTION_RIGHT) {
+        direct = DIRECTION_LEFT;
+    }
+
+    float percent = -dx / 300;
+    if (gesture->stage == GESTURE_STAGE_BEFORE) {
+        if (!workspace_manager->translation) {
+            workspace_manager->translation =
+                workspace_create_manual_translation_effect(workspace_manager->current);
+            if (!workspace_manager->translation) {
+                return;
+            }
+            kywc_log(KYWC_DEBUG,
+                     "workspace manual translation direct: %d, dx = %f, dy = %f, percent = %f",
+                     direct, dx, dy, percent);
+        }
+
+        workspace_translation_manual(workspace_manager->translation, direct, percent);
+    } else if (gesture->stage == GESTURE_STAGE_TRIGGER) {
+        if (workspace_manager->translation &&
+            (direct == DIRECTION_RIGHT || direct == DIRECTION_LEFT)) {
+            workspace_translation_manual(workspace_manager->translation, direct, percent);
+        } else if (!workspace_manager->translation) {
+            if (gesture->directions == GESTURE_DIRECTION_LEFT) {
+                direct = DIRECTION_RIGHT;
+            } else if (gesture->directions == GESTURE_DIRECTION_RIGHT) {
+                direct = DIRECTION_LEFT;
+            }
+            workspace_switch_to(direct);
+            kywc_log(KYWC_DEBUG,
+                     "workspace auto translation direct: %d, dx = %f, dy = %f, percent = %f",
+                     direct, dx, dy, percent);
+        }
+    } else if (gesture->stage == GESTURE_STAGE_AFTER && workspace_manager->translation &&
+               (direct == DIRECTION_RIGHT || direct == DIRECTION_LEFT)) {
+        workspace_translation_manual(workspace_manager->translation, direct, percent);
+    } else if (gesture->stage == GESTURE_STAGE_STOP && workspace_manager->translation) {
+        struct workspace *last_show =
+            workspace_translation_destroy(workspace_manager->translation, TRANSLATION_THRESHOLD);
+        if (last_show) {
+            workspace_activate(last_show);
+        }
+        workspace_manager->translation = NULL;
+    }
+}
+
 static void workspace_register_shortcut(void)
 {
     for (size_t i = 0; i < sizeof(shortcuts) / sizeof(struct shortcut); i++) {
@@ -115,6 +261,21 @@ static void workspace_register_shortcut(void)
         if (!kywc_key_binding_register(binding, KEY_BINDING_TYPE_SWITCH_WORKSPACE, shortcut_action,
                                        shortcut)) {
             kywc_key_binding_destroy(binding);
+            continue;
+        }
+    }
+
+    for (size_t i = 0; i < sizeof(gestures) / sizeof(struct gesture); i++) {
+        struct gesture *gesture = &gestures[i];
+        struct gesture_binding *binding = kywc_gesture_binding_create(
+            gesture->type, gesture->stage, gesture->devices, gesture->directions, gesture->edges,
+            gesture->fingers, gesture->follow_direction, gesture->follow_threshold, gesture->desc);
+        if (!binding) {
+            continue;
+        }
+
+        if (!kywc_gesture_binding_register(binding, gestures_action, gesture)) {
+            kywc_gesture_binding_destroy(binding);
             continue;
         }
     }
