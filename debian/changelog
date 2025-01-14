@@ -1,3 +1,9 @@
+kylin-wayland-compositor (1.3.1-ok4) huanghe; urgency=medium
+
+  * Commit: aca15ad
+
+ -- Morose <chenlinxiang@kylinos.cn>  Tue, 14 Jan 2025 10:26:53 +0800
+
 kylin-wayland-compositor (1.3.1-ok3) huanghe; urgency=medium
 
   * Commit: a394f1b
