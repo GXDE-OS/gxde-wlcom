@@ -655,7 +655,9 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     point->directions = touch_point_calc_directions(point, dx, dy);
 
     if (!touch->filter_enabled) {
-        touch_gesture_detect(touch);
+        if (!touch->gestures.handled) {
+            touch_gesture_detect(touch);
+        }
         if (touch->gestures.type == GESTURE_TYPE_SWIPE) {
             double avg_dx = 0, avg_dy = 0;
             touch_calc_average_delta(touch, &avg_dx, &avg_dy);
