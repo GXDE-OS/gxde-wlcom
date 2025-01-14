@@ -91,6 +91,18 @@ static void kywc_log_callback(enum wlr_log_importance verbosity, const char *fmt
     kywc_vlog(level, fmt, args);
 }
 
+static void server_get_active_vt(struct server *server)
+{
+    char buf[64] = { 0 };
+    size_t len = sysfs_read_data("/sys/class/tty/tty0/active", buf, 63);
+    if (len > 0) {
+        sscanf(buf, "tty%u", &server->vtnr);
+        kywc_log(KYWC_INFO, "Current VT is %u", server->vtnr);
+    } else {
+        server->vtnr = 0;
+    }
+}
+
 static void handle_session_active(struct wl_listener *listener, void *data)
 {
     struct server *server = wl_container_of(listener, server, session_active);
@@ -115,6 +127,7 @@ static bool wlroots_server_init(struct server *server)
         server->active = server->session->active;
         server->session_active.notify = handle_session_active;
         wl_signal_add(&server->session->events.active, &server->session_active);
+        server_get_active_vt(server);
     } else {
         // mark active if in nested backend
         server->active = true;
@@ -171,18 +184,6 @@ static int handle_exit(int signal, void *data)
     return 0;
 }
 
-static void server_get_active_vt(struct server *server)
-{
-    char buf[64] = { 0 };
-    size_t len = sysfs_read_data("/sys/class/tty/tty0/active", buf, 63);
-    if (len > 0) {
-        sscanf(buf, "tty%u", &server->vtnr);
-        kywc_log(KYWC_INFO, "Current VT is %u", server->vtnr);
-    } else {
-        server->vtnr = 0;
-    }
-}
-
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
@@ -206,8 +207,6 @@ bool server_init(struct server *server)
     dbus_match_system_signal("org.freedesktop.login1", "/org/freedesktop/login1",
                              "org.freedesktop.login1.Manager", "PrepareForSleep", prepare_for_sleep,
                              server);
-
-    server_get_active_vt(server);
 
     config_manager_create(server);
     security_manager_create(server);
