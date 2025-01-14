@@ -58,6 +58,8 @@ struct server {
 
     const char *session_process;
     pid_t session_pid;
+
+    unsigned vtnr;
 };
 
 bool server_init(struct server *server);

@@ -39,6 +39,7 @@
 #include "server.h"
 #include "theme.h"
 #include "util/dbus.h"
+#include "util/sysfs.h"
 #include "view/view.h"
 #include "xwayland.h"
 
@@ -170,6 +171,18 @@ static int handle_exit(int signal, void *data)
     return 0;
 }
 
+static void server_get_active_vt(struct server *server)
+{
+    char buf[64] = { 0 };
+    size_t len = sysfs_read_data("/sys/class/tty/tty0/active", buf, 63);
+    if (len > 0) {
+        sscanf(buf, "tty%u", &server->vtnr);
+        kywc_log(KYWC_INFO, "Current VT is %u", server->vtnr);
+    } else {
+        server->vtnr = 0;
+    }
+}
+
 bool server_init(struct server *server)
 {
     server->display = wl_display_create();
@@ -193,6 +206,8 @@ bool server_init(struct server *server)
     dbus_match_system_signal("org.freedesktop.login1", "/org/freedesktop/login1",
                              "org.freedesktop.login1.Manager", "PrepareForSleep", prepare_for_sleep,
                              server);
+
+    server_get_active_vt(server);
 
     config_manager_create(server);
     security_manager_create(server);
