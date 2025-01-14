@@ -781,7 +781,10 @@ static void view_do_set_workspace(struct view *view, struct workspace *workspace
             view_proxy_destroy(view_proxy);
         }
     }
-    view->show_in_all_workspaces = false;
+    if (view->base.sticky) {
+        view->base.sticky = false;
+        wl_signal_emit_mutable(&view->base.events.capabilities, NULL);
+    }
 }
 
 void view_set_workspace(struct view *view, struct workspace *workspace)
@@ -868,12 +871,15 @@ void view_remove_workspace(struct view *view, struct workspace *workspace)
         view_set_current_proxy(view, proxy);
     }
     view_proxy_destroy(view_proxy);
-    view->show_in_all_workspaces = false;
+    if (view->base.sticky) {
+        view->base.sticky = false;
+        wl_signal_emit_mutable(&view->base.events.capabilities, NULL);
+    }
 }
 
 void view_add_all_workspace(struct view *view)
 {
-    if (!view) {
+    if (!view || view->base.sticky) {
         return;
     }
     int workspace_num = workspace_manager_get_count();
@@ -882,7 +888,8 @@ void view_add_all_workspace(struct view *view)
         workspace = workspace_by_position(i);
         view_add_workspace(view, workspace);
     }
-    view->show_in_all_workspaces = true;
+    view->base.sticky = true;
+    wl_signal_emit_mutable(&view->base.events.capabilities, NULL);
 }
 
 static void view_set_layer_in_workspace(struct view *view, enum layer layer)
@@ -1495,6 +1502,7 @@ void kywc_view_set_kept_above(struct kywc_view *kywc_view, bool kept_above)
         struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
         ky_scene_node_reparent(&proxy->tree->node, view_layer->tree);
     }
+    wl_signal_emit_mutable(&view->base.events.capabilities, NULL);
 }
 
 void kywc_view_toggle_kept_above(struct kywc_view *kywc_view)
@@ -1520,6 +1528,7 @@ void kywc_view_set_kept_below(struct kywc_view *kywc_view, bool kept_below)
         struct view_layer *view_layer = workspace_layer(proxy->workspace, layer);
         ky_scene_node_reparent(&proxy->tree->node, view_layer->tree);
     }
+    wl_signal_emit_mutable(&view->base.events.capabilities, NULL);
 }
 
 void kywc_view_toggle_kept_below(struct kywc_view *kywc_view)

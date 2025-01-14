@@ -42,6 +42,12 @@ struct xwayland_view {
     struct wl_listener request_maximize;
     struct wl_listener request_fullscreen;
     struct wl_listener request_activate;
+    struct wl_listener request_sticky;
+    struct wl_listener request_skip_taskbar;
+    struct wl_listener request_skip_pager;
+    struct wl_listener request_above;
+    struct wl_listener request_below;
+    struct wl_listener request_demands_attention;
 
     struct wl_listener set_title;
     struct wl_listener set_class;
@@ -54,6 +60,7 @@ struct xwayland_view {
     struct wl_listener set_strut_partial;
     struct wl_listener set_override_redirect;
     // struct wl_listener set_geometry;
+    struct wl_listener set_capabilities;
 
     // TODO: output changed
     struct wl_listener output_update_usable_area;
@@ -424,6 +431,65 @@ static void xwayland_view_handle_request_activate(struct wl_listener *listener, 
     view_set_focus(&xwayland_view->view, seat);
 }
 
+static void xwayland_view_handle_request_sticky(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, request_sticky);
+
+    bool sticky = xwayland_view->wlr_xwayland_surface->sticky;
+    if (sticky == xwayland_view->view.base.sticky) {
+        return;
+    }
+
+    if (sticky) {
+        view_add_all_workspace(&xwayland_view->view);
+    } else {
+        view_set_workspace(&xwayland_view->view, workspace_manager_get_current());
+    }
+}
+
+static void xwayland_view_handle_request_skip_taskbar(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, request_skip_taskbar);
+
+    bool skip_taskbar = xwayland_view->wlr_xwayland_surface->skip_taskbar;
+    xwayland_view_set_skip_taskbar(xwayland_view->wlr_xwayland_surface, skip_taskbar);
+}
+
+static void xwayland_view_handle_request_skip_pager(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, request_skip_pager);
+
+    bool skip_pager = xwayland_view->wlr_xwayland_surface->skip_pager;
+    xwayland_view_set_skip_switcher(xwayland_view->wlr_xwayland_surface, skip_pager);
+}
+
+static void xwayland_view_handle_request_above(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, request_above);
+
+    bool above = xwayland_view->wlr_xwayland_surface->above;
+    kywc_view_set_kept_above(&xwayland_view->view.base, above);
+}
+
+static void xwayland_view_handle_request_below(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, request_below);
+
+    bool below = xwayland_view->wlr_xwayland_surface->below;
+    kywc_view_set_kept_below(&xwayland_view->view.base, below);
+}
+
+static void xwayland_view_handle_request_demands_attention(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, request_demands_attention);
+
+    bool demands_attention = xwayland_view->wlr_xwayland_surface->demands_attention;
+    xwayland_view_set_demands_attention(xwayland_view->wlr_xwayland_surface, demands_attention);
+}
+
 static void xwayland_view_handle_set_title(struct wl_listener *listener, void *data)
 {
     struct xwayland_view *xwayland_view = wl_container_of(listener, xwayland_view, set_title);
@@ -490,6 +556,34 @@ static void xwayland_view_handle_set_decorations(struct wl_listener *listener, v
         ssd &= ~KYWC_SSD_TITLE;
     }
     view_set_decoration(&xwayland_view->view, ssd);
+}
+
+static void xwayland_view_handle_set_capabilities(struct wl_listener *listener, void *data)
+{
+    struct xwayland_view *xwayland_view =
+        wl_container_of(listener, xwayland_view, set_capabilities);
+    struct wlr_xwayland_surface *wlr_xwayland_surface = xwayland_view->wlr_xwayland_surface;
+    struct kywc_view *kywc_view = &xwayland_view->view.base;
+
+    if (wlr_xwayland_surface->sticky != kywc_view->sticky) {
+        wlr_xwayland_surface_set_sticky(wlr_xwayland_surface, kywc_view->sticky);
+    }
+    if (wlr_xwayland_surface->skip_taskbar != kywc_view->skip_taskbar) {
+        wlr_xwayland_surface_set_skip_taskbar(wlr_xwayland_surface, kywc_view->skip_taskbar);
+    }
+    if (wlr_xwayland_surface->skip_pager != kywc_view->skip_switcher) {
+        wlr_xwayland_surface_set_skip_pager(wlr_xwayland_surface, kywc_view->skip_switcher);
+    }
+    if (wlr_xwayland_surface->above != kywc_view->kept_above) {
+        wlr_xwayland_surface_set_above(wlr_xwayland_surface, kywc_view->kept_above);
+    }
+    if (wlr_xwayland_surface->below != kywc_view->kept_below) {
+        wlr_xwayland_surface_set_below(wlr_xwayland_surface, kywc_view->kept_below);
+    }
+    if (wlr_xwayland_surface->demands_attention != kywc_view->demands_attention) {
+        wlr_xwayland_surface_set_demands_attention(wlr_xwayland_surface,
+                                                   kywc_view->demands_attention);
+    }
 }
 
 static void xwayland_view_handle_output_update_usable_area(struct wl_listener *listener, void *data)
@@ -626,24 +720,6 @@ static void xwayland_view_apply_type(struct xwayland_view *xwayland_view)
         xwayland_surface_has_type(surface, NET_WM_WINDOW_TYPE_DIALOG);
 }
 
-void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above_or_below,
-                                      bool state, bool toggle)
-{
-    struct xwayland_view *xwayland_view = surface->data;
-    if (!xwayland_view) {
-        return;
-    }
-
-    bool new_state;
-    if (above_or_below) {
-        new_state = toggle ? !xwayland_view->view.base.kept_above : state;
-        kywc_view_set_kept_above(&xwayland_view->view.base, new_state);
-    } else {
-        new_state = toggle ? !xwayland_view->view.base.kept_below : state;
-        kywc_view_set_kept_below(&xwayland_view->view.base, new_state);
-    }
-}
-
 void xwayland_view_set_skip_taskbar(struct wlr_xwayland_surface *surface, bool skip_taskbar)
 {
     struct xwayland_view *xwayland_view = surface->data;
@@ -670,8 +746,7 @@ void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool 
     }
 }
 
-void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, bool state,
-                                         bool toggle)
+void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, bool state)
 {
     struct xwayland_view *xwayland_view = surface->data;
     if (!xwayland_view) {
@@ -679,10 +754,9 @@ void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, b
     }
 
     bool old_state = xwayland_view->view.base.demands_attention;
-    bool new_state = toggle ? !old_state : state;
 
-    if (old_state != new_state) {
-        xwayland_view->view.base.demands_attention = new_state;
+    if (old_state != state) {
+        xwayland_view->view.base.demands_attention = state;
         wl_signal_emit_mutable(&xwayland_view->view.base.events.capabilities, NULL);
     }
 }
@@ -741,6 +815,12 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     xwayland_view_handle_set_decorations(&xwayland_view->set_decorations, NULL);
     xwayland_view_handle_request_maximize(&xwayland_view->request_maximize, NULL);
     xwayland_view_handle_request_fullscreen(&xwayland_view->request_fullscreen, NULL);
+    xwayland_view_handle_request_sticky(&xwayland_view->request_sticky, NULL);
+    xwayland_view_handle_request_skip_taskbar(&xwayland_view->request_skip_taskbar, NULL);
+    xwayland_view_handle_request_skip_pager(&xwayland_view->request_skip_pager, NULL);
+    xwayland_view_handle_request_above(&xwayland_view->request_above, NULL);
+    xwayland_view_handle_request_below(&xwayland_view->request_below, NULL);
+    xwayland_view_handle_request_demands_attention(&xwayland_view->request_demands_attention, NULL);
     xwayland_view_handle_set_hints(&xwayland_view->set_hints, NULL);
 
     assert(wlr_xwayland_surface->surface == xwayland_view->view.surface);
@@ -762,6 +842,22 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
                   &xwayland_view->request_fullscreen);
     xwayland_view->request_activate.notify = xwayland_view_handle_request_activate;
     wl_signal_add(&wlr_xwayland_surface->events.request_activate, &xwayland_view->request_activate);
+    xwayland_view->request_sticky.notify = xwayland_view_handle_request_sticky;
+    wl_signal_add(&wlr_xwayland_surface->events.request_sticky, &xwayland_view->request_sticky);
+    xwayland_view->request_skip_taskbar.notify = xwayland_view_handle_request_skip_taskbar;
+    wl_signal_add(&wlr_xwayland_surface->events.request_skip_taskbar,
+                  &xwayland_view->request_skip_taskbar);
+    xwayland_view->request_skip_pager.notify = xwayland_view_handle_request_skip_pager;
+    wl_signal_add(&wlr_xwayland_surface->events.request_skip_pager,
+                  &xwayland_view->request_skip_pager);
+    xwayland_view->request_above.notify = xwayland_view_handle_request_above;
+    wl_signal_add(&wlr_xwayland_surface->events.request_above, &xwayland_view->request_above);
+    xwayland_view->request_below.notify = xwayland_view_handle_request_below;
+    wl_signal_add(&wlr_xwayland_surface->events.request_below, &xwayland_view->request_below);
+    xwayland_view->request_demands_attention.notify =
+        xwayland_view_handle_request_demands_attention;
+    wl_signal_add(&wlr_xwayland_surface->events.request_demands_attention,
+                  &xwayland_view->request_demands_attention);
 
     xwayland_view->set_title.notify = xwayland_view_handle_set_title;
     wl_signal_add(&wlr_xwayland_surface->events.set_title, &xwayland_view->set_title);
@@ -774,6 +870,8 @@ static void xwayland_view_handle_map(struct wl_listener *listener, void *data)
     wl_signal_add(&wlr_xwayland_surface->events.set_hints, &xwayland_view->set_hints);
     xwayland_view->set_decorations.notify = xwayland_view_handle_set_decorations;
     wl_signal_add(&wlr_xwayland_surface->events.set_decorations, &xwayland_view->set_decorations);
+    xwayland_view->set_capabilities.notify = xwayland_view_handle_set_capabilities;
+    wl_signal_add(&xwayland_view->view.base.events.capabilities, &xwayland_view->set_capabilities);
 
     xwayland_view_apply_type(xwayland_view);
 
@@ -811,11 +909,18 @@ static void xwayland_view_handle_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&xwayland_view->request_maximize.link);
     wl_list_remove(&xwayland_view->request_fullscreen.link);
     wl_list_remove(&xwayland_view->request_activate.link);
+    wl_list_remove(&xwayland_view->request_sticky.link);
+    wl_list_remove(&xwayland_view->request_skip_taskbar.link);
+    wl_list_remove(&xwayland_view->request_skip_pager.link);
+    wl_list_remove(&xwayland_view->request_above.link);
+    wl_list_remove(&xwayland_view->request_below.link);
+    wl_list_remove(&xwayland_view->request_demands_attention.link);
     wl_list_remove(&xwayland_view->set_title.link);
     wl_list_remove(&xwayland_view->set_class.link);
     wl_list_remove(&xwayland_view->set_parent.link);
     wl_list_remove(&xwayland_view->set_hints.link);
     wl_list_remove(&xwayland_view->set_decorations.link);
+    wl_list_remove(&xwayland_view->set_capabilities.link);
 
     if (xwayland_view->xwayland->activated_surface == xwayland_view->wlr_xwayland_surface) {
         xwayland_view->xwayland->activated_surface = NULL;

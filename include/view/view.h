@@ -158,7 +158,6 @@ struct view {
     struct icon *icon; // find in icon folder
 
     uint32_t current_resize_edges;
-    bool show_in_all_workspaces;
     bool minimized_when_show_desktop;
     bool minimized_when_show_active_only;
     bool use_slide;

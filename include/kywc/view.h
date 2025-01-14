@@ -91,12 +91,13 @@ struct kywc_view {
 
     /* have a buffer attached and can shown in screen */
     bool mapped;
-    bool minimized, kept_above, kept_below;
+    bool minimized;
 
     /* current configured states */
     bool maximized, fullscreen, activated;
     enum kywc_tile tiled;
     bool modal;
+    bool kept_above, kept_below, sticky;
 
     /* wm capabilities of the view */
     bool minimizable, maximizable, fullscreenable;

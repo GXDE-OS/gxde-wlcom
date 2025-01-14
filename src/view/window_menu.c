@@ -111,7 +111,7 @@ static bool window_menu_action(struct menu_item *item, uint32_t key, void *data)
     } else if (menu == window_menu->desktop) {
         struct view *view = window_menu->view;
         if (key == KEY_A) {
-            if (view->show_in_all_workspaces) {
+            if (view->base.sticky) {
                 view_set_workspace(view, workspace_manager_get_current());
             } else {
                 view_add_all_workspace(view);

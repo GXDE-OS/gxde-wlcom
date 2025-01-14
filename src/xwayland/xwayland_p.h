@@ -47,10 +47,6 @@ enum atom_name {
     UKUI_NET_WM_WINDOW_TYPE_WATERMARK,
 
     NET_WM_STATE,
-    NET_WM_STATE_ABOVE,
-    NET_WM_STATE_BELOW,
-    NET_WM_STATE_SKIP_TASKBAR,
-    NET_WM_STATE_DEMANDS_ATTENTION,
     // KDE-specific atom
     KDE_NET_WM_STATE_SKIP_SWITCHER,
 
@@ -182,15 +178,11 @@ bool xwayland_view_set_shape_region(struct xwayland_server *xwayland, xcb_window
 
 void xwayland_surface_debug_type(struct wlr_xwayland_surface *wlr_xwayland_surface);
 
-void xwayland_view_set_above_or_below(struct wlr_xwayland_surface *surface, bool above_or_below,
-                                      bool state, bool toggle);
-
 void xwayland_view_set_skip_taskbar(struct wlr_xwayland_surface *surface, bool skip_taskbar);
 
 void xwayland_view_set_skip_switcher(struct wlr_xwayland_surface *surface, bool skip_switcher);
 
-void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, bool state,
-                                         bool toggle);
+void xwayland_view_set_demands_attention(struct wlr_xwayland_surface *surface, bool state);
 
 struct wlr_xwayland_surface *xwayland_view_look_surface(struct xwayland_server *xwayland,
                                                         xcb_window_t window_id);
