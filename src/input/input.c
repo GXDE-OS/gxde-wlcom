@@ -616,9 +616,17 @@ struct output *input_current_output(struct seat *seat)
 
 void input_manager_switch_vt(unsigned vt)
 {
-    struct wlr_session *session = input_manager->server->session;
+    struct server *server = input_manager->server;
+    if (server->vtnr == vt) {
+        return;
+    }
+
+    struct wlr_session *session = server->session;
     if (session) {
-        wlr_session_change_vt(session, vt);
+        server->active = false;
+        if (!wlr_session_change_vt(session, vt)) {
+            server->active = true;
+        }
     }
 }
 
