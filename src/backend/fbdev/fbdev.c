@@ -299,43 +299,14 @@ static bool fbdev_fix_screen_info(int fd, struct fbdev_screeninfo *info)
     return fbdev_set_screen_info(fd, &varinfo, false);
 }
 
-static void output_destroy(struct wlr_output *wlr_output)
-{
-    struct fbdev_output *output = fbdev_output_from_output(wlr_output);
-    wl_list_remove(&output->link);
-    if (output->frame_timer) {
-        wl_event_source_remove(output->frame_timer);
-    }
-    free((void *)output->device);
-
-    free(output);
-}
-
-bool fbdev_output_offscreen(struct fbdev_output *output)
-{
-    /* Unmap frame_buffer */
-    fbdev_frame_buffer_unmap(output);
-
-    if (output->backend->session->active) {
-        return false;
-    }
-
-    wl_event_source_remove(output->frame_timer);
-    output->frame_timer = NULL;
-
-    close(output->fd);
-
-    return true;
-}
-
-static bool fbdev_output_disable(struct fbdev_output *output)
+static bool fbdev_output_disable(struct fbdev_output *output, bool clear_screen)
 {
     if (!output->wlr_output.enabled) {
         return true;
     }
 
     /* dpms off output */
-    if (!fbdev_dpms_set(output, DPMS_MODE_OFF)) {
+    if (clear_screen && !fbdev_dpms_set(output, DPMS_MODE_OFF)) {
         /* clear buffer */
         memset(output->fb, 0x00, output->screen_info.buffer_length);
     }
@@ -349,6 +320,30 @@ static bool fbdev_output_disable(struct fbdev_output *output)
     kywc_log(KYWC_INFO, "fbdev output disabled");
 
     return true;
+}
+
+bool fbdev_output_offscreen(struct fbdev_output *output)
+{
+    if (output->backend->session->active) {
+        return false;
+    }
+
+    fbdev_output_disable(output, false);
+    close(output->fd);
+
+    return true;
+}
+
+static void output_destroy(struct wlr_output *wlr_output)
+{
+    struct fbdev_output *output = fbdev_output_from_output(wlr_output);
+    wl_list_remove(&output->link);
+
+    fbdev_output_disable(output, false);
+    close(output->fd);
+
+    free((void *)output->device);
+    free(output);
 }
 
 static int signal_frame_handler(void *data)
@@ -484,7 +479,6 @@ static bool fbdev_output_state_update_fb(struct fbdev_output *output,
 
     pixman_region32_fini(&clipped);
     wlr_buffer_end_data_ptr_access(state->buffer);
-
     return true;
 }
 
@@ -563,7 +557,7 @@ static bool fbdev_output_commit(struct wlr_output *wlr_output, const struct wlr_
         if (pending.base->enabled && !wlr_output->enabled) {
             fbdev_output_enable(output);
         } else if (!pending.base->enabled && wlr_output->enabled) {
-            return fbdev_output_disable(output);
+            return fbdev_output_disable(output, true);
         }
     }
 
@@ -655,11 +649,6 @@ bool fbdev_output_reenable(struct fbdev_output *output)
 {
     kywc_log(KYWC_INFO, "re-enabling fbdev output");
 
-    if (!output->wlr_output.enabled) {
-        return false;
-    }
-
-    /* Create the frame buffer */
     struct fbdev_screeninfo new_screen_info;
     int fd = fbdev_frame_buffer_open(output->device, &new_screen_info);
     if (fd < 0) {
@@ -687,6 +676,8 @@ bool fbdev_output_reenable(struct fbdev_output *output)
     }
 
     fbdev_output_enable(output);
+    /* refresh the frame immediately */
+    signal_frame_handler(output);
 
     return true;
 }
