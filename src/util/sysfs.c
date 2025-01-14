@@ -2,16 +2,13 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#include <stdio.h>
-
 #include <kywc/log.h>
 
 #include "util/sysfs.h"
 
 bool sysfs_read_uint64(const char *filename, uint64_t *val)
 {
-    FILE *fp;
-    fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "r");
     if (!fp) {
         kywc_log(KYWC_ERROR, "reading %s failed", filename);
         return false;
@@ -32,19 +29,32 @@ bool sysfs_read_uint64(const char *filename, uint64_t *val)
 
 bool sysfs_write_uint64(const char *filename, uint64_t val)
 {
-    FILE *fp;
-    fp = fopen(filename, "w");
+    FILE *fp = fopen(filename, "w");
     if (!fp) {
         kywc_log(KYWC_ERROR, "writing %s failed", filename);
         return false;
     }
 
     if (fprintf(fp, "%lu", val) < 0) {
-        kywc_log(KYWC_ERROR, "Couldn't fprintf an unsigned integer to '%s'", filename);
+        kywc_log(KYWC_ERROR, "Couldn't write an unsigned integer to '%s'", filename);
         fclose(fp);
         return false;
     }
 
     fclose(fp);
     return true;
+}
+
+size_t sysfs_read_data(const char *filename, void *buf, size_t size)
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        kywc_log(KYWC_ERROR, "reading %s failed", filename);
+        return 0;
+    }
+
+    size_t len = fread(buf, 1, size, fp);
+    fclose(fp);
+
+    return len;
 }
