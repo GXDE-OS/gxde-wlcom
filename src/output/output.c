@@ -481,6 +481,10 @@ static void handle_output_present(struct wl_listener *listener, void *data)
 
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
+    if (!output_manager->server->active) {
+        return;
+    }
+
     struct output *output = wl_container_of(listener, output, frame);
 
     if (output_manager->primary_output == &output->base) {
