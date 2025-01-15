@@ -272,6 +272,7 @@ struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wl
     assert(scene_output->index < 64);
     wl_list_insert(prev_output_link, &scene_output->link);
 
+    wl_signal_init(&scene_output->events.viewport);
     wl_signal_init(&scene_output->events.frame);
     wl_signal_init(&scene_output->events.destroy);
 
@@ -321,6 +322,21 @@ struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene, struct
     }
     struct ky_scene_output *scene_output = wl_container_of(addon, scene_output, addon);
     return scene_output;
+}
+
+void ky_scene_output_set_viewport_source_box(struct ky_scene_output *scene_output,
+                                             const struct wlr_box *src_box)
+{
+    if (wlr_box_equal(&scene_output->viewport.src, src_box) || src_box == NULL) {
+        return;
+    }
+
+    scene_output->viewport.has_src = true;
+    scene_output->viewport.src = *src_box;
+
+    wl_signal_emit_mutable(&scene_output->events.viewport, NULL);
+
+    ky_scene_output_damage_whole(scene_output);
 }
 
 static void scene_node_send_frame_done(struct ky_scene_node *node,

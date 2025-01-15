@@ -287,7 +287,21 @@ struct ky_scene_output {
 
     int x, y;
 
+    /**
+     * The viewport is selects a portion from the scene and displays it on the output.
+     * If has_src is true, the scene content is cropped to the provided
+     * rectangle. If has_dst is true, the scene content is scaled to the
+     * provided rectangle.
+     */
     struct {
+        bool has_src, has_dst;
+        struct wlr_box src;
+        int dst_width, dst_height;
+    } viewport;
+
+    struct {
+        /* emit if viewport changed */
+        struct wl_signal viewport;
         struct wl_signal frame;
         struct wl_signal destroy;
     } events;
@@ -422,6 +436,9 @@ struct ky_scene_output *ky_scene_get_scene_output(struct ky_scene *scene,
                                                   struct wlr_output *output);
 
 void ky_scene_output_damage_whole(struct ky_scene_output *scene_output);
+
+void ky_scene_output_set_viewport_source_box(struct ky_scene_output *scene_output,
+                                             const struct wlr_box *src_box);
 
 struct ky_scene_output_layout *
 ky_scene_attach_output_layout(struct ky_scene *scene, struct wlr_output_layout *output_layout);

@@ -285,14 +285,20 @@ static void ky_scene_tree_init(struct ky_scene_tree *tree, struct ky_scene_tree 
 
 static void scene_damage_outputs(struct ky_scene *scene, const pixman_region32_t *damage)
 {
-    struct output *output;
     struct ky_scene_output *scene_output;
+    struct kywc_box geo = { 0 };
     wl_list_for_each(scene_output, &scene->outputs, link) {
-        output = output_from_wlr_output(scene_output->output);
+        if (scene_output->viewport.has_src) {
+            geo.x = scene_output->viewport.src.x;
+            geo.y = scene_output->viewport.src.y;
+            geo.width = scene_output->viewport.src.width;
+            geo.height = scene_output->viewport.src.height;
+        } else {
+            struct output *output = output_from_wlr_output(scene_output->output);
+            geo = output->geometry;
+        }
         if (pixman_region32_contains_rectangle(
-                damage, &(pixman_box32_t){ output->geometry.x, output->geometry.y,
-                                           output->geometry.x + output->geometry.width,
-                                           output->geometry.y + output->geometry.height }) !=
+                damage, &(pixman_box32_t){ geo.x, geo.y, geo.x + geo.width, geo.y + geo.height }) !=
             PIXMAN_REGION_OUT) {
             output_schedule_frame(scene_output->output);
         }
@@ -493,13 +499,19 @@ void ky_scene_collect_damage(struct ky_scene *scene)
     }
 
     /* distribute damage to outputs */
-    int width, height;
+    struct wlr_box box = { 0 };
     pixman_region32_t region;
 
     struct ky_scene_output *output;
     wl_list_for_each(output, &scene->outputs, link) {
-        wlr_output_effective_resolution(output->output, &width, &height);
-        pixman_region32_init_rect(&region, output->x, output->y, width, height);
+        if (output->viewport.has_src) {
+            box = output->viewport.src;
+        } else {
+            box.x = output->x;
+            box.y = output->y;
+            wlr_output_effective_resolution(output->output, &box.width, &box.height);
+        }
+        pixman_region32_init_rect(&region, box.x, box.y, box.width, box.height);
         pixman_region32_intersect(&region, &region, &scene->collected_damage);
         pixman_region32_union(&output->collected_damage, &output->collected_damage, &region);
         pixman_region32_fini(&region);
