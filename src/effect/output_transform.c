@@ -312,10 +312,10 @@ failed:
     return false;
 }
 
-static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_output *scene_output)
+static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
     struct output_entry *output = entity->user_data;
-    if (output->output != scene_output) {
+    if (output->output != target->output) {
         return true;
     }
 

@@ -74,7 +74,7 @@ static void translation_effect_entity_destroy(struct effect_entity *entity)
 }
 
 static bool translation_frame_render_pre(struct effect_entity *entity,
-                                         struct ky_scene_output *scene_output)
+                                         struct ky_scene_render_target *target)
 {
     struct workspace_translation *data = entity->user_data;
     uint32_t current_time = current_time_msec();
@@ -83,7 +83,7 @@ static bool translation_frame_render_pre(struct effect_entity *entity,
         return false;
     }
 
-    struct workspace_output *ws_output = find_workspace_output(data, scene_output);
+    struct workspace_output *ws_output = find_workspace_output(data, target->output);
     if (!ws_output) {
         return false;
     }

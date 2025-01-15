@@ -114,7 +114,7 @@ static bool transform_effect_entity_bounding_box(struct effect_entity *entity, s
 }
 
 static bool transform_effect_frame_render_pre(struct effect_entity *entity,
-                                              struct ky_scene_output *scene_output)
+                                              struct ky_scene_render_target *target)
 {
     struct transform *transform = entity->user_data;
     uint32_t time = current_time_msec();

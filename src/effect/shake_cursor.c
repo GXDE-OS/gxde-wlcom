@@ -302,7 +302,8 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
     }
 }
 
-static bool handle_frame_render_pre(struct effect_entity *entity, struct ky_scene_output *output)
+static bool handle_frame_render_pre(struct effect_entity *entity,
+                                    struct ky_scene_render_target *target)
 {
     struct shake_cursor_effect *effect = entity->user_data;
 

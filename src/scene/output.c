@@ -678,8 +678,6 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     /* make sure something is done before commit */
     wl_signal_emit_mutable(&scene_output->events.frame, NULL);
 
-    ky_scene_output_render_pre(scene_output);
-
     struct wlr_output *output = scene_output->output;
     struct ky_scene_render_target target = {
         .transform = output->transform,
@@ -691,6 +689,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     wlr_output_transformed_resolution(output, &target.trans_width, &target.trans_height);
     target.logical.width = target.trans_width / output->scale;
     target.logical.height = target.trans_height / output->scale;
+
+    ky_scene_output_render_pre(&target);
 
     pixman_region32_t damage;
     // current scene damage in the output box

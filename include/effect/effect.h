@@ -39,7 +39,7 @@ struct effect_interface {
     bool (*node_render)(struct effect_entity *entity, int lx, int ly,
                         struct ky_scene_render_target *target);
 
-    bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_output *output);
+    bool (*frame_render_pre)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_begin)(struct effect_entity *entity, struct ky_scene_render_target *target);
     void (*frame_render)(struct effect_entity *entity, struct ky_scene_render_target *target);
     bool (*frame_render_end)(struct effect_entity *entity, struct ky_scene_render_target *target);
@@ -178,7 +178,7 @@ struct effect_entity *ky_scene_find_effect_entity(struct ky_scene *scene, struct
 
 struct effect_entity *ky_scene_add_effect(struct ky_scene *scene, struct effect *effec);
 
-void ky_scene_output_render_pre(struct ky_scene_output *scene_output);
+void ky_scene_output_render_pre(struct ky_scene_render_target *target);
 
 void ky_scene_output_render_begin(struct ky_scene_render_target *target);
 

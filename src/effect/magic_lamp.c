@@ -14,6 +14,7 @@
 #include "effect_p.h"
 #include "output.h"
 #include "render/opengl.h"
+#include "scene/scene.h"
 #include "scene/surface.h"
 #include "scene/thumbnail.h"
 #include "util/matrix.h"
@@ -476,7 +477,7 @@ static bool node_push_damage(struct effect_entity *entity, struct ky_scene_node 
     return false;
 }
 
-static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_output *scene_output)
+static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_render_target *target)
 {
     struct magic_lamp_entry *entry = entity->user_data;
     if (!entry) {
@@ -528,6 +529,7 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     }
 
     // compute boundbox for damage region
+    struct ky_scene_output *scene_output = target->output;
     compute_boundbox(entry, scene_output);
 
     // triangulate

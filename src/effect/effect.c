@@ -865,7 +865,7 @@ static void scene_output_run_effect(struct ky_scene_output *scene_output, enum i
         switch (name) {
         case RENDER_PRE:
             if (entity->effect->impl->frame_render_pre &&
-                !entity->effect->impl->frame_render_pre(entity, scene_output)) {
+                !entity->effect->impl->frame_render_pre(entity, target)) {
                 return;
             }
             break;
@@ -886,9 +886,9 @@ static void scene_output_run_effect(struct ky_scene_output *scene_output, enum i
     }
 }
 
-void ky_scene_output_render_pre(struct ky_scene_output *scene_output)
+void ky_scene_output_render_pre(struct ky_scene_render_target *target)
 {
-    scene_output_run_effect(scene_output, RENDER_PRE, NULL);
+    scene_output_run_effect(target->output, RENDER_PRE, target);
 }
 
 void ky_scene_output_render_begin(struct ky_scene_render_target *target)
