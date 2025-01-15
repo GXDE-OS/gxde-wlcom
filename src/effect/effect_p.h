@@ -84,4 +84,6 @@ bool locate_pointer_effect_create(struct effect_manager *manager);
 
 bool magic_lamp_effect_create(struct effect_manager *manager);
 
+bool zoom_effect_create(struct effect_manager *effect_manager);
+
 #endif /* _EFFECT_P_H_ */

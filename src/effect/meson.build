@@ -19,6 +19,7 @@ wlcom_sources += files(
   'touchtrail.c',
   'translation.c',
   'transform.c',
+  'zoom.c',
 )
 
 wlcom_sources += files(
