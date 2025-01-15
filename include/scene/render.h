@@ -14,6 +14,7 @@ enum ky_scene_render_option {
     KY_SCENE_RENDER_DISABLE_EFFECT = 1 << 3,
     KY_SCENE_RENDER_ENABLE_PRESENTATION = 1 << 4,
     KY_SCENE_RENDER_ENABLE_SECURITY = 1 << 5,
+    KY_SCENE_RENDER_ENABLE_CURSORS = 1 << 6,
 };
 
 struct ky_scene_render_target {

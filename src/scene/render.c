@@ -73,7 +73,8 @@ void ky_scene_render_target_add_software_cursors(struct ky_scene_render_target *
 
     struct wlr_output_cursor *cursor;
     wl_list_for_each(cursor, &output->cursors, link) {
-        if (!cursor->enabled || !cursor->visible || output->hardware_cursor == cursor) {
+        if ((!cursor->enabled || !cursor->visible || output->hardware_cursor == cursor) &&
+            !(target->options & KY_SCENE_RENDER_ENABLE_CURSORS)) {
             continue;
         }
 
@@ -90,15 +91,21 @@ void ky_scene_render_target_add_software_cursors(struct ky_scene_render_target *
             need_render = true;
         }
 
+        /* cursor is the buffer coordinate of the output, but does not include rotation */
+        /* lx ly is the logical coordinate in the scene */
+        float scale = target->output->output->scale;
+        int lx = (cursor->x - cursor->hotspot_x) / scale + target->output->x;
+        int ly = (cursor->y - cursor->hotspot_y) / scale + target->output->y;
+
         struct wlr_box box = {
-            .x = cursor->x - cursor->hotspot_x,
-            .y = cursor->y - cursor->hotspot_y,
-            .width = cursor->width,
-            .height = cursor->height,
+            .x = lx - target->logical.x,
+            .y = ly - target->logical.y,
+
+            .width = cursor->width / scale,
+            .height = cursor->height / scale,
         };
-        // box is already scaled by output scale
-        enum wl_output_transform transform = wlr_output_transform_invert(target->transform);
-        wlr_box_transform(&box, &box, transform, target->trans_width, target->trans_height);
+
+        ky_scene_render_box(&box, target);
 
         pixman_region32_t cursor_damage;
         pixman_region32_init_rect(&cursor_damage, box.x, box.y, box.width, box.height);
