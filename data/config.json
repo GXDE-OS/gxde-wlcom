@@ -88,20 +88,6 @@
                 "keys": "a",
                 "desc": "show Siderbar"
             },
-            "swipe:touchpad:4:left": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Control_L+Alt_L",
-                "keys": "Left",
-                "desc": "switch Left Workspace"
-            },
-            "swipe:touchpad:4:right": {
-                "enable": true,
-                "actiontype": "key",
-                "modifiers": "Control_L+Alt_L",
-                "keys": "Right",
-                "desc": "switch Right Workspace"
-            },
             "swipe:touch:4:down": {
                 "enable": true,
                 "actiontype": "dbus",
