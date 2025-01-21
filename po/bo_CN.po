@@ -19,7 +19,7 @@ msgstr ""
 
 #: src/view/action.c:108
 msgid "Screenshot"
-msgstr "截རིས།"
+msgstr "བཅད་ལེན་པར་རིས།"
 
 #: src/view/action.c:108
 msgid "Capture saved to"
@@ -55,7 +55,7 @@ msgstr "བརྙན་ཤེལ།"
 
 #: src/view/window_menu.c:342
 msgid "_Take Screenshot"
-msgstr "截རིས།(_T)"
+msgstr "བཅད་ལེན་པར་རིས།(_T)"
 
 #: src/view/window_menu.c:346
 msgid "_Desktop"
@@ -107,7 +107,7 @@ msgstr "འཆི་བའི་མཐིལ།(_B)"
 
 #: src/view/window_menu.c:375
 msgid "_Fullscreen"
-msgstr "全屏།(_F)"
+msgstr "འཆར་ཤེལ་ཧྲིལ་པོར་འཆར་བ།(_F)"
 
 #: src/view/window_menu.c:378
 msgid "_Close"
