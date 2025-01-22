@@ -420,6 +420,10 @@ static void xwayland_view_handle_request_activate(struct wl_listener *listener, 
     struct xwayland_view *xwayland_view =
         wl_container_of(listener, xwayland_view, request_activate);
 
+    /* force sync activate surface and focus surface */
+    if (xwayland_view->xwayland->activated_surface == xwayland_view->wlr_xwayland_surface) {
+        wlr_xwayland_surface_activate(xwayland_view->wlr_xwayland_surface, true);
+    }
     kywc_view_activate(&xwayland_view->view.base);
 
     struct wlr_seat *wlr_seat = xwayland_view->xwayland->wlr_xwayland->seat;

@@ -85,7 +85,6 @@ static void xwayland_unmanaged_focus(struct xwayland_unmanaged *unmanaged)
 
     struct seat *seat = seat_from_wlr_seat(unmanaged->xwayland->wlr_xwayland->seat);
     seat_focus_surface(seat, unmanaged->wlr_xwayland_surface->surface);
-    kywc_view_activate(NULL);
 }
 
 static void xwayland_unmanaged_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
