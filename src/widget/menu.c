@@ -132,7 +132,7 @@ static void menu_not_exceed_output(struct menu *menu)
         menu->clip_item = NULL;
     }
     menu->exceed_output = false;
-    ky_scene_decoration_set_window_size(menu->deco, menu->width, menu->height);
+    ky_scene_decoration_set_surface_size(menu->deco, menu->width, menu->height);
 }
 
 static void menu_exceed_output(struct menu *menu, int output_height)
@@ -152,7 +152,7 @@ static void menu_exceed_output(struct menu *menu, int output_height)
     menu->exceed_output = true;
     ky_scene_node_set_position(&menu->flip_up->tree->node, 0, 0);
     ky_scene_node_set_position(&menu->flip_down->tree->node, 0, output_height - MENU_FLIP_HEIGHT);
-    ky_scene_decoration_set_window_size(menu->deco, menu->width, output_height);
+    ky_scene_decoration_set_surface_size(menu->deco, menu->width, output_height);
 }
 
 static void menu_adjust_exceed_output(struct menu *menu)

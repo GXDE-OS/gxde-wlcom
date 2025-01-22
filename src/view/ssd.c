@@ -773,7 +773,7 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     }
 
     if (cause & SSD_UPDATE_CAUSE_SIZE) {
-        ky_scene_decoration_set_window_size(frame, view->geometry.width, view->geometry.height);
+        ky_scene_decoration_set_surface_size(frame, view->geometry.width, view->geometry.height);
     }
 
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
