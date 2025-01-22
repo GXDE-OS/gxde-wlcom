@@ -391,11 +391,12 @@ static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
 
 static void ssd_part_set_button_buffer(struct ssd_part *part, enum button_state state)
 {
-    enum theme_buffer_type type = BUTTON_MINIMIZE;
+    enum theme_buffer_type type = THEME_BUFFER_TYPE_BUTTON_MINIMIZE;
     if (part->type == SSD_BUTTON_MAXIMIZE) {
-        type = part->ssd->kywc_view->maximized ? BUTTON_RESTORE : BUTTON_MAXIMIZE;
+        type = part->ssd->kywc_view->maximized ? THEME_BUFFER_TYPE_BUTTON_RESTORE
+                                               : THEME_BUFFER_TYPE_BUTTON_MAXIMIZE;
     } else if (part->type == SSD_BUTTON_CLOSE) {
-        type = BUTTON_CLOSE;
+        type = THEME_BUFFER_TYPE_BUTTON_CLOSE;
     }
 
     struct theme *theme = theme_manager_get_current();
