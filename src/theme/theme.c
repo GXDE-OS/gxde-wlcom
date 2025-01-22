@@ -181,35 +181,35 @@ static struct wlr_buffer *draw_svg(const char *svg, int width, int height, float
     return painter_draw_buffer(&info);
 }
 
-static struct theme_buffer *draw_theme_buffers(struct theme *theme, float scale)
+static struct theme_buffer *draw_theme_buffer(struct theme *theme, float scale)
 {
-    struct theme_buffer *buffers = calloc(1, sizeof(struct theme_buffer));
-    if (!buffers) {
-        return NULL;
-    }
-
-    struct wlr_buffer *buffer =
-        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 3, scale);
+    struct theme_buffer *buffer = calloc(1, sizeof(struct theme_buffer));
     if (!buffer) {
-        free(buffers);
         return NULL;
     }
 
-    buffers->scale = scale;
-    wl_list_insert(&theme->scaled_buffers, &buffers->link);
+    struct wlr_buffer *buf =
+        draw_svg(theme->button_svg, theme->button_width * 4, theme->button_width * 3, scale);
+    if (!buf) {
+        free(buffer);
+        return NULL;
+    }
+
+    buffer->scale = scale;
+    wl_list_insert(&theme->scaled_buffers, &buffer->link);
 
     int width, height;
-    painter_buffer_size(buffer, &width, &height);
+    painter_buffer_size(buf, &width, &height);
 
-    buffers->buf = ky_renderer_upload_pixels(manager->server->renderer, manager->server->allocator,
-                                             width, height, buffer);
-    if (buffers->buf) {
-        wlr_buffer_drop(buffer);
+    buffer->buffer = ky_renderer_upload_pixels(manager->server->renderer,
+                                               manager->server->allocator, width, height, buf);
+    if (buffer->buffer) {
+        wlr_buffer_drop(buf);
     } else {
-        buffers->buf = buffer;
+        buffer->buffer = buf;
     }
 
-    return buffers;
+    return buffer;
 }
 
 static void theme_override_config(struct theme *theme)
@@ -280,8 +280,8 @@ static struct theme *theme_init(struct theme *theme, float scale)
     /* override some configs */
     theme_override_config(theme);
 
-    /* paint all buffers in scale */
-    draw_theme_buffers(theme, scale);
+    /* paint theme buffer in scale */
+    draw_theme_buffer(theme, scale);
 
     return theme;
 }
@@ -297,11 +297,11 @@ static void theme_destroy(struct theme *theme)
     }
 
     /* destroy all theme buffers */
-    struct theme_buffer *bufs, *bufs_tmp;
-    wl_list_for_each_safe(bufs, bufs_tmp, &theme->scaled_buffers, link) {
-        wlr_buffer_drop(bufs->buf);
-        wl_list_remove(&bufs->link);
-        free(bufs);
+    struct theme_buffer *buffer, *tmp;
+    wl_list_for_each_safe(buffer, tmp, &theme->scaled_buffers, link) {
+        wlr_buffer_drop(buffer->buffer);
+        wl_list_remove(&buffer->link);
+        free(buffer);
     }
 }
 
@@ -418,24 +418,24 @@ struct theme *theme_manager_get_current(void)
     return manager->current;
 }
 
-static struct theme_buffer *theme_buffers_load(struct theme *theme, float scale)
+static struct theme_buffer *theme_buffer_get_or_create(struct theme *theme, float scale)
 {
-    /* find scale buffers */
-    struct theme_buffer *bufs;
-    wl_list_for_each(bufs, &theme->scaled_buffers, link) {
-        if (bufs->scale == scale) {
-            return bufs;
+    /* find scale buffer */
+    struct theme_buffer *buffer;
+    wl_list_for_each(buffer, &theme->scaled_buffers, link) {
+        if (buffer->scale == scale) {
+            return buffer;
         }
     }
 
-    return draw_theme_buffers(theme, scale);
+    return draw_theme_buffer(theme, scale);
 }
 
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,
                                      struct wlr_fbox *src)
 {
-    struct theme_buffer *bufs = theme_buffers_load(theme, scale);
-    if (!bufs) {
+    struct theme_buffer *buffer = theme_buffer_get_or_create(theme, scale);
+    if (!buffer) {
         return NULL;
     }
 
@@ -446,7 +446,7 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
         src->y = src->height * (int)(type / 4);
     }
 
-    return bufs->buf;
+    return buffer->buffer;
 }
 
 bool theme_manager_set_icon_theme(const char *icon_theme_name)

@@ -17,8 +17,8 @@
 
 struct theme_buffer {
     struct wl_list link;
+    struct wlr_buffer *buffer;
     float scale;
-    struct wlr_buffer *buf;
 };
 
 struct icon_buffer {
