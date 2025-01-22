@@ -57,10 +57,10 @@ struct icon_pair {
 
 struct icon_theme {
     struct wl_list link;
-    struct wl_list parents_theme; // struct icon_theme
     char *name;
-    struct wl_list icons;        // struct icon
-    struct wl_list icons_subdir; // struct icon_subdir
+    struct wl_list icons;   // struct icon
+    struct wl_list parents; // struct icon_theme
+    struct wl_list subdirs; // struct icon_subdir
 };
 
 struct theme_override {

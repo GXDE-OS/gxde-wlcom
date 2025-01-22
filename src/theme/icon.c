@@ -296,7 +296,7 @@ static void parents_icon_theme_load(char *parents_name, struct icon_theme *theme
         if (strcmp(parent_name, DEFAULT_ICON_THEME_NAME)) {
             parent_theme = icon_theme_load(parent_name);
             if (parent_theme) {
-                wl_list_insert(&theme->parents_theme, &parent_theme->link);
+                wl_list_insert(&theme->parents, &parent_theme->link);
             }
         }
         parent_name = strtok_r(NULL, ",", &s_ptr);
@@ -312,7 +312,7 @@ static void icon_theme_dir_load(char *dir_name, struct icon_theme *theme)
         if (strstr(subdir, "apps") || strstr(subdir, "categories") || strstr(subdir, "status")) {
             icon_subdir = malloc(sizeof(struct icon_subdir));
             icon_subdir->subdir = fscan_build_fullname(theme->name, subdir, "");
-            wl_list_insert(&theme->icons_subdir, &icon_subdir->link);
+            wl_list_insert(&theme->subdirs, &icon_subdir->link);
         }
         subdir = strtok_r(NULL, ",", &s_ptr);
     }
@@ -446,7 +446,7 @@ static void icon_load(const char *path, const char *full_name, void *data)
 static void icon_load_theme(struct icon_theme *theme)
 {
     struct icon_subdir *icon_subdir;
-    wl_list_for_each(icon_subdir, &theme->icons_subdir, link) {
+    wl_list_for_each(icon_subdir, &theme->subdirs, link) {
         fscan_start(ICONPATH, icon_subdir->subdir, icon_load, theme);
     }
 }
@@ -467,8 +467,8 @@ struct icon_theme *icon_theme_load(const char *name)
         return NULL;
     }
 
-    wl_list_init(&theme->parents_theme);
-    wl_list_init(&theme->icons_subdir);
+    wl_list_init(&theme->parents);
+    wl_list_init(&theme->subdirs);
     icon_load_index_theme_file(theme);
     wl_list_init(&theme->icons);
     icon_load_theme(theme);
@@ -488,7 +488,7 @@ void icon_theme_destroy(struct icon_theme *theme)
     }
 
     struct icon_theme *parent_theme, *parent_tmp;
-    wl_list_for_each_safe(parent_theme, parent_tmp, &theme->parents_theme, link) {
+    wl_list_for_each_safe(parent_theme, parent_tmp, &theme->parents, link) {
         icon_theme_destroy(parent_theme);
     }
 
@@ -498,7 +498,7 @@ void icon_theme_destroy(struct icon_theme *theme)
     }
 
     struct icon_subdir *subdir, *dir_tmp;
-    wl_list_for_each_safe(subdir, dir_tmp, &theme->icons_subdir, link) {
+    wl_list_for_each_safe(subdir, dir_tmp, &theme->subdirs, link) {
         wl_list_remove(&subdir->link);
         free(subdir->subdir);
         free(subdir);
@@ -518,9 +518,9 @@ struct icon *icon_theme_get_icon(struct icon_theme *theme, const char *name, boo
     }
 
     if (search_parents) {
-        struct icon_theme *parents_theme;
-        wl_list_for_each(parents_theme, &theme->parents_theme, link) {
-            icon = icon_theme_get_icon(parents_theme, name, true);
+        struct icon_theme *parent;
+        wl_list_for_each(parent, &theme->parents, link) {
+            icon = icon_theme_get_icon(parent, name, true);
             if (icon) {
                 return icon;
             }
@@ -547,7 +547,7 @@ bool icon_need_reload(const char *path, struct icon_theme *theme, time_t thresho
         return ret;
     }
     struct icon_subdir *tmp_subdir;
-    wl_list_for_each(tmp_subdir, &theme->icons_subdir, link) {
+    wl_list_for_each(tmp_subdir, &theme->subdirs, link) {
         mtime = fscan_get_latest_mtime(path, tmp_subdir->subdir);
         ret = mtime > threshold ? true : false;
         if (ret) {
@@ -556,7 +556,7 @@ bool icon_need_reload(const char *path, struct icon_theme *theme, time_t thresho
     }
 
     struct icon_theme *tmp_theme;
-    wl_list_for_each(tmp_theme, &theme->parents_theme, link) {
+    wl_list_for_each(tmp_theme, &theme->parents, link) {
         mtime = fscan_get_latest_mtime(path, tmp_theme->name);
         ret = mtime > threshold ? true : false;
         if (ret) {
