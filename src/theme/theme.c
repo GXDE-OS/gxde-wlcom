@@ -387,9 +387,9 @@ void theme_manager_add_icon_update_listener(struct wl_listener *listener)
     wl_signal_add(&manager->events.icon_update, listener);
 }
 
-struct theme *theme_manager_get_current(void)
+struct theme *theme_manager_get_theme(void)
 {
-    return manager->current;
+    return &manager->theme;
 }
 
 static struct theme_buffer *theme_buffer_get_or_create(struct theme *theme, float scale)
@@ -617,7 +617,7 @@ static struct icon_buffer *icon_get_buffer(struct icon *icon, float scale)
         return NULL;
     }
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct draw_info info = {
         .width = theme->icon_size,
         .height = theme->icon_size,

@@ -162,7 +162,7 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
     if (!tooltip) {
         return;
     }
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct widget *widget;
 
     switch (part->type) {
@@ -244,7 +244,7 @@ static void ssd_tooltip_show(struct seat *seat, struct ssd_part *part, bool enab
 
 static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int width = 0, height = 0;
     painter_text_size(text, theme->font_name, theme->font_size, &width, &height);
 
@@ -354,7 +354,7 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
 static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
 {
     struct ky_scene_rect *frame = ky_scene_rect_from_node(part->node);
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int border = part->ssd->kywc_view->ssd & KYWC_SSD_BORDER ? theme->border_width : 0;
     int x1 = theme->shadow_border + theme->corner_radius + border;
     int x2 = frame->width - x1;
@@ -399,7 +399,7 @@ static void ssd_part_set_button_buffer(struct ssd_part *part, enum button_state 
         type = THEME_BUFFER_TYPE_BUTTON_CLOSE;
     }
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     /* get actual type by current state */
     type += state * 4;
 
@@ -597,7 +597,7 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
 
 static void ssd_update_title_icon(struct ssd *ssd)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct view *view = view_from_kywc_view(ssd->kywc_view);
     int title_height = view->parent ? theme->subtitle_height : theme->title_height;
     int y = theme->border_width + (title_height - theme->icon_size) / 2;
@@ -612,7 +612,7 @@ static void ssd_update_title_icon(struct ssd *ssd)
 
 static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct kywc_view *view = ssd->kywc_view;
     struct view *tmp = view_from_kywc_view(view);
 
@@ -674,7 +674,7 @@ static void ssd_update_title_text(struct ssd *ssd, uint32_t cause)
 
 static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct view *view = view_from_kywc_view(ssd->kywc_view);
 
     int border_w = theme->border_width;
@@ -734,7 +734,7 @@ static void ssd_update_titlebar(struct ssd *ssd, uint32_t cause)
 
 static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct kywc_view *view = ssd->kywc_view;
     struct ky_scene_decoration *frame =
         ky_scene_decoration_from_node(ssd->parts[SSD_FRAME_RECT].node);
@@ -799,7 +799,7 @@ static void ssd_update_margin(struct ssd *ssd)
 {
     struct kywc_view *view = ssd->kywc_view;
     struct view *tmp = view_from_kywc_view(view);
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int title =
         view->ssd & KYWC_SSD_TITLE ? tmp->parent ? theme->subtitle_height : theme->title_height : 0;
 
@@ -956,7 +956,7 @@ static void handle_view_fullscreen(struct wl_listener *listener, void *data)
 
 static void ssd_check_buttons(struct ssd *ssd)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct kywc_view *kywc_view = ssd->kywc_view;
 
     /* always has a close button */

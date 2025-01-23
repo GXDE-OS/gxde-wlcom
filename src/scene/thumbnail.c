@@ -244,7 +244,7 @@ static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct
         box->width += kywc_view->margin.off_width;
         box->height += kywc_view->margin.off_height;
     } else if (options & THUMBNAIL_DISABLE_ROUND_CORNER || options == 0) {
-        struct theme *theme = theme_manager_get_current();
+        struct theme *theme = theme_manager_get_theme();
         box->x -= kywc_view->margin.off_x + theme->shadow_border;
         box->y -= kywc_view->margin.off_y + theme->shadow_border;
         box->width += kywc_view->margin.off_width + theme->shadow_border * 2;
@@ -553,7 +553,7 @@ static void view_thumbnail_get_position(struct view *view, struct wlr_box *dst_b
     struct kywc_view *kywc_view = &view->base;
     struct kywc_box geometry = kywc_view->geometry;
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     if (kywc_view->ssd != KYWC_SSD_NONE) {
         dst_box->x = geometry.x - kywc_view->margin.off_x - theme->shadow_border;
         dst_box->y = geometry.y - kywc_view->margin.off_y - theme->shadow_border;

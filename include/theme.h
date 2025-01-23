@@ -118,7 +118,7 @@ void theme_manager_add_update_listener(struct wl_listener *listener);
 
 void theme_manager_add_icon_update_listener(struct wl_listener *listener);
 
-struct theme *theme_manager_get_current(void);
+struct theme *theme_manager_get_theme(void);
 
 bool theme_manager_set_widget_theme(const char *name, enum theme_type type);
 

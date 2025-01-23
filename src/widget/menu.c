@@ -33,7 +33,7 @@ static void menu_draw_item(struct menu_item *item, bool force)
     }
     item->redraw = false;
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     uint32_t border_mask = BORDER_MASK_LEFT | BORDER_MASK_RIGHT;
     uint32_t corner_mask = CORNER_MASK_NONE;
 
@@ -183,7 +183,7 @@ static void menu_render_items(struct menu *menu, bool force)
     }
     menu->redraw = false;
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int max_width = 0, max_height = 0, max_shortcut_width = 0;
     int width = 0, height = 0, shortcut_width = 0, shortcut_height = 0;
     int item_count = 0;
@@ -333,7 +333,7 @@ static void menu_set_position(struct menu *menu, int x, int y)
     if (menu->parent) {
         ky_scene_node_coords(&menu->parent->tree->node, &lx, &ly);
     }
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct kywc_box *geo = &output->geometry;
 
     /* keep menu visible in the output */
@@ -988,7 +988,7 @@ static void menu_handle_output_disable(struct wl_listener *listener, void *data)
 
 static void menu_update_decoration(struct menu *menu)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int radius = theme->corner_radius;
     int shadow = theme->shadow_border;
 

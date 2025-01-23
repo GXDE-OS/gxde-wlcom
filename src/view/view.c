@@ -366,7 +366,7 @@ void view_update_round_corner(struct view *view)
     }
 
     /* don't draw top round corner if ssd has title */
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
     if (!view_manager->state.csd_round_corner) {
         need_corner &= kywc_view->ssd != KYWC_SSD_NONE;

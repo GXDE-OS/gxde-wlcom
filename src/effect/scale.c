@@ -201,7 +201,7 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
     }
 
     scale_entity->view = view;
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     if (view->base.ssd == KYWC_SSD_NONE) {
         memcpy(&scale_entity->shadow, &view->base.padding, sizeof(struct padding));
     } else {

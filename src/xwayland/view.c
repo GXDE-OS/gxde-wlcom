@@ -267,7 +267,7 @@ static void xwayland_view_configure(struct view *view)
 static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, float scale)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct draw_info info = {
         .width = theme->icon_size,
         .height = theme->icon_size,

@@ -123,7 +123,7 @@ static void modal_box_set_round_corner(struct ky_scene_rect *modal_box, struct v
     struct kywc_view *kywc_view = &view->base;
     if (kywc_view->ssd & KYWC_SSD_TITLE) {
         bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
-        struct theme *theme = theme_manager_get_current();
+        struct theme *theme = theme_manager_get_theme();
         radius[KY_SCENE_ROUND_CORNER_RT] = need_corner ? theme->corner_radius : 0;
         radius[KY_SCENE_ROUND_CORNER_LT] = need_corner ? theme->corner_radius : 0;
     }

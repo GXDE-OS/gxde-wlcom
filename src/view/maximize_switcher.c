@@ -283,7 +283,7 @@ static const struct seat_keyboard_grab_interface keyboard_grab_impl = {
 
 static void update_title_text(struct item_view *item_view)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int select_width_gap = SELECT_WIDTH_GAP * 2;
     int max_width = switcher->max_width - theme->button_width - select_width_gap;
     widget_set_text(item_view->title_text, item_view->text, JUSTIFY_CENTER,
@@ -424,7 +424,7 @@ static void set_select_item_view(int index, struct item_view *current, struct it
 
 static void show_current_page_items(int index)
 {
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     int icon_width = theme->button_width;
     int select_width_gap = SELECT_WIDTH_GAP;
 
@@ -649,7 +649,7 @@ bool maximize_switcher_create(struct view_manager *view_manager)
         return false;
     }
 
-    struct theme *theme = theme_manager_get_current();
+    struct theme *theme = theme_manager_get_theme();
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     switcher->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&switcher->tree->node, false);

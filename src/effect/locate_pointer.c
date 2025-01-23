@@ -171,7 +171,7 @@ static bool handle_frame_render_end(struct effect_entity *entity,
         }
 
         float progress = (float)(current_time_msec() - pointer->animation_start_time) / INTERVAL;
-        float *color = theme_manager_get_current()->accent_color;
+        float *color = theme_manager_get_theme()->accent_color;
         float circle_progress, alpha, radius;
 
         for (int i = 0; i <= CIRCLES; i++) {
