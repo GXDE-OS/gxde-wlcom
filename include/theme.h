@@ -37,10 +37,10 @@ enum theme_buffer_type {
 
 enum theme_update_mask {
     THEME_UPDATE_MASK_NONE = 0,
+    /* theme type changed */
+    THEME_UPDATE_MASK_TYPE = 1 << 0,
     /* font_name, font_size or text color changed */
-    THEME_UPDATE_MASK_FONT = 1 << 0,
-    /* text_justify changed */
-    THEME_UPDATE_MASK_TEXT_ALIGN = 1 << 1,
+    THEME_UPDATE_MASK_FONT = 1 << 1,
     /* border_color changed */
     THEME_UPDATE_MASK_BORDER_COLOR = 1 << 2,
     /* background_color changed */
@@ -49,12 +49,10 @@ enum theme_update_mask {
     THEME_UPDATE_MASK_ACCENT_COLOR = 1 << 4,
     /* corner_radius changed */
     THEME_UPDATE_MASK_CORNER_RADIUS = 1 << 5,
-    /* icon_size, button_width changed */
-    THEME_UPDATE_MASK_ICON_SIZE = 1 << 6,
     /* opacity changed */
-    THEME_UPDATE_MASK_OPACITY = 1 << 7,
-    /* theme_type changed */
-    THEME_UPDATE_MASK_ALL = (1 << 8) - 1,
+    THEME_UPDATE_MASK_OPACITY = 1 << 6,
+    /* modal_mask_color changed */
+    THEME_UPDATE_MASK_MODAL_MASK_COLOR = 1 << 7,
 };
 
 struct server;
@@ -68,17 +66,9 @@ struct theme_update_event {
 };
 
 struct theme {
-    struct wl_list link;
-
-    const char *theme_name;
-    enum theme_type theme_type;
+    const char *name;
+    enum theme_type type;
     bool builtin;
-
-    int corner_radius;
-    int opacity;
-    /* font */
-    const char *font_name;
-    int font_size;
 
     /* border color */
     float active_border_color[4];
@@ -91,19 +81,27 @@ struct theme {
     /* text color */
     float active_text_color[4];
     float inactive_text_color[4];
+
+    /* modal mask color */
+    float modal_mask_color[4];
+
+    /* font */
+    const char *font_name;
+    int font_size;
+
+    float accent_color[4];
+    int corner_radius;
+    int opacity; // 0 - 100
+
     enum justification text_justify;
     bool layout_is_right_to_left;
     bool text_is_right_align;
-
     bool ssd_need_maximize_button;
-
-    float accent_color[4];
 
     /* icon size */
     int button_width;
     int icon_size;
 
-    /* not changed or ignored parameter */
     int border_width;
     int title_height;
     int subtitle_height;
@@ -111,12 +109,7 @@ struct theme {
 
     /* button svg string */
     const char *button_svg;
-
     struct wl_list scaled_buffers;
-};
-
-struct theme_interface {
-    struct theme *(*get_theme)(enum theme_type theme_type);
 };
 
 struct theme_manager *theme_manager_create(struct server *server);
@@ -127,9 +120,7 @@ void theme_manager_add_icon_update_listener(struct wl_listener *listener);
 
 struct theme *theme_manager_get_current(void);
 
-void theme_manager_set_interface(struct theme_interface *impl);
-
-bool theme_manager_set_theme(enum theme_type theme_type);
+bool theme_manager_set_widget_theme(const char *name, enum theme_type type);
 
 bool theme_manager_set_font(const char *name, int size);
 

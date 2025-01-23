@@ -5,7 +5,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 
-#include "theme.h"
 #include "view_p.h"
 
 struct stack_mode_view {
@@ -185,9 +184,6 @@ static void stack_mode_view_click(struct seat *seat, struct view *view, uint32_t
 
 static void stack_mode_enter(void)
 {
-    theme_manager_set_interface(NULL);
-    theme_manager_set_theme(theme_manager_get_current()->theme_type);
-
     struct view *view;
     struct view_manager *view_manager = manager->view_manager;
     wl_list_for_each(view, &view_manager->views, link) {

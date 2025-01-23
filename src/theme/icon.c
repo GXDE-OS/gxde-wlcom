@@ -293,7 +293,7 @@ static void parents_icon_theme_load(char *parents_name, struct icon_theme *theme
     char *s_ptr = NULL;
     char *parent_name = strtok_r(parents_name, ",", &s_ptr);
     while (parent_name) {
-        if (strcmp(parent_name, DEFAULT_ICON_THEME_NAME)) {
+        if (strcmp(parent_name, FALLBACK_ICON_THEME_NAME)) {
             parent_theme = icon_theme_load(parent_name);
             if (parent_theme) {
                 wl_list_insert(&theme->parents, &parent_theme->link);
@@ -458,7 +458,7 @@ struct icon_theme *icon_theme_load(const char *name)
         return NULL;
     }
     if (!name) {
-        name = "default";
+        name = DEFAULT_ICON_THEME_NAME;
     }
 
     theme->name = strdup(name);
@@ -475,7 +475,7 @@ struct icon_theme *icon_theme_load(const char *name)
 
     if (wl_list_empty(&theme->icons)) {
         free(theme->name);
-        theme->name = strdup("default");
+        theme->name = strdup(DEFAULT_ICON_THEME_NAME);
     }
 
     return theme;

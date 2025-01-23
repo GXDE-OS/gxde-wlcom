@@ -103,9 +103,9 @@ static void style_name_changed(GSettings *style, const char *key)
 {
     const char *style_name = g_settings_get_string(style, key);
     if (!strcmp(style_name, UKUI_THEME_LIGHT)) {
-        theme_manager_set_theme(THEME_TYPE_LIGHT);
+        theme_manager_set_widget_theme(NULL, THEME_TYPE_LIGHT);
     } else if (!strcmp(style_name, UKUI_THEME_DARK)) {
-        theme_manager_set_theme(THEME_TYPE_DARK);
+        theme_manager_set_widget_theme(NULL, THEME_TYPE_DARK);
     }
     free((void *)style_name);
 }

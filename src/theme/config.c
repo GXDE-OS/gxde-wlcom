@@ -10,56 +10,37 @@
 #include "theme_p.h"
 #include "util/dbus.h"
 
-#define WLCOM_THEME_LIGHT "default-light"
-#define WLCOM_THEME_DARK "default-dark"
-
 static const char *service_path = "/com/kylin/Wlcom/Theme";
 static const char *service_interface = "com.kylin.Wlcom.Theme";
 
-static int list_themes(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+static int print_theme_config(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     struct theme_manager *manager = userdata;
-
     sd_bus_message *reply = NULL;
+
     CK(sd_bus_message_new_method_return(msg, &reply));
-    CK(sd_bus_message_open_container(reply, 'a', "s"));
-
-    struct theme *theme;
-    wl_list_for_each(theme, &manager->themes, link) {
-        sd_bus_message_append(reply, "s", theme->theme_name);
-    }
-
-    CK(sd_bus_message_close_container(reply));
+    const char *config = json_object_to_json_string(manager->config->json);
+    sd_bus_message_append_basic(reply, 's', config);
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
     return 1;
 }
 
-static int current_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
-{
-    struct theme_manager *manager = userdata;
-    return sd_bus_reply_method_return(msg, "s", manager->current->theme_name);
-}
-
-static int set_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+static int set_widget_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     char *theme = NULL;
-    CK(sd_bus_message_read(msg, "s", &theme));
-    enum theme_type theme_type = THEME_TYPE_DEFAULT;
-    if (!strcmp(theme, WLCOM_THEME_LIGHT)) {
-        theme_type = THEME_TYPE_LIGHT;
-    } else if (!strcmp(theme, WLCOM_THEME_DARK)) {
-        theme_type = THEME_TYPE_DARK;
-    }
-    int32_t ret = theme_manager_set_theme(theme_type);
+    uint32_t type = THEME_TYPE_DEFAULT;
+    CK(sd_bus_message_read(msg, "su", &theme, &type));
+    int32_t ret = theme_manager_set_widget_theme(theme, type);
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
-static int current_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
-    struct theme_manager *manager = userdata;
-    return sd_bus_reply_method_return(msg, "si", manager->current->font_name,
-                                      manager->current->font_size);
+    char *icon_theme_name = NULL;
+    CK(sd_bus_message_read(msg, "s", &icon_theme_name));
+    int32_t ret = theme_manager_set_icon_theme(icon_theme_name);
+    return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
 static int set_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
@@ -79,23 +60,31 @@ static int set_accent_color(sd_bus_message *msg, void *userdata, sd_bus_error *r
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
-static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+static int set_corner_radius(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
-    char *icon_theme_name = NULL;
-    CK(sd_bus_message_read(msg, "s", &icon_theme_name));
-    int32_t ret = theme_manager_set_icon_theme(icon_theme_name);
+    int32_t corner_radius;
+    CK(sd_bus_message_read(msg, "i", &corner_radius));
+    int32_t ret = theme_manager_set_corner_radius(corner_radius);
+    return sd_bus_reply_method_return(msg, "b", &ret);
+}
+
+static int set_opacity(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    int32_t opacity;
+    CK(sd_bus_message_read(msg, "i", &opacity));
+    int32_t ret = theme_manager_set_opacity(opacity);
     return sd_bus_reply_method_return(msg, "b", &ret);
 }
 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("ListAllThemes", "", "as", list_themes, 0),
-    SD_BUS_METHOD("currentTheme", "", "s", current_theme, 0),
-    SD_BUS_METHOD("SetTheme", "s", "b", set_theme, 0),
-    SD_BUS_METHOD("currentFont", "", "si", current_font, 0),
+    SD_BUS_METHOD("PrintThemeConfig", "", "s", print_theme_config, 0),
+    SD_BUS_METHOD("SetWidgetTheme", "su", "b", set_widget_theme, 0),
+    SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
-    SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
+    SD_BUS_METHOD("SetCornerRadius", "i", "b", set_corner_radius, 0),
+    SD_BUS_METHOD("SetOpacity", "i", "b", set_opacity, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -115,30 +104,35 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
     }
 
     json_object *data;
-    /* some override configs */
+    /* some global configs */
+    free(manager->global.font_name);
     if (json_object_object_get_ex(manager->config->json, "font_name", &data)) {
-        free(manager->override.font_name);
-        manager->override.font_name = strdup(json_object_get_string(data));
+        manager->global.font_name = strdup(json_object_get_string(data));
+    } else {
+        manager->global.font_name = strdup("sans");
     }
     if (json_object_object_get_ex(manager->config->json, "font_size", &data)) {
-        manager->override.font_size = json_object_get_int(data);
-    }
-    if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
-        manager->override.accent_color = json_object_get_int(data);
+        manager->global.font_size = json_object_get_int(data);
     } else {
-        manager->override.accent_color = -1;
+        manager->global.font_size = 11;
+    }
+
+    if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
+        manager->global.accent_color = json_object_get_int(data);
+    } else {
+        manager->global.accent_color = -1;
     }
 
     if (json_object_object_get_ex(manager->config->json, "corner_radius", &data)) {
-        manager->override.corner_radius = json_object_get_int(data);
+        manager->global.corner_radius = json_object_get_int(data);
     } else {
-        manager->override.corner_radius = -1;
+        manager->global.corner_radius = 12;
     }
 
     if (json_object_object_get_ex(manager->config->json, "opacity", &data)) {
-        manager->override.opacity = json_object_get_int(data);
+        manager->global.opacity = json_object_get_int(data);
     } else {
-        manager->override.opacity = -1;
+        manager->global.opacity = 100;
     }
 
     if (json_object_object_get_ex(manager->config->json, "type", &data)) {
@@ -156,33 +150,44 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
 
 void theme_manager_write_config(struct theme_manager *manager, enum theme_type theme_type)
 {
+    if (!manager->config || !manager->config->json) {
+        return;
+    }
+
     if (theme_type > THEME_TYPE_UNDEFINED) {
         json_object_object_add(manager->config->json, "type", json_object_new_int(theme_type));
     }
 
-    if (manager->override.font_name) {
+    if (strcmp(manager->global.font_name, "sans")) {
         json_object_object_add(manager->config->json, "font_name",
-                               json_object_new_string(manager->override.font_name));
+                               json_object_new_string(manager->global.font_name));
+    } else {
+        json_object_object_del(manager->config->json, "font_name");
     }
-
-    if (manager->override.font_size > 0) {
+    if (manager->global.font_size != 11) {
         json_object_object_add(manager->config->json, "font_size",
-                               json_object_new_int(manager->override.font_size));
+                               json_object_new_int(manager->global.font_size));
+    } else {
+        json_object_object_del(manager->config->json, "font_size");
     }
 
-    if (manager->override.accent_color >= 0) {
+    if (manager->global.accent_color >= 0) {
         json_object_object_add(manager->config->json, "accent_color",
-                               json_object_new_int(manager->override.accent_color));
+                               json_object_new_int(manager->global.accent_color));
     }
 
-    if (manager->override.corner_radius >= 0) {
+    if (manager->global.corner_radius != 12) {
         json_object_object_add(manager->config->json, "corner_radius",
-                               json_object_new_int(manager->override.corner_radius));
+                               json_object_new_int(manager->global.corner_radius));
+    } else {
+        json_object_object_del(manager->config->json, "corner_radius");
     }
 
-    if (manager->override.opacity >= 0) {
+    if (manager->global.opacity != 100) {
         json_object_object_add(manager->config->json, "opacity",
-                               json_object_new_int(manager->override.opacity));
+                               json_object_new_int(manager->global.opacity));
+    } else {
+        json_object_object_del(manager->config->json, "opacity");
     }
 }
 
@@ -208,12 +213,14 @@ const char *theme_manager_read_icon_config(struct theme_manager *manager)
 
 void theme_manager_write_icon_config(struct theme_manager *manager, const char *name)
 {
-    if (name && name[0]) {
-        if (strcmp(name, DEFAULT_ICON_THEME_NAME)) {
-            json_object_object_add(manager->config->json, "icon_theme_name",
-                                   json_object_new_string(name));
-        } else {
-            json_object_object_del(manager->config->json, "icon_theme_name");
-        }
+    if (!manager->config || !manager->config->json) {
+        return;
+    }
+
+    if (strcmp(name, DEFAULT_ICON_THEME_NAME) || strcmp(name, FALLBACK_ICON_THEME_NAME)) {
+        json_object_object_add(manager->config->json, "icon_theme_name",
+                               json_object_new_string(name));
+    } else {
+        json_object_object_del(manager->config->json, "icon_theme_name");
     }
 }

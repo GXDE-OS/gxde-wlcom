@@ -13,7 +13,8 @@
     "autostart:" EXTRA_APPS_PATH
 #define PIXMAPPATH "/usr/share/pixmaps"
 
-#define DEFAULT_ICON_THEME_NAME "hicolor"
+#define DEFAULT_ICON_THEME_NAME "default"
+#define FALLBACK_ICON_THEME_NAME "hicolor"
 
 struct theme_buffer {
     struct wl_list link;
@@ -63,16 +64,6 @@ struct icon_theme {
     struct wl_list subdirs; // struct icon_subdir
 };
 
-struct theme_override {
-    /* font config override by dbus */
-    char *font_name;
-    int32_t font_size;
-    /* default to -1 */
-    int32_t accent_color;
-    int32_t corner_radius;
-    int32_t opacity;
-};
-
 struct desktop_info {
     struct wl_list link;
     char *app_id;
@@ -81,12 +72,49 @@ struct desktop_info {
     char *startup_name;
 };
 
+struct widget_theme {
+    const char *name;
+    enum theme_type type;
+    bool builtin;
+
+    /* border color */
+    float active_border_color[4];
+    float inactive_border_color[4];
+
+    /* background color */
+    float active_bg_color[4];
+    float inactive_bg_color[4];
+
+    /* text color */
+    float active_text_color[4];
+    float inactive_text_color[4];
+
+    /* default accent color, may override by global */
+    float accent_color[4];
+
+    /* modal mask color */
+    float modal_mask_color[4];
+
+    /**
+     * minimize, maximize, restore and close
+     * in different state: active/inactive, hover, click
+     */
+    const char *button_svg;
+};
+
+struct global_theme {
+    /* font config */
+    char *font_name;
+    int32_t font_size;
+    /* default to -1 */
+    int32_t accent_color;
+    int32_t corner_radius;
+    int32_t opacity;
+};
+
 struct theme_manager {
-    struct wl_event_source *timer;
-    struct wl_list themes;
-    struct theme *current;
-    struct theme_override override;
-    struct config *config;
+    struct theme theme;
+    struct global_theme global;
 
     /* cache of appid icon */
     struct wl_list icon_pairs; // struct icon_pair.link
@@ -102,13 +130,15 @@ struct theme_manager {
     struct wl_list specific_icons; // struct icon
     /* fallback icon */
     struct icon *fallback_icon;
-
-    struct theme_interface *impl;
+    /* timer to check for changes in icon-related files. */
+    struct wl_event_source *timer;
 
     struct {
         struct wl_signal update;
         struct wl_signal icon_update;
     } events;
+
+    struct config *config;
 
     struct server *server;
     struct wl_listener display_destroy;

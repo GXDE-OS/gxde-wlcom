@@ -23,67 +23,42 @@
 #include "server.h"
 #include "theme_p.h"
 
+#define FALLBACK_THEME_NAME "fallback"
+
 static struct theme_manager *manager = NULL;
 
-/* default light theme from ukui-white */
-static struct theme light = {
-    .theme_name = "default-light",
-    .theme_type = THEME_TYPE_LIGHT,
-
+/* fallback light widget theme from ukui-white */
+static struct widget_theme widget_light = {
+    .name = FALLBACK_THEME_NAME,
+    .type = THEME_TYPE_LIGHT,
     .builtin = true,
-    .font_name = "sans",
-    .font_size = 11,
-    .corner_radius = 12,
-    .opacity = 100,
+
     .active_border_color = { 0.0, 0.0, 0.0, 0.15 },
     .inactive_border_color = { 0.0, 0.0, 0.0, 0.15 },
     .active_bg_color = { 1.0, 1.0, 1.0, 1.0 },
     .inactive_bg_color = { 245.0 / 255.0, 245.0 / 255.0, 245.0 / 255.0, 1.0 },
     .active_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 1.0 },
     .inactive_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 0.3 },
-    .text_justify = JUSTIFY_LEFT,
-    .ssd_need_maximize_button = true,
     .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
-
-    .icon_size = 24,
-    .button_width = 30,
-
-    .border_width = 1,
-    .title_height = 38,
-    .subtitle_height = 38,
-    .shadow_border = 30,
+    .modal_mask_color = { 0, 0, 0, 0.2 },
 
     .button_svg = base_light_svg_src,
 };
 
-/* default dark theme from ukui-dark */
-static struct theme dark = {
-    .theme_name = "default-dark",
-    .theme_type = THEME_TYPE_DARK,
-
+/* fallback dark theme from ukui-dark */
+static struct widget_theme widget_dark = {
+    .name = FALLBACK_THEME_NAME,
+    .type = THEME_TYPE_DARK,
     .builtin = true,
-    .font_name = "sans",
-    .font_size = 11,
-    .corner_radius = 12,
-    .opacity = 100,
+
     .active_border_color = { 1.0, 1.0, 1.0, 0.15 },
     .inactive_border_color = { 1.0, 1.0, 1.0, 0.15 },
     .active_bg_color = { 18.0 / 255.0, 18.0 / 255.0, 18.0 / 255.0, 1.0 },
     .inactive_bg_color = { 28.0 / 255.0, 28.0 / 255.0, 28.0 / 255.0, 1.0 },
     .active_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
-    .inactive_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0,
-                             0.3 }, // 0x69 / 255.0, 0x69 / 255.0, 0x69 / 255.0, 1.0
-    .text_justify = JUSTIFY_LEFT,
-    .ssd_need_maximize_button = true,
+    .inactive_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 0.3 },
     .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
-
-    .icon_size = 24,
-    .button_width = 30,
-
-    .border_width = 1,
-    .title_height = 38,
-    .subtitle_height = 38,
-    .shadow_border = 30,
+    .modal_mask_color = { 0, 0, 0, 0.2 },
 
     .button_svg = base_dark_svg_src,
 };
@@ -148,7 +123,7 @@ static int handle_manager_timer(void *data)
     }
     if (reload_hicolor_theme_file) {
         old_hicolor_theme = manager->hicolor_theme;
-        new_hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
+        new_hicolor_theme = icon_theme_load(FALLBACK_ICON_THEME_NAME);
         manager->hicolor_theme = new_hicolor_theme;
     }
 
@@ -212,90 +187,100 @@ static struct theme_buffer *draw_theme_buffer(struct theme *theme, float scale)
     return buffer;
 }
 
-static void theme_override_config(struct theme *theme)
+static uint32_t theme_init(struct widget_theme *widget, float scale)
 {
-    struct theme_override *override = &manager->override;
+    struct theme *theme = &manager->theme;
+    uint32_t mask = THEME_UPDATE_MASK_NONE;
 
-    if (override->font_name && strcmp(override->font_name, theme->font_name)) {
-        if (theme->builtin) {
-            theme->font_name = override->font_name;
-        } else {
-            free((void *)theme->font_name);
-            theme->font_name = strdup(override->font_name);
-        }
+    /* use name and type from widget */
+    theme->name = widget->name;
+    theme->builtin = widget->builtin;
+
+    if (theme->type != widget->type) {
+        theme->type = widget->type;
+        mask |= THEME_UPDATE_MASK_TYPE;
     }
 
-    if (override->font_size > 0 && override->font_size != theme->font_size) {
-        theme->font_size = override->font_size;
+    /* copy color from widget */
+    if (memcmp(theme->active_border_color, widget->active_border_color, sizeof(float[4]))) {
+        memcpy(theme->active_border_color, widget->active_border_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_BORDER_COLOR;
+    }
+    if (memcmp(theme->inactive_border_color, widget->inactive_border_color, sizeof(float[4]))) {
+        memcpy(theme->inactive_border_color, widget->inactive_border_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_BORDER_COLOR;
     }
 
-    if (override->accent_color >= 0) {
-        theme->accent_color[0] = (float)((override->accent_color >> 16) & 0xff) / 255;
-        theme->accent_color[1] = (float)((override->accent_color >> 8) & 0xff) / 255;
-        theme->accent_color[2] = (float)(override->accent_color & 0xff) / 255;
+    if (memcmp(theme->active_bg_color, widget->active_bg_color, sizeof(float[4]))) {
+        memcpy(theme->active_bg_color, widget->active_bg_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_BACKGROUND_COLOR;
+    }
+    if (memcmp(theme->inactive_bg_color, widget->inactive_bg_color, sizeof(float[4]))) {
+        memcpy(theme->inactive_bg_color, widget->inactive_bg_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_BACKGROUND_COLOR;
+    }
+
+    if (memcmp(theme->active_text_color, widget->active_text_color, sizeof(float[4]))) {
+        memcpy(theme->active_text_color, widget->active_text_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_FONT;
+    }
+    if (memcmp(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]))) {
+        memcpy(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_FONT;
+    }
+
+    if (memcmp(theme->modal_mask_color, widget->modal_mask_color, sizeof(float[4]))) {
+        memcpy(theme->modal_mask_color, widget->modal_mask_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_MODAL_MASK_COLOR;
+    }
+
+    struct global_theme *global = &manager->global;
+    theme->font_name = global->font_name;
+    theme->font_size = global->font_size;
+
+    if (global->accent_color < 0 &&
+        memcmp(theme->accent_color, widget->accent_color, sizeof(float[4]))) {
+        memcpy(theme->accent_color, widget->accent_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_ACCENT_COLOR;
+    }
+    if (global->accent_color >= 0) {
+        theme->accent_color[0] = (float)((global->accent_color >> 16) & 0xff) / 255;
+        theme->accent_color[1] = (float)((global->accent_color >> 8) & 0xff) / 255;
+        theme->accent_color[2] = (float)(global->accent_color & 0xff) / 255;
         theme->accent_color[3] = 1.0;
     }
 
-    if (override->corner_radius >= 0) {
-        theme->corner_radius = override->corner_radius;
-    }
-
-    if (override->opacity >= 0) {
-        theme->opacity = override->opacity;
-    }
-}
-
-static struct theme *theme_from_theme_type(enum theme_type theme_type)
-{
-    struct theme *theme = NULL;
-    if (manager->impl && manager->impl->get_theme) {
-        theme = manager->impl->get_theme(theme_type);
-    }
-
-    if (!theme) {
-        if (theme_type == THEME_TYPE_LIGHT) {
-            theme = &light;
-        } else if (theme_type == THEME_TYPE_DARK) {
-            theme = &dark;
-        }
-    }
-    return theme;
-}
-
-static struct theme *theme_init(struct theme *theme, float scale)
-{
-    if (!theme) {
-        // TODO: load theme from file
-        return NULL;
-    }
+    theme->corner_radius = global->corner_radius;
+    theme->opacity = global->opacity;
 
     theme->layout_is_right_to_left = nls_layout_is_right_to_left();
     theme->text_is_right_align = nls_text_is_right_align();
-    if (theme->layout_is_right_to_left) {
-        theme->text_justify = JUSTIFY_RIGHT;
+    theme->text_justify = theme->layout_is_right_to_left ? JUSTIFY_RIGHT : JUSTIFY_LEFT;
+
+    theme->ssd_need_maximize_button = true;
+    theme->button_width = 32;
+    theme->icon_size = 24;
+    theme->border_width = 1;
+    theme->title_height = 38;
+    theme->subtitle_height = 38;
+    theme->shadow_border = 30;
+
+    // TODO: destroy all buffers, reuse it ?
+    struct theme_buffer *buffer, *tmp;
+    wl_list_for_each_safe(buffer, tmp, &theme->scaled_buffers, link) {
+        wlr_buffer_drop(buffer->buffer);
+        wl_list_remove(&buffer->link);
+        free(buffer);
     }
-    wl_list_init(&theme->scaled_buffers);
-    wl_list_insert(&manager->themes, &theme->link);
-
-    /* override some configs */
-    theme_override_config(theme);
-
+    theme->button_svg = widget->button_svg;
     /* paint theme buffer in scale */
     draw_theme_buffer(theme, scale);
 
-    return theme;
+    return mask;
 }
 
-static void theme_destroy(struct theme *theme)
+static void theme_finish(struct theme *theme)
 {
-    wl_list_remove(&theme->link);
-
-    /* no need to free strings when builtin themes */
-    if (!theme->builtin) {
-        free((void *)theme->font_name);
-        free((void *)theme->button_svg);
-    }
-
     /* destroy all theme buffers */
     struct theme_buffer *buffer, *tmp;
     wl_list_for_each_safe(buffer, tmp, &theme->scaled_buffers, link) {
@@ -317,10 +302,8 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->server_destroy.link);
 
-    struct theme *theme, *tmp;
-    wl_list_for_each_safe(theme, tmp, &manager->themes, link) {
-        theme_destroy(theme);
-    }
+    theme_finish(&manager->theme);
+    free(manager->global.font_name);
 
     desktop_infos_destroy(&manager->desktop_infos);
     icon_theme_destroy(manager->icon_theme);
@@ -334,7 +317,6 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         icon_destroy(icon);
     }
 
-    free(manager->override.font_name);
     free(manager);
     manager = NULL;
 }
@@ -346,7 +328,6 @@ struct theme_manager *theme_manager_create(struct server *server)
         return NULL;
     }
 
-    wl_list_init(&manager->themes);
     wl_signal_init(&manager->events.update);
     wl_signal_init(&manager->events.icon_update);
 
@@ -359,39 +340,32 @@ struct theme_manager *theme_manager_create(struct server *server)
     /* config support */
     theme_manager_config_init(manager);
 
+    /* load theme from config */
+    wl_list_init(&manager->theme.scaled_buffers);
+    enum theme_type theme_type = theme_manager_read_config(manager);
+    theme_manager_set_widget_theme(NULL, theme_type);
+
     wl_list_init(&manager->icon_pairs);
     /* load all desktop files and get icon name */
     wl_list_init(&manager->desktop_infos);
     icon_load_desktop(&manager->desktop_infos);
+    /* fallback hicolor theme */
+    manager->hicolor_theme = icon_theme_load(FALLBACK_ICON_THEME_NAME);
 
-    /* load theme from config */
-    enum theme_type theme_type = theme_manager_read_config(manager);
-    struct theme *theme = theme_from_theme_type(theme_type);
-    /* theme load failed, fallback to default theme */
-    if (!theme) {
-        theme = theme_from_theme_type(THEME_TYPE_DEFAULT);
-    }
-    manager->current = theme_init(theme, 1.0);
-
-    manager->hicolor_theme = icon_theme_load(DEFAULT_ICON_THEME_NAME);
     const char *icon_theme = theme_manager_read_icon_config(manager);
-    if (icon_theme) {
-        manager->icon_theme = icon_theme_load(icon_theme);
-    }
+    /* fallback to defaut if NULL */
+    manager->icon_theme = icon_theme_load(icon_theme);
+    assert(manager->icon_theme);
 
     /* load pixmaps path icons */
     wl_list_init(&manager->pixmaps_icons);
     icon_load_pixmaps_path(&manager->pixmaps_icons);
 
-    wl_list_init(&manager->specific_icons);
-
     manager->fallback_icon = icon_fallback_create();
     assert(manager->fallback_icon);
 
-    theme_manager_write_config(manager, manager->current->theme_type);
-    if (manager->icon_theme) {
-        theme_manager_write_icon_config(manager, manager->icon_theme->name);
-    }
+    wl_list_init(&manager->specific_icons);
+    theme_manager_write_icon_config(manager, manager->icon_theme->name);
 
     manager->timer = wl_event_loop_add_timer(server->event_loop, handle_manager_timer, NULL);
     if (manager->timer) {
@@ -463,13 +437,13 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
     }
 
     /* old icon_theme is hicolor and current icon_theme is hicolor */
-    if (!old && !strcmp(icon_theme_name, DEFAULT_ICON_THEME_NAME)) {
+    if (!old && !strcmp(icon_theme_name, FALLBACK_ICON_THEME_NAME)) {
         return true;
     }
 
     /* not found, keep current icon_theme */
     struct icon_theme *new = NULL;
-    if (strcmp(icon_theme_name, DEFAULT_ICON_THEME_NAME)) {
+    if (strcmp(icon_theme_name, FALLBACK_ICON_THEME_NAME)) {
         new = icon_theme_load(icon_theme_name);
         if (!new) {
             return false;
@@ -489,64 +463,70 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
     return true;
 }
 
-bool theme_manager_set_theme(enum theme_type theme_type)
+bool theme_manager_set_widget_theme(const char *name, enum theme_type type)
 {
-    struct theme *old = manager->current;
-    const char *theme_name;
-    struct theme *theme = theme_from_theme_type(theme_type);
-    if (!theme) {
-        return false;
+    if (!name || !*name) {
+        name = FALLBACK_THEME_NAME;
     }
-    theme_name = theme->theme_name;
+    if (type > THEME_TYPE_DARK) {
+        type = THEME_TYPE_DARK;
+    }
+
+    struct theme *current = &manager->theme;
     /* current theme is not changed */
-    if (old && !strcmp(old->theme_name, theme_name)) {
+    if (current->name && strcmp(current->name, name) == 0 && current->type == type) {
         return true;
     }
 
-    /* not found, keep current theme */
-    struct theme *new = theme_init(theme, 1.0);
-    if (!new) {
+    struct widget_theme *widget = NULL;
+    if (strcmp(name, FALLBACK_THEME_NAME) == 0) {
+        widget = type == THEME_TYPE_DARK ? &widget_dark : &widget_light;
+    } else {
+        // TODO: load from theme file
+    }
+    if (!widget) {
         return false;
     }
 
-    /* apply the new theme */
-    manager->current = new;
+    /* merge widget and global to theme */
+    uint32_t mask = theme_init(widget, 1.0);
+    theme_manager_write_config(manager, type);
 
     struct theme_update_event update_event = {
-        .theme_type = theme_type,
-        .update_mask = THEME_UPDATE_MASK_ALL,
+        .theme_type = type,
+        .update_mask = mask,
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
 
-    if (old) {
-        theme_destroy(old);
-    }
-    theme_manager_write_config(manager, manager->current->theme_type);
     return true;
 }
 
 bool theme_manager_set_font(const char *name, int size)
 {
-    struct theme_override *override = &manager->override;
-    struct theme *current = manager->current;
-    bool changed = false;
-
-    if (name && strcmp(name, current->font_name) != 0) {
-        free(override->font_name);
-        override->font_name = strdup(name);
-        changed = true;
+    if (!name || !*name || size <= 0) {
+        return false;
     }
 
-    if (size > 0 && current->font_size != size) {
-        override->font_size = size;
+    struct global_theme *global = &manager->global;
+    struct theme *theme = &manager->theme;
+    bool changed = false;
+
+    if (strcmp(name, global->font_name) != 0) {
+        free(global->font_name);
+        global->font_name = strdup(name);
+        theme->font_name = global->font_name;
+        changed = true;
+    }
+    if (global->font_size != size) {
+        global->font_size = size;
+        theme->font_size = global->font_size;
         changed = true;
     }
 
     if (!changed) {
-        return false;
+        return true;
     }
 
-    theme_override_config(current);
     struct theme_update_event update_event = {
         .update_mask = THEME_UPDATE_MASK_FONT,
     };
@@ -556,26 +536,21 @@ bool theme_manager_set_font(const char *name, int size)
     return true;
 }
 
-static int32_t get_color_int(float *rgba)
-{
-    int32_t color = (int)(rgba[0] * 255) << 16;
-    color |= (int)(rgba[1] * 255) << 8;
-    color |= (int)(rgba[2] * 255);
-    return color;
-}
-
 bool theme_manager_set_accent_color(int32_t color)
 {
-    struct theme_override *override = &manager->override;
-    struct theme *current = manager->current;
+    struct global_theme *global = &manager->global;
+    struct theme *theme = &manager->theme;
 
-    int32_t current_color = get_color_int(current->accent_color);
-    if (color == current_color) {
+    if (global->accent_color == color) {
         return true;
     }
 
-    override->accent_color = color;
-    theme_override_config(current);
+    global->accent_color = color;
+    theme->accent_color[0] = (float)((global->accent_color >> 16) & 0xff) / 255;
+    theme->accent_color[1] = (float)((global->accent_color >> 8) & 0xff) / 255;
+    theme->accent_color[2] = (float)(global->accent_color & 0xff) / 255;
+    theme->accent_color[3] = 1.0;
+
     struct theme_update_event update_event = {
         .update_mask = THEME_UPDATE_MASK_ACCENT_COLOR,
     };
@@ -587,16 +562,16 @@ bool theme_manager_set_accent_color(int32_t color)
 
 bool theme_manager_set_corner_radius(int32_t radius)
 {
-    struct theme_override *override = &manager->override;
-    struct theme *current = manager->current;
+    struct global_theme *global = &manager->global;
+    struct theme *theme = &manager->theme;
 
-    int32_t current_radius = current->corner_radius;
-    if (radius == current_radius) {
+    if (global->corner_radius == radius) {
         return true;
     }
 
-    override->corner_radius = radius;
-    theme_override_config(current);
+    global->corner_radius = radius;
+    theme->corner_radius = global->corner_radius;
+
     struct theme_update_event update_event = {
         .update_mask = THEME_UPDATE_MASK_CORNER_RADIUS,
     };
@@ -608,16 +583,17 @@ bool theme_manager_set_corner_radius(int32_t radius)
 
 bool theme_manager_set_opacity(int32_t opacity)
 {
-    struct theme_override *override = &manager->override;
-    struct theme *current = manager->current;
+    struct global_theme *global = &manager->global;
+    struct theme *theme = &manager->theme;
 
-    int32_t current_opacity = current->opacity;
-    if (opacity == current_opacity) {
+    opacity = opacity < 0 ? 0 : (opacity > 100 ? 100 : opacity);
+    if (global->opacity == opacity) {
         return true;
     }
 
-    override->opacity = opacity;
-    theme_override_config(current);
+    global->opacity = opacity;
+    theme->opacity = global->opacity;
+
     struct theme_update_event update_event = {
         .update_mask = THEME_UPDATE_MASK_OPACITY,
     };
@@ -834,9 +810,4 @@ struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale)
 
     struct icon_buffer *buf = icon_get_buffer(icon, scale);
     return buf ? buf->buffer : NULL;
-}
-
-void theme_manager_set_interface(struct theme_interface *impl)
-{
-    manager->impl = impl;
 }

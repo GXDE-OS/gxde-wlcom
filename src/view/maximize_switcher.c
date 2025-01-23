@@ -625,7 +625,7 @@ static void switcher_register_shortcuts(void)
 static void handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct theme_update_event *update_event = data;
-    if (update_event->update_mask != THEME_UPDATE_MASK_ALL) {
+    if (update_event->update_mask != THEME_UPDATE_MASK_TYPE) {
         return;
     }
     switcher->color = update_event->theme_type == THEME_TYPE_LIGHT ? &light : &dark;
@@ -654,7 +654,7 @@ bool maximize_switcher_create(struct view_manager *view_manager)
     switcher->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&switcher->tree->node, false);
 
-    switch (theme->theme_type) {
+    switch (theme->type) {
     case THEME_TYPE_UNDEFINED:
     case THEME_TYPE_LIGHT:
         switcher->color = &light;
