@@ -465,7 +465,8 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
 
 bool theme_manager_set_widget_theme(const char *name, enum theme_type type)
 {
-    if (!name || !*name) {
+    // fallback to builtin theme
+    if (!name || !*name || !manager->load_widget_theme) {
         name = FALLBACK_THEME_NAME;
     }
     if (type > THEME_TYPE_DARK) {
@@ -481,10 +482,11 @@ bool theme_manager_set_widget_theme(const char *name, enum theme_type type)
     struct widget_theme *widget = NULL;
     if (strcmp(name, FALLBACK_THEME_NAME) == 0) {
         widget = type == THEME_TYPE_DARK ? &widget_dark : &widget_light;
-    } else {
-        // TODO: load from theme file
+    } else if (manager->load_widget_theme) {
+        widget = manager->load_widget_theme(name, type);
     }
     if (!widget) {
+        kywc_log(KYWC_WARN, "widget theme %s(%d) load failed", name, type);
         return false;
     }
 

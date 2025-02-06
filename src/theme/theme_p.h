@@ -133,6 +133,8 @@ struct theme_manager {
     /* timer to check for changes in icon-related files. */
     struct wl_event_source *timer;
 
+    struct widget_theme *(*load_widget_theme)(const char *name, enum theme_type type);
+
     struct {
         struct wl_signal update;
         struct wl_signal icon_update;
