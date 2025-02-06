@@ -105,4 +105,14 @@ icon_manager_create(struct theme_manager *manager)
 }
 #endif
 
+#if HAVE_UKUI_THEME
+bool ukui_theme_manager_create(struct theme_manager *theme_manager);
+#else
+static __attribute__((unused)) inline bool
+ukui_theme_manager_create(struct theme_manager *theme_manager)
+{
+    return false;
+}
+#endif
+
 #endif /* _THEME_P_H */

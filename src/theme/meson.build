@@ -4,4 +4,10 @@ wlcom_sources += files(
   'theme.c',
 )
 
+if have_ukui_theme
+  wlcom_sources += files(
+    'ukui_theme.c',
+  )
+endif
+
 subdir('icons')

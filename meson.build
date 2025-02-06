@@ -123,6 +123,7 @@ have_kde_slide = get_option('kde_slide')
 have_ukui_screenshot = get_option('ukui_screenshot')
 have_ukui_shortcut = get_option('ukui_shortcut')
 have_ukui_gsettings = get_option('ukui_gsettings')
+have_ukui_theme = get_option('ukui_theme')
 have_kde_keystate = get_option('kde_keystate')
 have_libkywc = get_option('libkywc')
 have_kde_clipboard = get_option('kde_clipboard')
@@ -151,6 +152,7 @@ add_project_arguments([
   '-DHAVE_UKUI_SCREENSHOT=@0@'.format(have_ukui_screenshot.to_int()), 
   '-DHAVE_UKUI_SHORTCUT=@0@'.format(have_ukui_shortcut.to_int()),
   '-DHAVE_UKUI_GSETTINGS=@0@'.format(have_ukui_gsettings.to_int()), 
+  '-DHAVE_UKUI_THEME=@0@'.format(have_ukui_theme.to_int()), 
   '-DHAVE_KDE_KEYSTATE=@0@'.format(have_kde_keystate.to_int()),
   '-DHAVE_KDE_CLIPBOARD=@0@'.format(have_kde_clipboard.to_int()),
   '-DHAVE_UKUI_WATERMARK=@0@'.format(have_ukui_watermark.to_int()),
@@ -215,6 +217,7 @@ summary({
   'kde_slide': have_kde_slide,
   'ukui_screenshot': have_ukui_screenshot,
   'ukui_gsettings': have_ukui_gsettings,
+  'ukui_theme': have_ukui_theme,
   'kde_keystate': have_kde_keystate,
   'kde_clipboard': have_kde_clipboard,
   'ukui_watermark': have_ukui_watermark,

@@ -112,6 +112,12 @@ option('ukui_gsettings',
        description: 'Enable ukui configuration gsettings support'
 )
 
+option('ukui_theme',
+       type: 'boolean',
+       value: false,
+       description: 'Enable ukui widget theme support'
+)
+
 option('kde_keystate',
        type: 'boolean',
        value: true,

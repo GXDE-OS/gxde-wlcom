@@ -257,6 +257,7 @@ struct theme_manager *theme_manager_create(struct server *server)
     /* config support */
     theme_manager_config_init(manager);
     manager->icon = icon_manager_create(manager);
+    ukui_theme_manager_create(manager);
     wl_list_init(&manager->theme.scaled_buffers);
 
     return manager;
