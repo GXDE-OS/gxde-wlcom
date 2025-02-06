@@ -22,6 +22,8 @@ struct ukui_settings {
         GSettings *settings;
         char *font_name;
         char *font_size;
+        enum theme_type type;
+        char *widget_theme;
     } style;
 
     struct wl_listener destroy;
@@ -44,6 +46,7 @@ static const char *shake_cursor_key = "shake-cursor";
 static const char *style_schema = "org.ukui.style";
 static const char *style_name_key = "style-name";
 static const char *icon_theme_key = "icon-theme-name";
+static const char *widget_theme_key = "widget-theme-name";
 static const char *font_name_key = "system-font";
 static const char *font_size_key = "system-font-size";
 static const char *accent_color_key = "theme-color";
@@ -101,13 +104,22 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 
 static void style_name_changed(GSettings *style, const char *key)
 {
-    const char *style_name = g_settings_get_string(style, key);
-    if (!strcmp(style_name, UKUI_THEME_LIGHT)) {
-        theme_manager_set_widget_theme(NULL, THEME_TYPE_LIGHT);
-    } else if (!strcmp(style_name, UKUI_THEME_DARK)) {
-        theme_manager_set_widget_theme(NULL, THEME_TYPE_DARK);
+    if (strcmp(widget_theme_key, key) == 0) {
+        free(settings->style.widget_theme);
+        settings->style.widget_theme = g_settings_get_string(style, key);
+    } else {
+        const char *style_name = g_settings_get_string(style, key);
+        if (!strcmp(style_name, UKUI_THEME_LIGHT)) {
+            settings->style.type = THEME_TYPE_LIGHT;
+        } else if (!strcmp(style_name, UKUI_THEME_DARK)) {
+            settings->style.type = THEME_TYPE_DARK;
+        }
+        free((void *)style_name);
     }
-    free((void *)style_name);
+
+    if (settings->style.type != THEME_TYPE_UNDEFINED) {
+        theme_manager_set_widget_theme(settings->style.widget_theme, settings->style.type);
+    }
 }
 
 static void icon_theme_changed(GSettings *style, const char *key)
@@ -157,7 +169,7 @@ static void menu_transparency_changed(GSettings *style, const char *key)
 
 static void handle_style_settings_changed(GSettings *style, const char *key)
 {
-    if (strcmp(key, style_name_key) == 0) {
+    if (strcmp(key, style_name_key) == 0 || (strcmp(key, widget_theme_key) == 0)) {
         style_name_changed(style, key);
     } else if (strcmp(key, icon_theme_key) == 0) {
         icon_theme_changed(style, key);
@@ -237,6 +249,7 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     free(settings->cursor.theme);
     free(settings->style.font_name);
     free(settings->style.font_size);
+    free(settings->style.widget_theme);
 
     free(settings);
 }
@@ -248,6 +261,7 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
         return false;
     }
 
+    settings->style.type = THEME_TYPE_UNDEFINED;
     settings->cursor.settings = init_schema_settings(cursor_schema, handle_cursor_settings_changed);
     settings->style.settings = init_schema_settings(style_schema, handle_style_settings_changed);
 
