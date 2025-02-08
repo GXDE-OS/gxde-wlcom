@@ -18,6 +18,45 @@ struct thread_input {
     unsigned thread_index;
 };
 
+void queue_fence_init(struct queue_fence *fence)
+{
+    memset(fence, 0, sizeof(*fence));
+    pthread_mutex_init(&fence->mutex, NULL);
+    pthread_cond_init(&fence->cond, NULL);
+    fence->signalled = true;
+}
+
+void queue_fence_wait(struct queue_fence *fence)
+{
+    if (fence->signalled) {
+        return;
+    }
+
+    pthread_mutex_lock(&fence->mutex);
+    while (!fence->signalled) {
+        pthread_cond_wait(&fence->cond, &fence->mutex);
+    }
+    pthread_mutex_unlock(&fence->mutex);
+}
+
+void queue_fence_finish(struct queue_fence *fence)
+{
+    assert(fence->signalled);
+    pthread_mutex_lock(&fence->mutex);
+    pthread_mutex_unlock(&fence->mutex);
+
+    pthread_cond_destroy(&fence->cond);
+    pthread_mutex_destroy(&fence->mutex);
+}
+
+static void queue_fence_signal(struct queue_fence *fence)
+{
+    pthread_mutex_lock(&fence->mutex);
+    fence->signalled = true;
+    pthread_cond_broadcast(&fence->cond);
+    pthread_mutex_unlock(&fence->mutex);
+}
+
 static void *queue_thread_func(void *input)
 {
     struct queue *queue = ((struct thread_input *)input)->queue;
@@ -51,6 +90,9 @@ static void *queue_thread_func(void *input)
 
         if (job.job) {
             job.execute(job.job, job.global_data, thread_index);
+            if (job.fence) {
+                queue_fence_signal(job.fence);
+            }
             if (job.cleanup) {
                 job.cleanup(job.job, job.global_data, thread_index);
             }
@@ -61,6 +103,9 @@ static void *queue_thread_func(void *input)
     if (queue->num_threads == 0) {
         for (int i = queue->read_idx; i != queue->write_idx; i = (i + 1) % queue->max_jobs) {
             if (queue->jobs[i].job) {
+                if (queue->jobs[i].fence) {
+                    queue_fence_signal(queue->jobs[i].fence);
+                }
                 queue->jobs[i].job = NULL;
             }
         }
@@ -173,8 +218,8 @@ void queue_destroy(struct queue *queue)
     free(queue->threads);
 }
 
-bool queue_add_job(struct queue *queue, void *job, queue_execute_func execute,
-                   queue_execute_func cleanup)
+bool queue_add_job(struct queue *queue, void *job, struct queue_fence *fence,
+                   queue_execute_func execute, queue_execute_func cleanup)
 {
     if (!queue || !queue->threads) {
         return false;
@@ -186,6 +231,9 @@ bool queue_add_job(struct queue *queue, void *job, queue_execute_func execute,
         return false;
     }
 
+    if (fence) {
+        queue_fence_reset(fence);
+    }
     assert(queue->num_queued >= 0 && queue->num_queued <= queue->max_jobs);
 
     if (queue->num_queued == queue->max_jobs) {
@@ -215,6 +263,7 @@ bool queue_add_job(struct queue *queue, void *job, queue_execute_func execute,
     assert(ptr->job == NULL);
     ptr->job = job;
     ptr->global_data = queue->global_data;
+    ptr->fence = fence;
     ptr->execute = execute;
     ptr->cleanup = cleanup;
 
