@@ -299,3 +299,36 @@ bool queue_add_job(struct queue *queue, void *job, struct queue_fence *fence,
 
     return true;
 }
+
+void queue_drop_job(struct queue *queue, struct queue_fence *fence)
+{
+    if (!queue || !queue->threads) {
+        return;
+    }
+
+    if (queue_fence_is_signalled(fence)) {
+        return;
+    }
+
+    bool removed = false;
+
+    pthread_mutex_lock(&queue->lock);
+    for (int i = queue->read_idx; i != queue->write_idx; i = (i + 1) % queue->max_jobs) {
+        if (queue->jobs[i].fence == fence) {
+            if (queue->jobs[i].cleanup) {
+                queue->jobs[i].cleanup(queue->jobs[i].job, queue->global_data, -1);
+            }
+            /* Just clear it. The threads will treat as a no-op job. */
+            memset(&queue->jobs[i], 0, sizeof(queue->jobs[i]));
+            removed = true;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&queue->lock);
+
+    if (removed) {
+        queue_fence_signal(fence);
+    } else {
+        queue_fence_wait(fence);
+    }
+}
