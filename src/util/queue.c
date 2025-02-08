@@ -86,8 +86,13 @@ static bool queue_create_thread(struct queue *queue, unsigned index)
     return true;
 }
 
-bool queue_init(struct queue *queue, unsigned max_jobs, unsigned num_threads, void *global_data)
+struct queue *queue_create(unsigned max_jobs, unsigned num_threads, void *global_data)
 {
+    struct queue *queue = calloc(1, sizeof(*queue));
+    if (!queue) {
+        return NULL;
+    }
+
     queue->max_jobs = max_jobs;
     queue->global_data = global_data;
     queue->num_threads = num_threads;
@@ -121,7 +126,7 @@ bool queue_init(struct queue *queue, unsigned max_jobs, unsigned num_threads, vo
         }
     }
 
-    return true;
+    return queue;
 
 fail:
     free(queue->threads);
@@ -132,8 +137,8 @@ fail:
         pthread_mutex_destroy(&queue->lock);
         free(queue->jobs);
     }
-    *queue = (struct queue){ 0 };
-    return false;
+    free(queue);
+    return NULL;
 }
 
 static void queue_kill_threads(struct queue *queue)
@@ -155,7 +160,7 @@ static void queue_kill_threads(struct queue *queue)
 
 void queue_destroy(struct queue *queue)
 {
-    if (!queue->threads) {
+    if (!queue || !queue->threads) {
         return;
     }
 
@@ -171,7 +176,7 @@ void queue_destroy(struct queue *queue)
 bool queue_add_job(struct queue *queue, void *job, queue_execute_func execute,
                    queue_execute_func cleanup)
 {
-    if (!queue->threads) {
+    if (!queue || !queue->threads) {
         return false;
     }
 

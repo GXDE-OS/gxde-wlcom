@@ -35,7 +35,7 @@ struct queue {
     void *global_data;
 };
 
-bool queue_init(struct queue *queue, unsigned max_jobs, unsigned num_threads, void *global_data);
+struct queue *queue_create(unsigned max_jobs, unsigned num_threads, void *global_data);
 
 void queue_destroy(struct queue *queue);
 

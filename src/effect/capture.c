@@ -877,7 +877,7 @@ void capture_write_file(struct wlr_buffer *buffer, int width, int height, const 
     data->done = done;
     data->user_data = user_data;
 
-    if (!queue_add_job(&manager->server->queue, data, write_image, NULL)) {
+    if (!queue_add_job(manager->server->queue, data, write_image, NULL)) {
         free(data->path);
         free(data);
         capture_write_image(dst_buf, path, done, user_data);

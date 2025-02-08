@@ -208,6 +208,8 @@ bool server_init(struct server *server)
                              "org.freedesktop.login1.Manager", "PrepareForSleep", prepare_for_sleep,
                              server);
 
+    server->queue = queue_create(64, 4, server);
+
     config_manager_create(server);
     security_manager_create(server);
 
@@ -223,8 +225,6 @@ bool server_init(struct server *server)
 
     effect_manager_create(server);
     plugin_manager_create(server);
-
-    queue_init(&server->queue, 256, 4, server);
 
     server->ready = true;
     wl_signal_emit_mutable(&server->events.ready, NULL);
@@ -274,7 +274,7 @@ void server_finish(struct server *server)
 
     wl_signal_emit_mutable(&server->events.terminate, NULL);
 
-    queue_destroy(&server->queue);
+    queue_destroy(server->queue);
 
     wl_display_destroy_clients(server->display);
     /* make sure all xwayland-shells are destroyed */

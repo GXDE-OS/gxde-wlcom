@@ -54,7 +54,7 @@ struct server {
     struct ky_scene_output_layout *scene_layout;
     struct wlr_output_layout *layout;
 
-    struct queue queue;
+    struct queue *queue;
 
     const char *session_process;
     pid_t session_pid;
