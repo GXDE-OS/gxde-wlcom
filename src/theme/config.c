@@ -31,16 +31,16 @@ static int set_widget_theme(sd_bus_message *msg, void *userdata, sd_bus_error *r
     char *theme = NULL;
     uint32_t type = THEME_TYPE_DEFAULT;
     CK(sd_bus_message_read(msg, "su", &theme, &type));
-    int32_t ret = theme_manager_set_widget_theme(theme, type);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_widget_theme(theme, type);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     char *icon_theme_name = NULL;
     CK(sd_bus_message_read(msg, "s", &icon_theme_name));
-    int32_t ret = theme_manager_set_icon_theme(icon_theme_name);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_icon_theme(icon_theme_name);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static int set_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
@@ -48,32 +48,32 @@ static int set_font(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error
     char *font_name = NULL;
     int32_t size;
     CK(sd_bus_message_read(msg, "si", &font_name, &size));
-    int32_t ret = theme_manager_set_font(font_name, size);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_font(font_name, size);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static int set_accent_color(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     int32_t accent_color;
     CK(sd_bus_message_read(msg, "i", &accent_color));
-    int32_t ret = theme_manager_set_accent_color(accent_color);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_accent_color(accent_color);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static int set_corner_radius(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     int32_t corner_radius;
     CK(sd_bus_message_read(msg, "i", &corner_radius));
-    int32_t ret = theme_manager_set_corner_radius(corner_radius);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_corner_radius(corner_radius);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static int set_opacity(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     int32_t opacity;
     CK(sd_bus_message_read(msg, "i", &opacity));
-    int32_t ret = theme_manager_set_opacity(opacity);
-    return sd_bus_reply_method_return(msg, "b", &ret);
+    bool ret = theme_manager_set_opacity(opacity);
+    return sd_bus_reply_method_return(msg, "b", ret);
 }
 
 static const sd_bus_vtable service_vtable[] = {
