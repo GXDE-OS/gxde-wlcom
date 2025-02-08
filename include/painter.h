@@ -64,6 +64,7 @@ struct draw_info {
     /* rounded rect */
     uint32_t corner_mask;
     float corner_radius;
+    float hover_radius;
 
     const char *text;
     const char *shortcut;

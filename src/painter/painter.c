@@ -54,6 +54,7 @@ static void buffer_draw(struct cairo_buffer *buffer, struct draw_info *info, str
         double y = box->y + offset;
         double w = box->width - 2 * offset;
         double h = box->height - 2 * offset;
+        float radius = info->hover_radius;
         cairo_arc(cairo, x + radius, y + radius, radius, ANGLE(-180), ANGLE(-90));
         cairo_arc(cairo, x + w - radius, y + radius, radius, ANGLE(-90), ANGLE(0));
         cairo_arc(cairo, x + w - radius, y + h - radius, radius, ANGLE(0), ANGLE(90));

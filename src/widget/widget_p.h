@@ -50,6 +50,7 @@ struct widget {
 
     uint32_t corner_mask;
     float corner_radius;
+    float hover_radius;
 
     int width, height;
     int max_width, max_height;

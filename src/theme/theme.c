@@ -264,6 +264,7 @@ static uint32_t theme_init(struct widget_theme *widget, float scale)
     theme->title_height = 38;
     theme->subtitle_height = 38;
     theme->shadow_border = 30;
+    theme->normal_radius = 6;
 
     // TODO: destroy all buffers, reuse it ?
     struct theme_buffer *buffer, *tmp;

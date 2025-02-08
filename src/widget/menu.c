@@ -62,7 +62,7 @@ static void menu_draw_item(struct menu_item *item, bool force)
         widget_set_text(item->content, item->text,
                         theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
         widget_set_size(item->content, item->menu->width, item->menu->item_height);
-        widget_set_hovered_color(item->content, theme->accent_color);
+        widget_set_hovered_color(item->content, theme->accent_color, theme->normal_radius);
     }
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
@@ -70,8 +70,8 @@ static void menu_draw_item(struct menu_item *item, bool force)
     float *background_color = theme->active_bg_color;
     float *front_color = item->activated ? theme->active_text_color : theme->inactive_text_color;
     widget_set_background_color(item->content,
-                               (float[4]){ background_color[0], background_color[1],
-                                           background_color[2], theme->opacity / 100.0 });
+                                (float[4]){ background_color[0], background_color[1],
+                                            background_color[2], theme->opacity / 100.0 });
     widget_set_front_color(item->content, front_color);
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
     widget_set_round_corner(item->content, corner_mask, theme->corner_radius);

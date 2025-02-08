@@ -34,6 +34,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 
         .corner_mask = widget->corner_mask,
         .corner_radius = widget->corner_radius,
+        .hover_radius = widget->hover_radius,
 
         .text = widget->text,
         .shortcut = widget->shortcut,
@@ -301,8 +302,13 @@ void widget_set_front_color(struct widget *widget, const float color[static 4])
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
-void widget_set_hovered_color(struct widget *widget, const float color[static 4])
+void widget_set_hovered_color(struct widget *widget, const float color[static 4], float radius)
 {
+    if (widget->hover_radius != radius) {
+        widget->hover_radius = radius;
+        widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+    }
+
     if (memcmp(widget->hovered_color, color, sizeof(widget->hovered_color)) == 0) {
         return;
     }
