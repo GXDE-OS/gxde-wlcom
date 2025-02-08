@@ -121,6 +121,7 @@ struct input {
     struct kywc_output *mapped_output;
     struct wl_listener mapped_output_disable;
     struct wl_listener primary_output;
+    struct wl_listener viewport;
 
     /* input device prop and state per device */
     struct input_prop prop;

@@ -109,6 +109,19 @@ static void handle_mapped_output_disable(struct wl_listener *listener, void *dat
     input_clear_mapped_output(input);
 }
 
+static void handle_mapped_output_viewport(struct wl_listener *listener, void *data)
+{
+    struct input *input = wl_container_of(listener, input, viewport);
+    struct wlr_cursor *wlr_cursor = input->seat->cursor->wlr_cursor;
+    struct output *output = output_from_kywc_output(input->mapped_output);
+    if (output->scene_output->viewport.has_src) {
+        wlr_cursor_map_input_to_region(wlr_cursor, input->wlr_input,
+                                       &output->scene_output->viewport.src);
+    } else {
+        wlr_cursor_map_input_to_output(wlr_cursor, input->wlr_input, output->wlr_output);
+    }
+}
+
 static void input_destroy(struct input *input)
 {
     /* Tell the user the name of the removed device. */
@@ -119,6 +132,7 @@ static void input_destroy(struct input *input)
     wl_list_remove(&input->link);
     wl_list_remove(&input->mapped_output_disable.link);
     wl_list_remove(&input->primary_output.link);
+    wl_list_remove(&input->viewport.link);
 
     kywc_log(KYWC_DEBUG, "input device %s destroy", input->name);
 
@@ -230,8 +244,10 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
 
     input->mapped_output_disable.notify = handle_mapped_output_disable;
     input->primary_output.notify = handle_primary_output;
+    input->viewport.notify = handle_mapped_output_viewport;
     wl_list_init(&input->mapped_output_disable.link);
     wl_list_init(&input->primary_output.link);
+    wl_list_init(&input->viewport.link);
 
     if (wlr_input_device_is_libinput(wlr_input)) {
         input->device = wlr_libinput_get_device_handle(wlr_input);
@@ -573,11 +589,19 @@ bool input_set_state(struct input *input, struct input_state *state)
 
     if (old_mapped_output != input->mapped_output) {
         wl_list_remove(&input->mapped_output_disable.link);
+        wl_list_remove(&input->viewport.link);
         wl_list_init(&input->mapped_output_disable.link);
 
         if (input->mapped_output) {
             struct output *output = output_from_kywc_output(input->mapped_output);
             wl_signal_add(&output->events.disable, &input->mapped_output_disable);
+
+            struct ky_scene_output *scene_output = output->scene_output;
+            if (scene_output->viewport.has_src) {
+                wlr_cursor_map_input_to_region(input->seat->cursor->wlr_cursor, input->wlr_input,
+                                               &output->scene_output->viewport.src);
+            }
+            wl_signal_add(&scene_output->events.viewport, &input->viewport);
 
             if (output != input_current_output(input->seat)) {
                 cursor_move_to_output_center(input->seat->cursor, input->mapped_output);
