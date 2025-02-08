@@ -1,4 +1,4 @@
-if not add_languages('cpp', required: false)
+if not add_languages('cpp', native: false, required: false)
   subdir_done()
 endif
 
@@ -11,7 +11,7 @@ endif
 
 egl = dependency('egl')
 glesv2 = dependency('glesv2')
-libdrm_dep = dependency('libdrm')
+libdrm = dependency('libdrm')
 
 # Preprocess the .qrc file using the rcc command and generate a C++ source file
 rcc_command = ['rcc', '-name', 'resources', '-o', 'resources.cpp', 'qml.qrc']
@@ -25,7 +25,7 @@ generated_files = qt5.preprocess(
 executable(
   'kywc-gui',
   ['main.cpp', 'context.cpp', 'ui.cpp', 'workspace.cpp', 'output.cpp', 'toplevel.cpp', 'thumbnail.cpp', 'ThumbnailItem.cpp', 'ThumInfo.cpp', 'resources.cpp', generated_files],
-  dependencies: [qt5dep, libkywc, egl, glesv2, libdrm_dep],
+  dependencies: [qt5dep, libkywc, egl, glesv2, libdrm],
   cpp_args: ['-Wno-unused-parameter'],
   install: false
 )
@@ -39,7 +39,7 @@ thu_files = qt5.preprocess(
 executable(
   'thumbnail',
   ['ThumMain.cpp', 'context.cpp', 'workspace.cpp', 'output.cpp', 'toplevel.cpp', 'thumbnail.cpp', 'ThumbnailItem.cpp', 'ThumInfo.cpp', 'resources.cpp', thu_files],
-  dependencies: [qt5dep, libkywc, egl, glesv2, libdrm_dep],
+  dependencies: [qt5dep, libkywc, egl, glesv2, libdrm],
   cpp_args: ['-Wno-unused-parameter'],
   install: false
 )
