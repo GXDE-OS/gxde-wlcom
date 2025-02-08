@@ -9,37 +9,14 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+struct queue;
+
 typedef void (*queue_execute_func)(void *job, void *gdata, int thread_index);
 
 struct queue_fence {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     bool signalled;
-};
-
-struct queue_job {
-    void *job;
-    void *global_data;
-    struct queue_fence *fence;
-    queue_execute_func execute;
-    queue_execute_func cleanup;
-};
-
-struct queue {
-    pthread_mutex_t lock;
-    pthread_cond_t has_queued_cond;
-    pthread_cond_t has_space_cond;
-
-    struct queue_job *jobs;
-    int max_jobs;
-
-    int num_queued;
-    int write_idx, read_idx;
-
-    pthread_t *threads;
-    unsigned num_threads;
-
-    void *global_data;
 };
 
 static inline void queue_fence_reset(struct queue_fence *fence)
