@@ -246,7 +246,7 @@ static void ssd_tooltip_draw_widget(struct widget *widget, const char *text)
 {
     struct theme *theme = theme_manager_get_theme();
     int width = 0, height = 0;
-    painter_text_size(text, theme->font_name, theme->font_size, &width, &height);
+    painter_get_text_size(text, theme->font_name, theme->font_size, &width, &height);
 
     widget_set_text(widget, text, TEXT_ALIGN_CENTER, TEXT_ATTR_NONE);
     widget_set_font(widget, theme->font_name, theme->font_size);
@@ -591,7 +591,7 @@ static void ssd_part_set_icon_buffer(struct ssd_part *part)
     }
 
     int width, height;
-    painter_buffer_dest_size(buf, &width, &height);
+    painter_buffer_get_dest_size(buf, &width, &height);
     ky_scene_buffer_set_dest_size(buffer, width, height);
 }
 

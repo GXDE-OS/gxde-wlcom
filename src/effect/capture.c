@@ -834,7 +834,7 @@ struct capture_data {
 static void capture_write_image(struct wlr_buffer *buffer, const char *path,
                                 void (*done)(const char *path, void *data), void *user_data)
 {
-    painter_buffer_to_file(buffer, path);
+    painter_buffer_write_to_file(buffer, path);
     wlr_buffer_drop(buffer);
 
     if (done) {

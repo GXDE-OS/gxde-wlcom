@@ -330,7 +330,7 @@ static void set_icon_buffer(struct item_view *item_view, float opacity)
 
     int width, height;
     ky_scene_buffer_set_opacity(buffer, opacity);
-    painter_buffer_dest_size(buf, &width, &height);
+    painter_buffer_get_dest_size(buf, &width, &height);
     ky_scene_buffer_set_dest_size(buffer, width, height);
 }
 

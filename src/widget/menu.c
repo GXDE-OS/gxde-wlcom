@@ -193,7 +193,7 @@ static void menu_render_items(struct menu *menu, bool force)
         if (item->item_type != ITEM_TYPE_NORMAL) {
             continue;
         }
-        painter_text_size(item->text, theme->font_name, theme->font_size, &width, &height);
+        painter_get_text_size(item->text, theme->font_name, theme->font_size, &width, &height);
         if (width > max_width) {
             max_width = width;
         }
@@ -208,8 +208,8 @@ static void menu_render_items(struct menu *menu, bool force)
         if (!item->shortcut) {
             continue;
         }
-        painter_text_size(item->shortcut, theme->font_name, theme->font_size, &shortcut_width,
-                          &shortcut_height);
+        painter_get_text_size(item->shortcut, theme->font_name, theme->font_size, &shortcut_width,
+                              &shortcut_height);
         if (shortcut_width > max_shortcut_width) {
             max_shortcut_width = shortcut_width;
         }

@@ -89,16 +89,17 @@ struct draw_info {
     } pixel;
 };
 
-struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
-
-bool painter_redraw_buffer(struct wlr_buffer *buffer, struct draw_info *info);
-
-void painter_buffer_dest_size(struct wlr_buffer *buffer, int *width, int *height);
-
-void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name);
-
 struct wlr_buffer *painter_create_buffer(int width, int height, float scale);
 
-void painter_text_size(const char *text, const char *font, int font_size, int *width, int *height);
+struct wlr_buffer *painter_draw_buffer(struct draw_info *info);
+
+bool painter_buffer_redraw(struct wlr_buffer *buffer, struct draw_info *info);
+
+void painter_buffer_get_dest_size(struct wlr_buffer *buffer, int *width, int *height);
+
+void painter_buffer_write_to_file(struct wlr_buffer *buffer, const char *name);
+
+void painter_get_text_size(const char *text, const char *font, int font_size, int *width,
+                           int *height);
 
 #endif /* _PAINTER_H_ */

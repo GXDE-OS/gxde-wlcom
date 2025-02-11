@@ -52,7 +52,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 
     struct wlr_buffer *buffer = widget->content.buffer->buffer;
     if (buffer && redraw_only) {
-        painter_redraw_buffer(buffer, &info);
+        painter_buffer_redraw(buffer, &info);
     } else {
         buffer = painter_draw_buffer(&info);
         if (!buffer) {
@@ -62,7 +62,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 
     if (widget->auto_resize) {
         int width;
-        painter_buffer_dest_size(buffer, &width, NULL);
+        painter_buffer_get_dest_size(buffer, &width, NULL);
         widget->text_truncated = width == widget->max_width;
     }
 
@@ -73,7 +73,7 @@ static void widget_buffer_get_size(struct widget *widget, struct wlr_buffer *buf
                                    struct wlr_fbox *src, int *width, int *height)
 {
     int w, h, scaled_w = buffer->width, scaled_h = buffer->height;
-    painter_buffer_dest_size(buffer, &w, &h);
+    painter_buffer_get_dest_size(buffer, &w, &h);
 
     src->x = 0;
     src->y = widget->hovered ? scaled_h / 2 : 0;
@@ -160,7 +160,7 @@ static void widget_do_update(struct widget *widget)
 
     if (widget->pending_cause & WIDGET_UPDATE_CAUSE_SIZE) {
         int width;
-        painter_buffer_dest_size(buffer, &width, NULL);
+        painter_buffer_get_dest_size(buffer, &width, NULL);
         /* skip paint buffer if text not truncated when auto-resized */
         if (widget->auto_resize && !widget->text_truncated && width <= widget->max_width) {
             widget->pending_cause &= ~WIDGET_UPDATE_CAUSE_SIZE;
@@ -532,7 +532,7 @@ void widget_get_size(struct widget *widget, int *width, int *height)
         return;
     }
 
-    painter_buffer_dest_size(buffer, width, height);
+    painter_buffer_get_dest_size(buffer, width, height);
 }
 
 float widget_get_scale(struct widget *widget)
