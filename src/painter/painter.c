@@ -292,17 +292,6 @@ void painter_buffer_dest_size(struct wlr_buffer *buffer, int *width, int *height
     }
 }
 
-void painter_buffer_size(struct wlr_buffer *buffer, int *width, int *height)
-{
-    struct cairo_buffer *buf = cairo_buffer_from_wlr_buffer(buffer);
-    if (buf && width) {
-        *width = buf->base.width;
-    }
-    if (buf && height) {
-        *height = buf->base.height;
-    }
-}
-
 void painter_buffer_to_file(struct wlr_buffer *buffer, const char *name)
 {
     struct cairo_buffer *buf = cairo_buffer_from_wlr_buffer(buffer);

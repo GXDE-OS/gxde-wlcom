@@ -173,11 +173,8 @@ static struct theme_buffer *draw_theme_buffer(struct theme *theme, float scale)
     buffer->scale = scale;
     wl_list_insert(&theme->scaled_buffers, &buffer->link);
 
-    int width, height;
-    painter_buffer_size(buf, &width, &height);
-
-    buffer->buffer = ky_renderer_upload_pixels(manager->server->renderer,
-                                               manager->server->allocator, width, height, buf);
+    buffer->buffer = ky_renderer_upload_pixels(
+        manager->server->renderer, manager->server->allocator, buf->width, buf->height, buf);
     if (buffer->buffer) {
         wlr_buffer_drop(buf);
     } else {

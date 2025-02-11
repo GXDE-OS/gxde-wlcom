@@ -72,8 +72,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 static void widget_buffer_get_size(struct widget *widget, struct wlr_buffer *buffer,
                                    struct wlr_fbox *src, int *width, int *height)
 {
-    int w, h, scaled_w, scaled_h;
-    painter_buffer_size(buffer, &scaled_w, &scaled_h);
+    int w, h, scaled_w = buffer->width, scaled_h = buffer->height;
     painter_buffer_dest_size(buffer, &w, &h);
 
     src->x = 0;
