@@ -867,6 +867,11 @@ void capture_write_file(struct wlr_buffer *buffer, int width, int height, const 
     kywc_log(KYWC_DEBUG, "capture copy buffer to memory");
 
     struct capture_data *data = malloc(sizeof(*data));
+    if (!data) {
+        capture_write_image(dst_buf, path, done, user_data);
+        return;
+    }
+
     data->buffer = dst_buf;
     data->path = strdup(path);
     data->done = done;
