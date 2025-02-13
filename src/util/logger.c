@@ -42,8 +42,8 @@ static void log_file(enum kywc_log_level level, const char *fmt, va_list args)
     } else {
         struct timespec ts = { 0 };
         clock_gettime(CLOCK_MONOTONIC, &ts);
-        fprintf(log_fp, "[%02d:%02d:%02d.%03ld] %s: ", (int)(ts.tv_sec / 60 / 60),
-                (int)(ts.tv_sec / 60 % 60), (int)(ts.tv_sec % 60), ts.tv_nsec / 1000000,
+        fprintf(log_fp, "[%02d:%02d:%02d.%06ld] %s: ", (int)(ts.tv_sec / 60 / 60),
+                (int)(ts.tv_sec / 60 % 60), (int)(ts.tv_sec % 60), ts.tv_nsec / 1000,
                 log_fp == stdout ? level_colors[level] : level_headers[level]);
     }
 
