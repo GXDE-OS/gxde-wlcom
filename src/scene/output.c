@@ -7,12 +7,14 @@
 #include <stdlib.h>
 
 #include <wlr/render/swapchain.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/region.h>
 
 #include "effect/effect.h"
 #include "output.h"
 #include "render/pass.h"
+#include "scene/scene.h"
 #include "scene_p.h"
 #include "util/debug.h"
 
@@ -263,6 +265,8 @@ struct ky_scene_output *ky_scene_output_create(struct ky_scene *scene, struct wl
         prev_output_link = &current_output->link;
     }
 
+    char *env = getenv("KYWC_SCENE_OUTPUT_DISABLE_SCANOUT");
+    scene_output->direct_scanout = !(env && strcmp(env, "true") == 0);
     scene_output->index = prev_output_index + 1;
     assert(scene_output->index < 64);
     wl_list_insert(prev_output_link, &scene_output->link);
@@ -437,6 +441,197 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     return true;
 }
 
+static bool ky_scene_check_fullscreen_node(struct ky_scene_output *scene_output,
+                                           struct ky_scene_tree *scene_tree,
+                                           struct ky_scene_node **fullscreen, int *x, int *y)
+{
+    struct ky_scene_node *node;
+    wl_list_for_each_reverse(node, &scene_tree->children, link) {
+        if (!node->enabled) {
+            continue;
+        }
+
+        int lx = *x + node->x;
+        int ly = *y + node->y;
+
+        /* skip nodes outside scene_output based on coordinates */
+        if (lx >= scene_output->x + scene_output->output->width ||
+            ly >= scene_output->y + scene_output->output->height) {
+            continue;
+        }
+
+        if (node->type == KY_SCENE_NODE_TREE) {
+            struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+            if (wl_list_empty(&tree->children)) {
+                continue;
+            }
+            if (!ky_scene_check_fullscreen_node(scene_output, tree, fullscreen, &lx, &ly)) {
+                continue;
+            }
+            return true;
+        }
+
+        int output_width = 0, output_height = 0;
+        wlr_output_effective_resolution(scene_output->output, &output_width, &output_height);
+
+        if (node->type == KY_SCENE_NODE_RECT) {
+            struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
+            /* exclude nodes: off-screen,transparent */
+            if (lx + rect->width <= scene_output->x || ly + rect->height <= scene_output->y ||
+                rect->color[3] == 0) {
+                continue;
+            }
+
+            if (rect->color[3] != 1) {
+                return true;
+            }
+
+            /* set fullscreen node when bounds match exactly */
+            if (lx == scene_output->x && ly == scene_output->y && rect->width == output_width &&
+                rect->height == output_height) {
+                *fullscreen = node;
+            }
+
+            return true;
+        }
+
+        struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(node);
+        if (!buffer || !buffer->buffer || buffer->opacity == 0) {
+            continue;
+        }
+
+        int node_width = 0, node_height = 0;
+        if (buffer->dst_width > 0 && buffer->dst_height > 0) {
+            node_width = buffer->dst_width;
+            node_height = buffer->dst_height;
+        } else if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
+            node_height = buffer->buffer->width;
+            node_width = buffer->buffer->height;
+        } else {
+            node_width = buffer->buffer->width;
+            node_height = buffer->buffer->height;
+        }
+
+        /* exclude nodes beyond scene_output using node bounds */
+        if (lx + node_width <= scene_output->x || ly + node_height <= scene_output->y) {
+            continue;
+        }
+
+        if (!pixman_region32_not_empty(&buffer->opaque_region)) {
+            continue;
+        }
+
+        pixman_region32_t region;
+        pixman_region32_init_rect(&region, 0, 0, output_width, output_height);
+        /* set fullscreen node when bounds match exactly */
+        if (lx == scene_output->x && ly == scene_output->y && node_width == output_width &&
+            node_height == output_height &&
+            pixman_region32_equal(&buffer->opaque_region, &region)) {
+            *fullscreen = node;
+        }
+        pixman_region32_fini(&region);
+
+        return true;
+    }
+
+    return false;
+}
+
+static struct ky_scene_node *scene_output_get_fullscreen_node(struct ky_scene_output *scene_output)
+{
+    int lx = 0, ly = 0;
+    struct ky_scene_node *fullscreen = NULL;
+    ky_scene_check_fullscreen_node(scene_output, &scene_output->scene->tree, &fullscreen, &lx, &ly);
+
+    return fullscreen;
+}
+
+static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
+                                        struct wlr_output_state *state,
+                                        struct ky_scene_node *fullscreen_node)
+{
+    if (!scene_output->direct_scanout) {
+        return false;
+    }
+
+    struct wlr_output *output = scene_output->output;
+    if (!wlr_output_is_direct_scanout_allowed(output)) {
+        return false;
+    }
+
+    if (!output_use_hardware_gamma(output_from_wlr_output(output))) {
+        return false;
+    }
+
+    if (!fullscreen_node) {
+        return false;
+    }
+
+    if (fullscreen_node->type != KY_SCENE_NODE_BUFFER) {
+        return false;
+    }
+
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(fullscreen_node);
+    if (!scene_buffer) {
+        return false;
+    }
+
+    if (scene_buffer->transform != output->transform) {
+        return false;
+    }
+
+    struct wlr_fbox default_box = { 0 };
+    if (scene_buffer->transform & WL_OUTPUT_TRANSFORM_90) {
+        default_box.width = scene_buffer->buffer->height;
+        default_box.height = scene_buffer->buffer->width;
+    } else {
+        default_box.width = scene_buffer->buffer->width;
+        default_box.height = scene_buffer->buffer->height;
+    }
+
+    if (!wlr_fbox_empty(&scene_buffer->src_box) &&
+        !wlr_fbox_equal(&scene_buffer->src_box, &default_box)) {
+        return false;
+    }
+
+    // TODO: add linux dmabuf feedback helper
+    if (scene_buffer->buffer->width != output->width ||
+        scene_buffer->buffer->height != output->height) {
+        kywc_log(KYWC_DEBUG, "scene buffer size mismatch");
+        return false;
+    }
+
+    struct wlr_output_state pending;
+    wlr_output_state_init(&pending);
+    if (!wlr_output_state_copy(&pending, state)) {
+        return false;
+    }
+
+    struct wlr_buffer *wlr_buffer = scene_buffer->buffer;
+    struct wlr_client_buffer *client_buffer = wlr_client_buffer_get(wlr_buffer);
+    if (client_buffer != NULL && client_buffer->source != NULL &&
+        client_buffer->source->n_locks > 0) {
+        wlr_buffer = client_buffer->source;
+    }
+    wlr_output_state_set_buffer(&pending, wlr_buffer);
+
+    if (!wlr_output_test_state(scene_output->output, &pending)) {
+        wlr_output_state_finish(&pending);
+        return false;
+    }
+
+    wlr_output_state_copy(state, &pending);
+    wlr_output_state_finish(&pending);
+
+    struct ky_scene_output_sample_event sample_event = {
+        .output = scene_output,
+        .direct_scanout = true,
+    };
+    wl_signal_emit_mutable(&scene_buffer->events.output_sample, &sample_event);
+
+    return true;
+}
+
 bool ky_scene_output_commit(struct ky_scene_output *scene_output,
                             const struct ky_scene_output_state_options *options)
 {
@@ -479,16 +674,34 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         return false;
     }
 
-    pixman_region32_init(&target.damage);
-    pixman_region32_init(&target.excluded_damage);
-    pixman_region32_init(&target.excluded_buffer_damage);
-    // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
+    struct ky_scene_node *fullscreen = scene_output_get_fullscreen_node(scene_output);
 
     struct wlr_output_state state;
     wlr_output_state_init(&state);
     output_state_attempt_gamma(output_from_wlr_output(output), &state);
-    /* TODO: VRR-Automatic policy, enable vrr when an app is outputting in fullscreen */
-    output_state_attempt_vrr(output_from_wlr_output(output), &state, false);
+    output_state_attempt_vrr(output_from_wlr_output(output), &state, fullscreen != NULL);
+
+    bool scanout = ky_scene_try_direct_scanout(scene_output, &state, fullscreen);
+    if (scene_output->prev_scanout != scanout) {
+        scene_output->prev_scanout = scanout;
+        kywc_log(KYWC_INFO, "Direct scan-out %s", scanout ? "enabled" : "disabled");
+        if (!scanout) {
+            // When exiting direct scan-out, damage everything
+            wlr_damage_ring_add_whole(&scene_output->damage_ring);
+        }
+    }
+    if (scanout) {
+        wlr_output_state_set_damage(&state, &scene_output->damage_ring.current);
+        wlr_damage_ring_rotate(&scene_output->damage_ring);
+        bool ok = wlr_output_commit_state(scene_output->output, &state);
+        wlr_output_state_finish(&state);
+        return ok;
+    }
+
+    pixman_region32_init(&target.damage);
+    pixman_region32_init(&target.excluded_damage);
+    pixman_region32_init(&target.excluded_buffer_damage);
+    // ky_scene_log_region(KYWC_ERROR, "frame damage", &scene_output->damage_ring.current);
 
     bool ok = false;
     if (scene_output_render(scene_output, &state, &target)) {
