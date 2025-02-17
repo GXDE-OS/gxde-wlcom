@@ -390,19 +390,8 @@ uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height)
     return buffer;
 }
 
-bool cairo_buffer_write_to_bmp(struct cairo_buffer *buffer, const char *filename)
+static bool do_encode_bmp(FILE *file, int width, int height, size_t stride, uint8_t *data)
 {
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
-        kywc_log(KYWC_ERROR, "cannot open file: %s", filename);
-        return false;
-    }
-
-    int width = cairo_image_surface_get_width(buffer->surface);
-    int height = cairo_image_surface_get_height(buffer->surface);
-    int stride = cairo_image_surface_get_stride(buffer->surface);
-    uint8_t *data = cairo_image_surface_get_data(buffer->surface);
-
     bmp_info_header info_header = {
         .dib_size = sizeof(info_header),
         .width = width,
@@ -421,7 +410,70 @@ bool cairo_buffer_write_to_bmp(struct cairo_buffer *buffer, const char *filename
     fwrite(&file_header, sizeof(file_header), 1, file);
     fwrite(&info_header, sizeof(info_header), 1, file);
     fwrite(data, stride, height, file);
-    fclose(file);
 
     return true;
+}
+
+static bool do_encode_png(FILE *file, int width, int height, size_t stride, uint8_t *data)
+{
+    png_struct *png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) {
+        return false;
+    }
+    png_info *info = png_create_info_struct(png);
+    if (!info) {
+        png_destroy_write_struct(&png, NULL);
+        return false;
+    }
+
+    png_init_io(png, file);
+    // png_set_compression_level(png, 6);
+    png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_alpha_mode(png, PNG_ALPHA_PREMULTIPLIED, PNG_GAMMA_LINEAR);
+    png_set_bgr(png);
+    png_write_info(png, info);
+
+    png_bytep *row_ptrs = malloc(height * sizeof(*row_ptrs));
+    if (!row_ptrs) {
+        png_destroy_write_struct(&png, &info);
+        return false;
+    }
+
+    for (int i = 0; i < height; ++i) {
+        row_ptrs[i] = data + i * stride;
+    }
+
+    png_write_image(png, row_ptrs);
+    png_write_end(png, NULL);
+    png_destroy_write_struct(&png, &info);
+    free(row_ptrs);
+
+    return true;
+}
+
+bool image_write_to_file(struct cairo_buffer *buffer, const char *filename)
+{
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        kywc_log(KYWC_ERROR, "cannot open file: %s", filename);
+        return false;
+    }
+
+    int width = cairo_image_surface_get_width(buffer->surface);
+    int height = cairo_image_surface_get_height(buffer->surface);
+    int stride = cairo_image_surface_get_stride(buffer->surface);
+    uint8_t *data = cairo_image_surface_get_data(buffer->surface);
+    bool ok = false;
+
+    size_t len = strlen(filename);
+    const char *suffix = filename + len - 3;
+    if (len > 3 && strncmp(suffix, "bmp", 3) == 0) {
+        ok = do_encode_bmp(file, width, height, stride, data);
+    } else {
+        ok = do_encode_png(file, width, height, stride, data);
+    }
+
+    fclose(file);
+    return ok;
 }

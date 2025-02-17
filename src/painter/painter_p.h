@@ -41,7 +41,7 @@ uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height);
 
 bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box);
 
-bool cairo_buffer_write_to_bmp(struct cairo_buffer *buffer, const char *filename);
+bool image_write_to_file(struct cairo_buffer *buffer, const char *filename);
 
 bool cairo_buffer_draw_text(struct cairo_buffer *buffer, struct draw_info *info,
                             struct kywc_box *box);
