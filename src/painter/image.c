@@ -2,64 +2,21 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wexpansion-to-defined"
-#include <librsvg/rsvg.h>
-#pragma GCC diagnostic pop
 
 #include <jpeglib.h>
 #include <png.h>
 
 #include "painter_p.h"
+#include "util/file.h"
 
-bool cairo_buffer_draw_svg(struct cairo_buffer *buffer, const char *data, struct kywc_box *box)
-{
-    size_t size = strlen(data);
-    // check signature, this an xml, so skip spaces from the start
-    while (size && isspace(*data) != 0) {
-        ++data;
-        --size;
-    }
-
-    const uint8_t signature[] = { '<' };
-    if (size <= sizeof(signature) || memcmp(data, signature, sizeof(signature))) {
-        return false;
-    }
-
-    GError *err = NULL;
-    RsvgHandle *svg = rsvg_handle_new_from_data((guint8 *)data, size, &err);
-    if (!svg) {
-        kywc_log(KYWC_ERROR, "Invalid SVG format");
-        if (err && err->message) {
-            kywc_log(KYWC_ERROR, "%s: %s", data, err->message);
-        }
-        return false;
-    }
-
-    RsvgRectangle viewport = {
-        .x = box->x,
-        .y = box->y,
-        .width = box->width,
-        .height = box->height,
-    };
-
-    // render svg to surface
-    gboolean ok = rsvg_handle_render_document(svg, buffer->cairo, &viewport, &err);
-    g_object_unref(svg);
-    if (!ok && err && err->message) {
-        kywc_log(KYWC_ERROR, "%s", err->message);
-    }
-    return ok;
-}
-
-static uint8_t *do_decode_jpeg(const uint8_t *data, size_t size, uint32_t *width, uint32_t *height)
+static uint8_t *do_decode_jpeg(const uint8_t *data, size_t size, int *width, int *height)
 {
     struct jpeg_decompress_struct jpg;
     struct jpeg_error_mgr err;
@@ -68,6 +25,7 @@ static uint8_t *do_decode_jpeg(const uint8_t *data, size_t size, uint32_t *width
     jpeg_create_decompress(&jpg);
     jpeg_mem_src(&jpg, data, size);
     jpeg_read_header(&jpg, TRUE);
+
     jpeg_start_decompress(&jpg);
 #ifdef LIBJPEG_TURBO_VERSION
     jpg.out_color_space = JCS_EXT_BGRA;
@@ -132,7 +90,7 @@ static void png_reader(png_structp png, png_bytep buffer, size_t size)
     }
 }
 
-static uint8_t *do_decode_png(const uint8_t *data, size_t size, uint32_t *width, uint32_t *height)
+static uint8_t *do_decode_png(const uint8_t *data, size_t size, int *width, int *height)
 {
     png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
@@ -148,6 +106,15 @@ static uint8_t *do_decode_png(const uint8_t *data, size_t size, uint32_t *width,
     // get general image info
     png_set_read_fn(png, &reader, &png_reader);
     png_read_info(png, info);
+
+    int w = png_get_image_width(png, info);
+    int h = png_get_image_height(png, info);
+
+    uint8_t *buffer = malloc(w * h * 4);
+    if (!buffer) {
+        png_destroy_read_struct(&png, &info, NULL);
+        return NULL;
+    }
 
     png_byte color_type = png_get_color_type(png, info);
     png_byte bit_depth = png_get_bit_depth(png, info);
@@ -173,21 +140,12 @@ static uint8_t *do_decode_png(const uint8_t *data, size_t size, uint32_t *width,
     }
 
     png_set_filler(png, 0xff, PNG_FILLER_AFTER);
-    png_set_alpha_mode(png, PNG_ALPHA_STANDARD, PNG_GAMMA_LINEAR);
+    png_set_alpha_mode(png, PNG_ALPHA_PREMULTIPLIED, PNG_GAMMA_LINEAR);
     png_set_packing(png);
     png_set_packswap(png);
     png_set_bgr(png);
     png_set_expand(png);
     png_read_update_info(png, info);
-
-    uint32_t w = png_get_image_width(png, info);
-    uint32_t h = png_get_image_height(png, info);
-
-    uint8_t *buffer = malloc(w * h * 4);
-    if (!buffer) {
-        png_destroy_read_struct(&png, &info, NULL);
-        return NULL;
-    }
 
     png_bytep *row_ptrs = malloc(h * sizeof(*row_ptrs));
     if (!row_ptrs) {
@@ -196,25 +154,18 @@ static uint8_t *do_decode_png(const uint8_t *data, size_t size, uint32_t *width,
         return NULL;
     }
 
-    for (uint32_t i = 0; i < h; i++) {
+    for (int i = 0; i < h; i++) {
         row_ptrs[i] = buffer + w * 4 * i;
     }
 
     png_read_image(png, row_ptrs);
-
-    free(row_ptrs);
     png_destroy_read_struct(&png, &info, NULL);
+    free(row_ptrs);
 
     *width = w;
     *height = h;
 
     return buffer;
-}
-
-static bool image_is_png(const uint8_t *data)
-{
-    return data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
-           data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A;
 }
 
 typedef struct __attribute__((__packed__)) {
@@ -239,8 +190,13 @@ typedef struct __attribute__((__packed__)) {
     uint32_t clr_important;
 } bmp_info_header;
 
-static uint8_t *do_decode_bmp(const uint8_t *data, const uint8_t *pixel, uint32_t *width,
-                              uint32_t *height)
+static bool image_is_png(const uint8_t *data)
+{
+    return data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
+           data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A;
+}
+
+static uint8_t *do_decode_bmp(const uint8_t *data, const uint8_t *pixel, int *width, int *height)
 {
     const bmp_info_header *header = (bmp_info_header *)data;
     if (header->bpp != 32 || header->compression != 0) {
@@ -272,7 +228,7 @@ static uint8_t *do_decode_bmp(const uint8_t *data, const uint8_t *pixel, uint32_
     return buffer;
 }
 
-static uint8_t *do_decode_ico(const uint8_t *data, size_t size, uint32_t *width, uint32_t *height)
+static uint8_t *do_decode_ico(const uint8_t *data, size_t size, int *width, int *height)
 {
     struct __attribute__((__packed__)) ico_header {
         uint16_t reserved;
@@ -331,62 +287,48 @@ static uint8_t *do_decode_ico(const uint8_t *data, size_t size, uint32_t *width,
     }
 
     const uint8_t *pixels = data + best_dict->offset;
-    uint8_t *buffer = NULL;
 
     if (image_is_png(pixels)) {
-        buffer = do_decode_png(pixels, best_dict->size, width, height);
+        return do_decode_png(pixels, best_dict->size, width, height);
     } else if (*(uint32_t *)pixels == 0x28) {
         // it must exclude the opening BITMAPFILEHEADER structure
-        buffer = do_decode_bmp(pixels, NULL, width, height);
+        return do_decode_bmp(pixels, NULL, width, height);
+    } else {
+        return NULL;
     }
-
-    return buffer;
 }
 
-uint8_t *image_decode_file(const char *file, uint32_t *width, uint32_t *height)
+uint8_t *image_read_from_file(const char *filename, int *width, int *height)
 {
-    int fd = open(file, O_RDONLY);
-    if (fd == -1) {
+    struct file *file = file_open(filename, "\n", NULL);
+    if (!file) {
         return NULL;
     }
 
-    struct stat st;
-    if (fstat(fd, &st) == -1) {
-        close(fd);
-        return NULL;
-    }
-
-    uint8_t *data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (data == MAP_FAILED) {
-        close(fd);
-        return NULL;
-    }
-
-    if (st.st_size <= 8) {
-        munmap(data, st.st_size);
-        close(fd);
+    size_t size = 0;
+    uint8_t *data = (uint8_t *)file_get_data(file, &size);
+    if (size <= 8) {
+        file_close(file);
         return NULL;
     }
 
     uint8_t *buffer = NULL;
 
     if (image_is_png(data)) {
-        buffer = do_decode_png(data, st.st_size, width, height);
+        buffer = do_decode_png(data, size, width, height);
     } else if (data[0] == 0xFF && data[1] == 0xD8) {
-        buffer = do_decode_jpeg(data, st.st_size, width, height);
+        buffer = do_decode_jpeg(data, size, width, height);
     } else if (data[0] == 0x00 && data[1] == 0x00 && data[2] == 0x01 && data[3] == 0x00) {
-        buffer = do_decode_ico(data, st.st_size, width, height);
+        buffer = do_decode_ico(data, size, width, height);
     } else if (data[0] == 0x42 && data[1] == 0x4D &&
                *(uint32_t *)(data + sizeof(bmp_file_header)) == 0x28) {
         buffer = do_decode_bmp(data + sizeof(bmp_file_header),
                                data + ((bmp_file_header *)data)->offset, width, height);
     } else {
-        kywc_log(KYWC_WARN, "%s: unsupported image format", file);
+        kywc_log(KYWC_WARN, "%s: unsupported image format", filename);
     }
 
-    munmap(data, st.st_size);
-    close(fd);
-
+    file_close(file);
     return buffer;
 }
 
@@ -452,7 +394,7 @@ static bool do_encode_png(FILE *file, int width, int height, size_t stride, uint
     return true;
 }
 
-bool image_write_to_file(struct cairo_buffer *buffer, const char *filename)
+bool image_write_to_file(struct painter_buffer *buffer, const char *filename)
 {
     FILE *file = fopen(filename, "wb");
     if (!file) {
@@ -460,10 +402,10 @@ bool image_write_to_file(struct cairo_buffer *buffer, const char *filename)
         return false;
     }
 
-    int width = cairo_image_surface_get_width(buffer->surface);
-    int height = cairo_image_surface_get_height(buffer->surface);
-    int stride = cairo_image_surface_get_stride(buffer->surface);
-    uint8_t *data = cairo_image_surface_get_data(buffer->surface);
+    int width = buffer->base.width;
+    int height = buffer->base.height;
+    size_t stride = buffer->stride;
+    uint8_t *data = buffer->data;
     bool ok = false;
 
     size_t len = strlen(filename);
