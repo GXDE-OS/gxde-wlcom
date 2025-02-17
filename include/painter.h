@@ -76,9 +76,6 @@ struct draw_info {
     uint32_t text_attr;
     bool layout_is_right_to_left;
 
-    /* blur support */
-    int blur_margin;
-
     /* svg data */
     const char *svg, *hover_svg;
     /* image file */

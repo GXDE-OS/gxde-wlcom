@@ -214,11 +214,6 @@ static bool painter_draw(struct cairo_buffer *buffer, struct draw_info *info, bo
         }
     }
 
-    /* blur */
-    if (info->blur_margin > 0 && !cairo_buffer_draw_blur(buffer, info->blur_margin)) {
-        return false;
-    }
-
     return true;
 }
 
