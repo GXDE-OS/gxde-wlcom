@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <float.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,6 +36,18 @@ enum spout_location {
     SPOUT_LOCATION_BOTTOM = 3,
 };
 
+enum PointAxis { POINT_AXIS_X = 0, POINT_AXIS_Y = 1 };
+
+typedef float Point[2];
+
+// Cubic Bezier curve
+struct BezierCurve {
+    Point sp;  // start point
+    Point cp1; // control point 1
+    Point cp2; // control point 2
+    Point ep;  // end point
+};
+
 struct vertex {
     float x;
     float y;
@@ -65,12 +78,13 @@ struct magic_lamp_entry {
     uint32_t vertices_size;
     struct vertex *vertices;
     // animate
+    bool overtime;
     bool reversed;
     enum spout_location spout_location;
     float spout_x, spout_y, spout_width, spout_height;
     float window_x, window_y, window_width, window_height;
     uint32_t start_time;
-    float progress;
+    float progress; // two part animation. deformation + track
     // screenshot
     struct thumbnail *thumbnail;
     struct wlr_texture *thumbnail_texture;
@@ -95,7 +109,7 @@ static struct magic_lamp_effect *magic_lamp_effect = NULL;
 
 static inline float lerp(float a, float b, float t)
 {
-    return (1.f - t) * a + t * b;
+    return a + t * (b - a);
 }
 
 static void subdivide_quad(quad quad0, uint32_t x, uint32_t y, quad *quads)
@@ -143,201 +157,188 @@ static void subdivide_quad(quad quad0, uint32_t x, uint32_t y, quad *quads)
     }
 }
 
-// https://invent.kde.org/plasma/kwin/-/blob/Plasma/5.27/src/effects/magiclamp/magiclamp.cpp#L206
-static void calculate_progress(quad *subquads, uint32_t subquads_size, float progress,
-                               enum spout_location spout_location, float spout_x, float spout_y,
-                               float spout_width, float spout_height, float window_x,
-                               float window_y, float window_width, float window_height)
+static inline float bezier_point_axis(struct BezierCurve *curve, float t, enum PointAxis axis)
 {
-    float factor = 0.f;
-    float offset[2] = { 0.f, 0.f };
-    float p_progress[2] = { 0.f, 0.f };
-    quad last_quad;
-    last_quad[0].x = -1.f;
-    last_quad[0].y = -1.f;
-    last_quad[1].x = -1.f;
-    last_quad[1].y = -1.f;
-    last_quad[2].x = -1.f;
-    last_quad[2].y = -1.f;
-    last_quad[3].x = -1.f;
-    last_quad[3].y = -1.f;
+    float u = 1.f - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
 
-    if (spout_location == SPOUT_LOCATION_TOP) {
-        const float height_cube = window_height * window_height * window_height;
-        const float min_y = spout_y + spout_height;
+    return uuu * curve->sp[axis] + 3.f * uu * t * curve->cp1[axis] +
+           3.f * u * tt * curve->cp2[axis] + ttt * curve->ep[axis];
+}
 
-        for (uint32_t i = 0; i < subquads_size; i++) {
-            quad *subquad = &subquads[i];
-            if ((*subquad)[0].y != last_quad[0].y || (*subquad)[2].y != last_quad[2].y) {
-                factor = window_height - (*subquad)[0].y + (*subquad)[0].y * progress;
-                offset[0] = (-spout_height + window_height + (*subquad)[0].y - spout_y) * progress *
-                            ((factor * factor * factor) / height_cube);
-                factor = window_height - (*subquad)[2].y + (*subquad)[2].y * progress;
-                offset[1] = (-spout_height + window_height + (*subquad)[2].y - spout_y) * progress *
-                            ((factor * factor * factor) / height_cube);
+static inline float bezier_derivative_axis(struct BezierCurve *curve, float t, enum PointAxis axis)
+{
+    float u = 1.f - t;
+    float tt = t * t;
+    float uu = u * u;
 
-                p_progress[0] = MIN(offset[0] / (-spout_height + window_height - spout_y -
-                                                 (window_height - (*subquad)[0].y)),
-                                    1.f);
-                p_progress[1] = MIN(offset[1] / (-spout_height + window_height - spout_y -
-                                                 (window_height - (*subquad)[2].y)),
-                                    1.f);
-            } else {
-                memcpy(last_quad, subquad, sizeof(quad));
-            }
+    return 3.f * uu * (curve->cp1[axis] - curve->sp[axis]) +
+           6.f * u * t * (curve->cp2[axis] - curve->cp1[axis]) +
+           3.f * tt * (curve->ep[axis] - curve->cp2[axis]);
+}
 
-            offset[0] = -offset[0];
-            offset[1] = -offset[1];
+static inline float bezier_axis_intersection(struct BezierCurve *curve, enum PointAxis axis,
+                                             float axisPos)
+{
+    // Initial guess value
+    float t = (axisPos - curve->sp[axis]) / (curve->ep[axis] - curve->sp[axis]);
 
-            p_progress[0] = fabsf(p_progress[0]);
-            p_progress[1] = fabsf(p_progress[1]);
+    for (uint32_t i = 0; i < 3; i++) {
+        float current = bezier_point_axis(curve, t, axis);
+        float df = bezier_derivative_axis(curve, t, axis);
 
-            (*subquad)[0].x +=
-                (spout_x + spout_width * ((*subquad)[0].x / window_width) - (*subquad)[0].x) *
-                p_progress[0];
-            (*subquad)[1].x +=
-                (spout_x + spout_width * ((*subquad)[1].x / window_width) - (*subquad)[1].x) *
-                p_progress[0];
-            (*subquad)[2].x +=
-                (spout_x + spout_width * ((*subquad)[2].x / window_width) - (*subquad)[2].x) *
-                p_progress[1];
-            (*subquad)[3].x +=
-                (spout_x + spout_width * ((*subquad)[3].x / window_width) - (*subquad)[3].x) *
-                p_progress[1];
-
-            (*subquad)[0].y = MAX(min_y, (*subquad)[0].y + offset[0]);
-            (*subquad)[1].y = MAX(min_y, (*subquad)[1].y + offset[0]);
-            (*subquad)[2].y = MAX(min_y, (*subquad)[2].y + offset[1]);
-            (*subquad)[3].y = MAX(min_y, (*subquad)[3].y + offset[1]);
+        if (fabsf(df) < 0.001f) {
+            break;
         }
-    } else if (spout_location == SPOUT_LOCATION_BOTTOM) {
-        const float height_cube = window_height * window_height * window_height;
-        const float max_y = spout_y;
 
-        for (uint32_t i = 0; i < subquads_size; i++) {
-            quad *subquad = &subquads[i];
-            if ((*subquad)[0].y != last_quad[0].y || (*subquad)[2].y != last_quad[2].y) {
-                factor = (*subquad)[0].y + (window_height - (*subquad)[0].y) * progress;
-                offset[0] = (spout_y + (*subquad)[0].y) * progress *
-                            ((factor * factor * factor) / height_cube);
-                factor = (*subquad)[2].y + (window_height - (*subquad)[2].y) * progress;
-                offset[1] = (spout_y + (*subquad)[2].y) * progress *
-                            ((factor * factor * factor) / height_cube);
+        // Newton-Raphson iterations. (Derivative correction)
+        t -= (current - axisPos) / df;
+    }
+    return t;
+}
 
-                p_progress[1] = MIN(offset[1] / (spout_y - (*subquad)[2].y), 1.f);
-                p_progress[0] = MIN(offset[0] / (spout_y - (*subquad)[0].y), 1.f);
-            } else {
-                memcpy(last_quad, subquad, sizeof(quad));
+// Determine the curve trajectory
+static inline void calculate_bezier_control_points(struct BezierCurve *curve)
+{
+    curve->cp1[POINT_AXIS_X] =
+        curve->sp[POINT_AXIS_X] + (curve->ep[POINT_AXIS_X] - curve->sp[POINT_AXIS_X]) * 0.3f;
+    curve->cp1[POINT_AXIS_Y] =
+        curve->sp[POINT_AXIS_Y] + (curve->ep[POINT_AXIS_Y] - curve->sp[POINT_AXIS_Y]) * 0.8f;
+
+    curve->cp2[POINT_AXIS_X] =
+        curve->ep[POINT_AXIS_X] - (curve->ep[POINT_AXIS_X] - curve->sp[POINT_AXIS_X]) * 0.2f;
+    curve->cp2[POINT_AXIS_Y] =
+        curve->ep[POINT_AXIS_Y] - (curve->ep[POINT_AXIS_Y] - curve->sp[POINT_AXIS_Y]) * 0.5f;
+}
+
+static void calculate_vertex_curve_position(struct magic_lamp_entry *entry, float progress)
+{
+    if (entry->spout_location == SPOUT_LOCATION_BOTTOM) {
+        struct BezierCurve curve0 = { .sp = { entry->window_x, entry->window_y },
+                                      .ep = { entry->spout_x, entry->spout_y } };
+        calculate_bezier_control_points(&curve0);
+
+        struct BezierCurve curve1 = {
+            .sp = { entry->window_x + entry->window_width, entry->window_y },
+            .ep = { entry->spout_x + entry->spout_width, entry->spout_y }
+        };
+        calculate_bezier_control_points(&curve1);
+
+        for (uint32_t i = 0; i < entry->subquads_size; i++) {
+            quad *subquad = &entry->subquads[i];
+            for (uint32_t j = 0; j < 4; j++) {
+                struct vertex *vtx = &(*subquad)[j];
+
+                float y = lerp(curve0.sp[POINT_AXIS_Y], curve0.ep[POINT_AXIS_Y], progress) +
+                          vtx->v * entry->window_height;
+                y = fmin(y, curve0.ep[POINT_AXIS_Y]);
+
+                float t0 = bezier_axis_intersection(&curve0, POINT_AXIS_Y, y);
+                float x0 = bezier_point_axis(&curve0, t0, POINT_AXIS_X);
+
+                float t1 = bezier_axis_intersection(&curve1, POINT_AXIS_Y, y);
+                float x1 = bezier_point_axis(&curve1, t1, POINT_AXIS_X);
+
+                vtx->x = lerp(x0, x1, vtx->u);
+                vtx->y = y;
             }
-
-            p_progress[0] = fabsf(p_progress[0]);
-            p_progress[1] = fabsf(p_progress[1]);
-
-            (*subquad)[0].x +=
-                (spout_x + spout_width * ((*subquad)[0].x / window_width) - (*subquad)[0].x) *
-                p_progress[0];
-            (*subquad)[1].x +=
-                (spout_x + spout_width * ((*subquad)[1].x / window_width) - (*subquad)[1].x) *
-                p_progress[0];
-            (*subquad)[2].x +=
-                (spout_x + spout_width * ((*subquad)[2].x / window_width) - (*subquad)[2].x) *
-                p_progress[1];
-            (*subquad)[3].x +=
-                (spout_x + spout_width * ((*subquad)[3].x / window_width) - (*subquad)[3].x) *
-                p_progress[1];
-
-            (*subquad)[0].y = MIN(max_y, (*subquad)[0].y + offset[0]);
-            (*subquad)[1].y = MIN(max_y, (*subquad)[1].y + offset[0]);
-            (*subquad)[2].y = MIN(max_y, (*subquad)[2].y + offset[1]);
-            (*subquad)[3].y = MIN(max_y, (*subquad)[3].y + offset[1]);
         }
-    } else if (spout_location == SPOUT_LOCATION_LEFT) {
-        const float width_cube = window_width * window_width * window_width;
-        const float min_x = spout_x + spout_width;
+    } else if (entry->spout_location == SPOUT_LOCATION_TOP) {
+        struct BezierCurve curve0 = {
+            .sp = { entry->window_x, entry->window_y + entry->window_height },
+            .ep = { entry->spout_x, entry->spout_y + entry->spout_height }
+        };
+        calculate_bezier_control_points(&curve0);
 
-        for (uint32_t i = 0; i < subquads_size; i++) {
-            quad *subquad = &subquads[i];
-            if ((*subquad)[0].x != last_quad[0].x || (*subquad)[1].x != last_quad[1].x) {
-                factor = window_width - (*subquad)[0].x + (*subquad)[0].x * progress;
-                offset[0] = (-spout_width + window_width + (*subquad)[0].x - spout_x) * progress *
-                            ((factor * factor * factor) / width_cube);
-                factor = window_width - (*subquad)[1].x + (*subquad)[1].x * progress;
-                offset[1] = (-spout_width + window_width + (*subquad)[1].x - spout_x) * progress *
-                            ((factor * factor * factor) / width_cube);
+        struct BezierCurve curve1 = {
+            .sp = { entry->window_x + entry->window_width, entry->window_y + entry->window_height },
+            .ep = { entry->spout_x + entry->spout_width, entry->spout_y + entry->spout_height }
+        };
+        calculate_bezier_control_points(&curve1);
 
-                p_progress[0] = MIN(offset[0] / (-spout_width + window_width - spout_x -
-                                                 (window_width - (*subquad)[0].x)),
-                                    1.f);
-                p_progress[1] = MIN(offset[1] / (-spout_width + window_width - spout_x -
-                                                 (window_width - (*subquad)[1].x)),
-                                    1.f);
-            } else {
-                memcpy(last_quad, subquad, sizeof(quad));
+        for (uint32_t i = 0; i < entry->subquads_size; i++) {
+            quad *subquad = &entry->subquads[i];
+            for (uint32_t j = 0; j < 4; j++) {
+                struct vertex *vtx = &(*subquad)[j];
+
+                float y = lerp(curve0.sp[POINT_AXIS_Y], curve0.ep[POINT_AXIS_Y], progress) -
+                          (1.f - vtx->v) * entry->window_height;
+                y = fmax(y, curve0.ep[POINT_AXIS_Y]);
+
+                float t0 = bezier_axis_intersection(&curve0, POINT_AXIS_Y, y);
+                float x0 = bezier_point_axis(&curve0, t0, POINT_AXIS_X);
+
+                float t1 = bezier_axis_intersection(&curve1, POINT_AXIS_Y, y);
+                float x1 = bezier_point_axis(&curve1, t1, POINT_AXIS_X);
+
+                vtx->x = lerp(x0, x1, vtx->u);
+                vtx->y = y;
             }
-
-            offset[0] = -offset[0];
-            offset[1] = -offset[1];
-
-            p_progress[0] = fabsf(p_progress[0]);
-            p_progress[1] = fabsf(p_progress[1]);
-
-            (*subquad)[0].y +=
-                (spout_y + spout_height * ((*subquad)[0].y / window_height) - (*subquad)[0].y) *
-                p_progress[0];
-            (*subquad)[1].y +=
-                (spout_y + spout_height * ((*subquad)[1].y / window_height) - (*subquad)[1].y) *
-                p_progress[1];
-            (*subquad)[2].y +=
-                (spout_y + spout_height * ((*subquad)[2].y / window_height) - (*subquad)[2].y) *
-                p_progress[1];
-            (*subquad)[3].y +=
-                (spout_y + spout_height * ((*subquad)[3].y / window_height) - (*subquad)[3].y) *
-                p_progress[0];
-
-            (*subquad)[0].x = MAX(min_x, (*subquad)[0].x + offset[0]);
-            (*subquad)[1].x = MAX(min_x, (*subquad)[1].x + offset[1]);
-            (*subquad)[2].x = MAX(min_x, (*subquad)[2].x + offset[1]);
-            (*subquad)[3].x = MAX(min_x, (*subquad)[3].x + offset[0]);
         }
-    } else if (spout_location == SPOUT_LOCATION_RIGHT) {
-        const float width_cube = window_width * window_width * window_width;
-        const float max_x = spout_x;
+    } else if (entry->spout_location == SPOUT_LOCATION_LEFT) {
+        struct BezierCurve curve0 = {
+            .sp = { entry->window_x + entry->window_width, entry->window_y },
+            .ep = { entry->spout_x + entry->spout_width, entry->spout_y }
+        };
+        calculate_bezier_control_points(&curve0);
 
-        for (uint32_t i = 0; i < subquads_size; i++) {
-            quad *subquad = &subquads[i];
-            if ((*subquad)[0].x != last_quad[0].x || (*subquad)[1].x != last_quad[1].x) {
-                factor = (*subquad)[0].x + (window_width - (*subquad)[0].x) * progress;
-                offset[0] = (spout_x + (*subquad)[0].x) * progress *
-                            ((factor * factor * factor) / width_cube);
-                factor = (*subquad)[1].x + (window_width - (*subquad)[1].x) * progress;
-                offset[1] = (spout_x + (*subquad)[1].x) * progress *
-                            ((factor * factor * factor) / width_cube);
-                p_progress[0] = MIN(offset[0] / (spout_x - (*subquad)[0].x), 1.f);
-                p_progress[1] = MIN(offset[1] / (spout_x - (*subquad)[1].x), 1.f);
-            } else {
-                memcpy(last_quad, subquad, sizeof(quad));
+        struct BezierCurve curve1 = {
+            .sp = { entry->window_x + entry->window_width, entry->window_y + entry->window_height },
+            .ep = { entry->spout_x + entry->spout_width, entry->spout_y + entry->spout_height }
+        };
+        calculate_bezier_control_points(&curve1);
+
+        for (uint32_t i = 0; i < entry->subquads_size; i++) {
+            quad *subquad = &entry->subquads[i];
+            for (uint32_t j = 0; j < 4; j++) {
+                struct vertex *vtx = &(*subquad)[j];
+
+                float x = lerp(curve0.sp[POINT_AXIS_X], curve0.ep[POINT_AXIS_X], progress) -
+                          (1.f - vtx->u) * entry->window_width;
+                x = fmax(x, curve0.ep[POINT_AXIS_X]);
+
+                float t0 = bezier_axis_intersection(&curve0, POINT_AXIS_X, x);
+                float y0 = bezier_point_axis(&curve0, t0, POINT_AXIS_Y);
+
+                float t1 = bezier_axis_intersection(&curve1, POINT_AXIS_X, x);
+                float y1 = bezier_point_axis(&curve1, t1, POINT_AXIS_Y);
+
+                vtx->x = x;
+                vtx->y = lerp(y0, y1, vtx->v);
             }
+        }
+    } else if (entry->spout_location == SPOUT_LOCATION_RIGHT) {
+        struct BezierCurve curve0 = { .sp = { entry->window_x, entry->window_y },
+                                      .ep = { entry->spout_x, entry->spout_y } };
+        calculate_bezier_control_points(&curve0);
 
-            p_progress[0] = fabsf(p_progress[0]);
-            p_progress[1] = fabsf(p_progress[1]);
+        struct BezierCurve curve1 = {
+            .sp = { entry->window_x, entry->window_y + entry->window_height },
+            .ep = { entry->spout_x, entry->spout_y + entry->spout_height }
+        };
+        calculate_bezier_control_points(&curve1);
 
-            (*subquad)[0].y +=
-                (spout_y + spout_height * ((*subquad)[0].y / window_height) - (*subquad)[0].y) *
-                p_progress[0];
-            (*subquad)[1].y +=
-                (spout_y + spout_height * ((*subquad)[1].y / window_height) - (*subquad)[1].y) *
-                p_progress[1];
-            (*subquad)[2].y +=
-                (spout_y + spout_height * ((*subquad)[2].y / window_height) - (*subquad)[2].y) *
-                p_progress[1];
-            (*subquad)[3].y +=
-                (spout_y + spout_height * ((*subquad)[3].y / window_height) - (*subquad)[3].y) *
-                p_progress[0];
+        for (uint32_t i = 0; i < entry->subquads_size; i++) {
+            quad *subquad = &entry->subquads[i];
+            for (uint32_t j = 0; j < 4; j++) {
+                struct vertex *vtx = &(*subquad)[j];
 
-            (*subquad)[0].x = MIN(max_x, (*subquad)[0].x + offset[0]);
-            (*subquad)[1].x = MIN(max_x, (*subquad)[1].x + offset[1]);
-            (*subquad)[2].x = MIN(max_x, (*subquad)[2].x + offset[1]);
-            (*subquad)[3].x = MIN(max_x, (*subquad)[3].x + offset[0]);
+                float x = lerp(curve0.sp[POINT_AXIS_X], curve0.ep[POINT_AXIS_X], progress) +
+                          vtx->u * entry->window_width;
+                x = fmin(x, curve0.ep[POINT_AXIS_X]);
+
+                float t0 = bezier_axis_intersection(&curve0, POINT_AXIS_X, x);
+                float y0 = bezier_point_axis(&curve0, t0, POINT_AXIS_Y);
+
+                float t1 = bezier_axis_intersection(&curve1, POINT_AXIS_X, x);
+                float y1 = bezier_point_axis(&curve1, t1, POINT_AXIS_Y);
+
+                vtx->x = x;
+                vtx->y = lerp(y0, y1, vtx->v);
+            }
         }
     }
 }
@@ -480,11 +481,16 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
         return true;
     }
 
+    if (entry->overtime) {
+        effect_entity_destroy(entry->effect_entity);
+        return true;
+    }
+
     // timer
     uint32_t diff_time = current_time_msec() - entry->start_time;
     if (diff_time > magic_lamp_effect->animate_duration) {
-        effect_entity_destroy(entry->effect_entity);
-        return true;
+        diff_time = magic_lamp_effect->animate_duration;
+        entry->overtime = true;
     }
     float percent = diff_time / (float)magic_lamp_effect->animate_duration;
     entry->progress = animation_value(magic_lamp_effect->animation, percent);
@@ -512,10 +518,28 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
     }
 
     // calculate progress. modify quad vertex
-    calculate_progress(entry->subquads, entry->subquads_size, entry->progress,
-                       entry->spout_location, entry->spout_x, entry->spout_y, entry->spout_width,
-                       entry->spout_height, entry->window_x, entry->window_y, entry->window_width,
-                       entry->window_height);
+    const float first_anim_dura = 0.3f;
+    const float second_anim_start = 0.2f;
+    if (entry->progress <= first_anim_dura) {
+        // sub animation 1: deformation animation = window rect -> sub animation 2 first frame
+        float progress = entry->progress / first_anim_dura;
+        calculate_vertex_curve_position(entry, second_anim_start);
+
+        for (uint32_t i = 0; i < entry->subquads_size; i++) {
+            quad *subquad = &entry->subquads[i];
+            for (uint32_t j = 0; j < 4; j++) {
+                struct vertex *vtx = &(*subquad)[j];
+                vtx->x = lerp(entry->window_x + vtx->u * entry->window_width, vtx->x, progress);
+                vtx->y = lerp(entry->window_y + vtx->v * entry->window_height, vtx->y, progress);
+            }
+        }
+    } else {
+        // sub animation 2: track animation
+        float progress = (entry->progress - first_anim_dura) / (1.f - first_anim_dura);
+        // 0~1 -> second_anim_start~1
+        progress = lerp(second_anim_start, 1.f, progress);
+        calculate_vertex_curve_position(entry, progress);
+    }
 
     // compute boundbox for damage region
     compute_boundbox(entry, scene_output);
@@ -630,9 +654,9 @@ bool magic_lamp_effect_create(struct effect_manager *manager)
     magic_lamp_effect->manager = manager;
     magic_lamp_effect->renderer = ky_opengl_renderer_from_wlr_renderer(manager->server->renderer);
     magic_lamp_effect->animation = animation_manager_get(ANIMATION_TYPE_LINER);
-    magic_lamp_effect->animate_duration = 250;
-    magic_lamp_effect->subdiv_count = 40;
-    magic_lamp_effect->subdiv_count2 = 10;
+    magic_lamp_effect->animate_duration = 400;
+    magic_lamp_effect->subdiv_count = 32;
+    magic_lamp_effect->subdiv_count2 = 8;
 
     return true;
 }
@@ -706,6 +730,7 @@ bool view_add_magic_lamp_effect(struct view *view)
     thumbnail_add_destroy_listener(entry->thumbnail, &entry->thumbnail_destroy);
     thumbnail_update(entry->thumbnail);
 
+    entry->overtime = false;
     // animate reversed
     entry->reversed = !view->base.minimized;
 
