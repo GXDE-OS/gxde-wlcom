@@ -363,10 +363,6 @@ static void compute_boundbox(struct magic_lamp_entry *entry, struct ky_scene_out
     entry->bbox.y = floorf(min_y);
     entry->bbox.width = MAX(1, ceilf(max_x) - entry->bbox.x);
     entry->bbox.height = MAX(1, ceilf(max_y) - entry->bbox.y);
-
-    // use logic coordinates for damage
-    entry->bbox.x += output->x;
-    entry->bbox.y += output->y;
 }
 
 static void create_opengl_shader(struct wlr_renderer *renderer)
@@ -496,24 +492,14 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
         entry->progress = 1.f - entry->progress;
     }
 
-    /**
-     * In the case of extending the secondary screen
-     * the x-coordinate value is too large causing spout positional deviation
-     * the current output of the view use local coordinates
-     */
-    float spout_x = entry->spout_x - scene_output->x;
-    float spout_y = entry->spout_y - scene_output->y;
-    float window_x = entry->window_x - scene_output->x;
-    float window_y = entry->window_y - scene_output->y;
-
     // subdivide window quad
     uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
     uint32_t subdiv_count2 = magic_lamp_effect->subdiv_count2;
-    quad window_quad = { { window_x, window_y, 0.0f, 0.0f },
-                         { window_x + entry->window_width, window_y, 1.0f, 0.0f },
-                         { window_x + entry->window_width, window_y + entry->window_height, 1.0f,
-                           1.0f },
-                         { window_x, window_y + entry->window_height, 0.0f, 1.0f } };
+    quad window_quad = { { entry->window_x, entry->window_y, 0.0f, 0.0f },
+                         { entry->window_x + entry->window_width, entry->window_y, 1.0f, 0.0f },
+                         { entry->window_x + entry->window_width,
+                           entry->window_y + entry->window_height, 1.0f, 1.0f },
+                         { entry->window_x, entry->window_y + entry->window_height, 0.0f, 1.0f } };
     switch (entry->spout_location) {
     case SPOUT_LOCATION_BOTTOM:
     case SPOUT_LOCATION_TOP:
@@ -525,19 +511,10 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
         break;
     }
 
-    // correct x position when x too large
-    if (entry->spout_location == SPOUT_LOCATION_TOP ||
-        entry->spout_location == SPOUT_LOCATION_BOTTOM) {
-        float x = spout_x - (window_x + entry->window_width * 0.5f);
-        x = x * 10.f / entry->window_width;
-        float value = -0.00063 * x * x * x + 0.05373 * x * x - 1.44803 * x + 7.61226;
-        spout_x -= value;
-    }
-
     // calculate progress. modify quad vertex
     calculate_progress(entry->subquads, entry->subquads_size, entry->progress,
-                       entry->spout_location, spout_x, spout_y, entry->spout_width,
-                       entry->spout_height, window_x, window_y, entry->window_width,
+                       entry->spout_location, entry->spout_x, entry->spout_y, entry->spout_width,
+                       entry->spout_height, entry->window_x, entry->window_y, entry->window_width,
                        entry->window_height);
 
     // compute boundbox for damage region
@@ -571,9 +548,13 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
         return true;
     }
 
+    struct ky_mat3 transform;
+    ky_mat3_identity(&transform);
+    ky_mat3_init_translate(&transform, -target->logical.x, -target->logical.y);
+    struct ky_mat3 to_ndc;
+    ky_mat3_logic_to_ndc(&to_ndc, target->logical.width, target->logical.height, target->transform);
     struct ky_mat3 logic2ndc;
-    ky_mat3_logic_to_ndc(&logic2ndc, target->logical.width, target->logical.height,
-                         target->transform);
+    ky_mat3_multiply(&to_ndc, &transform, &logic2ndc);
 
     struct ky_opengl_texture *ky_tex = ky_opengl_texture_from_wlr_texture(entry->thumbnail_texture);
 
