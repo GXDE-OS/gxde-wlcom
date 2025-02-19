@@ -15,6 +15,7 @@ wlcom_sources += files(
   'quirks.c',
   'region.c',
   'spawn.c',
+  'string.c',
   'sysfs.c',
   'time.c',
   'wayland.c',
