@@ -156,11 +156,15 @@ static bool wlroots_server_init(struct server *server)
     server->compositor = wlr_compositor_create(server->display, 6, server->renderer);
     wlr_subcompositor_create(server->display);
 
-    ky_renderer_init_wl_display(server->renderer, server->backend, server->display);
+    ky_renderer_init_wl_display(server->renderer, server->backend, server->display,
+                                &server->linux_dmabuf_v1);
 
     server->layout = wlr_output_layout_create();
     server->scene = ky_scene_create();
     server->scene_layout = ky_scene_attach_output_layout(server->scene, server->layout);
+    if (server->linux_dmabuf_v1) {
+        ky_scene_set_linux_dmabuf_v1(server->scene, server->linux_dmabuf_v1);
+    }
 
     struct wlr_presentation *presentation =
         wlr_presentation_create(server->display, server->backend);

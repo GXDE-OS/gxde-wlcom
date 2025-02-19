@@ -149,7 +149,8 @@ struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend)
 }
 
 bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backend *backend,
-                                 struct wl_display *wl_display)
+                                 struct wl_display *wl_display,
+                                 struct wlr_linux_dmabuf_v1 **linux_dmabuf_v1)
 {
     if (!wlr_renderer_init_wl_shm(renderer, wl_display)) {
         return false;
@@ -160,7 +161,7 @@ bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backe
         return true;
     }
 
-    wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer);
+    *linux_dmabuf_v1 = wlr_linux_dmabuf_v1_create_with_renderer(wl_display, 4, renderer);
 
     if (!ky_wayland_buffer_create(wl_display, renderer)) {
         /* create wl_drm if not created in driver */

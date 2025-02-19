@@ -46,6 +46,7 @@ struct server {
     struct wlr_renderer *renderer;
     struct wlr_allocator *allocator;
     struct wlr_backend *backend;
+    struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1;
     /* create for the virtual output */
     struct wlr_backend *headless_backend;
     struct wlr_compositor *compositor;

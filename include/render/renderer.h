@@ -9,11 +9,13 @@
 
 struct wlr_backend;
 struct wlr_allocator;
+struct wlr_linux_dmabuf_v1;
 
 struct wlr_renderer *ky_renderer_autocreate(struct wlr_backend *backend);
 
 bool ky_renderer_init_wl_display(struct wlr_renderer *renderer, struct wlr_backend *backend,
-                                 struct wl_display *wl_display);
+                                 struct wl_display *wl_display,
+                                 struct wlr_linux_dmabuf_v1 **linux_dmabuf_v1);
 
 bool ky_wayland_buffer_create(struct wl_display *wl_display, struct wlr_renderer *wlr_renderer);
 
