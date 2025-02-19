@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include <wlr/types/wlr_damage_ring.h>
+#include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/util/addon.h>
 #include <wlr/util/box.h>
 
@@ -179,6 +180,8 @@ struct ky_scene_node {
     struct wlr_addon_set addons;
 
     void *data;
+
+    bool sent_dmabuf_feedback;
 };
 
 struct ky_scene_tree {
@@ -202,8 +205,8 @@ struct ky_scene {
     // May be NULL
     struct wlr_presentation *presentation;
     struct wl_listener presentation_destroy;
-    // struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1;
-    // struct wl_listener linux_dmabuf_v1_destroy;
+    struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1;
+    struct wl_listener linux_dmabuf_v1_destroy;
 };
 
 struct ky_scene_rect {
@@ -262,6 +265,8 @@ struct ky_scene_buffer {
         struct wl_signal output_sample;  // ky_scene_output_sample_event
         struct wl_signal frame_done;     // struct timespec
     } events;
+
+    struct wlr_linux_dmabuf_feedback_v1_init_options prev_feedback_options;
 };
 
 struct ky_scene_output {
@@ -296,6 +301,9 @@ struct ky_scene_output {
 void ky_scene_node_destroy(struct ky_scene_node *node);
 
 struct ky_scene *ky_scene_create(void);
+
+void ky_scene_set_linux_dmabuf_v1(struct ky_scene *scene,
+                                  struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1);
 
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 
@@ -396,6 +404,9 @@ void ky_scene_buffer_set_transform(struct ky_scene_buffer *scene_buffer,
 
 void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool repeated);
 
+void ky_scene_buffer_send_dmabuf_feedback(
+    const struct ky_scene *scene, struct ky_scene_buffer *scene_buffer,
+    const struct wlr_linux_dmabuf_feedback_v1_init_options *options);
 /**
  * scene output
  */

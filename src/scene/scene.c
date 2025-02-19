@@ -417,6 +417,23 @@ void ky_scene_set_presentation(struct ky_scene *scene, struct wlr_presentation *
     wl_signal_add(&presentation->events.destroy, &scene->presentation_destroy);
 }
 
+static void scene_handle_linux_dmabuf_v1_destroy(struct wl_listener *listener, void *data)
+{
+    struct ky_scene *scene = wl_container_of(listener, scene, linux_dmabuf_v1_destroy);
+    wl_list_remove(&scene->linux_dmabuf_v1_destroy.link);
+    wl_list_init(&scene->linux_dmabuf_v1_destroy.link);
+    scene->linux_dmabuf_v1 = NULL;
+}
+
+void ky_scene_set_linux_dmabuf_v1(struct ky_scene *scene,
+                                  struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1)
+{
+    assert(scene->linux_dmabuf_v1 == NULL);
+    scene->linux_dmabuf_v1 = linux_dmabuf_v1;
+    scene->linux_dmabuf_v1_destroy.notify = scene_handle_linux_dmabuf_v1_destroy;
+    wl_signal_add(&linux_dmabuf_v1->events.destroy, &scene->linux_dmabuf_v1_destroy);
+}
+
 void ky_scene_collect_damage(struct ky_scene *scene)
 {
     KY_PROFILE_ZONE(zone, __func__);

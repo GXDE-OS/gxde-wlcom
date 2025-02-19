@@ -594,11 +594,20 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
         return false;
     }
 
-    // TODO: add linux dmabuf feedback helper
     if (scene_buffer->buffer->width != output->width ||
         scene_buffer->buffer->height != output->height) {
         kywc_log(KYWC_DEBUG, "scene buffer size mismatch");
         return false;
+    }
+
+    if (scene_buffer->primary_output == scene_output) {
+        struct wlr_linux_dmabuf_feedback_v1_init_options options = {
+            .main_renderer = scene_output->output->renderer,
+            .scanout_primary_output = scene_output->output,
+        };
+
+        ky_scene_buffer_send_dmabuf_feedback(scene_output->scene, scene_buffer, &options);
+        fullscreen_node->sent_dmabuf_feedback = true;
     }
 
     struct wlr_output_state pending;

@@ -13,6 +13,7 @@
 #include "render/pass.h"
 #include "render/pixel_format.h"
 #include "render/profile.h"
+#include "scene/surface.h"
 #include "scene_p.h"
 #include "security.h"
 
@@ -449,6 +450,15 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         };
         wl_signal_emit_mutable(&scene_buffer->events.output_sample, &sample_event);
     }
+
+    if (scene_buffer->primary_output == target->output && !node->sent_dmabuf_feedback) {
+        struct wlr_linux_dmabuf_feedback_v1_init_options options = {
+            .main_renderer = target->output->output->renderer,
+            .scanout_primary_output = NULL,
+        };
+
+        ky_scene_buffer_send_dmabuf_feedback(target->output->scene, scene_buffer, &options);
+    }
 }
 
 static void buffer_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
@@ -690,6 +700,36 @@ void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool rep
 
     scene_buffer->repeated = repeated;
     ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
+}
+
+void ky_scene_buffer_send_dmabuf_feedback(
+    const struct ky_scene *scene, struct ky_scene_buffer *scene_buffer,
+    const struct wlr_linux_dmabuf_feedback_v1_init_options *options)
+{
+    if (!scene->linux_dmabuf_v1) {
+        return;
+    }
+
+    struct ky_scene_surface *surface = ky_scene_surface_try_from_buffer(scene_buffer);
+    if (!surface) {
+        return;
+    }
+
+    // compare to the previous options so that we don't send duplicate feedback events.
+    if (memcmp(options, &scene_buffer->prev_feedback_options, sizeof(*options)) == 0) {
+        return;
+    }
+
+    scene_buffer->prev_feedback_options = *options;
+
+    struct wlr_linux_dmabuf_feedback_v1 feedback = { 0 };
+    if (!wlr_linux_dmabuf_feedback_v1_init_with_options(&feedback, options)) {
+        return;
+    }
+
+    wlr_linux_dmabuf_v1_set_surface_feedback(scene->linux_dmabuf_v1, surface->surface, &feedback);
+
+    wlr_linux_dmabuf_feedback_v1_finish(&feedback);
 }
 
 void ky_scene_node_update_outputs(struct ky_scene_node *node, struct wl_list *outputs,
