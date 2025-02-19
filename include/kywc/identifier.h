@@ -13,9 +13,8 @@
 #define _KYWC_ATTRIB_PRINTF(start, end)
 #endif
 
+/* strip whitespace and replace unprintable to "_" */
 const char *kywc_identifier_generate(const char *format, ...) _KYWC_ATTRIB_PRINTF(1, 2);
-
-const char *kywc_identifier_utf8_generate(const char *format, ...) _KYWC_ATTRIB_PRINTF(1, 2);
 
 /* prefix + xxxx-xx-xx_xx-xx-xx + suffix */
 const char *kywc_identifier_time_generate(const char *prefix, const char *suffix);

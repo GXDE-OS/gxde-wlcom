@@ -4,9 +4,10 @@
 
 #include <stdlib.h>
 
-#include <kywc/identifier.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_seat.h>
+
+#include <kywc/identifier.h>
 
 #include "effect/capture.h"
 #include "input/cursor.h"
@@ -16,6 +17,7 @@
 #include "scene/thumbnail.h"
 #include "util/dbus.h"
 #include "util/dir.h"
+#include "util/string.h"
 #include "view/action.h"
 #include "view_p.h"
 
@@ -117,9 +119,8 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     struct thumbnail_update_event *event = data;
 
     const char *dir = dir_get_xdg_pictures();
+    const char *path = string_create("%s/%s", dir_exists(dir) ? dir : getenv("HOME"), file);
     const char *file = kywc_identifier_time_generate("", ".png");
-    const char *path =
-        kywc_identifier_utf8_generate("%s/%s", dir_exists(dir) ? dir : getenv("HOME"), file);
     free((void *)dir);
     free((void *)file);
 

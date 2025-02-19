@@ -14,14 +14,13 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/xwayland/shell.h>
 
-#include <kywc/identifier.h>
-
 #include "input/cursor.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
 #include "security.h"
 #include "server.h"
+#include "util/string.h"
 #include "view/view.h"
 #include "xwayland_p.h"
 
@@ -83,10 +82,10 @@ static void xwayland_update_xresources(xcb_connection_t *xcb_conn)
 {
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
 
-    const char *prop_str = kywc_identifier_utf8_generate(
-        "Xft.dpi:\t%d\nXcursor.size:\t%d\nXcursor.theme:\t%s\n", (int)(xwayland->scale * 96),
-        (int)(seat->state.cursor_size * xwayland->scale),
-        seat->state.cursor_theme ? seat->state.cursor_theme : "default");
+    const char *prop_str =
+        string_create("Xft.dpi:\t%d\nXcursor.size:\t%d\nXcursor.theme:\t%s\n",
+                      (int)(xwayland->scale * 96), (int)(seat->state.cursor_size * xwayland->scale),
+                      seat->state.cursor_theme ? seat->state.cursor_theme : "default");
     if (!prop_str) {
         return;
     }
