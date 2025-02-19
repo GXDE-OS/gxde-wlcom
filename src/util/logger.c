@@ -10,7 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "util/file.h"
 #include "util/logger.h"
+#include "util/string.h"
 
 static FILE *log_fp = NULL;
 static enum kywc_log_level log_level = KYWC_WARN;
@@ -107,40 +109,24 @@ void logger_init(enum kywc_log_level level, bool log_to_file, bool realtime)
         return;
     }
 
-    /* get home dir */
-    const char *home = getenv("HOME");
-
-    size_t size_path = 1 + strlen(home) + strlen("/.log");
-    char *log_home = calloc(size_path, sizeof(char));
-    if (!log_home) {
-        fprintf(stderr, "alloc log path failed\n");
+    char *log_dir = string_expand_path("~/.log");
+    if (!log_dir) {
+        fprintf(stderr, "get log dir failed\n");
         return;
     }
 
-    snprintf(log_home, size_path, "%s/.log", home);
-    const char *filename = "kylin-wlcom.log";
-    size_t floder = strlen(log_home);
-    size_t size = 2 + floder + strlen(filename);
-    char *log_path = calloc(size, sizeof(char));
-    snprintf(log_path, size, "%s/%s", log_home, filename);
-    free(log_home);
-    if (!log_path) {
-        fprintf(stderr, "alloc log file path failed\n");
-        return;
-    }
-
-    log_path[floder] = '\0';
-    int ret = access(log_path, F_OK);
-    if (ret) {
-        fprintf(stdout, "logger: %s not exist, create it\n", log_path);
-        ret = mkdir(log_path, S_IRWXU | S_IRWXG);
+    if (!file_exists(log_dir)) {
+        fprintf(stdout, "logger: %s not exist, create it\n", log_dir);
+        int ret = mkdir(log_dir, S_IRWXU | S_IRWXG);
         if (ret) {
             fprintf(stderr, "create log dir failed: %s\n", strerror(errno));
+            free(log_dir);
             return;
         }
     }
 
-    log_path[floder] = '/';
+    char *log_path = string_join_path(log_dir, NULL, "kylin-wlcom.log");
+    free(log_dir);
     fprintf(stdout, "logger: path is %s\n", log_path);
 
     log_fp = fopen(log_path, "a"); // appending mode

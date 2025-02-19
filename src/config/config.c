@@ -10,46 +10,33 @@
 #include "config_p.h"
 #include "input/input.h"
 #include "server.h"
-#include "util/dir.h"
+#include "util/file.h"
+#include "util/string.h"
 
 static struct config_manager *config_manager = NULL;
 
-static char *check_config_file(void)
+static const char *check_config_file(void)
 {
-    /* get config path */
-    const char *config_home = dir_get_xdg_config();
-    if (!config_home) {
+    char *config_dir = string_expand_path("~/.config/kylin-wlcom");
+    if (!config_dir) {
         return NULL;
     }
 
-    const char *config_folder = "kylin-wlcom";
-    const char *filename = "config.json";
-    size_t folder = 1 + strlen(config_home) + strlen(config_folder);
-    size_t size = 2 + folder + strlen(filename);
-    char *path = calloc(size, sizeof(char));
-    snprintf(path, size, "%s/%s/%s", config_home, config_folder, filename);
-    free((void *)config_home);
-    if (!path) {
-        return NULL;
-    }
-
-    /* now check config folder */
-    path[folder] = '\0';
-    if (!dir_exists(path)) {
-        kywc_log(KYWC_INFO, "configure dir %s not exist, create it", path);
-        int ret = mkdir(path, S_IRWXU | S_IRWXG);
+    /* now check config dir */
+    if (!file_exists(config_dir)) {
+        kywc_log(KYWC_INFO, "configure dir %s not exist, create it", config_dir);
+        int ret = mkdir(config_dir, S_IRWXU | S_IRWXG);
         if (ret) {
             kywc_log_errno(KYWC_ERROR, "create configure dir failed");
-            goto err;
+            free(config_dir);
+            return NULL;
         }
     }
 
-    path[folder] = '/';
-    return path;
+    const char *fullpath = string_join_path(config_dir, NULL, "config.json");
+    free(config_dir);
 
-err:
-    free(path);
-    return NULL;
+    return fullpath;
 }
 
 // TODO: add config arg to check synced flag
@@ -75,7 +62,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     config_manager_sync();
     json_object_put(config_manager->json);
     json_object_put(config_manager->sys_json);
-    free(config_manager->file);
+    free((void *)config_manager->file);
 
     free(config_manager);
     config_manager = NULL;

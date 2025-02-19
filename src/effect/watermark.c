@@ -2,10 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <wlr/types/wlr_buffer.h>
 
@@ -13,6 +11,8 @@
 #include "output.h"
 #include "painter.h"
 #include "util/dbus.h"
+#include "util/file.h"
+#include "util/string.h"
 #include "view/view.h"
 
 enum expand_type {
@@ -225,12 +225,14 @@ static void handle_new_enabled_output(struct wl_listener *listener, void *data)
 
 static bool effect_load_image(struct watermark_effect *effect, struct watermark_info *info)
 {
-    if (access(info->file, F_OK) == -1) {
+    char *file = string_expand_path(info->file);
+    if (!file || !file_exists(file)) {
+        free(file);
         return false;
     }
 
     effect->info = *info;
-    effect->info.file = strdup(info->file);
+    effect->info.file = file;
 
     return true;
 }

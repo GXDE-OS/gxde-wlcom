@@ -11,7 +11,7 @@ struct config_manager {
     struct server *server;
     struct wl_list configs;
 
-    char *file;
+    const char *file;
     json_object *json;     /* user config */
     json_object *sys_json; /* system default config */
 

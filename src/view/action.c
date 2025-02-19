@@ -16,7 +16,7 @@
 #include "output.h"
 #include "scene/thumbnail.h"
 #include "util/dbus.h"
-#include "util/dir.h"
+#include "util/file.h"
 #include "util/string.h"
 #include "view/action.h"
 #include "view_p.h"
@@ -118,9 +118,9 @@ static void capture_handle_thumbnail_update(struct wl_listener *listener, void *
     struct view_capture *capture = wl_container_of(listener, capture, thumbnail_update);
     struct thumbnail_update_event *event = data;
 
-    const char *dir = dir_get_xdg_pictures();
-    const char *path = string_create("%s/%s", dir_exists(dir) ? dir : getenv("HOME"), file);
+    const char *dir = file_get_xdg_pictures_dir();
     const char *file = kywc_identifier_time_generate("", ".png");
+    const char *path = string_create("%s/%s", dir, file);
     free((void *)dir);
     free((void *)file);
 
