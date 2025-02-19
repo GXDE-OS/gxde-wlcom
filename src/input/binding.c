@@ -15,6 +15,7 @@
 
 #include "input_p.h"
 #include "server.h"
+#include "util/string.h"
 
 struct key_binding {
     struct wl_list link;
@@ -74,36 +75,6 @@ const struct key_binding_type2string {
     { KEY_BINDING_TYPE_NUM, "WLCOM_ALL" },
 };
 
-static char **split_string(const char *str, const char *delims, size_t *len)
-{
-    char **split_str = malloc(sizeof(void *) * 10);
-    char *copy = strdup(str);
-    size_t length = 0;
-
-    char *token = strtok(copy, delims);
-    while (token) {
-        split_str[length++] = strdup(token);
-        token = strtok(NULL, delims);
-    }
-    free(copy);
-
-    *len = length;
-    return split_str;
-}
-
-static void free_split_string(char ***item, int count)
-{
-    if (item == NULL || *item == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < count; i++) {
-        free((*item)[i]);
-    }
-
-    free(*item);
-}
-
 struct key_binding *kywc_key_binding_create(const char *keybind, const char *desc)
 {
     struct key_binding *binding = calloc(1, sizeof(struct key_binding));
@@ -113,12 +84,12 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
 
     /* check no_repeat first */
     size_t length = 0;
-    char **bind_str = split_string(keybind, ":", &length);
+    char **bind_str = string_split(keybind, ":", &length);
     binding->no_repeat = length == 2 && strcmp(bind_str[1], "no") == 0;
 
     size_t len = 0;
-    char **split_str = split_string(length == 2 ? bind_str[0] : keybind, "+", &len);
-    free_split_string(&bind_str, length);
+    char **split_str = string_split(length == 2 ? bind_str[0] : keybind, "+", &len);
+    string_free_split(bind_str);
 
     for (size_t i = 0; i < len; i++) {
         kywc_log(KYWC_DEBUG, "keybind split_str = %s", split_str[i]);
@@ -133,7 +104,7 @@ struct key_binding *kywc_key_binding_create(const char *keybind, const char *des
         binding->keysym = xkb_keysym_to_lower(sym);
     }
 
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
 
     if (desc) {
         binding->desc = strdup(desc);
@@ -378,7 +349,7 @@ static uint32_t gesture_string_parse_directions(const char *str)
     uint32_t directions = GESTURE_DIRECTION_NONE;
 
     size_t len = 0;
-    char **split_str = split_string(str, "+", &len);
+    char **split_str = string_split(str, "+", &len);
 
     for (size_t i = 0; i < len; i++) {
         if (strcmp(split_str[i], "none") == 0) {
@@ -404,7 +375,7 @@ static uint32_t gesture_string_parse_directions(const char *str)
         }
     }
 
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
 
     return directions;
 }
@@ -414,7 +385,7 @@ static uint32_t gesture_string_parse_edges(const char *str)
     uint32_t edges = GESTURE_EDGE_NONE;
 
     size_t len = 0;
-    char **split_str = split_string(str, "+", &len);
+    char **split_str = string_split(str, "+", &len);
 
     for (size_t i = 0; i < len; i++) {
         if (strcmp(split_str[i], "none") == 0) {
@@ -432,7 +403,7 @@ static uint32_t gesture_string_parse_edges(const char *str)
         }
     }
 
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
 
     return edges;
 }
@@ -450,7 +421,7 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
     uint32_t follow_direction = GESTURE_DIRECTION_NONE;
 
     size_t len = 0;
-    char **split_str = split_string(gestures, ":", &len);
+    char **split_str = string_split(gestures, ":", &len);
     if (len != 4 && len != 5 && len != 6 && len != 7 && len != 8) {
         kywc_log(KYWC_ERROR,
                  "expected "
@@ -522,14 +493,14 @@ struct gesture_binding *kywc_gesture_binding_create_by_string(const char *gestur
         break;
     }
 
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
 
     kywc_log(KYWC_DEBUG, "gesture binding: %s", gestures);
     return kywc_gesture_binding_create(type, stage, devices, directions, edges, fingers,
                                        follow_direction, follow_threshold, desc);
 
 err:
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
     return NULL;
 }
 

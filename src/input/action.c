@@ -20,6 +20,7 @@
 #include "server.h"
 #include "util/dbus.h"
 #include "util/spawn.h"
+#include "util/string.h"
 
 enum action_type {
     ACTION_TYPE_NONE = 0,
@@ -156,36 +157,6 @@ static struct btncode_map {
 static const char *service_path = "/com/kylin/Wlcom/InputAction";
 static const char *service_interface = "com.kylin.Wlcom.InputAction";
 
-static char **split_string(const char *str, const char *delims, size_t *len)
-{
-    char **split_str = malloc(sizeof(void *) * 10);
-    char *copy = strdup(str);
-    size_t length = 0;
-
-    char *token = strtok(copy, delims);
-    while (token) {
-        split_str[length++] = strdup(token);
-        token = strtok(NULL, delims);
-    }
-    free(copy);
-
-    *len = length;
-    return split_str;
-}
-
-static void free_split_string(char ***item, int count)
-{
-    if (item == NULL || *item == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < count; i++) {
-        free((*item)[i]);
-    }
-
-    free(*item);
-}
-
 static uint32_t keycode_map(const char *keystr)
 {
     for (size_t i = 0; i < sizeof(keycode_maps) / sizeof(struct keycode_map); i++) {
@@ -256,12 +227,12 @@ static struct keycodes *keycodes_create(const char *str)
     }
 
     size_t action_len = 0;
-    char **split_action = split_string(str, ":", &action_len);
+    char **split_action = string_split(str, ":", &action_len);
     if (action_len > 2) {
         kywc_log(KYWC_ERROR, "split key action error");
     }
     size_t len = 0;
-    char **split_str = split_string(split_action[0], "+", &len);
+    char **split_str = string_split(split_action[0], "+", &len);
     for (size_t i = 0, j = 0; i < len; i++) {
         if (!keycode_map(split_str[i])) {
             continue;
@@ -270,7 +241,7 @@ static struct keycodes *keycodes_create(const char *str)
         keycodes->code[j++] = keycode_map(split_str[i]);
         keycodes->len++;
     }
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
     keycodes->action = KEY_ACTION_CLICK;
     if (action_len == 2) {
         if (strcmp(split_action[1], "press") == 0) {
@@ -279,7 +250,7 @@ static struct keycodes *keycodes_create(const char *str)
             keycodes->action = KEY_ACTION_RELEASE;
         }
     }
-    free_split_string(&split_action, action_len);
+    string_free_split(split_action);
 
     return keycodes;
 }
@@ -310,7 +281,7 @@ static struct action_data *action_data_create_from_busstring(const char *bus_str
 {
     struct action_data *action_data = NULL;
     size_t len = 0;
-    char **split_str = split_string(bus_str, ",", &len);
+    char **split_str = string_split(bus_str, ",", &len);
     if (len < 2) {
         goto err;
     }
@@ -362,7 +333,7 @@ static struct action_data *action_data_create_from_busstring(const char *bus_str
     action_data->enable = true;
 
 err:
-    free_split_string(&split_str, len);
+    string_free_split(split_str);
 
     return action_data;
 }
