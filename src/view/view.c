@@ -917,7 +917,13 @@ void view_set_parent(struct view *view, struct view *parent)
     wl_list_remove(&view->parent_link);
     if (parent) {
         wl_list_insert(&parent->children, &view->parent_link);
-        view_follow_parent_layer(view, parent);
+        struct view_layer *parent_layer =
+            view_manager_get_layer_by_node(&parent->tree->node, false);
+        struct view_layer *layer = view_manager_get_layer_by_node(&view->tree->node, false);
+        /* do not set layer if parent layer below view layer */
+        if (parent_layer && layer && parent_layer->layer > layer->layer) {
+            view_follow_parent_layer(view, parent);
+        }
     } else {
         wl_list_init(&view->parent_link);
     }
