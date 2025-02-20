@@ -171,7 +171,7 @@ bool slide_effect_create(struct effect_manager *manager)
 
 static struct slide_entity *create_slide_entity(struct ky_scene_node *node,
                                                 struct ky_scene_buffer *zero_copy_buffer,
-                                                int location, int offset, bool mapped, bool is_view)
+                                                int location, int offset, bool mapped)
 {
     struct slide_entity *slide_entity = calloc(1, sizeof(*slide_entity));
     if (!slide_entity) {
@@ -213,7 +213,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
         return false;
     }
 
-    return create_slide_entity(node, NULL, location, offset, slide_out, false);
+    return create_slide_entity(node, NULL, location, offset, slide_out);
 }
 
 bool view_add_slide_effect(struct view *view, bool mapped)
@@ -234,5 +234,5 @@ bool view_add_slide_effect(struct view *view, bool mapped)
     struct ky_scene_buffer *zero_copy_buffer = mapped ? transform_get_zero_copy_buffer(view) : NULL;
 
     return create_slide_entity(&view->tree->node, zero_copy_buffer, slide.location, slide.offset,
-                               mapped, true);
+                               mapped);
 }
