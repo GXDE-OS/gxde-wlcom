@@ -230,7 +230,7 @@ struct cursor_constraint *cursor_constraint_create(struct cursor *cursor,
 void cursor_constraint_set_focus(struct seat *seat, struct wlr_surface *surface);
 
 /**
- * keeps track of the states of capslock, numlock, scrolllock
+ * keeps track of the states of lock and modifier keys
  */
 
 #if HAVE_KDE_KEYSTATE

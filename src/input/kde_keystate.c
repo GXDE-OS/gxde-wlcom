@@ -14,7 +14,7 @@
 #include "kde_keystate-protocol.h"
 #include "server.h"
 
-#define ORG_KDE_KWIN_KEYSTATE_VERSION 4
+#define ORG_KDE_KWIN_KEYSTATE_VERSION 5
 
 #define SETBIT(x, y) ((x) |= (1 << (y)))
 #define CLRBIT(x, y) ((x) &= ~(1 << (y)))
@@ -39,7 +39,10 @@ struct keystate_manager {
 struct keystate_keyboard {
     struct wl_list link;
 
+    uint32_t keycode;
+
     struct wl_listener key;
+    struct wl_listener modifiers;
     struct wl_listener destroy;
 };
 
@@ -62,6 +65,28 @@ static void kde_keystate_fetchstates(struct wl_client *client, struct wl_resourc
                 ? ORG_KDE_KWIN_KEYSTATE_STATE_LOCKED
                 : ORG_KDE_KWIN_KEYSTATE_STATE_UNLOCKED;
     org_kde_kwin_keystate_send_stateChanged(resource, ORG_KDE_KWIN_KEYSTATE_KEY_SCROLLLOCK, state);
+
+    uint32_t version = wl_resource_get_version(resource);
+    if (version < ORG_KDE_KWIN_KEYSTATE_VERSION) {
+        return;
+    }
+    struct seat *seat = input_manager_get_default_seat();
+    struct wlr_keyboard_modifiers *wlr_keyboard_modifiers =
+        &seat->keyboard->wlr_keyboard->modifiers;
+
+    if (wlr_keyboard_modifiers->depressed & WLR_MODIFIER_ALT) {
+        org_kde_kwin_keystate_send_stateChanged(resource, ORG_KDE_KWIN_KEYSTATE_KEY_ALT,
+                                                ORG_KDE_KWIN_KEYSTATE_STATE_PRESSED);
+    } else if (wlr_keyboard_modifiers->depressed & WLR_MODIFIER_CTRL) {
+        org_kde_kwin_keystate_send_stateChanged(resource, ORG_KDE_KWIN_KEYSTATE_KEY_CONTROL,
+                                                ORG_KDE_KWIN_KEYSTATE_STATE_PRESSED);
+    } else if (wlr_keyboard_modifiers->depressed & WLR_MODIFIER_SHIFT) {
+        org_kde_kwin_keystate_send_stateChanged(resource, ORG_KDE_KWIN_KEYSTATE_KEY_SHIFT,
+                                                ORG_KDE_KWIN_KEYSTATE_STATE_PRESSED);
+    } else if (wlr_keyboard_modifiers->depressed & WLR_MODIFIER_LOGO) {
+        org_kde_kwin_keystate_send_stateChanged(resource, ORG_KDE_KWIN_KEYSTATE_KEY_META,
+                                                ORG_KDE_KWIN_KEYSTATE_STATE_PRESSED);
+    }
 }
 
 static void kde_keystate_destroy(struct wl_client *client, struct wl_resource *resource)
@@ -136,7 +161,7 @@ static void keyboard_lock_change(enum input_lock_key key)
     }
 }
 
-static void keyboard_handle_key(enum input_lock_key key, struct wlr_keyboard_key_event *event)
+static void keyboard_handle_lock(enum input_lock_key key, struct wlr_keyboard_key_event *event)
 {
     if (GETBIT(keystate_manager->release_record, key)) {
         CLRBIT(keystate_manager->release_record, key);
@@ -152,18 +177,72 @@ static void handle_key(struct wl_listener *listener, void *data)
     struct keystate_keyboard *keyboard = wl_container_of(listener, keyboard, key);
     struct wlr_keyboard_key_event *event = data;
 
+    keyboard->keycode = event->state ? event->keycode : 0;
     switch (event->keycode) {
     case KEY_CAPSLOCK:
-        keyboard_handle_key(INPUT_KEY_CAPSLOCK, event);
+        keyboard_handle_lock(INPUT_KEY_CAPSLOCK, event);
         break;
     case KEY_NUMLOCK:
-        keyboard_handle_key(INPUT_KEY_NUMLOCK, event);
+        keyboard_handle_lock(INPUT_KEY_NUMLOCK, event);
         break;
     case KEY_SCROLLLOCK:
-        keyboard_handle_key(INPUT_KEY_SCROLLLOCK, event);
+        keyboard_handle_lock(INPUT_KEY_SCROLLLOCK, event);
         break;
     default:
         return;
+    }
+}
+
+static void handle_modifiers(struct wl_listener *listener, void *data)
+{
+    struct keystate_keyboard *keyboard = wl_container_of(listener, keyboard, modifiers);
+    struct wlr_keyboard *wlr_keyboard = data;
+    uint32_t keycode = keyboard->keycode;
+    uint32_t key = 0;
+
+    switch (keycode) {
+    case KEY_LEFTSHIFT:
+    case KEY_RIGHTSHIFT:
+        if (wlr_keyboard->modifiers.depressed & WLR_MODIFIER_SHIFT) {
+            key = ORG_KDE_KWIN_KEYSTATE_KEY_SHIFT;
+        }
+        break;
+    case KEY_LEFTCTRL:
+    case KEY_RIGHTCTRL:
+        if (wlr_keyboard->modifiers.depressed & WLR_MODIFIER_CTRL) {
+            key = ORG_KDE_KWIN_KEYSTATE_KEY_CONTROL;
+        }
+        break;
+    case KEY_LEFTMETA:
+    case KEY_RIGHTMETA:
+        if (wlr_keyboard->modifiers.depressed & WLR_MODIFIER_LOGO) {
+            key = ORG_KDE_KWIN_KEYSTATE_KEY_META;
+        }
+        break;
+    case KEY_LEFTALT:
+        if (wlr_keyboard->modifiers.depressed & WLR_MODIFIER_ALT) {
+            key = ORG_KDE_KWIN_KEYSTATE_KEY_ALT;
+        }
+        break;
+    case KEY_RIGHTALT:
+        if (wlr_keyboard->modifiers.depressed & WLR_MODIFIER_ALT) {
+            key = ORG_KDE_KWIN_KEYSTATE_KEY_ALTGR;
+        }
+        break;
+    default:
+        return;
+    }
+    if (!key) {
+        return;
+    }
+
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &keystate_manager->resources) {
+        uint32_t version = wl_resource_get_version(resource);
+        if (version >= ORG_KDE_KWIN_KEYSTATE_VERSION) {
+            org_kde_kwin_keystate_send_stateChanged(resource, key,
+                                                    ORG_KDE_KWIN_KEYSTATE_STATE_PRESSED);
+        }
     }
 }
 
@@ -186,6 +265,8 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
 
     keystate_keyboard->key.notify = handle_key;
     wl_signal_add(&wlr_keyboard->events.key, &keystate_keyboard->key);
+    keystate_keyboard->modifiers.notify = handle_modifiers;
+    wl_signal_add(&wlr_keyboard->events.modifiers, &keystate_keyboard->modifiers);
     keystate_keyboard->destroy.notify = handle_destroy;
     wl_signal_add(&seat->events.destroy, &keystate_keyboard->destroy);
 }
