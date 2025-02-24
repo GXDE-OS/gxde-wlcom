@@ -489,8 +489,8 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
     // org_kde_plasma_window_send_virtual_desktop_entered
     // org_kde_plasma_window_send_virtual_desktop_left
 
-    const char *icon_name = theme_icon_get_name(view->icon);
-    if (strcmp(icon_name, "fallback")) {
+    if (!theme_icon_is_fallback(view->icon)) {
+        const char *icon_name = theme_icon_get_name(view->icon);
         org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
     }
     // org_kde_plasma_window_send_icon_changed
@@ -637,8 +637,8 @@ static void window_handle_view_icon_update(struct wl_listener *listener, void *d
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &window->resources) {
-        const char *icon_name = theme_icon_get_name(view->icon);
-        if (strcmp(icon_name, "fallback")) {
+        if (!theme_icon_is_fallback(view->icon)) {
+            const char *icon_name = theme_icon_get_name(view->icon);
             org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
         }
     }
