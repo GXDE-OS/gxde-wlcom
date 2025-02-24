@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include <xcb/shape.h>
+#include <xcb/xfixes.h>
 
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_seat.h>
@@ -61,6 +62,25 @@ static const char *const atom_map[ATOM_LAST] = {
     [UTF8_STRING] = "UTF8_STRING",
     [NET_WM_NAME] = "_NET_WM_NAME",
     [NET_SUPPORTING_WM_CHECK] = "_NET_SUPPORTING_WM_CHECK",
+
+    [INCR] = "INCR",
+    [TEXT] = "TEXT",
+    [WL_SELECTION] = "_WL_SELECTION",
+
+    [DND_SELECTION] = "XdndSelection",
+    [DND_AWARE] = "XdndAware",
+    [DND_STATUS] = "XdndStatus",
+    [DND_POSITION] = "XdndPosition",
+    [DND_ENTER] = "XdndEnter",
+    [DND_LEAVE] = "XdndLeave",
+    [DND_DROP] = "XdndDrop",
+    [DND_FINISHED] = "XdndFinished",
+    [DND_PROXY] = "XdndProxy",
+    [DND_TYPE_LIST] = "XdndTypeList",
+    [DND_ACTION_MOVE] = "XdndActionMove",
+    [DND_ACTION_COPY] = "XdndActionCopy",
+    [DND_ACTION_ASK] = "XdndActionAsk",
+    [DND_ACTION_PRIVATE] = "XdndActionPrivate",
 };
 
 static struct xwayland_server *xwayland = NULL;
@@ -68,6 +88,11 @@ static struct xwayland_server *xwayland = NULL;
 static void handle_new_xwayland_surface(struct wl_listener *listener, void *data)
 {
     struct wlr_xwayland_surface *wlr_xwayland_surface = data;
+    /* dnd window catcher no need map */
+    if (wlr_xwayland_surface->window_id == xwayland->window_catcher) {
+        return;
+    }
+
     // wlr_xwayland_surface_ping(wlr_xwayland_surface);
 
     if (wlr_xwayland_surface->override_redirect) {
@@ -160,6 +185,26 @@ static void xwayland_get_shape_extension(xcb_connection_t *xcb_conn)
     free(shape_reply);
 }
 
+static void xwayland_get_xfixes_extension(xcb_connection_t *xcb_conn)
+{
+    xwayland->xfixes = xcb_get_extension_data(xcb_conn, &xcb_xfixes_id);
+    if (!xwayland->xfixes || !xwayland->xfixes->present) {
+        kywc_log(KYWC_WARN, "xfixes not available");
+        xwayland->xfixes = NULL;
+        return;
+    }
+
+    xcb_xfixes_query_version_cookie_t xfixes_cookie;
+    xcb_xfixes_query_version_reply_t *xfixes_reply;
+    xfixes_cookie =
+        xcb_xfixes_query_version(xcb_conn, XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+    xfixes_reply = xcb_xfixes_query_version_reply(xcb_conn, xfixes_cookie, NULL);
+
+    kywc_log(KYWC_INFO, "xfixes version: %" PRIu32 ".%" PRIu32, xfixes_reply->major_version,
+             xfixes_reply->minor_version);
+    free(xfixes_reply);
+}
+
 static void xwayland_get_resources(xcb_connection_t *xcb_conn)
 {
     xcb_prefetch_extension_data(xcb_conn, &xcb_shape_id);
@@ -180,6 +225,7 @@ static void xwayland_get_resources(xcb_connection_t *xcb_conn)
                         name);
 
     xwayland_get_shape_extension(xcb_conn);
+    xwayland_get_xfixes_extension(xcb_conn);
 }
 
 void xwayland_surface_shape_select_input(struct wlr_xwayland_surface *surface, bool enabled)
@@ -336,6 +382,11 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     xwayland_update_seat(input_manager_get_default_seat());
 
     xwayland_get_resources(xwayland->xcb_conn);
+
+    // for selection
+    int width = 0, height = 0;
+    output_layout_get_size(&width, &height);
+    xwayland_create_seletion_window(xwayland, &xwayland->window_catcher, 0, 0, width, height);
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -509,6 +560,8 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
     } else if (xwayland->shape &&
                response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
         return xwayland_handle_shape_notify((xcb_shape_notify_event_t *)event);
+    } else if (xwayland_handle_selection_event(xwayland, event)) {
+        return 1;
     }
 
     return 0;

@@ -57,7 +57,38 @@ enum atom_name {
     NET_WM_NAME,
     NET_SUPPORTING_WM_CHECK,
 
+    INCR,
+    TEXT,
+    WL_SELECTION,
+
+    DND_SELECTION,
+    DND_AWARE,
+    DND_STATUS,
+    DND_POSITION,
+    DND_ENTER,
+    DND_LEAVE,
+    DND_DROP,
+    DND_FINISHED,
+    DND_PROXY,
+    DND_TYPE_LIST,
+    DND_ACTION_MOVE,
+    DND_ACTION_COPY,
+    DND_ACTION_ASK,
+    DND_ACTION_PRIVATE,
+
     ATOM_LAST,
+};
+
+struct xwayland_drag_x11 {
+    struct xwayland_server *xwayland;
+    xcb_window_t source_window;
+
+    struct wlr_surface *hovered_surface;
+    struct wl_listener surface_destroy;
+
+    // TODO: listen touch, tablet
+    struct wl_listener cursor_motion;
+    struct wl_listener cursor_button;
 };
 
 struct xwayland_server {
@@ -77,12 +108,18 @@ struct xwayland_server {
     xcb_connection_t *xcb_conn;
     xcb_screen_t *screen;
     const xcb_query_extension_reply_t *shape;
+    const xcb_query_extension_reply_t *xfixes;
 
     struct wlr_surface *hoverd_surface;
     struct wl_listener surface_destroy;
 
     struct wl_listener activate_view;
     struct wlr_xwayland_surface *activated_surface;
+
+    // for drag x11 to wayland target
+    xcb_window_t window_catcher;
+    // TODO: multiple drags
+    struct xwayland_drag_x11 *drag_x11;
 
     float scale;
 };
@@ -149,5 +186,20 @@ int xwayland_read_wm_state(xcb_window_t window_id);
 int xwayland_read_wm_icon(xcb_window_t window_id);
 
 int xwayland_read_wm_window_opacity(xcb_window_t window_id);
+
+// selection
+int xwayland_handle_selection_event(struct xwayland_server *xwayland, xcb_generic_event_t *event);
+
+void xwayland_create_seletion_window(struct xwayland_server *xwayland, xcb_window_t *window,
+                                     int16_t x, int16_t y, uint16_t width, uint16_t height);
+
+// drag_x11
+bool xwayland_is_dragging_x11(struct xwayland_server *xwayland);
+
+bool drag_x11_has_data_source(struct xwayland_drag_x11 *drag_x11);
+
+bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t source_window);
+
+void xwayland_end_drag_x11(struct xwayland_server *xwayland);
 
 #endif /* _XWAYLAND_P_H_ */
