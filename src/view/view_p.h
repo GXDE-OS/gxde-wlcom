@@ -29,6 +29,9 @@ struct view_mode_interface {
 
     void (*view_request_show_menu)(struct view *view, struct seat *seat, int x, int y);
 
+    void (*view_request_show_split_screen_switcher)(struct view *view, struct seat *seat,
+                                                    bool enabled);
+
     void (*view_click)(struct seat *seat, struct view *view, uint32_t button, bool pressed,
                        enum click_state state);
     void (*view_hover)(struct seat *seat, struct view *view);
@@ -148,6 +151,12 @@ struct view *view_manager_get_global_authentication(void);
 
 void view_begin_tile_preview(struct view *view, struct seat *seat, struct output *output,
                              uint32_t tile);
+
+bool split_screen_switcher_manager_create(struct view_manager *view_manager);
+
+void split_screen_switcher_show(struct view *view, struct seat *seat, bool enabled);
+
+bool view_show_split_screen_switcher(struct view *view, struct seat *seat, bool enabled);
 
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,

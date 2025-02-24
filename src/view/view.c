@@ -1834,6 +1834,15 @@ void view_show_window_menu(struct view *view, struct seat *seat, int x, int y)
     }
 }
 
+bool view_show_split_screen_switcher(struct view *view, struct seat *seat, bool enabled)
+{
+    if (view_manager->mode->impl->view_request_show_split_screen_switcher) {
+        view_manager->mode->impl->view_request_show_split_screen_switcher(view, seat, enabled);
+        return true;
+    }
+    return false;
+}
+
 void view_manager_show_desktop(bool enabled, bool apply)
 {
     if (view_manager->show_desktop_enabled == enabled) {
@@ -1971,6 +1980,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
     theme_manager_add_update_listener(&view_manager->theme_update);
     window_menu_manager_create(view_manager);
     maximize_switcher_create(view_manager);
+    split_screen_switcher_manager_create(view_manager);
 
     if (!view_manager->mode) {
         view_manager->mode = view_manager_mode_from_name("stack_mode");

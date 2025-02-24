@@ -7,6 +7,7 @@ wlcom_sources += files(
   'maximize_switcher.c',
   'modal.c',
   'positioner.c',
+  'split_screen_switcher.c',
   'ssd.c',
   'stack_mode.c',
   'tile_preview.c',

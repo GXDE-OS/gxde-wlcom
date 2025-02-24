@@ -433,7 +433,12 @@ static bool ssd_hover(struct seat *seat, struct ky_scene_node *node, double x, d
     switch (part->type) {
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_set_button_buffer(part, BUTTON_STATE_HOVER);
-        ssd_tooltip_show(seat, part, true);
+        if (part->type != SSD_BUTTON_MAXIMIZE ||
+            !view_show_split_screen_switcher(view_from_kywc_view(part->ssd->kywc_view), seat,
+                                             true)) {
+            ssd_tooltip_show(seat, part, true);
+        }
+
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         break;
     case SSD_FRAME_RECT:
@@ -459,6 +464,7 @@ static void ssd_leave(struct seat *seat, struct ky_scene_node *node, bool last, 
     case SSD_BUTTON_MINIMIZE ... SSD_BUTTON_CLOSE:
         ssd_part_set_button_buffer(part, BUTTON_STATE_NONE);
         ssd_tooltip_show(seat, part, false);
+        view_show_split_screen_switcher(view_from_kywc_view(part->ssd->kywc_view), seat, false);
         break;
     case SSD_FRAME_RECT:
         /* we may have changed cursor image when hover */

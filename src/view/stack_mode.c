@@ -172,6 +172,15 @@ static void stack_mode_view_show_menu(struct view *view, struct seat *seat, int 
     window_menu_show(view, seat, x, y);
 }
 
+static void stack_mode_view_show_split_screen_switcher(struct view *view, struct seat *seat,
+                                                       bool enabled)
+{
+    if (!view->current_proxy) {
+        return;
+    }
+    split_screen_switcher_show(view, seat, enabled);
+}
+
 static void stack_mode_view_click(struct seat *seat, struct view *view, uint32_t button,
                                   bool pressed, enum click_state state)
 {
@@ -243,6 +252,7 @@ static const struct view_mode_interface stack_mode_impl = {
     .view_request_activate = stack_mode_view_activate,
 
     .view_request_show_menu = stack_mode_view_show_menu,
+    .view_request_show_split_screen_switcher = stack_mode_view_show_split_screen_switcher,
 
     .view_click = stack_mode_view_click,
     .view_hover = NULL,
