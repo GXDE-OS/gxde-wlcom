@@ -380,13 +380,29 @@ void view_update_round_corner(struct view *view)
     ky_scene_node_set_radius(&buffer->node, radius);
 }
 
+static void view_set_icon(struct view *view)
+{
+    const char *name = view->base.app_id;
+    if (view->icon_name) {
+        name = view->icon_name;
+    }
+
+    struct icon *old = view->icon;
+    view->icon = theme_icon_from_app_id(name);
+
+    if (old != view->icon) {
+        wl_signal_emit_mutable(&view->events.icon_update, NULL);
+    }
+}
+
 void view_map(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
 
     wl_signal_emit_mutable(&kywc_view->events.premap, NULL);
 
-    view->icon = theme_icon_from_app_id(view->icon_name ? view->icon_name : kywc_view->app_id);
+    view_set_icon(view);
+
     if (view_manager->mode->impl->view_map) {
         view_manager->mode->impl->view_map(view);
     }
@@ -650,8 +666,7 @@ void view_set_app_id(struct view *view, const char *app_id)
     struct kywc_view *kywc_view = &view->base;
 
     if (kywc_view->mapped && !view->icon_name) {
-        view->icon = theme_icon_from_app_id(app_id);
-        wl_signal_emit_mutable(&view->events.icon_update, NULL);
+        view_set_icon(view);
     }
 
     kywc_view->app_id = app_id;
@@ -682,9 +697,8 @@ void view_set_icon_name(struct view *view, const char *icon_name)
 
     free(view->icon_name);
     view->icon_name = icon_name ? strdup(icon_name) : NULL;
-    view->icon = theme_icon_from_app_id(view->icon_name ? view->icon_name : view->base.app_id);
 
-    wl_signal_emit_mutable(&view->events.icon_update, NULL);
+    view_set_icon(view);
 }
 
 struct view_proxy *view_proxy_by_workspace(struct view *view, struct workspace *workspace)
@@ -2000,9 +2014,7 @@ static void handle_theme_icon_update(struct wl_listener *listener, void *data)
     struct view *view;
     wl_list_for_each(view, &view_manager->views, link) {
         if (view->base.mapped) {
-            view->icon =
-                theme_icon_from_app_id(view->icon_name ? view->icon_name : view->base.app_id);
-            wl_signal_emit_mutable(&view->events.icon_update, NULL);
+            view_set_icon(view);
         }
     }
 }
