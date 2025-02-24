@@ -166,6 +166,12 @@ static bool wlroots_server_init(struct server *server)
         ky_scene_set_linux_dmabuf_v1(server->scene, server->linux_dmabuf_v1);
     }
 
+    struct wlr_tearing_control_manager_v1 *tearing_control_v1 =
+        wlr_tearing_control_manager_v1_create(server->display, 1);
+    if (tearing_control_v1) {
+        ky_scene_set_tearing_control_v1(server->scene, tearing_control_v1);
+    }
+
     struct wlr_presentation *presentation =
         wlr_presentation_create(server->display, server->backend);
     if (presentation) {

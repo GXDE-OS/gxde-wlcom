@@ -10,6 +10,7 @@
 
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
+#include <wlr/types/wlr_tearing_control_v1.h>
 #include <wlr/util/addon.h>
 #include <wlr/util/box.h>
 
@@ -207,6 +208,8 @@ struct ky_scene {
     struct wl_listener presentation_destroy;
     struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1;
     struct wl_listener linux_dmabuf_v1_destroy;
+    struct wlr_tearing_control_manager_v1 *tearing_control_v1;
+    struct wl_listener tearing_control_v1_destroy;
 };
 
 struct ky_scene_rect {
@@ -304,6 +307,11 @@ struct ky_scene *ky_scene_create(void);
 
 void ky_scene_set_linux_dmabuf_v1(struct ky_scene *scene,
                                   struct wlr_linux_dmabuf_v1 *linux_dmabuf_v1);
+
+void ky_scene_set_tearing_control_v1(struct ky_scene *scene,
+                                     struct wlr_tearing_control_manager_v1 *tearing_control_v1);
+
+bool ky_scene_surface_is_tearing_allowed(struct ky_scene *scene, struct wlr_surface *surface);
 
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 

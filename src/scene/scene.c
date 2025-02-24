@@ -434,6 +434,35 @@ void ky_scene_set_linux_dmabuf_v1(struct ky_scene *scene,
     wl_signal_add(&linux_dmabuf_v1->events.destroy, &scene->linux_dmabuf_v1_destroy);
 }
 
+static void handle_tearing_control_v1_destroy(struct wl_listener *listener, void *data)
+{
+    struct ky_scene *scene = wl_container_of(listener, scene, tearing_control_v1_destroy);
+    wl_list_remove(&scene->tearing_control_v1_destroy.link);
+    scene->tearing_control_v1 = NULL;
+}
+
+void ky_scene_set_tearing_control_v1(struct ky_scene *scene,
+                                     struct wlr_tearing_control_manager_v1 *tearing_control_v1)
+{
+    assert(scene->tearing_control_v1 == NULL);
+    scene->tearing_control_v1 = tearing_control_v1;
+    scene->tearing_control_v1_destroy.notify = handle_tearing_control_v1_destroy;
+    wl_signal_add(&tearing_control_v1->events.destroy, &scene->tearing_control_v1_destroy);
+}
+
+bool ky_scene_surface_is_tearing_allowed(struct ky_scene *scene, struct wlr_surface *surface)
+{
+    if (!scene->tearing_control_v1 || !surface) {
+        return false;
+    }
+
+    enum wp_tearing_control_v1_presentation_hint hint =
+        wlr_tearing_control_manager_v1_surface_hint_from_surface(scene->tearing_control_v1,
+                                                                 surface);
+    kywc_log(KYWC_DEBUG, "get surface tearing hint: %d", hint);
+    return hint == WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC;
+}
+
 void ky_scene_collect_damage(struct ky_scene *scene)
 {
     KY_PROFILE_ZONE(zone, __func__);
