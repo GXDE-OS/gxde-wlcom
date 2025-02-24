@@ -144,4 +144,6 @@ struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale);
 
 struct icon *theme_icon_from_app_id(const char *app_id);
 
+bool theme_icon_is_fallback(struct icon *icon);
+
 #endif /* _THEME_H_ */

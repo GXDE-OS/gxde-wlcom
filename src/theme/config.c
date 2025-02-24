@@ -211,7 +211,7 @@ void theme_manager_write_icon_config(struct theme_manager *manager, const char *
         return;
     }
 
-    if (strcmp(name, DEFAULT_ICON_THEME_NAME) || strcmp(name, FALLBACK_ICON_THEME_NAME)) {
+    if (strcmp(name, FALLBACK_ICON_THEME_NAME)) {
         json_object_object_add(manager->config->json, "icon_theme_name",
                                json_object_new_string(name));
     } else {
