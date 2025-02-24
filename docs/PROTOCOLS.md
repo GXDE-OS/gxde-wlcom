@@ -41,7 +41,7 @@ wayland协议支持情况
 | wp_fractional_scale_manager_v1    |    1     |       |
 | wp_security_context_manager_v1    |    no    | 1     |
 | wp_single_pixel_buffer_manager_v1 |    no    | 1     |
-| wp_tearing_control_manager_v1     |    no    | 1     |
+| wp_tearing_control_manager_v1     |    1     | 1     |
 | xdg_activation_v1                 |    1     |       |
 | xdg_wm_dialog_v1                  |    1     |       |
 | xwayland_shell_v1                 |    1     |       |
