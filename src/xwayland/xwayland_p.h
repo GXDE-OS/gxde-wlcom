@@ -6,7 +6,7 @@
 #define _XWAYLAND_P_H_
 
 #include <pixman.h>
-#include <wlr/types/wlr_data_device.h>
+#include <types/wlr_data_device.h>
 #include <wlr/xwayland.h>
 #include <xcb/shape.h>
 
@@ -96,6 +96,8 @@ struct xwayland_drag_x11 {
 
     struct wlr_surface *hovered_surface;
     struct wl_listener surface_destroy;
+    struct wlr_seat_client *hovered_client;
+    struct wl_listener seat_client_destroy;
 
     // TODO: listen touch, tablet
     struct wl_listener cursor_motion;
@@ -222,6 +224,9 @@ bool drag_x11_has_data_source(struct xwayland_drag_x11 *drag_x11);
 bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t source_window);
 
 void xwayland_end_drag_x11(struct xwayland_server *xwayland);
+
+void drag_set_focus(struct xwayland_drag_x11 *drag, struct wlr_surface *surface, double sx,
+                    double sy);
 
 // dnd protocol
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
