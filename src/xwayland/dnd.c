@@ -14,13 +14,19 @@ static void xwayland_data_source_finish(struct wlr_data_source *wlr_source) {}
 static void xwayland_data_source_accept(struct wlr_data_source *wlr_source, uint32_t serial,
                                         const char *mime_type)
 {
+    struct xwayland_data_source *data_source = wl_container_of(wlr_source, data_source, base);
+    enum wl_data_device_manager_dnd_action action =
+        mime_type ? data_source->base.current_dnd_action : WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE;
+    struct xwayland_drag_x11 *drag_x11 = data_source->drag_x11;
+    struct xwayland_server *xwayland = drag_x11->xwayland;
+    xwayland_send_dnd_status(xwayland, xwayland->window_catcher, drag_x11->source_window, action);
 }
 
 static const struct wlr_data_source_impl data_source_impl = {
     .send = xwayland_data_source_send,
     .accept = xwayland_data_source_accept,
     .dnd_finish = xwayland_data_source_finish,
-    .destroy = NULL,
+    .destroy = NULL, // destroy in xwayland_end_drag_x11
 };
 
 static bool xwayland_add_atom_to_mime_types(struct wl_array *mime_types,
@@ -111,6 +117,7 @@ static int xwayland_handle_dnd_enter(struct xwayland_server *xwayland,
     /* init data source */
     wlr_data_source_init(&drag_x11->data_source->base, &data_source_impl);
     wl_array_init(&drag_x11->data_source->mime_types_atoms);
+    drag_x11->data_source->drag_x11 = drag_x11;
 
     struct xwayland_data_source *source = drag_x11->data_source;
     if ((data->data32[1] & 1) == 0) {
@@ -138,6 +145,67 @@ static int xwayland_handle_dnd_enter(struct xwayland_server *xwayland,
     return 1;
 }
 
+static int xwayland_handle_dnd_position(struct xwayland_server *xwayland,
+                                        xcb_client_message_data_t *data)
+{
+    if (xwayland->wlr_xwayland->seat == NULL) {
+        kywc_log(KYWC_DEBUG, "ignoring XdndPosition client message because "
+                             "there's no Xwayland seat");
+        return 0;
+    }
+
+    if (!xwayland_is_dragging_x11(xwayland)) {
+        kywc_log(KYWC_DEBUG, "ignoring XdndPosition client message because "
+                             "no xwayland drag is being performed");
+        return 0;
+    }
+
+    xcb_window_t source_window = data->data32[0];
+    xcb_timestamp_t timestamp = data->data32[3];
+    xcb_atom_t action_atom = data->data32[4];
+
+    if (source_window != xwayland->drag_x11->source_window) {
+        kywc_log(KYWC_DEBUG, "ignoring XdndPosition client message because "
+                             "the source window hasn't set the drag-and-drop selection");
+        return 0;
+    }
+
+    enum wl_data_device_manager_dnd_action action =
+        data_device_manager_dnd_action_from_atom(action_atom);
+    xwayland->drag_x11->data_source->base.actions = action;
+
+    kywc_log(KYWC_DEBUG, "DND_POSITION window=%d timestamp=%u action=%d", source_window, timestamp,
+             action);
+    return 1;
+}
+
+void xwayland_send_dnd_status(struct xwayland_server *xwayland, xcb_window_t requestor,
+                              xcb_window_t window, uint32_t action)
+{
+    uint32_t flags = 0;
+    if (action != WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE) {
+        flags = 1 << 1;  // Opt-in for XdndPosition messages
+        flags |= 1 << 0; // We accept the drop
+    }
+
+    xcb_client_message_data_t data = { 0 };
+    data.data32[0] = requestor;
+    data.data32[1] = flags;
+    data.data32[4] = data_device_manager_dnd_action_to_atom(action);
+
+    xcb_client_message_event_t event = {
+        .response_type = XCB_CLIENT_MESSAGE,
+        .format = 32,
+        .sequence = 0,
+        .window = window,
+        .type = xwayland->atoms[DND_STATUS],
+        .data = data,
+    };
+
+    xcb_send_event(xwayland->xcb_conn, 0, window, XCB_EVENT_MASK_NO_EVENT, (char *)&event);
+    xcb_flush(xwayland->xcb_conn);
+}
+
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
                                 xcb_client_message_event_t *client_message)
 {
@@ -146,6 +214,7 @@ int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
         return xwayland_handle_dnd_enter(xwayland, &client_message->data);
     } else if (client_message->type == xwayland->atoms[DND_POSITION]) {
         kywc_log(KYWC_DEBUG, "dnd position");
+        return xwayland_handle_dnd_position(xwayland, &client_message->data);
     } else if (client_message->type == xwayland->atoms[DND_DROP]) {
         kywc_log(KYWC_DEBUG, "dnd_drop");
     } else if (client_message->type == xwayland->atoms[DND_LEAVE]) {

@@ -815,3 +815,27 @@ void xwayland_update_workarea(void)
     box.height = xwayland_scale(box.height);
     wlr_xwayland_set_workareas(xwayland->wlr_xwayland, &box, 1);
 }
+
+enum wl_data_device_manager_dnd_action data_device_manager_dnd_action_from_atom(enum atom_name atom)
+{
+    if (atom == xwayland->atoms[DND_ACTION_COPY] || atom == xwayland->atoms[DND_ACTION_PRIVATE]) {
+        return WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+    } else if (atom == xwayland->atoms[DND_ACTION_MOVE]) {
+        return WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+    } else if (atom == xwayland->atoms[DND_ACTION_ASK]) {
+        return WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK;
+    }
+    return WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE;
+}
+
+xcb_atom_t data_device_manager_dnd_action_to_atom(enum wl_data_device_manager_dnd_action action)
+{
+    if (action & WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY) {
+        return xwayland->atoms[DND_ACTION_COPY];
+    } else if (action & WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE) {
+        return xwayland->atoms[DND_ACTION_MOVE];
+    } else if (action & WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK) {
+        return xwayland->atoms[DND_ACTION_ASK];
+    }
+    return XCB_ATOM_NONE;
+}

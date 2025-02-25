@@ -85,6 +85,7 @@ enum atom_name {
 struct xwayland_data_source {
     struct wlr_data_source base;
     struct wl_array mime_types_atoms;
+    struct xwayland_drag_x11 *drag_x11;
 };
 
 struct xwayland_drag_x11 {
@@ -199,6 +200,11 @@ int xwayland_read_wm_window_opacity(xcb_window_t window_id);
 
 char *xwayland_mime_type_from_atom(xcb_atom_t atom);
 
+enum wl_data_device_manager_dnd_action
+data_device_manager_dnd_action_from_atom(enum atom_name atom);
+
+xcb_atom_t data_device_manager_dnd_action_to_atom(enum wl_data_device_manager_dnd_action action);
+
 // selection
 int xwayland_handle_selection_event(struct xwayland_server *xwayland, xcb_generic_event_t *event);
 
@@ -220,5 +226,8 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland);
 // dnd protocol
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
                                 xcb_client_message_event_t *client_message);
+
+void xwayland_send_dnd_status(struct xwayland_server *xwayland, xcb_window_t requestor,
+                              xcb_window_t window, uint32_t action);
 
 #endif /* _XWAYLAND_P_H_ */
