@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <xcb/xfixes.h>
 
+#include "kywc/boxes.h"
 #include "xwayland_p.h"
 
 #define XDND_VERSION 5
@@ -61,4 +62,21 @@ int xwayland_handle_selection_event(struct xwayland_server *xwayland, xcb_generi
     }
 
     return 0;
+}
+
+void xwayland_map_selection_window(struct xwayland_server *xwayland, xcb_window_t window,
+                                   struct kywc_box *box, bool map)
+{
+    if (map) {
+        xcb_map_window(xwayland->xcb_conn, window);
+        uint16_t value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
+                              XCB_CONFIG_WINDOW_HEIGHT;
+        uint32_t value_list[] = { box->x, box->y, box->width, box->height };
+        xcb_configure_window(xwayland->xcb_conn, window, value_mask, value_list);
+        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+        xcb_configure_window(xwayland->xcb_conn, window, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    } else {
+        xcb_unmap_window(xwayland->xcb_conn, window);
+    }
+    xcb_flush(xwayland->xcb_conn);
 }

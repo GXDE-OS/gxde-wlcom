@@ -6,12 +6,15 @@
 #define _XWAYLAND_P_H_
 
 #include <pixman.h>
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/xwayland.h>
 #include <xcb/shape.h>
 
 #include <kywc/log.h>
 
 #include "xwayland.h"
+
+struct kywc_box;
 
 /**
  * window type that for windows not OR
@@ -79,9 +82,16 @@ enum atom_name {
     ATOM_LAST,
 };
 
+struct xwayland_data_source {
+    struct wlr_data_source base;
+    struct wl_array mime_types_atoms;
+};
+
 struct xwayland_drag_x11 {
     struct xwayland_server *xwayland;
+
     xcb_window_t source_window;
+    struct xwayland_data_source *data_source;
 
     struct wlr_surface *hovered_surface;
     struct wl_listener surface_destroy;
@@ -187,11 +197,16 @@ int xwayland_read_wm_icon(xcb_window_t window_id);
 
 int xwayland_read_wm_window_opacity(xcb_window_t window_id);
 
+char *xwayland_mime_type_from_atom(xcb_atom_t atom);
+
 // selection
 int xwayland_handle_selection_event(struct xwayland_server *xwayland, xcb_generic_event_t *event);
 
 void xwayland_create_seletion_window(struct xwayland_server *xwayland, xcb_window_t *window,
                                      int16_t x, int16_t y, uint16_t width, uint16_t height);
+
+void xwayland_map_selection_window(struct xwayland_server *xwayland, xcb_window_t window,
+                                   struct kywc_box *box, bool map);
 
 // drag_x11
 bool xwayland_is_dragging_x11(struct xwayland_server *xwayland);
@@ -201,5 +216,9 @@ bool drag_x11_has_data_source(struct xwayland_drag_x11 *drag_x11);
 bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t source_window);
 
 void xwayland_end_drag_x11(struct xwayland_server *xwayland);
+
+// dnd protocol
+int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
+                                xcb_client_message_event_t *client_message);
 
 #endif /* _XWAYLAND_P_H_ */

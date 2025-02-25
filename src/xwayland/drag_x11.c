@@ -55,11 +55,15 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland)
     }
 
     kywc_log(KYWC_DEBUG, "end drag X11 ");
-    wl_list_remove(&xwayland->drag_x11->cursor_motion.link);
-    wl_list_remove(&xwayland->drag_x11->cursor_button.link);
-    wl_list_remove(&xwayland->drag_x11->surface_destroy.link);
+    struct xwayland_drag_x11 *drag_x11 = xwayland->drag_x11;
+    wlr_data_source_destroy(&drag_x11->data_source->base);
+    wl_array_release(&drag_x11->data_source->mime_types_atoms);
 
-    free(xwayland->drag_x11);
+    wl_list_remove(&drag_x11->cursor_motion.link);
+    wl_list_remove(&drag_x11->cursor_button.link);
+    wl_list_remove(&drag_x11->surface_destroy.link);
+
+    free(drag_x11);
     xwayland->drag_x11 = NULL;
 }
 
@@ -104,6 +108,9 @@ bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t sour
     drag_x11->xwayland = xwayland;
     xwayland->drag_x11 = drag_x11;
 
-    xwayland_map_selection_window(xwayland, xwayland->window_catcher, true);
+    int width, height;
+    output_layout_get_size(&width, &height);
+    struct kywc_box box = { .x = 0, .y = 0, .width = width, .height = height };
+    xwayland_map_selection_window(xwayland, xwayland->window_catcher, &box, true);
     return true;
 }

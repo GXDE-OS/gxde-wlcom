@@ -556,6 +556,8 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
         xcb_client_message_event_t *ev = (xcb_client_message_event_t *)event;
         if (ev->type == xwayland->atoms[NET_WM_STATE]) {
             return xwayland_handle_wm_state_message((xcb_client_message_event_t *)event);
+        } else if (xwayland_handle_dnd_message(xwayland, (xcb_client_message_event_t *)event)) {
+            return 1;
         }
     } else if (xwayland->shape &&
                response_type == xwayland->shape->first_event + XCB_SHAPE_NOTIFY) {
@@ -743,6 +745,17 @@ static char *xwayland_get_atom_name(xcb_atom_t atom)
     char *name = strndup(buf, len);
     free(name_reply);
     return name;
+}
+
+char *xwayland_mime_type_from_atom(xcb_atom_t atom)
+{
+    if (atom == xwayland->atoms[UTF8_STRING]) {
+        return strdup("text/plain;charset=utf-8");
+    } else if (atom == xwayland->atoms[TEXT]) {
+        return strdup("text/plain");
+    } else {
+        return xwayland_get_atom_name(atom);
+    }
 }
 
 void xwayland_fixup_pointer_position(struct wlr_surface *surface)
