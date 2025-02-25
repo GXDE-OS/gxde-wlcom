@@ -15,6 +15,7 @@
 #include "output.h"
 #include "render/pass.h"
 #include "scene/scene.h"
+#include "scene/surface.h"
 #include "scene_p.h"
 #include "util/debug.h"
 
@@ -641,6 +642,20 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
     return true;
 }
 
+static bool is_tearing_allowed(struct ky_scene *scene, struct ky_scene_node *node)
+{
+    if (!node) {
+        return false;
+    }
+
+    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    if (!surface) {
+        return false;
+    }
+
+    return ky_scene_surface_is_tearing_allowed(scene, surface);
+}
+
 bool ky_scene_output_commit(struct ky_scene_output *scene_output,
                             const struct ky_scene_output_state_options *options)
 {
@@ -684,6 +699,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     }
 
     struct ky_scene_node *fullscreen = scene_output_get_fullscreen_node(scene_output);
+    bool is_tearing = is_tearing_allowed(scene_output->scene, fullscreen);
 
     struct wlr_output_state state;
     wlr_output_state_init(&state);
@@ -701,6 +717,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     }
     if (scanout) {
         wlr_output_state_set_damage(&state, &scene_output->damage_ring.current);
+        output_state_attempt_tearing(output_from_wlr_output(output), &state, is_tearing);
         wlr_damage_ring_rotate(&scene_output->damage_ring);
         bool ok = wlr_output_commit_state(scene_output->output, &state);
         wlr_output_state_finish(&state);
@@ -714,6 +731,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
 
     bool ok = false;
     if (scene_output_render(scene_output, &state, &target)) {
+        output_state_attempt_tearing(output_from_wlr_output(output), &state, is_tearing);
         ok = wlr_output_commit_state(scene_output->output, &state);
         if (ok) {
             wlr_buffer_unlock(scene_output->buffer);

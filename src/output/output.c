@@ -1226,6 +1226,22 @@ bool output_state_attempt_vrr(struct output *output, struct wlr_output_state *st
     return true;
 }
 
+bool output_state_attempt_tearing(struct output *output, struct wlr_output_state *state,
+                                  bool is_tearing)
+{
+    if (!is_tearing) {
+        return false;
+    }
+
+    state->tearing_page_flip = true;
+    if (!wlr_output_test_state(output->wlr_output, state)) {
+        state->tearing_page_flip = false;
+        return false;
+    }
+
+    return true;
+}
+
 static bool output_set_state(struct output *output, struct kywc_output_state *state)
 {
     struct wlr_output *wlr_output = output->wlr_output;
