@@ -111,7 +111,11 @@ static bool window_menu_action(struct menu_item *item, uint32_t key, void *data)
     } else if (menu == window_menu->desktop) {
         struct view *view = window_menu->view;
         if (key == KEY_A) {
-            view_add_all_workspace(view);
+            if (view->show_in_all_workspaces) {
+                view_set_workspace(view, workspace_manager_get_current());
+            } else {
+                view_add_all_workspace(view);
+            }
         } else if (key == KEY_N) {
             struct workspace *workspace = workspace_create(NULL, workspace_manager_get_count());
             if (workspace) {
