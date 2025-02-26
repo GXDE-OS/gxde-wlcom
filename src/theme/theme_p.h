@@ -73,7 +73,7 @@ struct theme_manager {
         bool (*set_icon_theme)(struct icon_manager *manager, const char *name);
         struct icon *(*get_icon)(struct icon_manager *manager, const char *name);
         const char *(*get_icon_name)(struct icon *icon);
-        struct wlr_buffer *(*get_icon_buffer)(struct icon *icon, float scale);
+        struct wlr_buffer *(*get_icon_buffer)(struct icon *icon, int size, float scale);
     } icon_impl;
 
     struct server *server;

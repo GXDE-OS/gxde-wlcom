@@ -494,7 +494,7 @@ const char *theme_icon_get_name(struct icon *icon)
     return fallback_icon_name;
 }
 
-struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale)
+struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, int size, float scale)
 {
     /* hide the fallback icon */
     if (theme_icon_is_fallback(icon)) {
@@ -502,7 +502,7 @@ struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale)
     }
 
     if (manager->icon_impl.get_icon_buffer) {
-        return manager->icon_impl.get_icon_buffer(icon, scale);
+        return manager->icon_impl.get_icon_buffer(icon, size, scale);
     }
 
     return NULL;

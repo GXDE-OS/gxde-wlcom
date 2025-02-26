@@ -339,9 +339,10 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 {
-    struct wlr_buffer *buf = theme_icon_get_buffer(view->icon, scale);
+    struct theme *theme = theme_manager_get_theme();
+    struct wlr_buffer *buf = theme_icon_get_buffer(view->icon, theme->icon_size, scale);
     if (!buf && view->impl->get_icon_buffer) {
-        buf = view->impl->get_icon_buffer(view, scale);
+        buf = view->impl->get_icon_buffer(view, theme->icon_size, scale);
     }
     return buf;
 }

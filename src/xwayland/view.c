@@ -264,15 +264,10 @@ static void xwayland_view_configure(struct view *view)
     view_configure(&xwayland_view->view, 0);
 }
 
-static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, float scale)
+static struct wlr_buffer *xwayland_view_get_wm_icon_buffer(struct view *view, int size, float scale)
 {
     struct xwayland_view *xwayland_view = xwayland_view_from_view(view);
-    struct theme *theme = theme_manager_get_theme();
-    struct draw_info info = {
-        .width = theme->icon_size,
-        .height = theme->icon_size,
-        .scale = scale,
-    };
+    struct draw_info info = { .width = size, .height = size, .scale = scale };
 
     float scale_width = info.width * info.scale;
     float min_abs = FLT_MAX;

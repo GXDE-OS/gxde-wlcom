@@ -262,8 +262,9 @@ static void handle_get_icon(struct wl_client *client, struct wl_resource *resour
         return;
     }
 
+    struct theme *theme = theme_manager_get_theme();
     float scale = view->output->state.scale;
-    struct wlr_buffer *wlr_buffer = view->impl->get_icon_buffer(view, scale);
+    struct wlr_buffer *wlr_buffer = view->impl->get_icon_buffer(view, theme->icon_size, scale);
     if (!wlr_buffer) {
         return;
     }

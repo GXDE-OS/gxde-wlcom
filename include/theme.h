@@ -140,7 +140,7 @@ struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum them
 
 const char *theme_icon_get_name(struct icon *icon);
 
-struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, float scale);
+struct wlr_buffer *theme_icon_get_buffer(struct icon *icon, int size, float scale);
 
 struct icon *theme_icon_from_app_id(const char *app_id);
 
