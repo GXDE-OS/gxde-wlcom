@@ -255,4 +255,7 @@ int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
 void xwayland_send_dnd_status(struct xwayland_server *xwayland, xcb_window_t requestor,
                               xcb_window_t window, uint32_t action);
 
+void xwayland_send_dnd_finish(struct xwayland_server *xwayland, xcb_window_t requestor,
+                              xcb_window_t window, bool accept, uint32_t action);
+
 #endif /* _XWAYLAND_P_H_ */

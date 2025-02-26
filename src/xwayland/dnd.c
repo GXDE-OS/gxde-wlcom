@@ -48,8 +48,6 @@ static void xwayland_data_source_send(struct wlr_data_source *wlr_source,
     xcb_flush(xwayland->xcb_conn);
 }
 
-static void xwayland_data_source_finish(struct wlr_data_source *wlr_source) {}
-
 static void xwayland_data_source_accept(struct wlr_data_source *wlr_source, uint32_t serial,
                                         const char *mime_type)
 {
@@ -61,11 +59,35 @@ static void xwayland_data_source_accept(struct wlr_data_source *wlr_source, uint
     xwayland_send_dnd_status(xwayland, xwayland->window_catcher, drag_x11->source_window, action);
 }
 
+static void xwayland_data_source_finish(struct wlr_data_source *wlr_source)
+{
+    struct xwayland_data_source *data_source = wl_container_of(wlr_source, data_source, base);
+    struct xwayland_drag_x11 *drag_x11 = data_source->drag_x11;
+    struct xwayland_server *xwayland = drag_x11->xwayland;
+    bool accepted = wlr_source->accepted;
+    enum wl_data_device_manager_dnd_action action = WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE;
+    if (accepted) {
+        action = data_device_manager_dnd_action_to_atom(wlr_source->actions);
+    }
+    xwayland_send_dnd_finish(xwayland, xwayland->window_catcher, drag_x11->source_window, accepted,
+                             action);
+}
+
+static void xwayland_data_source_destroy(struct wlr_data_source *wlr_source)
+{
+    struct xwayland_data_source *data_source = wl_container_of(wlr_source, data_source, base);
+    struct xwayland_server *xwayland = data_source->drag_x11->xwayland;
+    wl_array_release(&data_source->mime_types_atoms);
+    free(data_source);
+    xwayland->drag_x11->data_source = NULL;
+    xwayland_end_drag_x11(xwayland);
+}
+
 static const struct wlr_data_source_impl data_source_impl = {
     .send = xwayland_data_source_send,
     .accept = xwayland_data_source_accept,
     .dnd_finish = xwayland_data_source_finish,
-    .destroy = NULL, // destroy in xwayland_end_drag_x11
+    .destroy = xwayland_data_source_destroy,
 };
 
 static bool xwayland_add_atom_to_mime_types(struct wl_array *mime_types,
@@ -218,6 +240,34 @@ static int xwayland_handle_dnd_position(struct xwayland_server *xwayland,
     return 1;
 }
 
+static int xwayland_handle_dnd_drop(struct xwayland_server *xwayland,
+                                    xcb_client_message_data_t *data)
+{
+    if (!xwayland_is_dragging_x11(xwayland)) {
+        return 0;
+    }
+
+    xcb_window_t source_window = data->data32[0];
+    if (source_window != xwayland->drag_x11->source_window) {
+        kywc_log(KYWC_ERROR, "ignoring XdndDrop client message because the source window "
+                             "hasn't set the drag-and-drop selection");
+        return 0;
+    }
+
+    struct xwayland_drag_x11 *drag_x11 = xwayland->drag_x11;
+    if (drag_x11->hovered_client && drag_x11->data_source->base.current_dnd_action &&
+        drag_x11->data_source->base.accepted) {
+        struct wl_resource *resource;
+        wl_resource_for_each(resource, &drag_x11->hovered_client->data_devices) {
+            wl_data_device_send_drop(resource);
+        }
+    } else {
+        xwayland_end_drag_x11(xwayland);
+    }
+
+    return 1;
+}
+
 void xwayland_send_dnd_status(struct xwayland_server *xwayland, xcb_window_t requestor,
                               xcb_window_t window, uint32_t action)
 {
@@ -245,6 +295,28 @@ void xwayland_send_dnd_status(struct xwayland_server *xwayland, xcb_window_t req
     xcb_flush(xwayland->xcb_conn);
 }
 
+void xwayland_send_dnd_finish(struct xwayland_server *xwayland, xcb_window_t requestor,
+                              xcb_window_t window, bool accept, uint32_t action)
+{
+    xcb_client_message_data_t data = { 0 };
+    data.data32[0] = requestor;
+    data.data32[1] = accept;
+    if (accept) {
+        data.data32[2] = data_device_manager_dnd_action_to_atom(action);
+    }
+
+    xcb_client_message_event_t event = {
+        .response_type = XCB_CLIENT_MESSAGE,
+        .format = 32,
+        .sequence = 0,
+        .window = window,
+        .type = xwayland->atoms[DND_FINISHED],
+        .data = data,
+    };
+    xcb_send_event(xwayland->xcb_conn, 0, window, XCB_EVENT_MASK_NO_EVENT, (char *)&event);
+    xcb_flush(xwayland->xcb_conn);
+}
+
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
                                 xcb_client_message_event_t *client_message)
 {
@@ -256,6 +328,7 @@ int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
         return xwayland_handle_dnd_position(xwayland, &client_message->data);
     } else if (client_message->type == xwayland->atoms[DND_DROP]) {
         kywc_log(KYWC_DEBUG, "dnd_drop");
+        return xwayland_handle_dnd_drop(xwayland, &client_message->data);
     } else if (client_message->type == xwayland->atoms[DND_LEAVE]) {
         kywc_log(KYWC_DEBUG, "dnd_leave");
     }

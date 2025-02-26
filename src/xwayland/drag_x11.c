@@ -65,6 +65,14 @@ static void handle_cursor_button(struct wl_listener *listener, void *data)
         return;
     }
 
+    /* some x11 source app do not send drop, so we end drag early if !accpepted */
+    struct view *hover_view =
+        drag_x11->hovered_surface ? view_try_from_wlr_surface(drag_x11->hovered_surface) : NULL;
+    if (hover_view && !xwayland_check_view(hover_view) && drag_x11->data_source->base.accepted &&
+        drag_x11->data_source->base.current_dnd_action) {
+        return;
+    }
+
     struct xwayland_server *xwyaland = drag_x11->xwayland;
     xwayland_end_drag_x11(xwyaland);
 }
@@ -182,8 +190,11 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland)
 
     kywc_log(KYWC_DEBUG, "end drag X11 ");
     struct xwayland_drag_x11 *drag_x11 = xwayland->drag_x11;
-    wlr_data_source_destroy(&drag_x11->data_source->base);
-    wl_array_release(&drag_x11->data_source->mime_types_atoms);
+    if (drag_x11->data_source) {
+        // This will end the grab_x11
+        wlr_data_source_destroy(&drag_x11->data_source->base);
+        return;
+    }
 
     wl_list_remove(&drag_x11->cursor_motion.link);
     wl_list_remove(&drag_x11->cursor_button.link);
@@ -194,6 +205,8 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland)
     wl_list_for_each(transfer, &drag_x11->transfers, link) {
         xwayland_data_transfer_destroy(transfer);
     }
+
+    xwayland_map_selection_window(xwayland, xwayland->window_catcher, NULL, false);
 
     free(drag_x11);
     xwayland->drag_x11 = NULL;
