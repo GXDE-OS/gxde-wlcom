@@ -190,6 +190,11 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland)
     wl_list_remove(&drag_x11->surface_destroy.link);
     wl_list_remove(&drag_x11->seat_client_destroy.link);
 
+    struct xwayland_data_transfer *transfer;
+    wl_list_for_each(transfer, &drag_x11->transfers, link) {
+        xwayland_data_transfer_destroy(transfer);
+    }
+
     free(drag_x11);
     xwayland->drag_x11 = NULL;
 }
@@ -233,6 +238,7 @@ bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t sour
     drag_x11->cursor_button.notify = handle_cursor_button;
     wl_signal_add(&seat->cursor->wlr_cursor->events.button, &drag_x11->cursor_button);
 
+    wl_list_init(&drag_x11->transfers);
     drag_x11->xwayland = xwayland;
     xwayland->drag_x11 = drag_x11;
 

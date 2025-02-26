@@ -82,6 +82,16 @@ enum atom_name {
     ATOM_LAST,
 };
 
+struct xwayland_data_transfer {
+    struct wl_list link;
+
+    int wl_client_fd; // target fd
+    char *mime_type;
+    int property_start;
+    xcb_get_property_reply_t *property_reply;
+    struct wl_event_source *event_source; // for read loop
+};
+
 struct xwayland_data_source {
     struct wlr_data_source base;
     struct wl_array mime_types_atoms;
@@ -98,6 +108,8 @@ struct xwayland_drag_x11 {
     struct wl_listener surface_destroy;
     struct wlr_seat_client *hovered_client;
     struct wl_listener seat_client_destroy;
+
+    struct wl_list transfers; // struct xwayland_data_transfer
 
     // TODO: listen touch, tablet
     struct wl_listener cursor_motion;
@@ -215,6 +227,14 @@ void xwayland_create_seletion_window(struct xwayland_server *xwayland, xcb_windo
 
 void xwayland_map_selection_window(struct xwayland_server *xwayland, xcb_window_t window,
                                    struct kywc_box *box, bool map);
+
+struct xwayland_data_transfer *xwayland_data_transfer_create(struct xwayland_drag_x11 *drag_x11,
+                                                             const char *mime_type, int fd);
+
+void xwayland_data_transfer_destroy(struct xwayland_data_transfer *transfer);
+
+struct xwayland_data_transfer *
+xwayland_data_transfer_find_by_type(struct xwayland_drag_x11 *drag_x11, const char *mime_type);
 
 // drag_x11
 bool xwayland_is_dragging_x11(struct xwayland_server *xwayland);

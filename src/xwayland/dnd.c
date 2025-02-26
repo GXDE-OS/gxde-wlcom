@@ -2,11 +2,50 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "xwayland_p.h"
 
 static void xwayland_data_source_send(struct wlr_data_source *wlr_source,
                                       const char *requested_mime_type, int32_t fd)
 {
+    struct xwayland_data_source *xwayland_data_source =
+        wl_container_of(wlr_source, xwayland_data_source, base);
+    struct xwayland_drag_x11 *drag_x11 = xwayland_data_source->drag_x11;
+    struct xwayland_server *xwayland = drag_x11->xwayland;
+    xcb_atom_t *atoms = xwayland_data_source->mime_types_atoms.data;
+
+    bool found = false;
+    xcb_atom_t mime_type_atom;
+    char **mime_type_ptr;
+    size_t i = 0;
+    wl_array_for_each(mime_type_ptr, &wlr_source->mime_types) {
+        char *mime_type = *mime_type_ptr;
+        if (strcmp(mime_type, requested_mime_type) == 0) {
+            found = true;
+            mime_type_atom = atoms[i];
+            break;
+        }
+        ++i;
+    }
+    if (!found) {
+        kywc_log(KYWC_DEBUG, "Cannot send X11 selection to Wayland: "
+                             "unsupported MIME type");
+        close(fd);
+        return;
+    }
+
+    fcntl(fd, F_SETFL, O_WRONLY | O_NONBLOCK);
+    if (!xwayland_data_transfer_create(drag_x11, requested_mime_type, fd)) {
+        close(fd);
+        return;
+    }
+
+    xcb_convert_selection(xwayland->xcb_conn, xwayland->window_catcher,
+                          xwayland->atoms[DND_SELECTION], mime_type_atom,
+                          xwayland->atoms[WL_SELECTION], XCB_TIME_CURRENT_TIME);
+    xcb_flush(xwayland->xcb_conn);
 }
 
 static void xwayland_data_source_finish(struct wlr_data_source *wlr_source) {}
