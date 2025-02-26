@@ -192,6 +192,8 @@ struct view_layer *view_manager_get_layer(enum layer layer, bool in_workspace);
 
 struct view_layer *view_manager_get_layer_by_node(struct ky_scene_node *node, bool in_workspace);
 
+struct view_layer *view_manager_get_layer_by_role(enum kywc_view_role role);
+
 struct view *view_manager_get_activated(void);
 
 void view_manager_add_activate_view_listener(struct wl_listener *listener);

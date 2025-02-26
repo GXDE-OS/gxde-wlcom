@@ -1700,58 +1700,51 @@ bool view_is_focusable(struct view *view)
     return true;
 }
 
+struct view_layer *view_manager_get_layer_by_role(enum kywc_view_role role)
+{
+    switch (role) {
+    case KYWC_VIEW_ROLE_NORMAL:
+        return view_manager_get_layer(LAYER_NORMAL, true);
+    case KYWC_VIEW_ROLE_DESKTOP:
+        return view_manager_get_layer(LAYER_DESKTOP, false);
+    case KYWC_VIEW_ROLE_PANEL:
+    case KYWC_VIEW_ROLE_APPLETPOPUP:
+        return view_manager_get_layer(LAYER_DOCK, false);
+    case KYWC_VIEW_ROLE_ONSCREENDISPLAY:
+        return view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
+    case KYWC_VIEW_ROLE_NOTIFICATION:
+        return view_manager_get_layer(LAYER_NOTIFICATION, false);
+    case KYWC_VIEW_ROLE_TOOLTIP:
+        return view_manager_get_layer(LAYER_POPUP, false);
+    case KYWC_VIEW_ROLE_CRITICALNOTIFICATION:
+        return view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+    case KYWC_VIEW_ROLE_SYSTEMWINDOW:
+        return view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
+    case KYWC_VIEW_ROLE_SWITCHER:
+        return view_manager_get_layer(LAYER_SWITCHER, false);
+    case KYWC_VIEW_ROLE_INPUTPANEL:
+        return view_manager_get_layer(LAYER_INPUT_PANEL, false);
+    case KYWC_VIEW_ROLE_LOGOUT:
+        return view_manager_get_layer(LAYER_LOGOUT, false);
+    case KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION:
+        return view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
+    case KYWC_VIEW_ROLE_WATERMARK:
+        return view_manager_get_layer(LAYER_WATERMARK, false);
+    case KYWC_VIEW_ROLE_SCREENLOCK:
+        return view_manager_get_layer(LAYER_SCREEN_LOCK, false);
+    case KYWC_VIEW_ROLE_AUTHENTICATION:
+        return view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+    }
+    return NULL;
+}
+
 void view_apply_role(struct view *view)
 {
     struct kywc_view *kywc_view = &view->base;
-    struct view_layer *layer = NULL;
-    switch (kywc_view->role) {
-    case KYWC_VIEW_ROLE_NORMAL:
-        layer = view_manager_get_layer(LAYER_NORMAL, true);
-        break;
-    case KYWC_VIEW_ROLE_DESKTOP:
-        layer = view_manager_get_layer(LAYER_DESKTOP, false);
-        break;
-    case KYWC_VIEW_ROLE_PANEL:
-    case KYWC_VIEW_ROLE_APPLETPOPUP:
-        layer = view_manager_get_layer(LAYER_DOCK, false);
-        break;
-    case KYWC_VIEW_ROLE_ONSCREENDISPLAY:
-        layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
-        break;
-    case KYWC_VIEW_ROLE_NOTIFICATION:
-        layer = view_manager_get_layer(LAYER_NOTIFICATION, false);
-        break;
-    case KYWC_VIEW_ROLE_TOOLTIP:
-        layer = view_manager_get_layer(LAYER_POPUP, false);
-        break;
-    case KYWC_VIEW_ROLE_CRITICALNOTIFICATION:
-        layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
-        break;
-    case KYWC_VIEW_ROLE_SYSTEMWINDOW:
-        layer = view_manager_get_layer(LAYER_SYSTEM_WINDOW, false);
-        break;
-    case KYWC_VIEW_ROLE_SWITCHER:
-        layer = view_manager_get_layer(LAYER_SWITCHER, false);
-        break;
-    case KYWC_VIEW_ROLE_INPUTPANEL:
-        layer = view_manager_get_layer(LAYER_INPUT_PANEL, false);
-        break;
-    case KYWC_VIEW_ROLE_LOGOUT:
-        layer = view_manager_get_layer(LAYER_LOGOUT, false);
-        break;
-    case KYWC_VIEW_ROLE_SCREENLOCKNOTIFICATION:
-        layer = view_manager_get_layer(LAYER_SCREEN_LOCK_NOTIFICATION, false);
-        break;
-    case KYWC_VIEW_ROLE_WATERMARK:
-        layer = view_manager_get_layer(LAYER_WATERMARK, false);
-        break;
-    case KYWC_VIEW_ROLE_SCREENLOCK:
-        layer = view_manager_get_layer(LAYER_SCREEN_LOCK, false);
-        break;
-    case KYWC_VIEW_ROLE_AUTHENTICATION:
-        layer = view_manager_get_layer(LAYER_CRITICAL_NOTIFICATION, false);
+    struct view_layer *layer = view_manager_get_layer_by_role(kywc_view->role);
+
+    if (kywc_view->role == KYWC_VIEW_ROLE_AUTHENTICATION) {
         global_authentication_create(view);
-        break;
     }
 
     if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
