@@ -7,7 +7,6 @@
 
 #include <wlr/types/wlr_compositor.h>
 
-#include "scene/surface.h"
 #include "slide-protocol.h"
 #include "view_p.h"
 
@@ -39,8 +38,6 @@ static void kde_slide_apply_state(struct kde_slide *slide)
 {
     slide->offset = slide->pending_offset;
     slide->location = slide->pending_location;
-
-    ky_scene_surface_set_slide(slide->wlr_surface, slide->location, slide->offset);
 }
 
 static struct kde_slide *kde_slide_from_wlr_surface(struct wlr_surface *wlr_surface)
@@ -104,10 +101,6 @@ static const struct org_kde_kwin_slide_interface kde_slide_impl = {
 
 static void kde_slide_destroy(struct kde_slide *slide)
 {
-    if (slide->wlr_surface) {
-        ky_scene_surface_unset_slide(slide->wlr_surface);
-    }
-
     /* clear destructor when surface destroyed before slide resources */
     struct wl_resource *resource, *tmp;
     wl_resource_for_each_safe(resource, tmp, &slide->resources) {
@@ -146,6 +139,17 @@ static void slide_handle_surface_map(struct wl_listener *listener, void *data)
     wl_list_remove(&slide->surface_map.link);
     wl_list_init(&slide->surface_map.link);
     kde_slide_apply_state(slide);
+
+    struct view *view = view_try_from_wlr_surface(slide->wlr_surface);
+    if (!view) {
+        kywc_log(KYWC_DEBUG, "surface is not a toplevel");
+        return;
+    }
+
+    kywc_log(KYWC_DEBUG, "surface %p slide map", slide->wlr_surface);
+    view->slide.offset = slide->offset;
+    view->slide.location = slide->location;
+    view->use_slide = true;
 }
 
 static void handle_create(struct wl_client *client, struct wl_resource *manager_resource,
@@ -202,6 +206,11 @@ static void handle_unset(struct wl_client *client, struct wl_resource *manager_r
     struct kde_slide *slide = kde_slide_from_wlr_surface(wlr_surface);
     if (slide) {
         kde_slide_destroy(slide);
+    }
+
+    struct view *view = view_try_from_wlr_surface(wlr_surface);
+    if (view) {
+        view->use_slide = false;
     }
 }
 

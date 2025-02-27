@@ -241,7 +241,6 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
         return NULL;
     }
 
-    surface->has_slide = false;
     surface->buffer = scene_buffer;
     surface->surface = wlr_surface;
     surface->buffer_default_impl = scene_buffer->node.impl;
@@ -307,37 +306,4 @@ struct ky_scene_buffer *ky_scene_buffer_try_from_surface(struct wlr_surface *wlr
     }
 
     return scene_surface->buffer;
-}
-
-void ky_scene_surface_unset_slide(struct wlr_surface *wlr_surface)
-{
-    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_surface(wlr_surface);
-    if (!scene_surface) {
-        return;
-    }
-    scene_surface->has_slide = false;
-}
-
-void ky_scene_surface_set_slide(struct wlr_surface *wlr_surface, int location, int offset)
-{
-    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_surface(wlr_surface);
-    if (!scene_surface) {
-        return;
-    }
-    scene_surface->has_slide = true;
-    scene_surface->slide.location = location;
-    scene_surface->slide.offset = offset;
-}
-
-bool ky_scene_surface_get_slide(struct wlr_surface *wlr_surface, struct slide *slide)
-{
-    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_surface(wlr_surface);
-    if (!scene_surface) {
-        return false;
-    }
-    if (scene_surface->has_slide) {
-        *slide = scene_surface->slide;
-    }
-
-    return scene_surface->has_slide;
 }

@@ -143,6 +143,11 @@ struct view {
         int x, y, width, height;
     } minimized_geometry;
 
+    struct {
+        uint32_t location;
+        int offset;
+    } slide;
+
     struct view_configure_state pending;
 
     const struct view_impl *impl;
@@ -156,6 +161,7 @@ struct view {
     bool show_in_all_workspaces;
     bool minimized_when_show_desktop;
     bool minimized_when_show_active_only;
+    bool use_slide;
 };
 
 struct view_impl {

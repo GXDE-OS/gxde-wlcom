@@ -220,16 +220,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
 
 bool view_add_slide_effect(struct view *view, bool mapped)
 {
-    if (!slide_effect) {
-        return false;
-    }
-
-    if (!view->surface) {
-        return false;
-    }
-
-    struct slide slide;
-    if (!ky_scene_surface_get_slide(view->surface, &slide)) {
+    if (!view->use_slide || !slide_effect || !view->surface) {
         return false;
     }
 
@@ -242,6 +233,6 @@ bool view_add_slide_effect(struct view *view, bool mapped)
         new_parent = new_layer->tree;
     }
 
-    return create_slide_entity(&view->tree->node, zero_copy_buffer, slide.location, slide.offset,
-                               mapped, new_parent);
+    return create_slide_entity(&view->tree->node, zero_copy_buffer, view->slide.location,
+                               view->slide.offset, mapped, new_parent);
 }
