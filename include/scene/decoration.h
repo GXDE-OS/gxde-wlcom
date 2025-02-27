@@ -34,7 +34,8 @@ void ky_scene_decoration_set_round_corner_radius(struct ky_scene_decoration *dec
                                                  const int round_corner_radius[static 4]);
 
 void ky_scene_decoration_set_margin(struct ky_scene_decoration *decoration, int title_height,
-                                    int border_thickness, int shadow_width);
+                                    int border_thickness, int shadow_width, int shadow_offset_x,
+                                    int shadow_offset_y);
 
 void ky_scene_decoration_set_margin_color(struct ky_scene_decoration *decoration,
                                           const float title_color[static 4],
@@ -47,5 +48,8 @@ void ky_scene_decoration_set_shadow_mask(struct ky_scene_decoration *decoration,
 void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration, int resize_with);
 
 void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, bool blurred);
+
+void ky_scene_decoration_get_window_size(struct ky_scene_decoration *decoration, int *width,
+                                         int *height);
 
 #endif /* _SCENE_DECORATION_H_ */

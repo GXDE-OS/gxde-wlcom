@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <float.h>
+#include <math.h>
 #include <stdlib.h>
 
 #include "decoration_frag.h"
@@ -41,6 +42,8 @@ struct ky_scene_decoration {
     int border_thickness;
     int title_height;
     int shadow_width;
+    int shadow_offset_x;
+    int shadow_offset_y;
 
     /* margin color */
     float border_color[4];
@@ -55,6 +58,15 @@ struct ky_scene_decoration {
     int round_corner_radius[4];
     /* shadow part need be shown */
     uint32_t shadow_mask;
+
+    struct wlr_box window_box;
+    struct wlr_box shadow_box;
+    /**
+     * bound_box = window_box + shadow_box
+     * bound_box.x .y = node position
+     * bound_box.width .height = rect size
+     */
+    struct wlr_box bound_box;
 
     pixman_region32_t surface_region;
     pixman_region32_t title_region;
@@ -120,11 +132,14 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
                                                struct wlr_box *region)
 {
     struct wlr_box box = {
-        .x = lx - target->logical.x,
-        .y = ly - target->logical.y,
-        .width = deco->rect.width,
-        .height = deco->rect.height,
+        .x = lx - target->logical.x + deco->bound_box.x,
+        .y = ly - target->logical.y + deco->bound_box.y,
+        .width = deco->bound_box.width,
+        .height = deco->bound_box.height,
     };
+
+    int offset_x = deco->shadow_width - deco->shadow_offset_x;
+    int offset_y = deco->shadow_width - deco->shadow_offset_y;
 
     bool left_shadow_mask = deco->shadow_mask & SHADOW_MASK_LEFT;
     bool right_shadow_mask = deco->shadow_mask & SHADOW_MASK_RIGHT;
@@ -132,14 +147,14 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->x = box.x;
         region->width = box.width;
     } else if (!left_shadow_mask && right_shadow_mask) {
-        region->x = box.x + deco->shadow_width;
-        region->width = box.width - deco->shadow_width;
+        region->x = box.x + offset_x;
+        region->width = box.width - offset_x;
     } else if (left_shadow_mask && !right_shadow_mask) {
         region->x = box.x;
-        region->width = box.width - deco->shadow_width;
+        region->width = deco->window_box.width + offset_x;
     } else {
-        region->x = box.x + deco->shadow_width;
-        region->width = box.width - deco->shadow_width * 2;
+        region->x = box.x + offset_x;
+        region->width = deco->window_box.width;
     }
     bool top_shadow_mask = deco->shadow_mask & SHADOW_MASK_TOP;
     bool bottom_shadow_mask = deco->shadow_mask & SHADOW_MASK_BOTTOM;
@@ -147,17 +162,87 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->y = box.y;
         region->height = box.height;
     } else if (!top_shadow_mask && bottom_shadow_mask) {
-        region->y = box.y + deco->shadow_width;
-        region->height = box.height - deco->shadow_width;
+        region->y = box.y + offset_y;
+        region->height = box.height - offset_y;
     } else if (top_shadow_mask && !bottom_shadow_mask) {
         region->y = box.y;
-        region->height = box.height - deco->shadow_width;
+        region->height = deco->window_box.height + offset_y;
     } else {
-        region->y = box.y + deco->shadow_width;
-        region->height = box.height - deco->shadow_width * 2;
+        region->y = box.y + offset_y;
+        region->height = deco->window_box.height;
     }
 
     ky_scene_render_box(region, target);
+}
+
+static void get_window_box_from_surface_box(struct ky_scene_decoration *deco,
+                                            struct ky_scene_render_target *target,
+                                            int border_thickness, int title_height,
+                                            const struct wlr_box *box,
+                                            const struct wlr_box *surface_box,
+                                            struct wlr_box *window_box)
+{
+    int border_thickness_2 = border_thickness * 2;
+
+    if (target->transform == WL_OUTPUT_TRANSFORM_90) {
+        window_box->x = surface_box->y - border_thickness - box->y;
+        window_box->y = surface_box->x - title_height - border_thickness - box->x;
+        window_box->width = surface_box->height + border_thickness_2;
+        window_box->height = surface_box->width + title_height + border_thickness_2;
+        // rotation correct
+        window_box->x = box->height - surface_box->height - border_thickness_2 - window_box->x;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_180) {
+        window_box->x = surface_box->x - border_thickness - box->x;
+        window_box->y = surface_box->y - border_thickness - box->y;
+        window_box->width = surface_box->width + border_thickness_2;
+        window_box->height = surface_box->height + title_height + border_thickness_2;
+        // rotation correct
+        window_box->x = box->width - surface_box->width - border_thickness_2 - window_box->x;
+        window_box->y =
+            box->height - surface_box->height - border_thickness_2 - title_height - window_box->y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_270) {
+        window_box->x = surface_box->y - border_thickness - box->y;
+        window_box->y = surface_box->x - border_thickness - box->x;
+        window_box->width = surface_box->height + border_thickness_2;
+        window_box->height = surface_box->width + title_height + border_thickness_2;
+        // rotation correct
+        window_box->y =
+            box->width - surface_box->width - border_thickness_2 - title_height - window_box->y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED) {
+        window_box->x = surface_box->x - border_thickness - box->x;
+        window_box->y = surface_box->y - title_height - border_thickness - box->y;
+        window_box->width = surface_box->width + border_thickness_2;
+        window_box->height = surface_box->height + title_height + border_thickness_2;
+        // rotation correct
+        window_box->x = box->width - surface_box->width - border_thickness_2 - window_box->x;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90) {
+        window_box->x = surface_box->y - border_thickness - box->y;
+        window_box->y = surface_box->x - title_height - border_thickness - box->x;
+        window_box->width = surface_box->height + border_thickness_2;
+        window_box->height = surface_box->width + title_height + border_thickness_2;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_180) {
+        window_box->x = surface_box->x - border_thickness - box->x;
+        window_box->y = surface_box->y - border_thickness - box->y;
+        window_box->width = surface_box->width + border_thickness_2;
+        window_box->height = surface_box->height + title_height + border_thickness_2;
+        // rotation correct
+        window_box->y =
+            box->height - surface_box->height - border_thickness_2 - title_height - window_box->y;
+    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270) {
+        window_box->x = surface_box->y - border_thickness - box->y;
+        window_box->y = surface_box->x - border_thickness - box->x;
+        window_box->width = surface_box->height + border_thickness_2;
+        window_box->height = surface_box->width + title_height + border_thickness_2;
+        // rotation correct
+        window_box->x = box->height - surface_box->height - border_thickness_2 - window_box->x;
+        window_box->y =
+            box->width - surface_box->width - border_thickness_2 - title_height - window_box->y;
+    } else {
+        window_box->x = surface_box->x - border_thickness - box->x;
+        window_box->y = surface_box->y - title_height - border_thickness - box->y;
+        window_box->width = surface_box->width + border_thickness_2;
+        window_box->height = surface_box->height + title_height + border_thickness_2;
+    }
 }
 
 static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int lx, int ly,
@@ -204,8 +289,9 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
         height = box->width;
     }
     // keep border ceil scale. avoid non-integer scale different thickness
+    int shadow_offset_x = roundf(deco->shadow_offset_x * scale);
+    int shadow_offset_y = roundf(deco->shadow_offset_y * scale);
     int border_thickness = ceil(deco->border_thickness * scale);
-    int border_thickness_2 = border_thickness * 2;
     int title_height = round(deco->title_height * scale);
     float half_height = height * 0.5f; // shader distance scale
     float shadow_width = deco->shadow_width * scale;
@@ -225,77 +311,23 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
                                      : 0.0f;
     }
 
-    // full rect logic coord to framebuffer coord
-    struct wlr_box window_box = {
-        .x = lx + deco->shadow_width + deco->border_thickness - target->logical.x,
-        .y = ly + deco->shadow_width + deco->border_thickness + deco->title_height -
-             target->logical.y,
+    // surface rect as reference use framebuffer coord. avoid non-integer scale issuse
+    struct wlr_box surface_box = {
+        .x = lx + deco->border_thickness - target->logical.x,
+        .y = ly + deco->border_thickness + deco->title_height - target->logical.y,
         .width = deco->surface_width,
         .height = deco->surface_height,
     };
-    ky_scene_render_box(&window_box, target);
-    // base by framebuffer coord window rect. avoid non-integer scale 1 pixel offset
-    // framebuffer coord origin on monitor left-top. need rotation correct
-    struct wlr_box window_frame = {};
-    if (target->transform == WL_OUTPUT_TRANSFORM_90) {
-        window_frame.x = window_box.y - border_thickness - box->y;
-        window_frame.y = window_box.x - title_height - border_thickness - box->x;
-        window_frame.width = window_box.height + border_thickness_2;
-        window_frame.height = window_box.width + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.x = box->height - window_box.height - border_thickness_2 - window_frame.x;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_180) {
-        window_frame.x = window_box.x - border_thickness - box->x;
-        window_frame.y = window_box.y - border_thickness - box->y;
-        window_frame.width = window_box.width + border_thickness_2;
-        window_frame.height = window_box.height + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.x = box->width - window_box.width - border_thickness_2 - window_frame.x;
-        window_frame.y =
-            box->height - window_box.height - border_thickness_2 - title_height - window_frame.y;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_270) {
-        window_frame.x = window_box.y - border_thickness - box->y;
-        window_frame.y = window_box.x - border_thickness - box->x;
-        window_frame.width = window_box.height + border_thickness_2;
-        window_frame.height = window_box.width + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.y =
-            box->width - window_box.width - border_thickness_2 - title_height - window_frame.y;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED) {
-        window_frame.x = window_box.x - border_thickness - box->x;
-        window_frame.y = window_box.y - title_height - border_thickness - box->y;
-        window_frame.width = window_box.width + border_thickness_2;
-        window_frame.height = window_box.height + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.x = box->width - window_box.width - border_thickness_2 - window_frame.x;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90) {
-        window_frame.x = window_box.y - border_thickness - box->y;
-        window_frame.y = window_box.x - title_height - border_thickness - box->x;
-        window_frame.width = window_box.height + border_thickness_2;
-        window_frame.height = window_box.width + title_height + border_thickness_2;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_180) {
-        window_frame.x = window_box.x - border_thickness - box->x;
-        window_frame.y = window_box.y - border_thickness - box->y;
-        window_frame.width = window_box.width + border_thickness_2;
-        window_frame.height = window_box.height + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.y =
-            box->height - window_box.height - border_thickness_2 - title_height - window_frame.y;
-    } else if (target->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270) {
-        window_frame.x = window_box.y - border_thickness - box->y;
-        window_frame.y = window_box.x - border_thickness - box->x;
-        window_frame.width = window_box.height + border_thickness_2;
-        window_frame.height = window_box.width + title_height + border_thickness_2;
-        // rotation correct
-        window_frame.x = box->height - window_box.height - border_thickness_2 - window_frame.x;
-        window_frame.y =
-            box->width - window_box.width - border_thickness_2 - title_height - window_frame.y;
-    } else {
-        window_frame.x = window_box.x - border_thickness - box->x;
-        window_frame.y = window_box.y - title_height - border_thickness - box->y;
-        window_frame.width = window_box.width + border_thickness_2;
-        window_frame.height = window_box.height + title_height + border_thickness_2;
-    }
+    ky_scene_render_box(&surface_box, target);
+    struct wlr_box window_box = { 0 };
+    get_window_box_from_surface_box(deco, target, border_thickness, title_height, box, &surface_box,
+                                    &window_box);
+    struct wlr_box shadow_window_box = {
+        .x = window_box.x + shadow_offset_x,
+        .y = window_box.y + shadow_offset_y,
+        .width = window_box.width,
+        .height = window_box.height,
+    };
 
     struct kywc_box dst_box = {
         .x = box->x,
@@ -324,17 +356,19 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
     glUniform1f(gl_locations.shadow_sigma,
                 shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX);
-    glUniform4f(gl_locations.shadow_rect, window_frame.x, window_frame.y,
-                window_frame.x + window_frame.width, window_frame.y + window_frame.height);
+    // shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX
+    glUniform4f(gl_locations.shadow_rect, shadow_window_box.x, shadow_window_box.y,
+                shadow_window_box.x + shadow_window_box.width,
+                shadow_window_box.y + shadow_window_box.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
     // 1 pixel border thickness keep 1 pixel less soft aa
     float one_pixel_distance = 1.0 / half_height;
     glUniform1f(gl_locations.border_aa, one_pixel_distance * 0.5f);
     glUniform1f(gl_locations.aspect, width / height);
-    float width_distance = window_frame.width / height;
-    float height_distance = window_frame.height / height;
-    float offset_x_distance = width_distance * 0.5f + window_frame.x / height;
-    float offset_y_distance = height_distance * 0.5f + window_frame.y / height;
+    float width_distance = window_box.width / height;
+    float height_distance = window_box.height / height;
+    float offset_x_distance = width_distance * 0.5f + window_box.x / height;
+    float offset_y_distance = height_distance * 0.5f + window_box.y / height;
     glUniform4f(gl_locations.window_rect, offset_x_distance, offset_y_distance, width_distance,
                 height_distance);
     glUniform4f(
@@ -379,10 +413,10 @@ static void scene_decoration_update_round_corner_region(struct ky_scene_decorati
         deco->round_corner_radius[2] + deco->border_thickness,
         deco->round_corner_radius[3] + deco->border_thickness,
     };
-    int x1 = deco->shadow_width;
-    int x2 = deco->shadow_width + width + 2 * deco->border_thickness;
-    int y1 = deco->shadow_width;
-    int y2 = deco->shadow_width + height + deco->title_height + 2 * deco->border_thickness;
+    int x1 = 0;
+    int x2 = width + 2 * deco->border_thickness;
+    int y1 = 0;
+    int y2 = height + deco->title_height + 2 * deco->border_thickness;
     if ((deco->shadow_mask & SHADOW_MASK_TOP_LEFT) && round_corner_radius[3] > 0) {
         pixman_region32_union_rect(&deco->round_corner_region, &deco->round_corner_region, x1, y1,
                                    round_corner_radius[3], round_corner_radius[3]);
@@ -412,23 +446,22 @@ static void scene_decoration_update_region(struct ky_scene_decoration *deco)
     pixman_region32_clear(&deco->pure_clip_region);
 
     int width = deco->surface_width, height = deco->surface_height;
-    int shadow = deco->shadow_width, title = deco->title_height, border = deco->border_thickness;
-    int rect_w = deco->rect.width, rect_h = deco->rect.height;
+    int title = deco->title_height, border = deco->border_thickness;
 
-    pixman_region32_init_rect(&deco->pure_clip_region, 0, 0, rect_w, rect_h);
+    pixman_region32_init_rect(&deco->surface_region, border, border + title, width, height);
 
-    int x = shadow + border;
-    int y = shadow + border + title;
-    pixman_region32_init_rect(&deco->surface_region, x, y, width, height);
-    pixman_region32_init_rect(&deco->title_region, x, x, width, title);
+    pixman_region32_init_rect(&deco->title_region, border, border, width, title);
 
     pixman_region32_t reg1, reg2;
-    pixman_region32_init_rect(&reg1, shadow, shadow, rect_w - 2 * shadow, rect_h - 2 * shadow);
-    pixman_region32_init_rect(&reg2, x, x, width, title + height);
+    pixman_region32_init_rect(&reg1, deco->window_box.x, deco->window_box.y, deco->window_box.width,
+                              deco->window_box.height);
+    pixman_region32_init_rect(&reg2, border, border, width, title + height);
     pixman_region32_subtract(&deco->border_region, &reg1, &reg2);
     pixman_region32_fini(&reg1);
     pixman_region32_fini(&reg2);
 
+    pixman_region32_init_rect(&deco->pure_clip_region, deco->bound_box.x, deco->bound_box.y,
+                              deco->bound_box.width, deco->bound_box.height);
     pixman_region32_subtract(&deco->pure_clip_region, &deco->pure_clip_region,
                              &deco->surface_region);
 }
@@ -438,15 +471,14 @@ static void scene_decoration_update_input_region(struct ky_scene_decoration *dec
     pixman_region32_t input;
     pixman_region32_init(&input);
 
-    int shadow = decoration->shadow_width;
     int border = decoration->border_thickness;
     int resize = decoration->resize_width;
 
-    int off = resize > 0 ? shadow - resize : shadow + border;
-    int w = decoration->rect.width - 2 * off;
-    int h = decoration->rect.height - 2 * off;
-    pixman_region32_init_rect(&input, off, off, w, h);
-
+    int off = resize > 0 ? resize : border;
+    int x = border - off;
+    int x2 = decoration->window_box.width - border + off;
+    int y2 = decoration->window_box.height - border + off;
+    pixman_region32_init_rect(&input, x, x, x2 - x, y2 - x);
     ky_scene_node_set_input_region(&decoration->rect.node, &input);
     pixman_region32_fini(&input);
 }
@@ -469,11 +501,39 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
     deco->pending_cause = DECO_UPDATE_CAUSE_NONE;
 
     if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_MARGIN)) {
-        int margin = 2 * (border + shadow);
-        int rect_width = width + margin;
-        int rect_height = height + title + margin;
-        if (rect_width != deco->rect.width || rect_height != deco->rect.height) {
-            ky_scene_rect_set_size(&deco->rect, rect_width, rect_height);
+        int border2 = 2 * border;
+        deco->window_box.x = 0;
+        deco->window_box.y = 0;
+        deco->window_box.width = width + border2;
+        deco->window_box.height = title + height + border2;
+
+        int shadow2 = 2 * shadow;
+        deco->shadow_box.x = deco->window_box.x - shadow + deco->shadow_offset_x;
+        deco->shadow_box.y = deco->window_box.y - shadow + deco->shadow_offset_y;
+        deco->shadow_box.width = deco->window_box.width + shadow2;
+        deco->shadow_box.height = deco->window_box.height + shadow2;
+
+        // bound box
+        int x_min =
+            deco->window_box.x < deco->shadow_box.x ? deco->window_box.x : deco->shadow_box.x;
+        int y_min =
+            deco->window_box.y < deco->shadow_box.y ? deco->window_box.y : deco->shadow_box.y;
+        int x_max = (deco->window_box.x + deco->window_box.width) >
+                            (deco->shadow_box.x + deco->shadow_box.width)
+                        ? (deco->window_box.x + deco->window_box.width)
+                        : (deco->shadow_box.x + deco->shadow_box.width);
+        int y_max = (deco->window_box.y + deco->window_box.height) >
+                            (deco->shadow_box.y + deco->shadow_box.height)
+                        ? (deco->window_box.y + deco->window_box.height)
+                        : (deco->shadow_box.y + deco->shadow_box.height);
+        deco->bound_box.x = x_min;
+        deco->bound_box.y = y_min;
+        deco->bound_box.width = x_max - x_min;
+        deco->bound_box.height = y_max - y_min;
+
+        if (deco->bound_box.width != deco->rect.width ||
+            deco->bound_box.height != deco->rect.height) {
+            ky_scene_rect_set_size(&deco->rect, deco->bound_box.width, deco->bound_box.height);
         }
         scene_decoration_update_region(deco);
     }
@@ -535,7 +595,9 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     // if node state is changed, it must in the affected region
     if (deco->rect.width > 0 && deco->rect.height > 0 &&
         pixman_region32_contains_rectangle(
-            affected, &(pixman_box32_t){ lx, ly, lx + deco->rect.width, ly + deco->rect.height }) ==
+            affected, &(pixman_box32_t){ lx + deco->bound_box.x, ly + deco->bound_box.y,
+                                         lx + deco->bound_box.x + deco->rect.width,
+                                         ly + deco->bound_box.y + deco->rect.height }) ==
             PIXMAN_REGION_OUT) {
         return;
     }
@@ -553,8 +615,9 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     pixman_region32_clear(&node->visible_region);
 
     if (node_enabled) {
-        pixman_region32_init_rect(&node->visible_region, lx, ly, deco->rect.width,
-                                  deco->rect.height);
+        pixman_region32_init_rect(&node->visible_region, lx + deco->bound_box.x,
+                                  ly + deco->bound_box.y, deco->bound_box.width,
+                                  deco->bound_box.height);
         pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
 
         if (!no_damage) {
@@ -638,13 +701,15 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
+    struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
+
     pixman_region32_t render_region;
     if (render_with_visibility) {
         pixman_region32_init(&render_region);
         pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
     } else {
-        struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
-        pixman_region32_init_rect(&render_region, 0, 0, rect->width, rect->height);
+        pixman_region32_init_rect(&render_region, deco->bound_box.x, deco->bound_box.y,
+                                  deco->bound_box.width, deco->bound_box.height);
         if (pixman_region32_not_empty(&node->clip_region)) {
             pixman_region32_intersect(&render_region, &render_region, &node->clip_region);
         }
@@ -657,8 +722,6 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
-    struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
-
     /* actual render region exclude the blur region */
     pixman_region32_t clip_region;
     pixman_region32_init(&clip_region);
@@ -668,10 +731,10 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
 
     bool need_render = pixman_region32_not_empty(&clip_region);
     struct wlr_box dst_box = {
-        .x = lx - target->logical.x,
-        .y = ly - target->logical.y,
-        .width = deco->rect.width,
-        .height = deco->rect.height,
+        .x = lx - target->logical.x + deco->bound_box.x,
+        .y = ly - target->logical.y + deco->bound_box.y,
+        .width = deco->bound_box.width,
+        .height = deco->bound_box.height,
     };
     if (need_render) {
         ky_scene_render_box(&dst_box, target);
@@ -757,6 +820,13 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
     pixman_region32_fini(&clip_region);
 }
 
+static void scene_decoration_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
+{
+    struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
+    *box = (struct wlr_box){ deco->bound_box.x, deco->bound_box.y, deco->bound_box.width,
+                             deco->bound_box.height };
+}
+
 static void scene_decoration_destroy(struct ky_scene_node *node)
 {
     if (!node) {
@@ -791,6 +861,7 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
     decoration->rect.node.impl.destroy = scene_decoration_destroy;
     decoration->rect.node.impl.collect_damage = scene_decoration_collect_damage;
     decoration->rect.node.impl.render = scene_decoration_render;
+    decoration->rect.node.impl.get_bounding_box = scene_decoration_get_bounding_box;
     /* no need to update_region and push_damage, it is invisible */
 
     pixman_region32_init(&decoration->title_region);
@@ -829,7 +900,8 @@ void ky_scene_decoration_set_round_corner_radius(struct ky_scene_decoration *dec
 }
 
 void ky_scene_decoration_set_margin(struct ky_scene_decoration *decoration, int title_height,
-                                    int border_thickness, int shadow_width)
+                                    int border_thickness, int shadow_width, int shadow_offset_x,
+                                    int shadow_offset_y)
 {
     if (decoration->title_height == title_height &&
         decoration->border_thickness == border_thickness &&
@@ -840,6 +912,8 @@ void ky_scene_decoration_set_margin(struct ky_scene_decoration *decoration, int 
     decoration->title_height = title_height;
     decoration->border_thickness = border_thickness;
     decoration->shadow_width = shadow_width;
+    decoration->shadow_offset_x = shadow_offset_x;
+    decoration->shadow_offset_y = shadow_offset_y;
     scene_decoration_update(decoration, DECO_UPDATE_CAUSE_MARGIN);
 }
 
@@ -889,4 +963,11 @@ void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, boo
 
     decoration->blurred = blurred;
     scene_decoration_update(decoration, DECO_UPDATE_CAUSE_BLURRED);
+}
+
+void ky_scene_decoration_get_window_size(struct ky_scene_decoration *decoration, int *width,
+                                         int *height)
+{
+    *width = decoration->window_box.width;
+    *height = decoration->window_box.height;
 }

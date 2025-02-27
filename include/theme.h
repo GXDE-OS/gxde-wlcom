@@ -106,6 +106,8 @@ struct theme {
     int title_height;
     int subtitle_height;
     int shadow_border;
+    int shadow_offset_x;
+    int shadow_offset_y;
     int normal_radius;
 
     /* button svg string */

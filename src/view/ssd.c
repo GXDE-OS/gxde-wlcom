@@ -353,12 +353,15 @@ static struct ssd_tooltip *ssd_tooltip_create(struct seat *seat)
 
 static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
 {
-    struct ky_scene_rect *frame = ky_scene_rect_from_node(part->node);
+    struct ky_scene_decoration *deco = ky_scene_decoration_from_node(part->node);
+    int width, height;
+    ky_scene_decoration_get_window_size(deco, &width, &height);
+
     struct theme *theme = theme_manager_get_theme();
     int border = part->ssd->kywc_view->ssd & KYWC_SSD_BORDER ? theme->border_width : 0;
-    int x1 = theme->shadow_border + theme->corner_radius + border;
-    int x2 = frame->width - x1;
-    int y2 = frame->height - x1;
+    int x1 = theme->corner_radius + border;
+    int x2 = width - x1;
+    int y2 = height - x1;
     int sx = floor(x);
     int sy = floor(y);
 
@@ -382,7 +385,7 @@ static uint32_t get_resize_type(struct ssd_part *part, double x, double y)
         }
     } else if (sy >= y2) {
         resize_edges = KYWC_EDGE_BOTTOM;
-    } else if (sy <= theme->shadow_border + border) {
+    } else if (sy <= border) {
         resize_edges = KYWC_EDGE_TOP;
     }
 
@@ -783,15 +786,15 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
                         ? tmp->parent ? theme->subtitle_height : theme->title_height
                         : 0;
         int resize = view->ssd & KYWC_SSD_RESIZE ? RESIZE_BORDER : 0;
-        int size = theme->shadow_border + border;
         int bottom = view->has_round_corner ? theme->corner_radius : 0;
         int top = (view->ssd & KYWC_SSD_TITLE || view->has_round_corner) ? theme->corner_radius : 0;
 
         ky_scene_decoration_set_resize_width(frame, resize);
-        ky_scene_decoration_set_margin(frame, title, border, theme->shadow_border);
+        ky_scene_decoration_set_margin(frame, title, border, theme->shadow_border,
+                                       theme->shadow_offset_x, theme->shadow_offset_y);
         ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
-        ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -size, -(title + size));
+        ky_scene_node_set_position(ky_scene_node_from_decoration(frame), -border, -border - title);
     }
 }
 

@@ -205,8 +205,10 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
     if (view->base.ssd == KYWC_SSD_NONE) {
         memcpy(&scale_entity->shadow, &view->base.padding, sizeof(struct padding));
     } else {
-        scale_entity->shadow.top = scale_entity->shadow.bottom = theme->shadow_border;
-        scale_entity->shadow.left = scale_entity->shadow.right = theme->shadow_border;
+        scale_entity->shadow.left = theme->shadow_border - theme->shadow_offset_x;
+        scale_entity->shadow.top = theme->shadow_border - theme->shadow_offset_y;
+        scale_entity->shadow.right = theme->shadow_border + theme->shadow_offset_x;
+        scale_entity->shadow.bottom = theme->shadow_border + theme->shadow_offset_y;
     }
 
     struct transform_options options = { 0 };

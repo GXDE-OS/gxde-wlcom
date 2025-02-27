@@ -70,8 +70,8 @@ static void menu_draw_item(struct menu_item *item, bool force)
     float *background_color = theme->active_bg_color;
     float *front_color = item->activated ? theme->active_text_color : theme->inactive_text_color;
     widget_set_background_color(item->content,
-                                (float[4]){ background_color[0], background_color[1],
-                                            background_color[2], theme->opacity / 100.0 });
+                               (float[4]){ background_color[0], background_color[1],
+                                           background_color[2], theme->opacity / 100.0 });
     widget_set_front_color(item->content, front_color);
     widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
     widget_set_round_corner(item->content, corner_mask, theme->corner_radius);
@@ -992,10 +992,10 @@ static void menu_update_decoration(struct menu *menu)
     int radius = theme->corner_radius;
     int shadow = theme->shadow_border;
 
-    ky_scene_decoration_set_margin(menu->deco, 0, 0, shadow);
+    ky_scene_decoration_set_margin(menu->deco, 0, 0, shadow, 0, 0);
     ky_scene_decoration_set_round_corner_radius(menu->deco,
                                                 (int[4]){ radius, radius, radius, radius });
-    ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), -shadow, -shadow);
+    ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), 0, 0);
     ky_scene_decoration_set_blurred(menu->deco, theme->opacity != 100);
 }
 

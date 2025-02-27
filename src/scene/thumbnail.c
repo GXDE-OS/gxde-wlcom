@@ -245,8 +245,8 @@ static void view_thumbnail_get_box(struct view_thumbnail *view_thumbnail, struct
         box->height += kywc_view->margin.off_height;
     } else if (options & THUMBNAIL_DISABLE_ROUND_CORNER || options == 0) {
         struct theme *theme = theme_manager_get_theme();
-        box->x -= kywc_view->margin.off_x + theme->shadow_border;
-        box->y -= kywc_view->margin.off_y + theme->shadow_border;
+        box->x -= kywc_view->margin.off_x + theme->shadow_border - theme->shadow_offset_x;
+        box->y -= kywc_view->margin.off_y + theme->shadow_border - theme->shadow_offset_y;
         box->width += kywc_view->margin.off_width + theme->shadow_border * 2;
         box->height += kywc_view->margin.off_height + theme->shadow_border * 2;
     }
@@ -555,8 +555,10 @@ static void view_thumbnail_get_position(struct view *view, struct wlr_box *dst_b
 
     struct theme *theme = theme_manager_get_theme();
     if (kywc_view->ssd != KYWC_SSD_NONE) {
-        dst_box->x = geometry.x - kywc_view->margin.off_x - theme->shadow_border;
-        dst_box->y = geometry.y - kywc_view->margin.off_y - theme->shadow_border;
+        dst_box->x =
+            geometry.x - kywc_view->margin.off_x - theme->shadow_border + theme->shadow_offset_x;
+        dst_box->y =
+            geometry.y - kywc_view->margin.off_y - theme->shadow_border + theme->shadow_offset_y;
     } else {
         dst_box->x = geometry.x - kywc_view->padding.left;
         dst_box->y = geometry.y - kywc_view->padding.right;
