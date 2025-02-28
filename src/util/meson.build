@@ -6,6 +6,7 @@ wlcom_sources += files(
   'debug.c',
   'file.c',
   'fscan.c',
+  'hash_table.c',
   'identifier.c',
   'limit.c',
   'logger.c',
