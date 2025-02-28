@@ -44,7 +44,7 @@ bool spawn_invoke(const char *command)
         pid_t grandchild = fork();
         if (grandchild == 0) {
             /* close stdout/stderr */
-            int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0666);
+            int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0660);
             if (devnull < 0) {
                 kywc_log_errno(KYWC_ERROR, "failed to open /dev/null");
                 _exit(1);
@@ -99,7 +99,7 @@ pid_t spawn_session(const char *session)
         limit_unset_nofile();
 
         /* close stdout/stderr */
-        int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0666);
+        int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0660);
         if (devnull < 0) {
             kywc_log_errno(KYWC_ERROR, "failed to open /dev/null");
             _exit(1);
@@ -199,7 +199,7 @@ struct wl_client *spawn_client(struct wl_display *display, const char *command)
             kywc_log(KYWC_ERROR, "run %s in %s", command, wayland_socket_str);
 
             /* close stdout/stderr */
-            int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0666);
+            int devnull = open("/dev/null", O_WRONLY | O_CREAT | O_CLOEXEC, 0660);
             if (devnull < 0) {
                 kywc_log_errno(KYWC_ERROR, "failed to open /dev/null");
                 _exit(1);

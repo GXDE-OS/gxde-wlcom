@@ -37,7 +37,7 @@ static char *check_config_file(void)
     path[folder] = '\0';
     if (!dir_exists(path)) {
         kywc_log(KYWC_INFO, "configure dir %s not exist, create it", path);
-        int ret = mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        int ret = mkdir(path, S_IRWXU | S_IRWXG);
         if (ret) {
             kywc_log_errno(KYWC_ERROR, "create configure dir failed");
             goto err;

@@ -133,7 +133,7 @@ void logger_init(enum kywc_log_level level, bool log_to_file, bool realtime)
     int ret = access(log_path, F_OK);
     if (ret) {
         fprintf(stdout, "logger: %s not exist, create it\n", log_path);
-        ret = mkdir(log_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        ret = mkdir(log_path, S_IRWXU | S_IRWXG);
         if (ret) {
             fprintf(stderr, "create log dir failed: %s\n", strerror(errno));
             return;
