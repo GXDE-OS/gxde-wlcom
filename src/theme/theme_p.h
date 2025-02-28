@@ -90,7 +90,7 @@ const char *theme_manager_read_icon_config(struct theme_manager *manager);
 
 void theme_manager_write_icon_config(struct theme_manager *manager, const char *name);
 
-#if 0 // HAVE_THEME_ICON
+#if 1 // HAVE_THEME_ICON
 struct icon_manager *icon_manager_create(struct theme_manager *manager);
 #else
 static __attribute__((unused)) inline struct icon_manager *

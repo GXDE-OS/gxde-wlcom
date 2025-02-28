@@ -1,6 +1,6 @@
 wlcom_sources += files(
   'config.c',
-  #'icon.c',
+  'icon.c',
   'theme.c',
 )
 
