@@ -371,8 +371,7 @@ bool selection_manager_create(struct input_manager *input_manager)
 #if HAVE_KDE_CLIPBOARD
     if (!dbus_register_object(service_bus, service_path, service_interface, clipboard_vtable,
                               manager)) {
-        free(manager);
-        return false;
+        kywc_log(KYWC_WARN, "org.kde.KWin.Clipboard register failed");
     }
 #endif
     wlr_data_device_manager_create(input_manager->server->display);
