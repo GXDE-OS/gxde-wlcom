@@ -75,6 +75,7 @@ struct magic_lamp_entry {
     // mesh
     uint32_t subquads_size;
     quad *subquads;
+    quad *subquads_cache;
     uint32_t vertices_size;
     struct vertex *vertices;
     // animate
@@ -436,6 +437,7 @@ static void entity_destroy(struct effect_entity *entity)
     }
     free(entry->vertices);
     free(entry->subquads);
+    free(entry->subquads_cache);
 
     free(entry);
 }
@@ -498,24 +500,8 @@ static bool frame_render_pre(struct effect_entity *entity, struct ky_scene_outpu
         entry->progress = 1.f - entry->progress;
     }
 
-    // subdivide window quad
-    uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
-    uint32_t subdiv_count2 = magic_lamp_effect->subdiv_count2;
-    quad window_quad = { { entry->window_x, entry->window_y, 0.0f, 0.0f },
-                         { entry->window_x + entry->window_width, entry->window_y, 1.0f, 0.0f },
-                         { entry->window_x + entry->window_width,
-                           entry->window_y + entry->window_height, 1.0f, 1.0f },
-                         { entry->window_x, entry->window_y + entry->window_height, 0.0f, 1.0f } };
-    switch (entry->spout_location) {
-    case SPOUT_LOCATION_BOTTOM:
-    case SPOUT_LOCATION_TOP:
-        subdivide_quad(window_quad, subdiv_count2, subdiv_count, entry->subquads);
-        break;
-    case SPOUT_LOCATION_LEFT:
-    case SPOUT_LOCATION_RIGHT:
-        subdivide_quad(window_quad, subdiv_count, subdiv_count2, entry->subquads);
-        break;
-    }
+    // reset subdivide quad
+    memcpy(entry->subquads, entry->subquads_cache, entry->subquads_size * sizeof(quad));
 
     // calculate progress. modify quad vertex
     const float first_anim_dura = 0.3f;
@@ -661,6 +647,27 @@ bool magic_lamp_effect_create(struct effect_manager *manager)
     return true;
 }
 
+static void subdivide_window_quad(struct magic_lamp_entry *entry)
+{
+    uint32_t subdiv_count = magic_lamp_effect->subdiv_count;
+    uint32_t subdiv_count2 = magic_lamp_effect->subdiv_count2;
+    quad window_quad = { { entry->window_x, entry->window_y, 0.0f, 0.0f },
+                         { entry->window_x + entry->window_width, entry->window_y, 1.0f, 0.0f },
+                         { entry->window_x + entry->window_width,
+                           entry->window_y + entry->window_height, 1.0f, 1.0f },
+                         { entry->window_x, entry->window_y + entry->window_height, 0.0f, 1.0f } };
+    switch (entry->spout_location) {
+    case SPOUT_LOCATION_BOTTOM:
+    case SPOUT_LOCATION_TOP:
+        subdivide_quad(window_quad, subdiv_count2, subdiv_count, entry->subquads_cache);
+        break;
+    case SPOUT_LOCATION_LEFT:
+    case SPOUT_LOCATION_RIGHT:
+        subdivide_quad(window_quad, subdiv_count, subdiv_count2, entry->subquads_cache);
+        break;
+    }
+}
+
 bool view_add_magic_lamp_effect(struct view *view)
 {
     if (!magic_lamp_effect || !magic_lamp_effect->effect->enabled) {
@@ -716,6 +723,7 @@ bool view_add_magic_lamp_effect(struct view *view)
     // alloc buffer
     entry->subquads_size = magic_lamp_effect->subdiv_count * magic_lamp_effect->subdiv_count2;
     entry->subquads = malloc(entry->subquads_size * sizeof(quad));
+    entry->subquads_cache = malloc(entry->subquads_size * sizeof(quad));
     entry->vertices_size = entry->subquads_size * 6;
     entry->vertices = malloc(entry->vertices_size * sizeof(struct vertex));
 
@@ -766,9 +774,9 @@ bool view_add_magic_lamp_effect(struct view *view)
     entry->window_y = view->base.geometry.y - view->base.margin.off_y;
     entry->window_width = view->base.geometry.width + view->base.margin.off_width;
     entry->window_height = view->base.geometry.height + view->base.margin.off_height;
+    subdivide_window_quad(entry);
 
     entry->start_time = current_time_msec();
-    entry->progress = 0.f;
 
     return true;
 }
