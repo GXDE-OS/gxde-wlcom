@@ -785,17 +785,16 @@ bool effect_manager_create(struct server *server)
 
     wl_list_init(&manager->effects);
 
+    animation_manager_create(server);
+    thumbnail_manager_create(server);
+    capture_manager_create(server);
+    ky_capture_manager_create(server);
+
     manager->server = server;
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &manager->server_destroy);
 
     effect_manager_config_init(manager);
-
-    animation_manager_create(server);
-    thumbnail_manager_create(server);
-
-    capture_manager_create(server);
-    ky_capture_manager_create(server);
 
     /* builtin effects */
     showfps_effect_create(manager);
