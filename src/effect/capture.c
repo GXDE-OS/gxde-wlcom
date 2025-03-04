@@ -77,8 +77,6 @@ struct capture_output {
     struct wl_listener commit;
     struct wl_listener geometry;
     struct wl_listener disable;
-
-    bool render_locked;
 };
 
 struct capture_manager {
@@ -256,10 +254,6 @@ static void capture_buffer_destroy(struct capture_buffer *buffer)
 
 static void capture_output_destroy(struct capture_output *output)
 {
-    if (output->render_locked) {
-        wlr_output_lock_attach_render(output->output->wlr_output, false);
-    }
-
     wl_list_remove(&output->commit.link);
     wl_list_remove(&output->geometry.link);
     wl_list_remove(&output->disable.link);
@@ -290,9 +284,10 @@ static void capture_request_destroy(struct capture_request *request)
         }
     }
 
-    struct capture_output *output = request->output;
+    struct wlr_output *wlr_output = request->output->output->wlr_output;
+    wlr_output_lock_attach_render(wlr_output, false);
     if (request->cursor_locked) {
-        wlr_output_lock_software_cursors(output->output->wlr_output, false);
+        wlr_output_lock_software_cursors(wlr_output, false);
     }
 
     free(request);
@@ -551,11 +546,6 @@ static struct capture_output *capture_output_get(struct output *output)
     struct capture_output *capture_output;
     wl_list_for_each(capture_output, &manager->outputs, link) {
         if (capture_output->output == output) {
-            /* Locks the output to only use rendering instead of direct scan-out */
-            if (!capture_output->render_locked) {
-                wlr_output_lock_attach_render(output->wlr_output, true);
-                capture_output->render_locked = true;
-            }
             return capture_output;
         }
     }
@@ -615,6 +605,9 @@ static struct capture_request *capture_request_create(struct output *output,
     if (request->cursor_locked) {
         wlr_output_lock_software_cursors(output->wlr_output, true);
     }
+
+    /* Locks the output to only use rendering instead of direct scan-out */
+    wlr_output_lock_attach_render(output->wlr_output, true);
 
     return request;
 }
