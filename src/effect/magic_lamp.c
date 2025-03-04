@@ -690,13 +690,22 @@ bool view_add_magic_lamp_effect(struct view *view)
         return false;
     }
 
-    // duplicate add remove pre entity
+    // duplicate add
     struct effect_entity *entity =
         ky_scene_node_find_effect_entity(&view->tree->node, magic_lamp_effect->effect);
     if (entity) {
         struct magic_lamp_entry *entry = entity->user_data;
         if (entry && entry->window_view == view) {
-            effect_entity_destroy(entry->effect_entity);
+            entry->overtime = false;
+            entry->reversed = !view->base.minimized;
+            if (entry->reversed) {
+                entry->start_time = current_time_msec() -
+                                    magic_lamp_effect->animate_duration * (1.f - entry->progress);
+            } else {
+                entry->start_time =
+                    current_time_msec() - magic_lamp_effect->animate_duration * entry->progress;
+            }
+            return true;
         }
     }
 
