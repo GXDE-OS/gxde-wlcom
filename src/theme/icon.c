@@ -17,6 +17,7 @@
 #include "theme_p.h"
 #include "util/file.h"
 #include "util/hash_table.h"
+#include "util/queue.h"
 #include "util/string.h"
 
 #define ICONPATH "~/.icons:~/.local/share/icons:/usr/share/icons:" EXTRA_ICON_PATH
@@ -117,6 +118,8 @@ struct icon_manager {
         struct hash_table *wds;
         int event_fd;
     } watcher;
+
+    struct queue_fence fence;
 };
 
 static struct icon_theme *icon_theme_get_or_create(struct icon_manager *manager, const char *name);
@@ -525,13 +528,22 @@ static struct icon_theme *icon_theme_create_empty(struct icon_manager *manager, 
     return theme;
 }
 
-static struct icon_theme *icon_theme_get_or_create(struct icon_manager *manager, const char *name)
+static struct icon_theme *icon_manager_get_theme(struct icon_manager *manager, const char *name)
 {
     struct icon_theme *theme;
     wl_list_for_each(theme, &manager->themes, link) {
         if (strcmp(name, theme->name) == 0) {
             return theme;
         }
+    }
+    return NULL;
+}
+
+static struct icon_theme *icon_theme_get_or_create(struct icon_manager *manager, const char *name)
+{
+    struct icon_theme *theme = icon_manager_get_theme(manager, name);
+    if (theme) {
+        return theme;
     }
 
     // check theme is valid
@@ -705,6 +717,21 @@ static void icon_manager_reset_icon_pairs(struct icon_manager *manager)
     }
 }
 
+struct theme_load_data {
+    struct icon_theme *theme;
+    char *theme_path;
+};
+
+static void load_theme(void *job, void *gdata, int index)
+{
+    struct theme_load_data *data = job;
+    icon_theme_load_parents(data->theme, data->theme_path);
+    data->theme_path[strlen(data->theme_path) - strlen("index.theme") - 1] = '\0';
+    file_for_each(data->theme_path, NULL, load_icon, data->theme);
+    free(data->theme_path);
+    free(data);
+}
+
 static bool set_icon_theme(struct icon_manager *manager, const char *name)
 {
     struct icon_theme *theme = manager->current;
@@ -713,19 +740,53 @@ static bool set_icon_theme(struct icon_manager *manager, const char *name)
         return false;
     }
 
-    theme = icon_theme_get_or_create(manager, name);
-    if (!theme) {
+    queue_fence_wait(&manager->fence);
+    /* skip thread-load if server is started */
+    if (manager->server->start) {
+        theme = icon_theme_get_or_create(manager, name);
+        if (!theme) {
+            return false;
+        }
+        goto out;
+    }
+
+    /* get theme that already loaded */
+    theme = icon_manager_get_theme(manager, name);
+    if (theme) {
+        goto out;
+    }
+
+    // check theme is valid
+    char *theme_path = icon_theme_is_valid(name);
+    if (!theme_path) {
         return false;
     }
 
+    theme = icon_theme_create_empty(manager, name);
+    if (!theme) {
+        free(theme_path);
+        return false;
+    }
+
+    struct theme_load_data *data = malloc(sizeof(*data));
+    data->theme = theme;
+    data->theme_path = theme_path;
+
+    // load all icons in theme
+    if (!queue_add_job(manager->server->queue, data, &manager->fence, load_theme, NULL)) {
+        load_theme(data, manager->server, -1);
+    }
+
+out:
     manager->current = theme;
     icon_manager_reset_icon_pairs(manager);
-
     return true;
 }
 
 static struct icon *get_icon(struct icon_manager *manager, const char *name)
 {
+    queue_fence_wait(&manager->fence);
+
     struct hash_entry *entry = hash_table_search(manager->icon_pairs, name);
     if (entry && entry->data) {
         struct icon_pair *pair = entry->data;
@@ -880,6 +941,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     }
     hash_table_destroy(manager->icon_pairs);
 
+    queue_fence_finish(&manager->fence);
     free(manager);
 }
 
@@ -980,6 +1042,21 @@ static void icon_manager_init_watcher(struct icon_manager *manager)
     wl_display_add_destroy_listener(manager->server->display, &manager->display_destroy);
 }
 
+static void load_files(void *job, void *gdata, int index)
+{
+    struct icon_manager *manager = job;
+    // load all desktop files
+    file_for_each(APPPATH, NULL, load_desktop, manager);
+    // load all icons in pixmap dir
+    if (manager->pixmap) {
+        file_for_each(PIXMAPPATH, NULL, load_icon, manager->pixmap);
+    }
+    // load fallback icon theme
+    if (manager->fallback) {
+        file_for_each(ICONPATH, FALLBACK_ICON_THEME_NAME, load_icon, manager->fallback);
+    }
+}
+
 struct icon_manager *icon_manager_create(struct theme_manager *theme_manager)
 {
     struct icon_manager *manager = calloc(1, sizeof(*manager));
@@ -1003,15 +1080,9 @@ struct icon_manager *icon_manager_create(struct theme_manager *theme_manager)
     manager->pixmap = icon_theme_create_empty(manager, NULL);
     manager->fallback = icon_theme_create_empty(manager, FALLBACK_ICON_THEME_NAME);
 
-    // load all desktop files
-    file_for_each(APPPATH, NULL, load_desktop, manager);
-    // load all icons in pixmap dir
-    if (manager->pixmap) {
-        file_for_each(PIXMAPPATH, NULL, load_icon, manager->pixmap);
-    }
-    // load fallback icon theme
-    if (manager->fallback) {
-        file_for_each(ICONPATH, FALLBACK_ICON_THEME_NAME, load_icon, manager->fallback);
+    queue_fence_init(&manager->fence);
+    if (!queue_add_job(manager->server->queue, manager, &manager->fence, load_files, NULL)) {
+        load_files(manager, manager->server, -1);
     }
 
     theme_manager->icon_impl.set_icon_theme = set_icon_theme;
