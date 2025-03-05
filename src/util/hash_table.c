@@ -34,6 +34,7 @@ struct hash_table {
 
     hash_func_t hash;
     equal_func_t equal;
+    void *data;
 
     uint32_t size_index;
     struct hash_size hash_size;
@@ -167,7 +168,7 @@ static void hash_table_rehash(struct hash_table *ht, uint32_t new_size_index)
     free(old_ht.table);
 }
 
-struct hash_table *hash_table_create(hash_func_t hash, equal_func_t equal)
+struct hash_table *hash_table_create(hash_func_t hash, equal_func_t equal, void *data)
 {
     struct hash_table *ht = calloc(1, sizeof(*ht));
     if (!ht) {
@@ -185,6 +186,7 @@ struct hash_table *hash_table_create(hash_func_t hash, equal_func_t equal)
 
     ht->hash = hash;
     ht->equal = equal;
+    ht->data = data;
     ht->entries = ht->deleted_entries = 0;
 
     return ht;
@@ -232,7 +234,7 @@ struct hash_entry *hash_table_search_hash(const struct hash_table *ht, uint32_t 
         if (entry_is_free(entry)) {
             return NULL;
         } else if (entry_is_present(ht, entry) && entry->hash == hash) {
-            if (ht->equal(key, entry->key)) {
+            if (ht->equal(key, entry->key, ht->data)) {
                 return entry;
             }
         }
@@ -247,7 +249,7 @@ struct hash_entry *hash_table_search_hash(const struct hash_table *ht, uint32_t 
 
 struct hash_entry *hash_table_search(const struct hash_table *ht, const void *key)
 {
-    return hash_table_search_hash(ht, ht->hash(key), key);
+    return hash_table_search_hash(ht, ht->hash(key, ht->data), key);
 }
 
 static struct hash_entry *hash_table_get_entry(struct hash_table *ht, uint32_t hash,
@@ -279,7 +281,8 @@ static struct hash_entry *hash_table_get_entry(struct hash_table *ht, uint32_t h
         }
 
         /* already in the table */
-        if (!entry_is_deleted(ht, entry) && entry->hash == hash && ht->equal(key, entry->key)) {
+        if (!entry_is_deleted(ht, entry) && entry->hash == hash &&
+            ht->equal(key, entry->key, ht->data)) {
             return entry;
         }
 
@@ -314,7 +317,7 @@ struct hash_entry *hash_table_insert_hash(struct hash_table *ht, uint32_t hash, 
 
 struct hash_entry *hash_table_insert(struct hash_table *ht, const void *key, void *data)
 {
-    return hash_table_insert_hash(ht, ht->hash(key), key, data);
+    return hash_table_insert_hash(ht, ht->hash(key, ht->data), key, data);
 }
 
 void hash_table_remove(struct hash_table *ht, struct hash_entry *entry)
@@ -335,7 +338,7 @@ void hash_table_remove_hash(struct hash_table *ht, uint32_t hash, const void *ke
 
 void hash_table_remove_key(struct hash_table *ht, const void *key)
 {
-    hash_table_remove_hash(ht, ht->hash(key), key);
+    hash_table_remove_hash(ht, ht->hash(key, ht->data), key);
 }
 
 struct hash_entry *hash_table_next_entry(struct hash_table *ht, struct hash_entry *entry)
@@ -360,29 +363,29 @@ struct hash_entry *hash_table_next_entry(struct hash_table *ht, struct hash_entr
     return NULL;
 }
 
-static uint32_t pointer_hash(const void *pointer)
+static uint32_t hash_pointer(const void *pointer, void *data)
 {
     uintptr_t num = (uintptr_t)pointer;
     return (uint32_t)((num >> 2) ^ (num >> 6) ^ (num >> 10) ^ (num >> 14));
 }
 
-static bool pointer_equal(const void *a, const void *b)
+static bool hash_key_pointer_equal(const void *a, const void *b, void *data)
 {
     return a == b;
 }
 
-struct hash_table *hash_table_create_pointer(void)
+struct hash_table *hash_table_create_pointer(void *data)
 {
-    return hash_table_create(pointer_hash, pointer_equal);
+    return hash_table_create(hash_pointer, hash_key_pointer_equal, data);
 }
 
-static uint32_t string_hash(const void *string)
+uint32_t hash_string_with_length(const void *string, uint32_t length)
 {
     uint32_t hash = 0x811C9DC5;
     const char *str = string;
 
     // Iterate over each character in the string
-    for (size_t i = 0; str[i] != '\0'; i++) {
+    for (uint32_t i = 0; i < length; i++) {
         // XOR the current byte with the hash value
         hash ^= (uint8_t)str[i];
         // Multiply by the FNV prime
@@ -392,17 +395,22 @@ static uint32_t string_hash(const void *string)
     return hash;
 }
 
-static bool string_equal(const void *a, const void *b)
+static uint32_t hash_string(const void *string, void *data)
+{
+    return hash_string_with_length(string, strlen(string));
+}
+
+static bool hash_key_string_equal(const void *a, const void *b, void *data)
 {
     return strcmp(a, b) == 0;
 }
 
-struct hash_table *hash_table_create_string(void)
+struct hash_table *hash_table_create_string(void *data)
 {
-    return hash_table_create(string_hash, string_equal);
+    return hash_table_create(hash_string, hash_key_string_equal, data);
 }
 
-static uint32_t int_hash(const void *key)
+static uint32_t hash_int(const void *key, void *data)
 {
     uint32_t hash = 0x811C9DC5;
     hash ^= (uintptr_t)key;
@@ -410,12 +418,12 @@ static uint32_t int_hash(const void *key)
     return hash;
 }
 
-static bool int_equal(const void *a, const void *b)
+static bool hash_key_int_equal(const void *a, const void *b, void *data)
 {
     return (uintptr_t)a == (uintptr_t)b;
 }
 
-struct hash_table *hash_table_create_int(void)
+struct hash_table *hash_table_create_int(void *data)
 {
-    return hash_table_create(int_hash, int_equal);
+    return hash_table_create(hash_int, hash_key_int_equal, data);
 }

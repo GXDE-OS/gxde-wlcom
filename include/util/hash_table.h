@@ -14,16 +14,18 @@ struct hash_entry {
     void *data;
 };
 
-typedef uint32_t (*hash_func_t)(const void *key);
-typedef bool (*equal_func_t)(const void *a, const void *b);
+typedef uint32_t (*hash_func_t)(const void *key, void *data);
+typedef bool (*equal_func_t)(const void *a, const void *b, void *data);
 
-struct hash_table *hash_table_create(hash_func_t hash, equal_func_t equal);
+struct hash_table *hash_table_create(hash_func_t hash, equal_func_t equal, void *data);
 
-struct hash_table *hash_table_create_pointer(void);
+struct hash_table *hash_table_create_pointer(void *data);
 
-struct hash_table *hash_table_create_string(void);
+struct hash_table *hash_table_create_string(void *data);
 
-struct hash_table *hash_table_create_int(void);
+struct hash_table *hash_table_create_int(void *data);
+
+uint32_t hash_string_with_length(const void *string, uint32_t length);
 
 bool hash_table_set_max_entries(struct hash_table *ht, uint32_t max_entries);
 
