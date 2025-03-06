@@ -77,6 +77,7 @@ struct theme_manager {
     } icon_impl;
 
     struct server *server;
+    struct wl_listener server_ready;
     struct wl_listener server_destroy;
 };
 

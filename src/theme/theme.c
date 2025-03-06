@@ -214,6 +214,19 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     manager = NULL;
 }
 
+static void handle_server_ready(struct wl_listener *listener, void *data)
+{
+    /* if widget theme is not set, use fallback widget theme */
+    if (!manager->theme.name) {
+        /* load theme from config, global theme is synced */
+        enum theme_type theme_type = theme_manager_read_config(manager);
+        theme_manager_set_widget_theme(NULL, theme_type);
+    }
+    /* just read the icon name, may shortcut in set_icon_theme  */
+    const char *icon_theme_name = theme_manager_read_icon_config(manager);
+    theme_manager_set_icon_theme(icon_theme_name);
+}
+
 struct theme_manager *theme_manager_create(struct server *server)
 {
     manager = calloc(1, sizeof(struct theme_manager));
@@ -226,20 +239,15 @@ struct theme_manager *theme_manager_create(struct server *server)
     wl_signal_init(&manager->events.icon_update);
 
     manager->server = server;
+    manager->server_ready.notify = handle_server_ready;
+    wl_signal_add(&server->events.ready, &manager->server_ready);
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &manager->server_destroy);
 
     /* config support */
     theme_manager_config_init(manager);
-
     manager->icon = icon_manager_create(manager);
-    const char *icon_theme_name = theme_manager_read_icon_config(manager);
-    theme_manager_set_icon_theme(icon_theme_name);
-
-    /* load theme from config */
     wl_list_init(&manager->theme.scaled_buffers);
-    enum theme_type theme_type = theme_manager_read_config(manager);
-    theme_manager_set_widget_theme(NULL, theme_type);
 
     return manager;
 }
@@ -340,7 +348,7 @@ bool theme_manager_set_font(const char *name, int size)
     struct theme *theme = &manager->theme;
     bool changed = false;
 
-    if (strcmp(name, global->font_name) != 0) {
+    if (!global->font_name || strcmp(name, global->font_name) != 0) {
         free(global->font_name);
         global->font_name = strdup(name);
         theme->font_name = global->font_name;

@@ -152,7 +152,7 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
         json_object_object_add(manager->config->json, "type", json_object_new_int(theme_type));
     }
 
-    if (strcmp(manager->global.font_name, "sans")) {
+    if (manager->global.font_name && strcmp(manager->global.font_name, "sans")) {
         json_object_object_add(manager->config->json, "font_name",
                                json_object_new_string(manager->global.font_name));
     } else {
