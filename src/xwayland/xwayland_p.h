@@ -6,7 +6,7 @@
 #define _XWAYLAND_P_H_
 
 #include <pixman.h>
-#include <types/wlr_data_device.h>
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/xwayland.h>
 #include <xcb/shape.h>
 
