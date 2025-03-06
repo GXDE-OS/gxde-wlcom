@@ -750,10 +750,11 @@ static void blur_render(struct ky_scene_render_target *target,
     float alpha = options->alpha ? *options->alpha : 1.0f;
     glUniform1f(prog->shaders.alpha, alpha);
 
-    struct kywc_fbox src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
+    struct kywc_fbox tex_src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
     set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, &buffer_cpy_box);
-    set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &src_fbox);
-    set_tex_matrix(prog->shaders.shape_proj, target->transform, &src_fbox);
+    set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &tex_src_fbox);
+    struct kywc_fbox shap_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
+    set_tex_matrix(prog->shaders.shape_proj, target->transform, &shap_fbox);
 
     int width = options->dst_box->width;
     int height = options->dst_box->height;
