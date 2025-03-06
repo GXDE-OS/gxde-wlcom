@@ -469,6 +469,10 @@ static struct glrtt_pool_texture *blur_first_down(struct blur_data *data,
 
     int sample_width = blur_src_box->width / 2;
     int sample_height = blur_src_box->height / 2;
+    if (sample_width <= 0 || sample_height <= 0) {
+        return NULL;
+    }
+
     struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
     struct glrtt_pool_texture *out_tex =
         glrtt_pool_get_texture(glrtt_pool, sample_width, sample_height);
@@ -720,14 +724,14 @@ static void blur_render(struct ky_scene_render_target *target,
 
     struct glrtt_pool_texture *src_tex = blur_first_down(data, gl_pass->buffer, &buffer_cpy_box);
     if (!src_tex) {
-        return;
+        goto final;
     }
 
     blur_fb0(data, src_tex);
 
     struct blur_tex_program *prog = &data->blur_tex_prog;
     if (!prog) {
-        return;
+        goto final;
     }
     glUseProgram(prog->id);
 
@@ -784,6 +788,7 @@ static void blur_render(struct ky_scene_render_target *target,
     glBindTexture(GL_TEXTURE_2D, 0);
     glUseProgram(0);
 
+final:
     KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
