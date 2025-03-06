@@ -687,13 +687,9 @@ static void render(const struct kywc_box *box, const pixman_region32_t *blur, GL
     KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
 }
 
-// clang-format off
-#define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
-// clang-format on
-
 static void blur_render(struct ky_scene_render_target *target,
                         const struct blur_render_options *options,
-                        const pixman_region32_t *blur_region)
+                        const pixman_region32_t *blur_region, struct kywc_box *buffer_cpy_box)
 {
     KY_PROFILE_RENDER_ZONE(&blur_config.renderer->wlr_renderer, gzone, __func__);
 
@@ -708,21 +704,7 @@ static void blur_render(struct ky_scene_render_target *target,
     data->iterations = options->blur->iterations;
     data->offset = options->blur->offset;
 
-    /**
-     * the copy area may be larger than the damage area, but it has no effect.
-     * because it is outside the radius of blur.
-     */
-    int align_num = pow(2, data->iterations);
-    pixman_box32_t *cpy_box = pixman_region32_extents(blur_region);
-    /* pos in frame_buffer */
-    struct kywc_box buffer_cpy_box = {
-        .x = cpy_box->x1,
-        .y = cpy_box->y1,
-        .width = ALIGN(cpy_box->x2 - cpy_box->x1, align_num),
-        .height = ALIGN(cpy_box->y2 - cpy_box->y1, align_num),
-    };
-
-    struct glrtt_pool_texture *src_tex = blur_first_down(data, gl_pass->buffer, &buffer_cpy_box);
+    struct glrtt_pool_texture *src_tex = blur_first_down(data, gl_pass->buffer, buffer_cpy_box);
     if (!src_tex) {
         goto final;
     }
@@ -751,7 +733,7 @@ static void blur_render(struct ky_scene_render_target *target,
     glUniform1f(prog->shaders.alpha, alpha);
 
     struct kywc_fbox tex_src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
-    set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, &buffer_cpy_box);
+    set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, buffer_cpy_box);
     set_tex_matrix(prog->shaders.tex_proj, WL_OUTPUT_TRANSFORM_NORMAL, &tex_src_fbox);
     struct kywc_fbox shap_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
     set_tex_matrix(prog->shaders.shape_proj, target->transform, &shap_fbox);
@@ -778,7 +760,7 @@ static void blur_render(struct ky_scene_render_target *target,
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
-    render(&buffer_cpy_box, blur_region, prog->shaders.pos_attrib, options->dst_box,
+    render(buffer_cpy_box, blur_region, prog->shaders.pos_attrib, options->dst_box,
            prog->shaders.sdfpos_attrib);
 
     glrtt_pool_release_texture(glrtt_pool, src_tex);
@@ -791,6 +773,36 @@ static void blur_render(struct ky_scene_render_target *target,
 
 final:
     KY_PROFILE_RENDER_ZONE_END(&blur_config.renderer->wlr_renderer);
+}
+
+static void get_copy_box(const pixman_region32_t *blur_region, const struct blur_info *blur_info,
+                         const pixman_region32_t *damaged_blur_region, struct kywc_box *copy_box)
+{
+    /**
+     * the copy area may be larger than the damage area, but it has no effect.
+     * because it is outside the radius of blur.
+     */
+    int align_num = calculate_blur_radius(blur_info->iterations, blur_info->offset);
+    pixman_box32_t *damage_bbox = pixman_region32_extents(damaged_blur_region);
+    /* pos in frame_buffer */
+    struct kywc_box buffer_cpy_box = {
+        .x = align_num * (int)(damage_bbox->x1 / align_num),
+        .y = align_num * (int)(damage_bbox->y1 / align_num),
+    };
+    /* copybox larger than damage blur bounding box */
+    buffer_cpy_box.width = align_num * ((damage_bbox->x2 - buffer_cpy_box.x) / align_num + 1);
+    buffer_cpy_box.height = align_num * ((damage_bbox->y2 - buffer_cpy_box.y) / align_num + 1);
+
+    /* copybox smaller than blur box */
+    pixman_box32_t *blur_box = pixman_region32_extents(blur_region);
+    copy_box->x = buffer_cpy_box.x > blur_box->x1 ? buffer_cpy_box.x : blur_box->x1;
+    copy_box->y = buffer_cpy_box.y > blur_box->y1 ? buffer_cpy_box.y : blur_box->y1;
+    copy_box->width = buffer_cpy_box.x + buffer_cpy_box.width < blur_box->x2
+                          ? buffer_cpy_box.width
+                          : blur_box->x2 - copy_box->x;
+    copy_box->height = buffer_cpy_box.y + buffer_cpy_box.height < blur_box->y2
+                           ? buffer_cpy_box.height
+                           : blur_box->y2 - copy_box->y;
 }
 
 void blur_render_with_target(struct ky_scene_render_target *target,
@@ -814,10 +826,15 @@ void blur_render_with_target(struct ky_scene_render_target *target,
                                   options->dst_box->width, options->dst_box->height);
     }
 
-    pixman_region32_intersect(&blur_region, &blur_region, options->clip);
+    pixman_region32_t damaged_blur_region;
+    pixman_region32_init(&damaged_blur_region);
+    pixman_region32_intersect(&damaged_blur_region, &blur_region, options->clip);
     if (pixman_region32_not_empty(&blur_region)) {
-        blur_render(target, options, &blur_region);
+        struct kywc_box buffer_cpy_box;
+        get_copy_box(&blur_region, options->blur, &damaged_blur_region, &buffer_cpy_box);
+        blur_render(target, options, &damaged_blur_region, &buffer_cpy_box);
     }
+    pixman_region32_fini(&damaged_blur_region);
     pixman_region32_fini(&blur_region);
 }
 
