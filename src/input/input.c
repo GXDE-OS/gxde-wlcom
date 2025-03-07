@@ -64,6 +64,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         xkb_keymap_unref(keymap->keymap);
         free(keymap);
     }
+    queue_fence_finish(&input_manager->fence);
 
     free(input_manager);
     input_manager = NULL;
@@ -411,6 +412,12 @@ static struct xkb_keymap *get_or_create_keymap(struct keymap_rules *rules)
     return keymap->keymap;
 }
 
+static void compile_keymap(void *job, void *gdata, int index)
+{
+    struct keymap_rules rules = { 0 };
+    get_or_create_keymap(&rules);
+}
+
 struct input_manager *input_manager_create(struct server *server)
 {
     input_manager = calloc(1, sizeof(struct input_manager));
@@ -428,8 +435,10 @@ struct input_manager *input_manager_create(struct server *server)
     server_add_destroy_listener(server, &input_manager->server_destroy);
 
     wl_list_init(&input_manager->keymaps);
-    struct keymap_rules rules = { 0 };
-    get_or_create_keymap(&rules);
+    queue_fence_init(&input_manager->fence);
+    if (!queue_add_job(server->queue, input_manager, &input_manager->fence, compile_keymap, NULL)) {
+        compile_keymap(input_manager, server, -1);
+    }
 
     input_manager->new_input.notify = handle_new_input;
     wl_signal_add(&server->backend->events.new_input, &input_manager->new_input);
@@ -518,6 +527,7 @@ static bool _input_set_state(struct input *input, struct input_state *state)
         }
 
         if (keymap_changed) {
+            queue_fence_wait(&input_manager->fence);
             struct xkb_keymap *keymap = get_or_create_keymap(&state->rules);
             wlr_keyboard_set_keymap(wlr_keyboard, keymap);
         }

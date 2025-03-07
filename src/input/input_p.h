@@ -8,6 +8,7 @@
 #include "input/cursor.h"
 #include "input/gesture.h"
 #include "input/keyboard.h"
+#include "util/queue.h"
 
 enum input_lock_key {
     INPUT_KEY_CAPSLOCK,
@@ -28,6 +29,7 @@ struct input_manager {
     struct wl_list inputs;
 
     struct wl_list keymaps;
+    struct queue_fence fence;
 
     struct {
         struct wl_signal new_input;
