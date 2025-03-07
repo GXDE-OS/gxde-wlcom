@@ -58,6 +58,13 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         seat_destroy(seat);
     }
 
+    struct input_keymap *keymap, *keymap_tmp;
+    wl_list_for_each_safe(keymap, keymap_tmp, &input_manager->keymaps, link) {
+        wl_list_remove(&keymap->link);
+        xkb_keymap_unref(keymap->keymap);
+        free(keymap);
+    }
+
     free(input_manager);
     input_manager = NULL;
 }
@@ -379,6 +386,31 @@ static void handle_new_pointer_constraint(struct wl_listener *listener, void *da
     cursor_constraint_create(seat->cursor, constraint);
 }
 
+static struct xkb_keymap *get_or_create_keymap(struct keymap_rules *rules)
+{
+    struct input_keymap *keymap;
+    wl_list_for_each(keymap, &input_manager->keymaps, link) {
+        if (!keyboard_check_keymap_rules(&keymap->rules, rules)) {
+            return keymap->keymap;
+        }
+    }
+
+    keymap = calloc(1, sizeof(*keymap));
+    if (!keymap) {
+        return NULL;
+    }
+    keymap->keymap = keyboard_compile_keymap(&keymap->rules);
+    if (!keymap->keymap) {
+        free(keymap);
+        return NULL;
+    }
+
+    keymap->rules = *rules;
+    wl_list_insert(&input_manager->keymaps, &keymap->link);
+
+    return keymap->keymap;
+}
+
 struct input_manager *input_manager_create(struct server *server)
 {
     input_manager = calloc(1, sizeof(struct input_manager));
@@ -394,6 +426,10 @@ struct input_manager *input_manager_create(struct server *server)
 
     input_manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &input_manager->server_destroy);
+
+    wl_list_init(&input_manager->keymaps);
+    struct keymap_rules rules = { 0 };
+    get_or_create_keymap(&rules);
 
     input_manager->new_input.notify = handle_new_input;
     wl_signal_add(&server->backend->events.new_input, &input_manager->new_input);
@@ -482,9 +518,8 @@ static bool _input_set_state(struct input *input, struct input_state *state)
         }
 
         if (keymap_changed) {
-            struct xkb_keymap *keymap = keyboard_compile_keymap(&state->rules);
+            struct xkb_keymap *keymap = get_or_create_keymap(&state->rules);
             wlr_keyboard_set_keymap(wlr_keyboard, keymap);
-            xkb_keymap_unref(keymap);
         }
         if (repeat_info_changed) {
             wlr_keyboard_set_repeat_info(wlr_keyboard, state->repeat_rate, state->repeat_delay);

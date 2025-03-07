@@ -15,11 +15,19 @@ enum input_lock_key {
     INPUT_KEY_SCROLLLOCK,
 };
 
+struct input_keymap {
+    struct wl_list link;
+    struct xkb_keymap *keymap;
+    struct keymap_rules rules;
+};
+
 struct input_manager {
     struct server *server;
 
     struct wl_list seats;
     struct wl_list inputs;
+
+    struct wl_list keymaps;
 
     struct {
         struct wl_signal new_input;
