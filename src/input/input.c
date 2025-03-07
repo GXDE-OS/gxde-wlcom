@@ -462,47 +462,6 @@ void input_set_seat(struct input *input, const char *seat)
     seat_add_input(input->seat, input);
 }
 
-static struct xkb_keymap *keyboard_compile_keymap(struct input_state *state)
-{
-    struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_SECURE_GETENV);
-    struct xkb_rule_names rules = {
-        .layout = state->xkb_layout,
-        .model = state->xkb_model,
-        .options = state->xkb_options,
-        .rules = state->xkb_rules,
-        .variant = state->xkb_variant,
-    };
-    struct xkb_keymap *keymap =
-        xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
-    xkb_context_unref(context);
-    return keymap;
-}
-
-static bool compare_string(const char *a, const char *b)
-{
-    if (!a && !b) {
-        return false;
-    }
-    if (!a || !b) {
-        return true;
-    }
-    return strcmp(a, b) != 0;
-}
-
-static bool keyboard_check_keymap(struct wlr_keyboard *keyboard, struct input_state *old,
-                                  struct input_state *new)
-{
-    if (!keyboard->keymap) {
-        return true;
-    }
-
-    return compare_string(old->xkb_rules, new->xkb_rules) ||
-           compare_string(old->xkb_model, new->xkb_model) ||
-           compare_string(old->xkb_layout, new->xkb_layout) ||
-           compare_string(old->xkb_variant, new->xkb_variant) ||
-           compare_string(old->xkb_options, new->xkb_options);
-}
-
 static bool _input_set_state(struct input *input, struct input_state *state)
 {
     struct wlr_input_device *wlr_input = input->wlr_input;
@@ -510,7 +469,8 @@ static bool _input_set_state(struct input *input, struct input_state *state)
     /* config keyboard with input state */
     if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
         struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(wlr_input);
-        bool keymap_changed = keyboard_check_keymap(wlr_keyboard, &input->state, state);
+        bool keymap_changed = !wlr_keyboard->keymap ||
+                              keyboard_check_keymap_rules(&input->state.rules, &state->rules);
         bool repeat_info_changed = wlr_keyboard->repeat_info.rate != state->repeat_rate ||
                                    wlr_keyboard->repeat_info.delay != state->repeat_delay;
 
@@ -522,7 +482,7 @@ static bool _input_set_state(struct input *input, struct input_state *state)
         }
 
         if (keymap_changed) {
-            struct xkb_keymap *keymap = keyboard_compile_keymap(state);
+            struct xkb_keymap *keymap = keyboard_compile_keymap(&state->rules);
             wlr_keyboard_set_keymap(wlr_keyboard, keymap);
             xkb_keymap_unref(keymap);
         }

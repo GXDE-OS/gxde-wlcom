@@ -12,6 +12,14 @@
 
 struct server;
 
+struct keymap_rules {
+    const char *xkb_layout;
+    const char *xkb_model;
+    const char *xkb_options;
+    const char *xkb_rules;
+    const char *xkb_variant;
+};
+
 struct input_state {
     const char *mapped_to_output;
     const char *seat;
@@ -52,11 +60,7 @@ struct input_state {
     uint32_t double_click_time;
 
     /* for keyboard */
-    const char *xkb_layout;
-    const char *xkb_model;
-    const char *xkb_options;
-    const char *xkb_rules;
-    const char *xkb_variant;
+    struct keymap_rules rules;
     int repeat_delay;
     int repeat_rate;
 };

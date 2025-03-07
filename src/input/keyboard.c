@@ -589,3 +589,39 @@ bool keyboard_keymaps_match(struct wlr_keyboard *kb1, struct wlr_keyboard *kb2)
     }
     return strcmp(km1, km2) == 0;
 }
+
+static bool compare_string(const char *a, const char *b)
+{
+    if (!a && !b) {
+        return false;
+    }
+    if (!a || !b) {
+        return true;
+    }
+    return strcmp(a, b) != 0;
+}
+
+bool keyboard_check_keymap_rules(struct keymap_rules *old, struct keymap_rules *new)
+{
+    return compare_string(old->xkb_rules, new->xkb_rules) ||
+           compare_string(old->xkb_model, new->xkb_model) ||
+           compare_string(old->xkb_layout, new->xkb_layout) ||
+           compare_string(old->xkb_variant, new->xkb_variant) ||
+           compare_string(old->xkb_options, new->xkb_options);
+}
+
+struct xkb_keymap *keyboard_compile_keymap(struct keymap_rules *rules)
+{
+    struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_SECURE_GETENV);
+    struct xkb_rule_names names = {
+        .layout = rules->xkb_layout,
+        .model = rules->xkb_model,
+        .options = rules->xkb_options,
+        .rules = rules->xkb_rules,
+        .variant = rules->xkb_variant,
+    };
+    struct xkb_keymap *keymap =
+        xkb_keymap_new_from_names(context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    xkb_context_unref(context);
+    return keymap;
+}

@@ -55,4 +55,8 @@ bool keyboard_has_no_input(struct keyboard *keyboard);
 
 bool keyboard_keymaps_match(struct wlr_keyboard *kb1, struct wlr_keyboard *kb2);
 
+bool keyboard_check_keymap_rules(struct keymap_rules *old, struct keymap_rules *new);
+
+struct xkb_keymap *keyboard_compile_keymap(struct keymap_rules *rules);
+
 #endif /* _KEYBOARD_H_ */
