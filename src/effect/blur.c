@@ -236,6 +236,10 @@ struct blur_effect {
 
 #define MAX_QUADS 86 // 4kb
 
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
 static void blur_output_data_destroy(struct blur_output_data *data);
 
 static int calculate_blur_radius(int iterations, float offset)
@@ -576,8 +580,8 @@ static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
 
     struct glrtt_pool_texture *last_tex = src_tex;
     for (int i = 0; i < iterations; i++) {
-        int sample_width = width / (1 << (i + 1));
-        int sample_height = height / (1 << (i + 1));
+        int sample_width = MAX(width / (1 << (i + 1)), 1);
+        int sample_height = MAX(height / (1 << (i + 1)), 1);
 
         // first iter input use src_tex
         struct glrtt_pool_texture *in_tex = last_tex;
@@ -603,8 +607,8 @@ static void blur_fb0(struct blur_data *data, struct glrtt_pool_texture *src_tex)
     glUniform1f(up_prog->shaders.offset, offset);
     glUniform1i(up_prog->shaders.texture, 0);
     for (int i = iterations - 1; i >= 0; i--) {
-        int sample_width = width / (1 << i);
-        int sample_height = height / (1 << i);
+        int sample_width = MAX(width / (1 << i), 1);
+        int sample_height = MAX(height / (1 << i), 1);
 
         // last iter output use src_tex
         struct glrtt_pool_texture *in_tex = last_tex;
