@@ -12,6 +12,7 @@
 #include "input/seat.h"
 #include "output.h"
 #include "scene/animation.h"
+#include "scene/surface.h"
 #include "view/action.h"
 #include "view/workspace.h"
 
@@ -906,9 +907,10 @@ static bool pointer_grab_button(struct seat_pointer_grab *pointer_grab, uint32_t
     struct interactive_grab *grab = pointer_grab->data;
 
     if (!pressed && button == BTN_LEFT) {
-        bool has_title = grab->view->base.ssd & KYWC_SSD_TITLE;
+        bool on_surface = grab->seat->cursor->hover.node &&
+                          wlr_surface_try_from_node(grab->seat->cursor->hover.node);
         interactive_done(grab);
-        return has_title ? true : false;
+        return !on_surface;
     }
     return true;
 }
@@ -999,8 +1001,10 @@ static bool touch_grab_touch(struct seat_touch_grab *touch_grab, uint32_t time, 
     }
 
     struct interactive_grab *grab = touch_grab->data;
+    bool on_surface =
+        grab->seat->cursor->hover.node && wlr_surface_try_from_node(grab->seat->cursor->hover.node);
     interactive_done(grab);
-    return false;
+    return !on_surface;
 }
 
 static bool touch_grab_motion(struct seat_touch_grab *touch_grab, uint32_t time, double lx,
