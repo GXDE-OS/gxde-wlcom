@@ -22,9 +22,8 @@ enum deco_update_cause {
     DECO_UPDATE_CAUSE_MARGIN = 1 << 1,
     DECO_UPDATE_CAUSE_MARGIN_COLOR = 1 << 2,
     DECO_UPDATE_CAUSE_SHADOW_MASK = 1 << 3,
-    DECO_UPDATE_CAUSE_RESIZE_WIDTH = 1 << 4,
-    DECO_UPDATE_CAUSE_CORNER_RADIUS = 1 << 5,
-    DECO_UPDATE_CAUSE_BLURRED = 1 << 6,
+    DECO_UPDATE_CAUSE_CORNER_RADIUS = 1 << 4,
+    DECO_UPDATE_CAUSE_BLURRED = 1 << 5,
 };
 
 struct ky_scene_decoration {
@@ -59,8 +58,8 @@ struct ky_scene_decoration {
     /* shadow part need be shown */
     uint32_t shadow_mask;
 
-    struct wlr_box window_box;
-    struct wlr_box shadow_box;
+    struct kywc_box window_box;
+    struct kywc_box shadow_box;
     /**
      * bound_box = window_box + shadow_box
      * bound_box.x .y = node position
@@ -356,7 +355,6 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
     glUniform1f(gl_locations.shadow_sigma,
                 shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX);
-    // shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX
     glUniform4f(gl_locations.shadow_rect, shadow_window_box.x, shadow_window_box.y,
                 shadow_window_box.x + shadow_window_box.width,
                 shadow_window_box.y + shadow_window_box.height);
@@ -466,23 +464,6 @@ static void scene_decoration_update_region(struct ky_scene_decoration *deco)
                              &deco->surface_region);
 }
 
-static void scene_decoration_update_input_region(struct ky_scene_decoration *decoration)
-{
-    pixman_region32_t input;
-    pixman_region32_init(&input);
-
-    int border = decoration->border_thickness;
-    int resize = decoration->resize_width;
-
-    int off = resize > 0 ? resize : border;
-    int x = border - off;
-    int x2 = decoration->window_box.width - border + off;
-    int y2 = decoration->window_box.height - border + off;
-    pixman_region32_init_rect(&input, x, x, x2 - x, y2 - x);
-    ky_scene_node_set_input_region(&decoration->rect.node, &input);
-    pixman_region32_fini(&input);
-}
-
 static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t cause)
 {
     int width = deco->surface_width;
@@ -553,12 +534,6 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
         pending_cause &= ~DECO_UPDATE_CAUSE_BLURRED;
     }
 
-    if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_MARGIN |
-                         DECO_UPDATE_CAUSE_RESIZE_WIDTH)) {
-        scene_decoration_update_input_region(deco);
-        pending_cause &= ~DECO_UPDATE_CAUSE_RESIZE_WIDTH;
-    }
-
     if (pending_cause != DECO_UPDATE_CAUSE_NONE) {
         bool damage_whole =
             pending_cause & ~(DECO_UPDATE_CAUSE_SHADOW_MASK | DECO_UPDATE_CAUSE_MARGIN_COLOR);
@@ -577,6 +552,34 @@ struct ky_scene_decoration *ky_scene_decoration_from_node(struct ky_scene_node *
 struct ky_scene_node *ky_scene_node_from_decoration(struct ky_scene_decoration *decoration)
 {
     return &decoration->rect.node;
+}
+
+static struct ky_scene_node *scene_decoration_accept_input(struct ky_scene_node *node, int lx,
+                                                           int ly, double px, double py, double *rx,
+                                                           double *ry)
+{
+    if (!node->enabled || node->input_bypassed) {
+        return NULL;
+    }
+
+    struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
+    int border = deco->border_thickness;
+    int resize = deco->resize_width;
+
+    int off = resize > 0 ? resize : border;
+    int lt = border - off;
+    int rb = (off - border) * 2;
+    struct kywc_box extend_input_box = kywc_box_adjusted(&deco->window_box, lt, lt, rb, rb);
+
+    int x = floor(px) - lx;
+    int y = floor(py) - ly;
+    if (!kywc_box_contains_point(&extend_input_box, x, y)) {
+        return NULL;
+    }
+
+    *rx = px - lx;
+    *ry = py - ly;
+    return node;
 }
 
 static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, int ly,
@@ -859,17 +862,18 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
 
     decoration->node_destroy = decoration->rect.node.impl.destroy;
     decoration->rect.node.impl.destroy = scene_decoration_destroy;
+    decoration->rect.node.impl.accept_input = scene_decoration_accept_input;
     decoration->rect.node.impl.collect_damage = scene_decoration_collect_damage;
     decoration->rect.node.impl.render = scene_decoration_render;
     decoration->rect.node.impl.get_bounding_box = scene_decoration_get_bounding_box;
     /* no need to update_region and push_damage, it is invisible */
 
+    pixman_region32_init(&decoration->surface_region);
     pixman_region32_init(&decoration->title_region);
     pixman_region32_init(&decoration->border_region);
     pixman_region32_init(&decoration->round_corner_region);
     pixman_region32_init(&decoration->pure_clip_region);
     pixman_region32_init(&decoration->clip_region);
-    pixman_region32_init(&decoration->surface_region);
 
     return decoration;
 }
@@ -952,7 +956,6 @@ void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration
     }
 
     decoration->resize_width = resize_with;
-    scene_decoration_update(decoration, DECO_UPDATE_CAUSE_RESIZE_WIDTH);
 }
 
 void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, bool blurred)
