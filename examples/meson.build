@@ -40,6 +40,15 @@ examples += {
   },
 }
 
+if have_kde_keystate
+  examples += {
+    'kde_keystate': {
+    'src': 'kde_keystate.c',
+    'proto': ['org-kde-kwin-keystate-manager'],
+    },
+  }
+endif
+
 foreach name, info : examples
   extra_src = []
   foreach p : info.get('proto', [])
