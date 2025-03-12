@@ -21,6 +21,7 @@ struct transform_options {
     float scale;
     /* for zero copy */
     struct ky_scene_buffer *buffer;
+    struct ky_scene_tree *new_parent;
 };
 
 struct transform_effect_interface {

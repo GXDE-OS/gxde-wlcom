@@ -31,6 +31,8 @@ struct transform {
     struct transform_options options;
     bool interrupted;
 
+    struct ky_scene_tree *old_parent;
+
     /* reuse transforms */
     int references;
 
@@ -372,6 +374,10 @@ static void transform_do_destroy(struct transform *transform)
         wl_list_remove(&transform->zero_buffer_damage.link);
     }
 
+    if (transform->old_parent) {
+        ky_scene_node_reparent(transform->node, transform->old_parent);
+    }
+
     wl_signal_emit_mutable(&transform->events.destroy, transform);
 
     if (transform->buffer) {
@@ -528,6 +534,11 @@ static struct transform *transform_create(struct transform_options *options,
     if (!transform_create_animator(transform)) {
         transform_do_destroy(transform);
         return NULL;
+    }
+
+    if (transform->options.new_parent) {
+        transform->old_parent = node->parent;
+        ky_scene_node_reparent(transform->node, transform->options.new_parent);
     }
 
     if (transform->need_blur) {

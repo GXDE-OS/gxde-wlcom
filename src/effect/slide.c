@@ -171,7 +171,8 @@ bool slide_effect_create(struct effect_manager *manager)
 
 static struct slide_entity *create_slide_entity(struct ky_scene_node *node,
                                                 struct ky_scene_buffer *zero_copy_buffer,
-                                                int location, int offset, bool mapped)
+                                                int location, int offset, bool mapped,
+                                                struct ky_scene_tree *new_parent)
 {
     struct slide_entity *slide_entity = calloc(1, sizeof(*slide_entity));
     if (!slide_entity) {
@@ -189,6 +190,7 @@ static struct slide_entity *create_slide_entity(struct ky_scene_node *node,
     options.duration = 300;
     options.type.geometry = ANIMATION_TYPE_EASE;
     options.start_time = current_time_msec();
+    options.new_parent = new_parent;
 
     struct kywc_box node_geometry;
     slide_get_node_origin_geometry(slide_entity->node, &node_geometry);
@@ -213,7 +215,7 @@ bool node_add_slide_effect(struct ky_scene_node *node, int location, int offset,
         return false;
     }
 
-    return create_slide_entity(node, NULL, location, offset, slide_out);
+    return create_slide_entity(node, NULL, location, offset, slide_out, NULL);
 }
 
 bool view_add_slide_effect(struct view *view, bool mapped)
@@ -233,6 +235,13 @@ bool view_add_slide_effect(struct view *view, bool mapped)
 
     struct ky_scene_buffer *zero_copy_buffer = mapped ? transform_get_zero_copy_buffer(view) : NULL;
 
+    struct ky_scene_tree *new_parent = NULL;
+    struct view_layer *old_layer = view_manager_get_layer_by_role(view->base.role);
+    if (old_layer->layer == LAYER_SYSTEM_WINDOW) {
+        struct view_layer *new_layer = view_manager_get_layer(LAYER_NORMAL, false);
+        new_parent = new_layer->tree;
+    }
+
     return create_slide_entity(&view->tree->node, zero_copy_buffer, slide.location, slide.offset,
-                               mapped);
+                               mapped, new_parent);
 }
