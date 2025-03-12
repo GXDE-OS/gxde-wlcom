@@ -49,7 +49,4 @@ void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration
 
 void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, bool blurred);
 
-void ky_scene_decoration_get_window_size(struct ky_scene_decoration *decoration, int *width,
-                                         int *height);
-
 #endif /* _SCENE_DECORATION_H_ */

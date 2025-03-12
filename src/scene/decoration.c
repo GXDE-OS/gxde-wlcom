@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <float.h>
-#include <math.h>
 #include <stdlib.h>
 
 #include "decoration_frag.h"
@@ -58,14 +57,12 @@ struct ky_scene_decoration {
     /* shadow part need be shown */
     uint32_t shadow_mask;
 
-    struct kywc_box window_box;
     struct kywc_box shadow_box;
     /**
-     * bound_box = window_box + shadow_box
-     * bound_box.x .y = node position
-     * bound_box.width .height = rect size
+     * render_box = window_box + shadow_box
+     * window_box = 0, 0, rect.width, rect.height
      */
-    struct wlr_box bound_box;
+    struct kywc_box render_box;
 
     pixman_region32_t surface_region;
     pixman_region32_t title_region;
@@ -131,10 +128,10 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
                                                struct wlr_box *region)
 {
     struct wlr_box box = {
-        .x = lx - target->logical.x + deco->bound_box.x,
-        .y = ly - target->logical.y + deco->bound_box.y,
-        .width = deco->bound_box.width,
-        .height = deco->bound_box.height,
+        .x = lx - target->logical.x + deco->render_box.x,
+        .y = ly - target->logical.y + deco->render_box.y,
+        .width = deco->render_box.width,
+        .height = deco->render_box.height,
     };
 
     int offset_x = deco->shadow_width - deco->shadow_offset_x;
@@ -150,10 +147,10 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->width = box.width - offset_x;
     } else if (left_shadow_mask && !right_shadow_mask) {
         region->x = box.x;
-        region->width = deco->window_box.width + offset_x;
+        region->width = deco->rect.width + offset_x;
     } else {
         region->x = box.x + offset_x;
-        region->width = deco->window_box.width;
+        region->width = deco->rect.width;
     }
     bool top_shadow_mask = deco->shadow_mask & SHADOW_MASK_TOP;
     bool bottom_shadow_mask = deco->shadow_mask & SHADOW_MASK_BOTTOM;
@@ -165,10 +162,10 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->height = box.height - offset_y;
     } else if (top_shadow_mask && !bottom_shadow_mask) {
         region->y = box.y;
-        region->height = deco->window_box.height + offset_y;
+        region->height = deco->rect.height + offset_y;
     } else {
         region->y = box.y + offset_y;
-        region->height = deco->window_box.height;
+        region->height = deco->rect.height;
     }
 
     ky_scene_render_box(region, target);
@@ -451,15 +448,14 @@ static void scene_decoration_update_region(struct ky_scene_decoration *deco)
     pixman_region32_init_rect(&deco->title_region, border, border, width, title);
 
     pixman_region32_t reg1, reg2;
-    pixman_region32_init_rect(&reg1, deco->window_box.x, deco->window_box.y, deco->window_box.width,
-                              deco->window_box.height);
+    pixman_region32_init_rect(&reg1, 0, 0, deco->rect.width, deco->rect.height);
     pixman_region32_init_rect(&reg2, border, border, width, title + height);
     pixman_region32_subtract(&deco->border_region, &reg1, &reg2);
     pixman_region32_fini(&reg1);
     pixman_region32_fini(&reg2);
 
-    pixman_region32_init_rect(&deco->pure_clip_region, deco->bound_box.x, deco->bound_box.y,
-                              deco->bound_box.width, deco->bound_box.height);
+    pixman_region32_init_rect(&deco->pure_clip_region, deco->render_box.x, deco->render_box.y,
+                              deco->render_box.width, deco->render_box.height);
     pixman_region32_subtract(&deco->pure_clip_region, &deco->pure_clip_region,
                              &deco->surface_region);
 }
@@ -483,38 +479,34 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
 
     if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_MARGIN)) {
         int border2 = 2 * border;
-        deco->window_box.x = 0;
-        deco->window_box.y = 0;
-        deco->window_box.width = width + border2;
-        deco->window_box.height = title + height + border2;
+        struct wlr_box window_box = { 0 };
+        window_box.width = width + border2;
+        window_box.height = title + height + border2;
 
         int shadow2 = 2 * shadow;
-        deco->shadow_box.x = deco->window_box.x - shadow + deco->shadow_offset_x;
-        deco->shadow_box.y = deco->window_box.y - shadow + deco->shadow_offset_y;
-        deco->shadow_box.width = deco->window_box.width + shadow2;
-        deco->shadow_box.height = deco->window_box.height + shadow2;
+        deco->shadow_box.x = window_box.x - shadow + deco->shadow_offset_x;
+        deco->shadow_box.y = window_box.y - shadow + deco->shadow_offset_y;
+        deco->shadow_box.width = window_box.width + shadow2;
+        deco->shadow_box.height = window_box.height + shadow2;
 
-        // bound box
-        int x_min =
-            deco->window_box.x < deco->shadow_box.x ? deco->window_box.x : deco->shadow_box.x;
-        int y_min =
-            deco->window_box.y < deco->shadow_box.y ? deco->window_box.y : deco->shadow_box.y;
-        int x_max = (deco->window_box.x + deco->window_box.width) >
-                            (deco->shadow_box.x + deco->shadow_box.width)
-                        ? (deco->window_box.x + deco->window_box.width)
-                        : (deco->shadow_box.x + deco->shadow_box.width);
-        int y_max = (deco->window_box.y + deco->window_box.height) >
-                            (deco->shadow_box.y + deco->shadow_box.height)
-                        ? (deco->window_box.y + deco->window_box.height)
-                        : (deco->shadow_box.y + deco->shadow_box.height);
-        deco->bound_box.x = x_min;
-        deco->bound_box.y = y_min;
-        deco->bound_box.width = x_max - x_min;
-        deco->bound_box.height = y_max - y_min;
+        // render box = window box + shadow box
+        int x_min = window_box.x < deco->shadow_box.x ? window_box.x : deco->shadow_box.x;
+        int y_min = window_box.y < deco->shadow_box.y ? window_box.y : deco->shadow_box.y;
+        int x_max =
+            (window_box.x + window_box.width) > (deco->shadow_box.x + deco->shadow_box.width)
+                ? (window_box.x + window_box.width)
+                : (deco->shadow_box.x + deco->shadow_box.width);
+        int y_max =
+            (window_box.y + window_box.height) > (deco->shadow_box.y + deco->shadow_box.height)
+                ? (window_box.y + window_box.height)
+                : (deco->shadow_box.y + deco->shadow_box.height);
+        deco->render_box.x = x_min;
+        deco->render_box.y = y_min;
+        deco->render_box.width = x_max - x_min;
+        deco->render_box.height = y_max - y_min;
 
-        if (deco->bound_box.width != deco->rect.width ||
-            deco->bound_box.height != deco->rect.height) {
-            ky_scene_rect_set_size(&deco->rect, deco->bound_box.width, deco->bound_box.height);
+        if (window_box.width != deco->rect.width || window_box.height != deco->rect.height) {
+            ky_scene_rect_set_size(&deco->rect, window_box.width, window_box.height);
         }
         scene_decoration_update_region(deco);
     }
@@ -566,10 +558,11 @@ static struct ky_scene_node *scene_decoration_accept_input(struct ky_scene_node 
     int border = deco->border_thickness;
     int resize = deco->resize_width;
 
+    struct kywc_box window_box = { .width = deco->rect.width, .height = deco->rect.height };
     int off = resize > 0 ? resize : border;
     int lt = border - off;
     int rb = (off - border) * 2;
-    struct kywc_box extend_input_box = kywc_box_adjusted(&deco->window_box, lt, lt, rb, rb);
+    struct kywc_box extend_input_box = kywc_box_adjusted(&window_box, lt, lt, rb, rb);
 
     int x = floor(px) - lx;
     int y = floor(py) - ly;
@@ -598,9 +591,9 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     // if node state is changed, it must in the affected region
     if (deco->rect.width > 0 && deco->rect.height > 0 &&
         pixman_region32_contains_rectangle(
-            affected, &(pixman_box32_t){ lx + deco->bound_box.x, ly + deco->bound_box.y,
-                                         lx + deco->bound_box.x + deco->rect.width,
-                                         ly + deco->bound_box.y + deco->rect.height }) ==
+            affected, &(pixman_box32_t){ lx + deco->render_box.x, ly + deco->render_box.y,
+                                         lx + deco->render_box.x + deco->rect.width,
+                                         ly + deco->render_box.y + deco->rect.height }) ==
             PIXMAN_REGION_OUT) {
         return;
     }
@@ -618,9 +611,9 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
     pixman_region32_clear(&node->visible_region);
 
     if (node_enabled) {
-        pixman_region32_init_rect(&node->visible_region, lx + deco->bound_box.x,
-                                  ly + deco->bound_box.y, deco->bound_box.width,
-                                  deco->bound_box.height);
+        pixman_region32_init_rect(&node->visible_region, lx + deco->render_box.x,
+                                  ly + deco->render_box.y, deco->render_box.width,
+                                  deco->render_box.height);
         pixman_region32_subtract(&node->visible_region, &node->visible_region, invisible);
 
         if (!no_damage) {
@@ -711,8 +704,8 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         pixman_region32_init(&render_region);
         pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
     } else {
-        pixman_region32_init_rect(&render_region, deco->bound_box.x, deco->bound_box.y,
-                                  deco->bound_box.width, deco->bound_box.height);
+        pixman_region32_init_rect(&render_region, deco->render_box.x, deco->render_box.y,
+                                  deco->render_box.width, deco->render_box.height);
         if (pixman_region32_not_empty(&node->clip_region)) {
             pixman_region32_intersect(&render_region, &render_region, &node->clip_region);
         }
@@ -734,10 +727,10 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
 
     bool need_render = pixman_region32_not_empty(&clip_region);
     struct wlr_box dst_box = {
-        .x = lx - target->logical.x + deco->bound_box.x,
-        .y = ly - target->logical.y + deco->bound_box.y,
-        .width = deco->bound_box.width,
-        .height = deco->bound_box.height,
+        .x = lx - target->logical.x + deco->render_box.x,
+        .y = ly - target->logical.y + deco->render_box.y,
+        .width = deco->render_box.width,
+        .height = deco->render_box.height,
     };
     if (need_render) {
         ky_scene_render_box(&dst_box, target);
@@ -826,8 +819,8 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
 static void scene_decoration_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)
 {
     struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
-    *box = (struct wlr_box){ deco->bound_box.x, deco->bound_box.y, deco->bound_box.width,
-                             deco->bound_box.height };
+    *box = (struct wlr_box){ deco->render_box.x, deco->render_box.y, deco->render_box.width,
+                             deco->render_box.height };
 }
 
 static void scene_decoration_destroy(struct ky_scene_node *node)
@@ -966,11 +959,4 @@ void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, boo
 
     decoration->blurred = blurred;
     scene_decoration_update(decoration, DECO_UPDATE_CAUSE_BLURRED);
-}
-
-void ky_scene_decoration_get_window_size(struct ky_scene_decoration *decoration, int *width,
-                                         int *height)
-{
-    *width = decoration->window_box.width;
-    *height = decoration->window_box.height;
 }
