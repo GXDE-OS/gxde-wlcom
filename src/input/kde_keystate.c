@@ -11,7 +11,7 @@
 
 #include "input/seat.h"
 #include "input_p.h"
-#include "kde_keystate-protocol.h"
+#include "kde-keystate-protocol.h"
 #include "server.h"
 
 #define ORG_KDE_KWIN_KEYSTATE_VERSION 5

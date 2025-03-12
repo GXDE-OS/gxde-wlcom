@@ -77,7 +77,7 @@ endif
 
 if have_kde_keystate
   protocols += {
-    'org-kde-kwin-keystate-manager': 'kde_keystate.xml',
+    'org-kde-kwin-keystate-manager': 'kde-keystate.xml',
   }
 endif
 
