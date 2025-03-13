@@ -126,7 +126,7 @@ static bool transform_effect_frame_render_pre(struct effect_entity *entity,
     struct transform_effect *effect = transform->effect;
     struct transform_options *options = &transform->options;
     /* update transform options */
-    if (effect->impl->update_transform_options) {
+    if (effect->impl && effect->impl->update_transform_options) {
         effect->impl->update_transform_options(effect, transform, &transform->pending_options,
                                                &transform->current, transform->interrupted,
                                                effect->user_data);
@@ -164,7 +164,7 @@ static bool transform_effect_frame_render_pre(struct effect_entity *entity,
     const struct animation_data *animation_data = animator_value(transform->animator, time);
     transform->current = *animation_data;
 
-    if (effect->impl->get_render_dst_box) {
+    if (effect->impl && effect->impl->get_render_dst_box) {
         effect->impl->get_render_dst_box(effect, transform, &transform->current.geometry,
                                          effect->user_data);
     }
@@ -175,7 +175,7 @@ static bool transform_effect_frame_render_pre(struct effect_entity *entity,
 static void transform_effect_handle_enable(struct wl_listener *listener, void *data)
 {
     struct transform_effect *effect = wl_container_of(listener, effect, enable);
-    if (effect->impl->enable) {
+    if (effect->impl && effect->impl->enable) {
         effect->impl->enable(effect, true, effect->user_data);
     }
 }
@@ -183,7 +183,7 @@ static void transform_effect_handle_enable(struct wl_listener *listener, void *d
 static void transform_effect_handle_disable(struct wl_listener *listener, void *data)
 {
     struct transform_effect *effect = wl_container_of(listener, effect, disable);
-    if (effect->impl->enable) {
+    if (effect->impl && effect->impl->enable) {
         effect->impl->enable(effect, false, effect->user_data);
     }
 }
@@ -195,7 +195,7 @@ static void transform_effect_handle_destroy(struct wl_listener *listener, void *
     wl_list_remove(&effect->disable.link);
     wl_list_remove(&effect->destroy.link);
 
-    if (effect->impl->destroy) {
+    if (effect->impl && effect->impl->destroy) {
         effect->impl->destroy(effect, effect->user_data);
     }
 
@@ -420,7 +420,7 @@ static bool transform_effect_node_render(struct effect_entity *entity, int lx, i
 
     struct kywc_fbox src_box = { 0, 0, transform->thumbnail_info.texture->width,
                                  transform->thumbnail_info.texture->height };
-    if (transform->effect->impl->get_render_src_box) {
+    if (transform->effect->impl && transform->effect->impl->get_render_src_box) {
         transform->effect->impl->get_render_src_box(transform->effect, transform,
                                                     &transform->current, &src_box,
                                                     transform->effect->user_data);
