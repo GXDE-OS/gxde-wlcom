@@ -212,12 +212,12 @@ bool server_init(struct server *server)
 
     config_manager_create(server);
     security_manager_create(server);
+    theme_manager_create(server);
 
     if (!wlroots_server_init(server)) {
         return false;
     }
 
-    theme_manager_create(server);
     output_manager_create(server);
     input_manager_create(server);
     view_manager_create(server);

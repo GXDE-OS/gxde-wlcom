@@ -1962,6 +1962,10 @@ struct view *view_manager_get_global_authentication(void)
 
 static void handle_server_ready(struct wl_listener *listener, void *data)
 {
+    theme_manager_add_update_listener(&view_manager->theme_update);
+    window_menu_manager_create(view_manager);
+    maximize_switcher_create(view_manager);
+
     if (!view_manager->mode) {
         view_manager->mode = view_manager_mode_from_name("stack_mode");
     }
@@ -2167,7 +2171,7 @@ struct view_manager *view_manager_create(struct server *server)
     wl_signal_init(&view_manager->events.activate_view);
 
     view_manager->theme_update.notify = handle_theme_update;
-    theme_manager_add_update_listener(&view_manager->theme_update);
+    wl_list_init(&view_manager->theme_update.link);
     view_manager->theme_icon_update.notify = handle_theme_icon_update;
     theme_manager_add_icon_update_listener(&view_manager->theme_icon_update);
     view_manager->server_terminate.notify = handle_server_terminate;
@@ -2200,9 +2204,7 @@ struct view_manager *view_manager_create(struct server *server)
     server_decoration_manager_create(view_manager);
     positioner_manager_create(view_manager);
     window_actions_create(view_manager);
-    window_menu_manager_create(view_manager);
     view_manager_actions_create(view_manager);
-    maximize_switcher_create(view_manager);
 
     xdg_shell_init(view_manager);
 

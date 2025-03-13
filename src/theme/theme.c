@@ -98,7 +98,7 @@ static struct theme_buffer *draw_theme_buffer(struct theme *theme, float scale)
     return buffer;
 }
 
-static uint32_t theme_init(struct widget_theme *widget, float scale)
+static uint32_t theme_init(struct widget_theme *widget)
 {
     struct theme *theme = &manager->theme;
     uint32_t mask = THEME_UPDATE_MASK_NONE;
@@ -179,7 +179,6 @@ static uint32_t theme_init(struct widget_theme *widget, float scale)
     theme->shadow_offset_y = 0;
     theme->normal_radius = 6;
 
-    // TODO: destroy all buffers, reuse it ?
     struct theme_buffer *buffer, *tmp;
     wl_list_for_each_safe(buffer, tmp, &theme->scaled_buffers, link) {
         wlr_buffer_drop(buffer->buffer);
@@ -187,8 +186,6 @@ static uint32_t theme_init(struct widget_theme *widget, float scale)
         free(buffer);
     }
     theme->button_svg = widget->button_svg;
-    /* paint theme buffer in scale */
-    draw_theme_buffer(theme, scale);
 
     return mask;
 }
@@ -326,7 +323,7 @@ bool theme_manager_set_widget_theme(const char *name, enum theme_type type)
     }
 
     /* merge widget and global to theme */
-    uint32_t mask = theme_init(widget, 1.0);
+    uint32_t mask = theme_init(widget);
     theme_manager_write_config(manager, type);
 
     struct theme_update_event update_event = {
