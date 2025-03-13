@@ -15,6 +15,7 @@
 
 #include "painter_p.h"
 #include "util/file.h"
+#include "util/hash_table.h"
 
 static uint8_t *do_decode_jpeg(const uint8_t *data, size_t size, int *width, int *height)
 {
@@ -298,6 +299,141 @@ static uint8_t *do_decode_ico(const uint8_t *data, size_t size, int *width, int 
     }
 }
 
+struct xpm_color {
+    char *name;
+    uint32_t argb;
+};
+
+struct xpm_parse_state {
+    uint8_t *buffer;
+
+    int width, height;
+    int num_colors;
+    int chars_per_pixel;
+
+    char *names;
+    struct xpm_color *colors;
+    struct hash_table *ht_colors;
+
+    int lines, cnt_colors, cnt_pixels;
+};
+
+static bool xpm_parse_color(struct xpm_parse_state *state, const char *str)
+{
+    int name_stride = state->chars_per_pixel + 1;
+    char *name = &state->names[state->cnt_colors * name_stride];
+    struct xpm_color *color = &state->colors[state->cnt_colors];
+
+    memcpy(name, str, state->chars_per_pixel);
+    color->name = name;
+
+    char *visual = strchr(str + name_stride, 'c');
+    if (!visual) {
+        return false;
+    }
+
+    visual++; // skip 'c' and space
+    while (*visual == ' ') {
+        visual++;
+    }
+
+    if (strncmp(visual, "None", 4) == 0) {
+        color->argb = 0x0;
+    } else {
+        uint32_t red = 0, green = 0, blue = 0;
+        sscanf(visual, "#%2x%2x%2x", &red, &green, &blue);
+        color->argb = (255u << 24) | (red << 16) | (green << 8) | blue;
+    }
+
+    hash_table_insert(state->ht_colors, name, color);
+    state->cnt_colors++;
+    return true;
+}
+
+static uint32_t xpm_color_hash(const void *key, void *data)
+{
+    struct xpm_parse_state *state = data;
+    return hash_string_with_length(key, state->chars_per_pixel);
+}
+
+static bool xpm_color_equal(const void *a, const void *b, void *data)
+{
+    struct xpm_parse_state *state = data;
+    return strncmp(a, b, state->chars_per_pixel) == 0;
+}
+
+static bool xpm_parse(struct file *file, const char *key, const char *value, void *data)
+{
+    if (*key != '"') {
+        return false;
+    }
+
+    struct xpm_parse_state *state = data;
+    state->lines++;
+    key++; // skip '"'
+
+    /* first line must be values */
+    if (state->lines == 1) {
+        int items = sscanf(key, "%d %d %d %d %*d %*d", &state->width, &state->height,
+                           &state->num_colors, &state->chars_per_pixel);
+        if (items != 4 || state->width > 1024 || state->height > 1024) {
+            state->width = state->height = 0;
+            kywc_log(KYWC_ERROR, "xpm file parse failed");
+            return true;
+        }
+        return false;
+    }
+
+    if (state->lines == 2) {
+        // pre-alloc color maps
+        state->names = calloc(state->num_colors, state->chars_per_pixel + 1);
+        state->colors = calloc(state->num_colors, sizeof(struct xpm_color));
+        state->ht_colors = hash_table_create(xpm_color_hash, xpm_color_equal, state);
+        state->buffer = malloc(state->width * state->height * 4);
+        if (!state->names || !state->colors || !state->ht_colors || !state->buffer) {
+            free(state->buffer);
+            state->buffer = NULL;
+            return true;
+        }
+        hash_table_set_max_entries(state->ht_colors, state->num_colors);
+    }
+
+    /* color maps */
+    if (state->cnt_colors < state->num_colors) {
+        return !xpm_parse_color(state, key);
+    }
+
+    /* write pixels to buffer */
+    uint32_t *buffer = (uint32_t *)(state->buffer + state->cnt_pixels * state->width * 4);
+    for (int i = 0; i < state->width; i++) {
+        struct hash_entry *entry =
+            hash_table_search(state->ht_colors, key + i * state->chars_per_pixel);
+        buffer[i] = entry ? ((struct xpm_color *)entry->data)->argb : 0;
+    }
+
+    state->cnt_pixels++;
+    if (state->cnt_pixels == state->height) {
+        return true;
+    }
+
+    return false;
+}
+
+static uint8_t *do_decode_xpm(struct file *file, int *width, int *height)
+{
+    struct xpm_parse_state state = { 0 };
+    file_parse(file, xpm_parse, &state);
+
+    *width = state.width;
+    *height = state.height;
+
+    free(state.names);
+    free(state.colors);
+    hash_table_destroy(state.ht_colors);
+
+    return state.buffer;
+}
+
 uint8_t *image_read_from_file(const char *filename, int *width, int *height)
 {
     struct file *file = file_open(filename, "\n", NULL);
@@ -324,6 +460,8 @@ uint8_t *image_read_from_file(const char *filename, int *width, int *height)
                *(uint32_t *)(data + sizeof(bmp_file_header)) == 0x28) {
         buffer = do_decode_bmp(data + sizeof(bmp_file_header),
                                data + ((bmp_file_header *)data)->offset, width, height);
+    } else if (strncmp((char *)data, "/* XPM */", 9) == 0) {
+        buffer = do_decode_xpm(file, width, height);
     } else {
         kywc_log(KYWC_WARN, "%s: unsupported image format", filename);
     }
