@@ -47,6 +47,6 @@ void ky_scene_decoration_set_shadow_mask(struct ky_scene_decoration *decoration,
 
 void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration, int resize_with);
 
-void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, bool blurred);
+void ky_scene_decoration_set_surface_blurred(struct ky_scene_decoration *decoration, bool blurred);
 
 #endif /* _SCENE_DECORATION_H_ */

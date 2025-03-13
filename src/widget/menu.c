@@ -996,7 +996,7 @@ static void menu_update_decoration(struct menu *menu)
     ky_scene_decoration_set_round_corner_radius(menu->deco,
                                                 (int[4]){ radius, radius, radius, radius });
     ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), 0, 0);
-    ky_scene_decoration_set_blurred(menu->deco, theme->opacity != 100);
+    ky_scene_decoration_set_surface_blurred(menu->deco, theme->opacity != 100);
 }
 
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)

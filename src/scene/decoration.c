@@ -34,7 +34,8 @@ struct ky_scene_decoration {
     /* surface size */
     int surface_width;
     int surface_height;
-    bool blurred;
+    /* blurred in surface size */
+    bool surface_blurred;
 
     /* margin */
     int border_thickness;
@@ -442,9 +443,7 @@ static void scene_decoration_update_region(struct ky_scene_decoration *deco)
 
     int width = deco->surface_width, height = deco->surface_height;
     int title = deco->title_height, border = deco->border_thickness;
-
     pixman_region32_init_rect(&deco->surface_region, border, border + title, width, height);
-
     pixman_region32_init_rect(&deco->title_region, border, border, width, title);
 
     pixman_region32_t reg1, reg2;
@@ -459,6 +458,13 @@ static void scene_decoration_update_region(struct ky_scene_decoration *deco)
     pixman_region32_subtract(&deco->pure_clip_region, &deco->pure_clip_region,
                              &deco->surface_region);
 }
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t cause)
 {
@@ -479,34 +485,19 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
 
     if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_MARGIN)) {
         int border2 = 2 * border;
-        struct wlr_box window_box = { 0 };
-        window_box.width = width + border2;
-        window_box.height = title + height + border2;
-
+        struct kywc_box window = { 0, 0, width + border2, title + height + border2 };
         int shadow2 = 2 * shadow;
-        deco->shadow_box.x = window_box.x - shadow + deco->shadow_offset_x;
-        deco->shadow_box.y = window_box.y - shadow + deco->shadow_offset_y;
-        deco->shadow_box.width = window_box.width + shadow2;
-        deco->shadow_box.height = window_box.height + shadow2;
-
+        deco->shadow_box = kywc_box_adjusted(&window, -shadow + deco->shadow_offset_x,
+                                             -shadow + deco->shadow_offset_y, shadow2, shadow2);
         // render box = window box + shadow box
-        int x_min = window_box.x < deco->shadow_box.x ? window_box.x : deco->shadow_box.x;
-        int y_min = window_box.y < deco->shadow_box.y ? window_box.y : deco->shadow_box.y;
-        int x_max =
-            (window_box.x + window_box.width) > (deco->shadow_box.x + deco->shadow_box.width)
-                ? (window_box.x + window_box.width)
-                : (deco->shadow_box.x + deco->shadow_box.width);
-        int y_max =
-            (window_box.y + window_box.height) > (deco->shadow_box.y + deco->shadow_box.height)
-                ? (window_box.y + window_box.height)
-                : (deco->shadow_box.y + deco->shadow_box.height);
-        deco->render_box.x = x_min;
-        deco->render_box.y = y_min;
-        deco->render_box.width = x_max - x_min;
-        deco->render_box.height = y_max - y_min;
+        int x_min = MIN(window.x, deco->shadow_box.x);
+        int y_min = MIN(window.y, deco->shadow_box.y);
+        int x_max = MAX(window.x + window.width, deco->shadow_box.x + deco->shadow_box.width);
+        int y_max = MAX(window.y + window.height, deco->shadow_box.y + deco->shadow_box.height);
+        deco->render_box = (struct kywc_box){ x_min, y_min, x_max - x_min, y_max - y_min };
 
-        if (window_box.width != deco->rect.width || window_box.height != deco->rect.height) {
-            ky_scene_rect_set_size(&deco->rect, window_box.width, window_box.height);
+        if (window.width != deco->rect.width || window.height != deco->rect.height) {
+            ky_scene_rect_set_size(&deco->rect, window.width, window.height);
         }
         scene_decoration_update_region(deco);
     }
@@ -522,7 +513,7 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
 
     if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_BLURRED)) {
         ky_scene_node_set_blur_region(&deco->rect.node,
-                                      deco->blurred ? &deco->surface_region : NULL);
+                                      deco->surface_blurred ? &deco->surface_region : NULL);
         pending_cause &= ~DECO_UPDATE_CAUSE_BLURRED;
     }
 
@@ -589,11 +580,11 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
 
     struct ky_scene_decoration *deco = ky_scene_decoration_from_node(node);
     // if node state is changed, it must in the affected region
-    if (deco->rect.width > 0 && deco->rect.height > 0 &&
+    if (deco->render_box.width > 0 && deco->render_box.height > 0 &&
         pixman_region32_contains_rectangle(
             affected, &(pixman_box32_t){ lx + deco->render_box.x, ly + deco->render_box.y,
-                                         lx + deco->render_box.x + deco->rect.width,
-                                         ly + deco->render_box.y + deco->rect.height }) ==
+                                         lx + deco->render_box.x + deco->render_box.width,
+                                         ly + deco->render_box.y + deco->render_box.height }) ==
             PIXMAN_REGION_OUT) {
         return;
     }
@@ -647,7 +638,7 @@ static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int l
                                          struct ky_scene_render_target *target,
                                          pixman_region32_t *clip)
 {
-    if (!deco->blurred || target->options & KY_SCENE_RENDER_DISABLE_BLUR) {
+    if (!deco->surface_blurred || target->options & KY_SCENE_RENDER_DISABLE_BLUR) {
         return;
     }
 
@@ -680,7 +671,7 @@ static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int l
         .dst_box = &blur_box,
         .clip = clip,
         .radius = &round_corner_radius,
-        .blur = deco->blurred ? &deco->rect.node.blur : NULL,
+        .blur = deco->surface_blurred ? &deco->rect.node.blur : NULL,
     };
     blur_render_with_target(target, &opts);
 }
@@ -951,12 +942,12 @@ void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration
     decoration->resize_width = resize_with;
 }
 
-void ky_scene_decoration_set_blurred(struct ky_scene_decoration *decoration, bool blurred)
+void ky_scene_decoration_set_surface_blurred(struct ky_scene_decoration *decoration, bool blurred)
 {
-    if (decoration->blurred == blurred) {
+    if (decoration->surface_blurred == blurred) {
         return;
     }
 
-    decoration->blurred = blurred;
+    decoration->surface_blurred = blurred;
     scene_decoration_update(decoration, DECO_UPDATE_CAUSE_BLURRED);
 }
