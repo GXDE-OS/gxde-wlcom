@@ -11,6 +11,7 @@
 #include <kywc/log.h>
 
 #include "effect/animator.h"
+#include "effect/node_transform.h"
 #include "effect/transform.h"
 #include "effect_p.h"
 #include "render/opengl.h"
@@ -83,6 +84,8 @@ struct transform_effect {
 
     void *user_data;
 };
+
+static struct transform_effect *node_transform_effect = NULL;
 
 static const struct effect_interface transform_effect_impl;
 
@@ -724,4 +727,51 @@ struct transform *transform_effect_get_or_create_transform(struct transform_effe
     entity->user_data = transform;
 
     return transform;
+}
+
+bool node_transform_effect_create(struct effect_manager *manager)
+{
+    node_transform_effect = transform_effect_create(manager, NULL, "transform_effect", 98, NULL);
+    if (!node_transform_effect) {
+        return false;
+    }
+
+    return true;
+}
+
+bool node_add_transform_effect(struct ky_scene_node *node, struct transform_options *options)
+{
+    if (!node_transform_effect->effect->enabled) {
+        return false;
+    }
+
+    struct effect_entity *entity =
+        ky_scene_node_find_effect_entity(node, node_transform_effect->effect);
+    /* current effect interrupt previous effect, reuse same entity and transform */
+    if (entity) {
+        struct transform *transform = entity->user_data;
+        transform->options = transform->pending_options;
+        transform->pending_options.end = options->end;
+        transform->interrupted = true;
+
+        return true;
+    }
+
+    struct transform *transform = transform_create(options, node_transform_effect, node, NULL);
+    if (!transform) {
+        return false;
+    }
+
+    entity = ky_scene_node_add_effect(node, node_transform_effect->effect);
+    if (!entity) {
+        transform_do_destroy(transform);
+        return false;
+    }
+
+    transform->node_destroy.notify = transform_handle_node_destroy;
+    wl_signal_add(&node->events.destroy, &transform->node_destroy);
+    transform->entity = entity;
+    entity->user_data = transform;
+
+    return true;
 }

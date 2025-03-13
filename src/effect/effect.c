@@ -819,6 +819,7 @@ bool effect_manager_create(struct server *server)
     locate_pointer_effect_create(manager);
     magic_lamp_effect_create(manager);
     zoom_effect_create(manager);
+    node_transform_effect_create(manager);
 
     return true;
 }
