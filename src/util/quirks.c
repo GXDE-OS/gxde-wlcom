@@ -24,6 +24,8 @@ static const struct quirks quirks_table[] = {
     { "vmwgfx", NULL, QUIRKS_MASK_SOFTWARE_CURSOR },
     { "mtgpu", "MTT Mesa Client", QUIRKS_MASK_NO_MODIFIERS },
     { "mwv207", "Mesa Project", QUIRKS_MASK_NO_MODIFIERS },
+    { "ljm", "Ljmicro Corporation",
+      QUIRKS_MASK_EGL_WAYLAND | QUIRKS_MASK_NO_MODIFIERS | QUIRKS_MASK_EXPLICIT_SYNC },
 };
 
 uint32_t quirks_by_backend(int drm_fd)
