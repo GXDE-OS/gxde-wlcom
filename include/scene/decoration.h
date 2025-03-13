@@ -49,4 +49,7 @@ void ky_scene_decoration_set_resize_width(struct ky_scene_decoration *decoration
 
 void ky_scene_decoration_set_surface_blurred(struct ky_scene_decoration *decoration, bool blurred);
 
+void ky_scene_decoration_set_surface_color(struct ky_scene_decoration *decoration,
+                                           const float color[static 4]);
+
 #endif /* _SCENE_DECORATION_H_ */

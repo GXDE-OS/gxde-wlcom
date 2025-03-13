@@ -23,6 +23,7 @@ enum deco_update_cause {
     DECO_UPDATE_CAUSE_SHADOW_MASK = 1 << 3,
     DECO_UPDATE_CAUSE_CORNER_RADIUS = 1 << 4,
     DECO_UPDATE_CAUSE_BLURRED = 1 << 5,
+    DECO_UPDATE_CAUSE_SURFACE_COLOR = 1 << 6,
 };
 
 struct ky_scene_decoration {
@@ -34,6 +35,8 @@ struct ky_scene_decoration {
     /* surface size */
     int surface_width;
     int surface_height;
+    /* color in surface size */
+    float surface_color[4];
     /* blurred in surface size */
     bool surface_blurred;
 
@@ -517,6 +520,11 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
         pending_cause &= ~DECO_UPDATE_CAUSE_BLURRED;
     }
 
+    if (pending_cause == DECO_UPDATE_CAUSE_SURFACE_COLOR) {
+        ky_scene_node_push_damage(&deco->rect.node, KY_SCENE_DAMAGE_BOTH, &deco->surface_region);
+        pending_cause &= ~DECO_UPDATE_CAUSE_SURFACE_COLOR;
+    }
+
     if (pending_cause != DECO_UPDATE_CAUSE_NONE) {
         bool damage_whole =
             pending_cause & ~(DECO_UPDATE_CAUSE_SHADOW_MASK | DECO_UPDATE_CAUSE_MARGIN_COLOR);
@@ -613,7 +621,8 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
 
         bool border_is_opaque = deco->border_thickness > 0 && deco->border_color[3] == 1;
         bool title_is_opaque = deco->title_height > 0 && deco->title_color[3] == 1;
-        bool has_opaque_region = border_is_opaque || title_is_opaque;
+        bool surface_is_opaque = deco->surface_color[3] == 1;
+        bool has_opaque_region = border_is_opaque || title_is_opaque || surface_is_opaque;
         if (has_opaque_region) {
             pixman_region32_t region;
             pixman_region32_init(&region);
@@ -622,6 +631,9 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
             }
             if (title_is_opaque) {
                 pixman_region32_union(&region, &region, &deco->title_region);
+            }
+            if (surface_is_opaque) {
+                pixman_region32_union(&region, &region, &deco->surface_region);
             }
             pixman_region32_subtract(&region, &region, &deco->round_corner_region);
             pixman_region32_translate(&region, lx, ly);
@@ -636,14 +648,17 @@ static void scene_decoration_collect_damage(struct ky_scene_node *node, int lx, 
 
 static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int lx, int ly,
                                          struct ky_scene_render_target *target,
-                                         pixman_region32_t *clip)
+                                         const pixman_region32_t *region)
 {
-    if (!deco->surface_blurred || target->options & KY_SCENE_RENDER_DISABLE_BLUR) {
+    if (deco->surface_color[3] == 1 || !deco->surface_blurred ||
+        target->options & KY_SCENE_RENDER_DISABLE_BLUR) {
         return;
     }
 
-    pixman_region32_translate(clip, -target->logical.x, -target->logical.y);
-    ky_scene_render_region(clip, target);
+    pixman_region32_t clip;
+    pixman_region32_init(&clip);
+    pixman_region32_copy(&clip, region);
+    ky_scene_render_region(&clip, target);
 
     struct wlr_box blur_box = {
         .x = lx - target->logical.x + deco->surface_region.extents.x1,
@@ -669,11 +684,12 @@ static void scene_decoration_blur_render(struct ky_scene_decoration *deco, int l
         .lx = lx,
         .ly = ly,
         .dst_box = &blur_box,
-        .clip = clip,
+        .clip = &clip,
         .radius = &round_corner_radius,
         .blur = deco->surface_blurred ? &deco->rect.node.blur : NULL,
     };
     blur_render_with_target(target, &opts);
+    pixman_region32_fini(&clip);
 }
 
 static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
@@ -727,6 +743,7 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
         ky_scene_render_box(&dst_box, target);
         pixman_region32_translate(&clip_region, -target->logical.x, -target->logical.y);
     }
+    pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
 
     // try opengl render if opengl is used
     if (gl_shader >= 0 && wlr_renderer_is_opengl(target->output->output->renderer)) {
@@ -741,15 +758,50 @@ static void scene_decoration_render(struct ky_scene_node *node, int lx, int ly,
                 ky_scene_render_region(&clip_region, target);
                 scene_decoration_opengl_render(deco, lx, ly, target, &dst_box, &clip_region);
             }
-            pixman_region32_fini(&render_region);
-            pixman_region32_fini(&clip_region);
-            return;
         } else {
             gl_shader = -1;
         }
     }
 
-    if (!need_render) {
+    if (deco->surface_color[3] != 0) {
+        pixman_region32_t surface;
+        pixman_region32_init(&surface);
+        pixman_region32_copy(&surface, &deco->surface_region);
+        pixman_region32_translate(&surface, lx - target->logical.x, ly - target->logical.y);
+        pixman_region32_intersect(&surface, &surface, &render_region);
+        ky_scene_render_region(&surface, target);
+
+        struct wlr_box surface_box = {
+            .x = lx - target->logical.x + deco->surface_region.extents.x1,
+            .y = ly - target->logical.y + deco->surface_region.extents.y1,
+            .width = deco->surface_width,
+            .height = deco->surface_height,
+        };
+        ky_scene_render_box(&surface_box, target);
+
+        ky_render_pass_add_rect(target->render_pass, &(struct ky_render_rect_options){
+            .base = {
+            .box = surface_box,
+            .color = {
+                .r = deco->surface_color[0],
+                .g = deco->surface_color[1],
+                .b = deco->surface_color[2],
+                .a = deco->surface_color[3],
+            },
+            .clip = &surface,
+            .blend_mode = WLR_RENDER_BLEND_MODE_PREMULTIPLIED,
+            },
+            .radius = {
+                .rb = deco->round_corner_radius[0] * target->scale,
+                .rt = deco->round_corner_radius[1] * target->scale,
+                .lb = deco->round_corner_radius[2] * target->scale,
+                .lt = deco->round_corner_radius[3] * target->scale,
+            },
+        });
+        pixman_region32_fini(&surface);
+    }
+
+    if (gl_shader > 0 || !need_render) {
         pixman_region32_fini(&render_region);
         pixman_region32_fini(&clip_region);
         return;
@@ -840,6 +892,7 @@ struct ky_scene_decoration *ky_scene_decoration_create(struct ky_scene_tree *par
 
     float color[4] = { 0, 0, 0, 0.25 };
     ky_scene_rect_init(&decoration->rect, parent, 0, 0, color);
+    memset(decoration->surface_color, 0, sizeof(decoration->surface_color));
     memcpy(decoration->title_color, color, sizeof(decoration->title_color));
     memcpy(decoration->border_color, color, sizeof(decoration->border_color));
     memcpy(decoration->shadow_color, color, sizeof(decoration->shadow_color));
@@ -950,4 +1003,15 @@ void ky_scene_decoration_set_surface_blurred(struct ky_scene_decoration *decorat
 
     decoration->surface_blurred = blurred;
     scene_decoration_update(decoration, DECO_UPDATE_CAUSE_BLURRED);
+}
+
+void ky_scene_decoration_set_surface_color(struct ky_scene_decoration *decoration,
+                                           const float color[static 4])
+{
+    if (memcmp(decoration->surface_color, color, sizeof(decoration->surface_color)) == 0) {
+        return;
+    }
+
+    memcpy(decoration->surface_color, color, sizeof(decoration->surface_color));
+    scene_decoration_update(decoration, DECO_UPDATE_CAUSE_SURFACE_COLOR);
 }
