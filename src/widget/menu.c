@@ -34,27 +34,11 @@ static void menu_draw_item(struct menu_item *item, bool force)
     item->redraw = false;
 
     struct theme *theme = theme_manager_get_theme();
-    uint32_t border_mask = BORDER_MASK_LEFT | BORDER_MASK_RIGHT;
-    uint32_t corner_mask = CORNER_MASK_NONE;
-
-    if (item->first || item->item_type == ITEM_TYPE_FLIP_UP) {
-        border_mask |= BORDER_MASK_TOP;
-        corner_mask |= CORNER_MASK_TOP_LEFT | CORNER_MASK_TOP_RIGHT;
-    }
-    if (item->last || item->item_type == ITEM_TYPE_FLIP_DOWN) {
-        border_mask |= BORDER_MASK_BOTTOM;
-        corner_mask |= CORNER_MASK_BOTTOM_LEFT | CORNER_MASK_BOTTOM_RIGHT;
-    }
-    if (item->separator) {
-        border_mask |= BORDER_MASK_TOP;
-    }
-
     uint32_t text_attr = item->checked ? TEXT_ATTR_CHECKED : TEXT_ATTR_NONE;
     text_attr |= item->submenu ? TEXT_ATTR_SUBMENU : TEXT_ATTR_NONE;
     text_attr |= item->key ? TEXT_ATTR_ACCEL : TEXT_ATTR_NONE;
     text_attr |= item->shortcut ? TEXT_ATTR_SHORTCUT : TEXT_ATTR_NONE;
 
-    widget_set_layout(item->content, theme->layout_is_right_to_left);
     if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
         widget_set_text(item->content, item->text, TEXT_ALIGN_CENTER, text_attr);
         widget_set_size(item->content, item->menu->width, MENU_FLIP_HEIGHT);
@@ -66,15 +50,12 @@ static void menu_draw_item(struct menu_item *item, bool force)
     }
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
+    widget_set_layout(item->content, theme->layout_is_right_to_left);
 
-    float *background_color = theme->active_bg_color;
     float *front_color = item->activated ? theme->active_text_color : theme->inactive_text_color;
-    widget_set_background_color(item->content,
-                               (float[4]){ background_color[0], background_color[1],
-                                           background_color[2], theme->opacity / 100.0 });
     widget_set_front_color(item->content, front_color);
-    widget_set_border(item->content, theme->inactive_bg_color, border_mask, theme->border_width);
-    widget_set_round_corner(item->content, corner_mask, theme->corner_radius);
+    uint32_t border_mask = item->separator ? BORDER_MASK_TOP : BORDER_MASK_NONE;
+    widget_set_border(item->content, theme->active_border_color, border_mask, theme->border_width);
 
     widget_update(item->content, true);
 }
@@ -992,11 +973,19 @@ static void menu_update_decoration(struct menu *menu)
     int radius = theme->corner_radius;
     int shadow = theme->shadow_border;
 
-    ky_scene_decoration_set_margin(menu->deco, 0, 0, shadow, 0, 0);
+    ky_scene_decoration_set_margin(menu->deco, 0, theme->border_width, shadow, 0, 0);
+    float *color = theme->active_border_color, a = color[3];
+    ky_scene_decoration_set_margin_color(menu->deco, theme->active_bg_color,
+                                         (float[4]){ color[0] * a, color[1] * a, color[2] * a, a },
+                                         (float[4]){ 0.f, 0.f, 0.f, 0.25 });
+
     ky_scene_decoration_set_round_corner_radius(menu->deco,
                                                 (int[4]){ radius, radius, radius, radius });
     ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), 0, 0);
     ky_scene_decoration_set_surface_blurred(menu->deco, theme->opacity != 100);
+    color = theme->active_bg_color, a = theme->opacity / 100.0;
+    ky_scene_decoration_set_surface_color(
+        menu->deco, (float[4]){ color[0] * a, color[1] * a, color[2] * a, a });
 }
 
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
@@ -1005,7 +994,7 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
     struct theme_update_event *update_event = data;
     uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
                             THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS |
-                            THEME_UPDATE_MASK_OPACITY;
+                            THEME_UPDATE_MASK_OPACITY | THEME_UPDATE_MASK_BORDER_COLOR;
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);
