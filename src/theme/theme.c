@@ -40,6 +40,8 @@ static struct widget_theme widget_light = {
     .inactive_bg_color = { 245.0 / 255.0, 245.0 / 255.0, 245.0 / 255.0, 1.0 },
     .active_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 1.0 },
     .inactive_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 0.3 },
+    .active_shadow_color = { 0.0, 0.0, 0.0, 0.4 },
+    .inactive_shadow_color = { 0.0, 0.0, 0.0, 0.25 },
     .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
     .modal_mask_color = { 0, 0, 0, 0.2 },
 
@@ -58,6 +60,8 @@ static struct widget_theme widget_dark = {
     .inactive_bg_color = { 28.0 / 255.0, 28.0 / 255.0, 28.0 / 255.0, 1.0 },
     .active_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
     .inactive_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 0.3 },
+    .active_shadow_color = { 0.0, 0.0, 0.0, 0.4 },
+    .inactive_shadow_color = { 0.0, 0.0, 0.0, 0.25 },
     .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
     .modal_mask_color = { 0, 0, 0, 0.2 },
 
@@ -138,6 +142,15 @@ static uint32_t theme_init(struct widget_theme *widget)
     if (memcmp(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]))) {
         memcpy(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]));
         mask |= THEME_UPDATE_MASK_FONT;
+    }
+
+    if (memcmp(theme->active_shadow_color, widget->active_shadow_color, sizeof(float[4]))) {
+        memcpy(theme->active_shadow_color, widget->active_shadow_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_SHADOW_COLOR;
+    }
+    if (memcmp(theme->inactive_shadow_color, widget->inactive_shadow_color, sizeof(float[4]))) {
+        memcpy(theme->inactive_shadow_color, widget->inactive_shadow_color, sizeof(float[4]));
+        mask |= THEME_UPDATE_MASK_SHADOW_COLOR;
     }
 
     if (memcmp(theme->modal_mask_color, widget->modal_mask_color, sizeof(float[4]))) {

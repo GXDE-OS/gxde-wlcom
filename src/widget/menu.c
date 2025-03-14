@@ -975,18 +975,22 @@ static void menu_update_decoration(struct menu *menu)
     int shadow = theme->shadow_border;
 
     ky_scene_decoration_set_margin(menu->deco, 0, theme->border_width, shadow, 0, 0);
-    float *color = theme->active_border_color, a = color[3];
-    ky_scene_decoration_set_margin_color(menu->deco, theme->active_bg_color,
-                                         (float[4]){ color[0] * a, color[1] * a, color[2] * a, a },
-                                         (float[4]){ 0.f, 0.f, 0.f, 0.25 });
+    float *c = theme->active_border_color;
+    float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
+    c = theme->active_shadow_color;
+    float shadow_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
+    ky_scene_decoration_set_margin_color(menu->deco, theme->active_bg_color, border_color,
+                                         shadow_color);
 
     ky_scene_decoration_set_round_corner_radius(menu->deco,
                                                 (int[4]){ radius, radius, radius, radius });
     ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), 0, 0);
     ky_scene_decoration_set_surface_blurred(menu->deco, theme->opacity != 100);
-    color = theme->active_bg_color, a = theme->opacity / 100.0;
-    ky_scene_decoration_set_surface_color(
-        menu->deco, (float[4]){ color[0] * a, color[1] * a, color[2] * a, a });
+
+    c = theme->active_bg_color;
+    float opacity = theme->opacity / 100.0;
+    float bg_color[4] = { c[0] * opacity, c[1] * opacity, c[2] * opacity, opacity };
+    ky_scene_decoration_set_surface_color(menu->deco, bg_color);
 }
 
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
@@ -995,7 +999,8 @@ static void menu_handle_theme_update(struct wl_listener *listener, void *data)
     struct theme_update_event *update_event = data;
     uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
                             THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS |
-                            THEME_UPDATE_MASK_OPACITY | THEME_UPDATE_MASK_BORDER_COLOR;
+                            THEME_UPDATE_MASK_OPACITY | THEME_UPDATE_MASK_BORDER_COLOR |
+                            THEME_UPDATE_MASK_SHADOW_COLOR;
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);

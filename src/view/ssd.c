@@ -276,7 +276,8 @@ static void ssd_tooltip_handle_theme_update(struct wl_listener *listener, void *
     struct ssd_tooltip *tooltip = wl_container_of(listener, tooltip, theme_update);
     struct theme_update_event *update_event = data;
     int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                       THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY;
+                       THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY |
+                       THEME_UPDATE_MASK_SHADOW_COLOR;
     if (update_event->update_mask & allowed_mask) {
         ssd_tooltip_draw_widgets(tooltip);
     }
@@ -742,10 +743,12 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
         float *c = view->activated ? theme->active_border_color : theme->inactive_border_color;
         float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
+        c = view->activated ? theme->active_shadow_color : theme->inactive_shadow_color;
+        float shadow_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
 
         ky_scene_decoration_set_margin_color(
             frame, view->activated ? theme->active_bg_color : theme->inactive_bg_color,
-            border_color, (float[4]){ 0.f, 0.f, 0.f, view->activated ? 0.25 : 0.2 });
+            border_color, shadow_color);
     }
 
     if (cause & (SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
@@ -901,7 +904,8 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
     struct ssd *ssd = wl_container_of(listener, ssd, theme_update);
     struct theme_update_event *update_event = data;
     int allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                       THEME_UPDATE_MASK_BORDER_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS;
+                       THEME_UPDATE_MASK_BORDER_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS |
+                       THEME_UPDATE_MASK_SHADOW_COLOR;
     if (update_event->update_mask & allowed_mask) {
         ssd_update_margin(ssd);
         ssd_check_buttons(ssd);

@@ -32,6 +32,10 @@ struct widget_theme {
     float active_text_color[4];
     float inactive_text_color[4];
 
+    /* shadow color */
+    float active_shadow_color[4];
+    float inactive_shadow_color[4];
+
     /* default accent color, may override by global */
     float accent_color[4];
 

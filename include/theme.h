@@ -53,6 +53,8 @@ enum theme_update_mask {
     THEME_UPDATE_MASK_OPACITY = 1 << 6,
     /* modal_mask_color changed */
     THEME_UPDATE_MASK_MODAL_MASK_COLOR = 1 << 7,
+    /* shadow_color changed */
+    THEME_UPDATE_MASK_SHADOW_COLOR = 1 << 8,
 };
 
 struct server;
@@ -81,6 +83,10 @@ struct theme {
     /* text color */
     float active_text_color[4];
     float inactive_text_color[4];
+
+    /* shadow color */
+    float active_shadow_color[4];
+    float inactive_shadow_color[4];
 
     /* modal mask color */
     float modal_mask_color[4];
