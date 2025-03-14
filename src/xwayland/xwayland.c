@@ -341,9 +341,9 @@ void xwayland_set_cursor(struct seat *seat)
     xwayland_update_xresources(xwayland->xcb_conn);
 }
 
-void xwayland_update_seat(struct seat *seat)
+static void xwayland_set_seat(struct seat *seat)
 {
-    if (!xwayland->wlr_xwayland || xwayland->wlr_xwayland->seat == seat->wlr_seat) {
+    if (xwayland->wlr_xwayland->seat == seat->wlr_seat) {
         return;
     }
 
@@ -353,6 +353,16 @@ void xwayland_update_seat(struct seat *seat)
 
     /* update xwayland cursor */
     xwayland_set_cursor(seat);
+}
+
+void xwayland_update_seat(struct seat *seat)
+{
+    // hover by input_rebase will run here when xwm_destroy
+    if (xwayland->server->terminate || !xwayland->wlr_xwayland || !xwayland->wlr_xwayland->seat) {
+        return;
+    }
+
+    xwayland_set_seat(seat);
 }
 
 void xwayland_update_hovered_surface(struct wlr_surface *surface)
@@ -379,7 +389,7 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     xwayland->screen = screen_iterator.data;
 
     /* use the default seat0 */
-    xwayland_update_seat(input_manager_get_default_seat());
+    xwayland_set_seat(input_manager_get_default_seat());
 
     xwayland_get_resources(xwayland->xcb_conn);
 
