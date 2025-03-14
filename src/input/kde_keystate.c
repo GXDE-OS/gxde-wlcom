@@ -119,6 +119,7 @@ static void kde_keystate_bind(struct wl_client *client, void *data, uint32_t ver
 static void keystate_keyboard_destroy(struct keystate_keyboard *keyboard)
 {
     wl_list_remove(&keyboard->destroy.link);
+    wl_list_remove(&keyboard->modifiers.link);
     wl_list_remove(&keyboard->key.link);
     wl_list_remove(&keyboard->link);
     free(keyboard);
