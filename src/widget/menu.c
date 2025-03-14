@@ -143,17 +143,18 @@ static void menu_adjust_exceed_output(struct menu *menu)
         return;
     }
 
-    int output_height = output->geometry.height;
-    menu->clip_item_height = (output_height - 2 * MENU_FLIP_HEIGHT) % menu->item_height;
-    menu->shown_item = (output_height - 2 * MENU_FLIP_HEIGHT) / menu->item_height + 1;
+    struct theme *theme = theme_manager_get_theme();
+    int usable_height = output->geometry.height - 2 * theme->border_width;
+    menu->clip_item_height = (usable_height - 2 * MENU_FLIP_HEIGHT) % menu->item_height;
+    menu->shown_item = (usable_height - 2 * MENU_FLIP_HEIGHT) / menu->item_height + 1;
     if (menu->shown_item > menu->item_count) {
         menu->shown_item = menu->item_count;
     }
 
-    if (menu->height <= output_height) {
+    if (menu->height <= usable_height) {
         menu_not_exceed_output(menu);
-    } else if (menu->height > output_height) {
-        menu_exceed_output(menu, output_height);
+    } else if (menu->height > usable_height) {
+        menu_exceed_output(menu, usable_height);
     }
 }
 
