@@ -666,6 +666,8 @@ void xwayland_server_destroy(void)
     wl_list_remove(&xwayland->new_xwayland_surface.link);
     wl_list_remove(&xwayland->seat_destroy.link);
 
+    xwayland_end_drag_x11(xwayland);
+
     struct wlr_xwayland *wlr_xwayland = xwayland->wlr_xwayland;
     /* prevent xwayland_update_seat in hover */
     xwayland->wlr_xwayland = NULL;

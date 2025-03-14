@@ -487,7 +487,9 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland)
         xwayland_data_transfer_destroy(transfer);
     }
 
-    xwayland_map_selection_window(xwayland, xwayland->window_catcher, NULL, false);
+    if (xwayland->wlr_xwayland->xwm) {
+        xwayland_map_selection_window(xwayland, xwayland->window_catcher, NULL, false);
+    }
 
     free(drag_x11);
     xwayland->drag_x11 = NULL;
