@@ -16,14 +16,8 @@ static const char *service_interface = "com.kylin.Wlcom.Theme";
 static int print_theme_config(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     struct theme_manager *manager = userdata;
-    sd_bus_message *reply = NULL;
-
-    CK(sd_bus_message_new_method_return(msg, &reply));
     const char *config = json_object_to_json_string(manager->config->json);
-    sd_bus_message_append_basic(reply, 's', config);
-    CK(sd_bus_send(NULL, reply, NULL));
-    sd_bus_message_unref(reply);
-    return 1;
+    return sd_bus_reply_method_return(msg, "s", config);
 }
 
 static int set_widget_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)

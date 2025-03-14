@@ -75,14 +75,9 @@ static int print_plugin_info(sd_bus_message *m, void *userdata, sd_bus_error *re
         return sd_bus_reply_method_error(m, &error);
     }
 
-    sd_bus_message *reply = NULL;
-    CK(sd_bus_message_new_method_return(m, &reply));
-    sd_bus_message_append(reply, "sssuu", plugin->info->vendor, plugin->info->class,
-                          plugin->info->description, plugin->info->version,
-                          plugin->info->abi_version);
-    CK(sd_bus_send(NULL, reply, NULL));
-    sd_bus_message_unref(reply);
-    return 1;
+    return sd_bus_reply_method_return(m, "sssuu", plugin->info->vendor, plugin->info->class,
+                                      plugin->info->description, plugin->info->version,
+                                      plugin->info->abi_version);
 }
 
 static int print_plugin_config(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)

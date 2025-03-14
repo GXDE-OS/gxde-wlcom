@@ -42,13 +42,8 @@ static int print_effect_options(sd_bus_message *m, void *userdata, sd_bus_error 
         return sd_bus_reply_method_error(m, &error);
     }
 
-    sd_bus_message *reply = NULL;
-    CK(sd_bus_message_new_method_return(m, &reply));
     const char *config = json_object_to_json_string(effect->options);
-    sd_bus_message_append_basic(reply, 's', config);
-    CK(sd_bus_send(NULL, reply, NULL));
-    sd_bus_message_unref(reply);
-    return 1;
+    return sd_bus_reply_method_return(m, "s", config);
 }
 
 static int enable_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
