@@ -2,9 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_buffer.h>
+
+#include <kywc/identifier.h>
 
 #include "effect_p.h"
 #include "output.h"
@@ -41,6 +44,8 @@ struct watermark_entry {
 };
 
 struct watermark {
+    struct wl_list link;
+    const char *name;
     struct watermark_effect *effect;
 
     struct wl_list entries;    // per output
@@ -59,8 +64,10 @@ struct watermark_effect {
 
     struct effect_manager *manager;
     struct dbus_object *dbus; // for dbus
+    struct dbus_object *dbus_v2;
 
-    struct watermark watermark;
+    struct watermark watermark; // default
+    struct wl_list watermarks;
 };
 
 static struct wlr_buffer *watermark_get_or_create_buffer(struct watermark *watermark)
@@ -231,6 +238,39 @@ static void watermark_init(struct watermark *watermark, struct watermark_effect 
     watermark->new_enabled_output.notify = handle_new_enabled_output;
 }
 
+static struct watermark *watermark_create(struct watermark_effect *effect)
+{
+    struct watermark *watermark = calloc(1, sizeof(*watermark));
+    if (!watermark) {
+        return NULL;
+    }
+
+    watermark_init(watermark, effect);
+    wl_list_insert(&effect->watermarks, &watermark->link);
+    watermark->name = kywc_identifier_uuid_generate();
+
+    return watermark;
+}
+
+static void watermark_destroy(struct watermark *watermark)
+{
+    watermark_destroy_entries(watermark);
+    wl_list_remove(&watermark->link);
+    free((void *)watermark->name);
+    free(watermark);
+}
+
+static struct watermark *watermark_by_name(struct watermark_effect *effect, const char *name)
+{
+    struct watermark *watermark;
+    wl_list_for_each(watermark, &effect->watermarks, link) {
+        if (strcmp(watermark->name, name) == 0) {
+            return watermark;
+        }
+    }
+    return NULL;
+}
+
 static int watermark_update(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     char *file = NULL;
@@ -286,23 +326,115 @@ static const sd_bus_vtable watermark_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
+static int watermark2_create(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    char *file = NULL;
+    double opacity = 0;
+    int x, y, expand, topmost;
+    CK(sd_bus_message_read(m, "sdiiib", &file, &opacity, &x, &y, &expand, &topmost));
+
+    struct watermark_effect *effect = userdata;
+    struct watermark *watermark = watermark_create(effect);
+    if (!watermark) {
+        return sd_bus_reply_method_return(m, "s", NULL);
+    }
+
+    if (file && *file) {
+        struct watermark_info info = {
+            .file = file,
+            .opacity = opacity,
+            .x = x,
+            .y = y,
+            .expand = expand,
+            .topmost = topmost,
+        };
+        watermark_create_entries(watermark, &info);
+    }
+
+    return sd_bus_reply_method_return(m, "s", watermark->name);
+}
+
+static int watermark2_update(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    char *name = NULL, *file = NULL;
+    double opacity = 0;
+    int x, y, expand, topmost;
+    CK(sd_bus_message_read(m, "ssdiiib", &name, &file, &opacity, &x, &y, &expand, &topmost));
+
+    struct watermark_effect *effect = userdata;
+    struct watermark *watermark = watermark_by_name(effect, name);
+    if (!watermark) {
+        return sd_bus_reply_method_return(m, "b", false);
+    }
+
+    /* destroy current watermark entries, create new entries */
+    watermark_destroy_entries(watermark);
+
+    if (file && *file) {
+        struct watermark_info info = {
+            .file = file,
+            .opacity = opacity,
+            .x = x,
+            .y = y,
+            .expand = expand,
+            .topmost = topmost,
+        };
+        watermark_create_entries(watermark, &info);
+    }
+
+    return sd_bus_reply_method_return(m, "b", true);
+}
+
+static int watermark2_destroy(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    char *name = NULL;
+    CK(sd_bus_message_read(m, "s", &name));
+
+    struct watermark_effect *effect = userdata;
+    struct watermark *watermark = watermark_by_name(effect, name);
+    if (!watermark) {
+        return sd_bus_reply_method_return(m, NULL);
+    }
+
+    watermark_destroy(watermark);
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static const sd_bus_vtable watermark2_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("createWatermark", "sdiiib", "s", watermark2_create, 0),
+    SD_BUS_METHOD("updateWatermark", "ssdiiib", "b", watermark2_update, 0),
+    SD_BUS_METHOD("destroyWatermark", "s", "", watermark2_destroy, 0),
+    SD_BUS_VTABLE_END,
+};
+
 static void handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, enable);
+    assert(wl_list_empty(&effect->watermarks));
     effect->dbus = dbus_register_object("org.ukui.KWin", "/Watermark", "org.ukui.kwin.Watermark",
                                         watermark_vtable, effect);
+    effect->dbus_v2 = dbus_register_object(NULL, "/com/kylin/Wlcom/Watermark",
+                                           "com.kylin.Wlcom.Watermark", watermark2_vtable, effect);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, disable);
     watermark_destroy_entries(&effect->watermark);
+    struct watermark *watermark, *tmp;
+    wl_list_for_each_safe(watermark, tmp, &effect->watermarks, link) {
+        watermark_destroy(watermark);
+    }
     dbus_unregister_object(effect->dbus);
+    dbus_unregister_object(effect->dbus_v2);
 }
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, destroy);
+    assert(wl_list_empty(&effect->watermarks));
     wl_list_remove(&effect->destroy.link);
     wl_list_remove(&effect->enable.link);
     wl_list_remove(&effect->disable.link);
@@ -337,6 +469,7 @@ bool watermark_effect_create(struct effect_manager *manager)
     }
 
     effect->manager = manager;
+    wl_list_init(&effect->watermarks);
     watermark_init(&effect->watermark, effect);
 
     effect->enable.notify = handle_effect_enable;
