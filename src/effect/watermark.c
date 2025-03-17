@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#include <assert.h>
 #include <stdlib.h>
 
 #include <wlr/types/wlr_buffer.h>
@@ -30,27 +29,29 @@ struct watermark_info {
     bool topmost;
 };
 
-struct watermark_buffer {
+struct watermark_entry {
     struct wl_list link;
-    struct wlr_buffer *buffer;
-};
-
-struct watermark {
-    struct wl_list link;
-    struct watermark_effect *effect;
+    struct watermark *watermark;
 
     struct ky_scene_buffer *scene_buffer;
-    struct watermark_buffer *buffer;
 
     struct output *output;
     struct wl_listener output_geometry;
     struct wl_listener output_disable;
 };
 
-struct watermark_effect {
-    struct wl_list watermarks; // per output
-    struct wl_list buffers;    // watermark_buffer
+struct watermark {
+    struct watermark_effect *effect;
 
+    struct wl_list entries;    // per output
+    struct wlr_buffer *buffer; // from image file
+    struct wl_listener new_enabled_output;
+
+    struct ky_scene_tree *tree;
+    struct watermark_info info;
+};
+
+struct watermark_effect {
     struct effect *effect;
     struct wl_listener enable;
     struct wl_listener disable;
@@ -58,89 +59,66 @@ struct watermark_effect {
 
     struct effect_manager *manager;
     struct dbus_object *dbus; // for dbus
-    struct wl_listener new_enabled_output;
 
-    struct ky_scene_tree *tree;
-    struct watermark_info info;
+    struct watermark watermark;
 };
 
-static const char *registry_bus = "org.ukui.KWin";
-static const char *registry_path = "/Watermark";
-static const char *registry_interface = "org.ukui.kwin.Watermark";
-
-static struct watermark_buffer *watermark_get_or_create_buffer(struct watermark_effect *effect,
-                                                               struct output *output)
+static struct wlr_buffer *watermark_get_or_create_buffer(struct watermark *watermark)
 {
-    struct watermark_buffer *buffer;
-    wl_list_for_each(buffer, &effect->buffers, link) {
-        /* if image is used, reuse this buffer always */
-        return buffer;
+    if (watermark->buffer) {
+        return watermark->buffer;
     }
 
-    buffer = calloc(1, sizeof(*buffer));
+    struct draw_info info = { .image = watermark->info.file };
+    struct wlr_buffer *buffer = painter_draw_buffer(&info);
     if (!buffer) {
         return NULL;
     }
 
-    struct draw_info info = { .image = effect->info.file };
-    buffer->buffer = painter_draw_buffer(&info);
-    if (!buffer->buffer) {
-        free(buffer);
-        return NULL;
-    }
-
-    wl_list_insert(&effect->buffers, &buffer->link);
+    watermark->buffer = buffer;
     return buffer;
 }
 
-static void watermark_buffer_destroy(struct watermark_buffer *buffer)
+static void watermark_entry_destroy(struct watermark_entry *entry)
 {
-    wl_list_remove(&buffer->link);
-    wlr_buffer_drop(buffer->buffer);
-    free(buffer);
+    wl_list_remove(&entry->link);
+    wl_list_remove(&entry->output_disable.link);
+    wl_list_remove(&entry->output_geometry.link);
+    ky_scene_node_destroy(&entry->scene_buffer->node);
+    free(entry);
 }
 
-static void watermark_destroy(struct watermark *watermark)
+static void watermark_entry_handle_output_disable(struct wl_listener *listener, void *data)
 {
-    wl_list_remove(&watermark->link);
-    wl_list_remove(&watermark->output_disable.link);
-    wl_list_remove(&watermark->output_geometry.link);
-    ky_scene_node_destroy(&watermark->scene_buffer->node);
-    free(watermark);
+    struct watermark_entry *entry = wl_container_of(listener, entry, output_disable);
+    watermark_entry_destroy(entry);
 }
 
-static void watermark_handle_output_disable(struct wl_listener *listener, void *data)
+static void watermark_entry_update_buffer(struct watermark_entry *entry)
 {
-    struct watermark *watermark = wl_container_of(listener, watermark, output_disable);
-    watermark_destroy(watermark);
-}
+    struct watermark *watermark = entry->watermark;
+    struct kywc_box *geo = &entry->output->geometry;
 
-static void watermark_update_buffer(struct watermark *watermark)
-{
-    struct watermark_effect *effect = watermark->effect;
-    struct kywc_box *geo = &watermark->output->geometry;
-
-    struct watermark_buffer *buffer = watermark_get_or_create_buffer(effect, watermark->output);
+    struct wlr_buffer *buffer = watermark_get_or_create_buffer(watermark);
     if (!buffer) {
         return;
     }
 
-    if (watermark->buffer != buffer) {
-        ky_scene_buffer_set_buffer(watermark->scene_buffer, buffer->buffer);
-        watermark->buffer = buffer;
+    if (entry->scene_buffer->buffer != buffer) {
+        ky_scene_buffer_set_buffer(entry->scene_buffer, buffer);
     }
 
     int x = geo->x, y = geo->y;
-    int width = watermark->buffer->buffer->width;
-    int height = watermark->buffer->buffer->height;
+    int width = buffer->width;
+    int height = buffer->height;
 
-    switch (effect->info.expand) {
+    switch (watermark->info.expand) {
     case EXPAND_TYPE_NONE:
-        x += effect->info.x;
-        y += effect->info.y;
+        x += watermark->info.x;
+        y += watermark->info.y;
         break;
     case EXPAND_TYPE_REPEAT:
-        ky_scene_buffer_set_repeated(watermark->scene_buffer, true);
+        ky_scene_buffer_set_repeated(entry->scene_buffer, true);
         /* fallthrough to screen */
     case EXPAND_TYPE_SCREEN:
         width = geo->width;
@@ -161,120 +139,115 @@ static void watermark_update_buffer(struct watermark *watermark)
         break;
     }
 
-    ky_scene_node_set_position(&watermark->scene_buffer->node, x, y);
-    ky_scene_buffer_set_dest_size(watermark->scene_buffer, width, height);
+    ky_scene_node_set_position(&entry->scene_buffer->node, x, y);
+    ky_scene_buffer_set_dest_size(entry->scene_buffer, width, height);
 }
 
-static void watermark_handle_output_geometry(struct wl_listener *listener, void *data)
+static void watermark_entry_handle_output_geometry(struct wl_listener *listener, void *data)
 {
-    struct watermark *watermark = wl_container_of(listener, watermark, output_geometry);
+    struct watermark_entry *entry = wl_container_of(listener, entry, output_geometry);
     /*  update buffer when output geometry changed */
-    watermark_update_buffer(watermark);
+    watermark_entry_update_buffer(entry);
 }
 
-static struct watermark *watermark_create(struct watermark_effect *effect, struct output *output)
+static bool watermark_entry_create(struct watermark *watermark, struct output *output)
 {
-    struct watermark *watermark = calloc(1, sizeof(*watermark));
-    if (!watermark) {
-        return NULL;
-    }
-
-    watermark->effect = effect;
-    wl_list_insert(&effect->watermarks, &watermark->link);
-
-    watermark->output = output;
-    watermark->output_disable.notify = watermark_handle_output_disable;
-    wl_signal_add(&output->events.disable, &watermark->output_disable);
-    watermark->output_geometry.notify = watermark_handle_output_geometry;
-    wl_signal_add(&output->events.geometry, &watermark->output_geometry);
-
-    watermark->scene_buffer = ky_scene_buffer_create(effect->tree, NULL);
-    ky_scene_buffer_set_opacity(watermark->scene_buffer, effect->info.opacity);
-    ky_scene_node_set_input_bypassed(&watermark->scene_buffer->node, true);
-
-    watermark_update_buffer(watermark);
-
-    return watermark;
-}
-
-static void effect_destroy_watermarks(struct watermark_effect *effect)
-{
-    wl_list_remove(&effect->new_enabled_output.link);
-    wl_list_init(&effect->new_enabled_output.link);
-
-    struct watermark *watermark, *tmp;
-    wl_list_for_each_safe(watermark, tmp, &effect->watermarks, link) {
-        watermark_destroy(watermark);
-    }
-
-    struct watermark_buffer *buffer, *buffer_tmp;
-    wl_list_for_each_safe(buffer, buffer_tmp, &effect->buffers, link) {
-        watermark_buffer_destroy(buffer);
-    }
-
-    free(effect->info.file);
-    effect->info.file = NULL;
-}
-
-static void handle_new_enabled_output(struct wl_listener *listener, void *data)
-{
-    struct watermark_effect *effect = wl_container_of(listener, effect, new_enabled_output);
-    struct kywc_output *output = data;
-    watermark_create(effect, output_from_kywc_output(output));
-}
-
-static bool effect_load_image(struct watermark_effect *effect, struct watermark_info *info)
-{
-    char *file = string_expand_path(info->file);
-    if (!file || !file_exists(file)) {
-        free(file);
+    struct watermark_entry *entry = calloc(1, sizeof(*entry));
+    if (!entry) {
         return false;
     }
 
-    effect->info = *info;
-    effect->info.file = file;
+    entry->watermark = watermark;
+    wl_list_insert(&watermark->entries, &entry->link);
+
+    entry->output = output;
+    entry->output_disable.notify = watermark_entry_handle_output_disable;
+    wl_signal_add(&output->events.disable, &entry->output_disable);
+    entry->output_geometry.notify = watermark_entry_handle_output_geometry;
+    wl_signal_add(&output->events.geometry, &entry->output_geometry);
+
+    entry->scene_buffer = ky_scene_buffer_create(watermark->tree, NULL);
+    ky_scene_buffer_set_opacity(entry->scene_buffer, watermark->info.opacity);
+    ky_scene_node_set_input_bypassed(&entry->scene_buffer->node, true);
+
+    watermark_entry_update_buffer(entry);
 
     return true;
 }
 
-static void effect_create_watermarks(struct watermark_effect *effect, struct watermark_info *info)
+static void watermark_destroy_entries(struct watermark *watermark)
 {
-    if (!effect_load_image(effect, info)) {
+    wl_list_remove(&watermark->new_enabled_output.link);
+    wl_list_init(&watermark->new_enabled_output.link);
+
+    struct watermark_entry *entry, *tmp;
+    wl_list_for_each_safe(entry, tmp, &watermark->entries, link) {
+        watermark_entry_destroy(entry);
+    }
+
+    wlr_buffer_drop(watermark->buffer);
+    watermark->buffer = NULL;
+
+    free(watermark->info.file);
+    watermark->info.file = NULL;
+}
+
+static void handle_new_enabled_output(struct wl_listener *listener, void *data)
+{
+    struct watermark *watermark = wl_container_of(listener, watermark, new_enabled_output);
+    struct kywc_output *output = data;
+    watermark_entry_create(watermark, output_from_kywc_output(output));
+}
+
+static void watermark_create_entries(struct watermark *watermark, struct watermark_info *info)
+{
+    char *file = string_expand_path(info->file);
+    if (!file || !file_exists(file)) {
+        free(file);
         return;
     }
 
-    enum layer layer = effect->info.topmost ? LAYER_ON_SCREEN_DISPLAY : LAYER_WATERMARK;
-    struct view_layer *view_layer = view_manager_get_layer(layer, false);
-    effect->tree = view_layer->tree;
+    watermark->info = *info;
+    watermark->info.file = file;
 
-    struct ky_scene *scene = effect->manager->server->scene;
+    enum layer layer = watermark->info.topmost ? LAYER_ON_SCREEN_DISPLAY : LAYER_WATERMARK;
+    struct view_layer *view_layer = view_manager_get_layer(layer, false);
+    watermark->tree = view_layer->tree;
+
+    struct ky_scene *scene = watermark->effect->manager->server->scene;
     struct ky_scene_output *output;
     wl_list_for_each(output, &scene->outputs, link) {
-        watermark_create(effect, output_from_wlr_output(output->output));
+        watermark_entry_create(watermark, output_from_wlr_output(output->output));
     }
 
-    effect->new_enabled_output.notify = handle_new_enabled_output;
-    output_manager_add_new_enabled_listener(&effect->new_enabled_output);
+    output_manager_add_new_enabled_listener(&watermark->new_enabled_output);
+}
+
+static void watermark_init(struct watermark *watermark, struct watermark_effect *effect)
+{
+    watermark->effect = effect;
+    wl_list_init(&watermark->entries);
+    wl_list_init(&watermark->new_enabled_output.link);
+    watermark->new_enabled_output.notify = handle_new_enabled_output;
 }
 
 static int watermark_update(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
-    char *name = NULL;
+    char *file = NULL;
     double opacity = 0;
-    CK(sd_bus_message_read(m, "sd", &name, &opacity));
+    CK(sd_bus_message_read(m, "sd", &file, &opacity));
 
     struct watermark_effect *effect = userdata;
-    /* destroy current watermarks, create new watermarks */
-    effect_destroy_watermarks(effect);
+    watermark_destroy_entries(&effect->watermark);
 
-    if (*name) {
+    if (file && *file) {
         struct watermark_info info = {
-            .file = name,
+            .file = file,
             .opacity = opacity,
             .expand = EXPAND_TYPE_SCREEN,
             .topmost = true,
         };
-        effect_create_watermarks(effect, &info);
+        watermark_create_entries(&effect->watermark, &info);
     }
 
     return sd_bus_reply_method_return(m, NULL);
@@ -282,25 +255,25 @@ static int watermark_update(sd_bus_message *m, void *userdata, sd_bus_error *ret
 
 static int watermark_update_ex(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
-    char *name = NULL;
+    char *file = NULL;
     double opacity = 0;
     int x, y, expand, topmost;
-    CK(sd_bus_message_read(m, "sdiiib", &name, &opacity, &x, &y, &expand, &topmost));
+    CK(sd_bus_message_read(m, "sdiiib", &file, &opacity, &x, &y, &expand, &topmost));
 
     struct watermark_effect *effect = userdata;
-    /* destroy current watermarks, create new watermarks */
-    effect_destroy_watermarks(effect);
+    /* destroy current watermark entries, create new entries */
+    watermark_destroy_entries(&effect->watermark);
 
-    if (*name) {
+    if (file && *file) {
         struct watermark_info info = {
-            .file = name,
+            .file = file,
             .opacity = opacity,
             .x = x,
             .y = y,
             .expand = expand,
             .topmost = topmost,
         };
-        effect_create_watermarks(effect, &info);
+        watermark_create_entries(&effect->watermark, &info);
     }
 
     return sd_bus_reply_method_return(m, NULL);
@@ -316,22 +289,20 @@ static const sd_bus_vtable watermark_vtable[] = {
 static void handle_effect_enable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, enable);
-    assert(wl_list_empty(&effect->watermarks));
-    effect->dbus = dbus_register_object(registry_bus, registry_path, registry_interface,
+    effect->dbus = dbus_register_object("org.ukui.KWin", "/Watermark", "org.ukui.kwin.Watermark",
                                         watermark_vtable, effect);
 }
 
 static void handle_effect_disable(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, disable);
-    effect_destroy_watermarks(effect);
+    watermark_destroy_entries(&effect->watermark);
     dbus_unregister_object(effect->dbus);
 }
 
 static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct watermark_effect *effect = wl_container_of(listener, effect, destroy);
-    assert(wl_list_empty(&effect->watermarks));
     wl_list_remove(&effect->destroy.link);
     wl_list_remove(&effect->enable.link);
     wl_list_remove(&effect->disable.link);
@@ -366,9 +337,7 @@ bool watermark_effect_create(struct effect_manager *manager)
     }
 
     effect->manager = manager;
-    wl_list_init(&effect->buffers);
-    wl_list_init(&effect->watermarks);
-    wl_list_init(&effect->new_enabled_output.link);
+    watermark_init(&effect->watermark, effect);
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);
