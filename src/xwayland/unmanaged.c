@@ -266,6 +266,13 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
 
     /* workaround: fixup xwayland pointer position when no hovered surface */
     xwayland_fixup_pointer_position(wlr_xwayland_surface->surface);
+
+    /* skip if has a pointer grab */
+    if (!unmanaged->pointer_grab.seat &&
+        !xwayland_surface_has_input(wlr_xwayland_surface, INPUT_MASK_POINTER) &&
+        xwayland_surface_has_type(wlr_xwayland_surface, NET_WM_WINDOW_TYPE_TOOLTIP)) {
+        ky_scene_node_set_input_bypassed(unmanaged->surface_node, true);
+    }
 }
 
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
