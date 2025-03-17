@@ -115,8 +115,9 @@ void string_free_split(char **split)
 
 char *string_expand_path(const char *path)
 {
-    wordexp_t p;
-    if (wordexp(path, &p, WRDE_UNDEF) != 0) {
+    wordexp_t p = { 0 };
+    if (wordexp(path, &p, WRDE_UNDEF) != 0 || !p.we_wordv[0]) {
+        wordfree(&p);
         return NULL;
     }
     char *realpath = strdup(p.we_wordv[0]);
