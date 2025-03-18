@@ -117,6 +117,9 @@ struct ukui_theme {
     struct theme_value inactive_bg;
 
     struct theme_value modal_mask;
+
+    struct theme_value active_shadow;
+    struct theme_value inactive_shadow;
 };
 
 static struct ukui_theme_manager {
@@ -152,6 +155,8 @@ static const struct theme_key_desc theme_keys[] = {
     { "window-active", theme_value_type_color, offsetof(struct ukui_theme, active_bg) },
     { "window-inactive", theme_value_type_color, offsetof(struct ukui_theme, inactive_bg) },
     { "kmodalmask", theme_value_type_color, offsetof(struct ukui_theme, modal_mask) },
+    { "shadow-active", theme_value_type_color, offsetof(struct ukui_theme, active_shadow) },
+    { "shadow-inactive", theme_value_type_color, offsetof(struct ukui_theme, inactive_shadow) },
 };
 
 #define THEME_KEYS (sizeof(theme_keys) / sizeof(theme_keys[0]))
@@ -350,6 +355,10 @@ static void theme_generate_colors(struct ukui_theme *theme)
 
     // modal mask color
     color_to_array(&theme->modal_mask.color, theme->theme.modal_mask_color);
+
+    // shadow color
+    color_to_array(&theme->active_shadow.color, theme->theme.active_shadow_color);
+    color_to_array(&theme->inactive_shadow.color, theme->theme.inactive_shadow_color);
 }
 
 static bool theme_pair_parse(struct file *file, const char *key, const char *value, void *data)
