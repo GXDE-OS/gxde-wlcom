@@ -132,6 +132,79 @@ static void rect_collect_damage(struct ky_scene_node *node, int lx, int ly, bool
     node->damage_type = KY_SCENE_DAMAGE_NONE;
 }
 
+void ky_scene_rect_render(struct ky_scene_node *node, struct kywc_box geo, float color[4],
+                          bool render_with_visibility, struct ky_scene_render_target *target)
+{
+    pixman_region32_t render_region;
+    if (render_with_visibility) {
+        pixman_region32_init(&render_region);
+        pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
+    } else {
+        pixman_region32_init_rect(&render_region, 0, 0, geo.width, geo.height);
+        if (pixman_region32_not_empty(&node->clip_region)) {
+            pixman_region32_intersect(&render_region, &render_region, &node->clip_region);
+        }
+        pixman_region32_translate(&render_region, geo.x, geo.y);
+        pixman_region32_intersect(&render_region, &render_region, &target->damage);
+    }
+
+    if (!pixman_region32_not_empty(&render_region)) {
+        pixman_region32_fini(&render_region);
+        return;
+    }
+
+    struct wlr_box dst_box = {
+        .x = geo.x - target->logical.x,
+        .y = geo.y - target->logical.y,
+        .width = geo.width,
+        .height = geo.height,
+    };
+    ky_scene_render_box(&dst_box, target);
+
+    pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
+    ky_scene_render_region(&render_region, target);
+
+    KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
+    bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
+    struct ky_render_rect_options options = {
+        .base = {
+            .box = dst_box,
+            .color = {
+                .r = color[0],
+                .g = color[1],
+                .b = color[2],
+                .a = color[3],
+            },
+            .clip = &render_region,
+            .blend_mode = color[3] != 1 ? 
+                WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
+        },
+        .radius = {
+            .rb = render_with_radius ? node->radius[0] * target->scale : 0,
+            .rt = render_with_radius ? node->radius[1] * target->scale : 0,
+            .lb = render_with_radius ? node->radius[2] * target->scale : 0,
+            .lt = render_with_radius ? node->radius[3] * target->scale : 0,
+        },
+    };
+
+    if (!(target->options & KY_SCENE_RENDER_DISABLE_BLUR)) {
+        struct blur_render_options opts = {
+            .lx = geo.x,
+            .ly = geo.y,
+            .dst_box = &dst_box,
+            .clip = &render_region,
+            .radius = &options.radius,
+            .blur = node->has_blur ? &node->blur : NULL,
+        };
+        blur_render_with_target(target, &opts);
+    }
+
+    ky_render_pass_add_rect(target->render_pass, &options);
+
+    pixman_region32_fini(&render_region);
+    KY_PROFILE_RENDER_ZONE_END(ky_render_pass_get_renderer(target->render_pass));
+}
+
 static void rect_render(struct ky_scene_node *node, int lx, int ly,
                         struct ky_scene_render_target *target)
 {
@@ -149,74 +222,9 @@ static void rect_render(struct ky_scene_node *node, int lx, int ly,
         return;
     }
 
-    pixman_region32_t render_region;
-    if (render_with_visibility) {
-        pixman_region32_init(&render_region);
-        pixman_region32_intersect(&render_region, &node->visible_region, &target->damage);
-    } else {
-        pixman_region32_init_rect(&render_region, 0, 0, rect->width, rect->height);
-        if (pixman_region32_not_empty(&node->clip_region)) {
-            pixman_region32_intersect(&render_region, &render_region, &node->clip_region);
-        }
-        pixman_region32_translate(&render_region, lx, ly);
-        pixman_region32_intersect(&render_region, &render_region, &target->damage);
-    }
-
-    if (!pixman_region32_not_empty(&render_region)) {
-        pixman_region32_fini(&render_region);
-        return;
-    }
-
-    struct wlr_box dst_box = {
-        .x = lx - target->logical.x,
-        .y = ly - target->logical.y,
-        .width = rect->width,
-        .height = rect->height,
-    };
-    ky_scene_render_box(&dst_box, target);
-
-    pixman_region32_translate(&render_region, -target->logical.x, -target->logical.y);
-    ky_scene_render_region(&render_region, target);
-
-    KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
-    bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
-    struct ky_render_rect_options options = {
-        .base = {
-            .box = dst_box,
-            .color = {
-                .r = rect->color[0],
-                .g = rect->color[1],
-                .b = rect->color[2],
-                .a = rect->color[3],
-            },
-            .clip = &render_region,
-            .blend_mode = rect->color[3] != 1 ? 
-                WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
-        },
-        .radius = {
-            .rb = render_with_radius ? node->radius[0] * target->scale : 0,
-            .rt = render_with_radius ? node->radius[1] * target->scale : 0,
-            .lb = render_with_radius ? node->radius[2] * target->scale : 0,
-            .lt = render_with_radius ? node->radius[3] * target->scale : 0,
-        },
-    };
-
-    if (!(target->options & KY_SCENE_RENDER_DISABLE_BLUR)) {
-        struct blur_render_options opts = {
-            .lx = lx,
-            .ly = ly,
-            .dst_box = &dst_box,
-            .clip = &render_region,
-            .radius = &options.radius,
-            .blur = node->has_blur ? &node->blur : NULL,
-        };
-        blur_render_with_target(target, &opts);
-    }
-
-    ky_render_pass_add_rect(target->render_pass, &options);
-
-    pixman_region32_fini(&render_region);
-    KY_PROFILE_RENDER_ZONE_END(ky_render_pass_get_renderer(target->render_pass));
+    struct kywc_box geo = { .x = lx, .y = ly, .width = rect->width, .height = rect->height };
+    float color[4] = { rect->color[0], rect->color[1], rect->color[2], rect->color[3] };
+    ky_scene_rect_render(node, geo, color, render_with_visibility, target);
 }
 
 static void rect_get_bounding_box(struct ky_scene_node *node, struct wlr_box *box)

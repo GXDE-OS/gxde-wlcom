@@ -5,6 +5,8 @@
 #ifndef _SCENE_H_
 #define _SCENE_H_
 
+#include <kywc/boxes.h>
+
 #include <pixman.h>
 #include <time.h>
 
@@ -396,6 +398,9 @@ void ky_scene_rect_set_size(struct ky_scene_rect *rect, int width, int height);
 void ky_scene_rect_set_color(struct ky_scene_rect *rect, const float color[static 4]);
 
 struct ky_scene_rect *ky_scene_rect_from_node(struct ky_scene_node *node);
+
+void ky_scene_rect_render(struct ky_scene_node *node, struct kywc_box geo, float color[4],
+                          bool render_with_visibility, struct ky_scene_render_target *target);
 
 /**
  * scene buffer

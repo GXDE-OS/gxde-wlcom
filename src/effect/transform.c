@@ -417,7 +417,20 @@ static bool transform_effect_node_render(struct effect_entity *entity, int lx, i
                                          struct ky_scene_render_target *target)
 {
     struct transform *transform = entity->user_data;
-    if (!target->output || !transform->thumbnail_info.texture) {
+    if (!target->output ||
+        (!transform->thumbnail_info.texture && transform->node->type == KY_SCENE_NODE_TREE)) {
+        return false;
+    }
+
+    if (transform->node->type == KY_SCENE_NODE_RECT) {
+        struct ky_scene_node *rect_node = transform->node;
+        struct ky_scene_rect *rect = ky_scene_rect_from_node(rect_node);
+        struct kywc_box geo = transform->current.geometry;
+        float alpha = transform->current.alpha;
+        float color[4] = { rect->color[0] * alpha, rect->color[1] * alpha, rect->color[2] * alpha,
+                           rect->color[3] * alpha };
+        ky_scene_rect_render(rect_node, geo, color, false, target);
+
         return false;
     }
 
@@ -550,6 +563,10 @@ static struct transform *transform_create(struct transform_options *options,
     }
 
     transform->thumbnail_info.scale = options->scale <= 0 ? 1.0f : options->scale;
+    /* node is rect, don't generate thumbnails */
+    if (transform->node->type == KY_SCENE_NODE_RECT) {
+        return transform;
+    }
 
     if (transform->zero_copy_buffer) {
         transform->thumbnail_info.buffer = transform->zero_copy_buffer->buffer;
@@ -602,6 +619,28 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
      */
     wl_list_remove(&transform->node_destroy.link);
     wl_list_init(&transform->node_destroy.link);
+
+    if (transform->node->type == KY_SCENE_NODE_RECT) {
+        transform->thumbnail_info.thumbnail =
+            thumbnail_create_from_node(transform->node, transform->thumbnail_info.scale);
+        if (!transform->thumbnail_info.thumbnail) {
+            return;
+        }
+
+        transform->thumbnail_info.update.notify = handle_thumbnail_update;
+        thumbnail_add_update_listener(transform->thumbnail_info.thumbnail,
+                                      &transform->thumbnail_info.update);
+        transform->thumbnail_info.destroy.notify = handle_thumbnail_destroy;
+        thumbnail_add_destroy_listener(transform->thumbnail_info.thumbnail,
+                                       &transform->thumbnail_info.destroy);
+
+        transform_block_source_update(transform, false);
+
+        thumbnail_update(transform->thumbnail_info.thumbnail);
+
+        thumbnail_destroy(transform->thumbnail_info.thumbnail);
+    }
+
     if (!transform->thumbnail_info.buffer) {
         return;
     }
