@@ -584,7 +584,7 @@ static void menu_item_click(struct seat *seat, struct ky_scene_node *node, uint3
 {
     struct menu_item *item = data;
     /* do actions when released */
-    if (!item->activated || pressed) {
+    if (!item->activated || !LEFT_BUTTON_RELEASED(button, pressed)) {
         return;
     }
 
