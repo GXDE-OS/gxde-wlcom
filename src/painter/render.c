@@ -44,7 +44,7 @@ void text_get_size(const char *font, int font_size, const char *text, int *width
 }
 
 static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info *info,
-                      struct kywc_box *box)
+                      struct kywc_fbox *box)
 {
     if (!info->text || !*info->text) {
         return false;
@@ -52,7 +52,7 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
 
     int width, height;
     text_get_size(info->font, info->font_size, "fg", &width, &height);
-    double ly = (double)(box->height - height) / 2;
+    double ly = (box->height - height) / 2;
     ly = ly < 0 ? 0 : ly;
     double lx = info->auto_resize ? 0 : 4 * ly;
 
@@ -143,7 +143,7 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
 }
 
 static void draw_color(cairo_surface_t *surface, cairo_t *cairo, struct draw_info *info,
-                       struct kywc_box *box, bool hover)
+                       struct kywc_fbox *box, bool hover)
 {
     double width = box->width;
     double height = box->height;
@@ -299,7 +299,7 @@ static void draw_color(cairo_surface_t *surface, cairo_t *cairo, struct draw_inf
     }
 }
 
-static bool draw_svg(cairo_t *cairo, const char *data, struct kywc_box *box)
+static bool draw_svg(cairo_t *cairo, const char *data, struct kywc_fbox *box)
 {
     size_t size = strlen(data);
     // check signature, this an xml, so skip spaces from the start
@@ -351,10 +351,10 @@ bool render_buffer(struct painter_buffer *buffer, struct draw_info *info)
     cairo_surface_set_device_scale(surface, buffer->scale, buffer->scale);
     cairo_t *cairo = cairo_create(surface);
 
-    int half = info->height / 2;
-    struct kywc_box upper = { 0, 0, info->width, half };
-    struct kywc_box lower = { 0, half, info->width, half };
-    struct kywc_box whole = { 0, 0, info->width, info->height };
+    double half = info->height / 2.0;
+    struct kywc_fbox upper = { 0, 0, info->width, half };
+    struct kywc_fbox lower = { 0, half, info->width, half };
+    struct kywc_fbox whole = { 0, 0, info->width, info->height };
 
     /* svg picture */
     if (info->svg) {
