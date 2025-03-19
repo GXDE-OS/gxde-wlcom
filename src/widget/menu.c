@@ -971,26 +971,21 @@ static void menu_handle_output_disable(struct wl_listener *listener, void *data)
 static void menu_update_decoration(struct menu *menu)
 {
     struct theme *theme = theme_manager_get_theme();
-    int radius = theme->corner_radius;
-    int shadow = theme->shadow_border;
+    int r = theme->corner_radius, shadow = theme->shadow_border, border = theme->border_width;
 
-    ky_scene_decoration_set_margin(menu->deco, 0, theme->border_width, shadow, 0, 0);
-    float *c = theme->active_border_color;
-    float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
-    c = theme->active_shadow_color;
-    float shadow_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
-    ky_scene_decoration_set_margin_color(menu->deco, theme->active_bg_color, border_color,
-                                         shadow_color);
-
-    ky_scene_decoration_set_round_corner_radius(menu->deco,
-                                                (int[4]){ radius, radius, radius, radius });
-    ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), 0, 0);
+    ky_scene_decoration_set_margin(menu->deco, 0, border, shadow, 0, 0);
+    ky_scene_decoration_set_round_corner_radius(menu->deco, (int[4]){ r, r, r, r });
+    ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), -border, -border);
     ky_scene_decoration_set_surface_blurred(menu->deco, theme->opacity != 100);
 
-    c = theme->active_bg_color;
-    float opacity = theme->opacity / 100.0;
-    float bg_color[4] = { c[0] * opacity, c[1] * opacity, c[2] * opacity, opacity };
+    float *c = theme->active_border_color, a = c[3];
+    float border_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
+    c = theme->active_shadow_color, a = c[3];
+    float shadow_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
+    c = theme->active_bg_color, a = theme->opacity / 100.0;
+    float bg_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
     ky_scene_decoration_set_surface_color(menu->deco, bg_color);
+    ky_scene_decoration_set_margin_color(menu->deco, bg_color, border_color, shadow_color);
 }
 
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
