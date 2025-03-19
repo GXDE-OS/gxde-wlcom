@@ -73,13 +73,13 @@ static void handle_cursor_button(struct wl_listener *listener, void *data)
     /* some x11 source app do not send drop, so we end drag early if !accpepted */
     struct view *hover_view =
         drag_x11->hovered_surface ? view_try_from_wlr_surface(drag_x11->hovered_surface) : NULL;
-    if (hover_view && !xwayland_check_view(hover_view) && drag_x11->data_source->base.accepted &&
-        drag_x11->data_source->base.current_dnd_action) {
+    if (hover_view && !xwayland_check_view(hover_view) && drag_x11->data_source &&
+        drag_x11->data_source->base.accepted && drag_x11->data_source->base.current_dnd_action) {
         return;
     }
 
-    struct xwayland_server *xwyaland = drag_x11->xwayland;
-    xwayland_end_drag_x11(xwyaland);
+    struct xwayland_server *xwayland = drag_x11->xwayland;
+    xwayland_end_drag_x11(xwayland);
 }
 
 static void handle_drag_x11_surface_destroy(struct wl_listener *listener, void *data)
