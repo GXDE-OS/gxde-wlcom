@@ -408,8 +408,7 @@ void window_menu_show(struct view *view, struct seat *seat, int x, int y)
     }
 
     window_menu->view = view;
-    /* workaround: menu is too close to the menu */
-    window_menu->x = x + 8;
+    window_menu->x = x;
     window_menu->y = y;
     window_menu_set_enabled(window_menu, true);
 }

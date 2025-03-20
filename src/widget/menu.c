@@ -20,6 +20,7 @@
 #include "widget/menu.h"
 
 #define SUB_MENU_GAP (2)
+#define SUB_MENU_OVERLAP (4)
 #define MENU_FLIP_HEIGHT (12)
 
 #define CLAMP(value, min, max) (((value) < (min)) ? (min) : ((value) > (max)) ? (max) : (value))
@@ -310,58 +311,64 @@ static void menu_set_position(struct menu *menu, int x, int y)
     if (!output) {
         return;
     }
-    /* use (x, y) when root-menu, otherwise use parent item pos */
-    int lx = x, ly = y;
-    if (menu->parent) {
-        ky_scene_node_coords(&menu->parent->tree->node, &lx, &ly);
-    }
-    struct theme *theme = theme_manager_get_theme();
-    struct kywc_box *geo = &output->geometry;
 
     /* keep menu visible in the output */
+    struct kywc_box *geo = &output->geometry;
     int max_x = geo->x + geo->width;
     int max_y = geo->y + geo->height;
 
-    if (!menu->parent) {
+    struct theme *theme = theme_manager_get_theme();
+    int offset = theme->border_width;
+    int extend = theme->border_width * 2;
+
+    /* use (x, y) when root-menu */
+    int lx = x, ly = y;
+    /* otherwise use parent item pos */
+    struct menu_item *parent = menu->parent;
+    if (parent) {
+        ky_scene_node_coords(&parent->tree->node, &lx, &ly);
+        lx -= offset, ly -= offset;
+    }
+
+    int width = menu->width + extend;
+    int height = menu->height + extend;
+
+    if (!parent) {
         if (theme->layout_is_right_to_left) {
-            if (lx - menu->width > 0) {
-                x -= (menu->width + 4);
-            }
+            x = CLAMP(x - width, geo->x, max_x - width);
         } else {
-            if (lx + menu->width > max_x) {
-                x = max_x - menu->width;
-            }
+            x = CLAMP(x, geo->x, max_x - width);
         }
         if (menu->exceed_output) {
             y = geo->y;
-        } else if (ly + menu->height > max_y) {
-            y -= menu->height;
+        } else {
+            y = CLAMP(y, geo->y, max_y - height);
         }
     } else {
-        /* default menu position */
-        struct menu_item *parent = menu->parent;
-
+        int parent_width = parent->menu->width + extend;
         if (theme->layout_is_right_to_left) {
-            x = -menu->width - SUB_MENU_GAP;
-            if (lx - menu->width < 0) {
-                x = parent->menu->width + 4;
+            if (lx - geo->x < width) {
+                x = parent_width - SUB_MENU_OVERLAP;
+            } else {
+                x = -width - SUB_MENU_GAP;
             }
         } else {
-            x = parent->menu->width + SUB_MENU_GAP;
-            if (lx + parent->menu->width + menu->width > max_x) {
-                x = -menu->width + 4;
+            if (lx + parent_width + width > max_x) {
+                x = -width + SUB_MENU_OVERLAP;
+            } else {
+                x = parent_width + SUB_MENU_GAP;
             }
         }
-        int off_y = ly + menu->height - max_y;
+        int off_y = ly + height - max_y;
         if (menu->exceed_output) {
             y = geo->y - ly;
         } else if (off_y > 0) {
             y -= off_y;
         }
-        x += lx;
-        y += ly;
+        x += lx, y += ly;
     }
-    ky_scene_node_set_position(&menu->tree->node, x, y);
+
+    ky_scene_node_set_position(&menu->tree->node, x + offset, y + offset);
 }
 
 static bool menu_item_action(struct menu_item *item)
