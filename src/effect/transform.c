@@ -43,10 +43,18 @@ struct transform {
     struct ky_scene_buffer *buffer;
     int node_offset_x, node_offset_y;
 
+    bool buffer_no_thumbnail;
     struct ky_scene_buffer *zero_copy_buffer;
     struct wl_listener zero_buffer_destroy;
     struct wl_listener zero_buffer_damage;
 
+    /**
+     * thumbnail textrue comes from three aspects. One, node is tree, it actively generates
+     * thumbnails. Two, node is rect, the map stage, directly rendered without using thumbnails, but
+     * the destroy stage, need to regenerate thumbnails. Thirdly, node is buffer, the map stage,
+     * converted from the buffer to the texture through zero_compy-buffer without generating
+     * thumbnails. the destroy stage, the buffer is obtained through thumbnail buffer
+     */
     struct {
         struct thumbnail *thumbnail;
         /* current used in the popup */
@@ -375,6 +383,7 @@ static void transform_do_destroy(struct transform *transform)
     if (transform->zero_copy_buffer) {
         wl_list_remove(&transform->zero_buffer_destroy.link);
         wl_list_remove(&transform->zero_buffer_damage.link);
+        transform->buffer_no_thumbnail = false;
     }
 
     if (transform->old_parent) {
@@ -447,7 +456,7 @@ static bool transform_effect_node_render(struct effect_entity *entity, int lx, i
 
     struct ky_scene_node *zero_node = NULL;
     int radius[4] = { 0 };
-    if (transform->zero_copy_buffer) {
+    if (transform->zero_copy_buffer && !transform->buffer_no_thumbnail) {
         zero_node = &transform->zero_copy_buffer->node;
         radius[0] = zero_node->radius[0];
         radius[1] = zero_node->radius[1];
@@ -537,6 +546,7 @@ static struct transform *transform_create(struct transform_options *options,
     transform->user_data = data;
     transform->references = 1;
     transform->interrupted = false;
+    transform->buffer_no_thumbnail = false;
     transform->zero_copy_buffer = options->buffer;
 
     wl_signal_init(&transform->events.destroy);
@@ -566,6 +576,13 @@ static struct transform *transform_create(struct transform_options *options,
     /* node is rect, don't generate thumbnails */
     if (transform->node->type == KY_SCENE_NODE_RECT) {
         return transform;
+    }
+
+    /* node is buffer, don't generate thumbnails */
+    if (transform->node->type == KY_SCENE_NODE_BUFFER && transform->zero_copy_buffer == NULL) {
+        struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(transform->node);
+        transform->zero_copy_buffer = scene_buffer;
+        transform->buffer_no_thumbnail = true;
     }
 
     if (transform->zero_copy_buffer) {
@@ -692,7 +709,7 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
      */
     transform->node = &buffer->node;
 
-    transform->zero_copy_buffer = NULL;
+    transform->zero_copy_buffer = transform->buffer_no_thumbnail ? buffer : NULL;
 
     entity->user_data = transform;
     transform->references++;
