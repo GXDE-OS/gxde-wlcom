@@ -4,18 +4,22 @@
 
 #include <stdlib.h>
 
+#include "effect/node_transform.h"
 #include "effect/shake_view.h"
 #include "input/event.h"
 #include "scene/surface.h"
 #include "theme.h"
+#include "util/time.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
-static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 128.0 / 255 };
+static float modal_color[4] = { 18.0 / 255, 18.0 / 255, 18.0 / 255, 51.0 / 255 };
 
 struct modal {
     struct view *view;
     struct ky_scene_rect *modal_box;
+
+    struct kywc_box geo;
 
     struct wl_listener view_unmap;
     struct wl_listener unset_modal;
@@ -62,6 +66,21 @@ static const struct input_event_node_impl modal_impl = {
     .click = modal_click,
 };
 
+static void modal_add_rect_opacity_transform(struct ky_scene_node *node, int duration,
+                                             struct kywc_box geo, float start_alpha,
+                                             float end_alpha, int64_t start_time,
+                                             enum animation_type alpha_type)
+{
+    struct transform_options options = { 0 };
+    options.start_time = start_time;
+    options.type.alpha = alpha_type;
+    options.duration = duration;
+    options.start.geometry = options.end.geometry = geo;
+    options.start.alpha = start_alpha;
+    options.end.alpha = end_alpha;
+    node_add_transform_effect(node, &options);
+}
+
 static void modal_destroy(struct modal *modal)
 {
     modal->view->modal = NULL;
@@ -69,6 +88,9 @@ static void modal_destroy(struct modal *modal)
     wl_list_remove(&modal->parent_size.link);
     wl_list_remove(&modal->unset_modal.link);
     wl_list_remove(&modal->view_unmap.link);
+
+    modal_add_rect_opacity_transform(&modal->modal_box->node, 200, modal->geo, 1.0, 0,
+                                     current_time_msec(), ANIMATION_TYPE_EASE);
 
     ky_scene_node_destroy(&modal->modal_box->node);
     free(modal);
@@ -98,6 +120,10 @@ static void handle_parent_size(struct wl_listener *listener, void *data)
         .width = parent->geometry.width + parent->margin.off_width,
         .height = parent->geometry.height + parent->margin.off_height,
     };
+
+    struct kywc_box geometry = { parent->geometry.x + geo.x, parent->geometry.y + geo.y, geo.width,
+                                 geo.height };
+    modal->geo = geometry;
     ky_scene_rect_set_size(modal->modal_box, geo.width, geo.height);
     ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
     modal_box_set_round_corner(modal->modal_box, modal->view->parent);
@@ -168,6 +194,12 @@ void modal_create(struct view *view)
     ky_scene_node_raise_to_top(&modal->modal_box->node);
     ky_scene_node_set_position(&modal->modal_box->node, geo.x, geo.y);
     modal_box_set_round_corner(modal->modal_box, view->parent);
+
+    struct kywc_box geometry = { parent->geometry.x + geo.x, parent->geometry.y + geo.y, geo.width,
+                                 geo.height };
+    modal->geo = geometry;
+    modal_add_rect_opacity_transform(&modal->modal_box->node, 300, modal->geo, 0, 1.0,
+                                     current_time_msec(), ANIMATION_TYPE_EASE);
 
     input_event_node_create(&modal->modal_box->node, &modal_impl, modal_get_root, NULL, modal);
 
