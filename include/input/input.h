@@ -162,4 +162,12 @@ void input_set_all_cursor(const char *cursor_theme, uint32_t cursor_size);
 
 void seat_add_new_listener(struct wl_listener *listener);
 
+/* destroy_func can be NULL */
+struct idle *idle_manager_add_idle(struct seat *seat, bool support_inhibit, uint32_t timeout,
+                                   void (*idle_func)(struct idle *idle, void *data),
+                                   void (*resume_func)(struct idle *idle, void *data),
+                                   void (*destroy_func)(struct idle *idle, void *data), void *data);
+
+void idle_destroy(struct idle *idle);
+
 #endif /* _INPUT_H_ */
