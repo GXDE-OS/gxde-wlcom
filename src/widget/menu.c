@@ -631,8 +631,8 @@ static bool menu_shortcut(struct menu *menu, uint32_t key)
     return false;
 }
 
-static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
-                              bool pressed, uint32_t modifiers)
+static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct keyboard *keyboard,
+                              uint32_t time, uint32_t key, bool pressed, uint32_t modifiers)
 {
     static bool left_alt = false, right_alt = false;
     if (!pressed) {

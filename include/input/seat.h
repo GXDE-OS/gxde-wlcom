@@ -8,6 +8,7 @@
 #include "input.h"
 #include "scene/scene.h"
 
+struct keyboard;
 struct seat_pointer_grab;
 struct seat_keyboard_grab;
 struct seat_touch_grab;
@@ -26,8 +27,8 @@ struct seat_pointer_grab {
 };
 
 struct seat_keyboard_grab_interface {
-    bool (*key)(struct seat_keyboard_grab *grab, uint32_t time, uint32_t key, bool pressed,
-                uint32_t modidiers);
+    bool (*key)(struct seat_keyboard_grab *grab, struct keyboard *keyboard, uint32_t time,
+                uint32_t key, bool pressed, uint32_t modifiers);
     void (*cancel)(struct seat_keyboard_grab *grab);
 };
 

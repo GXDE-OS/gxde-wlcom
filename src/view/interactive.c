@@ -934,8 +934,8 @@ static const struct seat_pointer_grab_interface pointer_grab_impl = {
     .cancel = pointer_grab_cancel,
 };
 
-static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
-                              bool pressed, uint32_t modifiers)
+static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct keyboard *keyboard,
+                              uint32_t time, uint32_t key, bool pressed, uint32_t modifiers)
 {
     struct interactive_grab *grab = keyboard_grab->data;
     if (!pressed) {

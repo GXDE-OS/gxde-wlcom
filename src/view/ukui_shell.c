@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_seat.h>
 
 #include "input/cursor.h"
+#include "input/keyboard.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
@@ -379,13 +380,15 @@ static struct ukui_keyboard_grab *get_ukui_keyboard_grab_from_seat(struct ukui_s
     return NULL;
 }
 
-static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, uint32_t time, uint32_t key,
-                              bool pressed, uint32_t modifiers)
+static bool keyboard_grab_key(struct seat_keyboard_grab *keyboard_grab, struct keyboard *keyboard,
+                              uint32_t time, uint32_t key, bool pressed, uint32_t modifiers)
 {
     struct ukui_surface *surface = keyboard_grab->data;
-    struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(keyboard_grab->seat->wlr_seat);
-    wlr_seat_keyboard_enter(keyboard_grab->seat->wlr_seat, surface->wlr_surface, keyboard->keycodes,
-                            keyboard->num_keycodes, &keyboard->modifiers);
+    struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
+    wlr_seat_set_keyboard(keyboard_grab->seat->wlr_seat, keyboard->wlr_keyboard);
+    wlr_seat_keyboard_enter(keyboard_grab->seat->wlr_seat, surface->wlr_surface,
+                            wlr_keyboard->keycodes, wlr_keyboard->num_keycodes,
+                            &wlr_keyboard->modifiers);
     wlr_seat_keyboard_send_key(keyboard_grab->seat->wlr_seat, time, key, pressed);
     return true;
 }
