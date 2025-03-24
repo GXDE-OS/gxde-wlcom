@@ -23,6 +23,7 @@
 #include <kywc/log.h>
 #include <kywc/view.h>
 
+#include "input/event.h"
 #include "input_p.h"
 #include "scene/surface.h"
 #include "server.h"

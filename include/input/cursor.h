@@ -5,7 +5,6 @@
 #ifndef _CURSOR_H_
 #define _CURSOR_H_
 
-#include "event.h"
 #include "gesture.h"
 #include "input.h"
 

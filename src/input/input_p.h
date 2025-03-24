@@ -8,6 +8,7 @@
 #include "input/cursor.h"
 #include "input/gesture.h"
 #include "input/keyboard.h"
+#include "input/seat.h"
 #include "util/queue.h"
 
 enum input_lock_key {
