@@ -55,6 +55,7 @@ struct view_manager {
     struct wl_list views;
 
     struct view *global_authentication_view;
+    struct view *desktop;
 
     struct {
         struct wl_signal new_view;

@@ -467,6 +467,8 @@ void view_unmap(struct view *view)
     }
     if (view == view_manager_get_global_authentication()) {
         view_manager_set_global_authentication(NULL);
+    } else if (view == view_manager->desktop) {
+        view_manager->desktop = NULL;
     }
 
     wl_signal_emit_mutable(&kywc_view->events.unmap, NULL);
@@ -1747,6 +1749,10 @@ void view_apply_role(struct view *view)
         global_authentication_create(view);
     }
 
+    if (kywc_view->role == KYWC_VIEW_ROLE_DESKTOP) {
+        view_manager->desktop = view;
+    }
+
     if (kywc_view->role == KYWC_VIEW_ROLE_NORMAL) {
         view_set_workspace(view_from_kywc_view(kywc_view), workspace_manager_get_current());
     } else {
@@ -1862,6 +1868,11 @@ void view_manager_show_desktop(bool enabled, bool apply)
 
     if (apply && !enabled) {
         view_activate_topmost();
+    }
+
+    /* set focus to desktop after showing desktop */
+    if (apply && enabled && view_manager->desktop) {
+        view_set_focus(view_manager->desktop, input_manager_get_default_seat());
     }
 
     wl_signal_emit_mutable(&view_manager->events.show_desktop, NULL);
