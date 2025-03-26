@@ -19,8 +19,8 @@
 
 bool spawn_invoke(const char *command)
 {
-    wordexp_t p;
-    if (wordexp(command, &p, 0)) {
+    wordexp_t p = { 0 };
+    if (wordexp(command, &p, 0) || !p.we_wordv[0]) {
         kywc_log(KYWC_ERROR, "command illegal: %s", command);
         wordfree(&p);
         return false;
@@ -75,8 +75,8 @@ bool spawn_invoke(const char *command)
 
 pid_t spawn_session(const char *session)
 {
-    wordexp_t p;
-    if (wordexp(session, &p, 0)) {
+    wordexp_t p = { 0 };
+    if (wordexp(session, &p, 0) || !p.we_wordv[0]) {
         kywc_log(KYWC_ERROR, "session illegal: %s", session);
         wordfree(&p);
         return -1;
@@ -147,8 +147,8 @@ static bool set_cloexec(int fd, bool cloexec)
 
 struct wl_client *spawn_client(struct wl_display *display, const char *command)
 {
-    wordexp_t p;
-    if (wordexp(command, &p, 0)) {
+    wordexp_t p = { 0 };
+    if (wordexp(command, &p, 0) || !p.we_wordv[0]) {
         kywc_log(KYWC_ERROR, "command illegal: %s", command);
         wordfree(&p);
         return NULL;
