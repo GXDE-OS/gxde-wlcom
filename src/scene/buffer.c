@@ -465,24 +465,7 @@ static void buffer_destroy(struct ky_scene_node *node)
     }
 
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
-    struct ky_scene *scene = ky_scene_from_node(node);
-
-    uint64_t active = scene_buffer->active_outputs;
-    if (active) {
-        struct ky_scene_output *scene_output;
-        wl_list_for_each(scene_output, &scene->outputs, link) {
-            if (active & (1ull << scene_output->index)) {
-                wl_signal_emit_mutable(&scene_buffer->events.output_leave, scene_output);
-            }
-        }
-    }
-
-    if (scene_buffer->buffer) {
-        wlr_buffer_unlock(scene_buffer->buffer);
-        wlr_texture_destroy(scene_buffer->texture);
-        scene_buffer->buffer = NULL;
-        scene_buffer->texture = NULL;
-    }
+    ky_scene_buffer_set_buffer(scene_buffer, NULL);
 
     if (node->last_enabled) {
         struct ky_scene *scene = ky_scene_from_node(node);

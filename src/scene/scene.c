@@ -510,8 +510,8 @@ void ky_scene_node_set_input_bypassed(struct ky_scene_node *node, bool bypassed)
 void ky_scene_node_force_damage_event(struct ky_scene_node *node, bool force)
 {
     /**
-     * damage event for this node is still not emitted,
-     * early returned in ky_scene_node_push_damage by ky_scene_node_is_visible
+     * damage event for this node is may still not emitted,
+     * early returned in ky_scene_node_push_damage by node->enabled
      */
     node->force_damage_event = force;
 }
@@ -896,7 +896,7 @@ bool ky_scene_node_is_visible(struct ky_scene_node *node)
 void ky_scene_node_push_damage(struct ky_scene_node *node, enum ky_scene_damage_type damage_type,
                                const pixman_region32_t *damage)
 {
-    if (!ky_scene_node_is_visible(node)) {
+    if (!node->enabled) {
         return;
     }
 
