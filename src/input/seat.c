@@ -206,6 +206,9 @@ void seat_add_input(struct seat *seat, struct input *input)
 void seat_remove_input(struct input *input)
 {
     struct seat *seat = input->seat;
+    if (!seat) {
+        return;
+    }
 
     switch (input->prop.type) {
     case WLR_INPUT_DEVICE_POINTER:

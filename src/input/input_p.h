@@ -38,6 +38,7 @@ struct input_manager {
     } events;
 
     struct seat *default_seat;
+    void (*bind_seat)(struct input *input, const char *seat);
 
     struct config *config;
     struct config *seat_config;

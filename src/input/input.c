@@ -483,6 +483,7 @@ struct input_manager *input_manager_create(struct server *server)
 
     /* create the default seat */
     input_manager->default_seat = seat_create(input_manager, "seat0");
+    input_manager->bind_seat = input_set_seat;
 
     return input_manager;
 }
@@ -540,7 +541,7 @@ static bool _input_set_state(struct input *input, struct input_state *state)
     input->state.double_click_time = state->double_click_time;
 
     /* choose a suitable seat, add the input device to the seat */
-    input_set_seat(input, state->seat ? state->seat : "seat0");
+    input_manager->bind_seat(input, state->seat ? state->seat : "seat0");
 
     if (input->prop.support_mapped_to_output) {
         struct kywc_output *mapped_output = NULL;
