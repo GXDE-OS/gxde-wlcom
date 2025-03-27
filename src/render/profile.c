@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include "render/profile.h"
-#include "render/opengl.h"
 
 #ifdef TRACY_ENABLE
+
+#include "render/opengl.h"
 
 void ky_profile_render_create(struct wlr_renderer *renderer)
 {

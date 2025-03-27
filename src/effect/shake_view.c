@@ -10,7 +10,6 @@
 
 #include "effect/shake_view.h"
 #include "effect_p.h"
-#include "input/event.h"
 #include "scene/animation.h"
 #include "view/view.h"
 

@@ -8,7 +8,6 @@
 
 #include <kywc/identifier.h>
 
-#include "input/seat.h"
 #include "plasma-window-management-protocol.h"
 #include "theme.h"
 #include "view_p.h"

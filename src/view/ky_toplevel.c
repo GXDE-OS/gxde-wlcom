@@ -10,7 +10,6 @@
 
 #include "kywc-toplevel-v1-protocol.h"
 
-#include "input/seat.h"
 #include "theme.h"
 #include "view/workspace.h"
 #include "view_p.h"
