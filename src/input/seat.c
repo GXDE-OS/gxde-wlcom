@@ -138,6 +138,7 @@ struct seat *seat_create(struct input_manager *input_manager, const char *name)
 
     seat->cursor = cursor_create(seat);
     seat->keyboard = keyboard_create(seat, NULL);
+    cursor_set_hidden(seat->cursor, true);
 
     wl_list_insert(&input_manager->seats, &seat->link);
     kywc_log(KYWC_DEBUG, "seat(%s) is created", seat->name);
