@@ -805,9 +805,10 @@ bool effect_manager_create(struct server *server)
     scale_effect_create(manager);
 
     soft_gamma_effect_create(manager);
+    mouse_trail_effect_create(manager);
     touchclick_effect_create(manager);
-    touchtrail_effect_create(manager);
     touch_long_effect_create(manager);
+    touch_trail_effect_create(manager);
 
     fade_effect_create(manager);
     slide_effect_create(manager);

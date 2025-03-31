@@ -54,11 +54,13 @@ bool scale_effect_create(struct effect_manager *manager);
 
 bool soft_gamma_effect_create(struct effect_manager *manager);
 
+bool mouse_trail_effect_create(struct effect_manager *manager);
+
 bool touchclick_effect_create(struct effect_manager *manager);
 
-bool touchtrail_effect_create(struct effect_manager *manager);
-
 bool touch_long_effect_create(struct effect_manager *manager);
+
+bool touch_trail_effect_create(struct effect_manager *manager);
 
 bool fade_effect_create(struct effect_manager *manager);
 

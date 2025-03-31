@@ -10,6 +10,32 @@
 
 struct effect_manager;
 struct circle_progressbar_effect;
+struct trail_effect;
+
+struct trail_effect_options {
+    float color[4];
+    float thickness;
+    uint32_t life_time;
+};
+
+struct trail_effect_interface {
+    void (*enable)(struct trail_effect *base_effect, void *user_data);
+    void (*disable)(struct trail_effect *base_effect, void *user_data);
+    void (*destroy)(struct trail_effect *base_effect, void *user_data);
+};
+
+struct trail_effect *trail_effect_create(struct effect_manager *manager,
+                                         struct trail_effect_options *options,
+                                         const struct trail_effect_interface *impl,
+                                         const char *name, int priority, bool enabled,
+                                         void *user_data);
+
+void trail_effect_add_trail(struct trail_effect *effect, int32_t id, int32_t start_x,
+                            int32_t start_y);
+
+void trail_effect_trail_add_point(struct trail_effect *effect, int32_t id, int32_t x, int32_t y);
+
+void trail_effect_remove_all_trails(struct trail_effect *effect);
 
 struct circle_progressbar_effect_options {
     int32_t size;

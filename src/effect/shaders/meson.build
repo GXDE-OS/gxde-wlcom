@@ -10,10 +10,10 @@ shaders = [
   'circle_progressbar.frag',
   'magic_lamp.vert',
   'magic_lamp.frag',
+  'shape_color.vert',
+  'shape_color.frag',
   'touchclick.vert',
   'touchclick.frag',
-  'touchtrail.vert',
-  'touchtrail.frag',
 ]
 
 foreach name : shaders
