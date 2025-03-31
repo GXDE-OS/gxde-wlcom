@@ -58,7 +58,7 @@ bool touchclick_effect_create(struct effect_manager *manager);
 
 bool touchtrail_effect_create(struct effect_manager *manager);
 
-bool long_touch_effect_create(struct effect_manager *manager);
+bool touch_long_effect_create(struct effect_manager *manager);
 
 bool fade_effect_create(struct effect_manager *manager);
 

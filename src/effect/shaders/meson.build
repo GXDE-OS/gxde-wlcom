@@ -6,14 +6,14 @@ shaders = [
   'blur.vert',
   'blur_up.frag',
   'blur_down.frag',
+  'circle_progressbar.vert',
+  'circle_progressbar.frag',
+  'magic_lamp.vert',
+  'magic_lamp.frag',
   'touchclick.vert',
   'touchclick.frag',
   'touchtrail.vert',
   'touchtrail.frag',
-  'long_touch.vert',
-  'long_touch.frag',
-  'magic_lamp.vert',
-  'magic_lamp.frag',
 ]
 
 foreach name : shaders
