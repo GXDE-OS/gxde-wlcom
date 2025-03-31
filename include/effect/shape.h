@@ -9,8 +9,36 @@
 #include <stdint.h>
 
 struct effect_manager;
+struct tap_ripple_effect;
 struct circle_progressbar_effect;
 struct trail_effect;
+
+struct tap_ripple_effect_options {
+    float color[3];
+    int32_t size;
+    uint32_t animate_duration;
+    float start_radius;
+    float end_radius;
+    float start_attenuation;
+    float end_attenuation;
+};
+
+struct tap_ripple_effect_interface {
+    void (*enable)(struct tap_ripple_effect *base_effect, void *user_data);
+    void (*disable)(struct tap_ripple_effect *base_effect, void *user_data);
+    void (*destroy)(struct tap_ripple_effect *base_effect, void *user_data);
+};
+
+struct tap_ripple_effect *tap_ripple_effect_create(struct effect_manager *manager,
+                                                   struct tap_ripple_effect_options *options,
+                                                   const struct tap_ripple_effect_interface *impl,
+                                                   const char *name, int priority, bool enabled,
+                                                   void *user_data);
+
+void tap_ripple_effect_add_point(struct tap_ripple_effect *effect, int32_t id, int32_t x,
+                                 int32_t y);
+
+void tap_ripple_effect_remove_all_points(struct tap_ripple_effect *effect);
 
 struct trail_effect_options {
     float color[4];

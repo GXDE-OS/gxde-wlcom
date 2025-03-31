@@ -33,7 +33,7 @@ static void handle_mouse_motion(struct wl_listener *listener, void *data)
     struct mouse_trail_effect *effect = seat_mouse->effect;
 
     int32_t lx = roundf(seat_mouse->seat->cursor->lx);
-    int32_t ly = roundf(roundf(seat_mouse->seat->cursor->ly));
+    int32_t ly = roundf(seat_mouse->seat->cursor->ly);
     trail_effect_add_trail(effect->base, 0, lx, ly);
     trail_effect_trail_add_point(effect->base, 0, lx, ly);
 }

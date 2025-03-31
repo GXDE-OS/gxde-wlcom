@@ -306,13 +306,14 @@ static void handle_effect_destroy(struct wl_listener *listener, void *data)
 {
     struct trail_effect *effect = wl_container_of(listener, effect, destroy);
 
+    wl_list_remove(&effect->destroy.link);
+    wl_list_remove(&effect->enable.link);
+    wl_list_remove(&effect->disable.link);
+
     if (effect->impl->destroy) {
         effect->impl->destroy(effect, effect->user_data);
     }
 
-    wl_list_remove(&effect->destroy.link);
-    wl_list_remove(&effect->enable.link);
-    wl_list_remove(&effect->disable.link);
     pixman_region32_fini(&effect->damage);
     free(effect);
 }
@@ -376,7 +377,7 @@ struct trail_effect *trail_effect_create(struct effect_manager *manager,
 void trail_effect_add_trail(struct trail_effect *effect, int32_t id, int32_t start_x,
                             int32_t start_y)
 {
-    // record multi-touch
+    // record multi-trail
     bool find_id = false;
     struct trail_info *finger;
     wl_list_for_each(finger, &effect->trail_infos, link) {

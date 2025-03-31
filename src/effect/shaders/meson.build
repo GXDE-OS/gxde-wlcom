@@ -12,8 +12,8 @@ shaders = [
   'magic_lamp.frag',
   'shape_color.vert',
   'shape_color.frag',
-  'touchclick.vert',
-  'touchclick.frag',
+  'tap_ripple.vert',
+  'tap_ripple.frag',
 ]
 
 foreach name : shaders

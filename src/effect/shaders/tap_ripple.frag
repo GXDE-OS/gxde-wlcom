@@ -11,6 +11,7 @@ varying vec2 uv;
 
 uniform float radius;
 uniform float attenuation;
+uniform vec3 color;
 
 void main() {
     float dist = distance(uv, vec2(0.5, 0.5));
@@ -20,5 +21,5 @@ void main() {
     float alpha = radius - dist;
     alpha = 1.0 - alpha - attenuation;
     alpha *= dist2;
-    gl_FragColor = vec4(vec3(dist2), alpha);
+    gl_FragColor = vec4(color * dist2, alpha);
 }

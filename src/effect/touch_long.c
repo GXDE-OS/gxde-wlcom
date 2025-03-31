@@ -41,7 +41,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data)
 
     struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_down);
     int32_t lx = roundf(seat_touch->seat->cursor->lx);
-    int32_t ly = roundf(roundf(seat_touch->seat->cursor->ly));
+    int32_t ly = roundf(seat_touch->seat->cursor->ly);
     circle_progressbar_effect_begin(seat_touch->effect->base, lx, ly);
 }
 
@@ -68,7 +68,7 @@ static void handle_touch_motion(struct wl_listener *listener, void *data)
     struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_motion);
     const float anti_acciden = 0.1f; // move diff > this then remove
     if (fabs(seat_touch->effect->touch_x - event->x) > anti_acciden ||
-        fabs(seat_touch->effect->touch_x - event->y) > anti_acciden) {
+        fabs(seat_touch->effect->touch_y - event->y) > anti_acciden) {
         circle_progressbar_effect_end(seat_touch->effect->base);
     }
 }
