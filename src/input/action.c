@@ -234,11 +234,12 @@ static struct keycodes *keycodes_create(const char *str)
     size_t len = 0;
     char **split_str = string_split(split_action[0], "+", &len);
     for (size_t i = 0, j = 0; i < len; i++) {
-        if (!keycode_map(split_str[i])) {
+        uint32_t keycode = keycode_map(split_str[i]);
+        if (!keycode) {
             continue;
         }
         keycodes->code = realloc(keycodes->code, (keycodes->len + 1) * sizeof(uint32_t));
-        keycodes->code[j++] = keycode_map(split_str[i]);
+        keycodes->code[j++] = keycode;
         keycodes->len++;
     }
     string_free_split(split_str);
@@ -277,7 +278,7 @@ static int list_input_actions(sd_bus_message *m, void *userdata, sd_bus_error *r
     return 1;
 }
 
-static struct action_data *action_data_create_from_busstring(const char *bus_str)
+static struct action_data *action_data_create_from_bus_string(const char *bus_str)
 {
     struct action_data *action_data = NULL;
     size_t len = 0;
@@ -447,11 +448,10 @@ static void input_action_destroy(struct input_action *input_action)
     } else if (input_action->action->type == ACTION_TYPE_SEND_KEY) {
         struct keycodes *modifiers = input_action->action->data.key.modifiers;
         struct keycodes *keys = input_action->action->data.key.keys;
-
-        if (modifiers && modifiers->code) {
+        if (modifiers) {
             free(modifiers->code);
         }
-        if (keys && keys->code) {
+        if (keys) {
             free(keys->code);
         }
         free(modifiers);
@@ -464,8 +464,8 @@ static void input_action_destroy(struct input_action *input_action)
     free(input_action);
 }
 
-static bool input_action_manager_del_config(struct input_action_manager *manager,
-                                            struct input_action *input_action)
+static bool input_action_manager_delete_config(struct input_action_manager *manager,
+                                               struct input_action *input_action)
 {
     if (!manager->config || !manager->config->json || !input_action) {
         return false;
@@ -650,7 +650,7 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
 {
     struct input_action_manager *manager = userdata;
 
-    const char *input_type, *input_bindings = NULL;
+    const char *input_type = NULL, *input_bindings = NULL;
     const char *action_desc = NULL, *action_dat = NULL;
     const char *binding_type = NULL;
     CK(sd_bus_message_read(m, "sssss", &input_type, &input_bindings, &action_desc, &action_dat,
@@ -677,7 +677,7 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
         return sd_bus_reply_method_error(m, &error);
     }
 
-    struct action_data *action_data = action_data_create_from_busstring(action_dat);
+    struct action_data *action_data = action_data_create_from_bus_string(action_dat);
     if (!action_data) {
         const sd_bus_error error =
             SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid action_data.");
@@ -771,7 +771,7 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
             kywc_gesture_binding_destroy(input_action->data);
         }
 
-        input_action_manager_del_config(manager, input_action);
+        input_action_manager_delete_config(manager, input_action);
         input_action_destroy(input_action);
         break;
     case CONTROL_TYPE_DISABLE:
@@ -832,7 +832,7 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllActions", "", "a(ss)", list_input_actions, 0),
-    SD_BUS_METHOD("AddAction", "ssss", "", add_input_action, 0),
+    SD_BUS_METHOD("AddAction", "sssss", "", add_input_action, 0),
     SD_BUS_METHOD("ControlAction", "ss", "", control_input_action, 0),
     SD_BUS_VTABLE_END,
 };
