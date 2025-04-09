@@ -816,13 +816,17 @@ bool output_manager_configure_outputs(void)
 
     struct output *output = NULL;
     wl_list_for_each(output, &output_manager->outputs, link) {
-        pending_config = get_output_pending_config(output);
-        if (pending_config) {
+        kywc_output = &output->base;
+        if (have_actual_output && kywc_output == output_manager->fallback_output) {
+            continue;
+        }
+
+        if (get_output_pending_config(output)) {
+            pending_config = get_output_pending_config(output);
             have_enabled_output |= pending_config->state.enabled;
             have_zero_coord |= pending_config->state.enabled && pending_config->state.lx == 0 &&
                                pending_config->state.ly == 0;
         } else {
-            kywc_output = &output->base;
             have_enabled_output |= kywc_output->state.enabled;
             have_zero_coord |= kywc_output->state.enabled && kywc_output->state.lx == 0 &&
                                kywc_output->state.ly == 0;
@@ -841,7 +845,7 @@ bool output_manager_configure_outputs(void)
     }
 
     /* have one actual output and coord is not zero */
-    if (!have_zero_coord) {
+    if (!have_zero_coord && pending_config) {
         int output_num = wl_list_length(&output_manager->outputs);
         if (output_num == 1 ||
             (output_num == 2 && have_actual_output && output_manager->fallback_output)) {
