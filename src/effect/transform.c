@@ -352,6 +352,8 @@ static void handle_zero_buffer_destroy(struct wl_listener *listener, void *data)
     struct transform *transform = wl_container_of(listener, transform, zero_buffer_destroy);
     wl_list_remove(&transform->zero_buffer_destroy.link);
     wl_list_remove(&transform->zero_buffer_damage.link);
+    wl_list_init(&transform->zero_buffer_destroy.link);
+    wl_list_init(&transform->zero_buffer_damage.link);
 
     transform->zero_copy_buffer = NULL;
 }
@@ -427,7 +429,8 @@ static bool transform_effect_node_render(struct effect_entity *entity, int lx, i
 {
     struct transform *transform = entity->user_data;
     if (!target->output ||
-        (!transform->thumbnail_info.texture && transform->node->type == KY_SCENE_NODE_TREE)) {
+        (!transform->thumbnail_info.texture && transform->node->type == KY_SCENE_NODE_TREE) ||
+        (!transform->thumbnail_info.texture && transform->node->type == KY_SCENE_NODE_BUFFER)) {
         return false;
     }
 
@@ -587,7 +590,6 @@ static struct transform *transform_create(struct transform_options *options,
 
     if (transform->zero_copy_buffer) {
         transform->thumbnail_info.buffer = transform->zero_copy_buffer->buffer;
-        transform->thumbnail_info.texture = transform->zero_copy_buffer->texture;
         if (!transform->thumbnail_info.texture) {
             transform->thumbnail_info.texture = wlr_texture_from_buffer(
                 transform->effect->renderer, transform->zero_copy_buffer->buffer);
@@ -708,7 +710,11 @@ static void transform_handle_node_destroy(struct wl_listener *listener, void *da
      * node method is used. transform is used to modify buffer node
      */
     transform->node = &buffer->node;
-
+    /**
+     * the transform_do_destroy function has already removed zero-buffer_destroy
+     * and zero-buffer_damage earlier, so no need to listen for the destroy and signals here
+     * proxy node in the destroy phase, no need to update thumbnail and listen for damage signal
+     */
     transform->zero_copy_buffer = transform->buffer_no_thumbnail ? buffer : NULL;
 
     entity->user_data = transform;
