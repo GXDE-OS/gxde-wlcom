@@ -14,6 +14,7 @@
 
 #include "effect_p.h"
 #include "input/cursor.h"
+#include "input/seat.h"
 
 #define MAX_SCALE 16
 
