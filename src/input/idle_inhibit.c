@@ -109,6 +109,7 @@ static void handle_inhibitor_destroy(struct wl_listener *listener, void *data)
         wl_container_of(listener, idle_inhibitor, inhibitor_destroy);
 
     wl_list_remove(&idle_inhibitor->link);
+    wl_list_remove(&idle_inhibitor->inhibitor_destroy.link);
     wl_list_remove(&idle_inhibitor->surface_map.link);
     wl_list_remove(&idle_inhibitor->surface_unmap.link);
     wl_list_remove(&idle_inhibitor->view_map.link);
