@@ -246,6 +246,8 @@ kywc_context *kywc_toplevel_get_context(kywc_toplevel *toplevel);
 
 kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid);
 
+bool kywc_toplevel_has_children(kywc_toplevel *toplevel);
+
 void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output);
 
 void kywc_toplevel_unset_maximized(kywc_toplevel *toplevel);

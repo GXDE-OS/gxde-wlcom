@@ -290,6 +290,20 @@ kywc_toplevel *kywc_context_find_toplevel(kywc_context *ctx, const char *uuid)
     return NULL;
 }
 
+bool kywc_toplevel_has_children(kywc_toplevel *toplevel)
+{
+    kywc_context *ctx = kywc_toplevel_get_context(toplevel);
+
+    struct ky_toplevel *ky_toplevel;
+    wl_list_for_each_reverse(ky_toplevel, &ctx->toplevel->toplevels, link) {
+        if (ky_toplevel->base.parent == toplevel) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void kywc_toplevel_set_maximized(kywc_toplevel *toplevel, const char *output)
 {
     struct ky_toplevel *ky_toplevel = toplevel_from_kywc_toplevel(toplevel);
