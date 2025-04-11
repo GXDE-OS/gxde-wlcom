@@ -89,9 +89,13 @@ void Toplevel::Private::stateHandle(kywc_toplevel *toplevel, uint32_t mask)
     if (mask & KYWC_TOPLEVEL_STATE_PARENT) {
         t_mask |= Toplevel::Mask::Parent;
         if (toplevel->parent) {
-            Toplevel *parent_toplevel = new Toplevel;
-            parent_toplevel->setup(toplevel->parent);
-            t_toplevel->pri->parent = parent_toplevel;
+            Toplevel *toplevel_parent = (Toplevel *)kywc_toplevel_get_user_data(toplevel);
+            if (toplevel_parent == nullptr) {
+                Toplevel *parent_toplevel = new Toplevel;
+                parent_toplevel->setup(toplevel->parent);
+                t_toplevel->pri->parent = parent_toplevel;
+            }
+            t_toplevel->pri->parent = toplevel_parent;
         } else
             t_toplevel->pri->parent = nullptr;
     }
