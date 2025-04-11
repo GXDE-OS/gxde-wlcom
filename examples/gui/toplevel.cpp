@@ -93,7 +93,7 @@ void Toplevel::Private::stateHandle(kywc_toplevel *toplevel, uint32_t mask)
             if (toplevel_parent == nullptr) {
                 Toplevel *parent_toplevel = new Toplevel;
                 parent_toplevel->setup(toplevel->parent);
-                t_toplevel->pri->parent = parent_toplevel;
+                toplevel_parent = parent_toplevel;
             }
             t_toplevel->pri->parent = toplevel_parent;
         } else
