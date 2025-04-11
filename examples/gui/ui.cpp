@@ -193,6 +193,7 @@ void MainWindow::init_toplevel_widget(QWidget *widget)
 
     col_list_label << QString("capabilities");
     col_list_label << QString("parent");
+    col_list_label << QString("hasChildren");
     col_list_label << QString("primary output");
     col_list_label << QString("activited");
     col_list_label << QString("minimizad");
@@ -529,26 +530,26 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
     tableWidget_2->item(toplevel_count, 1)->setText(toplevel->title());
 
     if (toplevel->isActivated())
-        tableWidget_2->item(toplevel_count, 9)->setText("true");
-    else
-        tableWidget_2->item(toplevel_count, 9)->setText("false");
-
-    if (toplevel->isMinimized())
         tableWidget_2->item(toplevel_count, 10)->setText("true");
     else
         tableWidget_2->item(toplevel_count, 10)->setText("false");
 
-    if (toplevel->isMaximized())
+    if (toplevel->isMinimized())
         tableWidget_2->item(toplevel_count, 11)->setText("true");
     else
         tableWidget_2->item(toplevel_count, 11)->setText("false");
 
-    if (toplevel->isFullscreen())
+    if (toplevel->isMaximized())
         tableWidget_2->item(toplevel_count, 12)->setText("true");
     else
         tableWidget_2->item(toplevel_count, 12)->setText("false");
 
-    tableWidget_2->item(toplevel_count, 8)->setText(toplevel->primaryOutput());
+    if (toplevel->isFullscreen())
+        tableWidget_2->item(toplevel_count, 13)->setText("true");
+    else
+        tableWidget_2->item(toplevel_count, 13)->setText("false");
+
+    tableWidget_2->item(toplevel_count, 9)->setText(toplevel->primaryOutput());
 
     QStringList workspaces = toplevel->workspaces();
     QComboBox *comBox_mode = new QComboBox();
@@ -556,13 +557,15 @@ void MainWindow::add_toplevel_item(Toplevel *toplevel)
         for (int i = 0; i < workspaces.size(); i++)
             comBox_mode->addItem(workspaces.at(i));
     }
-    tableWidget_2->setCellWidget(toplevel_count, 13, comBox_mode);
+    tableWidget_2->setCellWidget(toplevel_count, 14, comBox_mode);
 
     Toplevel *parent = toplevel->parent();
     if (parent)
         tableWidget_2->item(toplevel_count, 7)->setText(parent->uuid());
     else
         tableWidget_2->item(toplevel_count, 7)->setText("NULL");
+
+    tableWidget_2->item(toplevel_count, 8)->setText(toplevel->hasChildren() ? "true" : "false");
 
     tableWidget_2->item(toplevel_count, 3)->setText(toplevel->icon());
 

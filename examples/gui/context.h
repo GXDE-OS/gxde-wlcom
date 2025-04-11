@@ -161,6 +161,7 @@ class Toplevel : public QObject
     bool isMinimized() const;
     bool isMaximized() const;
     bool isFullscreen() const;
+    bool hasChildren() const;
 
     void setMaximized(QString output);
     void setMinimized();

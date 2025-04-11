@@ -242,6 +242,11 @@ bool Toplevel::isFullscreen() const
     return pri->fullscreen;
 }
 
+bool Toplevel::hasChildren() const
+{
+    return kywc_toplevel_has_children(pri->k_toplevel);
+}
+
 void Toplevel::setMaximized(QString output)
 {
     QByteArray qByteArray = output.toUtf8();

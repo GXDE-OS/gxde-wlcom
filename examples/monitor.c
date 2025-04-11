@@ -85,6 +85,7 @@ static void print_toplevel(kywc_toplevel *toplevel)
             printf("\t%s\n", toplevel->workspaces[i]);
         }
     }
+    printf(" children: %s\n", kywc_toplevel_has_children(toplevel) ? "true" : "false");
     printf("\n");
 }
 
