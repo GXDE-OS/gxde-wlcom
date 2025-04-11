@@ -28,18 +28,21 @@ struct touch_long_effect {
     struct wl_listener new_seat;
     struct wl_list seat_touchs;
 
-    int32_t touch_x, touch_y;
+    double touch_x, touch_y;
 };
 
 static void handle_touch_down(struct wl_listener *listener, void *data)
 {
+    struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_down);
     struct wlr_touch_down_event *event = data;
-    // first finger touch
+    // only first finger touch
     if (event->touch_id != 0) {
+        circle_progressbar_effect_end(seat_touch->effect->base);
         return;
     }
 
-    struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_down);
+    seat_touch->effect->touch_x = event->x;
+    seat_touch->effect->touch_y = event->y;
     int32_t lx = roundf(seat_touch->seat->cursor->lx);
     int32_t ly = roundf(seat_touch->seat->cursor->ly);
     circle_progressbar_effect_begin(seat_touch->effect->base, lx, ly);
@@ -47,26 +50,20 @@ static void handle_touch_down(struct wl_listener *listener, void *data)
 
 static void handle_touch_up(struct wl_listener *listener, void *data)
 {
-    struct wlr_touch_up_event *event = data;
-    // first finger touch
-    if (event->touch_id != 0) {
-        return;
-    }
-
     struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_up);
     circle_progressbar_effect_end(seat_touch->effect->base);
 }
 
 static void handle_touch_motion(struct wl_listener *listener, void *data)
 {
+    struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_motion);
     struct wlr_touch_motion_event *event = data;
-    // first finger touch
     if (event->touch_id != 0) {
+        circle_progressbar_effect_end(seat_touch->effect->base);
         return;
     }
 
-    struct seat_touch *seat_touch = wl_container_of(listener, seat_touch, touch_motion);
-    const float anti_acciden = 0.1f; // move diff > this then remove
+    const float anti_acciden = 0.01f; // move diff > this then remove
     if (fabs(seat_touch->effect->touch_x - event->x) > anti_acciden ||
         fabs(seat_touch->effect->touch_y - event->y) > anti_acciden) {
         circle_progressbar_effect_end(seat_touch->effect->base);
