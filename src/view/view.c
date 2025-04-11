@@ -1288,6 +1288,8 @@ void view_do_tiled(struct view *view, enum kywc_tile tile, struct kywc_output *k
     view->pending.action |= VIEW_ACTION_TILE;
     view->pending.geometry = geo;
 
+    view_add_scale_effect(view, SCALE_RESIZE);
+
     if (kywc_view->mapped && view->impl->configure) {
         view->impl->configure(view);
     }

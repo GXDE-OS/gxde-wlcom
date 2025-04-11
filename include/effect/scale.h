@@ -10,6 +10,7 @@
 enum scale_action {
     SCALE_MAXIMIZE = 0,
     SCALE_MINIMIZE,
+    SCALE_RESIZE,
 };
 
 bool view_add_scale_effect(struct view *view, enum scale_action action);

@@ -220,6 +220,13 @@ bool view_add_scale_effect(struct view *view, enum scale_action action)
         options.type.geometry = ANIMATION_TYPE_EASE;
         scale_calc_view_box(&view->base, &view->pending.geometry, &options.start.geometry);
         scale_calc_view_box(&view->base, &view->base.geometry, &options.end.geometry);
+    } else if (action == SCALE_RESIZE) {
+        options.start.alpha = 1.0;
+        options.end.alpha = 1.0;
+        options.duration = 260;
+        options.type.geometry = ANIMATION_TYPE_EASE;
+        scale_calc_view_box(&view->base, &view->pending.geometry, &options.end.geometry);
+        scale_calc_view_box(&view->base, &view->base.geometry, &options.start.geometry);
     } else if (action == SCALE_MINIMIZE) {
         if (view->base.minimized) {
             options.duration = 260;
