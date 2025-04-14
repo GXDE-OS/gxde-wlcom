@@ -775,6 +775,19 @@ bool workspace_add_automatic_translation_effect(struct workspace *current, struc
             continue;
         }
 
+        if (!wl_list_empty(&ws_output->orders)) {
+            struct translation_order *last_order = wl_container_of(ws_output->orders.next, last_order, link);
+            enum direction round_trip_direction =
+                direction == DIRECTION_LEFT ? DIRECTION_RIGHT : DIRECTION_LEFT;
+            if (next == NULL && last_order->direction == round_trip_direction &&
+                last_order->workspace == current) {
+                continue;
+            }
+        } else if (next == NULL && ws_output->entities[0]->workspace == next &&
+                   ws_output->entities[1]->workspace == current) {
+            continue;
+        }
+
         workspace_output_add_translation_entity(ws_output, next, direction);
         /* if current workspace is last workspace, need a short round trip */
         if (!next) {
