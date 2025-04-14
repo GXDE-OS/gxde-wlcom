@@ -523,9 +523,7 @@ scene_output_get_fullscreen_buffer(struct ky_scene_output *scene_output)
     return buffer;
 }
 
-static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
-                                        struct wlr_output_state *state,
-                                        struct ky_scene_buffer *scene_buffer)
+static bool scene_output_direct_scanout_is_allowed(struct ky_scene_output *scene_output)
 {
     if (!scene_output->direct_scanout) {
         return false;
@@ -540,10 +538,18 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
         return false;
     }
 
+    return true;
+}
+
+static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
+                                        struct wlr_output_state *state,
+                                        struct ky_scene_buffer *scene_buffer)
+{
     if (!scene_buffer) {
         return false;
     }
 
+    struct wlr_output *output = scene_output->output;
     if (scene_buffer->transform != output->transform) {
         return false;
     }
@@ -665,8 +671,13 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         return false;
     }
 
-    struct ky_scene_buffer *fullscreen = scene_output_get_fullscreen_buffer(scene_output);
-    bool is_tearing = is_tearing_allowed(scene_output->scene, fullscreen);
+    struct ky_scene_buffer *fullscreen = NULL;
+    bool is_tearing = false;
+    if (scene_output_direct_scanout_is_allowed(scene_output) ||
+        ky_scene_is_tearing_needed(scene_output->scene)) {
+        fullscreen = scene_output_get_fullscreen_buffer(scene_output);
+        is_tearing = is_tearing_allowed(scene_output->scene, fullscreen);
+    }
 
     struct wlr_output_state state;
     wlr_output_state_init(&state);
