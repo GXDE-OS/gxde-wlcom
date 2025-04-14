@@ -469,6 +469,22 @@ bool ky_scene_surface_is_tearing_allowed(struct ky_scene *scene, struct wlr_surf
     return hint == WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC;
 }
 
+bool ky_scene_is_tearing_needed(struct ky_scene *scene)
+{
+    if (!scene->tearing_control_v1) {
+        return false;
+    }
+
+    struct wlr_tearing_control_v1 *hint;
+    wl_list_for_each(hint, &scene->tearing_control_v1->surface_hints, link) {
+        if (hint->hint == WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ky_scene_collect_damage(struct ky_scene *scene)
 {
     KY_PROFILE_ZONE(zone, __func__);

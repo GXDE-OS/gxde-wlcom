@@ -329,6 +329,8 @@ void ky_scene_set_tearing_control_v1(struct ky_scene *scene,
 
 bool ky_scene_surface_is_tearing_allowed(struct ky_scene *scene, struct wlr_surface *surface);
 
+bool ky_scene_is_tearing_needed(struct ky_scene *scene);
+
 struct ky_scene *ky_scene_from_node(struct ky_scene_node *node);
 
 void ky_scene_damage_whole(struct ky_scene *scene);
@@ -434,6 +436,7 @@ void ky_scene_buffer_set_repeated(struct ky_scene_buffer *scene_buffer, bool rep
 void ky_scene_buffer_send_dmabuf_feedback(
     const struct ky_scene *scene, struct ky_scene_buffer *scene_buffer,
     const struct wlr_linux_dmabuf_feedback_v1_init_options *options);
+
 /**
  * scene output
  */
