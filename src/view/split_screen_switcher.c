@@ -69,7 +69,6 @@ static struct ky_scene_rect *split_screen_box_create_rect(struct ky_scene_tree *
 {
     struct ky_scene_rect *preview_area = ky_scene_rect_create(parent, w, h, color);
     ky_scene_node_set_radius(&preview_area->node, (int[4]){ radius, radius, radius, radius });
-
     return preview_area;
 }
 
@@ -314,6 +313,7 @@ static void split_screen_box_leave(struct seat *seat, struct ky_scene_node *node
 static void split_screen_box_click(struct seat *seat, struct ky_scene_node *node, uint32_t button,
                                    bool pressed, uint32_t time, enum click_state state, void *data)
 {
+    // do nothing
 }
 
 static struct ky_scene_node *get_split_screen_box_root(void *data)
@@ -446,8 +446,9 @@ void split_screen_switcher_show(struct view *view, struct seat *seat, bool enabl
     }
 
     int x = seat->cursor->lx;
-    if (x > (2 * theme->icon_size))
+    if (x > (2 * theme->icon_size)) {
         x = x - 2 * theme->icon_size;
+    }
 
     struct output *output = input_current_output(seat);
     int max_x = output->geometry.x + output->geometry.width;
