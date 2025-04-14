@@ -48,8 +48,6 @@ static struct shortcut {
 } shortcuts[] = {
     { "Ctrl+Alt+Left:no", "switch to left workspace", DIRECTION_LEFT },
     { "Ctrl+Alt+Right:no", "switch to right workspace", DIRECTION_RIGHT },
-    { "Ctrl+Alt+Up:no", "switch to up workspace", DIRECTION_UP },
-    { "Ctrl+Alt+Down:no", "switch to down workspace", DIRECTION_DOWN },
     { "Ctrl+F1", "switch to workspace 0", 4 },
     { "Ctrl+F2", "switch to workspace 1", 5 },
     { "Ctrl+F3", "switch to workspace 2", 6 },
@@ -60,42 +58,26 @@ static struct shortcut {
 
 static void workspace_switch_to(int switch_workspace)
 {
-    if (workspace_manager->count == 1) {
-        kywc_log(KYWC_INFO, "only one workspace, no need to switch");
-        return;
-    }
-
     int32_t current = workspace_manager->current->position;
-    int32_t column = workspace_manager->columns;
-    int32_t row = workspace_manager->rows - 1;
     int32_t last = workspace_manager->count - 1;
     int32_t pending = current;
 
     if (switch_workspace == DIRECTION_LEFT) {
         pending = current - 1;
-        pending = pending < 0 ? last : pending;
     } else if (switch_workspace == DIRECTION_RIGHT) {
         pending = current + 1;
-        pending = pending > last ? 0 : pending;
-    } else if (switch_workspace == DIRECTION_UP) {
-        pending = current - column;
-        pending = pending < 0 ? current + row * column : pending;
-        pending = pending > last ? pending - column : pending;
-    } else if (switch_workspace == DIRECTION_DOWN) {
-        pending = current + column;
-        pending = pending > last ? current - row * column : pending;
-        pending = pending < 0 ? pending + column : pending;
-        /* add ctrl+f1...f4 to workspace */
     } else {
+        /* add ctrl+f1...f4 to workspace */
         pending = switch_workspace - 4;
         if (pending == current || pending > last) {
             return;
         }
     }
 
+    struct workspace *pending_workspace =
+        pending < 0 || pending > last ? NULL : workspace_manager->workspaces[pending];
     if (!workspace_add_automatic_translation_effect(workspace_manager->workspaces[current],
-                                                    workspace_manager->workspaces[pending],
-                                                    switch_workspace)) {
+                                                    pending_workspace, switch_workspace)) {
         workspace_activate(workspace_manager->workspaces[pending]);
     }
 }
