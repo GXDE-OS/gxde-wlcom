@@ -458,114 +458,74 @@ static bool scene_output_render(struct ky_scene_output *scene_output,
     return true;
 }
 
-static bool ky_scene_check_fullscreen_node(struct ky_scene_output *scene_output,
-                                           struct ky_scene_tree *scene_tree,
-                                           struct ky_scene_node **fullscreen, int *x, int *y)
+static bool ky_scene_get_fullscreen_buffer(struct ky_scene_node *node, int lx, int ly,
+                                           const struct wlr_box *box,
+                                           struct ky_scene_buffer **buffer)
 {
-    struct ky_scene_node *node;
-    wl_list_for_each_reverse(node, &scene_tree->children, link) {
-        if (!node->enabled) {
-            continue;
-        }
+    if (!ky_scene_node_is_visible(node)) {
+        return false;
+    }
 
-        int lx = *x + node->x;
-        int ly = *y + node->y;
-
-        /* skip nodes outside scene_output based on coordinates */
-        if (lx >= scene_output->x + scene_output->output->width ||
-            ly >= scene_output->y + scene_output->output->height) {
-            continue;
-        }
-
-        if (node->type == KY_SCENE_NODE_TREE) {
-            struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
-            if (wl_list_empty(&tree->children)) {
-                continue;
-            }
-            if (!ky_scene_check_fullscreen_node(scene_output, tree, fullscreen, &lx, &ly)) {
-                continue;
-            }
-            return true;
-        }
-
-        int output_width = 0, output_height = 0;
-        wlr_output_effective_resolution(scene_output->output, &output_width, &output_height);
-
-        if (node->type == KY_SCENE_NODE_RECT) {
-            struct ky_scene_rect *rect = ky_scene_rect_from_node(node);
-            /* exclude nodes: off-screen,transparent */
-            if (lx + rect->width <= scene_output->x || ly + rect->height <= scene_output->y ||
-                rect->color[3] == 0) {
-                continue;
-            }
-
-            if (rect->color[3] != 1) {
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *child;
+        wl_list_for_each_reverse(child, &tree->children, link) {
+            if (ky_scene_get_fullscreen_buffer(child, lx + child->x, ly + child->y, box, buffer)) {
                 return true;
             }
-
-            /* set fullscreen node when bounds match exactly */
-            if (lx == scene_output->x && ly == scene_output->y && rect->width == output_width &&
-                rect->height == output_height) {
-                *fullscreen = node;
-            }
-
-            return true;
         }
+        return false;
+    }
 
-        struct ky_scene_buffer *buffer = ky_scene_buffer_from_node(node);
-        if (!buffer || !buffer->buffer || buffer->opacity == 0) {
-            continue;
-        }
+    struct wlr_box bound = { 0 };
+    node->impl.get_bounding_box(node, &bound);
+    bound.x += lx, bound.y += ly;
 
-        int node_width = 0, node_height = 0;
-        if (buffer->dst_width > 0 && buffer->dst_height > 0) {
-            node_width = buffer->dst_width;
-            node_height = buffer->dst_height;
-        } else if (buffer->transform & WL_OUTPUT_TRANSFORM_90) {
-            node_height = buffer->buffer->width;
-            node_width = buffer->buffer->height;
-        } else {
-            node_width = buffer->buffer->width;
-            node_height = buffer->buffer->height;
-        }
+    struct wlr_box dest;
+    if (!wlr_box_intersection(&dest, &bound, box)) {
+        return false;
+    }
 
-        /* exclude nodes beyond scene_output using node bounds */
-        if (lx + node_width <= scene_output->x || ly + node_height <= scene_output->y) {
-            continue;
-        }
-
-        if (!pixman_region32_not_empty(&buffer->opaque_region)) {
-            continue;
-        }
-
-        pixman_region32_t region;
-        pixman_region32_init_rect(&region, 0, 0, output_width, output_height);
-        /* set fullscreen node when bounds match exactly */
-        if (lx == scene_output->x && ly == scene_output->y && node_width == output_width &&
-            node_height == output_height &&
-            pixman_region32_equal(&buffer->opaque_region, &region)) {
-            *fullscreen = node;
-        }
-        pixman_region32_fini(&region);
-
+    if (node->type == KY_SCENE_NODE_RECT) {
         return true;
     }
 
-    return false;
+    if (dest.width != box->width || dest.height != box->height) {
+        return true;
+    }
+
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(node);
+    if (scene_buffer->opacity != 1 || !pixman_region32_not_empty(&scene_buffer->opaque_region)) {
+        return true;
+    }
+
+    if (pixman_region32_contains_rectangle(&scene_buffer->opaque_region,
+                                           &(pixman_box32_t){ 0, 0, box->width, box->height }) ==
+        PIXMAN_REGION_IN) {
+        *buffer = scene_buffer;
+    }
+
+    return true;
 }
 
-static struct ky_scene_node *scene_output_get_fullscreen_node(struct ky_scene_output *scene_output)
+static struct ky_scene_buffer *
+scene_output_get_fullscreen_buffer(struct ky_scene_output *scene_output)
 {
-    int lx = 0, ly = 0;
-    struct ky_scene_node *fullscreen = NULL;
-    ky_scene_check_fullscreen_node(scene_output, &scene_output->scene->tree, &fullscreen, &lx, &ly);
+    struct ky_scene_node *root = &scene_output->scene->tree.node;
+    int lx = root->x, ly = root->y;
 
-    return fullscreen;
+    int width, height;
+    wlr_output_effective_resolution(scene_output->output, &width, &height);
+    struct wlr_box box = { scene_output->x, scene_output->y, width, height };
+
+    struct ky_scene_buffer *buffer = NULL;
+    ky_scene_get_fullscreen_buffer(root, lx, ly, &box, &buffer);
+    return buffer;
 }
 
 static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
                                         struct wlr_output_state *state,
-                                        struct ky_scene_node *fullscreen_node)
+                                        struct ky_scene_buffer *scene_buffer)
 {
     if (!scene_output->direct_scanout) {
         return false;
@@ -580,15 +540,6 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
         return false;
     }
 
-    if (!fullscreen_node) {
-        return false;
-    }
-
-    if (fullscreen_node->type != KY_SCENE_NODE_BUFFER) {
-        return false;
-    }
-
-    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_from_node(fullscreen_node);
     if (!scene_buffer) {
         return false;
     }
@@ -624,7 +575,7 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
         };
 
         ky_scene_buffer_send_dmabuf_feedback(scene_output->scene, scene_buffer, &options);
-        fullscreen_node->sent_dmabuf_feedback = true;
+        scene_buffer->node.sent_dmabuf_feedback = true;
     }
 
     struct wlr_output_state pending;
@@ -658,13 +609,13 @@ static bool ky_scene_try_direct_scanout(struct ky_scene_output *scene_output,
     return true;
 }
 
-static bool is_tearing_allowed(struct ky_scene *scene, struct ky_scene_node *node)
+static bool is_tearing_allowed(struct ky_scene *scene, struct ky_scene_buffer *buffer)
 {
-    if (!node) {
+    if (!buffer) {
         return false;
     }
 
-    struct wlr_surface *surface = wlr_surface_try_from_node(node);
+    struct wlr_surface *surface = wlr_surface_try_from_node(&buffer->node);
     if (!surface) {
         return false;
     }
@@ -714,7 +665,7 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
         return false;
     }
 
-    struct ky_scene_node *fullscreen = scene_output_get_fullscreen_node(scene_output);
+    struct ky_scene_buffer *fullscreen = scene_output_get_fullscreen_buffer(scene_output);
     bool is_tearing = is_tearing_allowed(scene_output->scene, fullscreen);
 
     struct wlr_output_state state;
@@ -725,7 +676,8 @@ bool ky_scene_output_commit(struct ky_scene_output *scene_output,
     bool scanout = ky_scene_try_direct_scanout(scene_output, &state, fullscreen);
     if (scene_output->prev_scanout != scanout) {
         scene_output->prev_scanout = scanout;
-        kywc_log(KYWC_INFO, "Direct scan-out %s", scanout ? "enabled" : "disabled");
+        kywc_log(KYWC_INFO, "%s: Direct scan-out %s", scene_output->output->name,
+                 scanout ? "enabled" : "disabled");
         if (!scanout) {
             // When exiting direct scan-out, damage everything
             wlr_damage_ring_add_whole(&scene_output->damage_ring);
