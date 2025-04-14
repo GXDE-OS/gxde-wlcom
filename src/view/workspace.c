@@ -48,10 +48,10 @@ static struct shortcut {
 } shortcuts[] = {
     { "Ctrl+Alt+Left:no", "switch to left workspace", DIRECTION_LEFT },
     { "Ctrl+Alt+Right:no", "switch to right workspace", DIRECTION_RIGHT },
-    { "Ctrl+F1", "switch to workspace 0", 4 },
-    { "Ctrl+F2", "switch to workspace 1", 5 },
-    { "Ctrl+F3", "switch to workspace 2", 6 },
-    { "Ctrl+F4", "switch to workspace 3", 7 },
+    { "Ctrl+F1:no", "switch to workspace 0", 4 },
+    { "Ctrl+F2:no", "switch to workspace 1", 5 },
+    { "Ctrl+F3:no", "switch to workspace 2", 6 },
+    { "Ctrl+F4:no", "switch to workspace 3", 7 },
     { "Win+ctrl+left:no", "switch to left workspace", DIRECTION_LEFT },
     { "Win+ctrl+Right:no", "switch to right workspace", DIRECTION_RIGHT },
 };
@@ -72,6 +72,7 @@ static void workspace_switch_to(int switch_workspace)
         if (pending == current || pending > last) {
             return;
         }
+        switch_workspace = pending > current ? DIRECTION_RIGHT : DIRECTION_LEFT;
     }
 
     struct workspace *pending_workspace =
