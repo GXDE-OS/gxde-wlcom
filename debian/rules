@@ -5,15 +5,18 @@ include /usr/share/dpkg/pkg-info.mk
 SUPPORT = https://www.debian.org/support
 
 %:
-	dh $@ --buildsystem=meson --with quilt
+	dh $@ --buildsystem=meson
 
 override_dh_auto_configure:
-	dh_auto_configure -- -Dexamples=false -Dukui_theme=true --buildtype=debugoptimized
+	dh_auto_configure -- -Dexamples=false -Dukui_theme=true -Dwlroots:renderers=gles2 --buildtype=debugoptimized
 
 override_dh_strip:
 
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/tmp
+	rm -rf debian/tmp/usr/include/wlr
+	rm -f debian/tmp/usr/lib/*/pkgconfig/wlroots*.pc
+	rm -f debian/tmp/usr/lib/*/libwlroots*
 
 override_dh_clean:
 	dh_clean
