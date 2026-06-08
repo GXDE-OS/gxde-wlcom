@@ -11,12 +11,14 @@
 ## 手动运行
 
 进入tty界面，确保原有的桌面环境管已经关闭。
-
-    sudo systemctl stop lightdm
+```bash
+$ sudo systemctl stop lightdm
+```
 
 执行以下命令手动启动合成器
-
-    kylin-wlcom -s ukui-session
+```bash
+$ kylin-wlcom -s ukui-session
+```
 
 此时将启动ukui桌面。
 
@@ -30,75 +32,89 @@
 在已有的图形服务器上，终端启动kylin-wlcom，
 此时为嵌入式运行状态，要在此合成器上运行客户端，需加上参数:
 
-    WAYLAND_DISPLAY=[display]
+```
+WAYLAND_DISPLAY=[display]
+```
 
-[display]可通过日志查看。 
+`[display]`可通过日志查看。 
 
 ## Backtraces
 
 如果合成器崩溃，可在构建时使用ASAN/UBSAN来回溯
-
-    meson setup build -Dbuildtype=debug -Db_sanitize=address,undefined
-    ninja -C build
+```bash
+$ meson setup build -Dbuildtype=debug -Db_sanitize=address,undefined
+$ ninja -C build
+```
 
 如果合成器多次崩溃且崩溃场景存在随机性，可使用valgrind工具进行测试
-
-    valgrind /path/kylin-wlcom ...
+```bash
+$ valgrind /path/kylin-wlcom ...
+```
 
 ## Debug日志
 
 查看客户端debug打印信息，可在启动客户端时添加如下指令打印debug信息
-
-    WAYLAND_DEBUG=1
+```
+WAYLAND_DEBUG=1
+```
 
 服务端日志默认路径
-
-    $HOME/.log/kylin-wlcom.log
+```
+$HOME/.log/kylin-wlcom.log
+```
 
 可通过入参`-Dlogtostdout`直接打印日志到stdout
-
-    "Usage: kylin-wlcom [options] [command]"
-    "  -d, --debug              Enables full logging, including debug information.\n"
-    "  -D, --debug <options>    noxwayland or logtostdout.\n"
+```bash
+Usage: kylin-wlcom [options] [command]
+  -d, --debug              Enables full logging, including debug information.\n
+  -D, --debug <options>    noxwayland or logtostdout.\n
+```
 
 设置debug信息输出到屏幕: 
-
-    ./kylin-wlcom -d -Dlogtostdout
+```bash
+$ ./kylin-wlcom -d -Dlogtostdout
+```
 
 ## xwayland
 
 不开启xwayland: 
-
-    ./kylin-wlcom -Dnoxwayland
+```bash
+$ ./kylin-wlcom -Dnoxwayland
+```
 
 ## ukui程序
 
 在终端启动应用前面加入参数:
-
-    QT_QPA_PLATFORM=wayland QT_QPA_PLATFORMTHEME=ukui 
+```bash
+$ QT_QPA_PLATFORM=wayland QT_QPA_PLATFORMTHEME=ukui
+```
 
 ## 输入
 
 使用如下指令来显示输入事件
-
-    sudo libinput debug-events
+```bash
+$ sudo libinput debug-events
+```
 
 在终端上，可以使用如下指令来分析键盘事件
-
-    xev -event keyboard
-    wev -f wl_keyboard:key
+```bash
+$ xev -event keyboard
+$ wev -f wl_keyboard:key
+```
 
 # 代码风格
 
 代码风格由项目附带的`.clang-format`文件控制，可使用clang-format进行格式化，例如
-
-    clang-format -i src/view/workspace.c
+```bash
+$ clang-format -i src/view/workspace.c
+```
 
 # Commit信息
 
 解释commit的原因和commit本身一样重要。像这样来提交commit信息，
-
-	view: mark mapped before configure 
+```
+view: mark mapped before configure 
+```
 
 第一行应该:
 - 简要描述提交的原因
@@ -106,4 +122,3 @@
 - 不使用句号
 
 commit信息标题请控制在合理长度内。
-
