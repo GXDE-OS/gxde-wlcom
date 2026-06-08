@@ -78,6 +78,60 @@ $ meson install -C build --skip-subprojects
 
 
 
+## 手动编辑 (构建脚本)
+
+构建脚本位于[./build-deb](./build-deb), 这是个shell脚本，用于在调试时生成安装包，便于在调试机器上轻松部署与卸载。
+
+
+
+首先先修改脚本权限: 
+
+```bash
+$ chmod a+x ./build-deb
+```
+
+
+
+然后以下上参数帮助:
+
+```bash
+用法: ./build-deb <选项>
+
+选项:
+	-b, --binary          仅构建二进制包（默认行为）
+    -d, --install-deps    先安装构建依赖(读 debian/control)，再构建
+    -c, --clean           仅清理构建产物后退出
+    -h, --help            打印帮助信息
+```
+
+
+
+初次编译建议执行:
+
+```bash
+$ ./build-deb -d    # 安装依赖并构建
+```
+
+
+
+以后就可以不用安装依赖了:
+
+```bash
+$ ./build-deb    # 直接构建
+```
+
+
+
+构建完成后清理中间产物: 
+
+```bash
+$ ./build-deb -c
+```
+
+
+
+
+
 ## 调试
 
 > **注意**: 默认情况下，日志打印到文件`$HOME/.log/kylin-wlcom.log`。
