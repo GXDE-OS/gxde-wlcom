@@ -126,6 +126,12 @@ $ meson compile kylin-wayland-compositor-pot
 
 
 
+# 在GXDE上建立kywc会话
+
+请参阅「[./docs/gxde/gxde-wlcom-session.md](./docs/gxde/gxde-wlcom-session.md)」，了解如何在GXDE上建立kywc会话。
+
+
+
 # 已知问题
 
 请参阅「[KNOWN_ISSUES](./docs/KNOWN_ISSUES.md)」文件，了解已知问题。
