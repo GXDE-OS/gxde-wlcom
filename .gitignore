@@ -75,3 +75,6 @@ Thumbs.db
 
 # vscode settings files
 .vscode
+
+# (Emacs/Flymake) compile_commands.json used for project setup
+/compile_commands.json
