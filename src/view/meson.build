@@ -84,3 +84,8 @@ if have_ukui_blur
     'ukui_blur.c',
   )
 endif
+
+# DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 (圆角, 标题栏, etc.)
+wlcom_sources += files(
+  'dde_shell.c',
+)

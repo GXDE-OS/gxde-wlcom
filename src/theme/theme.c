@@ -28,19 +28,19 @@
 static struct theme_manager *manager = NULL;
 static const char *fallback_icon_name = "fallback";
 
-/* fallback light widget theme from ukui-white */
+/* fallback light widget theme from DDE 15 theme */
 static struct widget_theme widget_light = {
     .name = FALLBACK_THEME_NAME,
     .type = THEME_TYPE_LIGHT,
     .builtin = true,
 
-    .active_border_color = { 0.0, 0.0, 0.0, 0.15 },
-    .inactive_border_color = { 0.0, 0.0, 0.0, 0.15 },
+    .active_border_color = { 0.0, 0.0, 0.0, 0.20 },
+    .inactive_border_color = { 0.0, 0.0, 0.0, 0.20 },
     .active_bg_color = { 1.0, 1.0, 1.0, 1.0 },
-    .inactive_bg_color = { 245.0 / 255.0, 245.0 / 255.0, 245.0 / 255.0, 1.0 },
-    .active_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 1.0 },
-    .inactive_text_color = { 38.0 / 255.0, 38.0 / 255.0, 38.0 / 255.0, 0.3 },
-    .active_shadow_color = { 0.0, 0.0, 0.0, 0.4 },
+    .inactive_bg_color = { 1.0, 1.0, 1.0, 1.0 },
+    .active_text_color = { 48.0 / 255.0, 48.0 / 255.0, 48.0 / 255.0, 1.0 },
+    .inactive_text_color = { 150.0 / 255.0, 150.0 / 255.0, 150.0 / 255.0, 1.0 },
+    .active_shadow_color = { 0.0, 0.0, 0.0, 0.50 },
     .inactive_shadow_color = { 0.0, 0.0, 0.0, 0.25 },
     .accent_color = { 55.0 / 255, 144.0 / 255, 250.0 / 255, 1.0 },
     .modal_mask_color = { 0, 0, 0, 0.2 },
@@ -48,19 +48,19 @@ static struct widget_theme widget_light = {
     .button_svg = base_light_svg_src,
 };
 
-/* fallback dark theme from ukui-dark */
+/* fallback dark theme from (DDE 15 Dark) */
 static struct widget_theme widget_dark = {
     .name = FALLBACK_THEME_NAME,
     .type = THEME_TYPE_DARK,
     .builtin = true,
 
-    .active_border_color = { 1.0, 1.0, 1.0, 0.15 },
-    .inactive_border_color = { 1.0, 1.0, 1.0, 0.15 },
-    .active_bg_color = { 18.0 / 255.0, 18.0 / 255.0, 18.0 / 255.0, 1.0 },
-    .inactive_bg_color = { 28.0 / 255.0, 28.0 / 255.0, 28.0 / 255.0, 1.0 },
-    .active_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 1.0 },
-    .inactive_text_color = { 0xcf / 255.0, 0xcf / 255.0, 0xcf / 255.0, 0.3 },
-    .active_shadow_color = { 0.0, 0.0, 0.0, 0.4 },
+    .active_border_color = { 1.0, 1.0, 1.0, 0.20 },
+    .inactive_border_color = { 1.0, 1.0, 1.0, 0.20 },
+    .active_bg_color = { 37.0 / 255.0, 37.0 / 255.0, 37.0 / 255.0, 1.0 },
+    .inactive_bg_color = { 37.0 / 255.0, 37.0 / 255.0, 37.0 / 255.0, 1.0 },
+    .active_text_color = { 236.0 / 255.0, 235.0 / 255.0, 235.0 / 255.0, 1.0 },
+    .inactive_text_color = { 48.0 / 255.0, 48.0 / 255.0, 48.0 / 255.0, 1.0 },
+    .active_shadow_color = { 0.0, 0.0, 0.0, 0.60 },
     .inactive_shadow_color = { 0.0, 0.0, 0.0, 0.25 },
     .accent_color = { 243.0 / 255, 34.0 / 255, 45.0 / 255, 1.0 },
     .modal_mask_color = { 0, 0, 0, 0.2 },
@@ -182,15 +182,15 @@ static uint32_t theme_init(struct widget_theme *widget)
     theme->text_justify = theme->layout_is_right_to_left ? JUSTIFY_RIGHT : JUSTIFY_LEFT;
 
     theme->ssd_need_maximize_button = true;
-    theme->button_width = 32;
+    theme->button_width = 30;
     theme->icon_size = 24;
     theme->border_width = 1;
-    theme->title_height = 38;
-    theme->subtitle_height = 38;
-    theme->shadow_border = 30;
+    theme->title_height = 40;
+    theme->subtitle_height = 40;
+    theme->shadow_border = 40;
     theme->shadow_offset_x = 0;
-    theme->shadow_offset_y = 0;
-    theme->normal_radius = 6;
+    theme->shadow_offset_y = 30;
+    theme->normal_radius = 8;
 
     struct theme_buffer *buffer, *tmp;
     wl_list_for_each_safe(buffer, tmp, &theme->scaled_buffers, link) {

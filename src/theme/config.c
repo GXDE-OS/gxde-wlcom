@@ -120,7 +120,7 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
     if (json_object_object_get_ex(manager->config->json, "corner_radius", &data)) {
         manager->global.corner_radius = json_object_get_int(data);
     } else {
-        manager->global.corner_radius = 12;
+        manager->global.corner_radius = 8;
     }
 
     if (json_object_object_get_ex(manager->config->json, "opacity", &data)) {
@@ -170,7 +170,7 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
                                json_object_new_int(manager->global.accent_color));
     }
 
-    if (manager->global.corner_radius != 12) {
+    if (manager->global.corner_radius != 8) {
         json_object_object_add(manager->config->json, "corner_radius",
                                json_object_new_int(manager->global.corner_radius));
     } else {

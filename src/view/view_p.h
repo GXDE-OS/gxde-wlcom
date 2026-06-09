@@ -271,4 +271,7 @@ static __attribute__((unused)) inline bool ukui_blur_manager_create(struct serve
 }
 #endif
 
+/* dde-shell相关，用于DTK窗体属性 */
+bool dde_shell_create(struct server *server);
+
 #endif /* _VIEW_P_H_ */

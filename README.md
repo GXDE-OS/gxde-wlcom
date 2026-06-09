@@ -35,6 +35,14 @@
 
 # 编译
 
+## (EMACS Flymake/clang用户请看) 初始化Flymake/clang
+```bash
+$ meson setup build
+$ ln -sf build/compile_commands.json compile_commands.json
+```
+
+然后重新打开`emacs`。
+
 ## 依赖
 
 运行时需要使用的库或程序:

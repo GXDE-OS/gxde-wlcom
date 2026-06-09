@@ -106,6 +106,11 @@ if have_ukui_blur
   }
 endif
 
+# DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 (圆角, 标题栏, etc.)
+protocols += {
+  'dde-shell': 'dde-shell.xml',
+}
+
 protocols_code = {}
 protocols_server_header = {}
 protocols_client_header = {}

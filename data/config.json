@@ -1,7 +1,7 @@
 {
     "theme": {
         "type": 0,
-        "icon_theme_name": "ukui-icon-theme-default"
+        "icon_theme_name": "hicolor"
     },
     "outputs": {},
     "layouts": {},

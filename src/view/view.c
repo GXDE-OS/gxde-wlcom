@@ -2246,5 +2246,11 @@ struct view_manager *view_manager_create(struct server *server)
     ukui_window_management_create(server);
     ukui_blur_manager_create(server);
 
+    /**
+     *  DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 
+     * (圆角, 标题栏, etc.) 
+     */
+    dde_shell_create(server);
+
     return view_manager;
 }
