@@ -1,69 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
   <!--
-    Deepin DDE15-style window button sprites (dark theme) for wlcom fallback theme
-    Layout: 3 rows (normal, hover, pressed) × 4 cols (minimize, maximize, restore, close)
-    Each cell: 30×30, viewBox: 120×90
+    Window button sprite for wlcom fallback theme (dark)
+    Artwork ported from deepin-chameleon theme 「云璃」 from GXDE source code
+    using deepin/dark/icons/{minimize,maximize,unmaximize,close}_{normal,hover,press}.svg.
+
+    Original icons licensed under CC0-1.0. See gxde-kwin/.reuse/dep5's 「#png svg」 section.
+    SPDX-FileCopyrightText: 2018 - 2023 UnionTech Software Technology Co., Ltd.
+    SPDX-FileCopyrightText: 2026 CharOfString
+    SPDX-License-Identifier: CC0-1.0
+
+    Layout: each cell 40x40, viewBox 160x120.
   -->
 
-  <!-- Row 0: Normal state (no background, white icons at 60% opacity) -->
+  <!-- Row 0: Normal state (no background), glyph white @ .6 -->
   <!-- minimize_normal -->
-  <svg x="0" y="0" width="30" height="30">
-    <polygon fill="#FFFFFF" opacity=".6" points="7.5,20 24,20 24.5,20 24.5,19 24,19 7.5,19 7,19 7,20"/>
+  <svg x="0" y="0" width="40" height="40" viewBox="0 0 40 40">
+    <polygon fill="#FFFFFF" opacity="0.6" points="15.471,20 24.529,20 25,20 25,19 24.529,19 15.471,19 15,19 15,20"/>
   </svg>
   <!-- maximize_normal -->
-  <svg x="30" y="0" width="30" height="30">
-    <path fill="#FFFFFF" opacity=".6" fill-rule="evenodd" d="M7,13.5 L7,9.5 L7,8 L8.6,8 L21.4,8 L23,8 L23,9.5 L23,13.5 L23,15 L21.4,15 L8.6,15 L7,15 L7,13.5 Z M8,14 L22,14 L22,9 L8,9 L8,14 Z"/>
+  <svg x="40" y="0" width="40" height="40" viewBox="0 0 40 40">
+    <path fill="#FFFFFF" opacity="0.6" fill-rule="evenodd" d="M15,22.25 L15,17.75 L15,16 L16.8,16 L23.2,16 L25,16 L25,17.75 L25,22.25 L25,24 L23.2,24 L16.8,24 L15,24 L15,22.25 Z M16,23 L24,23 L24,17 L16,17 L16,23 Z"/>
   </svg>
-  <!-- unmaximize_normal -->
-  <svg x="60" y="0" width="30" height="30">
-    <path fill="#FFFFFF" opacity=".6" fill-rule="evenodd" d="M22,8 L15,8 L15,7 L23,7 L23,15 L22,15 L22,8 Z M7,14 L7,10.5 L7,9 L8.5,9 L12.5,9 L14,9 L14,10.5 L14,14 L14,15.5 L12.5,15.5 L8.5,15.5 L7,15.5 L7,14 Z M8,15 L13,15 L13,10 L8,10 L8,15 Z"/>
+  <!-- unmaximize_normal (restore) -->
+  <svg x="80" y="0" width="40" height="40" viewBox="0 0 40 40">
+    <path fill="#FFFFFF" opacity="0.6" fill-rule="evenodd" d="M24,16 L16,16 L16,15 L25,15 L25,24 L24,24 L24,16 Z M15,23 L15,19 L15,17 L17,17 L21,17 L23,17 L23,19 L23,23 L23,25 L21,25 L17,25 L15,25 L15,23 Z M16,24 L22,24 L22,18 L16,18 L16,24 Z"/>
   </svg>
   <!-- close_normal -->
-  <svg x="90" y="0" width="30" height="30">
-    <polygon fill="#FFFFFF" opacity=".6" points="15.19,15.72 12.8,18.11 12.53,18.37 12,17.84 12.27,17.57 14.66,15.19 12.27,12.8 12,12.53 12.53,12 12.8,12.27 15.19,14.66 17.57,12.27 17.84,12 18.37,12.53 18.11,12.8 15.72,15.19 18.11,17.57 18.37,17.84 17.84,18.37 17.57,18.11"/>
+  <svg x="120" y="0" width="40" height="40" viewBox="0 0 40 40">
+    <polygon fill="#FFFFFF" opacity="0.6" points="20.25,20.958 17.063,24.146 16.708,24.5 16,23.792 16.354,23.438 19.542,20.25 16.354,17.063 16,16.708 16.708,16 17.063,16.354 20.25,19.542 23.438,16.354 23.792,16 24.5,16.708 24.146,17.063 20.958,20.25 24.146,23.438 24.5,23.792 23.792,24.5 23.438,24.146"/>
   </svg>
 
-  <!-- Row 1: Hover state (white bg at 15%, white icons, close gets orange) -->
+  <!-- Row 1: Hover state (square highlight #FFFFFF@.15, close turns orange) -->
   <!-- minimize_hover -->
-  <svg x="0" y="30" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#FFFFFF" fill-opacity="0.15"/>
-    <polygon fill="#FFFFFF" points="7.5,20 24,20 24.5,20 24.5,19 24,19 7.5,19 7,19 7,20"/>
+  <svg x="0" y="40" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#FFFFFF" fill-opacity="0.15"/>
+    <polygon fill="#FFFFFF" points="15.471,20 24.529,20 25,20 25,19 24.529,19 15.471,19 15,19 15,20"/>
   </svg>
   <!-- maximize_hover -->
-  <svg x="30" y="30" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#FFFFFF" fill-opacity="0.15"/>
-    <path fill="#FFFFFF" fill-rule="evenodd" d="M7,13.5 L7,9.5 L7,8 L8.6,8 L21.4,8 L23,8 L23,9.5 L23,13.5 L23,15 L21.4,15 L8.6,15 L7,15 L7,13.5 Z M8,14 L22,14 L22,9 L8,9 L8,14 Z"/>
+  <svg x="40" y="40" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#FFFFFF" fill-opacity="0.15"/>
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M15,22.25 L15,17.75 L15,16 L16.8,16 L23.2,16 L25,16 L25,17.75 L25,22.25 L25,24 L23.2,24 L16.8,24 L15,24 L15,22.25 Z M16,23 L24,23 L24,17 L16,17 L16,23 Z"/>
   </svg>
   <!-- unmaximize_hover -->
-  <svg x="60" y="30" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#FFFFFF" fill-opacity="0.15"/>
-    <path fill="#FFFFFF" fill-rule="evenodd" d="M22,8 L15,8 L15,7 L23,7 L23,15 L22,15 L22,8 Z M7,14 L7,10.5 L7,9 L8.5,9 L12.5,9 L14,9 L14,10.5 L14,14 L14,15.5 L12.5,15.5 L8.5,15.5 L7,15.5 L7,14 Z M8,15 L13,15 L13,10 L8,10 L8,15 Z"/>
+  <svg x="80" y="40" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#FFFFFF" fill-opacity="0.15"/>
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M24,16 L16,16 L16,15 L25,15 L25,24 L24,24 L24,16 Z M15,23 L15,19 L15,17 L17,17 L21,17 L23,17 L23,19 L23,23 L23,25 L21,25 L17,25 L15,25 L15,23 Z M16,24 L22,24 L22,18 L16,18 L16,24 Z"/>
   </svg>
-  <!-- close_hover (orange icon) -->
-  <svg x="90" y="30" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#FFFFFF" fill-opacity="0.15"/>
-    <polygon fill="#F27E00" points="15.19,15.72 12.8,18.11 12.53,18.37 12,17.84 12.27,17.57 14.66,15.19 12.27,12.8 12,12.53 12.53,12 12.8,12.27 15.19,14.66 17.57,12.27 17.84,12 18.37,12.53 18.11,12.8 15.72,15.19 18.11,17.57 18.37,17.84 17.84,18.37 17.57,18.11"/>
+  <!-- close_hover (orange) -->
+  <svg x="120" y="40" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#FFFFFF" fill-opacity="0.15"/>
+    <polygon fill="#F27E00" points="20.243,20.95 17.061,24.132 16.707,24.485 16,23.778 16.354,23.425 19.536,20.243 16.354,17.061 16,16.707 16.707,16 17.061,16.354 20.243,19.536 23.425,16.354 23.778,16 24.485,16.707 24.132,17.061 20.95,20.243 24.132,23.425 24.485,23.778 23.778,24.485 23.425,24.132"/>
   </svg>
 
-  <!-- Row 2: Pressed state (black bg at 10%, blue icons, close gets pink) -->
+  <!-- Row 2: Pressed state (square highlight #000000@.1, blue icons, close pink) -->
   <!-- minimize_press -->
-  <svg x="0" y="60" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#000000" fill-opacity="0.1"/>
-    <polygon fill="#2CA7F8" points="7.5,20 24,20 24.5,20 24.5,19 24,19 7.5,19 7,19 7,20"/>
+  <svg x="0" y="80" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#000000" fill-opacity="0.1"/>
+    <polygon fill="#2CA7F8" points="15.471,20 24.529,20 25,20 25,19 24.529,19 15.471,19 15,19 15,20"/>
   </svg>
   <!-- maximize_press -->
-  <svg x="30" y="60" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#000000" fill-opacity="0.1"/>
-    <path fill="#2CA7F8" fill-rule="evenodd" d="M7,13.5 L7,9.5 L7,8 L8.6,8 L21.4,8 L23,8 L23,9.5 L23,13.5 L23,15 L21.4,15 L8.6,15 L7,15 L7,13.5 Z M8,14 L22,14 L22,9 L8,9 L8,14 Z"/>
+  <svg x="40" y="80" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#000000" fill-opacity="0.1"/>
+    <path fill="#2CA7F8" fill-rule="evenodd" d="M15,22.25 L15,17.75 L15,16 L16.8,16 L23.2,16 L25,16 L25,17.75 L25,22.25 L25,24 L23.2,24 L16.8,24 L15,24 L15,22.25 Z M16,23 L24,23 L24,17 L16,17 L16,23 Z"/>
   </svg>
   <!-- unmaximize_press -->
-  <svg x="60" y="60" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#000000" fill-opacity="0.1"/>
-    <path fill="#2CA7F8" fill-rule="evenodd" d="M22,8 L15,8 L15,7 L23,7 L23,15 L22,15 L22,8 Z M7,14 L7,10.5 L7,9 L8.5,9 L12.5,9 L14,9 L14,10.5 L14,14 L14,15.5 L12.5,15.5 L8.5,15.5 L7,15.5 L7,14 Z M8,15 L13,15 L13,10 L8,10 L8,15 Z"/>
+  <svg x="80" y="80" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#000000" fill-opacity="0.1"/>
+    <path fill="#2CA7F8" fill-rule="evenodd" d="M24,16 L16,16 L16,15 L25,15 L25,24 L24,24 L24,16 Z M15,23 L15,19 L15,17 L17,17 L21,17 L23,17 L23,19 L23,23 L23,25 L21,25 L17,25 L15,25 L15,23 Z M16,24 L22,24 L22,18 L16,18 L16,24 Z"/>
   </svg>
-  <!-- close_press (pink icon) -->
-  <svg x="90" y="60" width="30" height="30">
-    <rect width="30" height="30" rx="6" fill="#000000" fill-opacity="0.1"/>
-    <polygon fill="#FF3763" points="15.19,15.72 12.8,18.11 12.53,18.37 12,17.84 12.27,17.57 14.66,15.19 12.27,12.8 12,12.53 12.53,12 12.8,12.27 15.19,14.66 17.57,12.27 17.84,12 18.37,12.53 18.11,12.8 15.72,15.19 18.11,17.57 18.37,17.84 17.84,18.37 17.57,18.11"/>
+  <!-- close_press (pink) -->
+  <svg x="120" y="80" width="40" height="40" viewBox="0 0 40 40">
+    <rect width="40" height="40" fill="#000000" fill-opacity="0.1"/>
+    <polygon fill="#FF3763" points="20.243,20.95 17.061,24.132 16.707,24.485 16,23.778 16.354,23.425 19.536,20.243 16.354,17.061 16,16.707 16.707,16 17.061,16.354 20.243,19.536 23.425,16.354 23.778,16 24.485,16.707 24.132,17.061 20.95,20.243 24.132,23.425 24.485,23.778 23.778,24.485 23.425,24.132"/>
   </svg>
 </svg>

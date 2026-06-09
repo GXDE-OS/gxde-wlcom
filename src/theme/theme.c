@@ -179,15 +179,21 @@ static uint32_t theme_init(struct widget_theme *widget)
 
     theme->layout_is_right_to_left = nls_layout_is_right_to_left();
     theme->text_is_right_align = nls_text_is_right_align();
-    theme->text_justify = theme->layout_is_right_to_left ? JUSTIFY_RIGHT : JUSTIFY_LEFT;
+
+    /* Patch: 对齐Deepin标题栏风格 */
+    theme->text_justify = JUSTIFY_CENTER;
 
     theme->ssd_need_maximize_button = true;
-    theme->button_width = 30;
+
+    /* Patch: 对齐Deepin标题栏按钮宽度 */
+    theme->button_width = 40;
     theme->icon_size = 24;
     theme->border_width = 1;
     theme->title_height = 40;
     theme->subtitle_height = 40;
-    theme->shadow_border = 40;
+    
+    /* Patch: 对齐chameleon「云璃」的外观 - 深色窗体使用更大的窗体阴影 */
+    theme->shadow_border = theme->type == THEME_TYPE_DARK ? 80 : 40;
     theme->shadow_offset_x = 0;
     theme->shadow_offset_y = 30;
     theme->normal_radius = 8;

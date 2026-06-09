@@ -103,12 +103,14 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
     if (json_object_object_get_ex(manager->config->json, "font_name", &data)) {
         manager->global.font_name = strdup(json_object_get_string(data));
     } else {
-        manager->global.font_name = strdup("sans");
+        /* Patch: 标题栏字体对齐Deepin */
+        manager->global.font_name = strdup("SourceHanSansSC");
     }
     if (json_object_object_get_ex(manager->config->json, "font_size", &data)) {
         manager->global.font_size = json_object_get_int(data);
     } else {
-        manager->global.font_size = 11;
+        /* Patch: 标题栏字号对齐Deepin */
+        manager->global.font_size = 14;
     }
 
     if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
@@ -152,13 +154,16 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
         json_object_object_add(manager->config->json, "type", json_object_new_int(theme_type));
     }
 
-    if (manager->global.font_name && strcmp(manager->global.font_name, "sans")) {
+    /* Patch: 主题默认字体对齐Deepin */
+    if (manager->global.font_name && strcmp(manager->global.font_name, "SourceHanSansSC")) {
         json_object_object_add(manager->config->json, "font_name",
                                json_object_new_string(manager->global.font_name));
     } else {
         json_object_object_del(manager->config->json, "font_name");
     }
-    if (manager->global.font_size != 11) {
+
+    /* Patch: 主题字号默认大小对齐Deepin */
+    if (manager->global.font_size != 14) {
         json_object_object_add(manager->config->json, "font_size",
                                json_object_new_int(manager->global.font_size));
     } else {

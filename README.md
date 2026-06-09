@@ -30,7 +30,8 @@
 ## GXDE做出的修改
 
 1. 修改构建，解决依赖问题
-
+2. 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
+3. 移植`dde-shell`协议 (部分)
 
 
 # 编译
