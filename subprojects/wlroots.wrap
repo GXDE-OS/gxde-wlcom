@@ -8,7 +8,7 @@
 # revision 是 ok17 的提交号(非分支头,gxde/testing 头已是 ok18)。故不能用 depth=1:
 # 浅克隆只取分支头,checkout 这个较旧的 SHA 会失败。需完整克隆才能 checkout 到它。
 [wrap-git]
-url = https://gitee.com/GXDE-OS/open-kylin-wlroots.git
+url = https://github.com/GXDE-OS/open-kylin-wlroots.git
 revision = 0a66efbc
 
 [provide]
