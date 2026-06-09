@@ -45,6 +45,7 @@ Build-Depends:
  libxcb-shape0-dev,
  libunwind-dev,
  libjpeg-dev,
+ libgdm-dev,
 Standards-Version: 4.6.2
 
 Package: kylin-wayland-compositor
