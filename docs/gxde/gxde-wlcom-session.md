@@ -19,11 +19,8 @@
 
 ## 「GXDE on kywc」会话
 
-新建/usr/bin/start-gxde-wlcom`: 
+新建`/usr/bin/start-gxde-wlcom`: 
 
-
-
-**实体机**: 
 
 ```bash
 #!/bin/bash
@@ -32,21 +29,6 @@ export XDG_SESSION_DESKTOP=gxde-wlcom
 export DTK2_XWAYLAND=dxcb
 exec /usr/bin/kylin-wlcom -s /usr/bin/startdde "$@"
 ```
-
-
-
-**QEMU/KVM 虚拟机**: 
-
-```bash
-#!/bin/bash
-export XDG_SESSION_TYPE=wayland
-export XDG_SESSION_DESKTOP=gxde-wlcom
-export WLR_RENDERER=pixman  # 虚拟机里GL/dmabuf多半不可用...
-export DTK2_XWAYLAND=dxcb
-exec /usr/bin/kylin-wlcom -s /usr/bin/startdde "$@"
-```
-
-
 
 修改权限: 
 
@@ -77,29 +59,12 @@ DesktopNames=GXDE
 
 新建`/usr/bin/start-kywc-plain`: 
 
-
-
-**实体机**: 
-
 ```bash
 #!/bin/bash
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=kywc
 exec /usr/bin/kylin-wlcom "$@"
 ```
-
-
-**QEMU/KVM 虚拟机**: 
-
-```bash
-#!/bin/bash
-export XDG_SESSION_TYPE=wayland
-export XDG_SESSION_DESKTOP=kywc
-export WLR_RENDERER=pixman
-exec /usr/bin/kylin-wlcom "$@"
-```
-
-
 
 修改权限: 
 

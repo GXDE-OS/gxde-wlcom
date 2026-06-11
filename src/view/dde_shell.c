@@ -95,10 +95,34 @@ static void dde_surface_apply_radius(struct dde_shell_surface *surf)
 }
 
 
-/* 回调函数，监控map，在窗口真正显示到屏幕上时，调用dde_surface_apply_radius设置圆角 */
+/* 应用无标题栏属性，对齐deepin-chameleon的noTitleBar */
+static void dde_surface_apply_no_titlebar(struct dde_shell_surface *surf)
+{
+    if (!surf->no_titlebar || !surf->view) {
+        return;
+    }
+
+    struct kywc_view *kywc_view = &surf->view->base;
+    if (!kywc_view->mapped) {
+        return;
+    }
+
+    /* 仅在当前确有服务端标题栏时去除，保留 BORDER/RESIZE(及其阴影圆角) */
+    if (kywc_view->ssd & KYWC_SSD_TITLE) {
+        view_set_decoration(surf->view, kywc_view->ssd & ~KYWC_SSD_TITLE);
+        kywc_log(KYWC_DEBUG,
+                 "(DDE Shell) NoTitleBar: dropped server titlebar for surface %p, ssd now %d",
+                 surf->wlr_surface, kywc_view->ssd);
+    }
+}
+
+
+/* 回调函数，监控map，在窗口真正显示到屏幕上时，应用无标题栏与圆角设置
+ * 先去标题栏再设圆角: 圆角逻辑依赖 ssd 中的 KYWC_SSD_TITLE 位决定是否圆顶角 */
 static void dde_surface_handle_view_map(struct wl_listener *listener, void *data)
 {
     struct dde_shell_surface *surf = wl_container_of(listener, surf, view_map);
+    dde_surface_apply_no_titlebar(surf);
     dde_surface_apply_radius(surf);
 }
 

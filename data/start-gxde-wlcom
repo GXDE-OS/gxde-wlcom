@@ -1,0 +1,5 @@
+#!/bin/bash
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=gxde-wlcom
+export DTK2_XWAYLAND=dxcb
+exec /usr/bin/kylin-wlcom -s /usr/bin/startdde "$@"
