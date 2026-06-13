@@ -2239,6 +2239,7 @@ struct view_manager *view_manager_create(struct server *server)
     kde_plasma_shell_create(server);
     kde_plasma_window_management_create(server);
     kde_blur_manager_create(server);
+    treeland_dde_shell_manager_create(server);
     kde_slide_manager_create(server);
     xdg_dialog_create(server);
     xdg_activation_create(server);
@@ -2247,8 +2248,8 @@ struct view_manager *view_manager_create(struct server *server)
     ukui_blur_manager_create(server);
 
     /**
-     *  DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 
-     * (圆角, 标题栏, etc.) 
+     *  DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性
+     * (圆角, 标题栏, etc.)
      */
     dde_shell_create(server);
 

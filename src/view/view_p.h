@@ -198,12 +198,18 @@ wlr_foreign_toplevel_manager_create(struct server *server)
 }
 #endif
 
+struct wlr_surface;
 #if HAVE_WLR_LAYER_SHELL
 bool wlr_layer_shell_manager_create(struct server *server);
+void wlr_layer_shell_reconfigure_surface(struct wlr_surface *surface);
 #else
 static __attribute__((unused)) inline bool wlr_layer_shell_manager_create(struct server *server)
 {
     return false;
+}
+static __attribute__((unused)) inline void
+wlr_layer_shell_reconfigure_surface(struct wlr_surface *surface)
+{
 }
 #endif
 
@@ -234,6 +240,12 @@ static __attribute__((unused)) inline bool kde_blur_manager_create(struct server
     return false;
 }
 #endif
+
+struct wlr_surface;
+bool treeland_dde_shell_manager_create(struct server *server);
+bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_place, int *y_offset,
+                                      bool *has_pos, int *px, int *py);
+void treeland_dde_shell_set_resolved_position(struct wlr_surface *surface, int x, int y);
 
 #if HAVE_KDE_SLIDE
 bool kde_slide_manager_create(struct server *server);

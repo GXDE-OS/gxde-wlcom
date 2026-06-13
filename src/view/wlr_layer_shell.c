@@ -7,7 +7,9 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_seat.h>
 
+#include "input/cursor.h"
 #include "input/event.h"
+#include "input/input.h"
 #include "input/seat.h"
 #include "output.h"
 #include "scene/surface.h"
@@ -224,6 +226,45 @@ static void layer_shell_configure_surface(struct layer_shell *layer_shell,
         box.y = bounds.y + bounds.height / 2 - box.height / 2;
     }
 
+    // 解决Wayland下应用无法获知自身全局坐标、传给com.deepin.menu的坐标错位的问题
+    bool dde_auto = false, dde_has_pos = false;
+    int dde_y_offset = 0, dde_px = 0, dde_py = 0;
+    if (treeland_dde_shell_get_placement(layer_surface->surface, &dde_auto, &dde_y_offset,
+                                         &dde_has_pos, &dde_px, &dde_py)) {
+        if (dde_auto) {
+            struct seat *seat = input_manager_get_default_seat();
+            if (seat && seat->cursor) {
+                box.x = (int)seat->cursor->lx;
+                box.y = (int)seat->cursor->ly + dde_y_offset;
+            }
+        } else if (dde_has_pos) {
+            box.x = dde_px;
+            box.y = dde_py;
+        }
+        if (dde_auto || dde_has_pos) {
+            // 校正到输出范围内, 防止菜单超出屏幕
+            if (box.x + box.width > full_area->x + full_area->width) {
+                box.x = full_area->x + full_area->width - box.width;
+            }
+            if (box.y + box.height > full_area->y + full_area->height) {
+                box.y = full_area->y + full_area->height - box.height;
+            }
+            if (box.x < full_area->x) {
+                box.x = full_area->x;
+            }
+            if (box.y < full_area->y) {
+                box.y = full_area->y;
+            }
+        }
+    }
+
+    if (dde_has_pos || dde_auto) {
+        kywc_log(KYWC_WARN, "layer dde place surface %p -> %d,%d (auto=%d has_pos=%d %d,%d)",
+                 layer_surface->surface, box.x, box.y, dde_auto, dde_has_pos, dde_px, dde_py);
+        // 回写校正后的实际坐标
+        treeland_dde_shell_set_resolved_position(layer_surface->surface, box.x, box.y);
+    }
+
     ky_scene_node_set_position(&layer_shell->tree->node, box.x, box.y);
     wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
@@ -279,6 +320,11 @@ static void layer_shell_handle_map(struct wl_listener *listener, void *data)
     if (layer_surface->current.exclusive_zone > 0) {
         struct output *output = output_from_wlr_output(layer_surface->output);
         output_update_usable_area(&output->base);
+    }
+
+    if (layer_surface->output) {
+        struct output *output = output_from_wlr_output(layer_surface->output);
+        layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
     }
 
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
@@ -503,6 +549,30 @@ static void handle_output_update_usable_area(struct wl_listener *listener, void 
             }
             layer_shell_configure_surface(layer_shell, &layer_output->output->geometry,
                                           usable_area);
+        }
+    }
+}
+
+void wlr_layer_shell_reconfigure_surface(struct wlr_surface *surface)
+{
+    if (!manager || !surface) {
+        return;
+    }
+    struct layer_output *layer_output;
+    wl_list_for_each(layer_output, &manager->outputs, link) {
+        for (int i = 0; i < 4; i++) {
+            struct layer_shell *layer_shell;
+            wl_list_for_each(layer_shell, &layer_output->shells[i], link) {
+                if (layer_shell->layer_surface->surface != surface) {
+                    continue;
+                }
+                if (!layer_shell->layer_surface->surface->mapped) {
+                    return;
+                }
+                layer_shell_configure_surface(layer_shell, &layer_output->output->geometry,
+                                              &layer_output->output->usable_area);
+                return;
+            }
         }
     }
 }

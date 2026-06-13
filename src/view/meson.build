@@ -85,7 +85,8 @@ if have_ukui_blur
   )
 endif
 
-# DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 (圆角, 标题栏, etc.)
+# 从Treeland移植的部分DDE Shell协议的实现
 wlcom_sources += files(
   'dde_shell.c',
+  'treeland_dde_shell.c',
 )

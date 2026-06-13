@@ -106,9 +106,10 @@ if have_ukui_blur
   }
 endif
 
-# DDE-Shell协议，处理Deepin/DTK在DWayland下的窗口属性 (圆角, 标题栏, etc.)
+# 从Treeland移植的部分协议
 protocols += {
   'dde-shell': 'dde-shell.xml',
+  'treeland-dde-shell-v1': 'treeland-dde-shell-v1.xml',
 }
 
 protocols_code = {}
