@@ -31,7 +31,7 @@
 
 1. 修改构建，解决依赖问题
 2. 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
-3. 移植`dde-shell`协议 (部分)
+3. 移植`dde-shell`协议 (部分)，并扩展`wlr-layer-shell`排布逻辑，为`deepin-menu`等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
 
 
 # 编译

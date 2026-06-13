@@ -1,3 +1,9 @@
+kylin-wayland-compositor (1.3.2-gxde2) lizhi; urgency=medium
+
+  * 扩展wlr-layer-shell排布逻辑，为deepin-menu等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
+
+ -- CharOfString <markus_verify@126.com>  Sat, 13 Jun 2026 23:32:24 +0800
+
 kylin-wayland-compositor (1.3.2-gxde1) lizhi; urgency=medium
 
   * 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
