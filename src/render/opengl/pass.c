@@ -250,6 +250,20 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     if (has_radius) {
         // radius clip always need blend
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
+    } else if (getenv("KYWC_FORCE_OPAQUE")) {
+        /**
+         * KYDBG
+         * Force disable blending to write texture RGB directing, ignoring
+         * alpha.
+         * 
+         * FOR DEBUGGING PURPOSE ONLY.
+         * --------------------------------------------------------------------
+         * KYDBG
+         * 强制关闭blending，直接写入RGB并忽略Alpha通道
+         * 
+         * *仅供调试时使用!!*
+         */
+        setup_blending(WLR_RENDER_BLEND_MODE_NONE);
     } else {
         setup_blending(!texture->has_alpha && alpha == 1.0 ? WLR_RENDER_BLEND_MODE_NONE
                                                            : options->base.blend_mode);

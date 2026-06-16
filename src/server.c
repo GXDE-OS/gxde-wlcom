@@ -16,6 +16,7 @@
 #include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_linux_drm_syncobj_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
@@ -158,6 +159,41 @@ static bool wlroots_server_init(struct server *server)
 
     ky_renderer_init_wl_display(server->renderer, server->backend, server->display,
                                 &server->linux_dmabuf_v1);
+
+    /**
+     * Explicit sync (backported from wp_linux_drm_syncobj_v1) ->
+     * GPU clients like Chromium/Firefox provide acquire/release fences so
+     * that the compositor waits for their render to finish before sampling.
+     * 
+     * Without it those commits are unrendered buffers and show up transparent
+     * or fully black.
+     * 
+     * The current acquire-wait is CPU-Side in the commit handler which stalls
+     * in the main loop, and does NOT yet fix GPU client content (needs
+     * GPU-side eglWaitSync in the render pass). So this is DISABLED BY
+     * DEFAULT. Only enable the KYWC_SYNCOBJ=1 for development purpose and
+     * this is highly NOT RECOMMENDED.
+     * ------------------------------------------------------------------------
+     * 显式同步 (从wp_linux_drm_syncobj_v1 backport) ->
+     * 像是Chromium/Firefox这样的GPU客户端会提供acquire/release fences，
+     * 以便合成器在采样前等待其渲染完成。
+     * 
+     * 如果没有它，这些提交将是未渲染的buffer，看起来就像是为透明或全黑。
+     * 
+     * 当前的获取等待是在提交处理程序中的CPU端，这会在主循环中阻塞，
+     * 并且尚未修复GPU客户端内容 (需要在渲染通道中使用GPU端的eglWaitSync)。
+     * 
+     * 因此，默认情况下SYNCOBJ已禁用。仅为某些开发目的开启KYWC_SYNCOBJ=1，
+     * *强烈不建议这样做*。
+     */
+    if (getenv("KYWC_SYNCOBJ") != NULL) {
+        int syncobj_drm_fd = wlr_backend_get_drm_fd(server->backend);
+        if (syncobj_drm_fd >= 0) {
+            if (wlr_linux_drm_syncobj_manager_v1_create(server->display, 1, syncobj_drm_fd)) {
+                kywc_log(KYWC_INFO, "Enabled linux-drm-syncobj-v1 (explicit sync)");
+            }
+        }
+    }
 
     server->layout = wlr_output_layout_create();
     server->scene = ky_scene_create();

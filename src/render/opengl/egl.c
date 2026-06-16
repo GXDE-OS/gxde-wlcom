@@ -764,7 +764,7 @@ struct ky_egl *ky_egl_create_with_drm_fd(int drm_fd)
         return NULL;
     }
 
-    if (egl->exts.EXT_platform_device) {
+    if (egl->exts.EXT_platform_device && !getenv("KYWC_EGL_GBM")) {
         /*
          * Search for the EGL device matching the DRM fd using the
          * EXT_device_enumeration extension.
@@ -1080,4 +1080,46 @@ int ky_egl_dup_drm_fd(struct ky_egl *egl)
         kywc_log_errno(KYWC_ERROR, "Failed to dup GBM FD");
     }
     return fd;
+}
+
+/**
+ * Insert a GPU-side wait on a sync_file FD (e.g. A client's explicit-sync
+ * accquire fence) into the render's context, so the subsequent GL sampling
+ * waits for the fence to signal.
+ * 
+ * Takes the ownership of sync_file_fd.
+ * ----------------------------------------------------------------------------
+ * 在渲染器的上下文中插入一个针对sync_file_fd的GPU端等待 (举个例子，客户端显式
+ * 同步获取fence)，一遍后续的GL采样等待该fence发出的信号。
+ * 
+ * 获取sync_file_fd的所有权。
+ */
+bool ky_egl_wait_acquire_fd(struct ky_egl *egl, int sync_file_fd)
+{
+    struct ky_egl_context prev;
+    if (!ky_egl_make_current(egl, &prev)) {
+        close(sync_file_fd);
+        return false;
+    }
+
+    EGLAttrib attribs[] = {
+        EGL_SYNC_NATIVE_FENCE_FD_ANDROID,
+        sync_file_fd,
+        EGL_NONE,
+    };
+    EGLSync sync = eglCreateSync(egl->display, EGL_SYNC_NATIVE_FENCE_ANDROID, attribs);
+    if (sync == EGL_NO_SYNC) {
+        kywc_log(KYWC_ERROR, "eglCreateSync(native fence) failed");
+        close(sync_file_fd);
+        ky_egl_restore_context(&prev);
+        return false;
+    }
+    // The fd is now owned by the EGLSync object.
+
+    // Server-side (GPU) wait: subsequent GL commands in this context wait for
+    // the fence to signal, establishing GPU ordering + memory barrier.
+    EGLBoolean ok = eglWaitSync(egl->display, sync, 0);
+    eglDestroySync(egl->display, sync);
+    ky_egl_restore_context(&prev);
+    return ok == EGL_TRUE;
 }

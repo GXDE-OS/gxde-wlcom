@@ -754,6 +754,9 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
 
     renderer->exts.OES_egl_image = epoxy_has_gl_extension("GL_OES_EGL_image");
 
+    kywc_log(KYWC_INFO, "KYDBG exts OES_egl_image=%d OES_egl_image_external=%d",
+             renderer->exts.OES_egl_image, renderer->exts.OES_egl_image_external);
+
     renderer->exts.KHR_robustness = epoxy_has_gl_extension("GL_KHR_robustness");
     if (renderer->exts.KHR_robustness) {
         GLint notif_strategy = 0;

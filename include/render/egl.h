@@ -76,5 +76,6 @@ EGLImageKHR ky_egl_create_image_from_dmabuf(struct ky_egl *egl,
                                             bool *external_only);
 
 int ky_egl_dup_drm_fd(struct ky_egl *egl);
+bool ky_egl_wait_acquire_fd(struct ky_egl *egl, int sync_file_fd);
 
 #endif /* _RENDER_EGL_H_ */

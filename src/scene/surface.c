@@ -123,6 +123,21 @@ static void set_buffer_with_surface_state(struct ky_scene_buffer *scene_buffer,
 
         ky_scene_buffer_set_buffer_with_damage(scene_buffer, &surface->buffer->base,
                                                &surface->buffer_damage);
+    } else if (surface->current.buffer && surface->has_buffer) {
+        /**
+         * DMA-BUF client
+         * Use the raw buffer directly. Wlroots 0.17.4-ok does NOT wrap DMA-BUF
+         * in client buffer.
+         * 
+         * Take a lock so that the client does not release it before we
+         * composite.
+         * --------------------------------------------------------------------
+         * DMA-BUF客户端
+         * 直接使用raw buffer。Wlroots 0.17.4-ok并不会将DMA-BUF包进客户端buffer。
+         * 
+         * 执行锁定以确保客户端在我们合成之前不会提前释放buffer。
+         */
+        ky_scene_buffer_set_buffer(scene_buffer, surface->current.buffer);
     } else {
         ky_scene_buffer_set_buffer(scene_buffer, NULL);
     }

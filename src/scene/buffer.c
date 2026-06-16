@@ -3,16 +3,24 @@
 // SPDX-License-Identifier: GPL-1.0-or-later
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdlib.h>
 
+#include <kywc/log.h>
+
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_linux_drm_syncobj_v1.h>
+#include <wlr/render/drm_syncobj.h>
+#include <wlr/util/addon.h>
 #include <wlr/util/region.h>
 
 #include "effect/blur.h"
 #include "render/pass.h"
 #include "render/pixel_format.h"
 #include "render/profile.h"
+#include "render/renderer.h"
 #include "scene/surface.h"
 #include "scene_p.h"
 #include "security.h"
@@ -302,9 +310,42 @@ static void buffer_collect_damage(struct ky_scene_node *node, int lx, int ly, bo
     node->damage_type = KY_SCENE_DAMAGE_NONE;
 }
 
+/**
+ * Explicit sync
+ * Make the GPU wait on client's acquire fence before render samples the
+ * surface's buffer.
+ * 
+ * Hence, we never read an unrendered buffer.
+ * ----------------------------------------------------------------------------
+ * 显式同步
+ * 使GPU等待客户端获取fence，然后才渲染surface的buffer采样。
+ * 
+ * 因此，我们可以确保我们不会读取到任何未渲染的buffer。
+ */
+static void scene_buffer_wait_acquire(struct ky_scene_buffer *scene_buffer,
+                                      struct wlr_renderer *renderer)
+{
+    struct ky_scene_surface *scene_surface = ky_scene_surface_try_from_buffer(scene_buffer);
+    if (scene_surface == NULL) {
+        return;
+    }
+    struct wlr_linux_drm_syncobj_surface_v1_state *state =
+        wlr_linux_drm_syncobj_v1_get_surface_state(scene_surface->surface);
+    if (state == NULL || state->acquire_timeline == NULL) {
+        return;
+    }
+    int fd = wlr_drm_syncobj_timeline_export_sync_file(state->acquire_timeline,
+                                                       state->acquire_point);
+    if (fd < 0) {
+        return;
+    }
+    ky_renderer_wait_acquire_fd(renderer, fd);
+}
+
 static struct wlr_texture *scene_buffer_get_texture(struct ky_scene_buffer *scene_buffer,
                                                     struct wlr_renderer *renderer)
 {
+
     struct wlr_client_buffer *client_buffer = wlr_client_buffer_get(scene_buffer->buffer);
     if (client_buffer != NULL) {
         return client_buffer->texture;

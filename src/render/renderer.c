@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <drm_fourcc.h>
 #include <gbm.h>
@@ -228,6 +229,35 @@ bool ky_renderer_is_software(struct wlr_renderer *renderer)
         return r->egl->is_software;
     }
 
+    return false;
+}
+
+/**
+ * GPU-side wait on the EXPLICIT sync of acquire fence (sync_file fd) before
+ * the render samples a client buffer.
+ * 
+ * Takes the ownership of sync_file_fd.
+ * 
+ * No-op (close fd) on non OpenGL renders.
+ * 
+ * ----------------------------------------------------------------------------
+ * GPU端在*显式*同步获取fence (sync_file fd)后，等待一段时间，然后渲染器才对
+ * 客户端的缓冲区进行采样。
+ * 
+ * 获取sync_file_fd的所有权。
+ * 
+ * 在非OpenGL渲染器上无效 (clode fd)
+ */
+bool ky_renderer_wait_acquire_fd(struct wlr_renderer *renderer, int sync_file_fd)
+{
+    if (sync_file_fd < 0) {
+        return false;
+    }
+    if (wlr_renderer_is_opengl(renderer)) {
+        struct ky_opengl_renderer *r = ky_opengl_renderer_from_wlr_renderer(renderer);
+        return ky_egl_wait_acquire_fd(r->egl, sync_file_fd);
+    }
+    close(sync_file_fd);
     return false;
 }
 

@@ -286,7 +286,8 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
         return NULL;
     }
 
-    texture->target = external_only ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
+    texture->target = (external_only || getenv("KYWC_EGL_EXTERNAL")) ? GL_TEXTURE_EXTERNAL_OES
+                                                                      : GL_TEXTURE_2D;
 
     ky_opengl_push_debug(renderer);
 
@@ -295,7 +296,33 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
     glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glEGLImageTargetTexture2DOES(texture->target, texture->image);
+    GLenum gl_err = glGetError();
     glBindTexture(texture->target, 0);
+
+    kywc_log(KYWC_INFO,
+             "KYDBG dmabuf-tex %dx%d fmt 0x%08x mod 0x%016llx planes %d external_only %d "
+             "target 0x%x has_alpha %d glerr 0x%x",
+             attribs->width, attribs->height, attribs->format,
+             (unsigned long long)attribs->modifier, attribs->n_planes, external_only,
+             texture->target, texture->has_alpha, gl_err);
+
+    if (getenv("KYWC_READBACK") && texture->target == GL_TEXTURE_2D) {
+        GLuint fbo = 0;
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D, texture->tex, 0);
+        GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        unsigned char px[4] = { 0, 0, 0, 0 };
+        if (st == GL_FRAMEBUFFER_COMPLETE) {
+            glReadPixels(attribs->width / 2, attribs->height / 2, 1, 1, GL_RGBA,
+                         GL_UNSIGNED_BYTE, px);
+        }
+        kywc_log(KYWC_INFO, "KYDBG readback fbo_status 0x%x center RGBA %d %d %d %d", st, px[0],
+                 px[1], px[2], px[3]);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDeleteFramebuffers(1, &fbo);
+    }
 
     ky_opengl_pop_debug(renderer);
 
