@@ -59,7 +59,7 @@ $ ln -sf build/compile_commands.json compile_commands.json
 
 ## Wlroots问题
 
-无须担心Wlroots，`meson`会自动从https://gitee.com/GXDE-OS/open-kylin-wlroots.git (我们对Open Kylin版Wlroots的fork) 拉取Open Kylin打过自己补丁的Wlroots，锁定合适的版本并作为子项目构建并静态链接。
+无须担心Wlroots，`meson`会自动从https://github.com/GXDE-OS/open-kylin-wlroots.git (我们对Open Kylin版Wlroots的fork) 拉取Open Kylin打过自己补丁的Wlroots，锁定合适的版本并作为子项目构建并静态链接。
 
 
 

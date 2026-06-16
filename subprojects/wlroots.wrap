@@ -5,11 +5,13 @@
 # wlr_xwayland_get_xwm_connection, etc, 满足版本要求<0.18的要求
 # 另: OK18把precommit给drop了，正好wlcom还要这玩意
 
-# revision 是 ok17 的提交号(非分支头,gxde/testing 头已是 ok18)。故不能用 depth=1:
-# 浅克隆只取分支头,checkout 这个较旧的 SHA 会失败。需完整克隆才能 checkout 到它。
+# 当前锁定的revision是0.17.5-gxde1，基于ok17并backport了主线wlroots V0.20+的部分
+# 功能，考虑到后期随着我们测试迁移较新的Wlroots版本，不能用depth=1，因为浅克隆
+# 只取分支头
+
 [wrap-git]
 url = https://github.com/GXDE-OS/open-kylin-wlroots.git
-revision = 0a66efbc
+revision = d315e23d3e444c0504ae3b230155180938e3ece0
 
 [provide]
 wlroots = wlroots
