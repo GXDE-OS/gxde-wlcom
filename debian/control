@@ -6,7 +6,7 @@
 # 出于稳定性顾虑将OpenKylin的Wlroots以meson子项目(subprojects/wlroots)静态编入本程序
 # 所以这里有Wlroots的自身构建依赖
 
-Source: kylin-wayland-compositor
+Source: gxde-wlcom
 Section: x11
 Priority: optional
 Maintainer: Morose <chenlinxiang@kylinos.cn>
@@ -49,18 +49,22 @@ Build-Depends:
  libsystemd-dev,
 Standards-Version: 4.6.2
 
-Package: kylin-wayland-compositor
+Package: gxde-wlcom
 Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
 Breaks: kylin-wayland-compositor-effects
-Description: Kylin wayland compositor
+Replaces: kylin-wayland-compositor
+Conflicts: kylin-wayland-compositor
+Description: GXDE wayland compositor
 
-Package: kylin-wayland-compositor-client
+Package: gxde-wlcom-client
 Architecture: any
 Depends:
- kylin-wayland-compositor,
+ gxde-wlcom,
  ${shlibs:Depends},
  ${misc:Depends},
-Description: Client library for kylin wayland compositor
+Replaces: kylin-wayland-compositor-client
+Conflicts: kylin-wayland-compositor-client
+Description: Client library for GXDE wayland compositor

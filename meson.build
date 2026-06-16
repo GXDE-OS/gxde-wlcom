@@ -1,5 +1,5 @@
 project(
-  'kylin-wayland-compositor',
+  'gxde-wlcom',
   'c',
   license: 'GPL-1.0-or-later',
   version: '1.3.0',

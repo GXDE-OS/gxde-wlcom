@@ -1,10 +1,10 @@
-# Open Kylin Wayland Compositor (GXDE Forked Version)
+# GXDE Wayland Compositor | GXDE Wayland合成器
 
 ---
 
 # 关于本项目
 
-`kylin-wayland-compositor`，亦称`kylin-wlcom`（以下简称「`kywc`」）是一个基于wlroots编写的wayland合成器。
+GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`，亦称`kylin-wlcom`（以下简称「`kywc`」）是一个基于wlroots编写的wayland合成器。
 
 此仓库由GXDE团队fork并为GXDE适配，作为GXDE Wayland适配计划中备选的合成器选项之一。
 
@@ -178,7 +178,7 @@ Usage: kylin-wlcom [options] [command]
 
 然后运行以下命令，更新`pot`文件: 
 ```bash
-$ meson compile kylin-wayland-compositor-pot
+$ meson compile gxde-wlcom-pot
 ```
 
 
@@ -191,7 +191,9 @@ $ meson compile kylin-wayland-compositor-pot
 
 # 在GXDE上建立kywc会话
 
-请参阅「[./docs/gxde/gxde-wlcom-session.md](./docs/gxde/gxde-wlcom-session.md)」，了解如何在GXDE上建立kywc会话。
+~~请参阅「[./docs/gxde/gxde-wlcom-session.md](./docs/gxde/gxde-wlcom-session.md)」，了解如何在GXDE上建立kywc会话。~~
+
+现在GXDE Wlcom会在安装`.deb`包时自动安装会话文件，不再需要手动安装，相关的`.desktop`文件与启动脚本可以在本repo的`data/`下找到。
 
 
 

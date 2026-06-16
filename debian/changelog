@@ -1,3 +1,9 @@
+gxde-wlcom (1.3.2-gxde2) lizhi; urgency=medium
+
+  * 包名变更为gxde-wlcom，声明与kylin-wayland-compositor冲突
+
+ -- CharOfString <markus_verify@126.com>  Tue, 16 Jun 2026 22:00:00 +0800
+
 kylin-wayland-compositor (1.3.2-gxde2) lizhi; urgency=medium
 
   * 扩展wlr-layer-shell排布逻辑，为deepin-menu等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持

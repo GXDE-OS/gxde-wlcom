@@ -1,5 +1,7 @@
 # 在GXDE上引导kylin-wlcom会话
 
+> **注意**: 本文档已经废弃，对新版本的`gxde-wlcom`不会生效，新版`gxde-wlcom`会自行安装Session文件！！
+
 ---
 
 > **注意**: 下面将`kylin-wlcom`简称为「`kywc`」; 本文档假设本地的WM已经构建完成

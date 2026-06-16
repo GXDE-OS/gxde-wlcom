@@ -50,6 +50,6 @@ install_headers('libkywc.h')
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
   kywc,
-  description: 'Kylin wayland compositor client library',
+  description: 'GXDE wayland compositor client library',
   url: 'https://gitee.com/openkylin/kylin-wayland-compositor',
 )
