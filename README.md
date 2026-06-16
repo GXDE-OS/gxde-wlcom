@@ -2,6 +2,12 @@
 
 ---
 
+> 🎉 **测试版本`1.4.0-gxde1`现已发布!!**
+>
+> 这并不是一个稳定版本，阅读「[发布笔记： 1.4.0-gxde1](./docs/gxde/release_notes/1.4.0-gxde1.md)」以了解详情。
+
+
+
 # 关于本项目
 
 GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`，亦称`kylin-wlcom`（以下简称「`kywc`」）是一个基于wlroots编写的wayland合成器。
@@ -191,7 +197,7 @@ $ meson compile gxde-wlcom-pot
 
 # 在GXDE上建立kywc会话
 
-~~请参阅「[./docs/gxde/gxde-wlcom-session.md](./docs/gxde/gxde-wlcom-session.md)」，了解如何在GXDE上建立kywc会话。~~
+~~请参阅「[./docs/gxde/gxde-wlcom-session.md](./docs/gxde/depreciated/gxde-wlcom-session.md)」，了解如何在GXDE上建立kywc会话。~~
 
 现在GXDE Wlcom会在安装`.deb`包时自动安装会话文件，不再需要手动安装，相关的`.desktop`文件与启动脚本可以在本repo的`data/`下找到。
 

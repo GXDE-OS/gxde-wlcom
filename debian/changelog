@@ -4,6 +4,7 @@ gxde-wlcom (1.4.0-gxde1) lizhi; urgency=medium
   * 更新Wlroots的依赖版本
   * 更新启动脚本
   * 包名变更为gxde-wlcom
+  * 声明代替kylin-wayland-compositor, 且可以代替满足kylin-wayland-compositor
 
  -- CharOfString <markus_verify@126.com>  Wed, 17 Jun 2026 00:05:14 +0800
 
