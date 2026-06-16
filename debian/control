@@ -57,6 +57,7 @@ Depends:
 Breaks: kylin-wayland-compositor-effects
 Replaces: kylin-wayland-compositor
 Conflicts: kylin-wayland-compositor
+Provides: kylin-wayland-compositor
 Description: GXDE wayland compositor
 
 Package: gxde-wlcom-client
