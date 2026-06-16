@@ -47,6 +47,7 @@ Build-Depends:
  libjpeg-dev,
  libgdm-dev,
  libsystemd-dev,
+ glslang-tools,
 Standards-Version: 4.6.2
 
 Package: gxde-wlcom
