@@ -1,3 +1,10 @@
+gxde-wlcom (1.4.0-gxde2) lizhi; urgency=medium
+
+  * 修复移植的dde-shell协议实现窗口圆角接口对layer-shell窗口不起作用的问题
+  * 现在安装时会跳过安装kylin-wlcom.desktop会话
+
+ -- CharOfString <markus_verify@126.com>  Wed, 1 Jul 2026 15:52:22 +0800
+
 gxde-wlcom (1.4.0-gxde1) lizhi; urgency=medium
 
   * 尝试修复实体机上的DMA-BUF渲染问题

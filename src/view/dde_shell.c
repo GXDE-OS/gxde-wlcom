@@ -51,13 +51,7 @@ struct dde_shell_surface {
 static void dde_surface_apply_radius(struct dde_shell_surface *surf)
 {
     /* 非法的圆角大小: 直接忽略圆角设置 */
-    if (surf->window_radius_x < 0 || !surf->view) {
-        return;
-    }
-
-    /* mapped的原注释为: have a buffer attached and can shown in screen */
-    struct kywc_view *kywc_view = &surf->view->base;
-    if (!kywc_view->mapped) {
+    if (surf->window_radius_x < 0) {
         return;
     }
 
@@ -67,15 +61,21 @@ static void dde_surface_apply_radius(struct dde_shell_surface *surf)
         return;
     }
 
-    /* 与view_update_round_corner()处的圆角逻辑相同
-     * 但是使用客户端定义的圆角值，覆盖CSD的默认值
-     */
     int r = (int)(surf->window_radius_x + 0.5f);
+    bool need_corner = true;
+    bool need_top_corner = true;
+
+    /* 对于常规窗口(view)，根据窗口状态决定是否应用圆角 */
+    if (surf->view) {
+        struct kywc_view *kywc_view = &surf->view->base;
+        if (!kywc_view->mapped) {
+            return;
+        }
+        need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
+        need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
+    }
 
     /* 翻译到Open Kylin Wlcom的圆角设置 */
-    bool need_corner = !kywc_view->maximized && !kywc_view->fullscreen && !kywc_view->tiled;
-    bool need_top_corner = need_corner && !(kywc_view->ssd & KYWC_SSD_TITLE);
-
     int radius[4] = { 0 };
     radius[KY_SCENE_ROUND_CORNER_RB] = need_corner ? r : 0;
     radius[KY_SCENE_ROUND_CORNER_RT] = need_top_corner ? r : 0;
@@ -86,8 +86,8 @@ static void dde_surface_apply_radius(struct dde_shell_surface *surf)
     ky_scene_node_set_radius(&buffer->node, radius);
 
     /* 处理日志 */
-    kywc_log(KYWC_DEBUG, "(DDE Shell) Apply Radius: Window radius %d applied to surface %p.", r,
-             surf->wlr_surface);
+    kywc_log(KYWC_DEBUG, "(DDE Shell) Apply Radius: Window radius %d applied to surface %p.",
+             r, surf->wlr_surface);
     kywc_log(KYWC_DEBUG, "(DDE Shell) Apply Radius: Right bottom: %d", radius[0]);
     kywc_log(KYWC_DEBUG, "(DDE Shell) Apply Radius: Right top: %d", radius[1]);
     kywc_log(KYWC_DEBUG, "(DDE Shell) Apply Radius: Left bottom: %d", radius[2]);
@@ -142,6 +142,10 @@ static void dde_surface_handle_surface_map(struct wl_listener *listener, void *d
         wl_signal_add(&surf->view->base.events.map, &surf->view_map);
         surf->view_destroy.notify = NULL; /* reused below */
         wl_signal_add(&surf->view->base.events.destroy, &surf->view_destroy);
+    } else {
+        /* layer-shell 等无 view 的 surface：直接应用圆角和无标题栏 */
+        dde_surface_apply_no_titlebar(surf);
+        dde_surface_apply_radius(surf);
     }
 }
 

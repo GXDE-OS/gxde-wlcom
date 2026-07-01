@@ -1,9 +1,6 @@
 udev_framebuffer = files('udev-rules/90-framebuffer.rules')
 install_data(udev_framebuffer, install_dir: '/usr/lib/udev/rules.d')
 
-session = files('kylin-wlcom.desktop')
-install_data(session, install_dir: '/usr/share/wayland-sessions')
-
 # 安装「GXDE on kywc」会话
 # 详见 docs/gxde/gxde-wlcom-session.md
 gxde_session = files('gxde-wlcom.desktop')

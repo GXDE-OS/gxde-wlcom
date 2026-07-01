@@ -78,3 +78,9 @@ Thumbs.db
 
 # (Emacs/Flymake) compile_commands.json used for project setup
 /compile_commands.json
+
+# AI Agents
+.claude/*
+.codex/*
+.gemini/*
+.qwen/*
