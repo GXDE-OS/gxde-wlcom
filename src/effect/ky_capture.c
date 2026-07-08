@@ -374,10 +374,36 @@ static void manager_handle_destroy(struct wl_client *client, struct wl_resource 
     wl_resource_destroy(resource);
 }
 
+static void capture_cursor_handle_destroy(struct wl_client* client,
+        struct wl_resource* resource) {
+    wl_resource_destroy(resource);
+}
+
+static const struct kywc_capture_cursor_v1_interface capture_cursor_impl = {
+    .destroy = capture_cursor_handle_destroy,
+};
+
+static void manager_handle_capture_cursor(struct wl_client* client,
+        struct wl_resource* resource, uint32_t cursor,
+        struct wl_resource* seat, struct wl_resource* frame) {
+    uint32_t version = wl_resource_get_version(resource);
+    struct wl_resource* cursor_resource =
+        wl_resource_create(client, &kywc_capture_cursor_v1_interface, version, cursor);
+    if (!cursor_resource) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+    wl_resource_set_implementation(cursor_resource, &capture_cursor_impl, NULL, NULL);
+
+    kywc_log(KYWC_DEBUG,
+        "(Capture) capture_cursor unimplemented; created inert object.");
+}
+
 static const struct kywc_capture_manager_v1_interface ky_capture_manager_impl = {
     .capture_output = manager_handle_capture_output,
     .capture_workspace = manager_handle_capture_workspace,
     .capture_toplevel = manager_handle_capture_toplevel,
+    .capture_cursor = manager_handle_capture_cursor,
     .destroy = manager_handle_destroy,
 };
 

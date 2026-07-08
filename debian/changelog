@@ -1,6 +1,7 @@
 gxde-wlcom (1.4.1-gxde1) lizhi; urgency=medium
 
   * 移植缺失的dde-shell协议接口实现
+  * 补齐了移植协议的缺失部分 (目前主要目的是保证合成器不崩溃)
 
  -- CharOfString <markus_verify@126.com>  Wed, 8 Jul 2026 22:38:14 +0800
 

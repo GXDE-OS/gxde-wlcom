@@ -13,7 +13,7 @@
 #include "input_p.h"
 #include "server.h"
 
-#define IDLE_NOTIFIER_VERSION 1
+#define IDLE_NOTIFIER_VERSION 2
 #define ORG_KDE_KWIN_IDLE_VERSION 1
 
 struct idle_manager {
@@ -217,9 +217,40 @@ static void idle_notifier_get_idle_notification(struct wl_client *client,
     idle_reset_timer(idle);
 }
 
+static void idle_notifier_get_input_idle_notification(struct wl_client* client,
+        struct wl_resource* notifier_resource, uint32_t id, uint32_t timeout,
+        struct wl_resource* seat_resource) {
+    uint32_t version = wl_resource_get_version(notifier_resource);
+    struct wl_resource *resource =
+        wl_resource_create(client, &ext_idle_notification_v1_interface, version, id);
+    if (!resource) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+    wl_resource_set_implementation(resource, &notification_impl, NULL, idle_notification_destroy);
+
+    struct seat* seat = seat_from_resource(seat_resource);
+    if (!seat) {
+        return;
+    }
+
+    struct idle* idle =
+        idle_create(IDLE_FROM_IDLE_NOTIFIER, seat, false, timeout, idle_notification_idle,
+            idle_notification_resume, NULL, resource);
+    if (!idle) {
+        wl_client_post_no_memory(client);
+        return;
+    }
+
+    wl_resource_set_user_data(resource, idle);
+    idle_reset_timer(idle);
+}
+
+
 static const struct ext_idle_notifier_v1_interface idle_notifier_impl = {
     .destroy = idle_notifier_resource_destroy,
     .get_idle_notification = idle_notifier_get_idle_notification,
+    .get_input_idle_notification = idle_notifier_get_input_idle_notification,
 };
 
 static void idle_notifier_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
