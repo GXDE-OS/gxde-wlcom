@@ -45,13 +45,22 @@ struct dde_shell_surface {
     float window_radius_y;
 
     bool no_titlebar;
+
+    /* effectscene bit mask: Represents which window effects are disabled */
+    uint32_t effect_scene;
+
+    /* effecttype: Type of startup effect (Normal/Cursor/Top/Bottom) */
+    uint32_t startup_effect;
 };
 
 
 static void dde_surface_apply_radius(struct dde_shell_surface *surf)
 {
-    /* 非法的圆角大小: 直接忽略圆角设置 */
-    if (surf->window_radius_x < 0) {
+    /* effectNoRadius: If client asks no window radius */
+    bool no_radius = surf->effect_scene & DDE_SHELL_EFFECTSCENE_EFFECTNORADIUS;
+
+    /* Else, do no-ops */
+    if (surf->window_radius_x < 0 && !no_radius) {
         return;
     }
 
@@ -61,7 +70,7 @@ static void dde_surface_apply_radius(struct dde_shell_surface *surf)
         return;
     }
 
-    int r = (int)(surf->window_radius_x + 0.5f);
+    int r = no_radius ? 0 : (int)(surf->window_radius_x + 0.5f);
     bool need_corner = true;
     bool need_top_corner = true;
 
@@ -116,6 +125,29 @@ static void dde_surface_apply_no_titlebar(struct dde_shell_surface *surf)
     }
 }
 
+/* DDE apply window effect */
+static void dde_surface_apply_window_effect(struct dde_shell_surface* surf) {
+    if (!surf->view) {
+        return;
+    }
+
+    struct kywc_view* kywc_view = &surf->view->base;
+    if (!kywc_view->mapped) {
+        return;
+    }
+
+    /* effectNoBorder: Remove CSD (and shadow) */
+    if (surf->effect_scene & DDE_SHELL_EFFECTSCENE_EFFECTNOBORDER) {
+        enum kywc_ssd ssd = kywc_view->ssd & ~(KYWC_SSD_BORDER | KYWC_SSD_RESIZE);
+        if (ssd != kywc_view->ssd) {
+            view_set_decoration(surf->view, ssd);
+            kywc_log(KYWC_DEBUG,
+                "(DDE Shell) WindowEffect: dropped border decoration for surface %p",
+                surf->wlr_surface);
+        }
+    }
+}
+
 
 /* 回调函数，监控map，在窗口真正显示到屏幕上时，应用无标题栏与圆角设置
  * 先去标题栏再设圆角: 圆角逻辑依赖 ssd 中的 KYWC_SSD_TITLE 位决定是否圆顶角 */
@@ -123,6 +155,7 @@ static void dde_surface_handle_view_map(struct wl_listener *listener, void *data
 {
     struct dde_shell_surface *surf = wl_container_of(listener, surf, view_map);
     dde_surface_apply_no_titlebar(surf);
+    dde_surface_apply_window_effect(surf);
     dde_surface_apply_radius(surf);
 }
 
@@ -274,6 +307,40 @@ static void dde_shell_surface_set_property(struct wl_client *client,
 }
 
 
+/**
+ * Request custom window effect.
+ * Note that effectscene is a bit mask of "which effect to DISABLE"
+ * ... and 0 represents all enabled.
+ */
+static void dde_shell_surface_request_window_effect(struct wl_client* client,
+        struct wl_resource* resource, uint32_t effectscene) {
+    struct dde_shell_surface* surf = wl_resource_get_user_data(resource);
+    surf->effect_scene = effectscene;
+
+    dde_surface_apply_radius(surf);
+    dde_surface_apply_window_effect(surf);
+
+    kywc_log(KYWC_DEBUG, "(DDE Shell) WindowEffect: effectscene 0x%x set on surface %p",
+        effectscene, (void *)surf->wlr_surface);
+}
+
+/**
+ * Request startup effect for the window.
+ * Note that effecttype is a single value representing the type of startup effect.
+ * We have effectNormal/Cursor/Top/Bottom.
+ */
+static void dde_shell_surface_request_window_startup_effect(
+        struct wl_client* client, struct wl_resource* resource,
+        uint32_t effecttype) {
+    struct dde_shell_surface* surf = wl_resource_get_user_data(resource);
+    surf->startup_effect = effecttype;
+
+    kywc_log(KYWC_DEBUG,
+        "(DDE Shell) StartupEffect: effecttype 0x%x recorded for surface %p",
+        effecttype, (void *)surf->wlr_surface);
+}
+
+
 /* DDE Shell surface接口实现，挂到wl_resource上供wayland协议分发 */
 static const struct dde_shell_surface_interface dde_shell_surface_impl = {
     .get_geometry = dde_shell_surface_get_geometry,
@@ -281,6 +348,8 @@ static const struct dde_shell_surface_interface dde_shell_surface_impl = {
     .set_state = dde_shell_surface_set_state,
     .set_property = dde_shell_surface_set_property,
     .request_split_window = dde_shell_surface_request_split_window,
+    .request_window_effect = dde_shell_surface_request_window_effect,
+    .request_window_startup_effect = dde_shell_surface_request_window_startup_effect,
 };
 
 
