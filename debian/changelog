@@ -1,3 +1,9 @@
+gxde-wlcom (1.4.0-gxde3) lizhi; urgency=medium
+
+  * 修复模糊区域随鼠标移动撕裂的问题
+
+ -- CharOfString <markus_verify@126.com>  Wed, 8 Jul 2026 14:23:23 +0800
+
 gxde-wlcom (1.4.0-gxde2) lizhi; urgency=medium
 
   * 修复移植的dde-shell协议实现窗口圆角接口对layer-shell窗口不起作用的问题

@@ -55,6 +55,7 @@ Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
+ libliftoff0,
 Breaks: kylin-wayland-compositor-effects
 Replaces: kylin-wayland-compositor
 Conflicts: kylin-wayland-compositor

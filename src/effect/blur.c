@@ -787,7 +787,14 @@ static void get_copy_box(const pixman_region32_t *blur_region, const struct blur
      * because it is outside the radius of blur.
      */
     int align_num = calculate_blur_radius(blur_info->iterations, blur_info->offset);
-    pixman_box32_t *damage_bbox = pixman_region32_extents(damaged_blur_region);
+
+     /**
+      * Frame copy box around whole blur region, not per-frame-change.
+      * This ensure the blur is stable and NOT tearing when mouse is moving.
+      */
+    pixman_box32_t* damage_bbox = pixman_region32_extents(blur_region);
+    (void)damaged_blur_region;
+
     /* pos in frame_buffer */
     struct kywc_box buffer_cpy_box = {
         .x = align_num * (int)(damage_bbox->x1 / align_num),
@@ -892,9 +899,18 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
         pixman_region32_copy(&blur_region, &node->visible_region);
     }
 
-    /* blur in damage and visible */
-    pixman_region32_intersect(&blur_region, &blur_region, &target->damage);
-    if (!pixman_region32_not_empty(&blur_region)) {
+    /*
+     * If any part of the blur region is damaged this frame, re-blur the WHOLE
+     * region.
+     * Avoiding blur tearing.
+     */
+    pixman_region32_t damaged;
+    pixman_region32_init(&damaged);
+    pixman_region32_intersect(&damaged, &blur_region, &target->damage);
+    bool blur_damaged = pixman_region32_not_empty(&damaged);
+    pixman_region32_fini(&damaged);
+    if (!blur_damaged) {
+        pixman_region32_fini(&blur_region);
         return;
     }
 
