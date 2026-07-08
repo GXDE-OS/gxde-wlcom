@@ -56,6 +56,10 @@ struct dde_shell_surface {
 
 static void dde_surface_apply_radius(struct dde_shell_surface *surf)
 {
+    if (!surf->wlr_surface) {
+        return;
+    }
+
     /* effectNoRadius: If client asks no window radius */
     bool no_radius = surf->effect_scene & DDE_SHELL_EFFECTSCENE_EFFECTNORADIUS;
 
@@ -159,6 +163,30 @@ static void dde_surface_handle_view_map(struct wl_listener *listener, void *data
     dde_surface_apply_radius(surf);
 }
 
+static void dde_surface_handle_view_destroy(struct wl_listener* listener,
+        void* data) {
+    struct dde_shell_surface* surf = wl_container_of(listener, surf,
+        view_destroy);
+
+    wl_list_remove(&surf->view_map.link);
+    wl_list_init(&surf->view_map.link);
+    wl_list_remove(&surf->view_destroy.link);
+    wl_list_init(&surf->view_destroy.link);
+    surf->view = NULL;
+}
+
+static void dde_surface_handle_surface_destroy(struct wl_listener* listener,
+        void* data) {
+    struct dde_shell_surface* surf = wl_container_of(listener, surf,
+        surface_destroy);
+
+    wl_list_remove(&surf->surface_map.link);
+    wl_list_init(&surf->surface_map.link);
+    wl_list_remove(&surf->surface_destroy.link);
+    wl_list_init(&surf->surface_destroy.link);
+    surf->wlr_surface = NULL;
+}
+
 
 /* 负责在底层surface首次准备就绪时，查找对应的上层view，为其挂载圆角渲染和窗口销毁等事件的监听器 */
 static void dde_surface_handle_surface_map(struct wl_listener *listener, void *data)
@@ -173,7 +201,7 @@ static void dde_surface_handle_surface_map(struct wl_listener *listener, void *d
     if (surf->view) {
         surf->view_map.notify = dde_surface_handle_view_map;
         wl_signal_add(&surf->view->base.events.map, &surf->view_map);
-        surf->view_destroy.notify = NULL; /* reused below */
+        surf->view_destroy.notify = dde_surface_handle_view_destroy;
         wl_signal_add(&surf->view->base.events.destroy, &surf->view_destroy);
     } else {
         /* layer-shell 等无 view 的 surface：直接应用圆角和无标题栏 */
@@ -413,6 +441,9 @@ static void dde_shell_get_shell_surface(struct wl_client *client, struct wl_reso
     /* 挂载surface map监听 */
     surf->surface_map.notify = dde_surface_handle_surface_map;
     wl_signal_add(&wlr_surface->events.map, &surf->surface_map);
+
+    surf->surface_destroy.notify = dde_surface_handle_surface_destroy;
+    wl_signal_add(&wlr_surface->events.destroy, &surf->surface_destroy);
 
     /* 如果此时surface已经mapped，直接触发map逻辑 */
     if (wlr_surface->mapped) {
