@@ -1,7 +1,7 @@
 option('plugin_directory',
        type: 'string',
        value: '',
-       description: 'Location for plugin (default: ${prefix}/lib/kylin-wlcom/plugins/)'
+       description: 'Location for plugin (default: ${prefix}/lib/gxde-wlcom/plugins/)'
 )
 
 option('libunwind',

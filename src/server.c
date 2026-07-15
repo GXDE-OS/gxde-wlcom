@@ -341,5 +341,5 @@ void server_finish(struct server *server)
     /* free memory in fontconfig */
     pango_cairo_font_map_set_default(NULL);
 
-    kywc_log(KYWC_SILENT, "kylin-wlcom finished...\n");
+    kywc_log(KYWC_SILENT, "gxde-wlcom finished...\n");
 }

@@ -92,7 +92,7 @@ unwind = dependency('libunwind', required : get_option('libunwind'))
 
 plugindir = get_option('plugin_directory')
 if plugindir == ''
-  plugindir = '@0@/lib/kylin-wlcom/plugins'.format(get_option('prefix'))
+  plugindir = '@0@/lib/gxde-wlcom/plugins'.format(get_option('prefix'))
 endif
 add_project_arguments('-DPLUGIN_DIR="@0@"'.format(plugindir), language: 'c')
 
@@ -236,7 +236,7 @@ symbols_flag = '-Wl,--version-script,@0@/@1@'.format(
   meson.current_source_dir(), symbols_file)
 
 executable(
-  'kylin-wlcom',
+  'gxde-wlcom',
   wlcom_sources,
   include_directories: wlcom_inc,
   dependencies: wlcom_deps,

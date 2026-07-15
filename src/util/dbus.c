@@ -103,7 +103,7 @@ bool dbus_context_create(struct server *server)
         if (ret < 0) {
             kywc_log(KYWC_ERROR, "Failed to acquire service name: %s", strerror(-ret));
             if (ret == -EEXIST) {
-                kywc_log(KYWC_ERROR, "Is a Kylin-Wlcom already running?");
+                kywc_log(KYWC_ERROR, "Is a GXDE-Wlcom already running?");
             }
             sd_bus_flush_close_unref(context->user);
             context->user = NULL;

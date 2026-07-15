@@ -1,6 +1,6 @@
-usr/bin/kylin-wlcom
+usr/bin/gxde-wlcom
 usr/bin/start-gxde-wlcom
 usr/share/locale/
 usr/lib/udev/rules.d/
 usr/share/wayland-sessions/
-etc/kylin-wlcom/
+etc/gxde-wlcom/

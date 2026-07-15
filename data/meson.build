@@ -10,6 +10,6 @@ gxde_session_launcher = files('start-gxde-wlcom')
 install_data(gxde_session_launcher, install_dir: '/usr/bin', install_mode: 'rwxr-xr-x')
 
 default_config = files('config.json')
-install_data(default_config, install_dir:'/etc/kylin-wlcom/')
+install_data(default_config, install_dir:'/etc/gxde-wlcom/')
 
 embed = find_program('./embed.sh', native: true)

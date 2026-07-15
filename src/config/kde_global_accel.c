@@ -1115,7 +1115,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     registry = NULL;
 }
 
-static const char *component_builtin = "kylin-wlcom";
+static const char *component_builtin = "gxde-wlcom";
 
 static bool kglobalaccel_builtin_shortcuts(struct key_binding *binding, char *unique_name,
                                            char *friendly_name, int32_t modifiers, int32_t key)

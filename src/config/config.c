@@ -17,7 +17,7 @@ static struct config_manager *config_manager = NULL;
 
 static const char *check_config_file(void)
 {
-    char *config_dir = string_expand_path("~/.config/kylin-wlcom");
+    char *config_dir = string_expand_path("~/.config/gxde-wlcom");
     if (!config_dir) {
         return NULL;
     }
@@ -91,7 +91,7 @@ struct config_manager *config_manager_create(struct server *server)
         config_manager->json = json_object_from_file(config_manager->file);
     }
     /* get system default config */
-    config_manager->sys_json = json_object_from_file("/etc/kylin-wlcom/config.json");
+    config_manager->sys_json = json_object_from_file("/etc/gxde-wlcom/config.json");
     kywc_log(KYWC_INFO, "get the sys default config from the etc directory");
     if (!config_manager->sys_json) {
         kywc_log(KYWC_WARN, "the default config does not exist");

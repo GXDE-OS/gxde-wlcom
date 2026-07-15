@@ -125,7 +125,7 @@ void logger_init(enum kywc_log_level level, bool log_to_file, bool realtime)
         }
     }
 
-    char *log_path = string_join_path(log_dir, NULL, "kylin-wlcom.log");
+    char *log_path = string_join_path(log_dir, NULL, "gxde-wlcom.log");
     free(log_dir);
     fprintf(stdout, "logger: path is %s\n", log_path);
 
