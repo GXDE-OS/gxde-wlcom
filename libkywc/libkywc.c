@@ -209,13 +209,11 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
     return true;
 }
 
-bool kywc_context_is_gxde_wlcom(kywc_context *ctx)
-{
+bool kywc_context_is_gxde_wlcom(kywc_context *ctx) {
     return ctx && ctx->identifier != NULL;
 }
 
-const char *kywc_context_get_wm_version(kywc_context *ctx)
-{
+const char *kywc_context_get_wm_version(kywc_context *ctx) {
     if (!ctx || !ctx->identifier) {
         return NULL;
     }
