@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="gxde_identifier_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2026 KylinSoft Co., Ltd.
+    SPDX-License-Identifier: MulanPSL-2.0
+  ]]></copyright>
+
+  <interface name="gxde_identifier_v1" version="1">
+    <description summary="GXDE WM identifier">
+      By broadcasting this interface, the compositor identified itself as GXDE-Wlcom
+      (or a 100% compatible compositor).
+    </description>
+
+    <event name="version">
+      <description summary="WM version string">
+        Simply WM version.
+      </description>
+      <arg name="version" type="string" summary="The WM version string"/>
+    </event>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the identifier object">
+        As summary described.
+      </description>
+    </request>
+  </interface>
+</protocol>

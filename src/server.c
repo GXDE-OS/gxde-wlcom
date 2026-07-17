@@ -32,6 +32,7 @@
 #include "backend/backend.h"
 #include "config.h"
 #include "effect/effect.h"
+#include "gxde_identifier.h"
 #include "input/input.h"
 #include "output.h"
 #include "plugin.h"
@@ -259,6 +260,7 @@ bool server_init(struct server *server)
     config_manager_create(server);
     security_manager_create(server);
     theme_manager_create(server);
+    gxde_identifier_create(server);
 
     if (!wlroots_server_init(server)) {
         return false;

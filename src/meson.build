@@ -1,6 +1,7 @@
 wlcom_sources += files(
   'main.c',
   'server.c',
+  'gxde_identifier.c',
 
   'plugin/config.c',
   'plugin/plugin.c',

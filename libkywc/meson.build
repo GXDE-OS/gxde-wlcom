@@ -10,6 +10,7 @@ files_libkywc = files(
   'kywc_output.c',
   'kywc_toplevel.c',
   'kywc_workspace.c',
+  'gxde_identifier.c',
 )
 
 protos = [
@@ -17,6 +18,7 @@ protos = [
   'kywc-output-manager-v1', 
   'kywc-toplevel-manager-v1',
   'kywc-workspace-manager-v1',
+  'gxde-identifier-v1',
 ]
 
 foreach p : protos 

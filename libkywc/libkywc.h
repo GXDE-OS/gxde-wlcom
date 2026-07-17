@@ -25,6 +25,8 @@ enum kywc_context_capability {
     KYWC_CONTEXT_CAPABILITY_THUMBNAIL = 1 << 3,
     /* with multi-plane support */
     KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT = 1 << 4,
+    /* detect GXDE-Wlcom compositor by gxde-identifier-v1 */
+    KYWC_CONTEXT_CAPABILITY_IDENTIFIER = 1 << 5,
 };
 
 struct kywc_context_interface {
@@ -66,6 +68,23 @@ int kywc_context_process(kywc_context *ctx);
 void kywc_context_dispatch(kywc_context *ctx);
 
 void kywc_context_destroy(kywc_context *ctx);
+
+/**
+ * GXDE WM identifier (gxde-identifier-v1)
+ *
+ * When the compositor advertises the gxde_identifier_v1 global, the client
+ * can confirm it is running under GXDE-Wlcom (or a 100% compatible compositor)
+ */
+
+/**
+ * Check whether the compositor is GXDE-Wlcom (or 100% compatible).
+ */
+bool kywc_context_is_gxde_wlcom(kywc_context *ctx);
+
+/**
+ * Get the WM version.
+ */
+const char *kywc_context_get_wm_version(kywc_context *ctx);
 
 /**
  * workspace or virtual desktop

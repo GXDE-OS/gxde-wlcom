@@ -198,8 +198,26 @@ bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *prov
             return false;
         }
         ctx->thumbnail = manager;
+    } else if (provider->capability == KYWC_CONTEXT_CAPABILITY_IDENTIFIER) {
+        if (ctx->identifier) {
+            return false;
+        }
+        ctx->identifier = manager;
     }
 
     wl_list_insert(&ctx->providers, &provider->link);
     return true;
+}
+
+bool kywc_context_is_gxde_wlcom(kywc_context *ctx)
+{
+    return ctx && ctx->identifier != NULL;
+}
+
+const char *kywc_context_get_wm_version(kywc_context *ctx)
+{
+    if (!ctx || !ctx->identifier) {
+        return NULL;
+    }
+    return ctx->identifier->version;
 }

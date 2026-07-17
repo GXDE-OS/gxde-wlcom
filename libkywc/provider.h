@@ -15,6 +15,8 @@ bool _kywc_toplevel_init(kywc_context *ctx, enum kywc_context_capability capabil
 
 bool _kywc_capture_init(kywc_context *ctx, enum kywc_context_capability capability);
 
+bool _kywc_gxde_identifier_init(kywc_context *ctx, enum kywc_context_capability capability);
+
 static const struct ky_provider {
     enum kywc_context_capability capability;
     const char *name;
@@ -25,6 +27,7 @@ static const struct ky_provider {
     { KYWC_CONTEXT_CAPABILITY_TOPLEVEL, "kywc_toplevel_manager_v1", _kywc_toplevel_init },
     { KYWC_CONTEXT_CAPABILITY_THUMBNAIL, "kywc_capture_manager_v1", _kywc_capture_init },
     { KYWC_CONTEXT_CAPABILITY_THUMBNAIL_EXT, "kywc_capture_manager_v1", _kywc_capture_init },
+    { KYWC_CONTEXT_CAPABILITY_IDENTIFIER, "gxde_identifier_v1", _kywc_gxde_identifier_init },
 };
 
 #endif /* _LIBKYWC_PROVIDER_H_ */

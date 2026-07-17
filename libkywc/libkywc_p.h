@@ -32,6 +32,7 @@ struct _kywc_context {
     struct ky_output_manager *output;
     struct ky_toplevel_manager *toplevel;
     struct ky_thumbnail_manager *thumbnail;
+    struct ky_gxde_identifier *identifier;
 };
 
 bool ky_context_add_provider(kywc_context *ctx, struct ky_context_provider *provider,
@@ -299,5 +300,15 @@ void ky_thumbnail_destroy(struct ky_thumbnail *thumbnail);
 
 void ky_thumbnail_update_buffer(struct ky_thumbnail *thumbnail,
                                 const struct kywc_thumbnail_buffer *buffer, bool *want_buffer);
+
+/**
+ * gxde identifier
+ */
+struct ky_gxde_identifier {
+    char *version; /* WM version string, or NULL if not yet received */
+
+    void (*destroy)(struct ky_gxde_identifier *identifier);
+    void *data;
+};
 
 #endif /* _LIBKYWC_HEADER_P_H_ */
