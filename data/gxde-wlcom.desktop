@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=gxde-wlcom
 Comment=GXDE desktop on the Kylin Wayland Compositor
-Exec=/usr/bin/start-gxde-wlcom
+Exec=/usr/bin/startgxde_wlcom
 Type=Application
 DesktopNames=GXDE
