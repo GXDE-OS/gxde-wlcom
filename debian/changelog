@@ -1,3 +1,9 @@
+gxde-wlcom (2.0.1-gxde1) lizhi; urgency=medium
+
+  * 修复Wayland下layer-shell错位问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 20 Jul 2026 16:16:26 +0800
+
 gxde-wlcom (2.0.0-gxde1) lizhi; urgency=medium
 
   * 将二进制名称改为gxde-wlcom
