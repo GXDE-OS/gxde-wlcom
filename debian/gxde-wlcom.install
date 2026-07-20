@@ -1,5 +1,5 @@
 usr/bin/gxde-wlcom
-usr/bin/start-gxde-wlcom
+usr/bin/startgxde_wlcom
 usr/share/locale/
 usr/lib/udev/rules.d/
 usr/share/wayland-sessions/

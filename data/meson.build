@@ -6,7 +6,7 @@ install_data(udev_framebuffer, install_dir: '/usr/lib/udev/rules.d')
 gxde_session = files('gxde-wlcom.desktop')
 install_data(gxde_session, install_dir: '/usr/share/wayland-sessions')
 
-gxde_session_launcher = files('start-gxde-wlcom')
+gxde_session_launcher = files('startgxde_wlcom')
 install_data(gxde_session_launcher, install_dir: '/usr/bin', install_mode: 'rwxr-xr-x')
 
 default_config = files('config.json')
