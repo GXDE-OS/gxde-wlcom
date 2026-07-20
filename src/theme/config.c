@@ -12,6 +12,9 @@
 
 static const char *service_path = "/com/kylin/Wlcom/Theme";
 static const char *service_interface = "com.kylin.Wlcom.Theme";
+static const char *window_corner_service = "top.gxde.Wlcom.WindowCorner";
+static const char *window_corner_path = "/top/gxde/Wlcom/WindowCorner";
+static const char *window_corner_interface = "top.gxde.Wlcom.WindowCorner";
 
 static int print_theme_config(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
@@ -96,6 +99,40 @@ static int set_corner_radius(sd_bus_message *msg, void *userdata, sd_bus_error *
     return sd_bus_reply_method_return(msg, "b", ret);
 }
 
+static int get_corner_radius(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    return sd_bus_reply_method_return(msg, "i", theme_manager_get_theme()->corner_radius);
+}
+
+static int get_force_round_corner(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    return sd_bus_reply_method_return(msg, "b", theme_manager_get_force_round_corner());
+}
+
+static int set_force_round_corner(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    int enabled;
+    CK(sd_bus_message_read(msg, "b", &enabled));
+    bool ret = theme_manager_set_force_round_corner(enabled);
+    return sd_bus_reply_method_return(msg, "b", ret);
+}
+
+static int get_force_round_corner_exclude_layer_shell(sd_bus_message *msg, void *userdata,
+                                                       sd_bus_error *ret_error)
+{
+    return sd_bus_reply_method_return(
+        msg, "b", theme_manager_get_force_round_corner_exclude_layer_shell());
+}
+
+static int set_force_round_corner_exclude_layer_shell(sd_bus_message *msg, void *userdata,
+                                                       sd_bus_error *ret_error)
+{
+    int enabled;
+    CK(sd_bus_message_read(msg, "b", &enabled));
+    bool ret = theme_manager_set_force_round_corner_exclude_layer_shell(enabled);
+    return sd_bus_reply_method_return(msg, "b", ret);
+}
+
 static int set_opacity(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     int32_t opacity;
@@ -114,8 +151,20 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
-    SD_BUS_METHOD("SetCornerRadius", "i", "b", set_corner_radius, 0),
     SD_BUS_METHOD("SetOpacity", "i", "b", set_opacity, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable window_corner_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("GetCornerRadius", "", "i", get_corner_radius, 0),
+    SD_BUS_METHOD("SetCornerRadius", "i", "b", set_corner_radius, 0),
+    SD_BUS_METHOD("GetForceRoundCorner", "", "b", get_force_round_corner, 0),
+    SD_BUS_METHOD("SetForceRoundCorner", "b", "b", set_force_round_corner, 0),
+    SD_BUS_METHOD("GetForceRoundCornerExcludeLayerShell", "", "b",
+                  get_force_round_corner_exclude_layer_shell, 0),
+    SD_BUS_METHOD("SetForceRoundCornerExcludeLayerShell", "b", "b",
+                  set_force_round_corner_exclude_layer_shell, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -125,7 +174,11 @@ bool theme_manager_config_init(struct theme_manager *manager)
     if (!manager->config) {
         return false;
     }
-    return dbus_register_object(NULL, service_path, service_interface, service_vtable, manager);
+    if (!dbus_register_object(NULL, service_path, service_interface, service_vtable, manager)) {
+        return false;
+    }
+    return dbus_register_object(window_corner_service, window_corner_path,
+                                window_corner_interface, window_corner_vtable, manager);
 }
 
 enum theme_type theme_manager_read_config(struct theme_manager *manager)
@@ -166,6 +219,16 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
         manager->global.opacity = json_object_get_int(data);
     } else {
         manager->global.opacity = 100;
+    }
+
+    if (json_object_object_get_ex(manager->config->json, "force_round_corner", &data)) {
+        manager->global.force_round_corner = json_object_get_boolean(data);
+    }
+
+    if (json_object_object_get_ex(manager->config->json,
+                                  "force_round_corner_exclude_layer_shell", &data)) {
+        manager->global.force_round_corner_exclude_layer_shell =
+            json_object_get_boolean(data);
     }
 
     if (json_object_object_get_ex(manager->config->json, "type", &data)) {
@@ -267,6 +330,22 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
                                json_object_new_int(manager->global.opacity));
     } else {
         json_object_object_del(manager->config->json, "opacity");
+    }
+
+    if (manager->global.force_round_corner) {
+        json_object_object_add(manager->config->json, "force_round_corner",
+                               json_object_new_boolean(true));
+    } else {
+        json_object_object_del(manager->config->json, "force_round_corner");
+    }
+
+    if (manager->global.force_round_corner_exclude_layer_shell) {
+        json_object_object_add(manager->config->json,
+                               "force_round_corner_exclude_layer_shell",
+                               json_object_new_boolean(true));
+    } else {
+        json_object_object_del(manager->config->json,
+                               "force_round_corner_exclude_layer_shell");
     }
 }
 

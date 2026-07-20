@@ -24,6 +24,7 @@
 #include "scene/surface.h"
 #include "scene_p.h"
 #include "security.h"
+#include "theme.h"
 
 struct ky_scene_buffer *ky_scene_buffer_from_node(struct ky_scene_node *node)
 {
@@ -432,6 +433,23 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
 
     KY_PROFILE_RENDER_ZONE(ky_render_pass_get_renderer(target->render_pass), gzone, __func__);
     bool render_with_radius = !(target->options & KY_SCENE_RENDER_DISABLE_ROUND_CORNER);
+    bool is_window = false;
+    bool is_layer_shell = false;
+    struct ky_scene_tree *tree = node->parent;
+    while (tree) {
+        if (tree->node.role.type == KY_SCENE_ROLE_VIEW) {
+            is_window = true;
+        } else if (tree->node.role.type == KY_SCENE_ROLE_LAYER_SHELL) {
+            is_window = true;
+            is_layer_shell = true;
+        }
+        tree = tree->node.parent;
+    }
+    bool force_round_corner =
+        render_with_radius && is_window && theme_manager_get_force_round_corner() &&
+            !(is_layer_shell && theme_manager_get_force_round_corner_exclude_layer_shell());
+    int forced_radius =
+        force_round_corner ? theme_manager_get_theme()->corner_radius : 0;
     struct ky_render_texture_options options = {
         .base = {
             .texture = texture,
@@ -444,10 +462,18 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
                 WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
         },
         .radius = {
-            .rb = render_with_radius ? node->radius[0] * target->scale : 0,
-            .rt = render_with_radius ? node->radius[1] * target->scale : 0,
-            .lb = render_with_radius ? node->radius[2] * target->scale : 0,
-            .lt = render_with_radius ? node->radius[3] * target->scale : 0,
+            .rb = render_with_radius
+                ? (force_round_corner ? forced_radius : node->radius[0]) * target->scale
+                : 0,
+            .rt = render_with_radius
+                ? (force_round_corner ? forced_radius : node->radius[1]) * target->scale
+                : 0,
+            .lb = render_with_radius
+                ? (force_round_corner ? forced_radius : node->radius[2]) * target->scale
+                : 0,
+            .lt = render_with_radius
+                ? (force_round_corner ? forced_radius : node->radius[3]) * target->scale
+                : 0,
         },
         .repeated = scene_buffer->repeated,
     };

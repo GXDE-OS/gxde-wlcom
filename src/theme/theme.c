@@ -435,9 +435,50 @@ bool theme_manager_set_corner_radius(int32_t radius)
         .update_mask = THEME_UPDATE_MASK_CORNER_RADIUS,
     };
     wl_signal_emit_mutable(&manager->events.update, &update_event);
+    ky_scene_damage_whole(manager->server->scene);
 
     theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
     return true;
+}
+
+static bool set_force_round_corner_config(bool *option, bool enabled)
+{
+    if (*option == enabled) {
+        return true;
+    }
+
+    *option = enabled;
+
+    struct theme_update_event update_event = {
+        .update_mask = THEME_UPDATE_MASK_CORNER_RADIUS,
+    };
+    wl_signal_emit_mutable(&manager->events.update, &update_event);
+    ky_scene_damage_whole(manager->server->scene);
+
+    theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
+    config_manager_sync();
+    return true;
+}
+
+bool theme_manager_set_force_round_corner(bool enabled)
+{
+    return set_force_round_corner_config(&manager->global.force_round_corner, enabled);
+}
+
+bool theme_manager_set_force_round_corner_exclude_layer_shell(bool enabled)
+{
+    return set_force_round_corner_config(
+        &manager->global.force_round_corner_exclude_layer_shell, enabled);
+}
+
+bool theme_manager_get_force_round_corner(void)
+{
+    return manager && manager->global.force_round_corner;
+}
+
+bool theme_manager_get_force_round_corner_exclude_layer_shell(void)
+{
+    return manager && manager->global.force_round_corner_exclude_layer_shell;
 }
 
 bool theme_manager_set_opacity(int32_t opacity)

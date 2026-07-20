@@ -39,6 +39,47 @@ GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`
 2. 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
 3. 移植`dde-shell`协议 (部分)，并扩展`wlr-layer-shell`排布逻辑，为`deepin-menu`等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
 
+### GXDE的一些实验性功能
+#### 强制裁剪圆角
+> 强制裁剪圆角与Wlcom所支持的窗口圆角不同，在强制裁剪圆角下，所有CSD（客户端自行装饰的）窗口都会被强制裁剪圆角，圆角大小取决于Wlcom设置的窗口圆角大小（即数值与普通「启用窗口圆角」功能共享）
+
+在用户会话总线，我们提供了`top.gxde.Wlcom.WindowCorner`接口，用于管理两个持久化的DBus配置：
+- `ForceRoundCorner`：强制裁剪窗口圆角。
+- `ForceRoundCornerExcludeLayerShell`：启用强制裁剪时，不裁剪
+  `wlr-layer-shell`表面（例如顶栏、Dock、GXDE控制中心等的窗体）。仅在`ForceRoundCorner`启用时生效。
+
+##### 启用强制圆角裁切
+
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowCorner \
+  /top/gxde/Wlcom/WindowCorner \
+  top.gxde.Wlcom.WindowCorner \
+  SetForceRoundCorner b true
+```
+
+将上述命令中的`true`改为`false`即可关闭相应配置。可通过以下方法查询
+当前值：
+
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowCorner \
+  /top/gxde/Wlcom/WindowCorner \
+  top.gxde.Wlcom.WindowCorner \
+```
+
+##### 启用强制裁剪，但排除`wlr-layer-shell`表面：
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowCorner \
+  /top/gxde/Wlcom/WindowCorner \
+  top.gxde.Wlcom.WindowCorner \
+  SetForceRoundCornerExcludeLayerShell b true
+```
+
+##### 注意事项
+配置修改后立即生效，并写入`~/.config/gxde-wlcom/config.json`的`theme`对象，对应的key分别为`force_round_corner`和`force_round_corner_exclude_layer_shell`。
+
 
 # 编译
 

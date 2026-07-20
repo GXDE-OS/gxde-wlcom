@@ -139,6 +139,14 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name);
 
 bool theme_manager_set_corner_radius(int32_t radius);
 
+bool theme_manager_set_force_round_corner(bool enabled);
+
+bool theme_manager_set_force_round_corner_exclude_layer_shell(bool enabled);
+
+bool theme_manager_get_force_round_corner(void);
+
+bool theme_manager_get_force_round_corner_exclude_layer_shell(void);
+
 bool theme_manager_set_opacity(int32_t opacity);
 
 struct wlr_buffer *theme_buffer_load(struct theme *theme, float scale, enum theme_buffer_type type,

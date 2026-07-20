@@ -229,6 +229,8 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     /* create view tree and disable it */
     struct view_layer *layer = view_manager_get_layer(LAYER_NORMAL, true);
     view->tree = ky_scene_tree_create(layer->tree);
+    view->tree->node.role.type = KY_SCENE_ROLE_VIEW;
+    view->tree->node.role.data = view;
     ky_scene_node_set_enabled(&view->tree->node, false);
 
     struct output *output = input_current_output(input_manager_get_default_seat());

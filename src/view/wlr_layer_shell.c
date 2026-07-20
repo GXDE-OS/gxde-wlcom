@@ -439,6 +439,8 @@ static void handle_new_layer_surface(struct wl_listener *listener, void *data)
 
     layer_shell->layer_surface = layer_surface;
     layer_shell->tree = ky_scene_tree_create(manager->layers[layer_surface->current.layer].tree);
+    layer_shell->tree->node.role.type = KY_SCENE_ROLE_LAYER_SHELL;
+    layer_shell->tree->node.role.data = layer_shell;
     ky_scene_subsurface_tree_create(layer_shell->tree, layer_surface->surface);
 
     input_event_node_create(&layer_shell->tree->node, &layer_shell_event_node_impl,
