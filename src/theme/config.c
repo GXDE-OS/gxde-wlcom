@@ -29,6 +29,13 @@ static int set_widget_theme(sd_bus_message *msg, void *userdata, sd_bus_error *r
     return sd_bus_reply_method_return(msg, "b", ret);
 }
 
+static int set_gtk_theme(sd_bus_message* msg, void* userdata, sd_bus_error* ret_error) {
+    const char* theme = NULL;
+    CK(sd_bus_message_read(msg, "s", &theme));
+    bool ret = config_set_gtk_theme(theme);
+    return sd_bus_reply_method_return(msg, "b", ret);
+}
+
 static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     char *icon_theme_name = NULL;
@@ -74,6 +81,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("PrintThemeConfig", "", "s", print_theme_config, 0),
     SD_BUS_METHOD("SetWidgetTheme", "su", "b", set_widget_theme, 0),
+    SD_BUS_METHOD("SetGtkTheme", "s", "b", set_gtk_theme, 0),
     SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),

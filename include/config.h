@@ -28,4 +28,6 @@ void config_destroy(struct config *config);
 
 void config_manager_sync(void);
 
+bool config_set_gtk_theme(const char *name);
+
 #endif /* _CONFIG_H_ */

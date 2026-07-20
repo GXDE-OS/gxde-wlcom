@@ -1,7 +1,11 @@
 wlcom_sources += files(
   'common.c',
   'config.c',
+  'gtk_theme.c',
 )
+
+gio = dependency('gio-2.0', version: '>= 2.64')
+wlcom_deps += gio
 
 if have_kde_global_accel
   qtkey_mapper_gen = executable('qtkey-mapper', 'qtkey_mapper.c')
@@ -34,8 +38,6 @@ if have_ukui_gsettings
   wlcom_sources += files(
     'ukui_gsettings.c',
   )
-  glib = dependency('glib-2.0', version: '>= 2.64')
-  wlcom_deps += glib
 endif
 
 if have_ukui_view_mode
