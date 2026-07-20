@@ -37,7 +37,13 @@ GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`
 
 1. 修改构建，解决依赖问题
 2. 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
-3. 移植`dde-shell`协议 (部分)，并扩展`wlr-layer-shell`排布逻辑，为`deepin-menu`等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
+3. 移植`dde-shell`协议，并扩展`wlr-layer-shell`排布逻辑，为`deepin-menu`等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持。
+4. Cherry pick了上游Wlroots的一些更新
+5. 自动安装`gxde-wlcom`会话与`startgxde_wlcom`启动脚本至系统
+6. 修复了原版Wlcom（截至我们Fork时的版本）在GXDE OS上`layer-shell`表面无法吸附至屏幕顶端的问题。
+7. 提供了新接口允许设置GXDE主题
+8. 提供了新接口允许控制GTK标题栏上最小化/最大化/关闭按钮的可见性（默认为全部可见）
+9. 提供了一个接口，允许用户强制裁剪所有CSD（客户端自行装饰的）窗口，使其拥有圆角。用户亦可允许合成器跳过对`layer-shell`表面（这些表面通常包含GXDE顶栏、Dock、GXDE控制中心等）圆角的裁剪。强制裁剪圆角为不稳定功能。
 
 ### GXDE的一些实验性功能
 #### 设置GTK主题
@@ -80,7 +86,7 @@ busctl --user call \
   GetGtkDecorationButtons
 ```
 
-#### 强制裁剪圆角
+#### 强制裁剪圆角 （不稳定）
 > 强制裁剪圆角与Wlcom所支持的窗口圆角不同，在强制裁剪圆角下，所有CSD（客户端自行装饰的）窗口都会被强制裁剪圆角，圆角大小取决于Wlcom设置的窗口圆角大小（即数值与普通「启用窗口圆角」功能共享）
 
 在用户会话总线，我们提供了`top.gxde.Wlcom.WindowCorner`接口，用于管理两个持久化的DBus配置：
