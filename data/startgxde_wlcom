@@ -4,5 +4,5 @@ export XDG_SESSION_DESKTOP=Deepin
 unset QT_QPA_PLATFORM
 unset DTK2_XWAYLAND
 export GDK_BACKEND=wayland
-export WLR_DRM_NO_ATOMIC=1
+# export WLR_DRM_NO_ATOMIC=1
 exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"
