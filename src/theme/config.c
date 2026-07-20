@@ -15,6 +15,9 @@ static const char *service_interface = "com.kylin.Wlcom.Theme";
 static const char *gxde_theme_service = "top.gxde.Wlcom.Theme";
 static const char *gxde_theme_path = "/top/gxde/Wlcom/Theme";
 static const char *gxde_theme_interface = "top.gxde.Wlcom.Theme";
+static const char *window_btn_service = "top.gxde.Wlcom.WindowBtn";
+static const char *window_btn_path = "/top/gxde/Wlcom/WindowBtn";
+static const char *window_btn_interface = "top.gxde.Wlcom.WindowBtn";
 static const char *window_corner_service = "top.gxde.Wlcom.WindowCorner";
 static const char *window_corner_path = "/top/gxde/Wlcom/WindowCorner";
 static const char *window_corner_interface = "top.gxde.Wlcom.WindowCorner";
@@ -148,8 +151,6 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("PrintThemeConfig", "", "s", print_theme_config, 0),
     SD_BUS_METHOD("SetWidgetTheme", "su", "b", set_widget_theme, 0),
-    SD_BUS_METHOD("GetGtkDecorationButtons", "", "bbb", get_gtk_decoration_buttons, 0),
-    SD_BUS_METHOD("SetGtkDecorationButtons", "bbb", "b", set_gtk_decoration_buttons, 0),
     SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
@@ -160,6 +161,13 @@ static const sd_bus_vtable service_vtable[] = {
 static const sd_bus_vtable gxde_theme_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("SetGTK", "s", "b", set_gtk, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable window_btn_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("GetGtkDecorationButtons", "", "bbb", get_gtk_decoration_buttons, 0),
+    SD_BUS_METHOD("SetGtkDecorationButtons", "bbb", "b", set_gtk_decoration_buttons, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -186,7 +194,11 @@ bool theme_manager_config_init(struct theme_manager *manager)
         return false;
     }
     if (!dbus_register_object(gxde_theme_service, gxde_theme_path, gxde_theme_interface,
-            gxde_theme_vtable, manager)) {
+                              gxde_theme_vtable, manager)) {
+        return false;
+    }
+    if (!dbus_register_object(window_btn_service, window_btn_path, window_btn_interface,
+                              window_btn_vtable, manager)) {
         return false;
     }
     return dbus_register_object(window_corner_service, window_corner_path,

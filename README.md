@@ -57,6 +57,29 @@ busctl --user call \
 
 该方法接收一个字符串参数并返回boolean。返回`true`代表所有可用设置项均已成功写入。
 
+#### 设置GTK窗口按钮的可见性
+`top.gxde.Wlcom.WindowBtn`接口用于设置GTK窗口的最小化、最大化和关闭按钮是否显示。使用三个boolean参数对应这三个按钮是否显示。
+
+以下是例子 --
+
+设置最小化/最大化/关闭按钮都需要显示：
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowBtn \
+  /top/gxde/Wlcom/WindowBtn \
+  top.gxde.Wlcom.WindowBtn \
+  SetGtkDecorationButtons bbb true true true
+```
+
+查询当前设置：
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowBtn \
+  /top/gxde/Wlcom/WindowBtn \
+  top.gxde.Wlcom.WindowBtn \
+  GetGtkDecorationButtons
+```
+
 #### 强制裁剪圆角
 > 强制裁剪圆角与Wlcom所支持的窗口圆角不同，在强制裁剪圆角下，所有CSD（客户端自行装饰的）窗口都会被强制裁剪圆角，圆角大小取决于Wlcom设置的窗口圆角大小（即数值与普通「启用窗口圆角」功能共享）
 
