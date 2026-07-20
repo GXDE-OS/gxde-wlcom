@@ -1,3 +1,9 @@
+gxde-wlcom (2.0.2-gxde1) lizhi; urgency=medium
+
+  * 现在允许通过D-Bus接口设置GTK主题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 21 Jul 2026 00:43:10 +0800
+
 gxde-wlcom (2.0.1-gxde2) lizhi; urgency=medium
 
   [shenmo]
