@@ -1,3 +1,14 @@
+gxde-wlcom (2.0.1-gxde2) lizhi; urgency=medium
+
+  [shenmo]
+  * 修改 exec 以与其他 gxde 启动 session 一致
+
+  [CharOfString]
+  * 禁用WLR_DRM_NO_ATOMIC，提升性能
+  * 修复构建报错
+
+ -- CharOfString <root@charofstring.cc>  Mon, 20 Jul 2026 16:25:51 +0800
+
 gxde-wlcom (2.0.1-gxde1) lizhi; urgency=medium
 
   * 修复Wayland下layer-shell错位问题
