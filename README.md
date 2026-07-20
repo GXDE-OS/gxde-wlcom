@@ -40,6 +40,23 @@ GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`
 3. 移植`dde-shell`协议 (部分)，并扩展`wlr-layer-shell`排布逻辑，为`deepin-menu`等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
 
 ### GXDE的一些实验性功能
+#### 设置GTK主题
+
+在用户会话总线，我们提供了`top.gxde.Wlcom.Theme`接口，可以通过其`SetGTK`方法，设置已安装的主题。
+
+GNOME与UKUI的主题设置会同步更改，更改应该立即可见。
+
+以下是使用示例，您需要把`主题名称`换为本机真实存在的主题。
+```bash
+busctl --user call \
+  top.gxde.Wlcom.Theme \
+  /top/gxde/Wlcom/Theme \
+  top.gxde.Wlcom.Theme \
+  SetGTK s "主题名称"
+```
+
+该方法接收一个字符串参数并返回boolean。返回`true`代表所有可用设置项均已成功写入。
+
 #### 强制裁剪圆角
 > 强制裁剪圆角与Wlcom所支持的窗口圆角不同，在强制裁剪圆角下，所有CSD（客户端自行装饰的）窗口都会被强制裁剪圆角，圆角大小取决于Wlcom设置的窗口圆角大小（即数值与普通「启用窗口圆角」功能共享）
 

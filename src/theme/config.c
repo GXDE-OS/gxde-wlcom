@@ -12,6 +12,9 @@
 
 static const char *service_path = "/com/kylin/Wlcom/Theme";
 static const char *service_interface = "com.kylin.Wlcom.Theme";
+static const char *gxde_theme_service = "top.gxde.Wlcom.Theme";
+static const char *gxde_theme_path = "/top/gxde/Wlcom/Theme";
+static const char *gxde_theme_interface = "top.gxde.Wlcom.Theme";
 static const char *window_corner_service = "top.gxde.Wlcom.WindowCorner";
 static const char *window_corner_path = "/top/gxde/Wlcom/WindowCorner";
 static const char *window_corner_interface = "top.gxde.Wlcom.WindowCorner";
@@ -32,7 +35,7 @@ static int set_widget_theme(sd_bus_message *msg, void *userdata, sd_bus_error *r
     return sd_bus_reply_method_return(msg, "b", ret);
 }
 
-static int set_gtk_theme(sd_bus_message* msg, void* userdata, sd_bus_error* ret_error) {
+static int set_gtk(sd_bus_message* msg, void* userdata, sd_bus_error* ret_error) {
     const char* theme = NULL;
     CK(sd_bus_message_read(msg, "s", &theme));
     bool ret = config_set_gtk_theme(theme);
@@ -145,13 +148,18 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("PrintThemeConfig", "", "s", print_theme_config, 0),
     SD_BUS_METHOD("SetWidgetTheme", "su", "b", set_widget_theme, 0),
-    SD_BUS_METHOD("SetGtkTheme", "s", "b", set_gtk_theme, 0),
     SD_BUS_METHOD("GetGtkDecorationButtons", "", "bbb", get_gtk_decoration_buttons, 0),
     SD_BUS_METHOD("SetGtkDecorationButtons", "bbb", "b", set_gtk_decoration_buttons, 0),
     SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
     SD_BUS_METHOD("SetOpacity", "i", "b", set_opacity, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable gxde_theme_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("SetGTK", "s", "b", set_gtk, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -175,6 +183,10 @@ bool theme_manager_config_init(struct theme_manager *manager)
         return false;
     }
     if (!dbus_register_object(NULL, service_path, service_interface, service_vtable, manager)) {
+        return false;
+    }
+    if (!dbus_register_object(gxde_theme_service, gxde_theme_path, gxde_theme_interface,
+            gxde_theme_vtable, manager)) {
         return false;
     }
     return dbus_register_object(window_corner_service, window_corner_path,
