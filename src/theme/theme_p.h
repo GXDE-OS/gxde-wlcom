@@ -57,6 +57,9 @@ struct global_theme {
     int32_t accent_color;
     int32_t corner_radius;
     int32_t opacity;
+    bool gtk_decoration_minimize;
+    bool gtk_decoration_maximize;
+    bool gtk_decoration_close;
 };
 
 struct theme_manager {
@@ -88,6 +91,8 @@ struct theme_manager {
 bool theme_manager_config_init(struct theme_manager *manager);
 
 enum theme_type theme_manager_read_config(struct theme_manager *manager);
+
+void theme_manager_read_gtk_decoration_config(struct theme_manager* manager);
 
 void theme_manager_write_config(struct theme_manager *manager, enum theme_type name);
 

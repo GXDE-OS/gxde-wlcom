@@ -33,6 +33,10 @@ static const struct gtk_theme_setting gtk_theme_settings[] = {
     { "org.gnome.desktop.interface", "gtk-theme" },
 };
 
+static const struct gtk_theme_setting gtk_decoration_layout = {
+    "org.gnome.desktop.wm.preferences", "button-layout"
+};
+
 static bool directory_has_gtk_theme(const char* directory) {
     static const char* files[] = {
         "gtk-2.0/gtkrc",
@@ -113,6 +117,39 @@ bool config_set_gtk_theme(const char* name) {
             success = false;
         }
     }
+
+    if (available && success) {
+        g_settings_sync();
+    }
+
+    return available && success;
+}
+
+bool config_set_gtk_decoration_layout(bool minimize, bool maximize, bool close) {
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    if (!source) {
+        return false;
+    }
+
+    char layout[64] = ":";
+    bool is_first_btn = true;
+    if (minimize) {
+        g_strlcat(layout, "minimize", sizeof(layout));
+        is_first_btn = false;
+    }
+
+    if (maximize) {
+        g_strlcat(layout, is_first_btn ? "maximize" : ",maximize", sizeof(layout));
+        is_first_btn = false;
+    }
+
+    if (close) {
+        g_strlcat(layout, is_first_btn ? "close" : ",close", sizeof(layout));
+    }
+
+    bool available = false;
+    bool success = set_schema_string(source, &gtk_decoration_layout,
+        layout, &available);
 
     if (available && success) {
         g_settings_sync();

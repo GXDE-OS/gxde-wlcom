@@ -36,6 +36,33 @@ static int set_gtk_theme(sd_bus_message* msg, void* userdata, sd_bus_error* ret_
     return sd_bus_reply_method_return(msg, "b", ret);
 }
 
+static int set_gtk_decoration_buttons(sd_bus_message* msg, void* userdata,
+        sd_bus_error* ret_error) {
+    struct theme_manager* manager = userdata;
+    int minimize, maximize, close;
+    CK(sd_bus_message_read(msg, "bbb", &minimize, &maximize, &close));
+
+    bool ret = config_set_gtk_decoration_layout(minimize, maximize, close);
+    if (ret) {
+        manager->global.gtk_decoration_minimize = minimize;
+        manager->global.gtk_decoration_maximize = maximize;
+        manager->global.gtk_decoration_close = close;
+        theme_manager_write_config(manager, THEME_TYPE_UNDEFINED);
+        config_manager_sync();
+    }
+
+    return sd_bus_reply_method_return(msg, "b", ret);
+}
+
+static int get_gtk_decoration_buttons(sd_bus_message* msg, void* userdata,
+        sd_bus_error* ret_error) {
+    struct theme_manager* manager = userdata;
+    return sd_bus_reply_method_return(
+        msg, "bbb", manager->global.gtk_decoration_minimize,
+        manager->global.gtk_decoration_maximize,
+        manager->global.gtk_decoration_close);
+}
+
 static int set_icon_theme(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
 {
     char *icon_theme_name = NULL;
@@ -82,6 +109,8 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("PrintThemeConfig", "", "s", print_theme_config, 0),
     SD_BUS_METHOD("SetWidgetTheme", "su", "b", set_widget_theme, 0),
     SD_BUS_METHOD("SetGtkTheme", "s", "b", set_gtk_theme, 0),
+    SD_BUS_METHOD("GetGtkDecorationButtons", "", "bbb", get_gtk_decoration_buttons, 0),
+    SD_BUS_METHOD("SetGtkDecorationButtons", "bbb", "b", set_gtk_decoration_buttons, 0),
     SD_BUS_METHOD("SetIconTheme", "s", "b", set_icon_theme, 0),
     SD_BUS_METHOD("SetFont", "si", "b", set_font, 0),
     SD_BUS_METHOD("SetAccentColor", "i", "b", set_accent_color, 0),
@@ -152,6 +181,28 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
     return THEME_TYPE_DEFAULT;
 }
 
+void theme_manager_read_gtk_decoration_config(struct theme_manager* manager) {
+    struct global_theme* global = &manager->global;
+    global->gtk_decoration_minimize = true;
+    global->gtk_decoration_maximize = true;
+    global->gtk_decoration_close = true;
+
+    if (!manager->config || !manager->config->json) {
+        return;
+    }
+
+    json_object* data;
+    if (json_object_object_get_ex(manager->config->json, "gtk_decoration_minimize", &data)) {
+        global->gtk_decoration_minimize = json_object_get_boolean(data);
+    }
+    if (json_object_object_get_ex(manager->config->json, "gtk_decoration_maximize", &data)) {
+        global->gtk_decoration_maximize = json_object_get_boolean(data);
+    }
+    if (json_object_object_get_ex(manager->config->json, "gtk_decoration_close", &data)) {
+        global->gtk_decoration_close = json_object_get_boolean(data);
+    }
+}
+
 void theme_manager_write_config(struct theme_manager *manager, enum theme_type theme_type)
 {
     if (!manager->config || !manager->config->json) {
@@ -160,6 +211,27 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
 
     if (theme_type > THEME_TYPE_UNDEFINED) {
         json_object_object_add(manager->config->json, "type", json_object_new_int(theme_type));
+    }
+
+    if (!manager->global.gtk_decoration_minimize) {
+        json_object_object_add(manager->config->json, "gtk_decoration_minimize",
+            json_object_new_boolean(false));
+    } else {
+        json_object_object_del(manager->config->json, "gtk_decoration_minimize");
+    }
+
+    if (!manager->global.gtk_decoration_maximize) {
+        json_object_object_add(manager->config->json, "gtk_decoration_maximize",
+            json_object_new_boolean(false));
+    } else {
+        json_object_object_del(manager->config->json, "gtk_decoration_maximize");
+    }
+
+    if (!manager->global.gtk_decoration_close) {
+        json_object_object_add(manager->config->json, "gtk_decoration_close",
+            json_object_new_boolean(false));
+    } else {
+        json_object_object_del(manager->config->json, "gtk_decoration_close");
     }
 
     /* Patch: 主题默认字体对齐Deepin */

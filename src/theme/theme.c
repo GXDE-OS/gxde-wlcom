@@ -238,6 +238,10 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
         enum theme_type theme_type = theme_manager_read_config(manager);
         theme_manager_set_widget_theme(NULL, theme_type);
     }
+    theme_manager_read_gtk_decoration_config(manager);
+    config_set_gtk_decoration_layout(manager->global.gtk_decoration_minimize,
+        manager->global.gtk_decoration_maximize,
+        manager->global.gtk_decoration_close);
     /* just read the icon name, may shortcut in set_icon_theme  */
     const char *icon_theme_name = theme_manager_read_icon_config(manager);
     theme_manager_set_icon_theme(icon_theme_name);
@@ -262,6 +266,7 @@ struct theme_manager *theme_manager_create(struct server *server)
 
     /* config support */
     theme_manager_config_init(manager);
+    theme_manager_read_gtk_decoration_config(manager);
     manager->icon = icon_manager_create(manager);
     ukui_theme_manager_create(manager);
     wl_list_init(&manager->theme.scaled_buffers);

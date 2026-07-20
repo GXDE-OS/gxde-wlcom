@@ -29,5 +29,6 @@ void config_destroy(struct config *config);
 void config_manager_sync(void);
 
 bool config_set_gtk_theme(const char *name);
+bool config_set_gtk_decoration_layout(bool minimize, bool maximize, bool close);
 
 #endif /* _CONFIG_H_ */
