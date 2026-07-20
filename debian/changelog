@@ -1,3 +1,12 @@
+gxde-wlcom (2.1.0-gxde1) lizhi; urgency=medium
+
+  * 提供了新接口允许控制GTK标题栏上最小化/最大化/关闭按钮的可见性 (默认为全部可见)
+  * 提供了一个接口，允许用户强制裁剪所有CSD (客户端自行装饰的) 窗口，使其拥有圆角
+  * 允许用户可允许合成器在启用强制裁剪时跳过对layer-shell表面的裁剪 (实验性)
+  * 不再在启动脚本中强制GDK后端，使得像EMACS这样的程序可用
+
+ -- CharOfString <root@charofstring.cc>  Tue, 21 Jul 2026 02:50:13 +0800
+
 gxde-wlcom (2.0.2-gxde1) lizhi; urgency=medium
 
   * 现在允许通过D-Bus接口设置GTK主题
