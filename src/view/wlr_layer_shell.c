@@ -317,14 +317,14 @@ static void layer_shell_handle_map(struct wl_listener *listener, void *data)
     /* layer-shell first configure is done in commit */
     ky_scene_node_set_enabled(&layer_shell->tree->node, true);
 
-    if (layer_surface->current.exclusive_zone > 0) {
-        struct output *output = output_from_wlr_output(layer_surface->output);
-        output_update_usable_area(&output->base);
-    }
-
+    /* Fixed wayland layershell position misplace issue */
     if (layer_surface->output) {
         struct output *output = output_from_wlr_output(layer_surface->output);
-        layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
+        if (layer_surface->current.exclusive_zone > 0) {
+            output_update_usable_area(&output->base);
+        } else {
+            layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
+        }
     }
 
     layer_shell_keyboard_interactivity(layer_shell, input_manager_get_default_seat());
