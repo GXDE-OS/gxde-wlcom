@@ -107,6 +107,7 @@ struct ssd {
     struct wl_listener view_unmap;
     struct wl_listener view_destroy;
     struct wl_listener view_decoration;
+    struct wl_listener view_capabilities;
     struct wl_listener view_activate;
     struct wl_listener view_size;
     struct wl_listener view_tile;
@@ -1082,6 +1083,21 @@ static void handle_view_decoration(struct wl_listener *listener, void *data)
     }
 }
 
+static void handle_view_capabilities(struct wl_listener *listener, void *data)
+{
+    struct ssd *ssd = wl_container_of(listener, ssd, view_capabilities);
+
+    if (!ssd->created || !(ssd->kywc_view->ssd & KYWC_SSD_TITLE)) {
+        return;
+    }
+
+    /* Recreate the titlebar so late client updates (notably Chrome, etc.) are
+     * reflected immediately.
+     */
+    ssd_parts_destroy(ssd);
+    ssd_parts_create(ssd);
+}
+
 static void handle_view_map(struct wl_listener *listener, void *data)
 {
     struct ssd *ssd = wl_container_of(listener, ssd, view_map);
@@ -1103,6 +1119,7 @@ static void handle_view_destroy(struct wl_listener *listener, void *data)
     struct ssd *ssd = wl_container_of(listener, ssd, view_destroy);
     wl_list_remove(&ssd->view_destroy.link);
     wl_list_remove(&ssd->view_decoration.link);
+    wl_list_remove(&ssd->view_capabilities.link);
     wl_list_remove(&ssd->view_map.link);
     wl_list_remove(&ssd->view_unmap.link);
     wl_list_remove(&ssd->link);
@@ -1123,6 +1140,8 @@ static void handle_new_view(struct wl_listener *listener, void *data)
 
     ssd->view_decoration.notify = handle_view_decoration;
     wl_signal_add(&kywc_view->events.decoration, &ssd->view_decoration);
+    ssd->view_capabilities.notify = handle_view_capabilities;
+    wl_signal_add(&kywc_view->events.capabilities, &ssd->view_capabilities);
     ssd->view_map.notify = handle_view_map;
     wl_signal_add(&kywc_view->events.map, &ssd->view_map);
     ssd->view_unmap.notify = handle_view_unmap;
