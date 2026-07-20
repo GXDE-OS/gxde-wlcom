@@ -40,7 +40,6 @@ struct dde_shell_surface {
     struct view *view;
     struct wl_listener view_map;
     struct wl_listener view_destroy;
-    struct wl_listener view_decoration;
 
     float window_radius_x;
     float window_radius_y;
@@ -164,13 +163,6 @@ static void dde_surface_handle_view_map(struct wl_listener *listener, void *data
     dde_surface_apply_radius(surf);
 }
 
-static void dde_surface_handle_view_decoration(struct wl_listener *listener, void *data)
-{
-    struct dde_shell_surface *surf = wl_container_of(listener, surf, view_decoration);
-    dde_surface_apply_no_titlebar(surf);
-    dde_surface_apply_window_effect(surf);
-}
-
 static void dde_surface_handle_view_destroy(struct wl_listener* listener,
         void* data) {
     struct dde_shell_surface* surf = wl_container_of(listener, surf,
@@ -180,8 +172,6 @@ static void dde_surface_handle_view_destroy(struct wl_listener* listener,
     wl_list_init(&surf->view_map.link);
     wl_list_remove(&surf->view_destroy.link);
     wl_list_init(&surf->view_destroy.link);
-    wl_list_remove(&surf->view_decoration.link);
-    wl_list_init(&surf->view_decoration.link);
     surf->view = NULL;
 }
 
@@ -213,9 +203,6 @@ static void dde_surface_handle_surface_map(struct wl_listener *listener, void *d
         wl_signal_add(&surf->view->base.events.map, &surf->view_map);
         surf->view_destroy.notify = dde_surface_handle_view_destroy;
         wl_signal_add(&surf->view->base.events.destroy, &surf->view_destroy);
-        surf->view_decoration.notify = dde_surface_handle_view_decoration;
-        wl_signal_add(&surf->view->base.events.decoration, &surf->view_decoration);
-        dde_surface_handle_view_map(&surf->view_map, NULL);
     } else {
         /* layer-shell 等无 view 的 surface：直接应用圆角和无标题栏 */
         dde_surface_apply_no_titlebar(surf);
@@ -336,7 +323,6 @@ static void dde_shell_surface_set_property(struct wl_client *client,
     if (property & DDE_SHELL_PROPERTY_NOTITLEBAR) {
         int *value = (int *)data->data;
         surf->no_titlebar = (*value != 0);
-        dde_surface_apply_no_titlebar(surf);
     }
 
     /* 窗口圆角: 数据段为两个float，X和Y方向圆角半径 */
@@ -407,7 +393,6 @@ static void dde_shell_surface_resource_destroy(struct wl_resource *resource)
     if (surf->view) {
         wl_list_remove(&surf->view_map.link);
         wl_list_remove(&surf->view_destroy.link);
-        wl_list_remove(&surf->view_decoration.link);
     }
     free(surf);
 }
@@ -452,7 +437,6 @@ static void dde_shell_get_shell_surface(struct wl_client *client, struct wl_reso
     wl_list_init(&surf->surface_destroy.link);
     wl_list_init(&surf->view_map.link);
     wl_list_init(&surf->view_destroy.link);
-    wl_list_init(&surf->view_decoration.link);
 
     /* 挂载surface map监听 */
     surf->surface_map.notify = dde_surface_handle_surface_map;
