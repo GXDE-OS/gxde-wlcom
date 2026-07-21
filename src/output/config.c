@@ -2,12 +2,43 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <math.h>
+
 #include "config.h"
 #include "output_p.h"
 #include "util/dbus.h"
 
 static const char *service_path = "/com/kylin/Wlcom/Output";
 static const char *service_interface = "com.kylin.Wlcom.Output";
+static const char *gxde_screen_service = "top.gxde.Wlcom.Screen";
+static const char *gxde_screen_path = "/top/gxde/Wlcom/Screen";
+static const char *gxde_screen_interface = "top.gxde.Wlcom.Screen";
+
+static int reply_invalid_args(sd_bus_message *m, const char *message)
+{
+    sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, message);
+    return sd_bus_reply_method_error(m, &error);
+}
+
+static int apply_primary_state(sd_bus_message *m, struct kywc_output_state *state)
+{
+    struct kywc_output *output = kywc_output_get_primary();
+    if (!output || output->prop.is_virtual || output->prop.is_fbdev) {
+        sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            SD_BUS_ERROR_FAILED, "No configurable primary screen is available.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (!kywc_output_set_state(output, state)) {
+        sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            SD_BUS_ERROR_FAILED, "The requested screen configuration is not supported.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+    config_manager_sync();
+    return sd_bus_reply_method_return(m, NULL);
+}
 
 static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
@@ -64,11 +95,99 @@ static int set_colortemp(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int set_scale_ratio(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    double ratio = 0;
+    CK(sd_bus_message_read(m, "d", &ratio));
+    if (!isfinite(ratio) || ratio < 1.0 || ratio > 3.0) {
+        return reply_invalid_args(m, "Scale ratio must be between 1.0 and 3.0.");
+    }
+
+    struct kywc_output *output = kywc_output_get_primary();
+    if (!output) {
+        return apply_primary_state(m, NULL);
+    }
+    struct kywc_output_state state = output->state;
+    state.scale = (float)((int)(ratio * 100.0 + 0.5) / 100.0);
+    return apply_primary_state(m, &state);
+}
+
+static int set_resolution_with_refresh_rate(sd_bus_message *m, void *userdata,
+                                            sd_bus_error *ret_error)
+{
+    int32_t width = 0, height = 0, refresh = 0;
+    CK(sd_bus_message_read(m, "iii", &width, &height, &refresh));
+    if (width <= 0 || height <= 0 || refresh <= 0 || refresh > INT32_MAX / 1000) {
+        return reply_invalid_args(m, "Width, height and refresh rate must be positive integers.");
+    }
+
+    struct kywc_output *output = kywc_output_get_primary();
+    if (!output) {
+        return apply_primary_state(m, NULL);
+    }
+    struct kywc_output_state state = output->state;
+    state.width = width;
+    state.height = height;
+    state.refresh = refresh * 1000;
+    return apply_primary_state(m, &state);
+}
+
+static int set_screen_brightness(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    int32_t brightness = 0;
+    CK(sd_bus_message_read(m, "si", &name, &brightness));
+    if (brightness < 0 || brightness > 100) {
+        return reply_invalid_args(m, "Brightness must be between 0 and 100.");
+    }
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output) {
+        sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Screen was not found.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+    if (!output_set_brightness(output, (uint32_t)brightness)) {
+        sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            SD_BUS_ERROR_FAILED, "The screen does not support the requested brightness.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    output_manager_emit_configured(CONFIGURE_TYPE_REMAIN);
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int rotate_screen(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    int32_t angle = 0;
+    CK(sd_bus_message_read(m, "i", &angle));
+    if (angle != 0 && angle != 90 && angle != 180 && angle != 270) {
+        return reply_invalid_args(m, "Rotation must be one of 0, 90, 180 or 270 degrees.");
+    }
+
+    struct kywc_output *output = kywc_output_get_primary();
+    if (!output) {
+        return apply_primary_state(m, NULL);
+    }
+    struct kywc_output_state state = output->state;
+    state.transform = angle / 90;
+    return apply_primary_state(m, &state);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllOutputs", "", "a(ss)", list_outputs, 0),
     SD_BUS_METHOD("SetBrightness", "su", "", set_brightness, 0),
     SD_BUS_METHOD("SetColortemp", "su", "", set_colortemp, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable gxde_screen_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("SetScaleRatio", "d", "", set_scale_ratio, 0),
+    SD_BUS_METHOD("SetResolutionWRefreshRate", "iii", "", set_resolution_with_refresh_rate, 0),
+    SD_BUS_METHOD("SetScreenBrightness", "si", "", set_screen_brightness, 0),
+    SD_BUS_METHOD("RotateScreen", "i", "", rotate_screen, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -78,8 +197,12 @@ bool output_manager_config_init(struct output_manager *output_manager)
     if (!output_manager->config) {
         return false;
     }
-    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
-                                output_manager);
+    if (!dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                              output_manager)) {
+        return false;
+    }
+    return dbus_register_object(gxde_screen_service, gxde_screen_path, gxde_screen_interface,
+                                gxde_screen_vtable, output_manager);
 }
 
 bool output_read_config(struct output *output, struct kywc_output_state *state)

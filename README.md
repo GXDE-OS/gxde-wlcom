@@ -44,6 +44,7 @@ GXDE Wayland合成器（亦称`gxde-wlcom`）派生自`kylin-wayland-compositor`
 7. 提供了新接口允许设置GXDE主题
 8. 提供了新接口允许控制GTK标题栏上最小化/最大化/关闭按钮的可见性（默认为全部可见）
 9. 提供了一个接口，允许用户强制裁剪所有CSD（客户端自行装饰的）窗口，使其拥有圆角。用户亦可允许合成器跳过对`layer-shell`表面（这些表面通常包含GXDE顶栏、Dock、GXDE控制中心等）圆角的裁剪。强制裁剪圆角为不稳定功能。
+10. 为原来Wlcom的一些功能做了一些alias, 供GXDE控制中心使用（详见[这里](./docs/gxde/manual/dbus.md)）。
 
 ### GXDE的一些实验性功能
 #### 设置GTK主题
@@ -324,6 +325,8 @@ $ meson compile gxde-wlcom-pot
 
 感谢以下代码提供参考: 
 
+* **Treeland**: https://github.com/linuxdeepin/treeland
+* **Treeland Protocols**: https://github.com/linuxdeepin/treeland-protocols
 * **Open Kylin Wlcom**: https://gitee.com/openkylin/kylin-wayland-compositor
 * **Open Kylin Wlroots**: https://gitee.com/openkylin/wlroots
 * **Wlroots**: https://gitlab.freedesktop.org/wlroots/wlroots
