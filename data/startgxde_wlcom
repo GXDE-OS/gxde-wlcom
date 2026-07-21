@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:/sbin
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=Deepin
 unset QT_QPA_PLATFORM
