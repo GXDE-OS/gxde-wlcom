@@ -111,6 +111,7 @@ endif
 protocols += {
   'dde-shell': 'dde-shell.xml',
   'treeland-dde-shell-v1': 'treeland-dde-shell-v1.xml',
+  'treeland-app-id-resolver-v1': 'treeland-app-id-resolver-v1.xml',
 }
 
 protocols_code = {}

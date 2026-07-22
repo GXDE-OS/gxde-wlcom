@@ -32,6 +32,7 @@
 #include "backend/backend.h"
 #include "config.h"
 #include "effect/effect.h"
+#include "app_id_resolver.h"
 #include "gxde_identifier.h"
 #include "input/input.h"
 #include "output.h"
@@ -261,6 +262,7 @@ bool server_init(struct server *server)
     security_manager_create(server);
     theme_manager_create(server);
     gxde_identifier_create(server);
+    app_id_resolver_manager_create(server);
 
     if (!wlroots_server_init(server)) {
         return false;
