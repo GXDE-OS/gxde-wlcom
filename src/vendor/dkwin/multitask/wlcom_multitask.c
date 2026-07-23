@@ -49,6 +49,8 @@
 #define SPACING_W_SCALE (20.0f / 1920.0f)
 #define MAX_DESKTOP_COUNT 8
 #define WINDOW_BORDER_WIDTH 3
+#define ADD_BUTTON_SIZE 64
+#define WORKSPACE_CORNER_RADIUS 8
 
 enum hover_control {
     CONTROL_NONE,
@@ -227,7 +229,7 @@ static struct wlr_buffer *load_wallpaper(void)
 }
 
 static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
-        struct wlr_buffer *buffer, int width, int height)
+                                   struct wlr_buffer *buffer, int width, int height)
 {
     if (!scene_buffer || !buffer || width <= 0 || height <= 0) {
         return;
@@ -245,6 +247,32 @@ static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
     }
     ky_scene_buffer_set_source_box(scene_buffer, &source);
     ky_scene_buffer_set_dest_size(scene_buffer, width, height);
+}
+
+static void scene_node_set_rounded_clip(struct ky_scene_node *node, int width, int height,
+                                        int radius)
+{
+    pixman_region32_t region;
+    pixman_region32_init(&region);
+
+    radius = radius < width / 2 ? radius : width / 2;
+    radius = radius < height / 2 ? radius : height / 2;
+    for (int y = 0; y < height; y++) {
+        int inset = 0;
+        if (radius > 0 && (y < radius || y >= height - radius)) {
+            const double center_y =
+                y < radius ? radius : height - radius;
+            const double distance_y = fabs((y + 0.5) - center_y);
+            const double circle_width =
+                sqrt(radius * radius - distance_y * distance_y);
+            inset = ceil(radius - circle_width);
+        }
+        pixman_region32_union_rect(&region, &region, inset, y,
+                                   width - inset * 2, 1);
+    }
+
+    ky_scene_node_set_clip_region(node, &region);
+    pixman_region32_fini(&region);
 }
 
 static bool load_original_assets(void)
@@ -431,8 +459,7 @@ static size_t count_views(struct workspace *workspace, struct kywc_output *outpu
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &workspace->view_proxies, workspace_link) {
         struct view *view = proxy->view;
-        if (view->base.mapped && !view->base.minimized && !view->base.skip_switcher &&
-            view->output == output) {
+        if (view->base.mapped && !view->base.skip_switcher && view->output == output) {
             count++;
         }
     }
@@ -463,14 +490,32 @@ static int create_workspace_bar(const struct kywc_box *area)
         item->rect = ky_scene_rect_create(item->tree, workspace_width, workspace_height,
                                           active ? (float[4]){ 0.0f, 0.506f, 1.0f, 1.0f }
                                                  : (float[4]){ 1.0f, 1.0f, 1.0f, 0.20f });
+        ky_scene_node_set_radius(
+            &item->rect->node,
+            (int[4]){ WORKSPACE_CORNER_RADIUS, WORKSPACE_CORNER_RADIUS,
+                      WORKSPACE_CORNER_RADIUS, WORKSPACE_CORNER_RADIUS });
+        scene_node_set_rounded_clip(&item->rect->node, workspace_width, workspace_height,
+                                    WORKSPACE_CORNER_RADIUS);
         item->wallpaper = ky_scene_buffer_create(item->tree, overview->wallpaper_buffer);
         ky_scene_node_set_position(&item->wallpaper->node, 2, 2);
+        ky_scene_node_set_radius(
+            &item->wallpaper->node,
+            (int[4]){ WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2,
+                      WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2 });
+        scene_node_set_rounded_clip(&item->wallpaper->node, item->thumbnail_width,
+                                    item->thumbnail_height, WORKSPACE_CORNER_RADIUS - 2);
         scene_buffer_set_cover(item->wallpaper, overview->wallpaper_buffer,
-            item->thumbnail_width, item->thumbnail_height);
+                               item->thumbnail_width, item->thumbnail_height);
         item->buffer = ky_scene_buffer_create(item->tree, NULL);
         ky_scene_node_set_position(&item->buffer->node, 2, 2);
+        ky_scene_node_set_radius(
+            &item->buffer->node,
+            (int[4]){ WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2,
+                      WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2 });
+        scene_node_set_rounded_clip(&item->buffer->node, item->thumbnail_width,
+                                    item->thumbnail_height, WORKSPACE_CORNER_RADIUS - 2);
         ky_scene_buffer_set_dest_size(item->buffer, item->thumbnail_width,
-                                      item->thumbnail_height);
+            item->thumbnail_height);
         item->close_geometry = (struct kywc_box){ x + workspace_width - 30, y - 13, 48, 48 };
         item->close_button = ky_scene_buffer_create(item->tree, overview->close_icon);
         ky_scene_node_set_position(&item->close_button->node, workspace_width - 30, -13);
@@ -489,11 +534,15 @@ static int create_workspace_bar(const struct kywc_box *area)
         x += workspace_width + workspace_gap;
     }
     overview->add_geometry =
-        (struct kywc_box){ area->x + area->width - 104, area->y + 56, 64, 64 };
+        (struct kywc_box){
+            area->x + area->width - 104,
+            y + (workspace_height - ADD_BUTTON_SIZE) / 2,
+            ADD_BUTTON_SIZE, ADD_BUTTON_SIZE
+        };
     overview->add_button = ky_scene_buffer_create(overview->tree, overview->add_icon);
     ky_scene_node_set_position(&overview->add_button->node, overview->add_geometry.x,
                                overview->add_geometry.y);
-    ky_scene_buffer_set_dest_size(overview->add_button, 64, 64);
+    ky_scene_buffer_set_dest_size(overview->add_button, ADD_BUTTON_SIZE, ADD_BUTTON_SIZE);
     ky_scene_node_set_enabled(&overview->add_button->node,
                               overview->workspace_count < MAX_DESKTOP_COUNT);
     return spacing_y * 2 + workspace_height;
@@ -519,7 +568,7 @@ static bool create_window_items(const struct kywc_box *area, int workspace_bar_h
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &workspace->view_proxies, workspace_link) {
         struct view *view = proxy->view;
-        if (!view->base.mapped || view->base.minimized || view->base.skip_switcher ||
+        if (!view->base.mapped || view->base.skip_switcher ||
             view->output != &overview->output->base) {
             continue;
         }
