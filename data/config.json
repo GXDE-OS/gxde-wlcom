@@ -9,6 +9,120 @@
     "Seats": {},
     "InputAction": {
         "keyboard": {
+            "Win:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.dde.Launcher /com/deepin/dde/Launcher com.deepin.dde.Launcher.Toggle",
+                "desc": "open launcher"
+            },
+            "Win+e:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/lib/deepin-daemon/default-file-manager",
+                "desc": "open file manager"
+            },
+            "Alt+F2:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "gxde-terminal --quake-mode",
+                "desc": "quake terminal"
+            },
+            "Win+v:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-clipboard.sh",
+                "desc": "clipboard"
+            },
+            "Shift+space:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-dde-grand-search.sh",
+                "desc": "grand search"
+            },
+            "XF86AudioRaiseVolume": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "pactl set-sink-volume @DEFAULT_SINK@ +5%",
+                "desc": "volume up"
+            },
+            "XF86AudioLowerVolume": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "pactl set-sink-volume @DEFAULT_SINK@ -5%",
+                "desc": "volume down"
+            },
+            "XF86AudioMute:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+                "desc": "mute"
+            },
+            "XF86Search:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-dde-grand-search.sh",
+                "desc": "grand search"
+            },
+            "Ctrl+Alt+Delete:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.dde.shutdownFront /com/deepin/dde/shutdownFront com.deepin.dde.shutdownFront.Show",
+                "desc": "shutdown dialog"
+            },
+            "XF86Sleep:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --session --dest=com.deepin.SessionManager --type=method_call --print-reply /com/deepin/SessionManager com.deepin.SessionManager.RequestSuspend",
+                "desc": "suspend"
+            },
+            "XF86AudioPlay:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl play",
+                "desc": "play"
+            },
+            "XF86AudioStop:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl pause",
+                "desc": "pause"
+            },
+            "XF86AudioPrev:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl previous",
+                "desc": "previous"
+            },
+            "XF86AudioNext:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl next",
+                "desc": "next"
+            },
+            "XF86MonBrightnessUp": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "brightnessctl set +5%",
+                "desc": "brightness up"
+            },
+            "XF86MonBrightnessDown": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "brightnessctl set 5%-",
+                "desc": "brightness down"
+            },
+            "Ctrl+Alt+t:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/lib/deepin-daemon/default-terminal",
+                "desc": "open terminal"
+            },
+            "Ctrl+Alt+Escape:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/bin/deepin-system-monitor",
+                "desc": "open system monitor"
+            },
             "win:no": {
                 "enable": true,
                 "type": "WLCOM_WIN_MENU",
