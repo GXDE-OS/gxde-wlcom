@@ -143,15 +143,30 @@ struct dbus_object *dbus_register_object(const char *name, const char *path, con
         return NULL;
     }
 
+    bool name_acquired = false;
     if (name) {
-        sd_bus_request_name(context->user, name, 0);
+        int ret = sd_bus_request_name(context->user, name, 0);
+        if (ret < 0 && ret != -EALREADY) {
+            kywc_log(KYWC_ERROR,
+                "(DBus) Accquire: Failed to acquire D-Bus service name %s. %s",
+                name, strerror(-ret));
+            free(object);
+            return NULL;
+        }
+
+        name_acquired = ret > 0;
     }
 
     if (path && interface && vtable) {
         int ret =
             sd_bus_add_object_vtable(context->user, &object->slot, path, interface, vtable, data);
         if (ret < 0) {
-            kywc_log(KYWC_ERROR, "interface %s vtable add failed: %d", interface, ret);
+            kywc_log(KYWC_ERROR,
+                "(DBus) Register: Failed to register D-Bus interface %s at %s. %s",
+                interface, path, strerror(-ret));
+            if (name_acquired) {
+                sd_bus_release_name(context->user, name);
+            }
             free(object);
             return NULL;
         }

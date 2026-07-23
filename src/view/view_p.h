@@ -143,6 +143,10 @@ bool maximize_switcher_create(struct view_manager *view_manager);
 
 bool multitask_view_create(struct view_manager *view_manager);
 
+bool multitask_view_toggle(void);
+
+bool multitask_launcher_interface_create(void);
+
 void modal_create(struct view *view);
 
 void global_authentication_create(struct view *view);

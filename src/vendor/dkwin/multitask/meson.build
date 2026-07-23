@@ -12,4 +12,7 @@ configure_file(output: 'multitask_assets.h', configuration: multitask_assets)
 install_subdir('upstream/buttons', install_dir: get_option('datadir') / 'gxde-wlcom/multitask')
 install_subdir('upstream/shaders', install_dir: get_option('datadir') / 'gxde-wlcom/multitask')
 
-wlcom_sources += files('wlcom_multitask.c')
+wlcom_sources += files(
+    'wlcom_multitask.c',
+    'wlcom_multitask_dbus.c',
+)

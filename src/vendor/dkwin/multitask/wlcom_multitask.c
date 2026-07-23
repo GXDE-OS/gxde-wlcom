@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cairo.h>
+#include <drm_fourcc.h>
 #include <gio/gio.h>
 #include <kywc/binding.h>
 #include <linux/input-event-codes.h>
@@ -47,10 +49,13 @@
 #define WORK_SPACING_SCALE (40.0f / 1920.0f)
 #define SPACING_H_SCALE (20.0f / 1080.0f)
 #define SPACING_W_SCALE (20.0f / 1920.0f)
-#define MAX_DESKTOP_COUNT 8
+#define MAX_DESKTOP_COUNT 6
 #define WINDOW_BORDER_WIDTH 3
 #define ADD_BUTTON_SIZE 64
 #define WORKSPACE_CORNER_RADIUS 8
+#define WORKSPACE_CONTENT_INSET 1
+#define WORKSPACE_FRAME_WIDTH 1.0f
+#define WORKSPACE_HIGHLIGHT_WIDTH 3.0f
 
 enum hover_control {
     CONTROL_NONE,
@@ -82,9 +87,9 @@ struct multitask_item {
 struct workspace_item {
     struct workspace *workspace;
     struct ky_scene_tree *tree;
-    struct ky_scene_rect *rect;
     struct ky_scene_buffer *wallpaper;
     struct ky_scene_buffer *buffer;
+    struct ky_scene_buffer *frame;
     struct ky_scene_buffer *close_button;
     struct thumbnail *thumbnail;
     struct kywc_box geometry;
@@ -108,6 +113,7 @@ struct multitask_view {
     int hovered_item;
     int hovered_workspace;
     int pressed_item;
+    int pressed_workspace;
     enum hover_control hovered_control;
     enum hover_control pressed_control;
     double press_x, press_y;
@@ -249,30 +255,111 @@ static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
     ky_scene_buffer_set_dest_size(scene_buffer, width, height);
 }
 
-static void scene_node_set_rounded_clip(struct ky_scene_node *node, int width, int height,
-                                        int radius)
+static void cairo_rounded_rectangle(cairo_t *cairo, double width, double height, double radius)
 {
-    pixman_region32_t region;
-    pixman_region32_init(&region);
+    const double pi = 3.14159265358979323846;
+    cairo_new_sub_path(cairo);
+    cairo_arc(cairo, width - radius, radius, radius, -pi / 2.0, 0);
+    cairo_arc(cairo, width - radius, height - radius, radius, 0, pi / 2.0);
+    cairo_arc(cairo, radius, height - radius, radius, pi / 2.0, pi);
+    cairo_arc(cairo, radius, radius, radius, pi, pi * 1.5);
+    cairo_close_path(cairo);
+}
 
-    radius = radius < width / 2 ? radius : width / 2;
-    radius = radius < height / 2 ? radius : height / 2;
-    for (int y = 0; y < height; y++) {
-        int inset = 0;
-        if (radius > 0 && (y < radius || y >= height - radius)) {
-            const double center_y =
-                y < radius ? radius : height - radius;
-            const double distance_y = fabs((y + 0.5) - center_y);
-            const double circle_width =
-                sqrt(radius * radius - distance_y * distance_y);
-            inset = ceil(radius - circle_width);
-        }
-        pixman_region32_union_rect(&region, &region, inset, y,
-                                   width - inset * 2, 1);
+static struct wlr_buffer *create_rounded_copy(struct wlr_buffer *source, int width, int height,
+        int radius, bool cover)
+{
+    if (!source || width <= 0 || height <= 0) {
+        return NULL;
     }
 
-    ky_scene_node_set_clip_region(node, &region);
-    pixman_region32_fini(&region);
+    void *source_data = NULL;
+    uint32_t source_format = 0;
+    size_t source_stride = 0;
+    if (!wlr_buffer_begin_data_ptr_access(source, WLR_BUFFER_DATA_PTR_ACCESS_READ,
+             &source_data, &source_format, &source_stride)) {
+        return NULL;
+    }
+
+    cairo_format_t cairo_source_format;
+    if (source_format == DRM_FORMAT_ARGB8888) {
+        cairo_source_format = CAIRO_FORMAT_ARGB32;
+    } else if (source_format == DRM_FORMAT_XRGB8888) {
+        cairo_source_format = CAIRO_FORMAT_RGB24;
+    } else {
+        wlr_buffer_end_data_ptr_access(source);
+        return NULL;
+    }
+
+    struct wlr_buffer *destination = painter_create_buffer(width, height, 1.0f);
+    void *destination_data = NULL;
+    uint32_t destination_format = 0;
+    size_t destination_stride = 0;
+    if (!destination ||
+        !wlr_buffer_begin_data_ptr_access(
+            destination, WLR_BUFFER_DATA_PTR_ACCESS_WRITE,
+            &destination_data, &destination_format, &destination_stride) ||
+        destination_format != DRM_FORMAT_ARGB8888) {
+        if (destination) {
+            wlr_buffer_drop(destination);
+        }
+        wlr_buffer_end_data_ptr_access(source);
+        return NULL;
+    }
+
+    cairo_surface_t *source_surface =
+        cairo_image_surface_create_for_data(source_data, cairo_source_format,
+            source->width, source->height, source_stride);
+    cairo_surface_t *destination_surface =
+        cairo_image_surface_create_for_data(destination_data, CAIRO_FORMAT_ARGB32,
+            width, height, destination_stride);
+    cairo_t *cairo = cairo_create(destination_surface);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cairo, 0, 0, 0, 0);
+    cairo_paint(cairo);
+
+    cairo_rounded_rectangle(cairo, width, height, radius);
+    cairo_clip(cairo);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+    if (cover) {
+        const double scale =
+            fmax((double)width / source->width, (double)height / source->height);
+        cairo_translate(cairo, (width - source->width * scale) / 2.0,
+            (height - source->height * scale) / 2.0);
+        cairo_scale(cairo, scale, scale);
+    } else {
+        cairo_scale(cairo, (double)width / source->width,
+            (double)height / source->height);
+    }
+    cairo_set_source_surface(cairo, source_surface, 0, 0);
+    cairo_pattern_set_filter(cairo_get_source(cairo), CAIRO_FILTER_BILINEAR);
+    cairo_paint(cairo);
+
+    cairo_destroy(cairo);
+    cairo_surface_destroy(destination_surface);
+    cairo_surface_destroy(source_surface);
+    wlr_buffer_end_data_ptr_access(destination);
+    wlr_buffer_end_data_ptr_access(source);
+    return destination;
+}
+
+static struct wlr_buffer *create_workspace_frame(int width, int height, bool active)
+{
+    float transparent[4] = { 0, 0, 0, 0 };
+    float active_color[4] = { 0.0f, 0.506f, 1.0f, 1.0f };
+    float inactive_color[4] = { 1.0f, 1.0f, 1.0f, 0.20f };
+    struct draw_info info = {
+        .width = width,
+        .height = height,
+        .scale = 2.0f,
+        .solid_rgba = transparent,
+        .border_rgba = active ? active_color : inactive_color,
+        .border_width = active ? WORKSPACE_HIGHLIGHT_WIDTH : WORKSPACE_FRAME_WIDTH,
+        .border_mask = BORDER_MASK_ALL,
+        .corner_mask = CORNER_MASK_ALL,
+        .corner_radius = WORKSPACE_CORNER_RADIUS,
+    };
+    return painter_draw_buffer(&info);
 }
 
 static bool load_original_assets(void)
@@ -404,7 +491,13 @@ static void handle_workspace_thumbnail_update(struct wl_listener *listener, void
 {
     struct workspace_item *item = wl_container_of(listener, item, thumbnail_update);
     struct thumbnail_update_event *event = data;
-    if (event->buffer_changed && item->buffer->buffer != event->buffer) {
+    struct wlr_buffer *rounded =
+        create_rounded_copy(event->buffer, item->thumbnail_width, item->thumbnail_height,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET, false);
+    if (rounded) {
+        ky_scene_buffer_set_buffer(item->buffer, rounded);
+        wlr_buffer_drop(rounded);
+    } else if (event->buffer_changed && item->buffer->buffer != event->buffer) {
         ky_scene_buffer_set_buffer(item->buffer, event->buffer);
     } else {
         ky_scene_node_push_damage(&item->buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
@@ -482,40 +575,57 @@ static int create_workspace_bar(const struct kywc_box *area)
         struct workspace_item *item = &overview->workspaces[i];
         item->workspace = workspace_by_position(i);
         item->geometry = (struct kywc_box){ x, y, workspace_width, workspace_height };
-        item->thumbnail_width = workspace_width - 4;
-        item->thumbnail_height = workspace_height - 4;
+        item->thumbnail_width = workspace_width - WORKSPACE_CONTENT_INSET * 2;
+        item->thumbnail_height = workspace_height - WORKSPACE_CONTENT_INSET * 2;
         const bool active = item->workspace == workspace_manager_get_current();
         item->tree = ky_scene_tree_create(overview->tree);
         ky_scene_node_set_position(&item->tree->node, x, y);
-        item->rect = ky_scene_rect_create(item->tree, workspace_width, workspace_height,
-                                          active ? (float[4]){ 0.0f, 0.506f, 1.0f, 1.0f }
-                                                 : (float[4]){ 1.0f, 1.0f, 1.0f, 0.20f });
-        ky_scene_node_set_radius(
-            &item->rect->node,
-            (int[4]){ WORKSPACE_CORNER_RADIUS, WORKSPACE_CORNER_RADIUS,
-                      WORKSPACE_CORNER_RADIUS, WORKSPACE_CORNER_RADIUS });
-        scene_node_set_rounded_clip(&item->rect->node, workspace_width, workspace_height,
-                                    WORKSPACE_CORNER_RADIUS);
-        item->wallpaper = ky_scene_buffer_create(item->tree, overview->wallpaper_buffer);
-        ky_scene_node_set_position(&item->wallpaper->node, 2, 2);
+        struct wlr_buffer *rounded_wallpaper =
+            create_rounded_copy(overview->wallpaper_buffer, item->thumbnail_width,
+                item->thumbnail_height,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET, true);
+        item->wallpaper = ky_scene_buffer_create(
+            item->tree, rounded_wallpaper ? rounded_wallpaper : overview->wallpaper_buffer);
+        if (rounded_wallpaper) {
+            wlr_buffer_drop(rounded_wallpaper);
+        }
+        ky_scene_node_set_position(&item->wallpaper->node, WORKSPACE_CONTENT_INSET,
+            WORKSPACE_CONTENT_INSET);
         ky_scene_node_set_radius(
             &item->wallpaper->node,
-            (int[4]){ WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2,
-                      WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2 });
-        scene_node_set_rounded_clip(&item->wallpaper->node, item->thumbnail_width,
-                                    item->thumbnail_height, WORKSPACE_CORNER_RADIUS - 2);
-        scene_buffer_set_cover(item->wallpaper, overview->wallpaper_buffer,
-                               item->thumbnail_width, item->thumbnail_height);
+            (int[4]){
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET
+            });
+        if (rounded_wallpaper) {
+            ky_scene_buffer_set_dest_size(item->wallpaper, item->thumbnail_width,
+                item->thumbnail_height);
+        } else {
+            scene_buffer_set_cover(item->wallpaper, overview->wallpaper_buffer,
+                item->thumbnail_width, item->thumbnail_height);
+        }
         item->buffer = ky_scene_buffer_create(item->tree, NULL);
-        ky_scene_node_set_position(&item->buffer->node, 2, 2);
+        ky_scene_node_set_position(&item->buffer->node, WORKSPACE_CONTENT_INSET,
+                                   WORKSPACE_CONTENT_INSET);
         ky_scene_node_set_radius(
             &item->buffer->node,
-            (int[4]){ WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2,
-                      WORKSPACE_CORNER_RADIUS - 2, WORKSPACE_CORNER_RADIUS - 2 });
-        scene_node_set_rounded_clip(&item->buffer->node, item->thumbnail_width,
-                                    item->thumbnail_height, WORKSPACE_CORNER_RADIUS - 2);
+            (int[4]){
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET,
+                WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET
+            });
         ky_scene_buffer_set_dest_size(item->buffer, item->thumbnail_width,
             item->thumbnail_height);
+        struct wlr_buffer *frame_buffer =
+            create_workspace_frame(workspace_width, workspace_height, active);
+        item->frame = ky_scene_buffer_create(item->tree, frame_buffer);
+        ky_scene_buffer_set_dest_size(item->frame, workspace_width, workspace_height);
+        if (frame_buffer) {
+            wlr_buffer_drop(frame_buffer);
+        }
         item->close_geometry = (struct kywc_box){ x + workspace_width - 30, y - 13, 48, 48 };
         item->close_button = ky_scene_buffer_create(item->tree, overview->close_icon);
         ky_scene_node_set_position(&item->close_button->node, workspace_width - 30, -13);
@@ -755,6 +865,7 @@ static bool show_overview(void)
     overview->hovered_item = -1;
     overview->hovered_workspace = -1;
     overview->pressed_item = -1;
+    overview->pressed_workspace = -1;
     overview->hovered_control = overview->pressed_control = CONTROL_NONE;
     ky_scene_node_set_enabled(&overview->tree->node, true);
     output_schedule_frame(overview->output->wlr_output);
@@ -779,6 +890,23 @@ static bool pointer_motion(struct seat_pointer_grab *grab, uint32_t time, double
             ky_scene_node_raise_to_top(&item->tree->node);
             output_schedule_frame(overview->output->wlr_output);
         }
+    } else if (overview->pressed_workspace >= 0 &&
+               overview->pressed_control == CONTROL_WORKSPACE) {
+        double dx = local_x - overview->press_x;
+        double dy = local_y - overview->press_y;
+        if (!overview->dragging && dx * dx + dy * dy > 100.0) {
+            overview->dragging = true;
+        }
+        if (overview->dragging) {
+            struct workspace_item *item =
+                &overview->workspaces[overview->pressed_workspace];
+            ky_scene_node_set_position(
+                &item->tree->node,
+                local_x - item->geometry.width / 2,
+                local_y - item->geometry.height / 2);
+            ky_scene_node_raise_to_top(&item->tree->node);
+            output_schedule_frame(overview->output->wlr_output);
+        }
     }
     return true;
 }
@@ -791,6 +919,10 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
     }
     if (pressed) {
         overview->pressed_item = overview->hovered_item;
+        overview->pressed_workspace =
+            overview->hovered_control == CONTROL_WORKSPACE
+                ? overview->hovered_workspace
+                : -1;
         overview->pressed_control = overview->hovered_control;
         overview->dragging = false;
         overview->press_x = grab->seat->cursor->lx - overview->output->geometry.x;
@@ -824,6 +956,16 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
         multitask_view_set_enabled(false);
         workspace_destroy(workspace);
         multitask_view_set_enabled(true);
+    } else if (overview->dragging && overview->pressed_workspace >= 0 &&
+               overview->pressed_control == CONTROL_WORKSPACE) {
+        struct workspace *workspace =
+            overview->workspaces[overview->pressed_workspace].workspace;
+        int destination = overview->hovered_workspace;
+        destroy_contents();
+        if (destination >= 0) {
+            workspace_set_position(workspace, destination);
+        }
+        show_overview();
     } else if (overview->dragging && overview->pressed_item >= 0 &&
                overview->hovered_workspace >= 0) {
         struct view *view = overview->items[overview->pressed_item]->view;
@@ -844,6 +986,7 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
         multitask_view_set_enabled(false);
     }
     overview->pressed_item = -1;
+    overview->pressed_workspace = -1;
     overview->pressed_control = CONTROL_NONE;
     overview->dragging = false;
     return true;
@@ -918,6 +1061,8 @@ static void multitask_view_set_enabled(bool enabled)
             overview->enabled = false;
             return;
         }
+        cursor_set_image(seat->cursor, CURSOR_DEFAULT);
+        cursor_lock_image(seat->cursor, true);
         seat_start_pointer_grab(seat, &overview->pointer_grab);
         seat_start_keyboard_grab(seat, &overview->keyboard_grab);
         seat_start_touch_grab(seat, &overview->touch_grab);
@@ -925,6 +1070,8 @@ static void multitask_view_set_enabled(bool enabled)
         seat_end_pointer_grab(seat, &overview->pointer_grab);
         seat_end_keyboard_grab(seat, &overview->keyboard_grab);
         seat_end_touch_grab(seat, &overview->touch_grab);
+        cursor_lock_image(seat->cursor, false);
+        cursor_rebase(seat->cursor);
         ky_scene_node_set_enabled(&overview->tree->node, false);
         destroy_contents();
         if (overview->output) {
@@ -936,7 +1083,17 @@ static void multitask_view_set_enabled(bool enabled)
 
 static void shortcut_action(struct key_binding *binding, void *data)
 {
+    multitask_view_toggle();
+}
+
+bool multitask_view_toggle(void)
+{
+    if (!overview) {
+        return false;
+    }
+
     multitask_view_set_enabled(!overview->enabled);
+    return true;
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -962,7 +1119,8 @@ bool multitask_view_create(struct view_manager *view_manager)
         return false;
     }
     overview->view_manager = view_manager;
-    overview->hovered_item = overview->hovered_workspace = overview->pressed_item = -1;
+    overview->hovered_item = overview->hovered_workspace = overview->pressed_item =
+        overview->pressed_workspace = -1;
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     overview->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&overview->tree->node, false);
