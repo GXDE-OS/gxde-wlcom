@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.1-gxde1) lizhi; urgency=medium
+
+  * 新增了Deepin风格的多任务视图与窗口切换器
+  * 允许通过原Deepin WM的D-Bus接口唤起多任务视图与切换桌面
+
+ -- CharOfString <root@charofstring.cc>  Thu, 23 Jul 2026 19:15:34 +0800
+
 gxde-wlcom (2.1.0-gxde1) lizhi; urgency=medium
 
   * 提供了新接口允许控制GTK标题栏上最小化/最大化/关闭按钮的可见性 (默认为全部可见)
