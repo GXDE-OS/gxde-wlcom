@@ -21,6 +21,7 @@
 #include "scene/surface.h"
 #include "security.h"
 #include "server.h"
+#include "util/dbus.h"
 #include "util/spawn.h"
 #include "util/string.h"
 #include "view/view.h"
@@ -395,6 +396,19 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     int width = 0, height = 0;
     output_layout_get_size(&width, &height);
     xwayland_create_seletion_window(xwayland, &xwayland->window_catcher, 0, 0, width, height);
+
+    const char *display = xwayland->wlr_xwayland->display_name;
+    if (!dbus_update_activation_environment("DISPLAY", display)) {
+        kywc_log(KYWC_WARN,
+            "(XWayland) Init: Failed to export DISPLAY to the activation environment");
+    }
+
+    const char *wayland_display = getenv("WAYLAND_DISPLAY");
+    if (wayland_display &&
+        !dbus_update_activation_environment("WAYLAND_DISPLAY", wayland_display)) {
+        kywc_log(KYWC_WARN,
+            "(XWayland) Init: Failed to export WAYLAND_DISPLAY to the activation environment");
+    }
 
     if (!spawn_invoke("/usr/bin/run-parts /etc/xdg/Xwayland-session.d")) {
         kywc_log(KYWC_WARN,

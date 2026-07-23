@@ -8,7 +8,7 @@ SUPPORT = https://www.debian.org/support
 	dh $@ --buildsystem=meson
 
 override_dh_auto_configure:
-	meson subprojects download
+	test -d subprojects/wlroots || meson subprojects download
 	dh_auto_configure -- -Dexamples=false -Dukui_theme=true -Dwlroots:renderers=gles2,vulkan --buildtype=debugoptimized
 
 override_dh_strip:

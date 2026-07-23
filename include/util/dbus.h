@@ -27,6 +27,8 @@ bool dbus_call_method(const char *service, const char *path, const char *interfa
 bool dbus_call_system_method(const char *service, const char *path, const char *interface,
                              const char *method, sd_bus_message_handler_t callback, void *data);
 
+bool dbus_update_activation_environment(const char *name, const char *value);
+
 void dbus_notify(const char *name, const char *summary, const char *body, const char *icon);
 
 int dbus_add_match(const char *match, sd_bus_message_handler_t callback, void *data);

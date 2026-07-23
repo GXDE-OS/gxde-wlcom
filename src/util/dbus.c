@@ -8,6 +8,7 @@
 
 #include "server.h"
 #include "util/dbus.h"
+#include "util/string.h"
 
 struct dbus_object {
     struct wl_list link;
@@ -207,6 +208,39 @@ bool dbus_call_system_method(const char *service, const char *path, const char *
 
     return sd_bus_call_method_async(context->system, NULL, service, path, interface, method,
                                     callback, data, NULL) >= 0;
+}
+
+bool dbus_update_activation_environment(const char *name, const char *value)
+{
+    if (!context || !context->user || !name || !value) {
+        return false;
+    }
+
+    int ret = sd_bus_call_method(context->user, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                                 "org.freedesktop.DBus", "UpdateActivationEnvironment", NULL, NULL,
+                                 "a{ss}", 1, name, value);
+    if (ret < 0) {
+        kywc_log(KYWC_WARN, "Failed to update D-Bus activation environment: %s",
+                 strerror(-ret));
+        return false;
+    }
+
+    char *assignment = string_create("%s=%s", name, value);
+    if (!assignment) {
+        return false;
+    }
+
+    ret = sd_bus_call_method(context->user, "org.freedesktop.systemd1",
+                             "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
+                             "SetEnvironment", NULL, NULL, "as", 1, assignment);
+    free(assignment);
+
+    if (ret < 0) {
+        kywc_log(KYWC_WARN, "Failed to update systemd user environment: %s", strerror(-ret));
+        return false;
+    }
+
+    return true;
 }
 
 void dbus_notify(const char *name, const char *summary, const char *body, const char *icon)
