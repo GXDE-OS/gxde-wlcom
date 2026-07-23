@@ -1,6 +1,6 @@
 ![](./docs/img/readme-header.png)
 
-![GitHub contributors](https://img.shields.io/github/contributors/GXDE-OS/gxde-wlcom) ![GitHub Release](https://img.shields.io/github/v/release/GXDE-OS/gxde-wlcom) ![Static Badge](https://img.shields.io/badge/license-GPL--1.0--or--later-orange)![Static Badge](https://img.shields.io/badge/made_with-love-red)
+![GitHub contributors](https://img.shields.io/github/contributors/GXDE-OS/gxde-wlcom) ![GitHub Release](https://img.shields.io/github/v/release/GXDE-OS/gxde-wlcom) ![Static Badge](https://img.shields.io/badge/license-GPL--1.0--or--later-orange) ![Static Badge](https://img.shields.io/badge/made_with-love-red)
 
 <div align="center">
   <!--
@@ -28,7 +28,7 @@
 
 ## 关于本项目
 
-GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Wayland 合成器，其原始代码派生自 `kylin-wayland-compositor`（以下简称 `kywc`）。
+GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Wayland 合成器，其原始代码派生自 `kylin-wayland-compositor`。（以下简称 `kywc`）
 
 本仓库由 GXDE OS 团队fork，并在原项目基础上针对 GXDE OS 进行适配与优化，当前作为 GXDE OS Wayland 会话的默认合成器进行开发与维护。
 
@@ -106,13 +106,10 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 #### (EMACS Flymake/clang用户请看) 初始化Flymake/clang
 
-\```bash
-
+```bash
 $ meson setup build
-
 $ ln -sf build/compile_commands.json compile_commands.json
-
-\```
+```
 
 然后重新打开`emacs`。
 
@@ -350,9 +347,9 @@ $ meson compile gxde-wlcom-pot
 
 ## 里程碑
 
-[ ] 添加「显示桌面」支持
+- [ ] 添加「显示桌面」支持
 
-[ ] 完成对Treeland协议的完整兼容
+- [ ] 完成对Treeland协议的完整兼容
 
 
 

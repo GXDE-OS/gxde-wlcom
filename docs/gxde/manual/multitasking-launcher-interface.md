@@ -1,4 +1,4 @@
-# 在 Wayland 会话接管「多任务视图」启动接口
+# 在 Wayland 会话接管「多任务视图」与「显示桌面」入口
 
 ## 目标
 
@@ -21,6 +21,23 @@ wlcom 的原生多任务视图。
 
 要保持现有桌面文件不变，重写实现需要接管下述 D-Bus 契约，并将其连接到
 wlcom 内部的多任务视图开关。
+
+「显示桌面」是另一个需要接管的入口。它目前不是 D-Bus 启动器，而是执行：
+
+```ini
+Exec=/usr/lib/deepin-daemon/desktop-toggle
+```
+
+该程序只读取并发送 X11 的 `_NET_SHOWING_DESKTOP` ClientMessage。在 Wayland
+会话中即使存在 Xwayland，它也不能控制 Wayland 原生窗口，所以需要保留这个
+命令行入口并替换其 Wayland 后端。
+
+两个入口的现状：
+
+| 功能 | 桌面文件 | 当前入口 | wlcom 原生快捷键 |
+| --- | --- | --- | --- |
+| 多任务视图 | `gxde-multitaskingview.desktop` | `com.deepin.wm.PerformAction(1)` | `Win+S` |
+| 显示桌面 | `deepin-toggle-desktop.desktop` | `/usr/lib/deepin-daemon/desktop-toggle` | `Win+D` |
 
 ## 必须实现的 D-Bus 契约
 
@@ -96,12 +113,126 @@ overview 存在
 D-Bus handler 只做参数校验、调用该函数和回复消息。不要在 D-Bus 层复制
 多任务视图状态，也不要模拟 `Win+S` 键盘输入。
 
+## 「显示桌面」入口与后端契约
+
+### 需要保留的命令行契约
+
+应用菜单直接执行：
+
+```text
+/usr/lib/deepin-daemon/desktop-toggle
+```
+
+重写后仍应满足：
+
+- 不需要命令行参数；
+- 每次运行切换一次“显示桌面”状态；
+- 成功时退出码为 `0`；
+- 失败时使用非零退出码并把原因写到标准错误；
+- X11 会话可以继续使用 `_NET_SHOWING_DESKTOP`；
+- Wayland 会话必须调用 compositor 后端，不能向 Xwayland 根窗口发事件。
+
+因此可以保留桌面文件不变，只把 `desktop-toggle` 重写成会话感知的轻量
+客户端：
+
+```text
+X11
+  -> 现有 _NET_SHOWING_DESKTOP 实现
+
+Wayland
+  -> wlcom 的显示桌面 IPC
+  -> view_manager_show_desktop(!view_manager_get_show_desktop(), true)
+```
+
+### wlcom 内部对接点
+
+当前实现已经提供：
+
+```text
+view_manager_get_show_desktop()
+view_manager_show_desktop(bool enabled, bool apply)
+```
+
+定义位于：
+
+```text
+include/view/view.h
+src/view/view.c
+```
+
+Wayland 的“切换显示桌面”入口应调用：
+
+```text
+view_manager_show_desktop(!view_manager_get_show_desktop(), true)
+```
+
+`apply` 必须为 `true`，否则只会改变内部状态而不会真正最小化或恢复窗口。
+
+### 建议公开的 IPC
+
+如果复用本文件中的 `com.deepin.wm` 兼容服务，可以实现现有接口中的：
+
+| 方法 | 输入 | 输出 | 含义 |
+| --- | --- | --- | --- |
+| `GetIsShowDesktop` | 空 | `b` | 返回当前显示桌面状态 |
+| `SetShowDesktop` | `b` | 空 | 明确进入或退出显示桌面 |
+
+仅用 `GetIsShowDesktop` 加 `SetShowDesktop` 也能实现切换，但两次 D-Bus
+调用之间存在状态竞争。更适合菜单入口的是在 wlcom 自有接口上额外提供一个
+原子方法：
+
+```text
+com.kylin.Wlcom.View.ToggleShowDesktop()
+```
+
+推荐分工：
+
+```text
+desktop-toggle
+  -> ToggleShowDesktop()
+
+需要明确设置状态的桌面组件
+  -> GetIsShowDesktop()
+  -> SetShowDesktop(bool)
+```
+
+若不希望增加新方法，也可以让 `desktop-toggle` 调用
+`GetIsShowDesktop()` 后再调用 `SetShowDesktop(!state)`；必须接受并发调用时
+可能发生两次切换合并的问题。
+
+### 快捷键
+
+wlcom 当前注册的相关快捷键：
+
+| 快捷键 | 行为 | 内部动作 |
+| --- | --- | --- |
+| `Win+S` | 切换多任务视图 | 原生 multitask toggle |
+| `Win+D` | 切换显示桌面/恢复窗口 | `TOGGLE_SHOW_DESKTOP` |
+| `Win+H` | 进入显示桌面 | `SHOW_DESKTOP` |
+| `Win+G` | 恢复桌面窗口 | `RESTORE_DESKTOP` |
+| `Win+M` | 最小化所有窗口 | `MINIMIZE_ALL_VIEWS` |
+| `Win+Shift+M` | 恢复所有窗口 | `RESTORE_ALL_VIEWS` |
+
+这些绑定位于：
+
+```text
+src/view/action.c
+```
+
+桌面入口和快捷键必须落到相同的 `view_manager_show_desktop()` 状态机，否则
+可能出现快捷键认为桌面已显示、菜单入口却认为未显示的状态分裂。
+
 ### 为什么不能直接调用 KGlobalAccel
 
 当前 wlcom 的 `org.kde.kglobalaccel.Component.invokeShortcut` 虽然存在，
 但 `Win+S` 是在 KGlobalAccel 扫描内建快捷键之后才注册的，因此它不在
 `/component/gxde_wlcom` 的 action 列表中。当前会话中不能通过
 `invokeShortcut("win+s:no", "default")` 可靠触发它。
+
+`Win+D` 虽然出现在当前 KGlobalAccel action 列表中，也不应把
+`invokeShortcut` 当作 `desktop-toggle` 的稳定后端。当前实现的
+`invokeShortcut` 主要发送兼容信号，并没有为 compositor 内建 action
+提供一个明确、稳定的命令执行契约。显示桌面应使用专用 compositor IPC。
 
 ## 接管方式
 
@@ -234,11 +365,50 @@ dbus-send --session \
 在应用启动器中点击「多任务视图」，行为应与上面的手动命令一致。无需修改
 `gxde-multitaskingview.desktop`。
 
+### 5. 验证「显示桌面」
+
+首先验证命令行入口：
+
+```bash
+/usr/lib/deepin-daemon/desktop-toggle
+```
+
+验收标准：
+
+1. 第一次运行最小化当前工作区中尚未最小化的普通窗口并显示桌面；
+2. 第二次运行只恢复由“显示桌面”动作最小化的窗口；
+3. `Win+D` 与命令行入口交替使用时，状态始终一致；
+4. 已经手动最小化的窗口不会被错误恢复；
+5. 切换工作区后不会保留错误的显示桌面状态；
+6. Wayland 路径不访问 `_NET_SHOWING_DESKTOP`；
+7. X11 路径继续保持原行为。
+
+如果实现了兼容 D-Bus 状态接口，还应验证：
+
+```bash
+busctl --user call \
+  com.deepin.wm \
+  /com/deepin/wm \
+  com.deepin.wm \
+  GetIsShowDesktop
+```
+
+以及：
+
+```bash
+busctl --user call \
+  com.deepin.wm \
+  /com/deepin/wm \
+  com.deepin.wm \
+  SetShowDesktop \
+  b true
+```
+
 ## 不建议的方案
 
 - 用 `wtype`、`ydotool` 等工具模拟 `Win+S`；
+- 通过模拟 `Win+D` 实现 `desktop-toggle`；
 - 在桌面文件中写复杂的 shell 分支；
 - 修改桌面文件去调用一个只在本机存在、没有稳定契约的临时命令；
 - 在 D-Bus handler 中重新实现多任务视图状态机；
 - 为了一个方法强制启动 Qt/KWin effect；wlcom 的原生多任务实现不依赖它们。
-
