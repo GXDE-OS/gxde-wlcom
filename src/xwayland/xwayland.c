@@ -21,6 +21,7 @@
 #include "scene/surface.h"
 #include "security.h"
 #include "server.h"
+#include "util/spawn.h"
 #include "util/string.h"
 #include "view/view.h"
 #include "xwayland_p.h"
@@ -394,6 +395,11 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     int width = 0, height = 0;
     output_layout_get_size(&width, &height);
     xwayland_create_seletion_window(xwayland, &xwayland->window_catcher, 0, 0, width, height);
+
+    if (!spawn_invoke("/usr/bin/run-parts /etc/xdg/Xwayland-session.d")) {
+        kywc_log(KYWC_WARN,
+            "(XWayland) Init: Failed to run Xwayland session hooks");
+    }
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -583,7 +589,7 @@ bool xwayland_server_create(struct server *server)
         return false;
     }
 
-    xwayland->wlr_xwayland = wlr_xwayland_create(server->display, server->compositor, true);
+    xwayland->wlr_xwayland = wlr_xwayland_create(server->display, server->compositor, false);
     if (!xwayland->wlr_xwayland) {
         kywc_log(KYWC_ERROR, "cannot create wlroots xwayland server");
         free(xwayland);
