@@ -5,6 +5,7 @@ wlcom_sources += files(
   'global_authentication.c',
   'interactive.c',
   'maximize_switcher.c',
+  'window_switcher.c',
   'modal.c',
   'positioner.c',
   'split_screen_switcher.c',

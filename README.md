@@ -248,6 +248,9 @@ Wayland会话中，`gxde-wlcom`直接持有`com.deepin.wm`，并兼容
 最小化的窗口。X11会话仍由原来的`deepin-wm`处理；本包不安装或替换
 `deepin-daemon`的`desktop-toggle`。
 
+##### 切换窗口
+可以通过`Alt + Tab`或者`Alt + Shift + Tab`唤起窗口切换器，其外观模仿`Deepin KWin`。
+
 ##### 设置GTK主题
 
 在用户会话总线，我们提供了`top.gxde.Wlcom.Theme`接口，可以通过其`SetGTK`方法，设置已安装的主题。
@@ -344,11 +347,9 @@ busctl --user call \
 
 然后运行以下命令，更新`pot`文件:
 
-\```bash
-
+```bash
 $ meson compile gxde-wlcom-pot
-
-\```
+```
 
 
 

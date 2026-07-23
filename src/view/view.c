@@ -342,9 +342,14 @@ void view_get_tiled_geometry(struct view *view, struct kywc_box *geometry,
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale)
 {
     struct theme *theme = theme_manager_get_theme();
-    struct wlr_buffer *buf = theme_icon_get_buffer(view->icon, theme->icon_size, scale);
+    return view_get_icon_buffer_by_size(view, theme->icon_size, scale);
+}
+
+struct wlr_buffer *view_get_icon_buffer_by_size(struct view *view, int size, float scale)
+{
+    struct wlr_buffer *buf = theme_icon_get_buffer(view->icon, size, scale);
     if (!buf && view->impl->get_icon_buffer) {
-        buf = view->impl->get_icon_buffer(view, theme->icon_size, scale);
+        buf = view->impl->get_icon_buffer(view, size, scale);
     }
     return buf;
 }
@@ -1990,6 +1995,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
 {
     theme_manager_add_update_listener(&view_manager->theme_update);
     window_menu_manager_create(view_manager);
+    window_switcher_create(view_manager);
     maximize_switcher_create(view_manager);
     multitask_view_create(view_manager);
     multitask_launcher_interface_create();

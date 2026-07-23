@@ -141,6 +141,8 @@ void window_menu_show(struct view *view, struct seat *seat, int x, int y);
 
 bool maximize_switcher_create(struct view_manager *view_manager);
 
+bool window_switcher_create(struct view_manager *view_manager);
+
 bool multitask_view_create(struct view_manager *view_manager);
 
 bool multitask_view_toggle(void);

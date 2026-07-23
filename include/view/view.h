@@ -288,6 +288,8 @@ void view_apply_role(struct view *view);
 
 struct wlr_buffer *view_get_icon_buffer(struct view *view, float scale);
 
+struct wlr_buffer *view_get_icon_buffer_by_size(struct view *view, int size, float scale);
+
 void view_set_icon_name(struct view *view, const char *icon_name);
 
 void view_move_to_center(struct view *view);
