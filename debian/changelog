@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.1-gxde3) lizhi; urgency=medium
+
+  * 新增了多屏幕显示配置的GXDE DBus
+  * 修复了微信上使用小企鹅输入法候选框无法显示的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 01:46:58 +0800
+
 gxde-wlcom (2.1.1-gxde2) lizhi; urgency=medium
 
   * 新增了Deepin风格的多任务视图与窗口切换器
