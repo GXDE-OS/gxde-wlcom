@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <gio/gio.h>
 #include <kywc/binding.h>
 #include <linux/input-event-codes.h>
 #include <wlr/types/wlr_buffer.h>
@@ -46,7 +47,8 @@
 #define WORK_SPACING_SCALE (40.0f / 1920.0f)
 #define SPACING_H_SCALE (20.0f / 1080.0f)
 #define SPACING_W_SCALE (20.0f / 1920.0f)
-#define MAX_DESKTOP_COUNT 6
+#define MAX_DESKTOP_COUNT 8
+#define WINDOW_BORDER_WIDTH 3
 
 enum hover_control {
     CONTROL_NONE,
@@ -79,6 +81,7 @@ struct workspace_item {
     struct workspace *workspace;
     struct ky_scene_tree *tree;
     struct ky_scene_rect *rect;
+    struct ky_scene_buffer *wallpaper;
     struct ky_scene_buffer *buffer;
     struct ky_scene_buffer *close_button;
     struct thumbnail *thumbnail;
@@ -92,6 +95,7 @@ struct workspace_item {
 struct multitask_view {
     struct view_manager *view_manager;
     struct ky_scene_tree *tree;
+    struct ky_scene_buffer *desktop_wallpaper;
     struct ky_scene_rect *backdrop;
     struct ky_scene_rect *workspace_bar;
 
@@ -114,6 +118,7 @@ struct multitask_view {
     struct wlr_buffer *top_icon;
     struct wlr_buffer *top_active_icon;
     struct wlr_buffer *add_icon;
+    struct wlr_buffer *wallpaper_buffer;
 
     struct output *output;
     struct seat_pointer_grab pointer_grab;
@@ -164,6 +169,82 @@ static struct wlr_buffer *load_png_icon(const char *name)
     asset_path(path, sizeof(path), name);
     struct draw_info info = { .image = path, .scale = 1.0f };
     return painter_draw_buffer(&info);
+}
+
+static char *get_wallpaper_path(void)
+{
+    char *path = NULL;
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    GSettingsSchema *schema =
+        source ? g_settings_schema_source_lookup(
+            source, "com.deepin.wrap.gnome.desktop.background", true)
+            : NULL;
+
+    if (schema && g_settings_schema_has_key(schema, "picture-uri")) {
+        GSettings *settings = g_settings_new_full(schema, NULL, NULL);
+        char *uri = g_settings_get_string(settings, "picture-uri");
+        if (g_str_has_prefix(uri, "file://")) {
+            path = g_filename_from_uri(uri, NULL, NULL);
+        } else if (*uri) {
+            path = g_strdup(uri);
+        }
+        g_free(uri);
+        g_object_unref(settings);
+    }
+
+    if (schema) {
+        g_settings_schema_unref(schema);
+    }
+
+    if (path && file_exists(path)) {
+        return path;
+    }
+    g_free(path);
+
+    static const char *fallbacks[] = {
+        "/usr/share/backgrounds/default_background.jpg",
+        "/usr/share/wallpapers/deepin/desktop.jpg",
+    };
+
+    for (size_t i = 0; i < sizeof(fallbacks) / sizeof(fallbacks[0]); i++) {
+        if (file_exists(fallbacks[i])) {
+            return g_strdup(fallbacks[i]);
+        }
+    }
+    return NULL;
+}
+
+static struct wlr_buffer *load_wallpaper(void)
+{
+    char *path = get_wallpaper_path();
+    if (!path) {
+        return NULL;
+    }
+    struct draw_info info = { .image = path, .scale = 1.0f };
+    struct wlr_buffer *buffer = painter_draw_buffer(&info);
+    g_free(path);
+    return buffer;
+}
+
+static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
+        struct wlr_buffer *buffer, int width, int height)
+{
+    if (!scene_buffer || !buffer || width <= 0 || height <= 0) {
+        return;
+    }
+
+    const double destination_ratio = (double)width / height;
+    const double source_ratio = (double)buffer->width / buffer->height;
+    struct wlr_fbox source = { 0, 0, buffer->width, buffer->height };
+    if (source_ratio > destination_ratio) {
+        source.width = buffer->height * destination_ratio;
+        source.x = (buffer->width - source.width) / 2.0;
+    } else {
+        source.height = buffer->width / destination_ratio;
+        source.y = (buffer->height - source.height) / 2.0;
+    }
+    ky_scene_buffer_set_source_box(scene_buffer, &source);
+    ky_scene_buffer_set_dest_size(scene_buffer, width, height);
 }
 
 static bool load_original_assets(void)
@@ -270,8 +351,9 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
     } else {
         ky_scene_node_push_damage(&item->buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
     }
-    ky_scene_buffer_set_dest_size(item->buffer, item->geometry.width - 10,
-                                  item->geometry.height - 10);
+    ky_scene_buffer_set_dest_size(item->buffer,
+        item->geometry.width - WINDOW_BORDER_WIDTH * 2,
+        item->geometry.height - WINDOW_BORDER_WIDTH * 2);
     if (item->view->tree->node.enabled) {
         ky_scene_node_set_enabled(&item->view->tree->node, false);
     }
@@ -381,6 +463,10 @@ static int create_workspace_bar(const struct kywc_box *area)
         item->rect = ky_scene_rect_create(item->tree, workspace_width, workspace_height,
                                           active ? (float[4]){ 0.0f, 0.506f, 1.0f, 1.0f }
                                                  : (float[4]){ 1.0f, 1.0f, 1.0f, 0.20f });
+        item->wallpaper = ky_scene_buffer_create(item->tree, overview->wallpaper_buffer);
+        ky_scene_node_set_position(&item->wallpaper->node, 2, 2);
+        scene_buffer_set_cover(item->wallpaper, overview->wallpaper_buffer,
+            item->thumbnail_width, item->thumbnail_height);
         item->buffer = ky_scene_buffer_create(item->tree, NULL);
         ky_scene_node_set_position(&item->buffer->node, 2, 2);
         ky_scene_buffer_set_dest_size(item->buffer, item->thumbnail_width,
@@ -530,27 +616,40 @@ static bool create_window_items(const struct kywc_box *area, int workspace_bar_h
 
         item->overview = overview;
         item->view = view;
-        item->geometry = (struct kywc_box){ target_x - 5, target_y - 5,
-                                            target_width + 10, target_height + 10 };
+        item->geometry =
+            (struct kywc_box){
+                target_x - WINDOW_BORDER_WIDTH,
+                target_y - WINDOW_BORDER_WIDTH,
+                target_width + WINDOW_BORDER_WIDTH * 2,
+                target_height + WINDOW_BORDER_WIDTH * 2
+            };
         item->tree = ky_scene_tree_create(overview->tree);
-        ky_scene_node_set_position(&item->tree->node, target_x - 5, target_y - 5);
-        item->highlight = ky_scene_rect_create(item->tree, target_width + 10, target_height + 10,
-                                               (float[4]){ 0.0f, 0.0f, 0.0f, 0.20f });
+        ky_scene_node_set_position(&item->tree->node, target_x - WINDOW_BORDER_WIDTH,
+            target_y - WINDOW_BORDER_WIDTH);
+        item->highlight =
+            ky_scene_rect_create(item->tree, target_width + WINDOW_BORDER_WIDTH * 2,
+                target_height + WINDOW_BORDER_WIDTH * 2,
+                (float[4]){ 0.0f, 0.0f, 0.0f, 0.20f });
         ky_scene_node_set_radius(&item->highlight->node, (int[4]){ 18, 18, 18, 18 });
         item->buffer = ky_scene_buffer_create(item->tree, NULL);
-        ky_scene_node_set_position(&item->buffer->node, 5, 5);
+        ky_scene_node_set_position(&item->buffer->node, WINDOW_BORDER_WIDTH,
+            WINDOW_BORDER_WIDTH);
         ky_scene_buffer_set_dest_size(item->buffer, target_width, target_height);
         item->close_geometry =
             (struct kywc_box){ target_x + target_width - 25, target_y - 17, 48, 48 };
         item->top_geometry =
             (struct kywc_box){ target_x - 22, target_y - 17, 48, 48 };
         item->close_button = ky_scene_buffer_create(item->tree, overview->close_icon);
-        ky_scene_node_set_position(&item->close_button->node, target_width - 25 + 5, -12);
+        ky_scene_node_set_position(&item->close_button->node,
+            target_width - 25 + WINDOW_BORDER_WIDTH,
+            -17 + WINDOW_BORDER_WIDTH);
         ky_scene_buffer_set_dest_size(item->close_button, 48, 48);
         ky_scene_node_set_enabled(&item->close_button->node, false);
         item->top_button = ky_scene_buffer_create(
             item->tree, view->base.kept_above ? overview->top_active_icon : overview->top_icon);
-        ky_scene_node_set_position(&item->top_button->node, -17, -12);
+        ky_scene_node_set_position(&item->top_button->node,
+            -22 + WINDOW_BORDER_WIDTH,
+            -17 + WINDOW_BORDER_WIDTH);
         ky_scene_buffer_set_dest_size(item->top_button, 48, 48);
         ky_scene_node_set_enabled(&item->top_button->node, false);
 
@@ -585,6 +684,11 @@ static bool show_overview(void)
         return false;
     }
     const struct kywc_box *area = &overview->output->geometry;
+    if (overview->desktop_wallpaper) {
+        ky_scene_node_set_position(&overview->desktop_wallpaper->node, 0, 0);
+        scene_buffer_set_cover(overview->desktop_wallpaper, overview->wallpaper_buffer,
+            area->width, area->height);
+    }
     ky_scene_rect_set_size(overview->backdrop, area->width, area->height);
     ky_scene_node_set_position(&overview->tree->node, area->x, area->y);
     ky_scene_node_set_position(&overview->backdrop->node, 0, 0);
@@ -675,8 +779,9 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
                overview->hovered_workspace >= 0) {
         struct view *view = overview->items[overview->pressed_item]->view;
         struct workspace *workspace = overview->workspaces[overview->hovered_workspace].workspace;
+        destroy_contents();
         view_set_workspace(view, workspace);
-        multitask_view_set_enabled(false);
+        show_overview();
     } else if (!overview->dragging && overview->pressed_item >= 0) {
         struct view *view = overview->items[overview->pressed_item]->view;
         kywc_view_activate(&view->base);
@@ -796,6 +901,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     if (overview->top_icon) wlr_buffer_drop(overview->top_icon);
     if (overview->top_active_icon) wlr_buffer_drop(overview->top_active_icon);
     if (overview->add_icon) wlr_buffer_drop(overview->add_icon);
+    if (overview->wallpaper_buffer) wlr_buffer_drop(overview->wallpaper_buffer);
     free(overview);
     overview = NULL;
 }
@@ -811,6 +917,11 @@ bool multitask_view_create(struct view_manager *view_manager)
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     overview->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&overview->tree->node, false);
+    overview->wallpaper_buffer = load_wallpaper();
+    if (overview->wallpaper_buffer) {
+        overview->desktop_wallpaper =
+            ky_scene_buffer_create(overview->tree, overview->wallpaper_buffer);
+    }
     overview->backdrop =
         ky_scene_rect_create(overview->tree, 0, 0,
                              (float[4]){ 0.0f, 0.0f, 0.0f, 1.0f - BRIGHTNESS });
@@ -822,6 +933,7 @@ bool multitask_view_create(struct view_manager *view_manager)
         if (overview->top_icon) wlr_buffer_drop(overview->top_icon);
         if (overview->top_active_icon) wlr_buffer_drop(overview->top_active_icon);
         if (overview->add_icon) wlr_buffer_drop(overview->add_icon);
+        if (overview->wallpaper_buffer) wlr_buffer_drop(overview->wallpaper_buffer);
         free(overview);
         overview = NULL;
         return false;
