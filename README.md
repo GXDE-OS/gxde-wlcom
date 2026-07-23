@@ -1,6 +1,6 @@
 ![](./docs/img/readme-header.png)
 
-![GitHub contributors](https://img.shields.io/github/contributors/GXDE-OS/gxde-wlcom) ![GitHub Release](https://img.shields.io/github/v/release/GXDE-OS/gxde-wlcom) ![Static Badge](https://img.shields.io/badge/license-GPL--1.0--or--later-orange) ![Static Badge](https://img.shields.io/badge/made_with-love-red)
+![GitHub contributors](https://img.shields.io/github/contributors/GXDE-OS/gxde-wlcom) ![GitHub Release](https://img.shields.io/github/v/release/GXDE-OS/gxde-wlcom) ![Static Badge](https://img.shields.io/badge/license-GPL--3.0--or--later-orange) ![Static Badge](https://img.shields.io/badge/made_with-love-red)
 
 <div align="center">
   <!--
@@ -32,7 +32,7 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 本仓库由 GXDE OS 团队fork，并在原项目基础上针对 GXDE OS 进行适配与优化，当前作为 GXDE OS Wayland 会话的默认合成器进行开发与维护。
 
-该项目以开源协议 **GPL-1.0-or-later** 发布，项目中引用或包含的来自其他开源项目的文件及代码片段，均遵照其原始许可证要求进行使用。
+该项目以开源协议 **GPL-3.0-or-later** 发布，项目中引用或包含的来自其他开源项目的文件及代码片段，均遵照其原始许可证要求进行使用。
 
 
 
@@ -376,7 +376,7 @@ $ meson compile gxde-wlcom-pot
 
 ## 许可证
 
-该项目使用开源协议`GPL-1.0-or-later`
+该项目使用开源协议`GPL-3.0-or-later`，详见「[COPYING](./COPYING)」。
 
 项目中来源于其他开源项目的文件或代码片段遵守原开源协议要求。
 
