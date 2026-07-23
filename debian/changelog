@@ -1,7 +1,8 @@
-gxde-wlcom (2.1.1-gxde1) lizhi; urgency=medium
+gxde-wlcom (2.1.1-gxde2) lizhi; urgency=medium
 
   * 新增了Deepin风格的多任务视图与窗口切换器
   * 允许通过原Deepin WM的D-Bus接口唤起多任务视图与切换桌面
+  * 新增启动器、媒体控制等在内多个快捷键
 
  -- CharOfString <root@charofstring.cc>  Thu, 23 Jul 2026 19:15:34 +0800
 
