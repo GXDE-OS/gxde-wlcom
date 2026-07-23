@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.1-gxde4) lizhi; urgency=medium
+
+  * 修复了微信上使用小企鹅输入法候选框无法显示的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 02:02:32 +0800
+
 gxde-wlcom (2.1.1-gxde3) lizhi; urgency=medium
 
   * 新增了多屏幕显示配置的GXDE DBus
