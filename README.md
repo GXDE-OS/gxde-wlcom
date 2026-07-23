@@ -221,7 +221,7 @@ Usage: kylin-wlcom [options] [command]
 
 ##### 多任务视图
 
-按`Win+S`打开或关闭多任务视图。当前实现提供：
+按`Meta+S`打开或关闭多任务视图。当前实现提供：
 
 - 根据`com.deepin.wrap.gnome.desktop.background`的`picture-uri`设置显示桌面及工作区壁纸预览；
 - 带抗锯齿圆角和3px活动高亮线的工作区预览；
@@ -240,6 +240,13 @@ GXDE菜单中的「多任务视图」启动器也可直接使用，无需修改�
 `/com/deepin/wm`上的`PerformAction(1)`直接连接到同一个原生多任务视图
 开关。接口契约与验证方法见
 [multitasking-launcher-interface.md](./docs/gxde/manual/multitasking-launcher-interface.md)。
+
+##### 显示桌面
+Wayland会话中，`gxde-wlcom`直接持有`com.deepin.wm`，并兼容
+`GetIsShowDesktop()`和`SetShowDesktop(bool)`。接口与`Meta+D`共用
+`view_manager_show_desktop()`状态机，因此只恢复由本次“显示桌面”操作
+最小化的窗口。X11会话仍由原来的`deepin-wm`处理；本包不安装或替换
+`deepin-daemon`的`desktop-toggle`。
 
 ##### 设置GTK主题
 
@@ -347,7 +354,7 @@ $ meson compile gxde-wlcom-pot
 
 ## 里程碑
 
-- [ ] 添加「显示桌面」支持
+- [x] 添加「显示桌面」支持
 
 - [ ] 完成对Treeland协议的完整兼容
 

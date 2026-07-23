@@ -66,6 +66,25 @@ static int set_minimize_effect(sd_bus_message *m, void *userdata, sd_bus_error *
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_is_show_desktop(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    return sd_bus_reply_method_return(m, "b", view_manager_get_show_desktop());
+}
+
+static int set_show_desktop(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    int enabled;
+    CK(sd_bus_message_read(m, "b", &enabled));
+    view_manager_show_desktop(enabled, true);
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int toggle_show_desktop(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    view_manager_show_desktop(!view_manager_get_show_desktop(), true);
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int list_all_views(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     struct view_manager *manager = userdata;
@@ -178,6 +197,9 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("SetViewAdsorption", "u", "", set_view_adsorption, 0),
     SD_BUS_METHOD("SetCSDRoundCorner", "b", "", set_csd_round_corner, 0),
     SD_BUS_METHOD("SetMinimizeEffect", "u", "", set_minimize_effect, 0),
+    SD_BUS_METHOD("GetIsShowDesktop", "", "b", get_is_show_desktop, 0),
+    SD_BUS_METHOD("SetShowDesktop", "b", "", set_show_desktop, 0),
+    SD_BUS_METHOD("ToggleShowDesktop", "", "", toggle_show_desktop, 0),
     SD_BUS_METHOD("ListAllViews", "", "a(ssi)", list_all_views, 0),
     SD_BUS_METHOD("ListViewStates", "s", "a(sai)", list_view_states, 0),
 

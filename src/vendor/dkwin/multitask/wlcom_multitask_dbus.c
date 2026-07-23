@@ -46,9 +46,25 @@ static int perform_action(sd_bus_message* message, void* userdata,
     return sd_bus_reply_method_return(message, NULL);
 }
 
+static int get_is_show_desktop(sd_bus_message* message, void* userdata,
+        sd_bus_error* ret_error) {
+    return sd_bus_reply_method_return(message, "b",
+        view_manager_get_show_desktop());
+}
+
+static int set_show_desktop(sd_bus_message* message, void* userdata,
+        sd_bus_error* ret_error) {
+    int enabled;
+    CK(sd_bus_message_read(message, "b", &enabled));
+    view_manager_show_desktop(enabled, true);
+    return sd_bus_reply_method_return(message, NULL);
+}
+
 static const sd_bus_vtable deepin_wm_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("PerformAction", "i", "", perform_action, 0),
+    SD_BUS_METHOD("GetIsShowDesktop", "", "b", get_is_show_desktop, 0),
+    SD_BUS_METHOD("SetShowDesktop", "b", "", set_show_desktop, 0),
     SD_BUS_VTABLE_END,
 };
 
