@@ -189,6 +189,8 @@ if have_libkywc
   subdir('libkywc')
 endif
 
+subdir('src/vendor/dkwin/multitask')
+
 if have_examples
   subdir('examples')
 endif

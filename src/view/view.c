@@ -1991,6 +1991,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
     theme_manager_add_update_listener(&view_manager->theme_update);
     window_menu_manager_create(view_manager);
     maximize_switcher_create(view_manager);
+    multitask_view_create(view_manager);
     split_screen_switcher_manager_create(view_manager);
 
     if (!view_manager->mode) {
