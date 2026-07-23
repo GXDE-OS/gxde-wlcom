@@ -88,6 +88,53 @@ RotateScreen(int32 angle)
 busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen RotateScreen i 90
 ```
 
+### SetScreenMode
+设置多屏显示模式，调用成功后立即生效并写入当前用户配置。
+
+```C
+SetScreenMode(uint32 mode, string screen)
+```
+
+- `mode`：
+  - `0`：复制。启用所有屏幕，将它们放在相同坐标，并自动使用所有屏幕共同支持的最大分辨率；
+  - `1`：扩展。启用所有屏幕，并按照当前顺序从左到右排列；
+  - `2`：仅在指定屏幕上显示。启用 `screen` 指定的屏幕并关闭其他屏幕。
+- `screen`：仅在 `mode` 为 `2` 时使用；其他模式传空字符串即可。
+- 无返回值。
+
+```bash
+# 复制屏幕
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenMode us 0 ""
+
+# 扩展屏幕
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenMode us 1 ""
+
+# 仅在HDMI-A-1上显示
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenMode us 2 HDMI-A-1
+```
+
+### SetScreenLayout
+
+按照参数中的逻辑坐标排布当前已启用的屏幕。支持左右、上下、错位以及其他二维排列。
+数组必须包含每个已启用的物理屏幕且不能重复。此方法只改变屏幕位置，不启用或
+关闭屏幕；如需启用全部屏幕，应先切换至扩展模式。
+
+```text
+SetScreenLayout(array<(string screen, int32 x, int32 y)> layout)
+```
+
+- `screen`：屏幕输出名称。
+- `x`、`y`：屏幕左上角在合成器全局空间中的逻辑坐标，允许为负数。
+- 无返回值。
+
+```bash
+# eDP-1在左，HDMI-A-1在右
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenLayout 'a(sii)' 2 eDP-1 0 0 HDMI-A-1 1920 0
+
+# eDP-1在上，HDMI-A-1在下
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenLayout 'a(sii)' 2 eDP-1 0 0 HDMI-A-1 0 1080
+```
+
 ## 错误处理
 
 接口会在下列情况下返回 D-Bus 错误：
@@ -95,6 +142,9 @@ busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.S
 - 参数超出允许范围或参数类型错误；
 - 找不到指定屏幕；
 - 当前没有可配置的主屏；
+- 屏幕布局缺少已启用的屏幕、包含重复屏幕或包含已关闭屏幕；
+- 复制模式下少于两块屏幕，或屏幕之间没有共同支持的分辨率；
 - 屏幕或后端不支持请求的配置。
 
-缩放、分辨率和旋转设置保存在当前用户的 `~/.config/gxde-wlcom/config.json` 中。
+缩放、分辨率、旋转、显示模式和屏幕布局设置保存在当前用户的
+`~/.config/gxde-wlcom/config.json` 中。

@@ -8,6 +8,17 @@
 #include "output_p.h"
 #include "util/dbus.h"
 
+enum gxde_screen_mode {
+    GXDE_SCREEN_MODE_DUPLICATE = 0,
+    GXDE_SCREEN_MODE_EXTEND,
+    GXDE_SCREEN_MODE_SINGLE,
+};
+
+struct screen_layout {
+    struct output *output;
+    int32_t x, y;
+};
+
 static const char *service_path = "/com/kylin/Wlcom/Output";
 static const char *service_interface = "com.kylin.Wlcom.Output";
 static const char *gxde_screen_service = "top.gxde.Wlcom.Screen";
@@ -20,19 +31,140 @@ static int reply_invalid_args(sd_bus_message *m, const char *message)
     return sd_bus_reply_method_error(m, &error);
 }
 
+static int reply_failed(sd_bus_message *m, const char *message)
+{
+    sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_FAILED, message);
+    return sd_bus_reply_method_error(m, &error);
+}
+
+static bool output_is_configurable(const struct kywc_output *output)
+{
+    return output && !output->prop.is_virtual && !output->prop.is_fbdev;
+}
+
+static uint32_t configurable_output_count(struct output_manager *manager)
+{
+    uint32_t count = 0;
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (output_is_configurable(&output->base)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static struct kywc_output_mode *find_output_mode(struct kywc_output *output, int32_t width,
+                                                 int32_t height)
+{
+    struct kywc_output_mode *best = NULL;
+    struct kywc_output_mode *mode;
+    wl_list_for_each(mode, &output->prop.modes, link) {
+        if (mode->width != width || mode->height != height) {
+            continue;
+        }
+
+        if (!best || mode->refresh > best->refresh) {
+            best = mode;
+        }
+    }
+    return best;
+}
+
+static bool mode_supported_by_all_outputs(struct output_manager *manager, int32_t width,
+                                          int32_t height)
+{
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (!output_is_configurable(&output->base)) {
+            continue;
+        }
+        if (!find_output_mode(&output->base, width, height)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool find_largest_common_mode(struct output_manager *manager, int32_t *width,
+                                     int32_t *height)
+{
+    int64_t best_area = 0;
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (!output_is_configurable(&output->base)) {
+            continue;
+        }
+
+        struct kywc_output_mode *mode;
+        wl_list_for_each(mode, &output->base.prop.modes, link) {
+            int64_t area = (int64_t)mode->width * mode->height;
+            if (area <= best_area ||
+                !mode_supported_by_all_outputs(manager, mode->width, mode->height)) {
+                continue;
+            }
+            best_area = area;
+            *width = mode->width;
+            *height = mode->height;
+        }
+        break;
+    }
+    return best_area > 0;
+}
+
+static bool prepare_enabled_state(struct kywc_output *output, struct kywc_output_state *state)
+{
+    *state = output->state;
+    state->enabled = state->power = true;
+
+    if (state->width > 0 && state->height > 0 &&
+        find_output_mode(output, state->width, state->height)) {
+        if (!isfinite(state->scale) || state->scale <= 0.0f) {
+            state->scale = kywc_output_preferred_scale(output, state->width, state->height);
+        }
+        return true;
+    }
+
+    if (wl_list_empty(&output->prop.modes)) {
+        return false;
+    }
+
+    struct kywc_output_mode *mode = kywc_output_preferred_mode(output);
+    state->width = mode->width;
+    state->height = mode->height;
+    state->refresh = mode->refresh;
+    if (!isfinite(state->scale) || state->scale <= 0.0f) {
+        state->scale = kywc_output_preferred_scale(output, state->width, state->height);
+    }
+    return true;
+}
+
+static int32_t output_state_effective_width(const struct kywc_output_state *state)
+{
+    int32_t width = state->transform % 2 == 0 ? state->width : state->height;
+    float scale = isfinite(state->scale) && state->scale > 0.0f ? state->scale : 1.0f;
+    return width / scale;
+}
+
+static int apply_output_configuration(sd_bus_message *m)
+{
+    if (!output_manager_configure_outputs()) {
+        return reply_failed(m, "The requested screen configuration is not supported.");
+    }
+
+    config_manager_sync();
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int apply_primary_state(sd_bus_message *m, struct kywc_output_state *state)
 {
     struct kywc_output *output = kywc_output_get_primary();
-    if (!output || output->prop.is_virtual || output->prop.is_fbdev) {
-        sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
-            SD_BUS_ERROR_FAILED, "No configurable primary screen is available.");
-        return sd_bus_reply_method_error(m, &error);
+    if (!output_is_configurable(output)) {
+        return reply_failed(m, "No configurable primary screen is available.");
     }
 
     if (!kywc_output_set_state(output, state)) {
-        sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
-            SD_BUS_ERROR_FAILED, "The requested screen configuration is not supported.");
-        return sd_bus_reply_method_error(m, &error);
+        return reply_failed(m, "The requested screen configuration is not supported.");
     }
 
     output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
@@ -174,6 +306,237 @@ static int rotate_screen(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     return apply_primary_state(m, &state);
 }
 
+static int set_duplicate_mode(sd_bus_message *m, struct output_manager *manager)
+{
+    if (configurable_output_count(manager) < 2) {
+        return reply_failed(m, "Duplicate mode requires at least two screens.");
+    }
+
+    int32_t width = 0, height = 0;
+    if (!find_largest_common_mode(manager, &width, &height)) {
+        return reply_failed(m, "The screens do not have a common resolution.");
+    }
+
+    struct kywc_output *reference = kywc_output_get_primary();
+    if (!output_is_configurable(reference)) {
+        reference = NULL;
+    }
+
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (!output_is_configurable(&output->base)) {
+            continue;
+        }
+        if (!reference) {
+            reference = &output->base;
+        }
+    }
+
+    float scale = reference->state.scale;
+    if (!isfinite(scale) || scale <= 0.0f) {
+        scale = kywc_output_preferred_scale(reference, width, height);
+    }
+
+    wl_list_for_each(output, &manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        if (!output_is_configurable(kywc_output)) {
+            continue;
+        }
+
+        struct kywc_output_state state;
+        if (!prepare_enabled_state(kywc_output, &state)) {
+            return reply_failed(m, "A screen does not provide any usable display mode.");
+        }
+        struct kywc_output_mode *mode = find_output_mode(kywc_output, width, height);
+        state.width = width;
+        state.height = height;
+        state.refresh = mode->refresh;
+        state.scale = scale;
+        state.transform = reference->state.transform;
+        state.lx = state.ly = 0;
+        output_manager_add_output_pending_state(output, &state);
+    }
+
+    output_set_pending_primary(output_from_kywc_output(reference));
+    return apply_output_configuration(m);
+}
+
+static int set_extend_mode(sd_bus_message *m, struct output_manager *manager)
+{
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (output_is_configurable(&output->base) && wl_list_empty(&output->base.prop.modes)) {
+            return reply_failed(m, "A screen does not provide any usable display mode.");
+        }
+    }
+
+    int32_t x = 0;
+    struct output *first = NULL;
+    wl_list_for_each(output, &manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        if (!output_is_configurable(kywc_output)) {
+            continue;
+        }
+
+        struct kywc_output_state state;
+        if (!prepare_enabled_state(kywc_output, &state)) {
+            return reply_failed(m, "A screen does not provide any usable display mode.");
+        }
+        if (!first) {
+            first = output;
+        }
+        state.lx = x;
+        state.ly = 0;
+        output_manager_add_output_pending_state(output, &state);
+        x += output_state_effective_width(&state);
+    }
+
+    if (!first) {
+        return reply_failed(m, "No configurable screen is available.");
+    }
+    struct kywc_output *primary = kywc_output_get_primary();
+    output_set_pending_primary(output_is_configurable(primary) ? output_from_kywc_output(primary)
+                                                               : first);
+    return apply_output_configuration(m);
+}
+
+static int set_single_mode(sd_bus_message *m, struct output_manager *manager, const char *name)
+{
+    struct kywc_output *selected = kywc_output_by_name(name);
+    if (!output_is_configurable(selected)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+
+    struct kywc_output_state selected_state;
+    if (!prepare_enabled_state(selected, &selected_state)) {
+        return reply_failed(m, "The screen does not provide any usable display mode.");
+    }
+    selected_state.lx = selected_state.ly = 0;
+
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        struct kywc_output *kywc_output = &output->base;
+        if (!output_is_configurable(kywc_output)) {
+            continue;
+        }
+
+        struct kywc_output_state state = kywc_output->state;
+        if (kywc_output == selected) {
+            state = selected_state;
+        } else {
+            state.enabled = state.power = false;
+        }
+        output_manager_add_output_pending_state(output, &state);
+    }
+
+    output_set_pending_primary(output_from_kywc_output(selected));
+    return apply_output_configuration(m);
+}
+
+static int set_screen_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct output_manager *manager = userdata;
+    uint32_t mode = 0;
+    const char *screen = NULL;
+    CK(sd_bus_message_read(m, "us", &mode, &screen));
+
+    switch (mode) {
+    case GXDE_SCREEN_MODE_DUPLICATE:
+        return set_duplicate_mode(m, manager);
+    case GXDE_SCREEN_MODE_EXTEND:
+        return set_extend_mode(m, manager);
+    case GXDE_SCREEN_MODE_SINGLE:
+        if (!screen || !screen[0]) {
+            return reply_invalid_args(m, "Single-screen mode requires a screen name.");
+        }
+        return set_single_mode(m, manager, screen);
+    default:
+        return reply_invalid_args(m,
+                                  "Screen mode must be 0 (duplicate), 1 (extend) or 2 (single).");
+    }
+}
+
+static int set_screen_layout(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct output_manager *manager = userdata;
+    uint32_t enabled_count = 0;
+    struct output *output;
+    wl_list_for_each(output, &manager->outputs, link) {
+        if (output_is_configurable(&output->base) && output->base.state.enabled) {
+            enabled_count++;
+        }
+    }
+    if (!enabled_count) {
+        return reply_failed(m, "No enabled configurable screen is available.");
+    }
+
+    struct screen_layout *layouts = calloc(enabled_count, sizeof(*layouts));
+    if (!layouts) {
+        return -ENOMEM;
+    }
+
+    int ret = sd_bus_message_enter_container(m, 'a', "(sii)");
+    if (ret < 0) {
+        free(layouts);
+        return ret;
+    }
+
+    uint32_t count = 0;
+    const char *name = NULL;
+    int32_t x = 0, y = 0;
+    while ((ret = sd_bus_message_read(m, "(sii)", &name, &x, &y)) > 0) {
+        struct kywc_output *kywc_output = kywc_output_by_name(name);
+        if (!output_is_configurable(kywc_output) || !kywc_output->state.enabled) {
+            free(layouts);
+            return reply_invalid_args(m, "The layout contains an unknown or disabled screen.");
+        }
+        if (count >= enabled_count) {
+            free(layouts);
+            return reply_invalid_args(m, "The layout contains too many screens.");
+        }
+
+        struct output *item = output_from_kywc_output(kywc_output);
+        for (uint32_t i = 0; i < count; ++i) {
+            if (layouts[i].output == item) {
+                free(layouts);
+                return reply_invalid_args(m, "Each screen may only occur once in the layout.");
+            }
+        }
+        layouts[count++] = (struct screen_layout){
+            .output = item,
+            .x = x,
+            .y = y,
+        };
+    }
+    if (ret < 0) {
+        free(layouts);
+        return ret;
+    }
+    ret = sd_bus_message_exit_container(m);
+    if (ret < 0) {
+        free(layouts);
+        return ret;
+    }
+    if (count != enabled_count) {
+        free(layouts);
+        return reply_invalid_args(m, "The layout must contain every enabled screen exactly once.");
+    }
+
+    for (uint32_t i = 0; i < count; ++i) {
+        struct kywc_output_state state = layouts[i].output->base.state;
+        state.lx = layouts[i].x;
+        state.ly = layouts[i].y;
+        output_manager_add_output_pending_state(layouts[i].output, &state);
+    }
+    free(layouts);
+
+    struct kywc_output *primary = kywc_output_get_primary();
+    if (output_is_configurable(primary) && primary->state.enabled) {
+        output_set_pending_primary(output_from_kywc_output(primary));
+    }
+    return apply_output_configuration(m);
+}
+
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllOutputs", "", "a(ss)", list_outputs, 0),
@@ -188,6 +551,8 @@ static const sd_bus_vtable gxde_screen_vtable[] = {
     SD_BUS_METHOD("SetResolutionWRefreshRate", "iii", "", set_resolution_with_refresh_rate, 0),
     SD_BUS_METHOD("SetScreenBrightness", "si", "", set_screen_brightness, 0),
     SD_BUS_METHOD("RotateScreen", "i", "", rotate_screen, 0),
+    SD_BUS_METHOD("SetScreenMode", "us", "", set_screen_mode, 0),
+    SD_BUS_METHOD("SetScreenLayout", "a(sii)", "", set_screen_layout, 0),
     SD_BUS_VTABLE_END,
 };
 
