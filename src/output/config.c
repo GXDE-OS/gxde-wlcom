@@ -156,6 +156,21 @@ static int apply_output_configuration(sd_bus_message *m)
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int apply_output_state(sd_bus_message *m, struct kywc_output *output,
+                              struct kywc_output_state *state)
+{
+    if (!output_is_configurable(output)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+    if (!kywc_output_set_state(output, state)) {
+        return reply_failed(m, "The requested screen configuration is not supported.");
+    }
+
+    output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+    config_manager_sync();
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static int apply_primary_state(sd_bus_message *m, struct kywc_output_state *state)
 {
     struct kywc_output *output = kywc_output_get_primary();
@@ -185,6 +200,7 @@ static int list_outputs(sd_bus_message *m, void *userdata, sd_bus_error *ret_err
         if (output->base.prop.is_virtual || output->base.prop.is_fbdev) {
             continue;
         }
+        output_write_config(output);
         json_object *config = json_object_object_get(om->config->json, output->base.name);
         const char *cfg = json_object_to_json_string(config);
         sd_bus_message_append(reply, "(ss)", output->base.name, cfg);
@@ -304,6 +320,119 @@ static int rotate_screen(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
     struct kywc_output_state state = output->state;
     state.transform = angle / 90;
     return apply_primary_state(m, &state);
+}
+
+static int set_screen_scale(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    double ratio = 0;
+    CK(sd_bus_message_read(m, "sd", &name, &ratio));
+    if (!isfinite(ratio) || ratio < 1.0 || ratio > 3.0) {
+        return reply_invalid_args(m, "Scale ratio must be between 1.0 and 3.0.");
+    }
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+    struct kywc_output_state state = output->state;
+    state.scale = (float)((int)(ratio * 100.0 + 0.5) / 100.0);
+    return apply_output_state(m, output, &state);
+}
+
+static int set_screen_resolution(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    int32_t width = 0, height = 0, refresh = 0;
+    CK(sd_bus_message_read(m, "siii", &name, &width, &height, &refresh));
+    if (width <= 0 || height <= 0 || refresh <= 0 || refresh > INT32_MAX / 1000) {
+        return reply_invalid_args(m, "Width, height and refresh rate must be positive integers.");
+    }
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+    struct kywc_output_state state = output->state;
+    state.width = width;
+    state.height = height;
+    state.refresh = refresh * 1000;
+    return apply_output_state(m, output, &state);
+}
+
+static int set_screen_rotation(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    int32_t angle = 0;
+    CK(sd_bus_message_read(m, "si", &name, &angle));
+    if (angle != 0 && angle != 90 && angle != 180 && angle != 270) {
+        return reply_invalid_args(m, "Rotation must be one of 0, 90, 180 or 270 degrees.");
+    }
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+    struct kywc_output_state state = output->state;
+    state.transform = angle / 90;
+    return apply_output_state(m, output, &state);
+}
+
+static int set_screen_enabled(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    int enabled = 0;
+    CK(sd_bus_message_read(m, "sb", &name, &enabled));
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output)) {
+        return reply_invalid_args(m, "The requested screen was not found.");
+    }
+
+    struct kywc_output_state state = output->state;
+    if (enabled) {
+        if (!prepare_enabled_state(output, &state)) {
+            return reply_failed(m, "The screen does not provide any usable display mode.");
+        }
+    } else {
+        state.enabled = state.power = false;
+    }
+    output_manager_add_output_pending_state(output_from_kywc_output(output), &state);
+    return apply_output_configuration(m);
+}
+
+static int set_primary_screen(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    CK(sd_bus_message_read(m, "s", &name));
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output) || !output->state.enabled) {
+        return reply_invalid_args(m, "The requested screen was not found or is disabled.");
+    }
+
+    struct output *selected = output_from_kywc_output(output);
+    output_manager_add_output_pending_state(selected, &output->state);
+    output_set_pending_primary(selected);
+    return apply_output_configuration(m);
+}
+
+static int set_screen_position(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *name = NULL;
+    int32_t x = 0, y = 0;
+    CK(sd_bus_message_read(m, "sii", &name, &x, &y));
+
+    struct kywc_output *output = kywc_output_by_name(name);
+    if (!output_is_configurable(output) || !output->state.enabled) {
+        return reply_invalid_args(m, "The requested screen was not found or is disabled.");
+    }
+
+    struct kywc_output_state state = output->state;
+    state.lx = x;
+    state.ly = y;
+    output_manager_add_output_pending_state(output_from_kywc_output(output), &state);
+    return apply_output_configuration(m);
 }
 
 static int set_duplicate_mode(sd_bus_message *m, struct output_manager *manager)
@@ -551,6 +680,12 @@ static const sd_bus_vtable gxde_screen_vtable[] = {
     SD_BUS_METHOD("SetResolutionWRefreshRate", "iii", "", set_resolution_with_refresh_rate, 0),
     SD_BUS_METHOD("SetScreenBrightness", "si", "", set_screen_brightness, 0),
     SD_BUS_METHOD("RotateScreen", "i", "", rotate_screen, 0),
+    SD_BUS_METHOD("SetScreenScale", "sd", "", set_screen_scale, 0),
+    SD_BUS_METHOD("SetScreenResolution", "siii", "", set_screen_resolution, 0),
+    SD_BUS_METHOD("SetScreenRotation", "si", "", set_screen_rotation, 0),
+    SD_BUS_METHOD("SetScreenEnabled", "sb", "", set_screen_enabled, 0),
+    SD_BUS_METHOD("SetPrimaryScreen", "s", "", set_primary_screen, 0),
+    SD_BUS_METHOD("SetScreenPosition", "sii", "", set_screen_position, 0),
     SD_BUS_METHOD("SetScreenMode", "us", "", set_screen_mode, 0),
     SD_BUS_METHOD("SetScreenLayout", "a(sii)", "", set_screen_layout, 0),
     SD_BUS_VTABLE_END,

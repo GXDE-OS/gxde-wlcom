@@ -88,6 +88,46 @@ RotateScreen(int32 angle)
 busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen RotateScreen i 90
 ```
 
+### 逐屏设置
+
+以下接口使用输出名称指定屏幕，适合控制中心的多屏设置页面。设置成功后立即生效并写入
+当前用户配置：
+
+```text
+SetScreenScale(string screen, double ratio)
+SetScreenResolution(string screen, int32 width, int32 height, int32 refresh_rate)
+SetScreenRotation(string screen, int32 angle)
+SetScreenEnabled(string screen, bool enabled)
+SetPrimaryScreen(string screen)
+SetScreenPosition(string screen, int32 x, int32 y)
+```
+
+参数规则与前述主屏接口一致：
+
+- `ratio` 取值范围为 `1.0` 至 `3.0`；
+- `refresh_rate` 单位为 Hz；
+- `angle` 只接受 `0`、`90`、`180` 或 `270`；
+- 不能关闭最后一块已启用的屏幕；
+- 只有已启用的屏幕可以设为主屏或移动位置。
+
+```bash
+# 将HDMI-A-1缩放设为1.25
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenScale sd HDMI-A-1 1.25
+
+# 将HDMI-A-1设为1920×1080@60Hz
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenResolution siii HDMI-A-1 1920 1080 60
+
+# 将HDMI-A-1顺时针旋转90度
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenRotation si HDMI-A-1 90
+
+# 启用HDMI-A-1并设为主屏
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenEnabled sb HDMI-A-1 true
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetPrimaryScreen s HDMI-A-1
+
+# 将HDMI-A-1移动到逻辑坐标(1920, 0)
+busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.Screen SetScreenPosition sii HDMI-A-1 1920 0
+```
+
 ### SetScreenMode
 设置多屏显示模式，调用成功后立即生效并写入当前用户配置。
 
