@@ -101,7 +101,7 @@ struct view_manager {
     struct view_mode *mode;
 };
 
-bool view_manager_config_init(struct view_manager *view_manager, struct server *server);
+bool view_manager_config_init(struct view_manager *view_manager);
 
 void view_manager_set_switcher_shown(bool shown);
 
