@@ -6,8 +6,6 @@
 #include "util/dbus.h"
 #include "view/workspace.h"
 #include "view_p.h"
-#include "server.h"          
-#include <glib.h>            
 
 static const char *service_path = "/com/kylin/Wlcom/View";
 static const char *service_interface = "com.kylin.Wlcom.View";
@@ -210,70 +208,14 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_END,
 };
 
-// 新增方法：IterateNextWindow 
-static int handle_iterate_next_window(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
-{
-    struct server *server = userdata;
-    struct view_manager *vm = server->view_manager;
-
-    const char *app_id;
-    int forward;
-    CK(sd_bus_message_read(m, "s", &app_id));
-    CK(sd_bus_message_read(m, "b", &forward));
-
-    GList *matches = NULL;
-    struct view *view;
-    wl_list_for_each(view, &vm->views, link) {
-        if (!view->base.mapped || view->base.minimized || view->base.role != KYWC_VIEW_ROLE_NORMAL)
-            continue;
-        if (g_strcmp0(view->base.app_id, app_id) != 0)
-            continue;
-        matches = g_list_append(matches, view);
-    }
-
-    gboolean success = FALSE;
-    if (g_list_length(matches) > 1) {
-        struct view *current = view_manager_get_activated();
-        GList *cur = g_list_find(matches, current);
-        GList *next = forward ? (cur ? cur->next : matches) : (cur ? cur->prev : g_list_last(matches));
-        if (!next) next = forward ? matches : g_list_last(matches);
-        struct view *target = next->data;
-        kywc_view_activate(&target->base);
-        view_set_focus(target, input_manager_get_default_seat());
-        success = TRUE;
-    }
-
-    g_list_free(matches);
-    return sd_bus_reply_method_return(m, "b", success);
-}
-
-static const sd_bus_vtable window_management_vtable[] = {
-    SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("IterateNextWindow", "sb", "b", handle_iterate_next_window, 0),
-    SD_BUS_VTABLE_END,
-};
-
-bool view_manager_config_init(struct view_manager *view_manager, struct server *server)
+bool view_manager_config_init(struct view_manager *view_manager)
 {
     view_manager->config = config_manager_add_config("Views");
     if (!view_manager->config) {
         return false;
     }
-
-    if (!dbus_register_object(NULL, service_path, service_interface, service_vtable, view_manager)) {
-        return false;
-    }
-
-    // 注册新的 top.gxde.Wlcom.WindowManagement
-    if (!dbus_register_object(NULL,
-                              "/top/gxde/Wlcom/WindowManagement",
-                              "top.gxde.Wlcom.WindowManagement",
-                              window_management_vtable,
-                              server)) {
-        return false;
-    }
-
-    return true;
+    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
+                                view_manager);
 }
 
 bool view_read_config(struct view_manager *view_manager)
