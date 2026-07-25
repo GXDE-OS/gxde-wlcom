@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.1-gxde6) lizhi; urgency=medium
+
+  * 新增对KDE AppMenu协议的兼容
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 15:30:03 +0800
+
 gxde-wlcom (2.1.1-gxde5) lizhi; urgency=medium
 
   * 为GXDE控制中心暴露更多D-Bus接口
