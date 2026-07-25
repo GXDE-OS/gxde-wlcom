@@ -127,6 +127,8 @@ struct view {
         struct wl_signal workspace_leave;
         /* emit if view change icon name */
         struct wl_signal icon_update;
+        /* emit if the D-Bus application menu address changed */
+        struct wl_signal application_menu;
     } events;
 
     struct {
@@ -156,6 +158,11 @@ struct view {
     pid_t pid;
     char *icon_name;   // from application set
     struct icon *icon; // find in icon folder
+
+    struct {
+        char* service_name;
+        char* object_path;
+    } application_menu;
 
     uint32_t current_resize_edges;
     bool minimized_when_show_desktop;

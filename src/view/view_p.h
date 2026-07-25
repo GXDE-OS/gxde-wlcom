@@ -240,6 +240,18 @@ kde_plasma_window_management_create(struct server *server)
 }
 #endif
 
+#if HAVE_KDE_APPMENU
+bool kde_appmenu_manager_create(struct server *server);
+#else
+
+static __attribute__((unused)) inline bool kde_appmenu_manager_create(struct server* server) {
+    return false;
+}
+#endif
+
+void view_set_application_menu(struct view* view, const char* service_name,
+    const char* object_path);
+
 #if HAVE_KDE_BLUR
 bool kde_blur_manager_create(struct server *server);
 #else

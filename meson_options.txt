@@ -82,6 +82,12 @@ option('kde_plasma_window_management',
        description: 'Enable kde plasma window management protocol support'
 )
 
+option('kde_appmenu',
+       type: 'boolean',
+       value: true,
+       description: 'Enable kde appmenu protocol support'
+)
+
 option('kde_blur',
        type: 'boolean',
        value: true,

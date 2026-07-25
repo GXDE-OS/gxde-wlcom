@@ -56,6 +56,12 @@ if have_kde_plasma_window_management
   )
 endif
 
+if have_kde_appmenu
+  wlcom_sources += files(
+    'kde_appmenu.c',
+  )
+endif
+
 if have_kde_blur
   wlcom_sources += files(
     'kde_blur.c',

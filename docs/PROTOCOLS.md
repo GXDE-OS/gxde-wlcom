@@ -95,7 +95,7 @@ wayland协议支持情况
 
 | 协议名称                                       | 支持情况 | 说明  |
 | :--------------------------------------------- | :------: | :---- |
-| org_kde_kwin_appmenu_manager                   |    no    | 1     |
+| org_kde_kwin_appmenu_manager                   |    2     |       |
 | org_kde_kwin_blur_manager                      |    1     | ukui  |
 | org_kde_kwin_contrast_manager                  |    no    | 2     |
 | org_kde_kwin_dpms_manager                      |    1     |       |

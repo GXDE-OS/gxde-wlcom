@@ -52,6 +52,7 @@ struct ukui_window {
     struct wl_listener view_position;
     struct wl_listener view_size;
     struct wl_listener view_icon_update;
+    struct wl_listener view_application_menu;
     struct wl_listener panel_surface_destroy;
 
     /* The internal window id and uuid */
@@ -512,6 +513,20 @@ static void window_handle_view_size(struct wl_listener *listener, void *data)
     }
 }
 
+static void window_handle_view_application_menu(struct wl_listener* listener, void* data) {
+    struct ukui_window* window = wl_container_of(listener, window, view_application_menu);
+    struct view* view = view_from_kywc_view(window->kywc_view);
+    const char* service_name =
+        view->application_menu.service_name ? view->application_menu.service_name : "";
+    const char* object_path =
+        view->application_menu.object_path ? view->application_menu.object_path : "";
+
+    struct wl_resource* resource;
+    wl_resource_for_each(resource, &window->resources) {
+        ukui_window_send_application_menu(resource, service_name, object_path);
+    }
+}
+
 static void ukui_window_send_state(struct ukui_window *window, struct wl_resource *resource,
                                    bool force)
 {
@@ -605,7 +620,10 @@ static void ukui_window_add_resource(struct ukui_window *window,
     } else {
         ukui_window_send_icon_changed(resource);
     }
-    // ukui_window_send_application_menu
+    if (view->application_menu.service_name && view->application_menu.object_path) {
+        ukui_window_send_application_menu(resource, view->application_menu.service_name,
+            view->application_menu.object_path);
+    }
     // ukui_window_send_activity_entered
     // ukui_window_send_activity_left
     // ukui_window_send_resource_name_changed
@@ -714,6 +732,7 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_position.link);
     wl_list_remove(&window->view_size.link);
     wl_list_remove(&window->view_icon_update.link);
+    wl_list_remove(&window->view_application_menu.link);
     wl_list_remove(&window->panel_surface_destroy.link);
     wl_list_remove(&window->link);
 
@@ -791,6 +810,8 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     wl_signal_add(&kywc_view->events.size, &window->view_size);
     window->view_icon_update.notify = window_handle_view_icon_update;
     wl_signal_add(&view->events.icon_update, &window->view_icon_update);
+    window->view_application_menu.notify = window_handle_view_application_menu;
+    wl_signal_add(&view->events.application_menu, &window->view_application_menu);
     window->panel_surface_destroy.notify = handle_panel_surface_destroy;
     wl_list_init(&window->panel_surface_destroy.link);
 

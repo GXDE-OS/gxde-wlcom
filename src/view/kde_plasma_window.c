@@ -44,6 +44,7 @@ struct kde_plasma_window {
     struct wl_listener view_position;
     struct wl_listener view_size;
     struct wl_listener view_icon_update;
+    struct wl_listener view_application_menu;
 
     /* The internal window id and uuid */
     uint32_t id;
@@ -405,6 +406,24 @@ static void window_handle_view_size(struct wl_listener *listener, void *data)
     }
 }
 
+static void window_handle_view_application_menu(struct wl_listener* listener, void* data) {
+    struct kde_plasma_window* window =
+        wl_container_of(listener, window, view_application_menu);
+    struct view* view = view_from_kywc_view(window->kywc_view);
+    const char* service_name =
+        view->application_menu.service_name ? view->application_menu.service_name : "";
+    const char* object_path =
+        view->application_menu.object_path ? view->application_menu.object_path : "";
+
+    struct wl_resource* resource;
+    wl_resource_for_each(resource, &window->resources) {
+        if (wl_resource_get_version(resource) >=
+            ORG_KDE_PLASMA_WINDOW_APPLICATION_MENU_SINCE_VERSION) {
+            org_kde_plasma_window_send_application_menu(resource, service_name, object_path);
+        }
+    }
+}
+
 static void kde_plasma_window_send_state(struct kde_plasma_window *window,
                                          struct wl_resource *resource, bool force)
 {
@@ -493,7 +512,12 @@ static void kde_plasma_window_add_resource(struct kde_plasma_window *window,
         org_kde_plasma_window_send_themed_icon_name_changed(resource, icon_name);
     }
     // org_kde_plasma_window_send_icon_changed
-    // org_kde_plasma_window_send_application_menu
+    if (view->application_menu.service_name && view->application_menu.object_path &&
+        wl_resource_get_version(resource) >=
+            ORG_KDE_PLASMA_WINDOW_APPLICATION_MENU_SINCE_VERSION) {
+        org_kde_plasma_window_send_application_menu(resource, view->application_menu.service_name,
+            view->application_menu.object_path);
+    }
     // org_kde_plasma_window_send_activity_entered
     // org_kde_plasma_window_send_activity_left
     // org_kde_plasma_window_send_resource_name_changed
@@ -619,6 +643,7 @@ static void window_handle_view_unmap(struct wl_listener *listener, void *data)
     wl_list_remove(&window->view_position.link);
     wl_list_remove(&window->view_size.link);
     wl_list_remove(&window->view_icon_update.link);
+    wl_list_remove(&window->view_application_menu.link);
     wl_list_remove(&window->link);
 
     struct wl_resource *tmp;
@@ -685,6 +710,8 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     struct view *view = view_from_kywc_view(kywc_view);
     window->view_icon_update.notify = window_handle_view_icon_update;
     wl_signal_add(&view->events.icon_update, &window->view_icon_update);
+    window->view_application_menu.notify = window_handle_view_application_menu;
+    wl_signal_add(&view->events.application_menu, &window->view_application_menu);
 
     struct wl_resource *resource;
     wl_resource_for_each(resource, &management->resources) {

@@ -211,6 +211,7 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     wl_signal_init(&view->events.workspace_leave);
     wl_signal_init(&view->events.output);
     wl_signal_init(&view->events.icon_update);
+    wl_signal_init(&view->events.application_menu);
 
     kywc_view->role = KYWC_VIEW_ROLE_NORMAL;
     kywc_view->minimizable = true;
@@ -657,6 +658,8 @@ void view_destroy(struct view *view)
     ky_scene_node_destroy(&view->tree->node);
     view_proxies_destroy(view);
     free((void *)kywc_view->uuid);
+    free(view->application_menu.service_name);
+    free(view->application_menu.object_path);
 
     view->impl->destroy(view);
 }
@@ -682,6 +685,35 @@ void view_set_app_id(struct view *view, const char *app_id)
     kywc_view->app_id = app_id;
     kywc_log(KYWC_DEBUG, "kywc_view %p app_id: %s", kywc_view, app_id);
     wl_signal_emit_mutable(&kywc_view->events.app_id, NULL);
+}
+
+void view_set_application_menu(struct view* view, const char* service_name,
+        const char* object_path) {
+    const char* old_service_name = view->application_menu.service_name;
+    const char* old_object_path = view->application_menu.object_path;
+    bool unchanged =
+        ((!old_service_name && !service_name) ||
+         (old_service_name && service_name && strcmp(old_service_name, service_name) == 0)) &&
+        ((!old_object_path && !object_path) ||
+         (old_object_path && object_path && strcmp(old_object_path, object_path) == 0));
+    if (unchanged) {
+        return;
+    }
+
+    char *new_service_name = service_name ? strdup(service_name) : NULL;
+    char *new_object_path = object_path ? strdup(object_path) : NULL;
+    if ((service_name && !new_service_name) || (object_path && !new_object_path)) {
+        free(new_service_name);
+        free(new_object_path);
+        return;
+    }
+
+    free(view->application_menu.service_name);
+    free(view->application_menu.object_path);
+    view->application_menu.service_name = new_service_name;
+    view->application_menu.object_path = new_object_path;
+
+    wl_signal_emit_mutable(&view->events.application_menu, NULL);
 }
 
 void view_set_decoration(struct view *view, enum kywc_ssd ssd)
@@ -2248,6 +2280,7 @@ struct view_manager *view_manager_create(struct server *server)
     ky_toplevel_manager_create(server);
     kde_plasma_shell_create(server);
     kde_plasma_window_management_create(server);
+    kde_appmenu_manager_create(server);
     kde_blur_manager_create(server);
     treeland_dde_shell_manager_create(server);
     kde_slide_manager_create(server);

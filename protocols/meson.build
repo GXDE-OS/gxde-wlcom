@@ -65,6 +65,12 @@ if have_kde_plasma_window_management
   }
 endif
 
+if have_kde_appmenu
+  protocols += {
+    'org-kde-kwin-appmenu-manager': 'appmenu.xml',
+  }
+endif
+
 if have_kde_blur
   protocols += {
     'org-kde-kwin-blur-manager': 'blur.xml',
