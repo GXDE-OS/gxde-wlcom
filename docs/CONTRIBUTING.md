@@ -6,6 +6,12 @@
 
 2. 提交补丁完善代码。如果您希望引入重大更改或新功能，请首先在issues中进行讨论。
 
+---
+
+请将代码PR至`gxde/testing`分支，测试稳定后将由管理员合并至`gxde/zhuangzhuang`分支并bump。
+
+Please set the merge request destination to `gxde-testing`, and the administrator of the repository will merge your changes to `gxde-zhuangzhuang` once it is proved that your changes are stable. They will also bump version for you.
+
 # 调试
 
 ## 手动运行
@@ -17,7 +23,7 @@ $ sudo systemctl stop lightdm
 
 执行以下命令手动启动合成器
 ```bash
-$ kylin-wlcom -s ukui-session
+$ gxde-wlcom -s ukui-session
 ```
 
 此时将启动ukui桌面。

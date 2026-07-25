@@ -377,6 +377,8 @@ $ meson compile gxde-wlcom-pot
 
 请参阅「[CONTRIBUTING](./docs/CONTRIBUTING.md)」文件，了解贡献所需的信息。
 
+对于MR，请将代码PR至`gxde/testing`分支，测试稳定后将由管理员合并至`gxde/zhuangzhuang`分支并bump。
+
 ### GXDE Wlcom的贡献者们
 
 *(注：不知道为何很多原版KYWC的贡献者没有显示，您可以在[此处](https://gitee.com/openkylin/kylin-wayland-compositor/contributors?ref=debian%2Funstable)找到原版KYWC贡献者的信息）*
