@@ -242,6 +242,9 @@ void view_set_title(struct view *view, const char *title);
 
 void view_set_app_id(struct view *view, const char *app_id);
 
+void view_set_application_menu(struct view* view, const char* service_name,
+    const char* object_path);
+
 void view_set_decoration(struct view *view, enum kywc_ssd ssd);
 
 void view_move_to_output(struct view *view, struct kywc_box *src_box,

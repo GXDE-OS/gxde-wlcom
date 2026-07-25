@@ -58,6 +58,9 @@ static const char *const atom_map[ATOM_LAST] = {
     [NET_WM_ICON] = "_NET_WM_ICON",
     [NET_WM_WINDOW_OPACITY] = "_NET_WM_WINDOW_OPACITY",
 
+    [KDE_NET_WM_APPMENU_SERVICE_NAME] = "_KDE_NET_WM_APPMENU_SERVICE_NAME",
+    [KDE_NET_WM_APPMENU_OBJECT_PATH] = "_KDE_NET_WM_APPMENU_OBJECT_PATH",
+
     [UTF8_STRING] = "UTF8_STRING",
     [NET_WM_NAME] = "_NET_WM_NAME",
     [NET_SUPPORTING_WM_CHECK] = "_NET_SUPPORTING_WM_CHECK",
@@ -527,6 +530,51 @@ int xwayland_read_wm_window_opacity(xcb_window_t window_id)
     return 1;
 }
 
+static char* xwayland_read_string_property(xcb_window_t window_id, xcb_atom_t property) {
+    xcb_get_property_cookie_t cookie =
+        xcb_get_property(xwayland->xcb_conn, false, window_id, property, XCB_ATOM_STRING, 0, 2048);
+    xcb_get_property_reply_t* reply = xcb_get_property_reply(xwayland->xcb_conn, cookie, NULL);
+    if (!reply || reply->type != XCB_ATOM_STRING || reply->format != 8 || reply->value_len == 0) {
+        free(reply);
+        return NULL;
+    }
+
+    int length = xcb_get_property_value_length(reply);
+    char *value = malloc(length + 1);
+    if (!value) {
+        free(reply);
+        return NULL;
+    }
+
+    memcpy(value, xcb_get_property_value(reply), length);
+    value[length] = '\0';
+    free(reply);
+    return value;
+}
+
+int xwayland_read_application_menu(xcb_window_t window_id) {
+    struct wlr_xwayland_surface *surface = xwayland_view_look_surface(xwayland, window_id);
+    if (!surface || !surface->data) {
+        return 0;
+    }
+
+    char* service_name =
+        xwayland_read_string_property(window_id, xwayland->atoms[KDE_NET_WM_APPMENU_SERVICE_NAME]);
+    char* object_path =
+        xwayland_read_string_property(window_id, xwayland->atoms[KDE_NET_WM_APPMENU_OBJECT_PATH]);
+
+    struct view *view = surface->data;
+    if (service_name && object_path) {
+        view_set_application_menu(view, service_name, object_path);
+    } else {
+        view_set_application_menu(view, NULL, NULL);
+    }
+
+    free(service_name);
+    free(object_path);
+    return 1;
+}
+
 /* return 0 as we only handle few things */
 static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
 {
@@ -540,6 +588,9 @@ static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event
             return xwayland_read_wm_icon(ev->window);
         } else if (ev->atom == xwayland->atoms[NET_WM_WINDOW_OPACITY]) {
             return xwayland_read_wm_window_opacity(ev->window);
+        } else if (ev->atom == xwayland->atoms[KDE_NET_WM_APPMENU_SERVICE_NAME] ||
+                   ev->atom == xwayland->atoms[KDE_NET_WM_APPMENU_OBJECT_PATH]) {
+            return xwayland_read_application_menu(ev->window);
         }
     } else if (response_type == XCB_CLIENT_MESSAGE) {
         if (xwayland_handle_dnd_message(xwayland, (xcb_client_message_event_t *)event)) {

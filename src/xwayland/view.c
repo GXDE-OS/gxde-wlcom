@@ -990,6 +990,7 @@ static void xwayland_view_handle_associate(struct wl_listener *listener, void *d
     xwayland_read_wm_state(wlr_xwayland_surface->window_id);
     xwayland_read_wm_icon(wlr_xwayland_surface->window_id);
     xwayland_read_wm_window_opacity(wlr_xwayland_surface->window_id);
+    xwayland_read_application_menu(wlr_xwayland_surface->window_id);
 
     xwayland_view->precommit.notify = xwayland_view_handle_precommit;
     wl_signal_add(&wlr_xwayland_surface->surface->events.precommit, &xwayland_view->precommit);

@@ -53,6 +53,9 @@ enum atom_name {
     NET_WM_ICON,
     NET_WM_WINDOW_OPACITY,
 
+    KDE_NET_WM_APPMENU_SERVICE_NAME,
+    KDE_NET_WM_APPMENU_OBJECT_PATH,
+
     UTF8_STRING,
     NET_WM_NAME,
     NET_SUPPORTING_WM_CHECK,
@@ -204,6 +207,8 @@ int xwayland_read_wm_state(xcb_window_t window_id);
 int xwayland_read_wm_icon(xcb_window_t window_id);
 
 int xwayland_read_wm_window_opacity(xcb_window_t window_id);
+
+int xwayland_read_application_menu(xcb_window_t window_id);
 
 char *xwayland_mime_type_from_atom(xcb_atom_t atom);
 

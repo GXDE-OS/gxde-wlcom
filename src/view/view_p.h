@@ -249,9 +249,6 @@ static __attribute__((unused)) inline bool kde_appmenu_manager_create(struct ser
 }
 #endif
 
-void view_set_application_menu(struct view* view, const char* service_name,
-    const char* object_path);
-
 #if HAVE_KDE_BLUR
 bool kde_blur_manager_create(struct server *server);
 #else
