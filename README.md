@@ -335,6 +335,18 @@ busctl --user call \
   SetForceRoundCornerExcludeLayerShell b true
 ```
 
+##### 窗口循环切换
+我们提供了 top.gxde.Wlcom.WindowManagement 接口，允许客户端（如 Dock）循环激活同一应用的不同窗口。为 gxde 的 Wayland 环境提供了统一的窗口遍历体验。
+使用示例（正向循环切换 Firefox 窗口）：
+
+```bash
+busctl --user call \
+  top.gxde.Wlcom.WindowManagement \
+  /top/gxde/Wlcom/WindowManagement \
+  top.gxde.Wlcom.WindowManagement \
+  IterateNextWindow s b "firefox" true
+```
+
 ##### 注意事项
 
 配置修改后立即生效，并写入`~/.config/gxde-wlcom/config.json`的`theme`对象，对应的key分别为`force_round_corner`和`force_round_corner_exclude_layer_shell`。
