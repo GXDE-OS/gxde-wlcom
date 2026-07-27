@@ -49,5 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: archlinux-${{ matrix.arch }}
-          path: "*.pkg.tar.zst"
+          path: |
+            *.pkg.tar.zst
+            *.pkg.tar.xz
           if-no-files-found: error
