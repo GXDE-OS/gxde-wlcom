@@ -52,10 +52,9 @@ provides=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 conflicts=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 replaces=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 
-_commit='fb9b64f8a13cb465aedba8b8ac8b603fc83f5f8b'
 _wlroots_commit='d315e23d3e444c0504ae3b230155180938e3ece0'
 source=(
-  "$pkgname::git+$url.git#commit=$_commit"
+  "$pkgname::git+$url.git"
   "wlroots::git+https://github.com/GXDE-OS/open-kylin-wlroots.git#commit=$_wlroots_commit"
 )
 sha256sums=('SKIP' 'SKIP')
@@ -69,6 +68,12 @@ prepare() {
     "$srcdir/wlroots/meson.build"
   sed -i "s/'-Werror',/'-Wno-error',/" \
     "$srcdir/wlroots/meson.build"
+  sed -i '/struct server \*server = userdata;/d' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/struct view_manager \*vm = server->view_manager;/struct view_manager *vm = userdata;/' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/^\([[:space:]]*\)server)) {/\1view_manager)) {/' \
+    "$srcdir/$pkgname/src/view/config.c"
 }
 
 build() {
