@@ -371,7 +371,7 @@ $ meson compile gxde-wlcom-pot
 
 *(注：不知道为何很多原版KYWC的贡献者没有显示，您可以在[此处](https://gitee.com/openkylin/kylin-wayland-compositor/contributors?ref=debian%2Funstable)找到原版KYWC贡献者的信息）*
 
-<a href="https://github.com/othneildrew/Best-README-Template/graphs/contributors">
+<a href="https://github.com/GXDE-OS/gxde-wlcom/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GXDE-OS/gxde-wlcom" alt="contrib.rocks image" />
 </a>
 
