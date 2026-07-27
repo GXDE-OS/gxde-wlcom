@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.1-gxde9) lizhi; urgency=medium
+
+  * 回退: 新增对循环激活同一程序的窗口的DBus支持
+  * 新增XWayland全局菜单导出支持
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 14:09:44 +0800
+
 gxde-wlcom (2.1.1-gxde8) lizhi; urgency=medium
 
   * 新增对循环激活同一程序的窗口的DBus支持
