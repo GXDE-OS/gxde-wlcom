@@ -35,6 +35,13 @@ jobs:
           echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
+      - name: Disable pacman sandbox on ArchLinux ARM container
+        if: matrix.arch == 'aarch64'
+        run: |
+          if ! grep -q '^DisableSandbox$' /etc/pacman.conf; then
+            sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          fi
+
       - name: Build Arch Linux package
         run: sudo -u builder makepkg --syncdeps --noconfirm --cleanbuild
 
