@@ -69,6 +69,12 @@ prepare() {
     "$srcdir/wlroots/meson.build"
   sed -i "s/'-Werror',/'-Wno-error',/" \
     "$srcdir/wlroots/meson.build"
+  sed -i '/struct server \*server = userdata;/d' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/struct view_manager \*vm = server->view_manager;/struct view_manager *vm = userdata;/' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/^\([[:space:]]*\)server)) {/\1view_manager)) {/' \
+    "$srcdir/$pkgname/src/view/config.c"
 }
 
 build() {
