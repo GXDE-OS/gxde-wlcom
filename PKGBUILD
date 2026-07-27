@@ -65,6 +65,8 @@ prepare() {
   ln -s "$srcdir/wlroots" "$pkgname/subprojects/wlroots"
   sed -i '/const struct wlr_fbox \*box = &options->src_box;/d' \
     "$srcdir/wlroots/render/pass.c"
+  sed -i "s/'werror=true'/'werror=false'/" \
+    "$srcdir/wlroots/meson.build"
   sed -i "s/'-Werror',/'-Wno-error',/" \
     "$srcdir/wlroots/meson.build"
 }
