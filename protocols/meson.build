@@ -4,6 +4,9 @@ wayland_scanner = find_program('wayland-scanner')
 protocols = {
   'wl-drm': 'drm.xml',
   'ext-idle-notifier-v1': wl_protocol_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
+  'ext-foreign-toplevel-list-v1': wl_protocol_dir / 'staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml',
+  'ext-image-capture-source-v1': wl_protocol_dir / 'staging/ext-image-capture-source/ext-image-capture-source-v1.xml',
+  'ext-image-copy-capture-v1': wl_protocol_dir / 'staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml',
   'xdg-shell': wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
   'xdg-output-unstable-v1': wl_protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',
   'zwp-tablet-manager-v2': wl_protocol_dir / 'unstable/tablet/tablet-unstable-v2.xml',

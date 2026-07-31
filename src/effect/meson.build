@@ -5,6 +5,7 @@ wlcom_sources += files(
   'circle_progressbar.c',
   'config.c',
   'effect.c',
+  'ext_image_copy_capture.c',
   'fade.c',
   'locate_pointer.c',
   'magic_lamp.c',
