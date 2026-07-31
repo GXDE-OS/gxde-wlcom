@@ -26,6 +26,8 @@ struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
                                              struct wlr_allocator *alloc, int width, int height,
                                              uint32_t format, bool single_plane);
 
+struct wlr_buffer *ky_renderer_create_shm_buffer(int width, int height, uint32_t format);
+
 bool ky_renderer_is_software(struct wlr_renderer *renderer);
 bool ky_renderer_wait_acquire_fd(struct wlr_renderer *renderer, int sync_file_fd);
 
