@@ -217,11 +217,6 @@ struct wlr_buffer *ky_renderer_create_buffer(struct wlr_renderer *renderer,
     return wlr_allocator_create_buffer(alloc, width, height, format);
 }
 
-struct wlr_buffer *ky_renderer_create_shm_buffer(int width, int height, uint32_t format)
-{
-    return shm_create_buffer(width, height, format);
-}
-
 bool ky_renderer_is_software(struct wlr_renderer *renderer)
 {
     if (wlr_renderer_is_pixman(renderer)) {

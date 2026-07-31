@@ -4,7 +4,6 @@
 
 #include <stdlib.h>
 
-#include <drm_fourcc.h>
 #include <wlr/types/wlr_buffer.h>
 
 #include <kywc/log.h>
@@ -15,7 +14,6 @@
 
 #include "effect/capture.h"
 #include "effect_p.h"
-#include "render/renderer.h"
 #include "scene/thumbnail.h"
 #include "view/workspace.h"
 
@@ -54,8 +52,6 @@ struct ky_capture_frame {
 
     /* buffer from thumbnail or capture */
     struct wlr_buffer *buffer;
-    /* CPU-readable compatibility buffer for version 1 toplevel clients */
-    struct wlr_buffer *readback_buffer;
     union {
         struct capture *capture;
         struct thumbnail *thumbnail;
@@ -74,9 +70,6 @@ static void ky_capture_frame_destroy(struct ky_capture_frame *frame)
 
     if (frame->buffer) {
         wlr_buffer_unlock(frame->buffer);
-    }
-    if (frame->readback_buffer) {
-        wlr_buffer_drop(frame->readback_buffer);
     }
     if (frame->data) {
         if (frame->type == KY_CAPTURE_FRAME_TYPE_OUTPUT) {
@@ -136,62 +129,6 @@ static void frame_handle_buffer_destroy(struct wl_listener *listener, void *data
     ky_capture_frame_destroy(frame);
 }
 
-static struct wlr_buffer *frame_get_export_buffer(struct ky_capture_frame *frame,
-                                                  struct wlr_buffer *buffer)
-{
-    /*
-     * Version 1 can only describe a single plane. Some render modifiers are
-     * single-plane but still tiled and cannot be mmap'ed by simple clients
-     * such as the dock thumbnail cache. Export a SHM readback for legacy
-     * toplevel clients instead of forcing them to crop the composited output.
-     */
-    if (frame->type != KY_CAPTURE_FRAME_TYPE_TOPLEVEL ||
-        wl_resource_get_version(frame->resource) >=
-            KYWC_CAPTURE_FRAME_V1_BUFFER_WITH_PLANE_SINCE_VERSION) {
-        return buffer;
-    }
-
-    struct wlr_shm_attributes shm;
-    if (wlr_buffer_get_shm(buffer, &shm)) {
-        return buffer;
-    }
-
-    bool resize = frame->readback_buffer &&
-                  (frame->readback_buffer->width != buffer->width ||
-                   frame->readback_buffer->height != buffer->height);
-    if (resize) {
-        wlr_buffer_drop(frame->readback_buffer);
-        frame->readback_buffer = NULL;
-    }
-
-    if (!frame->readback_buffer) {
-        frame->readback_buffer =
-            ky_renderer_create_shm_buffer(buffer->width, buffer->height,
-                                          DRM_FORMAT_ARGB8888);
-        if (!frame->readback_buffer) {
-            return NULL;
-        }
-    }
-
-    void *data;
-    uint32_t format;
-    size_t stride;
-    if (!wlr_buffer_begin_data_ptr_access(frame->readback_buffer,
-                                          WLR_BUFFER_DATA_PTR_ACCESS_WRITE,
-                                          &data, &format, &stride)) {
-        return NULL;
-    }
-
-    struct wlr_box box = {
-        .width = buffer->width,
-        .height = buffer->height,
-    };
-    capture_read_buffer(buffer, format, stride, &box, data);
-    wlr_buffer_end_data_ptr_access(frame->readback_buffer);
-
-    return frame->readback_buffer;
-}
-
 static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
 {
     struct ky_capture_frame *frame = wl_container_of(listener, frame, buffer_update);
@@ -206,12 +143,6 @@ static void frame_handle_buffer_update(struct wl_listener *listener, void *data)
         struct thumbnail_update_event *event = data;
         buffer = event->buffer;
         flags = event->buffer_changed ? 0 : KYWC_CAPTURE_FRAME_V1_FLAGS_REUSED;
-    }
-
-    buffer = frame_get_export_buffer(frame, buffer);
-    if (!buffer) {
-        kywc_capture_frame_v1_send_failed(frame->resource);
-        return;
     }
 
     struct wlr_dmabuf_attributes dmabuf;
