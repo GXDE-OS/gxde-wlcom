@@ -1,3 +1,11 @@
+gxde-wlcom (2.1.2-gxde1) lizhi; urgency=medium
+
+  * 新增协议支持ext-foreign-toplevel-list-v1
+  * 新增协议支持ext-image-capture-source-v1
+  * 新增协议支持ext-image-copy-capture-v1
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 15:41:44 +0800
+
 gxde-wlcom (2.1.1-gxde11) lizhi; urgency=medium
 
   * 修复Archlinux上的CI问题
