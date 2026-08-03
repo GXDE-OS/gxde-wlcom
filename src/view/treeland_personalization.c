@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 
 #include <wlr/types/wlr_compositor.h>
@@ -209,6 +210,23 @@ static void string_replace(char **dst, const char *src)
 {
     free(*dst);
     *dst = src ? strdup(src) : NULL;
+}
+
+/**
+ * @brief Whether a boolean environment variable is switched on
+ *
+ * Anything other than the accepted spellings -- including an empty value --
+ * counts as off, so an exported-but-blank variable does not silently turn a
+ * feature off.
+ */
+static bool env_is_on(const char *name)
+{
+    const char *value = getenv(name);
+    if (!value || !*value) {
+        return false;
+    }
+    return !strcasecmp(value, "TRUE") || !strcasecmp(value, "ON") || !strcasecmp(value, "YES") ||
+           !strcmp(value, "1");
 }
 
 /* Window context */
@@ -1261,11 +1279,26 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
  * @brief Create the @c treeland_personalization_manager_v1 global and manage
  *        its lifetime
  *
+ * Setting @c GXWM_DONOT_BROADCAST_TLPM turns the protocol off entirely: no
+ * global is advertised, so clients fall back to their own defaults instead of
+ * failing. That is the escape hatch for the day a treeland-protocols change
+ * breaks this implementation again -- a desktop without blur and custom corner
+ * radii still beats one that cannot start.
+ *
  * @param server (server*) the server instance
  * @return true on success, false on failure
  */
 bool treeland_personalization_manager_create(struct server *server)
 {
+    /* Logged above the default level: with the global gone the symptom is
+     * silent -- windows simply stop honouring client-side personalization --
+     * so whoever is debugging that needs to find the reason without -V. */
+    if (env_is_on("GXWM_DONOT_BROADCAST_TLPM")) {
+        kywc_log(KYWC_WARN, "(Treeland Shim) Personalization: global not advertised, disabled by "
+                            "GXWM_DONOT_BROADCAST_TLPM");
+        return true;
+    }
+
     manager = calloc(1, sizeof(struct treeland_personalization_manager));
     if (!manager) {
         return false;

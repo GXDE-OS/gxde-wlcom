@@ -155,6 +155,24 @@ grep Personalization ~/.log/gxde-wlcom.log | tail -1
 
 若探测发现DTK5与DTK6**不一致**（一个已按0.5.9重编、另一个还没有），会打一条`ERROR`并选择0.5.8。这种混合状态下没有任何一种选择能让两边都活，只能把落后的那个包补编译完，或用环境变量指定优先保谁。
 
+#### 总开关：完全不广播该协议
+
+上面的开关是在两种布局之间二选一，而这个是直接不广播`treeland_personalization_manager_v1`这个global：
+
+```bash
+export GXWM_DONOT_BROADCAST_TLPM=TRUE   # 亦接受 ON / YES / 1，大小写不敏感
+```
+
+**默认关闭**（即默认正常广播）。取值不在上述列表内的一律视为关闭，包括导出了但为空的情况，所以`=FALSE`、`=0`或`export GXWM_DONOT_BROADCAST_TLPM=`都是照常广播，不会误伤。
+
+万一哪天上游又来一次不bump版本号的破坏性改动，而上面的布局开关也救不了场，用它可以让桌面先能登录进去。客户端拿不到这个global就会回退到自己的默认外观——窗口模糊、自定义圆角、客户端指定的标题栏这些会失效，但比登进桌面panel不显示强。
+
+该开关的日志是`WARN`级（默认可见，无需`-V`）
+```bash
+grep Personalization ~/.log/gxde-wlcom.log | tail -1
+# [WARN]: (Treeland Shim) Personalization: global not advertised, disabled by GXWM_DONOT_BROADCAST_TLPM
+```
+
 #### 彻底移除兼容代码
 
 日常切换用上面的开关就够了，本节是**等GXDE彻底转向0.5.9之后**清理死代码的做法（此后合成器不再能服务0.5.8客户端）。
