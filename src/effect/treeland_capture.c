@@ -25,8 +25,11 @@
 #include <linux/input-event-codes.h>
 
 #include <wayland-server-protocol.h>
+#include <wlr/render/pass.h>
+#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/box.h>
 
 #include <kywc/boxes.h>
@@ -43,6 +46,7 @@
 #include "input/input.h"
 #include "input/seat.h"
 #include "output.h"
+#include "render/renderer.h"
 #include "scene/scene.h"
 #include "scene/thumbnail.h"
 #include "server.h"
@@ -83,8 +87,19 @@ struct tcap_selector {
     enum tcap_sel_mode mode;
     bool destroying;
 
+    /*
+     * Selection overlay, styled to match the deepin/gxde-kwin screenshot look:
+     * a 20% black dim over everything except the selection (4 surrounding rects)
+     * plus a white dashed 1px border around the selection (Qt DashLine: 4px dash,
+     * 2px gap). The border edges are scene buffers cropped from two reusable
+     * dash-pattern buffers (one horizontal, one vertical).
+     */
     struct ky_scene_tree *tree;
-    struct ky_scene_rect *highlight;
+    struct ky_scene_rect *dim[4];      /* top, bottom, left, right */
+    struct ky_scene_buffer *border[4]; /* top, bottom, left, right */
+    struct wlr_buffer *h_dash;         /* horizontal dash pattern, layout_w x 1 */
+    struct wlr_buffer *v_dash;         /* vertical dash pattern, 1 x layout_h */
+    struct kywc_box layout_box;        /* union of all outputs, layout coords */
 
     /* mask view whose input we temporarily bypass so we can hit windows below */
     struct view *mask_view;
@@ -260,18 +275,127 @@ static struct kywc_view *selector_view_at(struct tcap_selector *selector, double
     return NULL;
 }
 
+/* white 1px border, Qt::DashLine default pattern: 4px dash, 2px gap */
+#define TCAP_BORDER_THICKNESS 1
+#define TCAP_DASH_ON 4
+#define TCAP_DASH_PERIOD 6
+
+/*
+ * Render a reusable dash-pattern buffer (white opaque dashes, transparent gaps)
+ * once, using the compositor renderer so it works on any backend. Horizontal
+ * buffers are (length x 1), vertical ones (1 x length).
+ */
+static struct wlr_buffer *make_dash_buffer(struct server *server, int length, bool horizontal)
+{
+    if (length < 1) {
+        length = 1;
+    }
+    int w = horizontal ? length : TCAP_BORDER_THICKNESS;
+    int h = horizontal ? TCAP_BORDER_THICKNESS : length;
+
+    struct wlr_buffer *buf = ky_renderer_create_buffer(server->renderer, server->allocator, w, h,
+                                                       DRM_FORMAT_ARGB8888, true);
+    if (!buf) {
+        return NULL;
+    }
+
+    struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(server->renderer, buf, NULL);
+    if (!pass) {
+        wlr_buffer_drop(buf);
+        return NULL;
+    }
+    /* transparent background */
+    wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+                                       .box = { 0, 0, w, h },
+                                       .color = { 0.0f, 0.0f, 0.0f, 0.0f },
+                                       .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                   });
+    /* white dashes */
+    for (int p = 0; p < length; p += TCAP_DASH_PERIOD) {
+        int dash = (p + TCAP_DASH_ON <= length) ? TCAP_DASH_ON : (length - p);
+        struct wlr_box box = horizontal ? (struct wlr_box){ p, 0, dash, h }
+                                        : (struct wlr_box){ 0, p, w, dash };
+        wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+                                           .box = box,
+                                           .color = { 1.0f, 1.0f, 1.0f, 1.0f },
+                                           .blend_mode = WLR_RENDER_BLEND_MODE_NONE,
+                                       });
+    }
+    wlr_render_pass_submit(pass);
+    return buf;
+}
+
+static void place_rect(struct ky_scene_rect *rect, int x, int y, int w, int h)
+{
+    if (!rect) {
+        return;
+    }
+    if (w <= 0 || h <= 0) {
+        ky_scene_node_set_enabled(&rect->node, false);
+        return;
+    }
+    ky_scene_rect_set_size(rect, w, h);
+    ky_scene_node_set_position(&rect->node, x, y);
+    ky_scene_node_set_enabled(&rect->node, true);
+}
+
+/* show one dashed border edge: a (w x h) slice from the top-left of its buffer */
+static void place_border(struct ky_scene_buffer *edge, int x, int y, int w, int h)
+{
+    if (!edge) {
+        return;
+    }
+    if (w <= 0 || h <= 0) {
+        ky_scene_node_set_enabled(&edge->node, false);
+        return;
+    }
+    struct wlr_fbox src = { 0, 0, w, h };
+    ky_scene_buffer_set_source_box(edge, &src);
+    ky_scene_buffer_set_dest_size(edge, w, h);
+    ky_scene_node_set_position(&edge->node, x, y);
+    ky_scene_node_set_enabled(&edge->node, true);
+}
+
+static void selector_hide_overlay(struct tcap_selector *selector)
+{
+    for (int i = 0; i < 4; i++) {
+        if (selector->dim[i]) {
+            ky_scene_node_set_enabled(&selector->dim[i]->node, false);
+        }
+        if (selector->border[i]) {
+            ky_scene_node_set_enabled(&selector->border[i]->node, false);
+        }
+    }
+}
+
+/*
+ * Style the selection like deepin/gxde-kwin: dim (20% black) everything except
+ * the selection with four surrounding rects, and outline the selection with a
+ * thin light border.
+ */
 static void selector_show_highlight(struct tcap_selector *selector, struct kywc_box *box)
 {
-    if (!selector->highlight) {
-        return;
-    }
     if (!box || box->width <= 0 || box->height <= 0) {
-        ky_scene_node_set_enabled(&selector->highlight->node, false);
+        selector_hide_overlay(selector);
         return;
     }
-    ky_scene_rect_set_size(selector->highlight, box->width, box->height);
-    ky_scene_node_set_position(&selector->highlight->node, box->x, box->y);
-    ky_scene_node_set_enabled(&selector->highlight->node, true);
+
+    struct kywc_box l = selector->layout_box;
+    int sx = box->x, sy = box->y, sw = box->width, sh = box->height;
+    int lr = l.x + l.width, lb = l.y + l.height;
+
+    /* dim surround: top, bottom, left, right of the selection */
+    place_rect(selector->dim[0], l.x, l.y, l.width, sy - l.y);
+    place_rect(selector->dim[1], l.x, sy + sh, l.width, lb - (sy + sh));
+    place_rect(selector->dim[2], l.x, sy, sx - l.x, sh);
+    place_rect(selector->dim[3], sx + sw, sy, lr - (sx + sw), sh);
+
+    /* white dashed border on the inside edges of the selection */
+    int t = TCAP_BORDER_THICKNESS;
+    place_border(selector->border[0], sx, sy, sw, t);              /* top */
+    place_border(selector->border[1], sx, sy + sh - t, sw, t);     /* bottom */
+    place_border(selector->border[2], sx, sy, t, sh);              /* left */
+    place_border(selector->border[3], sx + sw - t, sy, t, sh);     /* right */
 }
 
 static void selector_update_hover(struct tcap_selector *selector, double lx, double ly)
@@ -554,14 +678,43 @@ static struct tcap_selector *tcap_selector_create(struct tcap_context *context)
     selector->seat = seat;
     selector->mode = selector_mode_from_hint(context->source_hint);
 
-    /* overlay tree with a translucent highlight rect */
+    /* full multi-output layout bounds, used to size the dim surround */
+    if (seat->layout) {
+        struct wlr_box lb;
+        wlr_output_layout_get_box(seat->layout, NULL, &lb);
+        selector->layout_box = (struct kywc_box){ lb.x, lb.y, lb.width, lb.height };
+    }
+
+    /* reusable dash-pattern buffers spanning the whole layout */
+    selector->h_dash = make_dash_buffer(context->manager->server, selector->layout_box.width, true);
+    selector->v_dash =
+        make_dash_buffer(context->manager->server, selector->layout_box.height, false);
+
+    /* overlay tree: 20% black dim (premultiplied) + white dashed selection border */
     selector->tree = ky_scene_tree_create(&seat->scene->tree);
     if (selector->tree) {
-        static const float color[4] = { 0.16f, 0.5f, 1.0f, 0.25f };
-        selector->highlight = ky_scene_rect_create(selector->tree, 1, 1, color);
-        if (selector->highlight) {
-            ky_scene_node_set_input_bypassed(&selector->highlight->node, true);
-            ky_scene_node_set_enabled(&selector->highlight->node, false);
+        static const float dim_color[4] = { 0.0f, 0.0f, 0.0f, 0.2f };
+        /* bypass input for the whole overlay so hit-testing reaches windows below */
+        ky_scene_node_set_input_bypassed(&selector->tree->node, true);
+        for (int i = 0; i < 4; i++) {
+            selector->dim[i] = ky_scene_rect_create(selector->tree, 1, 1, dim_color);
+            if (selector->dim[i]) {
+                ky_scene_node_set_enabled(&selector->dim[i]->node, false);
+            }
+        }
+        /* borders are created after dim rects so they render on top */
+        if (selector->h_dash) {
+            selector->border[0] = ky_scene_buffer_create(selector->tree, selector->h_dash);
+            selector->border[1] = ky_scene_buffer_create(selector->tree, selector->h_dash);
+        }
+        if (selector->v_dash) {
+            selector->border[2] = ky_scene_buffer_create(selector->tree, selector->v_dash);
+            selector->border[3] = ky_scene_buffer_create(selector->tree, selector->v_dash);
+        }
+        for (int i = 0; i < 4; i++) {
+            if (selector->border[i]) {
+                ky_scene_node_set_enabled(&selector->border[i]->node, false);
+            }
         }
         ky_scene_node_raise_to_top(&selector->tree->node);
     }
@@ -617,6 +770,9 @@ static void tcap_selector_destroy(struct tcap_selector *selector)
     if (selector->tree) {
         ky_scene_node_destroy(&selector->tree->node);
     }
+    /* drop our refs after the scene buffers (which locked them) are gone */
+    wlr_buffer_drop(selector->h_dash);
+    wlr_buffer_drop(selector->v_dash);
 
     if (context) {
         context->selector = NULL;
