@@ -338,6 +338,29 @@ static void scene_buffer_wait_acquire(struct ky_scene_buffer *scene_buffer,
     int fd = wlr_drm_syncobj_timeline_export_sync_file(state->acquire_timeline,
                                                        state->acquire_point);
     if (fd < 0) {
+        /**
+         * The acquire point has not materialised yet. This backport dropped
+         * upstream's wait-before-signal commit blocking, so there is nothing
+         * left to wait on here and we are about to sample a buffer whose GPU
+         * writes may still be in flight.
+         *
+         * Rate limited so that a persistent case shows up at the default WARN
+         * level without flooding ~/.xsession-errors.
+         * ------------------------------------------------------------------------
+         * acquire point尚未materialize。本backport移除了上游的wait-before-signal
+         * 提交阻塞，因此此处已无可等待之物，我们即将采样一个GPU写入可能尚未完成的
+         * buffer。
+         *
+         * 做了限流，使该问题若持续存在能在默认WARN级别下可见，又不会刷爆
+         * ~/.xsession-errors。
+         */
+        static unsigned long skipped;
+        if (++skipped == 1 || skipped % 500 == 0) {
+            kywc_log(KYWC_WARN,
+                     "explicit sync: acquire point not materialised, sampled "
+                     "without waiting (%lu times so far)",
+                     skipped);
+        }
         return;
     }
     ky_renderer_wait_acquire_fd(renderer, fd);
@@ -409,6 +432,22 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
         pixman_region32_fini(&render_region);
         return;
     }
+
+    /**
+     * Explicit sync, acquire half. Must happen after the texture exists but
+     * before any draw call samples it.
+     *
+     * A client using wp_linux_drm_syncobj_v1 does NOT attach an implicit fence
+     * to its DMA-BUF, so without this wait there is no synchronisation at all
+     * for it and we sample buffers whose GPU writes are still in flight.
+     * ------------------------------------------------------------------------
+     * 显式同步的acquire那一半。必须在texture创建之后、任何绘制调用采样它之前执行。
+     *
+     * 使用wp_linux_drm_syncobj_v1的客户端*不会*再给自己的DMA-BUF附加隐式fence，
+     * 因此若缺少这次等待，对这类客户端就完全没有同步可言，我们会采样到GPU写入
+     * 尚未完成的buffer。
+     */
+    scene_buffer_wait_acquire(scene_buffer, target->output->output->renderer);
 
     struct wlr_box dst_box = {
         .x = lx - target->logical.x,

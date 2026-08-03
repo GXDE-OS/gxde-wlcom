@@ -132,13 +132,26 @@ static void set_buffer_with_surface_state(struct ky_scene_buffer *scene_buffer,
          * 
          * Take a lock so that the client does not release it before we
          * composite.
+         *
+         * Pass the client's buffer damage, exactly like the wl_shm path above
+         * does. Without it set_buffer_with_damage() falls through to its "no
+         * damage" branch and repaints the whole surface every commit, so a
+         * region the client never touched (a static title bar next to an
+         * animating widget) still gets re-sampled from a buffer whose GPU
+         * writes may not have landed, and flickers.
          * --------------------------------------------------------------------
          * DMA-BUF客户端
          * 直接使用raw buffer。Wlroots 0.17.4-ok并不会将DMA-BUF包进客户端buffer。
-         * 
+         *
          * 执行锁定以确保客户端在我们合成之前不会提前释放buffer。
+         *
+         * 需要和上面的wl_shm路径一样传入客户端的buffer damage。否则
+         * set_buffer_with_damage()会落到它的「无damage」分支，导致每次commit都整面
+         * 重绘；于是客户端根本没有改动的区域(比如动画控件旁边那条静止的标题栏)也会
+         * 被重新采样，而此时该buffer的GPU写入可能尚未完成，就会闪。
          */
-        ky_scene_buffer_set_buffer(scene_buffer, surface->current.buffer);
+        ky_scene_buffer_set_buffer_with_damage(scene_buffer, surface->current.buffer,
+                                               &surface->buffer_damage);
     } else {
         ky_scene_buffer_set_buffer(scene_buffer, NULL);
     }
