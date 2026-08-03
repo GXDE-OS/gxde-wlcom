@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <pango/pangocairo.h>
 #include <systemd/sd-bus.h>
@@ -166,29 +167,40 @@ static bool wlroots_server_init(struct server *server)
      * Explicit sync (backported from wp_linux_drm_syncobj_v1) ->
      * GPU clients like Chromium/Firefox provide acquire/release fences so
      * that the compositor waits for their render to finish before sampling.
-     * 
-     * Without it those commits are unrendered buffers and show up transparent
-     * or fully black.
-     * 
-     * The current acquire-wait is CPU-Side in the commit handler which stalls
-     * in the main loop, and does NOT yet fix GPU client content (needs
-     * GPU-side eglWaitSync in the render pass). So this is DISABLED BY
-     * DEFAULT. Only enable the KYWC_SYNCOBJ=1 for development purpose and
-     * this is highly NOT RECOMMENDED.
+     *
+     * Without it those clients fall back to implicit sync. That is unreliable
+     * on NVIDIA and across a hybrid GPU split, so we sample buffers the client
+     * has not finished rendering into and they show up transparent or fully
+     * black -- the flicker seen while scrolling in Chromium or animating in
+     * Flutter apps.
+     *
+     * Both halves of the fence handshake are in place now:
+     *   - acquire: waited GPU-side via eglWaitSync in the render pass, see
+     *     scene_buffer_wait_acquire() in scene/buffer.c.
+     *   - release: deferred to wlr_buffer.events.release, see
+     *     scene_surface_signal_release() in scene/surface.c.
+     *
+     * So this is ENABLED BY DEFAULT. Set KYWC_SYNCOBJ=0 to fall back to
+     * implicit sync when debugging.
      * ------------------------------------------------------------------------
      * 显式同步 (从wp_linux_drm_syncobj_v1 backport) ->
      * 像是Chromium/Firefox这样的GPU客户端会提供acquire/release fences，
      * 以便合成器在采样前等待其渲染完成。
-     * 
-     * 如果没有它，这些提交将是未渲染的buffer，看起来就像是为透明或全黑。
-     * 
-     * 当前的获取等待是在提交处理程序中的CPU端，这会在主循环中阻塞，
-     * 并且尚未修复GPU客户端内容 (需要在渲染通道中使用GPU端的eglWaitSync)。
-     * 
-     * 因此，默认情况下SYNCOBJ已禁用。仅为某些开发目的开启KYWC_SYNCOBJ=1，
-     * *强烈不建议这样做*。
+     *
+     * 如果没有它，这些客户端会退回到隐式同步。而隐式同步在NVIDIA上以及跨双显卡
+     * 场景下并不可靠，于是我们会采样到客户端尚未渲染完成的buffer，它们看起来就是
+     * 透明或全黑 —— 也就是在Chromium里滚动、或Flutter程序播放动画时看到的闪烁。
+     *
+     * 目前fence握手的两侧都已就位：
+     *   - acquire：在渲染通道中通过eglWaitSync于GPU端等待，参见
+     *     scene/buffer.c中的scene_buffer_wait_acquire()。
+     *   - release：推迟至wlr_buffer.events.release，参见
+     *     scene/surface.c中的scene_surface_signal_release()。
+     *
+     * 因此默认启用。调试时可设置KYWC_SYNCOBJ=0以退回隐式同步。
      */
-    if (getenv("KYWC_SYNCOBJ") != NULL) {
+    const char *syncobj_env = getenv("KYWC_SYNCOBJ");
+    if (syncobj_env == NULL || strcmp(syncobj_env, "0") != 0) {
         int syncobj_drm_fd = wlr_backend_get_drm_fd(server->backend);
         if (syncobj_drm_fd >= 0) {
             if (wlr_linux_drm_syncobj_manager_v1_create(server->display, 1, syncobj_drm_fd)) {

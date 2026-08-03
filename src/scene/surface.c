@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_linux_drm_syncobj_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 
 #include "output.h"
@@ -143,12 +144,51 @@ static void set_buffer_with_surface_state(struct ky_scene_buffer *scene_buffer,
     }
 }
 
+/**
+ * Explicit sync: tie the client's release point to the lifetime of the lock we
+ * just took on its buffer.
+ *
+ * Without this the release merger only drops to zero refs when the *next*
+ * commit runs state_finish() on it, so the client is told its buffer is free
+ * while we may still be sampling it. Registering here defers the release point
+ * until wlr_buffer.events.release fires, i.e. until the scene actually lets go.
+ *
+ * No-op for clients that did not commit through wp_linux_drm_syncobj_v1: their
+ * release_merger is NULL and the helper returns early.
+ * ----------------------------------------------------------------------------
+ * 显式同步：将客户端的release点绑定到我们刚刚对其buffer所加锁的生命周期上。
+ *
+ * 如果没有这一步，release merger只有在*下一次*commit对其调用state_finish()时
+ * 引用计数才会归零，于是我们可能还在采样该buffer，却已经告诉客户端它可以复用了。
+ * 在此处注册可将release点推迟到wlr_buffer.events.release触发时，也就是场景真正
+ * 释放该buffer之时。
+ *
+ * 对于未通过wp_linux_drm_syncobj_v1提交的客户端，其release_merger为NULL，
+ * 该辅助函数会提前返回，因此这里是个空操作。
+ */
+static void scene_surface_signal_release(struct ky_scene_surface *surface)
+{
+    struct wlr_buffer *buffer = surface->buffer->buffer;
+    if (buffer == NULL) {
+        return;
+    }
+
+    struct wlr_linux_drm_syncobj_surface_v1_state *state =
+        wlr_linux_drm_syncobj_v1_get_surface_state(surface->surface);
+    if (state == NULL) {
+        return;
+    }
+
+    wlr_linux_drm_syncobj_v1_state_signal_release_with_buffer(state, buffer);
+}
+
 static void handle_scene_surface_surface_commit(struct wl_listener *listener, void *data)
 {
     struct ky_scene_surface *surface = wl_container_of(listener, surface, surface_commit);
     struct ky_scene_buffer *scene_buffer = surface->buffer;
 
     set_buffer_with_surface_state(scene_buffer, surface->surface);
+    scene_surface_signal_release(surface);
 
     // If the surface has requested a frame done event, honour that. The
     // frame_callback_list will be populated in this case. We should only
