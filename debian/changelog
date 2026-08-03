@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.2-gxde2) lizhi; urgency=medium
+
+  * 修复默认使用seatd导致在LightDM下无法启动的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 3 Aug 2026 19:11:02 +0800
+
 gxde-wlcom (2.1.2-gxde1) lizhi; urgency=medium
 
   * 新增协议支持ext-foreign-toplevel-list-v1
