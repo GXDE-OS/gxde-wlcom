@@ -100,6 +100,122 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 
 
+### treeland-protocols 0.5.9 与 personalization 协议
+
+**这一节关系到整个桌面能否启动，改动`protocols/treeland-personalization-manager-v1.xml`前请务必读完。**
+
+上游在`treeland-protocols` 0.5.9（提交`8576b9c`，2026-06-16）中删除了`get_wallpaper_context`请求和`treeland_personalization_wallpaper_context_v1`接口，理由是该功能已迁移至`xdg-desktop-portal`。问题在于**这次删除没有bump版本号**——manager接口前后都是`version="2"`，接口名也没变，提交信息自己写的就是`Influence: Broken change`。
+
+Wayland的opcode是按XML中的出现顺序排的，少一个请求，后面全部错位一格：
+
+| 客户端发出                        | opcode | 布局不一致的服务端会执行            |
+| --------------------------------- | ------ | ----------------------------------- |
+| 0.5.9客户端的`get_cursor_context`  | 1      | 0.5.8服务端的`get_wallpaper_context` |
+| 0.5.8客户端的`get_appearance_context` | 4   | 0.5.9服务端的`destroy`               |
+
+由于两种布局同名、同版本，服务端在`bind`时拿不到任何信号去区分对面是哪一种，**无法同时兼容**。一旦对不上，所有DTK程序（`libdtkgui`/`libdtk6gui`，也就是几乎全部GXDE程序）会在启动时被合成器以`wl_display error`杀掉，桌面直接起不来。
+
+因此本仓库vendor的XML必须与**系统上DTK编译时所用的那一份**保持wire一致，而不是跟着上游master走。当前仓库内的版本对应 **0.5.8（含wallpaper context）**。
+
+#### 何时需要切换
+
+真正的引爆点不是`apt upgrade treeland-protocols`——XML只是编译期输入，升级协议包本身不改变任何已编译好的客户端。**引爆点是`libdtkgui`/`libdtk6gui`等被按0.5.9重新编译的那一刻**，那时合成器必须同步切换，早一步晚一步都会让桌面无法登录。
+
+判断依据（任选其一）：
+
+```bash
+# 1. 看系统协议包版本
+dpkg -l treeland-protocols
+
+# 2. 直接看DTK是否还引用wallpaper context，这一条才是决定性的
+strings -a /usr/lib/x86_64-linux-gnu/libdtk6gui.so.* | grep -c treeland_personalization_wallpaper_context
+#   >0 : DTK仍按0.5.8编译，必须保留wallpaper context
+#    0 : DTK已按0.5.9编译，必须删除wallpaper context
+```
+
+#### 运行时开关（无需重新编译）
+
+合成器把两种布局都编译在了同一个二进制里，启动时选一个：0.5.8布局用的是wayland-scanner生成的方法表，0.5.9布局则在运行时从同一张表里挑出`{0,2,3,4,5}`（跳过`get_wallpaper_context`）拼出来，因此两条路径同源、不会各自漂移。**前提是vendor的XML保持0.5.8超集**——真正切到0.5.9后这个开关连同wallpaper实现一起删掉即可。
+
+默认行为是**自动探测**：启动时扫描已安装的`libdtk*gui`（Qt5与Qt6两套都查，含multiarch路径），看它们是否还引用`treeland_personalization_wallpaper_context_v1`。这比看协议包版本准，因为XML只是编译期输入。探测不到DTK时（构建chroot、精简安装）退回去看`/usr/share/treeland-protocols`，再不行默认0.5.8。
+
+理论上不需要强制设定，但如果非得要，设环境变量即可，改`startgxde_wlcom`里一行然后重新登录：
+
+```bash
+export GXDE_WLCOM_PERSONALIZATION=058   # 或 059；亦接受 0.5.8 / 0.5.9
+```
+
+确认当前选了哪个（该行是`INFO`级，默认`WARN`不显示，需`-V`或`KYWC_LOG_LEVEL=INFO`）：
+
+```bash
+grep Personalization ~/.log/gxde-wlcom.log | tail -1
+# (Treeland Shim) Personalization: probed 4 DTK libraries, wallpaper context referenced -> using the 0.5.8 layout
+# (Treeland Shim) Personalization: layout forced to 0.5.9 by GXDE_WLCOM_PERSONALIZATION
+```
+
+若探测发现DTK5与DTK6**不一致**（一个已按0.5.9重编、另一个还没有），会打一条`ERROR`并选择0.5.8。这种混合状态下没有任何一种选择能让两边都活，只能把落后的那个包补编译完，或用环境变量指定优先保谁。
+
+#### 彻底移除兼容代码
+
+日常切换用上面的开关就够了，本节是**等GXDE彻底转向0.5.9之后**清理死代码的做法（此后合成器不再能服务0.5.8客户端）。
+
+撤销`17585154`（`fix: DTK program crashes due to lacking wallpaper support in treeland personalization MGR`）即可，无需其他改动：
+
+```bash
+git revert <运行时开关的提交>   # 必须先撤，它依赖wallpaper相关符号
+git revert 17585154
+ninja -C build
+```
+
+**顺序不能反。** 运行时开关的代码引用了`get_wallpaper_context`/`manager_get_wallpaper_context`等符号，先撤`17585154`会留下一堆悬空引用。
+
+`17585154`只动了两个文件（XML加回wallpaper context、`treeland_personalization.c`加回其实现），撤销后XML即回到与上游master逐字节相同的状态，与0.5.9包wire一致。若日后rebase/squash导致hash失效，等价的手工步骤是：
+
+1. 用系统上的新版覆盖vendor的XML：
+   ```bash
+   cp /usr/share/treeland-protocols/treeland-personalization-manager-v1.xml protocols/
+   ```
+2. 删除`src/view/treeland_personalization.c`中的运行时开关：`enum personalization_layout`、manager里的`layout`/`interface_059`/`requests_059`、`manager_implementation_059`与`manager_impl_059`、`layout_derive_059`、`file_contains`、`dtk_lib_patterns`、`layout_from_env`、`layout_detect`、`layout_is_059`，以及`treeland_personalization_manager_create`里的探测段落；`personalization_manager_bind`与`wl_global_create`改回直接使用生成的`treeland_personalization_manager_v1_interface`和`manager_impl`。
+3. 删除同一文件中的wallpaper context实现：`wallpaper_*`系列函数、`wallpaper_impl`、`manager_get_wallpaper_context`、`manager_impl`中的`.get_wallpaper_context`、`personalization_context`里的`wallpaper`子结构、manager里的`wallpaper_contexts`与`wallpaper_metadata`及其初始化/释放。文件里另有`BLEND_MODE_WALLPAPER`相关的两处，属于window context的blend mode，与本节无关，**不要删**。
+4. `ninja -C build`，编译期若有遗漏会直接报错。
+
+**不要`git revert b9dafa79`。** 那个提交引入的是*整套*personalization支持（window/cursor/font/appearance四类context），撤销它会连窗口圆角、模糊、标题栏控制一起丢掉。撤销后合成器不再广播该global，客户端会自行回退、不会崩溃，但功能全部消失，属于因噎废食。
+
+顺带一提，b9dafa79当初vendor的XML本身**就是**0.5.9布局（与上游master逐字节相同），只是当时系统上的DTK还是按0.5.8编译的，才导致了错位。所以撤销`17585154`实际上就是把该文件还原回b9dafa79时的状态。
+
+#### 改动XML后必须做的校验
+
+描述文字随便改，但wire布局（接口、请求/事件顺序、参数类型、`type="destructor"`、`since`、version）必须与目标版本完全一致。改完请比对：
+
+```bash
+python3 - <<'EOF' protocols/treeland-personalization-manager-v1.xml /usr/share/treeland-protocols/treeland-personalization-manager-v1.xml
+import sys, xml.etree.ElementTree as ET
+def wire(p):
+    out = []
+    for i in ET.parse(p).getroot().findall('interface'):
+        out.append(('IFACE', i.get('name'), i.get('version')))
+        for kind in ('request', 'event'):
+            for op, m in enumerate(i.findall(kind)):
+                args = [(a.get('type'), a.get('interface')) for a in m.findall('arg')]
+                out.append((kind, i.get('name'), op, m.get('name'), m.get('type'), m.get('since'), args))
+    return out
+a, b = wire(sys.argv[1]), wire(sys.argv[2])
+print("WIRE IDENTICAL" if a == b else "WIRE MISMATCH:\n" + "\n".join(
+    f"  ours={x}\n  upst={y}" for x, y in zip(a, b) if x != y))
+EOF
+```
+
+再嵌套跑一遍确认真机行为，这一步能在污染真实会话之前抓到问题：
+
+```bash
+WAYLAND_DISPLAY=wayland-0 ./build/gxde-wlcom   # 对外暴露 wayland-1
+WAYLAND_DISPLAY=wayland-1 gxde-terminal        # 任一DTK程序，能起来即为正常
+```
+
+同样的比对建议对`protocols/`下其余treeland协议一并执行——它们目前与系统包一致。
+
+
+
 ## 开始上手
 
 ### 编译

@@ -21,6 +21,8 @@
  */
 
 #define _POSIX_C_SOURCE 200809L
+#include <glob.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -74,8 +76,36 @@
 #define DEFAULT_WINDOW_OPACITY 255
 #define DEFAULT_TITLEBAR_HEIGHT 40
 
+/**
+ * @brief Which wire layout of treeland_personalization_manager_v1 to serve
+ *
+ * treeland-protocols 0.5.9 dropped @c get_wallpaper_context and the
+ * @c treeland_personalization_wallpaper_context_v1 interface *without* bumping
+ * the interface version, so the two releases share a name and a version but not
+ * a request table. Wayland opcodes are positional, which makes the layouts
+ * mutually exclusive and indistinguishable at bind time: the compositor has to
+ * commit to whichever one its clients were built against, and getting it wrong
+ * kills every DTK client at startup.
+ *
+ * Both layouts are served from the same vendored XML -- see
+ * @c layout_derive_059() -- so switching is a matter of configuration rather
+ * than of rebuilding. This requires the vendored XML to stay the 0.5.8
+ * superset; once GXDE has moved to 0.5.9 for good, the whole switch and the
+ * wallpaper context can go. The README has the full story.
+ */
+enum personalization_layout {
+    PERSONALIZATION_LAYOUT_058, /**< <= 0.5.8, has get_wallpaper_context */
+    PERSONALIZATION_LAYOUT_059, /**< >= 0.5.9, no wallpaper context */
+};
+
 struct treeland_personalization_manager {
     struct wl_global *global;
+
+    /* Layout served to clients, plus the derived 0.5.9 request table. The
+     * 0.5.8 one is the scanner-generated table and needs nothing here. */
+    enum personalization_layout layout;
+    struct wl_interface interface_059;
+    struct wl_message *requests_059;
 
     /* Per-window contexts */
     struct wl_list window_contexts;
@@ -956,16 +986,246 @@ static const struct treeland_personalization_manager_v1_interface manager_impl =
     .destroy = manager_handle_destroy,
 };
 
+/* Layout selection */
+
+/**
+ * @brief The 0.5.9 manager implementation
+ *
+ * Deliberately a bare struct rather than the generated
+ * @c treeland_personalization_manager_v1_interface: it mirrors what
+ * wayland-scanner would emit for the 0.5.9 XML, i.e. the members line up
+ * one-to-one with the request table derived in @c layout_derive_059(), which is
+ * how libwayland dispatches. Same handlers, minus the wallpaper one.
+ */
+struct manager_implementation_059 {
+    void (*get_window_context)(struct wl_client *, struct wl_resource *, uint32_t,
+                               struct wl_resource *);
+    void (*get_cursor_context)(struct wl_client *, struct wl_resource *, uint32_t);
+    void (*get_font_context)(struct wl_client *, struct wl_resource *, uint32_t);
+    void (*get_appearance_context)(struct wl_client *, struct wl_resource *, uint32_t);
+    void (*destroy)(struct wl_client *, struct wl_resource *);
+};
+
+static const struct manager_implementation_059 manager_impl_059 = {
+    .get_window_context = manager_get_window_context,
+    .get_cursor_context = manager_get_cursor_context,
+    .get_font_context = manager_get_font_context,
+    .get_appearance_context = manager_get_appearance_context,
+    .destroy = manager_handle_destroy,
+};
+
+/**
+ * @brief Build the 0.5.9 request table out of the generated 0.5.8 one
+ *
+ * Copying the @c wl_message entries beats vendoring a second XML: everything
+ * except the dropped request comes straight from the scanner-generated table,
+ * so the two layouts cannot drift apart.
+ *
+ * @return true if the table was derived, false if the vendored XML is not the
+ *         0.5.8 superset this needs
+ */
+static bool layout_derive_059(void)
+{
+    const struct wl_interface *src = &treeland_personalization_manager_v1_interface;
+
+    if (src->method_count < 2 || strcmp(src->methods[1].name, "get_wallpaper_context") != 0) {
+        kywc_log(KYWC_ERROR,
+                 "(Treeland Shim) Personalization: cannot derive the 0.5.9 layout, request 1 of the "
+                 "vendored XML is '%s' rather than get_wallpaper_context",
+                 src->method_count > 1 ? src->methods[1].name : "(none)");
+        return false;
+    }
+
+    manager->requests_059 = calloc(src->method_count - 1, sizeof(struct wl_message));
+    if (!manager->requests_059) {
+        return false;
+    }
+
+    /* Everything but the wallpaper request, closing the gap it leaves */
+    manager->requests_059[0] = src->methods[0];
+    for (int i = 2; i < src->method_count; i++) {
+        manager->requests_059[i - 1] = src->methods[i];
+    }
+
+    manager->interface_059 = *src;
+    manager->interface_059.method_count = src->method_count - 1;
+    manager->interface_059.methods = manager->requests_059;
+    return true;
+}
+
+/**
+ * @brief Search a file for a byte sequence
+ *
+ * Shared objects are binary, so the haystack has embedded NULs and the str*
+ * family is out. Chunks overlap by @p needle length - 1 so a match straddling a
+ * boundary is still found.
+ */
+static bool file_contains(const char *path, const char *needle)
+{
+    FILE *file = fopen(path, "rb");
+    if (!file) {
+        return false;
+    }
+
+    const size_t nlen = strlen(needle);
+    const size_t chunk = 64 * 1024;
+    char *buf = malloc(chunk + nlen);
+    if (!buf) {
+        fclose(file);
+        return false;
+    }
+
+    bool found = false;
+    size_t carry = 0;
+    size_t read;
+    while (!found && (read = fread(buf + carry, 1, chunk, file)) > 0) {
+        const size_t total = carry + read;
+        for (const char *p = buf; total >= nlen && (size_t)(p - buf) + nlen <= total; p++) {
+            const char *hit = memchr(p, needle[0], total - (size_t)(p - buf) - nlen + 1);
+            if (!hit) {
+                break;
+            }
+            if (memcmp(hit, needle, nlen) == 0) {
+                found = true;
+                break;
+            }
+            p = hit;
+        }
+        carry = total < nlen - 1 ? total : nlen - 1;
+        memmove(buf, buf + total - carry, carry);
+    }
+
+    free(buf);
+    fclose(file);
+    return found;
+}
+
+#define WALLPAPER_INTERFACE_SYMBOL "treeland_personalization_wallpaper_context_v1"
+
+/* DTK drives this protocol on GXDE, so its build is the one to match. Its
+ * generated code carries the interface name of every request it can issue,
+ * which makes the string a reliable stand-in for "which XML was this built
+ * against". Both the Qt5 and the Qt6 stack are probed, multiarch included. */
+static const char *const dtk_lib_patterns[] = {
+    "/usr/lib/libdtk6gui.so.*", "/usr/lib/*/libdtk6gui.so.*",
+    "/usr/lib/libdtkgui.so.*",  "/usr/lib/*/libdtkgui.so.*",
+};
+
+static bool layout_from_env(enum personalization_layout *layout)
+{
+    const char *value = getenv("GXDE_WLCOM_PERSONALIZATION");
+    if (!value || !*value) {
+        return false;
+    }
+
+    if (!strcmp(value, "058") || !strcmp(value, "0.5.8")) {
+        *layout = PERSONALIZATION_LAYOUT_058;
+        return true;
+    }
+    if (!strcmp(value, "059") || !strcmp(value, "0.5.9")) {
+        *layout = PERSONALIZATION_LAYOUT_059;
+        return true;
+    }
+
+    kywc_log(KYWC_WARN,
+             "(Treeland Shim) Personalization: ignoring GXDE_WLCOM_PERSONALIZATION='%s', expected "
+             "058 or 059",
+             value);
+    return false;
+}
+
+/**
+ * @brief Work out which layout this system's clients expect
+ *
+ * Note that the installed treeland-protocols version is only a fallback hint:
+ * the XML is a build-time input, so what matters is when DTK was last compiled,
+ * not which protocol package happens to be unpacked right now.
+ */
+static enum personalization_layout layout_detect(void)
+{
+    enum personalization_layout layout;
+    if (layout_from_env(&layout)) {
+        kywc_log(KYWC_INFO,
+                 "(Treeland Shim) Personalization: layout forced to %s by "
+                 "GXDE_WLCOM_PERSONALIZATION",
+                 layout == PERSONALIZATION_LAYOUT_058 ? "0.5.8" : "0.5.9");
+        return layout;
+    }
+
+    int probed = 0, with_wallpaper = 0;
+    for (size_t i = 0; i < sizeof(dtk_lib_patterns) / sizeof(dtk_lib_patterns[0]); i++) {
+        glob_t found;
+        if (glob(dtk_lib_patterns[i], 0, NULL, &found) != 0) {
+            continue;
+        }
+        for (size_t j = 0; j < found.gl_pathc; j++) {
+            bool has = file_contains(found.gl_pathv[j], WALLPAPER_INTERFACE_SYMBOL);
+            kywc_log(KYWC_DEBUG, "(Treeland Shim) Personalization: probing %s -> %s",
+                     found.gl_pathv[j], has ? "0.5.8" : "0.5.9");
+            probed++;
+            with_wallpaper += has;
+        }
+        globfree(&found);
+    }
+
+    if (probed == 0) {
+        /* No DTK here -- a build chroot or a minimal install. Fall back to the
+         * protocol package, and to the superset if that is missing too. */
+        static const char *xml =
+            "/usr/share/treeland-protocols/treeland-personalization-manager-v1.xml";
+        if (access(xml, R_OK) != 0) {
+            kywc_log(KYWC_INFO, "(Treeland Shim) Personalization: nothing to probe, defaulting to "
+                                "the 0.5.8 layout");
+            return PERSONALIZATION_LAYOUT_058;
+        }
+        bool has = file_contains(xml, "get_wallpaper_context");
+        kywc_log(KYWC_INFO,
+                 "(Treeland Shim) Personalization: no DTK found, following treeland-protocols -> "
+                 "%s layout",
+                 has ? "0.5.8" : "0.5.9");
+        return has ? PERSONALIZATION_LAYOUT_058 : PERSONALIZATION_LAYOUT_059;
+    }
+
+    if (with_wallpaper > 0 && with_wallpaper < probed) {
+        kywc_log(KYWC_ERROR,
+                 "(Treeland Shim) Personalization: DTK libraries disagree, %d of %d still reference "
+                 "the wallpaper context. Serving 0.5.8, so the ones already rebuilt against 0.5.9 "
+                 "will fail to start -- finish the rebuild, or force the other layout with "
+                 "GXDE_WLCOM_PERSONALIZATION=059",
+                 with_wallpaper, probed);
+    } else {
+        kywc_log(KYWC_INFO,
+                 "(Treeland Shim) Personalization: probed %d DTK librar%s, wallpaper context %s -> "
+                 "using the %s layout",
+                 probed, probed == 1 ? "y" : "ies", with_wallpaper ? "referenced" : "absent",
+                 with_wallpaper ? "0.5.8" : "0.5.9");
+    }
+
+    return with_wallpaper > 0 ? PERSONALIZATION_LAYOUT_058 : PERSONALIZATION_LAYOUT_059;
+}
+
+/* Manager global */
+
+static bool layout_is_059(void)
+{
+    return manager->layout == PERSONALIZATION_LAYOUT_059 && manager->requests_059;
+}
+
 static void personalization_manager_bind(struct wl_client *client, void *data, uint32_t version,
                                          uint32_t id)
 {
     struct wl_resource *resource =
-        wl_resource_create(client, &treeland_personalization_manager_v1_interface, version, id);
+        wl_resource_create(client,
+                           layout_is_059() ? &manager->interface_059
+                                           : &treeland_personalization_manager_v1_interface,
+                           version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;
     }
-    wl_resource_set_implementation(resource, &manager_impl, manager, NULL);
+    wl_resource_set_implementation(
+        resource, layout_is_059() ? (const void *)&manager_impl_059 : (const void *)&manager_impl,
+        manager, NULL);
 }
 
 static void manager_finish(void)
@@ -973,6 +1233,7 @@ static void manager_finish(void)
     if (!manager) {
         return;
     }
+    free(manager->requests_059);
     free(manager->wallpaper_metadata);
     free(manager->cursor_theme);
     free(manager->font);
@@ -1010,13 +1271,25 @@ bool treeland_personalization_manager_create(struct server *server)
         return false;
     }
 
+    /* Decide the wire layout before advertising anything: the global carries
+     * the request table, so it has to be the right one from the start. */
+    manager->layout = layout_detect();
+    if (manager->layout == PERSONALIZATION_LAYOUT_059 && !layout_derive_059()) {
+        kywc_log(KYWC_ERROR, "(Treeland Shim) Personalization: falling back to the 0.5.8 layout, "
+                             "clients built against 0.5.9 will not start");
+        manager->layout = PERSONALIZATION_LAYOUT_058;
+    }
+
     manager->global = wl_global_create(server->display,
-                                       &treeland_personalization_manager_v1_interface,
+                                       layout_is_059()
+                                           ? &manager->interface_059
+                                           : &treeland_personalization_manager_v1_interface,
                                        TREELAND_PERSONALIZATION_MANAGER_VERSION, manager,
                                        personalization_manager_bind);
     if (!manager->global) {
         kywc_log(KYWC_ERROR, "(Treeland Shim) Init: Failed to create treeland personalization "
                              "manager!!");
+        free(manager->requests_059);
         free(manager);
         manager = NULL;
         return false;
