@@ -23,6 +23,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <wlr/types/wlr_compositor.h>
 
@@ -45,12 +46,20 @@
  *    graph and SSD interfaces, and is the part that actually changes what gets
  *    rendered.
  *
- * 2. @c cursor_context / @c font_context / @c appearance_context -- global
- *    settings. Treeland writes these into DConfig and feeds them to its own QML
- *    shell; GXDE has no equivalent consumer, so this implementation keeps the
- *    state and broadcasts events to every bound context. That keeps the
- *    protocol semantics complete (set -> broadcast, get -> reply) without
- *    touching the existing @c theme_manager theme.
+ * 2. @c cursor_context / @c font_context / @c appearance_context /
+ *    @c wallpaper_context -- global settings. Treeland writes these into
+ *    DConfig and feeds them to its own QML shell; GXDE has no equivalent
+ *    consumer, so this implementation keeps the state and broadcasts events to
+ *    every bound context. That keeps the protocol semantics complete
+ *    (set -> broadcast, get -> reply) without touching the existing
+ *    @c theme_manager theme.
+ *
+ * Every interface here must keep the exact request/event layout of
+ * treeland-personalization-manager-v1.xml as shipped in treeland-protocols,
+ * including the parts GXDE does not act on: opcodes are positional, so dropping
+ * a single request shifts every later one and clients end up calling something
+ * completely different. That is why @c wallpaper_context exists below even
+ * though the compositor does not own the wallpaper in GXDE.
  *
  * Every @c set_* broadcasts to *all* clients bound to that context, while
  * @c get_* replies only to the client that asked.
@@ -72,9 +81,13 @@ struct treeland_personalization_manager {
     struct wl_list window_contexts;
 
     /* Bound resources of the global contexts, used for broadcasting */
+    struct wl_list wallpaper_contexts;
     struct wl_list cursor_contexts;
     struct wl_list font_contexts;
     struct wl_list appearance_contexts;
+
+    /* Wallpaper, last committed metadata */
+    char *wallpaper_metadata;
 
     /* Cursor */
     char *cursor_theme;
@@ -146,6 +159,18 @@ struct personalization_context {
     uint32_t pending_size;
     bool pending_theme_set;
     bool pending_size_set;
+
+    /* Wallpaper context only: values staged until commit. @c fd is -1 on every
+     * context, wallpaper or not, so the shared destroy path can close it
+     * blindly without ever hitting fd 0 */
+    struct {
+        int fd;
+        char *metadata;
+        char *identifier;
+        char *output;
+        uint32_t options;
+        bool isdark;
+    } wallpaper;
 };
 
 /* Helpers */
@@ -372,6 +397,119 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
     wl_list_remove(&ctx->link);
     free(ctx);
 }
+
+/* Wallpaper context */
+
+static void wallpaper_close_fd(struct personalization_context *ctx)
+{
+    if (ctx->wallpaper.fd >= 0) {
+        close(ctx->wallpaper.fd);
+        ctx->wallpaper.fd = -1;
+    }
+}
+
+/**
+ * @brief Take the wallpaper image and its metadata
+ *
+ * Ownership of @p fd is handed over by libwayland, so a previously staged one
+ * is closed here rather than leaked.
+ */
+static void wallpaper_handle_set_fd(struct wl_client *client, struct wl_resource *resource,
+                                    int32_t fd, const char *metadata)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        close(fd);
+        return;
+    }
+    wallpaper_close_fd(ctx);
+    ctx->wallpaper.fd = fd;
+    string_replace(&ctx->wallpaper.metadata, metadata);
+}
+
+static void wallpaper_handle_set_identifier(struct wl_client *client, struct wl_resource *resource,
+                                            const char *identifier)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        return;
+    }
+    string_replace(&ctx->wallpaper.identifier, identifier);
+}
+
+static void wallpaper_handle_set_output(struct wl_client *client, struct wl_resource *resource,
+                                        const char *output)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        return;
+    }
+    string_replace(&ctx->wallpaper.output, output);
+}
+
+static void wallpaper_handle_set_on(struct wl_client *client, struct wl_resource *resource,
+                                    uint32_t options)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        return;
+    }
+    ctx->wallpaper.options = options;
+}
+
+static void wallpaper_handle_set_isdark(struct wl_client *client, struct wl_resource *resource,
+                                        uint32_t isdark)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        return;
+    }
+    ctx->wallpaper.isdark = isdark;
+}
+
+/**
+ * @brief Commit the staged wallpaper
+ *
+ * In Treeland this writes the image out and points its QML shell at it. In GXDE
+ * the wallpaper belongs to gxde-desktop-panel, which paints it from its own
+ * config, so the compositor has nothing to draw and deliberately does not act
+ * on the image. The metadata is still kept so that a later @c get_metadata --
+ * from this client or another one -- reports what was last committed.
+ */
+static void wallpaper_handle_commit(struct wl_client *client, struct wl_resource *resource)
+{
+    struct personalization_context *ctx = wl_resource_get_user_data(resource);
+    if (!ctx) {
+        return;
+    }
+
+    kywc_log(KYWC_DEBUG,
+             "(Treeland Shim) Personalization: wallpaper commit ignored, GXDE paints the "
+             "wallpaper itself (identifier: %s, output: %s, options: %u, dark: %d)",
+             ctx->wallpaper.identifier ? ctx->wallpaper.identifier : "",
+             ctx->wallpaper.output ? ctx->wallpaper.output : "", ctx->wallpaper.options,
+             ctx->wallpaper.isdark);
+
+    string_replace(&manager->wallpaper_metadata, ctx->wallpaper.metadata);
+    wallpaper_close_fd(ctx);
+}
+
+static void wallpaper_handle_get_metadata(struct wl_client *client, struct wl_resource *resource)
+{
+    treeland_personalization_wallpaper_context_v1_send_metadata(
+        resource, manager->wallpaper_metadata ? manager->wallpaper_metadata : "");
+}
+
+static const struct treeland_personalization_wallpaper_context_v1_interface wallpaper_impl = {
+    .set_fd = wallpaper_handle_set_fd,
+    .set_identifier = wallpaper_handle_set_identifier,
+    .set_output = wallpaper_handle_set_output,
+    .set_on = wallpaper_handle_set_on,
+    .set_isdark = wallpaper_handle_set_isdark,
+    .commit = wallpaper_handle_commit,
+    .get_metadata = wallpaper_handle_get_metadata,
+    .destroy = context_handle_destroy,
+};
 
 /* Cursor context */
 
@@ -709,6 +847,10 @@ static void context_handle_resource_destroy(struct wl_resource *resource)
     }
     wl_list_remove(&ctx->link);
     free(ctx->pending_theme);
+    wallpaper_close_fd(ctx);
+    free(ctx->wallpaper.metadata);
+    free(ctx->wallpaper.identifier);
+    free(ctx->wallpaper.output);
     free(ctx);
 }
 
@@ -723,6 +865,7 @@ static struct personalization_context *context_create(struct wl_client *client,
         wl_resource_post_no_memory(manager_resource);
         return NULL;
     }
+    ctx->wallpaper.fd = -1;
 
     uint32_t version = wl_resource_get_version(manager_resource);
     ctx->resource = wl_resource_create(client, interface, version, id);
@@ -771,6 +914,13 @@ static void manager_get_window_context(struct wl_client *client, struct wl_resou
     wl_list_insert(&manager->window_contexts, &ctx->link);
 }
 
+static void manager_get_wallpaper_context(struct wl_client *client, struct wl_resource *resource,
+                                          uint32_t id)
+{
+    context_create(client, resource, id, &treeland_personalization_wallpaper_context_v1_interface,
+                   &wallpaper_impl, &manager->wallpaper_contexts);
+}
+
 static void manager_get_cursor_context(struct wl_client *client, struct wl_resource *resource,
                                        uint32_t id)
 {
@@ -799,6 +949,7 @@ static void manager_handle_destroy(struct wl_client *client, struct wl_resource 
 
 static const struct treeland_personalization_manager_v1_interface manager_impl = {
     .get_window_context = manager_get_window_context,
+    .get_wallpaper_context = manager_get_wallpaper_context,
     .get_cursor_context = manager_get_cursor_context,
     .get_font_context = manager_get_font_context,
     .get_appearance_context = manager_get_appearance_context,
@@ -822,6 +973,7 @@ static void manager_finish(void)
     if (!manager) {
         return;
     }
+    free(manager->wallpaper_metadata);
     free(manager->cursor_theme);
     free(manager->font);
     free(manager->monospace_font);
@@ -871,6 +1023,7 @@ bool treeland_personalization_manager_create(struct server *server)
     }
 
     wl_list_init(&manager->window_contexts);
+    wl_list_init(&manager->wallpaper_contexts);
     wl_list_init(&manager->cursor_contexts);
     wl_list_init(&manager->font_contexts);
     wl_list_init(&manager->appearance_contexts);
