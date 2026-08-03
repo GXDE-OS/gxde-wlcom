@@ -167,3 +167,4 @@ wayland协议支持情况
 | treeland_dde_shell_manager_v1 |    1     |                                                 |
 | treeland_app_id_resolver_v1   |    1     |                                                 |
 | treeland_capture_manager_v1   |    1     | 供 deepin-screen-recorder 录屏与点击窗口截图使用 |
+| treeland_personalization_manager_v1   |    1     | Treeland Protocol包0.5.8和0.5.9都是导出v1版本，但是实际这两个版本里面的XML不一致，导致签名会对不上，我们内置了一套机制可以自适应这两个版本的变化 |

@@ -102,6 +102,8 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 ### treeland-protocols 0.5.9 与 personalization 协议
 
+> **理论上现在不用担心这个了，GXWM已经做到了对两个版本的自适应支持**
+
 **这一节关系到整个桌面能否启动，改动`protocols/treeland-personalization-manager-v1.xml`前请务必读完。**
 
 上游在`treeland-protocols` 0.5.9（提交`8576b9c`，2026-06-16）中删除了`get_wallpaper_context`请求和`treeland_personalization_wallpaper_context_v1`接口，理由是该功能已迁移至`xdg-desktop-portal`。问题在于**这次删除没有bump版本号**——manager接口前后都是`version="2"`，接口名也没变，提交信息自己写的就是`Influence: Broken change`。
@@ -119,7 +121,14 @@ Wayland的opcode是按XML中的出现顺序排的，少一个请求，后面全�
 
 #### 何时需要切换
 
-真正的引爆点不是`apt upgrade treeland-protocols`——XML只是编译期输入，升级协议包本身不改变任何已编译好的客户端。**引爆点是`libdtkgui`/`libdtk6gui`等被按0.5.9重新编译的那一刻**，那时合成器必须同步切换，早一步晚一步都会让桌面无法登录。
+真正的引爆点不是`apt upgrade treeland-protocols`——XML只是编译期输入，升级协议包本身不改变任何已编译好的客户端。**引爆点是`libdtkgui`/`libdtk6gui`等被按0.5.9重新编译的那一刻**。
+
+不过下面的自动探测已经把这件事接管了，正常情况下**不需要改代码、不需要重新编译、也不需要人工切换**，只要**重新登录一次**即可：布局是在`wl_global_create`时定死的，运行中的合成器不会中途重新探测，所以DTK升级后当前会话里新启动的DTK程序仍会挂，注销重登后自动探测就会看到新的DTK并切到0.5.9。
+
+只有两种情况仍需人工介入：
+
+- **DTK5与DTK6不同步**（只重编了其中一个）——见下文，需要补完编译或手动指定优先保谁。
+- **有人把`protocols/`同步到了上游**——这是唯一会让开关失效的操作。好在它编译期就会失败（wallpaper实现引用的生成符号消失，直接报`incomplete type`等一串错误），产不出二进制，所以不构成隐患。
 
 判断依据（任选其一）：
 
@@ -127,15 +136,17 @@ Wayland的opcode是按XML中的出现顺序排的，少一个请求，后面全�
 # 1. 看系统协议包版本
 dpkg -l treeland-protocols
 
-# 2. 直接看DTK是否还引用wallpaper context，这一条才是决定性的
+# 2. 直接看DTK是否还引用wallpaper context，这一条才是决定性的（也是合成器自动探测所用的判据）
 strings -a /usr/lib/x86_64-linux-gnu/libdtk6gui.so.* | grep -c treeland_personalization_wallpaper_context
-#   >0 : DTK仍按0.5.8编译，必须保留wallpaper context
-#    0 : DTK已按0.5.9编译，必须删除wallpaper context
+#   >0 : DTK仍按0.5.8编译，需要0.5.8布局
+#    0 : DTK已按0.5.9编译，需要0.5.9布局
 ```
 
 #### 运行时开关（无需重新编译）
 
 合成器把两种布局都编译在了同一个二进制里，启动时选一个：0.5.8布局用的是wayland-scanner生成的方法表，0.5.9布局则在运行时从同一张表里挑出`{0,2,3,4,5}`（跳过`get_wallpaper_context`）拼出来，因此两条路径同源、不会各自漂移。**前提是vendor的XML保持0.5.8超集**——真正切到0.5.9后这个开关连同wallpaper实现一起删掉即可。
+
+这个前提有代码守卫：启动时会核对vendor的XML里第1号请求是不是`get_wallpaper_context`，不是就打`ERROR`说明开关已失效、并原样服务vendor的表。它针对的是「请求还在但位置变了」这种能编译通过、却会静默错开全部opcode的改动；至于整个请求被删掉的情况编译期就过不去，轮不到它管。
 
 默认行为是**自动探测**：启动时扫描已安装的`libdtk*gui`（Qt5与Qt6两套都查，含multiarch路径），看它们是否还引用`treeland_personalization_wallpaper_context_v1`。这比看协议包版本准，因为XML只是编译期输入。探测不到DTK时（构建chroot、精简安装）退回去看`/usr/share/treeland-protocols`，再不行默认0.5.8。
 

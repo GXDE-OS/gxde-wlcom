@@ -95,8 +95,8 @@
  * wallpaper context can go. The README has the full story.
  */
 enum personalization_layout {
-    PERSONALIZATION_LAYOUT_058, /**< <= 0.5.8, has get_wallpaper_context */
-    PERSONALIZATION_LAYOUT_059, /**< >= 0.5.9, no wallpaper context */
+    PERSONALIZATION_LAYOUT_058, /**< <= 0.5.8: serve the vendored table as generated */
+    PERSONALIZATION_LAYOUT_059, /**< >= 0.5.9: serve the derived table, minus the wallpaper request */
 };
 
 struct treeland_personalization_manager {
@@ -1033,26 +1033,35 @@ static const struct manager_implementation_059 manager_impl_059 = {
 };
 
 /**
+ * @brief Whether the vendored XML still puts get_wallpaper_context at index 1
+ *
+ * Everything here rests on it: the 0.5.8 layout is served straight from the
+ * scanner-generated table and the 0.5.9 one is derived by dropping that entry.
+ *
+ * Re-syncing @c protocols/ with upstream master cannot slip through here -- the
+ * wallpaper handlers stop compiling the moment the interface disappears from
+ * the XML. What this does catch is the subtler variant: the request still
+ * exists but has moved, which is exactly the kind of upstream edit that started
+ * this whole mess, and which would otherwise silently shift every opcode.
+ */
+static bool vendored_has_wallpaper_request(void)
+{
+    const struct wl_interface *src = &treeland_personalization_manager_v1_interface;
+    return src->method_count > 1 && strcmp(src->methods[1].name, "get_wallpaper_context") == 0;
+}
+
+/**
  * @brief Build the 0.5.9 request table out of the generated 0.5.8 one
  *
  * Copying the @c wl_message entries beats vendoring a second XML: everything
  * except the dropped request comes straight from the scanner-generated table,
  * so the two layouts cannot drift apart.
  *
- * @return true if the table was derived, false if the vendored XML is not the
- *         0.5.8 superset this needs
+ * @return true if the table was derived, false on allocation failure
  */
 static bool layout_derive_059(void)
 {
     const struct wl_interface *src = &treeland_personalization_manager_v1_interface;
-
-    if (src->method_count < 2 || strcmp(src->methods[1].name, "get_wallpaper_context") != 0) {
-        kywc_log(KYWC_ERROR,
-                 "(Treeland Shim) Personalization: cannot derive the 0.5.9 layout, request 1 of the "
-                 "vendored XML is '%s' rather than get_wallpaper_context",
-                 src->method_count > 1 ? src->methods[1].name : "(none)");
-        return false;
-    }
 
     manager->requests_059 = calloc(src->method_count - 1, sizeof(struct wl_message));
     if (!manager->requests_059) {
@@ -1307,7 +1316,21 @@ bool treeland_personalization_manager_create(struct server *server)
     /* Decide the wire layout before advertising anything: the global carries
      * the request table, so it has to be the right one from the start. */
     manager->layout = layout_detect();
-    if (manager->layout == PERSONALIZATION_LAYOUT_059 && !layout_derive_059()) {
+
+    if (!vendored_has_wallpaper_request()) {
+        /* The request table is not the shape this derives from, so the vendored
+         * one is all there is. Serve it, but do not pretend to know which
+         * layout it amounts to. */
+        kywc_log(KYWC_ERROR,
+                 "(Treeland Shim) Personalization: request 1 of the vendored XML is '%s' rather "
+                 "than get_wallpaper_context, so the layout switch is inoperative and the vendored "
+                 "table is served as-is. If clients fail to start, set "
+                 "GXWM_DONOT_BROADCAST_TLPM=TRUE for a degraded but usable session",
+                 treeland_personalization_manager_v1_interface.method_count > 1
+                     ? treeland_personalization_manager_v1_interface.methods[1].name
+                     : "(none)");
+        manager->layout = PERSONALIZATION_LAYOUT_058;
+    } else if (manager->layout == PERSONALIZATION_LAYOUT_059 && !layout_derive_059()) {
         kywc_log(KYWC_ERROR, "(Treeland Shim) Personalization: falling back to the 0.5.8 layout, "
                              "clients built against 0.5.9 will not start");
         manager->layout = PERSONALIZATION_LAYOUT_058;
