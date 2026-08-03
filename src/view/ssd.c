@@ -129,6 +129,21 @@ struct ssd {
     int view_width, view_height;
     uint32_t buttons;
     int button_count;
+
+    /**
+     * Per-window overrides from treeland_personalization_window_context_v1.
+     *
+     * When unset (@c *_override is false) the theme is used, exactly as before.
+     * Widths and radii follow the protocol: -1 means the system default, 0
+     * disables, and >0 is a custom value.
+     */
+    bool shadow_override;
+    int shadow_radius, shadow_offset_x, shadow_offset_y;
+    float shadow_color[4];
+
+    bool border_override;
+    int border_width;
+    float border_color[4];
 };
 
 static struct ssd_manager *manager = NULL;
@@ -748,8 +763,14 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
 
     if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
         float *c = view->activated ? theme->active_border_color : theme->inactive_border_color;
+        if (ssd->border_override && ssd->border_width != -1) {
+            c = ssd->border_color;
+        }
         float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
         c = view->activated ? theme->active_shadow_color : theme->inactive_shadow_color;
+        if (ssd->shadow_override && ssd->shadow_radius != -1) {
+            c = ssd->shadow_color;
+        }
         float shadow_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
 
         ky_scene_decoration_set_margin_color(
@@ -795,9 +816,23 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         int bottom = view->has_round_corner ? theme->corner_radius : 0;
         int top = (view->ssd & KYWC_SSD_TITLE || view->has_round_corner) ? theme->corner_radius : 0;
 
+        int shadow_width = theme->shadow_border;
+        int shadow_off_x = theme->shadow_offset_x;
+        int shadow_off_y = theme->shadow_offset_y;
+
+        /* Per-window override: -1 keeps the theme, 0 disables, >0 is custom */
+        if (ssd->border_override && ssd->border_width >= 0) {
+            border = ssd->border_width;
+        }
+        if (ssd->shadow_override && ssd->shadow_radius >= 0) {
+            shadow_width = ssd->shadow_radius;
+            shadow_off_x = ssd->shadow_offset_x;
+            shadow_off_y = ssd->shadow_offset_y;
+        }
+
         ky_scene_decoration_set_resize_width(frame, resize);
-        ky_scene_decoration_set_margin(frame, title, border, theme->shadow_border,
-                                       theme->shadow_offset_x, theme->shadow_offset_y);
+        ky_scene_decoration_set_margin(frame, title, border, shadow_width, shadow_off_x,
+                                       shadow_off_y);
         ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
         ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -border, -border - title);
@@ -1136,6 +1171,94 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&manager->server_destroy.link);
     wl_list_remove(&manager->new_view.link);
     free(manager);
+}
+
+/**
+ * @brief Look up the SSD instance belonging to a @c kywc_view
+ *
+ * @return the SSD instance, or NULL when the view has none
+ */
+static struct ssd *ssd_from_kywc_view(struct kywc_view *kywc_view)
+{
+    if (!manager) {
+        return NULL;
+    }
+
+    struct ssd *ssd;
+    wl_list_for_each(ssd, &manager->ssds, link) {
+        if (ssd->kywc_view == kywc_view) {
+            return ssd;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Redraw the window frame after an override changed
+ *
+ * @c ssd_update_parts() asserts the SSD is created and enabled, so the same
+ * check is done here first.
+ */
+static void ssd_refresh_frame(struct ssd *ssd)
+{
+    if (!ssd->created || ssd->kywc_view->ssd == KYWC_SSD_NONE) {
+        return;
+    }
+    ssd_update_parts(ssd, SSD_UPDATE_CAUSE_CREATE | SSD_UPDATE_CAUSE_ACTIVATE);
+}
+
+/**
+ * @brief Set the per-window shadow override, called by
+ *        treeland_personalization_window_context_v1
+ *
+ * @param kywc_view the target window
+ * @param enabled   false drops the override and returns to the theme default
+ * @param radius    -1 keeps the theme default, 0 disables the shadow, >0 is custom
+ * @param color     normalised RGBA, only used when radius > 0
+ */
+void ssd_set_shadow_override(struct kywc_view *kywc_view, bool enabled, int radius, int offset_x,
+                             int offset_y, const float color[static 4])
+{
+    struct ssd *ssd = ssd_from_kywc_view(kywc_view);
+    if (!ssd) {
+        return;
+    }
+
+    ssd->shadow_override = enabled;
+    ssd->shadow_radius = radius;
+    ssd->shadow_offset_x = offset_x;
+    ssd->shadow_offset_y = offset_y;
+    for (int i = 0; i < 4; i++) {
+        ssd->shadow_color[i] = color[i];
+    }
+
+    ssd_refresh_frame(ssd);
+}
+
+/**
+ * @brief Set the per-window border override, called by
+ *        treeland_personalization_window_context_v1
+ *
+ * @param kywc_view the target window
+ * @param enabled   false drops the override and returns to the theme default
+ * @param width     -1 keeps the theme default, 0 disables the border, >0 is custom
+ * @param color     normalised RGBA, only used when width > 0
+ */
+void ssd_set_border_override(struct kywc_view *kywc_view, bool enabled, int width,
+                             const float color[static 4])
+{
+    struct ssd *ssd = ssd_from_kywc_view(kywc_view);
+    if (!ssd) {
+        return;
+    }
+
+    ssd->border_override = enabled;
+    ssd->border_width = width;
+    for (int i = 0; i < 4; i++) {
+        ssd->border_color[i] = color[i];
+    }
+
+    ssd_refresh_frame(ssd);
 }
 
 bool server_decoration_manager_create(struct view_manager *view_manager)

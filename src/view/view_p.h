@@ -264,6 +264,15 @@ bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_pl
                                       bool *has_pos, int *px, int *py);
 void treeland_dde_shell_set_resolved_position(struct wlr_surface *surface, int x, int y);
 
+bool treeland_personalization_manager_create(struct server *server);
+
+/* Per-window shadow/border overrides, driven by
+ * treeland_personalization_window_context_v1 */
+void ssd_set_shadow_override(struct kywc_view *kywc_view, bool enabled, int radius, int offset_x,
+                             int offset_y, const float color[static 4]);
+void ssd_set_border_override(struct kywc_view *kywc_view, bool enabled, int width,
+                             const float color[static 4]);
+
 #if HAVE_KDE_SLIDE
 bool kde_slide_manager_create(struct server *server);
 #else

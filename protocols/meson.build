@@ -122,6 +122,7 @@ protocols += {
   'treeland-dde-shell-v1': 'treeland-dde-shell-v1.xml',
   'treeland-app-id-resolver-v1': 'treeland-app-id-resolver-v1.xml',
   'treeland-capture-unstable-v1': 'treeland-capture-unstable-v1.xml',
+  'treeland-personalization-manager-v1': 'treeland-personalization-manager-v1.xml',
 }
 
 protocols_code = {}
