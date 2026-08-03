@@ -159,17 +159,21 @@ grep Personalization ~/.log/gxde-wlcom.log | tail -1
 
 日常切换用上面的开关就够了，本节是**等GXDE彻底转向0.5.9之后**清理死代码的做法（此后合成器不再能服务0.5.8客户端）。
 
-撤销`17585154`（`fix: DTK program crashes due to lacking wallpaper support in treeland personalization MGR`）即可，无需其他改动：
+个人觉得没必要移除，全程用开关就够了。
+
+按顺序撤销这两个提交即可，无需其他改动：
 
 ```bash
-git revert <运行时开关的提交>   # 必须先撤，它依赖wallpaper相关符号
-git revert 17585154
+git revert 773f0364   # feat: Treeland personal manager version autoswitch
+git revert 17585154   # fix: DTK program crashes due to lacking wallpaper support ...
 ninja -C build
 ```
 
-**顺序不能反。** 运行时开关的代码引用了`get_wallpaper_context`/`manager_get_wallpaper_context`等符号，先撤`17585154`会留下一堆悬空引用。
+**顺序不能反。** `773f0364`的运行时开关引用了`get_wallpaper_context`/`manager_get_wallpaper_context`等符号，先撤`17585154`会留下一堆悬空引用。
 
-`17585154`只动了两个文件（XML加回wallpaper context、`treeland_personalization.c`加回其实现），撤销后XML即回到与上游master逐字节相同的状态，与0.5.9包wire一致。若日后rebase/squash导致hash失效，等价的手工步骤是：
+这个流程已实测过：两步revert无冲突，编译通过，撤销后`protocols/treeland-personalization-manager-v1.xml`回到`1010e86f`（与上游master逐字节相同），与0.5.9包wire完全一致（54项）。注意`773f0364`同时包含本章节的README内容，撤销它也会一并删掉这些说明——如果之后还需要留档，记得把仍然适用的部分捡回来。
+
+若日后rebase/squash导致hash失效，等价的手工步骤是：
 
 1. 用系统上的新版覆盖vendor的XML：
    ```bash
