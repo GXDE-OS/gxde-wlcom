@@ -668,6 +668,13 @@ static void xwayland_view_adjust_geometry(struct xwayland_view *xwayland_view, s
 {
     struct kywc_view *kywc_view = &xwayland_view->view.base;
     struct kywc_output *kywc_output = kywc_output_at_point(geo->x, geo->y);
+    if (!kywc_output) {
+        /* geometry is out of any output, or no output is enabled at all */
+        kywc_output = output_manager_get_fallback();
+        if (!kywc_output) {
+            return;
+        }
+    }
 
     if (kywc_view->fullscreen) {
         kywc_output_effective_geometry(kywc_output, geo);

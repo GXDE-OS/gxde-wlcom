@@ -92,7 +92,11 @@ static void view_update_output(struct view *view)
 
     if (old != view->output) {
         wl_list_remove(&view->output_destroy.link);
-        wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+        if (view->output) {
+            wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+        } else {
+            wl_list_init(&view->output_destroy.link);
+        }
         wl_signal_emit_mutable(&view->events.output, old);
     }
 }
@@ -234,10 +238,15 @@ void view_init(struct view *view, const struct view_impl *impl, void *data)
     view->tree->node.role.data = view;
     ky_scene_node_set_enabled(&view->tree->node, false);
 
+    /* cursor may be on no output when all outputs failed to be enabled */
     struct output *output = input_current_output(input_manager_get_default_seat());
-    view->output = &output->base;
+    view->output = output ? &output->base : output_manager_get_fallback();
     view->output_destroy.notify = view_handle_output_destroy;
-    wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+    if (view->output) {
+        wl_signal_add(&view->output->events.destroy, &view->output_destroy);
+    } else {
+        wl_list_init(&view->output_destroy.link);
+    }
 
     view_set_workspace(view, workspace_manager_get_current());
 

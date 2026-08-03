@@ -4,6 +4,28 @@ export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=Deepin
 unset QT_QPA_PLATFORM
 unset DTK2_XWAYLAND
+
+# The logic of libseat is that seatd is the 1st priority backend, and then
+# logind. We are currently using LightDM with logind (The current developing
+# GXDE Display manager is based on SDDM, which is also using logind), and hence
+# we are forcing the backend to logind.
+#
+# Unfortunately, we're unable to auto detect which one to use automatically.
+#
+# Don't be overwhelmed if you are a seatd user. If you are really using seatd,
+# You may simply comment out the following if block.
+# -----------------------------------------------------------------------------
+# libseat的逻辑如下：在有Seatd的情况下优先使用seatd，而GXDE（无论是当前GXDE正在使用的
+# LightDM还是正在开发的基于SDDM的GXDE Display Manager）都使用logind。故而我们强制使用
+# logind作为后端。
+#
+# 不幸的是，我们无法自动检测应该使用哪个后端。
+#
+# 如果您是seatd用户，您也无须担心，只需要注释掉下方这个if块即可。
+if [ -z "$LIBSEAT_BACKEND" ] && [ -n "$XDG_SESSION_ID" ] && [ -d /run/systemd/seats ]; then
+    export LIBSEAT_BACKEND=logind
+fi
+
 # export GDK_BACKEND=wayland
 # export WLR_DRM_NO_ATOMIC=1
 exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"
