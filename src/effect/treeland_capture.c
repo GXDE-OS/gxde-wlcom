@@ -190,38 +190,74 @@ static void context_mask_origin(struct tcap_context *context, int *ox, int *oy)
 
 static void tcap_selector_destroy(struct tcap_selector *selector);
 
-/* find topmost normal window under the cursor, excluding the mask surface */
+/* is this view the client mask (deepin's fullscreen selection overlay)? */
+static bool view_is_mask(struct tcap_selector *selector, struct view *view,
+                         struct wlr_surface *toplevel)
+{
+    struct tcap_context *context = selector->context;
+    if (!context->mask) {
+        return false;
+    }
+    if (selector->mask_view && view == selector->mask_view) {
+        return true;
+    }
+    if (toplevel && toplevel == context->mask) {
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Find the topmost normal window under the cursor, excluding the mask surface.
+ *
+ * The mask is deepin's fullscreen selection overlay which sits on top of the
+ * windows we actually want to pick. We rely on input_bypass so ky_scene_node_at
+ * skips it, but the mask view may not have been resolvable when the selector was
+ * created (surface->data not yet set, differs per output/timing). So if a hit
+ * ever lands on the mask, bypass it here and retry - this self-heals regardless
+ * of when the mask became a mapped view.
+ */
 static struct kywc_view *selector_view_at(struct tcap_selector *selector, double lx, double ly)
 {
     struct seat *seat = selector->seat;
-    double sx, sy;
-    struct ky_scene_node *node = ky_scene_node_at(&seat->scene->tree.node, lx, ly, &sx, &sy);
-    if (!node) {
-        return NULL;
-    }
 
-    struct input_event_node *inode = input_event_node_from_node(node);
-    if (!inode) {
-        return NULL;
-    }
-    struct wlr_surface *toplevel = input_event_node_toplevel(inode);
-    if (!toplevel) {
-        return NULL;
-    }
+    for (int attempt = 0; attempt < 8; attempt++) {
+        double sx, sy;
+        struct ky_scene_node *node = ky_scene_node_at(&seat->scene->tree.node, lx, ly, &sx, &sy);
+        if (!node) {
+            return NULL;
+        }
 
-    struct view *view = view_try_from_wlr_surface(toplevel);
-    if (!view || !view->base.mapped) {
-        return NULL;
+        struct input_event_node *inode = input_event_node_from_node(node);
+        struct wlr_surface *toplevel = inode ? input_event_node_toplevel(inode) : NULL;
+        struct view *view = toplevel ? view_try_from_wlr_surface(toplevel) : NULL;
+
+        /* landed on the mask: bypass it and look at what is behind */
+        if (view_is_mask(selector, view, toplevel)) {
+            struct view *mask = view ? view : view_try_from_wlr_surface(selector->context->mask);
+            if (mask) {
+                if (!selector->mask_bypassed) {
+                    kywc_log(KYWC_INFO, "(treeland-capture) mask hit during hover, "
+                                        "bypassing it to reach windows behind");
+                }
+                ky_scene_node_set_input_bypassed(&mask->tree->node, true);
+                selector->mask_view = mask;
+                selector->mask_bypassed = true;
+                continue;
+            }
+            return NULL;
+        }
+
+        if (!view || !view->base.mapped) {
+            return NULL;
+        }
+        /* only pick actual application windows, not wallpaper / panels */
+        if (view->base.role != KYWC_VIEW_ROLE_NORMAL) {
+            return NULL;
+        }
+        return &view->base;
     }
-    /* only pick actual application windows, not wallpaper / panels */
-    if (view->base.role != KYWC_VIEW_ROLE_NORMAL) {
-        return NULL;
-    }
-    /* the mask surface is input-bypassed, but guard anyway */
-    if (selector->mask_view && selector->mask_view == view) {
-        return NULL;
-    }
-    return &view->base;
+    return NULL;
 }
 
 static void selector_show_highlight(struct tcap_selector *selector, struct kywc_box *box)
@@ -323,6 +359,13 @@ static void selector_commit(struct tcap_selector *selector, uint32_t source_type
     }
 
     context->source_ready = true;
+
+    kywc_log(KYWC_INFO,
+             "(treeland-capture) source selected: type=%s region=%d,%d %dx%d output=%s",
+             source_type == TCAP_SOURCE_WINDOW ? "window"
+                 : source_type == TCAP_SOURCE_OUTPUT ? "output" : "region",
+             region.x, region.y, region.width, region.height,
+             context->output ? context->output->name : "(none)");
 
     int ox, oy;
     context_mask_origin(context, &ox, &oy);
@@ -529,6 +572,13 @@ static struct tcap_selector *tcap_selector_create(struct tcap_context *context)
         ky_scene_node_set_input_bypassed(&selector->mask_view->tree->node, true);
         selector->mask_bypassed = true;
     }
+
+    kywc_log(KYWC_INFO,
+             "(treeland-capture) selector start: mode=%d hint=0x%x freeze=%d cursor=%.0f,%.0f "
+             "mask=%p mask_view=%p%s",
+             selector->mode, context->source_hint, context->freeze, seat->cursor->lx,
+             seat->cursor->ly, (void *)context->mask, (void *)selector->mask_view,
+             (context->mask && !selector->mask_view) ? " (mask view unresolved!)" : "");
 
     selector->pointer_grab.interface = &selector_pointer_impl;
     selector->pointer_grab.data = selector;
