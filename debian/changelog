@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.3-gxde1) lizhi; urgency=medium
+
+  * 新增对treeland-capture-unstable-v1的支持
+
+ -- CharOfString <root@charofstring.cc>  Mon, 3 Aug 2026 22:30:23 +0800
+
 gxde-wlcom (2.1.2-gxde2) lizhi; urgency=medium
 
   * 修复默认使用seatd导致在LightDM下无法启动的问题
