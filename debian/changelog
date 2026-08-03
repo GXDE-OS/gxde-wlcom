@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.4-gxde1) lizhi; urgency=medium
+
+  * 修复了NVIDIA独显直连下的窗口闪烁问题
+  * 新增了对treeland-personalization-manager-v1的支持（请先参阅README，GXDE Wlcom会话默认不广播此协议）
+
+ -- CharOfString <root@charofstring.cc>  Tue, 4 Aug 2026 02:07:11 +0800
+
 gxde-wlcom (2.1.3-gxde1) lizhi; urgency=medium
 
   * 新增对treeland-capture-unstable-v1的支持
