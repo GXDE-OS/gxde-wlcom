@@ -297,6 +297,12 @@ bool server_start(struct server *server)
         kywc_log(KYWC_DEBUG, "WAYLAND_DISPLAY=%s", socket);
     }
 
+    if (setenv("DDE_CURRENT_COMPOSITOR", "GXWM", true) < 0) {
+        kywc_log_errno(KYWC_ERROR, "unable to set DDE_CURRENT_COMPOSITOR");
+    } else {
+        kywc_log(KYWC_DEBUG, "DDE_CURRENT_COMPOSITOR=GXWM");
+    }
+
     if (!wlr_backend_start(server->backend)) {
         kywc_log(KYWC_FATAL, "unable to start the wlroots backend");
         return false;

@@ -789,6 +789,7 @@ bool effect_manager_create(struct server *server)
     thumbnail_manager_create(server);
     capture_manager_create(server);
     ky_capture_manager_create(server);
+    treeland_capture_manager_create(server);
     ext_image_copy_capture_manager_create(server);
 
     manager->server = server;

@@ -32,6 +32,10 @@ wlcom_sources += files(
   'ky_capture.c',
 )
 
+wlcom_sources += files(
+  'treeland_capture.c',
+)
+
 if have_ukui_screenshot
   wlcom_sources += files(
     'screenshot.c',

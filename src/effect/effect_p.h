@@ -26,6 +26,8 @@ bool capture_manager_create(struct server *server);
 
 bool ky_capture_manager_create(struct server *server);
 
+bool treeland_capture_manager_create(struct server *server);
+
 bool ext_image_copy_capture_manager_create(struct server *server);
 
 bool move_effect_create(struct effect_manager *effect_manager);

@@ -158,3 +158,12 @@ wayland协议支持情况
 | ukui_output_management_v1 |    1     |      |
 | ukui_shell                |    3     |      |
 | ukui_window_management    |    1     |      |
+
+## treeland
+> https://github.com/linuxdeepin/treeland-protocols
+
+| 协议名称                      | 支持情况 | 说明                                            |
+| :---------------------------- | :------: | :---------------------------------------------- |
+| treeland_dde_shell_manager_v1 |    1     |                                                 |
+| treeland_app_id_resolver_v1   |    1     |                                                 |
+| treeland_capture_manager_v1   |    1     | 供 deepin-screen-recorder 录屏与点击窗口截图使用 |
