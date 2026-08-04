@@ -1,3 +1,14 @@
+gxde-wlcom (2.1.4-gxde3) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 修复注销重进后无法应用之前分辨率配置的问题
+
+  [ CharOfString ]
+  * 修正了wl_seat晚于剪贴板相关全局对象广播的问题
+  * 新增了剪切板持久化支持
+
+ -- CharOfString <root@charofstring.cc>  Tue, 4 Aug 2026 15:44:22 +0800
+
 gxde-wlcom (2.1.4-gxde2) lizhi; urgency=medium
 
   * 修复了NVIDIA独显直连下的窗口闪烁问题
