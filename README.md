@@ -60,6 +60,8 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 9. 提供了一个接口，允许用户强制裁剪所有CSD（客户端自行装饰的）窗口，使其拥有圆角。用户亦可允许合成器跳过对`layer-shell`表面（这些表面通常包含GXDE顶栏、Dock、GXDE控制中心等）圆角的裁剪。强制裁剪圆角为不稳定功能。
 10. 为原来Wlcom的一些功能做了一些alias, 供GXDE控制中心使用（详见[这里](./docs/gxde/manual/dbus.md)）。
 11. 参考`deepin-kwin`移植了Deepin风格的多任务视图。
+12. 修正了`wl_seat`晚于剪贴板相关全局对象广播的问题。`dde-clipboard-daemon`一类基于KWayland的客户端会在`data-control`管理器一被广播就拿`seat`创建data device，此前会因此启动即崩溃。
+13. 新增剪贴板持久化：源程序退出后，合成器会接管其剪贴板内容，使截图工具一类「复制完就退出」的程序仍能被正常粘贴（构建参数`-Dclipboard_persist=false`可关闭）。
 
 
 

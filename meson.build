@@ -128,6 +128,7 @@ have_ukui_theme = get_option('ukui_theme')
 have_kde_keystate = get_option('kde_keystate')
 have_libkywc = get_option('libkywc')
 have_kde_clipboard = get_option('kde_clipboard')
+have_clipboard_persist = get_option('clipboard_persist')
 have_ukui_watermark = get_option('ukui_watermark')
 have_ukui_shell = get_option('ukui_shell')
 have_ukui_window_management = get_option('ukui_window_management')
@@ -157,6 +158,7 @@ add_project_arguments([
   '-DHAVE_UKUI_THEME=@0@'.format(have_ukui_theme.to_int()), 
   '-DHAVE_KDE_KEYSTATE=@0@'.format(have_kde_keystate.to_int()),
   '-DHAVE_KDE_CLIPBOARD=@0@'.format(have_kde_clipboard.to_int()),
+  '-DHAVE_CLIPBOARD_PERSIST=@0@'.format(have_clipboard_persist.to_int()),
   '-DHAVE_UKUI_WATERMARK=@0@'.format(have_ukui_watermark.to_int()),
   '-DHAVE_UKUI_SHELL=@0@'.format(have_ukui_shell.to_int()),
   '-DHAVE_UKUI_WINDOW_MANAGEMENT=@0@'.format(have_ukui_window_management.to_int()),
@@ -225,6 +227,7 @@ summary({
   'ukui_theme': have_ukui_theme,
   'kde_keystate': have_kde_keystate,
   'kde_clipboard': have_kde_clipboard,
+  'clipboard_persist': have_clipboard_persist,
   'ukui_watermark': have_ukui_watermark,
   'ukui_shell': have_ukui_shell,
   'ukui_window_management': have_ukui_window_management,

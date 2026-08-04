@@ -136,6 +136,12 @@ option('kde_clipboard',
        description: 'Enable kde clipboard dbus'
 )
 
+option('clipboard_persist',
+       type: 'boolean',
+       value: true,
+       description: 'Keep clipboard content after the source client exits'
+)
+
 option('ukui_watermark',
        type: 'boolean',
        value: true,

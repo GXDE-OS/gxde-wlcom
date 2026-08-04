@@ -501,6 +501,9 @@ struct input_manager *input_manager_create(struct server *server)
     input_manager->default_seat = seat_create(input_manager, "seat0");
     input_manager->bind_seat = input_set_seat;
 
+    /* wl_seat global must be advertised before the selection related ones */
+    selection_manager_create_globals(input_manager);
+
     return input_manager;
 }
 

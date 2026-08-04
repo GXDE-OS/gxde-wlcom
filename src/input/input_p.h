@@ -143,6 +143,10 @@ bool keyboard_is_from_input_method(struct keyboard *keyboard);
 
 bool selection_manager_create(struct input_manager *input_manager);
 
+void selection_manager_create_globals(struct input_manager *input_manager);
+
+void selection_persist_create(struct seat *seat);
+
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
 
 bool selection_is_dragging(struct seat *seat);

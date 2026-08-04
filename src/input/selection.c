@@ -351,6 +351,10 @@ static void handle_new_seat(struct wl_listener *listener, void *data)
     selection->request_set_primary_selection.notify = handle_request_set_primary_selection;
     wl_signal_add(&seat->wlr_seat->events.request_set_primary_selection,
                   &selection->request_set_primary_selection);
+
+#if HAVE_CLIPBOARD_PERSIST
+    selection_persist_create(seat);
+#endif
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -374,11 +378,6 @@ bool selection_manager_create(struct input_manager *input_manager)
         kywc_log(KYWC_WARN, "org.kde.KWin.Clipboard register failed");
     }
 #endif
-    wlr_data_device_manager_create(input_manager->server->display);
-    wlr_data_control_manager_v1_create(input_manager->server->display);
-    wlr_primary_selection_v1_device_manager_create(input_manager->server->display);
-    toplevel_drag_manager_create(input_manager->server);
-
     manager->new_seat.notify = handle_new_seat;
     wl_signal_add(&input_manager->events.new_seat, &manager->new_seat);
 
@@ -386,6 +385,19 @@ bool selection_manager_create(struct input_manager *input_manager)
     server_add_destroy_listener(input_manager->server, &manager->server_destroy);
 
     return true;
+}
+
+/**
+ * globals related to selection must be advertised after wl_seat, KWayland based
+ * clients (dde-clipboard-daemon and so on) create their data device as soon as
+ * the manager is announced, and crash if the seat has not been announced yet.
+ */
+void selection_manager_create_globals(struct input_manager *input_manager)
+{
+    wlr_data_device_manager_create(input_manager->server->display);
+    wlr_data_control_manager_v1_create(input_manager->server->display);
+    wlr_primary_selection_v1_device_manager_create(input_manager->server->display);
+    toplevel_drag_manager_create(input_manager->server);
 }
 
 void selection_handle_cursor_move(struct seat *seat, int lx, int ly)

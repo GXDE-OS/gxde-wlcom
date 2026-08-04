@@ -28,3 +28,9 @@ if have_kde_keystate
     'kde_keystate.c',
   )
 endif
+
+if have_clipboard_persist
+  wlcom_sources += files(
+    'selection_persist.c',
+  )
+endif
