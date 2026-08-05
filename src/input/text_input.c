@@ -278,6 +278,15 @@ static void handle_text_input_enable(struct wl_listener *listener, void *data)
 
     wlr_input_method_v2_send_activate(text_input->relay->wlr_input_method);
     relay_send_input_method_state(text_input->relay, text_input);
+
+    /* chromium/electron withholds its pending state (most importantly
+     * set_cursor_rectangle) until it has seen a done event acknowledging the
+     * commit that enabled the text input, so send one here like kwin does.
+     * no preedit can be pending right after enable, so the empty state this
+     * applies is a no-op for clients that do not need it. */
+    if (text_input->text_input_v3) {
+        wlr_text_input_v3_send_done(text_input->text_input_v3);
+    }
 }
 
 static bool text_input_is_enabeld(struct text_input *text_input)
