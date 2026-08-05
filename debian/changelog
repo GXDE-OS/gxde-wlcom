@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.6-gxde1) lizhi; urgency=medium
+
+  * 新增PrintScreen全屏截图到剪贴板
+
+ -- CharOfString <root@charofstring.cc>  Wed, 5 Aug 2026 21:30:00 +0800
+
 gxde-wlcom (2.1.5-gxde1) lizhi; urgency=medium
 
   * 尝试修复Electron程序在Wlcom下IME错位的问题

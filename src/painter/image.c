@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -556,4 +557,30 @@ bool image_write_to_file(struct painter_buffer *buffer, const char *filename)
 
     fclose(file);
     return ok;
+}
+
+bool image_write_to_memory(struct painter_buffer *buffer, char **data, size_t *size)
+{
+    char *out = NULL;
+    size_t len = 0;
+
+    FILE *file = open_memstream(&out, &len);
+    if (!file) {
+        kywc_log(KYWC_ERROR, "cannot open memory stream for image");
+        return false;
+    }
+
+    bool ok = do_encode_png(file, buffer->base.width, buffer->base.height, buffer->stride,
+        buffer->data);
+
+    fclose(file);
+
+    if (!ok || !out) {
+        free(out);
+        return false;
+    }
+
+    *data = out;
+    *size = len;
+    return true;
 }

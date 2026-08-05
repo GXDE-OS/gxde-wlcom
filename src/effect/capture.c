@@ -4,7 +4,10 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <drm_fourcc.h>
 #include <wlr/types/wlr_output.h>
@@ -875,6 +878,105 @@ void capture_write_file(struct wlr_buffer *buffer, int width, int height, const 
         free(data);
         capture_write_image(dst_buf, path, done, user_data);
     }
+}
+
+struct capture_encode_data {
+    struct wlr_buffer *buffer;
+
+    char *data;
+    size_t size;
+
+    void (*done)(char *data, size_t size, void *user_data);
+    void *user_data;
+
+    int notify_fd;
+    struct wl_event_source *event;
+};
+
+static void capture_encode_data_finish(struct capture_encode_data *data) {
+    wlr_buffer_drop(data->buffer);
+    data->done(data->data, data->size, data->user_data);
+    free(data);
+}
+
+static int handle_encode_done(int fd, uint32_t mask, void *user_data) {
+    struct capture_encode_data *data = user_data;
+
+    wl_event_source_remove(data->event);
+    close(fd);
+    capture_encode_data_finish(data);
+
+    return 0;
+}
+
+static void encode_image(void *job, void *gdata, int index) {
+    kywc_log(KYWC_DEBUG, "%s: in thread %d", __func__, index);
+    struct capture_encode_data *data = job;
+
+    if (!painter_buffer_encode_png(data->buffer, &data->data, &data->size)) {
+        data->data = NULL;
+        data->size = 0;
+    }
+
+    while (write(data->notify_fd, "", 1) < 0 && errno == EINTR) {
+    }
+    close(data->notify_fd);
+}
+
+void capture_encode_png(struct wlr_buffer *buffer, int width, int height,
+        void (*done)(char *data, size_t size, void *user_data),
+        void *user_data) {
+    uint32_t format;
+    size_t stride;
+    void *dst_ptr;
+
+    struct wlr_buffer *dst_buf = painter_create_buffer(width, height, 1.0);
+    if (!dst_buf) {
+        done(NULL, 0, user_data);
+        return;
+    }
+
+    wlr_buffer_begin_data_ptr_access(dst_buf, WLR_BUFFER_DATA_PTR_ACCESS_WRITE,
+        &dst_ptr, &format, &stride);
+    capture_read_buffer(buffer, format, stride,
+        &(struct wlr_box){ 0, 0, dst_buf->width, dst_buf->height }, dst_ptr);
+    wlr_buffer_end_data_ptr_access(dst_buf);
+
+    struct capture_encode_data *data = calloc(1, sizeof(*data));
+    if (!data) {
+        wlr_buffer_drop(dst_buf);
+        done(NULL, 0, user_data);
+        return;
+    }
+
+    data->buffer = dst_buf;
+    data->done = done;
+    data->user_data = user_data;
+
+    int fds[2];
+    if (pipe(fds) == 0) {
+        fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+        fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+
+        data->notify_fd = fds[1];
+        data->event = wl_event_loop_add_fd(manager->server->event_loop, fds[0], WL_EVENT_READABLE,
+            handle_encode_done, data);
+        if (data->event && queue_add_job(manager->server->queue, data, NULL, encode_image, NULL)) {
+            return;
+        }
+
+        if (data->event) {
+            wl_event_source_remove(data->event);
+        }
+        close(fds[0]);
+        close(fds[1]);
+    }
+
+    if (!painter_buffer_encode_png(dst_buf, &data->data, &data->size)) {
+        data->data = NULL;
+        data->size = 0;
+    }
+    capture_encode_data_finish(data);
 }
 
 static void handle_new_enabled_output(struct wl_listener *listener, void *data)

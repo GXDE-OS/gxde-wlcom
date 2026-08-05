@@ -188,3 +188,39 @@ busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.S
 
 缩放、分辨率、旋转、显示模式和屏幕布局设置保存在当前用户的
 `~/.config/gxde-wlcom/config.json` 中。
+
+## 截图
+
+| 项目 | 值 |
+| --- | --- |
+| 总线 | Session Bus |
+| 服务名 | `top.gxde.Wlcom.Screenshot` |
+| 对象路径 | `/top/gxde/Wlcom/Screenshot` |
+| 接口名 | `top.gxde.Wlcom.Screenshot` |
+
+可以通过以下命令查看接口：
+
+```bash
+busctl --user introspect top.gxde.Wlcom.Screenshot /top/gxde/Wlcom/Screenshot top.gxde.Wlcom.Screenshot
+```
+
+### CopyFullscreenToClipboard
+
+截取所有已启用屏幕组成的整个布局到剪切板
+
+```text
+CopyFullscreenToClipboard()
+```
+
+- 无参数，无返回值
+- 剪贴板内容以 `image/png` 与 `PNG` 两种类型广播
+
+```bash
+busctl --user call top.gxde.Wlcom.Screenshot /top/gxde/Wlcom/Screenshot top.gxde.Wlcom.Screenshot CopyFullscreenToClipboard
+```
+
+如果上一次截图还没完成，调用会返回 `top.gxde.Wlcom.Screenshot.Error.AlreadyTaking` 错误。
+
+默认配置把该方法绑定到了 `PrintScreen` 键（见 `/etc/gxde-wlcom/config.json` 中
+`InputAction.keyboard` 的 `Print:no`），按下即把全屏复制到剪贴板。若要改键或禁用，
+按照该文件里其他快捷键的写法修改用户配置 `~/.config/gxde-wlcom/config.json` 即可。

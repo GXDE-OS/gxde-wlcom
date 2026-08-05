@@ -21,6 +21,7 @@ wlcom_sources += files(
   'transient_seat.c',
   'seat.c',
   'selection.c',
+  'selection_data.c',
 )
 
 if have_kde_keystate

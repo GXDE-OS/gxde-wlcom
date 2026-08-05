@@ -12,12 +12,18 @@
 
 #include "effect/capture.h"
 #include "effect_p.h"
+#include "input/input.h"
+#include "input/seat.h"
 #include "server.h"
 #include "util/dbus.h"
 
 static const char *registry_bus = "org.ukui.KWin";
 static const char *registry_path = "/Screenshot";
 static const char *registry_interface = "org.ukui.kwin.Screenshot";
+
+static const char *gxde_screenshot_bus = "top.gxde.Wlcom.Screenshot";
+static const char *gxde_screenshot_path = "/top/gxde/Wlcom/Screenshot";
+static const char *gxde_screenshot_interface = "top.gxde.Wlcom.Screenshot";
 
 static struct screenshot_manager {
     struct server *server;
@@ -29,6 +35,8 @@ static struct screenshot_manager {
 
     sd_bus_message *msg;
     bool taking_screenshot;
+    /* 截图不写文件, 直接进剪贴板 */
+    bool to_clipboard;
 } *manager = NULL;
 
 static void screenshot_finish(const char *path, void *data)
@@ -48,6 +56,30 @@ static void screenshot_finish(const char *path, void *data)
     manager->taking_screenshot = false;
 }
 
+static void screenshot_clipboard_finish(char *data, size_t size, void *user_data) {
+    if (!manager) {
+        free(data);
+        return;
+    }
+
+    manager->taking_screenshot = false;
+    manager->to_clipboard = false;
+
+    if (!data) {
+        return;
+    }
+
+    static const char *mime_types[] = { "image/png", "PNG" };
+    struct seat *seat = input_manager_get_default_seat();
+    if (!seat_set_selection_data(seat, mime_types, sizeof(mime_types) / sizeof(mime_types[0]), data,
+            size)) {
+        free(data);
+        return;
+    }
+
+    kywc_log(KYWC_DEBUG, "screenshot: %zu bytes copied to clipboard", size);
+}
+
 static void manager_destroy_capture(void)
 {
     wl_list_remove(&manager->capture_destroy.link);
@@ -63,6 +95,13 @@ static void handle_capture_update(struct wl_listener *listener, void *data)
 {
     struct capture_update_event *event = data;
 
+    if (manager->to_clipboard) {
+        capture_encode_png(event->buffer, event->buffer->width, event->buffer->height,
+            screenshot_clipboard_finish, NULL);
+        manager_destroy_capture();
+        return;
+    }
+
     char path[32];
     snprintf(path, 32, "/tmp/%s", "kywc_screenshot_XXXXXX.png");
     kywc_identifier_rand_generate(path, 4);
@@ -77,6 +116,13 @@ static void handle_capture_destroy(struct wl_listener *listener, void *data)
 {
     manager->capture = NULL;
     manager_destroy_capture();
+
+    if (manager->to_clipboard) {
+        manager->taking_screenshot = false;
+        manager->to_clipboard = false;
+        kywc_log(KYWC_ERROR, "screenshot: fullscreen capture failed");
+        return;
+    }
 
     /* capture failed, send a error to client */
     screenshot_finish(NULL, NULL);
@@ -224,6 +270,31 @@ static int screenshot_area(sd_bus_message *msg, void *userdata, sd_bus_error *re
     return 1;
 }
 
+static int copy_fullscreen_to_clipboard(sd_bus_message *msg, void *userdata,
+        sd_bus_error *ret_error) {
+    if (manager->taking_screenshot) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST("top.gxde.Wlcom.Screenshot.Error.AlreadyTaking",
+                "A screenshot is already been taken");
+        return sd_bus_reply_method_error(msg, &error);
+    }
+
+    manager->capture = capture_create_from_fullscreen(CAPTURE_NEED_NONE);
+    if (!manager->capture) {
+        const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            "top.gxde.Wlcom.Screenshot.Error.Failed", "Failed to capture fullscreen");
+        return sd_bus_reply_method_error(msg, &error);
+    }
+
+    capture_add_update_listener(manager->capture, &manager->capture_update);
+    capture_add_destroy_listener(manager->capture, &manager->capture_destroy);
+
+    manager->taking_screenshot = true;
+    manager->to_clipboard = true;
+
+    return sd_bus_reply_method_return(msg, NULL);
+}
+
 /**
  * sd-bus not support method overloaded, https://github.com/systemd/systemd/issues/578
  * Add org.kde.KWin screenshotFullscreen with a bool arg for linuxqq,
@@ -241,6 +312,12 @@ static const sd_bus_vtable screenshot_vtable[] = {
 static const sd_bus_vtable screenshot2_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("screenshotFullscreen", "b", "s", screenshot2_fullscreen, 0),
+    SD_BUS_VTABLE_END,
+};
+
+static const sd_bus_vtable gxde_screenshot_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("CopyFullscreenToClipboard", "", "", copy_fullscreen_to_clipboard, 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -267,6 +344,11 @@ bool screenshot_effect_create(struct effect_manager *effect_manager)
 
     dbus_register_object("org.kde.KWin", registry_path, "org.kde.kwin.Screenshot",
                          screenshot2_vtable, NULL);
+
+    if (!dbus_register_object(gxde_screenshot_bus, gxde_screenshot_path, gxde_screenshot_interface,
+            gxde_screenshot_vtable, NULL)) {
+        kywc_log(KYWC_WARN, "top.gxde.Wlcom.Screenshot register failed");
+    }
 
     manager->server = effect_manager->server;
     manager->destroy.notify = handle_server_destroy;

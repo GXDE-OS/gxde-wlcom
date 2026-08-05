@@ -47,4 +47,7 @@ void capture_read_buffer(struct wlr_buffer *buffer, uint32_t format, uint32_t st
 void capture_write_file(struct wlr_buffer *buffer, int width, int height, const char *path,
                         void (*done)(const char *path, void *data), void *user_data);
 
+void capture_encode_png(struct wlr_buffer *buffer, int width, int height,
+    void (*done)(char *data, size_t size, void *user_data), void *user_data);
+
 #endif /* _EFFECT_CAPTURE_H_ */

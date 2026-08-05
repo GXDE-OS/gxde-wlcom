@@ -33,6 +33,16 @@
                 "command": "/usr/libexec/dde-daemon/keybinding/shortcut-clipboard.sh",
                 "desc": "clipboard"
             },
+            "Print:no": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "top.gxde.Wlcom.Screenshot",
+                "path": "\/top\/gxde\/Wlcom\/Screenshot",
+                "interface": "top.gxde.Wlcom.Screenshot",
+                "method": "CopyFullscreenToClipboard",
+                "desc": "copy fullscreen to clipboard"
+            },
             "Shift+space:no": {
                 "enable": true,
                 "actiontype": "command",

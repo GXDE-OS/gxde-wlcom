@@ -151,6 +151,15 @@ void selection_handle_cursor_move(struct seat *seat, int lx, int ly);
 
 bool selection_is_dragging(struct seat *seat);
 
+bool selection_writers_add(struct wl_list *writers, struct wl_event_loop *loop, int fd,
+    const void *data, size_t size);
+
+void selection_writers_finish(struct wl_list *writers);
+
+struct wlr_data_source;
+
+bool selection_source_is_compositor(struct wlr_data_source *source);
+
 /**
  * tablet manager
  */

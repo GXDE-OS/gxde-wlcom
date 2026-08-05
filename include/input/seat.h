@@ -161,4 +161,7 @@ void seat_feed_keyboard_key(struct seat *seat, uint32_t key, bool pressed);
 
 bool seat_is_keyboard_shortcuts_inhibited(struct seat *seat);
 
+bool seat_set_selection_data(struct seat *seat, const char **mime_types, size_t n_mime_types,
+    void *data, size_t size);
+
 #endif /* _SEAT_H_ */

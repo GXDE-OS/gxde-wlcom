@@ -36,17 +36,8 @@ struct persist_entry {
     int fd; /* 管道读端, 读完为 -1 */
     struct wl_event_source *event;
 
-    struct wl_list writers; /* struct persist_writer.link */
+    struct wl_list writers; /* struct selection_writer.link */
     struct wl_list link;    /* persist_selection.entries */
-};
-
-/* 正在把缓存写回某个请求者 */
-struct persist_writer {
-    struct persist_entry *entry;
-    size_t offset;
-    int fd;
-    struct wl_event_source *event;
-    struct wl_list link; /* persist_entry.writers */
 };
 
 struct persist_selection {
@@ -74,51 +65,6 @@ struct persist_manager {
 
 static const struct wlr_data_source_impl persist_source_impl;
 
-static void persist_writer_destroy(struct persist_writer *writer)
-{
-    if (writer->event) {
-        wl_event_source_remove(writer->event);
-    }
-    close(writer->fd);
-    wl_list_remove(&writer->link);
-    free(writer);
-}
-
-/* 返回 true 表示已经写完 */
-static bool persist_writer_flush(struct persist_writer *writer)
-{
-    struct persist_entry *entry = writer->entry;
-
-    while (writer->offset < entry->size) {
-        ssize_t n = write(writer->fd, entry->data + writer->offset, entry->size - writer->offset);
-        if (n > 0) {
-            writer->offset += n;
-            continue;
-        }
-        if (n < 0 && errno == EINTR) {
-            continue;
-        }
-        if (n < 0 && errno == EAGAIN) {
-            return false;
-        }
-        /* 对端提前关闭等, 不再重试 */
-        break;
-    }
-
-    return true;
-}
-
-static int handle_writable(int fd, uint32_t mask, void *data)
-{
-    struct persist_writer *writer = data;
-
-    if (persist_writer_flush(writer) || (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR))) {
-        persist_writer_destroy(writer);
-    }
-
-    return 0;
-}
-
 static void persist_entry_finish_read(struct persist_entry *entry)
 {
     if (entry->event) {
@@ -133,10 +79,7 @@ static void persist_entry_finish_read(struct persist_entry *entry)
 
 static void persist_entry_destroy(struct persist_entry *entry)
 {
-    struct persist_writer *writer, *tmp;
-    wl_list_for_each_safe(writer, tmp, &entry->writers, link) {
-        persist_writer_destroy(writer);
-    }
+    selection_writers_finish(&entry->writers);
 
     persist_entry_finish_read(entry);
     wl_list_remove(&entry->link);
@@ -314,32 +257,8 @@ static void persist_source_send(struct wlr_data_source *source, const char *mime
         return;
     }
 
-    struct persist_writer *writer = calloc(1, sizeof(struct persist_writer));
-    if (!writer) {
-        close(fd);
-        return;
-    }
-
-    /* 非阻塞写, 慢客户端不能卡住合成器 */
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags >= 0) {
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    }
-
-    writer->entry = entry;
-    writer->fd = fd;
-    wl_list_insert(&entry->writers, &writer->link);
-
-    if (persist_writer_flush(writer)) {
-        persist_writer_destroy(writer);
-        return;
-    }
-
-    writer->event =
-        wl_event_loop_add_fd(persist->manager->loop, fd, WL_EVENT_WRITABLE, handle_writable, writer);
-    if (!writer->event) {
-        persist_writer_destroy(writer);
-    }
+    /* 选区安装前缓存就已经读完了, entry->data 在写出期间不会再变 */
+    selection_writers_add(&entry->writers, persist->manager->loop, fd, entry->data, entry->size);
 }
 
 static void persist_source_destroy(struct wlr_data_source *source)
@@ -429,7 +348,7 @@ static void handle_set_selection(struct wl_listener *listener, void *data)
     struct wlr_data_source *source = manager->seat->wlr_seat->selection_source;
 
     /* 合成器自己持有的选区, 不需要再缓存一次 */
-    if (source && source->impl == &persist_source_impl) {
+    if (source && (source->impl == &persist_source_impl || selection_source_is_compositor(source))) {
         return;
     }
 

@@ -31,4 +31,6 @@ uint8_t *image_read_from_file(const char *filename, int *width, int *height);
 
 bool image_write_to_file(struct painter_buffer *buffer, const char *filename);
 
+bool image_write_to_memory(struct painter_buffer *buffer, char **data, size_t *size);
+
 #endif /* _PAINTER_P_H_ */

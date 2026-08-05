@@ -184,6 +184,15 @@ void painter_buffer_write_to_file(struct wlr_buffer *buffer, const char *name)
     image_write_to_file(buf, name);
 }
 
+bool painter_buffer_encode_png(struct wlr_buffer *buffer, char **data, size_t *size) {
+    struct painter_buffer *buf = painter_buffer_from_wlr_buffer(buffer);
+    if (!buf) {
+        return false;
+    }
+
+    return image_write_to_memory(buf, data, size);
+}
+
 void painter_get_text_size(const char *text, const char *font, int font_size, int *width,
                            int *height)
 {

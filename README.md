@@ -62,6 +62,7 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 11. 参考`deepin-kwin`移植了Deepin风格的多任务视图。
 12. 修正了`wl_seat`晚于剪贴板相关全局对象广播的问题。`dde-clipboard-daemon`一类基于KWayland的客户端会在`data-control`管理器一被广播就拿`seat`创建data device，此前会因此启动即崩溃。
 13. 新增剪贴板持久化：源程序退出后，合成器会接管其剪贴板内容，使截图工具一类「复制完就退出」的程序仍能被正常粘贴（构建参数`-Dclipboard_persist=false`可关闭）。
+14. 新增全屏截图到剪贴板：按下`PrintScreen`截取全屏；也可通过`top.gxde.Wlcom.Screenshot`接口调用（详见[这里](./docs/gxde/manual/dbus.md)）。
 
 
 

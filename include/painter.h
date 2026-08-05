@@ -6,6 +6,7 @@
 #define _PAINTER_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 struct wlr_buffer;
@@ -95,6 +96,8 @@ bool painter_buffer_redraw(struct wlr_buffer *buffer, struct draw_info *info);
 void painter_buffer_get_dest_size(struct wlr_buffer *buffer, int *width, int *height);
 
 void painter_buffer_write_to_file(struct wlr_buffer *buffer, const char *name);
+
+bool painter_buffer_encode_png(struct wlr_buffer *buffer, char **data, size_t *size);
 
 void painter_get_text_size(const char *text, const char *font, int font_size, int *width,
                            int *height);
