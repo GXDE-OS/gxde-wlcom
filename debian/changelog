@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.5-gxde1) lizhi; urgency=medium
+
+  * 尝试修复Electron程序在Wlcom下IME错位的问题
+  * 补充了treeland_dde_shell兼容层中部分缺失的实现
+
+ -- CharOfString <root@charofstring.cc>  Wed, 5 Aug 2026 19:04:07 +0800
+
 gxde-wlcom (2.1.4-gxde3) lizhi; urgency=medium
 
   [ gfdgd_xi ]
