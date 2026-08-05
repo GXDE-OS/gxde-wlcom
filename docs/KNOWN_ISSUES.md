@@ -5,4 +5,6 @@
 
 ## GXDE下发现的问题
 
-- `GXDE终端`有双标题栏问题
+> https://gitee.com/GXDE-OS/gxde-wlcom/issues
+
+- ~~`GXDE终端`有双标题栏问题~~
