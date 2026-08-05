@@ -63,11 +63,13 @@ struct treeland_dde_shell_surface_state {
     struct wl_client *client;        /**< 对应的客户端，用于识别「同一客户端父菜单」 */
     struct wlr_surface *wlr_surface; /**< 关联的surface */
     struct wl_listener surface_destroy;
+    struct wl_listener surface_map;
 
     bool auto_place;      /**< true即「按全局光标定位」 */
     int32_t y_offset;     /**< auto_place时光标y方向的附加偏移 */
     bool has_pos;         /**< true即pos_x/pos_y为有效的固定全局坐标 */
     int32_t pos_x, pos_y; /**< 已解析的全局落点 (锚定左上角) */
+    bool keep_above;      /**< true即role为overlay，窗口压在普通窗口之上 */
 };
 
 static struct treeland_dde_shell_manager *manager = NULL;
@@ -166,6 +168,7 @@ static void dde_shell_state_destroy(struct treeland_dde_shell_surface_state *sta
 
     wl_list_remove(&state->link);
     wl_list_remove(&state->surface_destroy.link);
+    wl_list_remove(&state->surface_map.link);
     free(state);
 }
 
@@ -181,6 +184,42 @@ static void dde_shell_handle_surface_destroy(struct wl_listener *listener, void 
     struct treeland_dde_shell_surface_state *state =
         wl_container_of(listener, state, surface_destroy);
     dde_shell_state_destroy(state);
+}
+
+/**
+ * @brief 把已请求的role落到view上
+ *
+ * @note surface还没有view时什么都不做，等map了再来一次
+ * @param state (treeland_dde_shell_surface_state*) 目标状态
+ * @return (void)
+ */
+static void dde_shell_apply_role(struct treeland_dde_shell_surface_state *state)
+{
+    if (!state->keep_above) {
+        return;
+    }
+
+    struct view *view = view_try_from_wlr_surface(state->wlr_surface);
+    if (!view) {
+        return;
+    }
+
+    kywc_view_set_kept_above(&view->base, true);
+    kywc_log(KYWC_INFO, "(Treeland Shim) SetRole: surface %p kept above", state->wlr_surface);
+}
+
+/**
+ * @brief surface map信号callback
+ *
+ * @param listener (wl_listener*) State内的listener
+ * @param data     (void*)        这里不重要，因为没用到
+ * @return (void)
+ */
+static void dde_shell_handle_surface_map(struct wl_listener *listener, void *data)
+{
+    struct treeland_dde_shell_surface_state *state =
+        wl_container_of(listener, state, surface_map);
+    dde_shell_apply_role(state);
 }
 
 /**
@@ -278,10 +317,28 @@ static void surface_set_surface_position(struct wl_client *client, struct wl_res
     wlr_layer_shell_reconfigure_surface(state->wlr_surface);
 }
 
-/* surface_v1.set_role暂时不需要，空实现 */
+/**
+ * @brief surface_v1.set_role请求: 目前协议只定义了overlay一种role
+ *
+ * @note overlay按协议是「在layer-shell之下、工作区overlay层」，落到wlcom就是窗口置顶。
+ *       置顶是view的属性，而客户端往往在xdg_toplevel建好之前就发来set_role(Qt即如此)，
+ *       这时还没有view，先记进state，等surface map时再落实(见 @c dde_shell_apply_role )
+ *
+ * @param client   (wl_client*)   发起请求的客户端
+ * @param resource (wl_resource*) surface_v1资源(其 user_data 为对应 state)
+ * @param role     (uint32_t)     请求的role
+ * @return (void)
+ */
 static void surface_set_role(struct wl_client *client, struct wl_resource *resource, uint32_t role)
 {
-    return;
+    struct treeland_dde_shell_surface_state *state = wl_resource_get_user_data(resource);
+    if (!state) {
+        return;
+    }
+
+    state->keep_above = (role == TREELAND_DDE_SHELL_SURFACE_V1_ROLE_OVERLAY);
+    kywc_log(KYWC_WARN, "(Treeland Shim) SetRole: surface %p role=%u", state->wlr_surface, role);
+    dde_shell_apply_role(state);
 }
 
 /**
@@ -389,6 +446,8 @@ static void manager_get_shell_surface(struct wl_client *client,
         state->wlr_surface = wlr_surface;
         state->surface_destroy.notify = dde_shell_handle_surface_destroy;
         wl_signal_add(&wlr_surface->events.destroy, &state->surface_destroy);
+        state->surface_map.notify = dde_shell_handle_surface_map;
+        wl_signal_add(&wlr_surface->events.map, &state->surface_map);
         wl_list_insert(&manager->surfaces, &state->link);
     }
 
