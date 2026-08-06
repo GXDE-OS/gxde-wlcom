@@ -15,6 +15,36 @@
                 "command": "dbus-send --print-reply --dest=com.deepin.dde.Launcher /com/deepin/dde/Launcher com.deepin.dde.Launcher.Toggle",
                 "desc": "open launcher"
             },
+            "Ctrl+Alt+a:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.StartScreenshot",
+                "desc": "Take a screenshot"
+            },
+            "Ctrl+Alt+c:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.OcrScreenshot",
+                "desc": "Take a screenshot for ocr"
+            },
+            "Ctrl+Alt+r:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.ScreenRecorder /com/deepin/ScreenRecorder com.deepin.ScreenRecorder.stopRecord",
+                "desc": "Launch screen recorder"
+            },
+            "Alt+Print:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.TopWindowScreenshot",
+                "desc": "Take a screenshot of the most top window"
+            },
+            "Ctrl+Print:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.DelayScreenshot int64:5",
+                "desc": "Take a screenshot after a few seconds"
+            },
             "Win+e:no": {
                 "enable": true,
                 "actiontype": "command",

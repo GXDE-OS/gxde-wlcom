@@ -1,6 +1,7 @@
-gxde-wlcom (2.1.5-gxde2) lizhi; urgency=medium
+gxde-wlcom (2.1.5-gxde3) lizhi; urgency=medium
 
   * 新增PrintScreen全屏截图到剪贴板
+  * 新增截图快捷键若干
 
  -- CharOfString <root@charofstring.cc>  Thu, 6 Aug 2026 01:03:00 +0800
 
