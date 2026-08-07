@@ -528,6 +528,7 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
     free(manager->icon_theme_name);
     manager->icon_theme_name = strdup(icon_theme_name);
     theme_manager_write_icon_config(manager, icon_theme_name);
+    config_set_icon_theme(manager->icon_theme_name);
     wl_signal_emit_mutable(&manager->events.icon_update, NULL);
 
     return true;

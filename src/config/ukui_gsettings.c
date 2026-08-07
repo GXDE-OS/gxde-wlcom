@@ -100,6 +100,7 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 
     if (settings->cursor.theme && settings->cursor.size > 0) {
         input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+        xwayland_refresh_xsettings();
     }
 }
 

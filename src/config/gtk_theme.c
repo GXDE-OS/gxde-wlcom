@@ -38,6 +38,10 @@ static const struct gtk_theme_setting gtk_decoration_layout = {
     "org.gnome.desktop.wm.preferences", "button-layout"
 };
 
+static const struct gtk_theme_setting icon_theme_setting = {
+    "org.gnome.desktop.interface", "icon-theme"
+};
+
 static bool directory_has_gtk_theme(const char* directory) {
     static const char* files[] = {
         "gtk-2.0/gtkrc",
@@ -119,6 +123,26 @@ bool config_set_gtk_theme(const char* name) {
         }
     }
 
+    if (available && success) {
+        g_settings_sync();
+        xwayland_refresh_xsettings();
+    }
+
+    return available && success;
+}
+
+bool config_set_icon_theme(const char* name) {
+    if (!name || !*name || strchr(name, G_DIR_SEPARATOR)) {
+        return false;
+    }
+
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    if (!source) {
+        return false;
+    }
+
+    bool available = false;
+    bool success = set_schema_string(source, &icon_theme_setting, name, &available);
     if (available && success) {
         g_settings_sync();
         xwayland_refresh_xsettings();
