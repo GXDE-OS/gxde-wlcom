@@ -15,6 +15,7 @@
 #include "xwayland.h"
 
 struct kywc_box;
+struct xsettings_manager;
 
 /**
  * window type that for windows not OR
@@ -146,6 +147,10 @@ struct xwayland_server {
     // TODO: multiple drags
     struct xwayland_drag_x11 *drag_x11;
 
+    struct xsettings_manager *xsettings;
+    struct wl_listener theme_update;
+    struct wl_listener icon_update;
+
     float scale;
 };
 
@@ -245,6 +250,12 @@ void xwayland_end_drag_x11(struct xwayland_server *xwayland);
 
 void drag_set_focus(struct xwayland_drag_x11 *drag, struct wlr_surface *surface, double sx,
                     double sy);
+
+bool xwayland_xsettings_create(struct xwayland_server *xwayland);
+
+void xwayland_xsettings_apply(struct xwayland_server *xwayland);
+
+void xwayland_xsettings_destroy(struct xwayland_server *xwayland);
 
 // dnd protocol
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,

@@ -21,6 +21,7 @@
 #include "scene/surface.h"
 #include "security.h"
 #include "server.h"
+#include "theme.h"
 #include "util/dbus.h"
 #include "util/spawn.h"
 #include "util/string.h"
@@ -107,6 +108,11 @@ static void handle_new_xwayland_surface(struct wl_listener *listener, void *data
 
 static void xwayland_update_xresources(xcb_connection_t *xcb_conn)
 {
+    if (xwayland->xsettings) {
+        xwayland_xsettings_apply(xwayland);
+        return;
+    }
+
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
 
     const char *prop_str =
@@ -394,6 +400,9 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
     xwayland_set_seat(input_manager_get_default_seat());
 
     xwayland_get_resources(xwayland->xcb_conn);
+    if (!xwayland_xsettings_create(xwayland)) {
+        kywc_log(KYWC_WARN, "failed to create XSettings manager");
+    }
 
     // for selection
     int width = 0, height = 0;
@@ -425,6 +434,9 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&xwayland->output_configured.link);
     wl_list_remove(&xwayland->surface_destroy.link);
     wl_list_remove(&xwayland->activate_view.link);
+    wl_list_remove(&xwayland->theme_update.link);
+    wl_list_remove(&xwayland->icon_update.link);
+    xwayland_xsettings_destroy(xwayland);
     free(xwayland);
     xwayland = NULL;
 }
@@ -641,6 +653,16 @@ static void handle_activate_view(struct wl_listener *listener, void *data)
     xwayland->activated_surface = NULL;
 }
 
+static void handle_theme_update(struct wl_listener *listener, void *data)
+{
+    xwayland_refresh_xsettings();
+}
+
+static void handle_icon_update(struct wl_listener *listener, void *data)
+{
+    xwayland_refresh_xsettings();
+}
+
 bool xwayland_server_create(struct server *server)
 {
     if (!server->options.enable_xwayland) {
@@ -680,6 +702,10 @@ bool xwayland_server_create(struct server *server)
     wl_list_init(&xwayland->seat_destroy.link);
     xwayland->activate_view.notify = handle_activate_view;
     view_manager_add_activate_view_listener(&xwayland->activate_view);
+    xwayland->theme_update.notify = handle_theme_update;
+    theme_manager_add_update_listener(&xwayland->theme_update);
+    xwayland->icon_update.notify = handle_icon_update;
+    theme_manager_add_icon_update_listener(&xwayland->icon_update);
 
     xwayland->surface_destroy.notify = handle_surface_destroy;
     wl_list_init(&xwayland->surface_destroy.link);
@@ -702,6 +728,7 @@ void xwayland_server_destroy(void)
     wl_list_remove(&xwayland->xwayland_ready.link);
     wl_list_remove(&xwayland->new_xwayland_surface.link);
     wl_list_remove(&xwayland->seat_destroy.link);
+    xwayland_xsettings_destroy(xwayland);
 
     xwayland_end_drag_x11(xwayland);
 
@@ -709,6 +736,15 @@ void xwayland_server_destroy(void)
     /* prevent xwayland_update_seat in hover */
     xwayland->wlr_xwayland = NULL;
     wlr_xwayland_destroy(wlr_xwayland);
+}
+
+void xwayland_refresh_xsettings(void)
+{
+    if (!xwayland || !xwayland->wlr_xwayland || !xwayland->wlr_xwayland->xwm) {
+        return;
+    }
+
+    xwayland_xsettings_apply(xwayland);
 }
 
 bool xwayland_check_client(const struct wl_client *client)

@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "xwayland.h"
 
 struct gtk_theme_setting {
     const char *schema;
@@ -120,6 +121,7 @@ bool config_set_gtk_theme(const char* name) {
 
     if (available && success) {
         g_settings_sync();
+        xwayland_refresh_xsettings();
     }
 
     return available && success;

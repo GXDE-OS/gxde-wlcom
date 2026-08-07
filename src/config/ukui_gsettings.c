@@ -10,6 +10,7 @@
 #include "server.h"
 #include "theme.h"
 #include "util/dbus.h"
+#include "xwayland.h"
 
 struct ukui_settings {
     struct {
@@ -120,12 +121,14 @@ static void style_name_changed(GSettings *style, const char *key)
     if (settings->style.type != THEME_TYPE_UNDEFINED) {
         theme_manager_set_widget_theme(settings->style.widget_theme, settings->style.type);
     }
+    xwayland_refresh_xsettings();
 }
 
 static void icon_theme_changed(GSettings *style, const char *key)
 {
     const char *icon_theme = g_settings_get_string(style, key);
     theme_manager_set_icon_theme(icon_theme);
+    xwayland_refresh_xsettings();
     free((void *)icon_theme);
 }
 

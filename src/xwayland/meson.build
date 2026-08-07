@@ -9,5 +9,6 @@ wlcom_sources += files(
   'selection.c',
   'unmanaged.c',
   'view.c',
+  'xsettings.c',
   'xwayland.c',
 )

@@ -226,6 +226,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
 
     theme_finish(&manager->theme);
     free(manager->global.font_name);
+    free(manager->icon_theme_name);
     free(manager);
     manager = NULL;
 }
@@ -524,10 +525,17 @@ bool theme_manager_set_icon_theme(const char *icon_theme_name)
         return false;
     }
 
+    free(manager->icon_theme_name);
+    manager->icon_theme_name = strdup(icon_theme_name);
     theme_manager_write_icon_config(manager, icon_theme_name);
     wl_signal_emit_mutable(&manager->events.icon_update, NULL);
 
     return true;
+}
+
+const char *theme_manager_get_icon_theme(void)
+{
+    return manager ? manager->icon_theme_name : NULL;
 }
 
 struct icon *theme_icon_from_app_id(const char *app_id)

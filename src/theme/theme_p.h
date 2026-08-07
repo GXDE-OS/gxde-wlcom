@@ -76,6 +76,7 @@ struct theme_manager {
 
     struct config *config;
     struct wl_list fallback_icon;
+    char *icon_theme_name;
 
     struct icon_manager *icon;
     struct {
