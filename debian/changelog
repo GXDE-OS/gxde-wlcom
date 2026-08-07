@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.6-gxde2) lizhi; urgency=medium
+
+  * 新增Qt图标主题同步机制
+
+ -- CharOfString <root@charofstring.cc>  Thu, 7 Aug 2026 23:57:32 +0800
+
 gxde-wlcom (2.1.6-gxde1) lizhi; urgency=medium
 
   [ gfdgd_xi ]
