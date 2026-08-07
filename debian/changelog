@@ -1,3 +1,13 @@
+gxde-wlcom (2.1.6-gxde1) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 添加截图快捷键若干
+
+  [ CharOfstring ]
+  * 现在合成器持有XSettings了
+
+ -- CharOfString <root@charofstring.cc>  Thu, 7 Aug 2026 22:06:12 +0800
+
 gxde-wlcom (2.1.5-gxde3) lizhi; urgency=medium
 
   * 新增PrintScreen全屏截图到剪贴板
