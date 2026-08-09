@@ -1,3 +1,12 @@
+gxde-wlcom (2.1.6-gxde5) lizhi; urgency=medium
+
+  * startgxde_wlcom: 检测到麒麟 9000c 内核且安装了
+    gxde-hisi-9000c-gpu-compat（提供 /usr/bin/startgxde_wlcom_9000c，
+    hisi Maleoon 910 硬件加速会话启动器）时跳转到硬件加速启动，
+    否则回退默认软件启动流程
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 18:45:00 +0800
+
 gxde-wlcom (2.1.6-gxde4) lizhi; urgency=medium
 
   * 控制中心可在 Wayland 下查看并修改快捷键
