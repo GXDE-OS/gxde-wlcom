@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.7-gxde1) lizhi; urgency=medium
+
+  * 新增GXDE录屏协议
+
+ -- CharOfString <root@charofstring.cc>  Mon, 10 Aug 2026 07:24:02 +0800
+
 gxde-wlcom (2.1.6-gxde5) lizhi; urgency=medium
 
   * startgxde_wlcom: 检测到麒麟 9000c 内核且安装了
