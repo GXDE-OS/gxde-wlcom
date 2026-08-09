@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.6-gxde3) lizhi; urgency=medium
+
+  * 修复笔记本触摸板环境下轻点触摸板无法模拟鼠标左键单击、两指轻点无法模拟右键单击的问题
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 16:54:33 +0800
+
 gxde-wlcom (2.1.6-gxde2) lizhi; urgency=medium
 
   * 新增Qt图标主题同步机制
