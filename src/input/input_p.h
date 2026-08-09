@@ -5,6 +5,8 @@
 #ifndef _INPUT_P_H_
 #define _INPUT_P_H_
 
+#include <xkbcommon/xkbcommon.h>
+
 #include "input/cursor.h"
 #include "input/gesture.h"
 #include "input/keyboard.h"
@@ -213,6 +215,11 @@ bool bindings_create(struct input_manager *input_manager);
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *repeat);
 
 bool bindings_handle_gesture_binding(struct gesture_state *gesture_state);
+
+/**
+ * input action key grabbing, used by the shortcut capture in control center
+ */
+bool input_action_handle_key(bool pressed, uint32_t modifiers, xkb_keysym_t keysym);
 
 /**
  * seat pointer and keyboard feed event

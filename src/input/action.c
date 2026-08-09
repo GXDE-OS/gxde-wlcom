@@ -9,14 +9,18 @@
 
 #include <linux/input-event-codes.h>
 #include <wlr/interfaces/wlr_keyboard.h>
+#include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include <kywc/binding.h>
 #include <kywc/log.h>
 
 #include "config.h"
 #include "input/cursor.h"
+#include "input/keyboard.h"
 #include "input/seat.h"
+#include "input_p.h"
 #include "server.h"
 #include "util/dbus.h"
 #include "util/spawn.h"
@@ -157,6 +161,111 @@ static struct btncode_map {
 static const char *service_path = "/com/kylin/Wlcom/InputAction";
 static const char *service_interface = "com.kylin.Wlcom.InputAction";
 
+/* --- key grabbing for shortcut capture (control center) --- */
+
+static bool grab_next_key = false;
+static xkb_keysym_t grab_keysym = XKB_KEY_NoSymbol;
+static char *grab_combo = NULL;
+
+static bool keysym_is_modifier(xkb_keysym_t sym)
+{
+    switch (sym) {
+    case XKB_KEY_Shift_L:
+    case XKB_KEY_Shift_R:
+    case XKB_KEY_Control_L:
+    case XKB_KEY_Control_R:
+    case XKB_KEY_Alt_L:
+    case XKB_KEY_Alt_R:
+    case XKB_KEY_Super_L:
+    case XKB_KEY_Super_R:
+    case XKB_KEY_Meta_L:
+    case XKB_KEY_Meta_R:
+    case XKB_KEY_Caps_Lock:
+    case XKB_KEY_Num_Lock:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/* build a "Ctrl+Alt+t" style string from the modifier mask and keysym */
+static char *build_key_combo(uint32_t modifiers, xkb_keysym_t keysym)
+{
+    static const uint32_t mods[] = {
+        WLR_MODIFIER_SHIFT, WLR_MODIFIER_CAPS, WLR_MODIFIER_CTRL, WLR_MODIFIER_ALT,
+        WLR_MODIFIER_MOD2, WLR_MODIFIER_MOD3, WLR_MODIFIER_LOGO, WLR_MODIFIER_MOD5,
+    };
+
+    char buf[256];
+    size_t len = 0;
+    for (size_t i = 0; i < sizeof(mods) / sizeof(mods[0]); i++) {
+        if (!(modifiers & mods[i])) {
+            continue;
+        }
+        const char *name = keyboard_get_modifier_name_by_mask(mods[i]);
+        if (!name) {
+            continue;
+        }
+        len += snprintf(buf + len, sizeof(buf) - len, "%s%s", len ? "+" : "", name);
+    }
+
+    char sym_buf[64];
+    const char *sym_name = "";
+    if (xkb_keysym_get_name(xkb_keysym_to_lower(keysym), sym_buf, sizeof(sym_buf)) >= 0) {
+        sym_name = sym_buf;
+    }
+    len += snprintf(buf + len, sizeof(buf) - len, "%s%s", len ? "+" : "", sym_name);
+
+    return strdup(buf);
+}
+
+/* returns true when the key was consumed by the active grab */
+bool input_action_handle_key(bool pressed, uint32_t modifiers, xkb_keysym_t keysym)
+{
+    if (!grab_next_key) {
+        return false;
+    }
+
+    keysym = xkb_keysym_to_lower(keysym);
+
+    if (pressed) {
+        if (keysym_is_modifier(keysym)) {
+            /* wait for the actual key */
+            return true;
+        }
+        grab_keysym = keysym;
+        free(grab_combo);
+        grab_combo = build_key_combo(modifiers, keysym);
+        dbus_emit_signal(service_path, service_interface, "KeyEvent", "bs", true, grab_combo);
+        return true;
+    }
+
+    if (grab_keysym != XKB_KEY_NoSymbol && keysym == grab_keysym) {
+        dbus_emit_signal(service_path, service_interface, "KeyEvent", "bs", false, grab_combo);
+        grab_keysym = XKB_KEY_NoSymbol;
+        grab_next_key = false;
+    }
+    return true;
+}
+
+static int grab_next_key_handler(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    grab_next_key = true;
+    grab_keysym = XKB_KEY_NoSymbol;
+    free(grab_combo);
+    grab_combo = NULL;
+    return sd_bus_reply_method_return(m, NULL);
+}
+
+static int cancel_grab_handler(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    grab_next_key = false;
+    grab_keysym = XKB_KEY_NoSymbol;
+    free(grab_combo);
+    grab_combo = NULL;
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static uint32_t keycode_map(const char *keystr)
 {
     for (size_t i = 0; i < sizeof(keycode_maps) / sizeof(struct keycode_map); i++) {
@@ -266,9 +375,15 @@ static int list_input_actions(sd_bus_message *m, void *userdata, sd_bus_error *r
 
     struct input_action *action;
     wl_list_for_each(action, &manager->actions, link) {
-        json_object *itype_obj = json_object_object_get(
-            manager->config->json, action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture");
+        const char *section = action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture";
+        json_object *itype_obj = json_object_object_get(manager->config->json, section);
         json_object *config = json_object_object_get(itype_obj, action->bindings);
+        /* actions loaded from the system default config are not present in
+         * the user config, fall back to the system config for them */
+        if (!config && manager->config->sys_json) {
+            json_object *sys_itype_obj = json_object_object_get(manager->config->sys_json, section);
+            config = json_object_object_get(sys_itype_obj, action->bindings);
+        }
         const char *cfg = json_object_to_json_string(config);
         sd_bus_message_append(reply, "(ss)", action->bindings, cfg);
     }
@@ -482,6 +597,11 @@ static bool input_action_manager_delete_config(struct input_action_manager *mana
     return true;
 }
 
+/* defined below */
+static bool input_action_user_override(struct input_action_manager *manager,
+                                       enum input_type type, const char *bindings);
+static const char *key_binding_type_name(enum key_binding_type type);
+
 static bool input_action_manager_write_config(struct input_action_manager *manager,
                                               struct input_action *input_action)
 {
@@ -504,6 +624,13 @@ static bool input_action_manager_write_config(struct input_action_manager *manag
 
     struct action_data *action_data = input_action->action;
     json_object_object_add(action_config, "enable", json_object_new_boolean(action_data->enable));
+
+    if (action_data->binding_type) {
+        const char *type_str = key_binding_type_name(action_data->binding_type);
+        if (type_str) {
+            json_object_object_add(action_config, "type", json_object_new_string(type_str));
+        }
+    }
 
     switch (action_data->type) {
     case ACTION_TYPE_DBUS_ACTION:
@@ -689,6 +816,8 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
     input_action->bindings = strdup(input_bindings);
     input_action->action = action_data;
     action_data->desc = strdup(action_desc);
+    /* an action added through D-Bus should be active right away */
+    action_data->enable = true;
 
     if (itype == INPUT_TYPE_KEYBOARD) {
         action_data->binding_type = kywc_key_binding_type_by_name(binding_type, NULL);
@@ -771,7 +900,15 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
             kywc_gesture_binding_destroy(input_action->data);
         }
 
-        input_action_manager_delete_config(manager, input_action);
+        if (input_action_user_override(manager, input_action->type, input_action->bindings)) {
+            /* it is a user action, remove it from the user config */
+            input_action_manager_delete_config(manager, input_action);
+        } else {
+            /* it is a system default: the system config is read-only, persist a
+             * disabled override so it stays off after the compositor restarts */
+            input_action->action->enable = false;
+            input_action_manager_write_config(manager, input_action);
+        }
         input_action_destroy(input_action);
         break;
     case CONTROL_TYPE_DISABLE:
@@ -834,6 +971,9 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("ListAllActions", "", "a(ss)", list_input_actions, 0),
     SD_BUS_METHOD("AddAction", "sssss", "", add_input_action, 0),
     SD_BUS_METHOD("ControlAction", "ss", "", control_input_action, 0),
+    SD_BUS_METHOD("GrabNextKey", "", "", grab_next_key_handler, 0),
+    SD_BUS_METHOD("CancelGrab", "", "", cancel_grab_handler, 0),
+    SD_BUS_SIGNAL("KeyEvent", "bs", 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -851,10 +991,52 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     free(manager);
 }
 
+/* user config takes priority over a system default with the same binding */
+static bool input_action_user_override(struct input_action_manager *manager,
+                                       enum input_type type, const char *bindings)
+{
+    if (!manager->config || !manager->config->json) {
+        return false;
+    }
+    const char *section = type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture";
+    json_object *config = json_object_object_get(manager->config->json, section);
+    return config && json_object_object_get(config, bindings);
+}
+
+/* reverse lookup of the key binding type names defined in binding.c */
+static const char *key_binding_type_name(enum key_binding_type type)
+{
+    switch (type) {
+    case KEY_BINDING_TYPE_CUSTOM_DEF: return "WLCOM_CUSTOM_DEF";
+    case KEY_BINDING_TYPE_WIN_MENU: return "WLCOM_WIN_MENU";
+    case KEY_BINDING_TYPE_SWITCH_WORKSPACE: return "WLCOM_SWITCH_WORKSPACE";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_MINIMIZE: return "WLCOM_WINDOW_ACTION_MINIMIZE";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_MAXIMIZE: return "WLCOM_WINDOW_ACTION_MAXIMIZE";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_CLOSE: return "WLCOM_WINDOW_ACTION_CLOSE";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_MENU: return "WLCOM_WINDOW_ACTION_MENU";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_TILED: return "WLCOM_WINDOW_ACTION_TILED";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_OUTPUT: return "WLCOM_WINDOW_ACTION_OUTPUT";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_SEND: return "WLCOM_WINDOW_ACTION_SEND";
+    case KEY_BINDING_TYPE_WINDOW_ACTION_CAPTURE: return "WLCOM_WINDOW_ACTION_CAPTURE";
+    case KEY_BINDING_TYPE_MAXIMIZED_VIEWS: return "WLCOM_MAXIMIZED_VIEWS";
+    case KEY_BINDING_TYPE_TOGGLE_SHOW_DESKTOP: return "WLCOM_TOGGLE_SHOW_DESKTOP";
+    case KEY_BINDING_TYPE_SHOW_DESKTOP: return "WLCOM_SHOW_DESKTOP";
+    case KEY_BINDING_TYPE_RESTORE_DESKTOP: return "WLCOM_RESTORE_DESKTOP";
+    case KEY_BINDING_TYPE_TOGGLE_SHOW_VIEWS: return "WLCOM_TOGGLE_SHOW_VIEWS";
+    case KEY_BINDING_TYPE_TOGGLE_SHOW_WINDOWS: return "WLCOM_TOGGLE_SHOW_WINDOWS";
+    case KEY_BINDING_TYPE_WINDOW_SWITCHER: return "WLCOM_WINDOW_SWITCHER";
+    default: return NULL;
+    }
+}
+
 static void input_action_create_with_keyboard(struct input_action_manager *manager,
                                               json_object *keyboard_obj, bool user)
 {
     json_object_object_foreach(keyboard_obj, keybind, action_config) {
+        if (!user && input_action_user_override(manager, INPUT_TYPE_KEYBOARD, keybind)) {
+            continue;
+        }
+
         struct action_data *action_data = action_data_create_from_config(action_config);
         if (!action_data) {
             continue;
@@ -895,6 +1077,10 @@ static void input_action_create_with_gesture(struct input_action_manager *manage
                                              json_object *gesture_obj, bool user)
 {
     json_object_object_foreach(gesture_obj, gesture, action_config) {
+        if (!user && input_action_user_override(manager, INPUT_TYPE_GESTURE, gesture)) {
+            continue;
+        }
+
         struct action_data *action_data = action_data_create_from_config(action_config);
         if (!action_data) {
             continue;
