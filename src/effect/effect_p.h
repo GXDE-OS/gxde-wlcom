@@ -30,6 +30,8 @@ bool treeland_capture_manager_create(struct server *server);
 
 bool ext_image_copy_capture_manager_create(struct server *server);
 
+bool gxde_screenshot_manager_create(struct server *server);
+
 bool move_effect_create(struct effect_manager *effect_manager);
 
 bool blur_effect_create(struct effect_manager *effect_manager);

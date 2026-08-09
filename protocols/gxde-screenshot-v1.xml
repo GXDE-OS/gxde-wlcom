@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="gxde_screenshot_v1">
+  <copyright><![CDATA[
+    SPDX-FileCopyrightText: 2026 CharOfString <root@charofstring.cc>
+    SPDX-License-Identifier: GPL-3.0-or-later
+  ]]></copyright>
+
+  <description summary="GXDE screenshot protocol">
+    Simple protocol to capture screen/window.
+  </description>
+
+  <interface name="gxde_screenshot_manager_v1" version="1">
+    <description summary="screenshot request manager">
+      The manager creates frame objects for screenshot and window preview
+      requests.
+    </description>
+
+    <request name="capture_output">
+      <description summary="capture an entire output">
+        Capture one frame of the specified output.
+      </description>
+      <arg name="frame" type="new_id" interface="gxde_screenshot_frame_v1"/>
+      <arg name="output" type="string" summary="output uuid"/>
+      <arg name="overlay_cursor" type="uint" summary="composite cursor onto the frame"/>
+    </request>
+
+    <request name="capture_output_region">
+      <description summary="capture a region inside an output">
+        Capture one frame of a region in the specified output. The x and y
+        coordinates anchored TOP LEFT.
+      </description>
+      <arg name="frame" type="new_id" interface="gxde_screenshot_frame_v1"/>
+      <arg name="output" type="string" summary="output uuid"/>
+      <arg name="x" type="int" summary="region x relative to output"/>
+      <arg name="y" type="int" summary="region y relative to output"/>
+      <arg name="width" type="uint" summary="region width"/>
+      <arg name="height" type="uint" summary="region height"/>
+      <arg name="overlay_cursor" type="uint" summary="composite cursor onto the frame"/>
+    </request>
+
+    <request name="capture_window">
+      <description summary="capture a window">
+        Capture one frame of the specified window (IDENTIFY WINDOW BY UUID).
+      </description>
+      <arg name="frame" type="new_id" interface="gxde_screenshot_frame_v1"/>
+      <arg name="window" type="string" summary="window uuid"/>
+      <arg name="without_decoration" type="uint" summary="exclude server-side decoration"/>
+    </request>
+
+    <request name="capture_window_thumbnail">
+      <description summary="capture a window preview">
+        Capture a scaled preview of the specified window (IDENTIFY WINDOW BY UUID).
+        If app_id is provided, then we can return all thumbnails of windows of that app,
+        which is useful for task switcher, task bar, and docks.\
+        It is FINE if app_id is empty, then we will only grab the thumbnail for single window.
+      </description>
+      <arg name="frame" type="new_id" interface="gxde_screenshot_frame_v1"/>
+      <arg name="app_id" type="string" summary="expected app id, or empty"/>
+      <arg name="window" type="string" summary="window uuid"/>
+      <arg name="max_width" type="uint" summary="maximum preview width, or 0"/>
+      <arg name="max_height" type="uint" summary="maximum preview height, or 0"/>
+      <arg name="without_decoration" type="uint" summary="exclude server-side decoration"/>
+    </request>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the manager">
+        Destroy this manager object.
+        Be careful, frame objects will also be destoryed.
+      </description>
+    </request>
+  </interface>
+
+  <interface name="gxde_screenshot_frame_v1" version="1">
+    <description summary="captured frame">
+      A frame object receives buffer metadata when capture succeeds.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy this frame">
+        Destroy this frame object.
+      </description>
+    </request>
+
+    <request name="release_buffer">
+      <description summary="release the current buffer">
+        Notify WM that the client no longer reads the last buffer.
+        If want_buffer is non-zero, the compositor may send a new buffer event
+        when the source content changes.
+      </description>
+      <arg name="want_buffer" type="uint" summary="request another buffer update"/>
+    </request>
+
+    <event name="failed">
+      <description summary="capture failed">
+        The capture request failed, the client should destroy the frame object.
+      </description>
+    </event>
+
+    <event name="cancelled">
+      <description summary="source cancelled">
+        The source was destroyed or became unavailable.
+        Remember to destory the frame object.
+      </description>
+    </event>
+
+    <enum name="flags" bitfield="true">
+      <entry name="dmabuf" value="1" summary="buffer is a dmabuf"/>
+      <entry name="reused" value="2" summary="buffer is reused"/>
+    </enum>
+
+    <event name="buffer">
+      <description summary="buffer information">
+        Provides buffer parameters for the first plane of this frame.
+      </description>
+      <arg name="fd" type="fd" summary="buffer file descriptor"/>
+      <arg name="format" type="uint" summary="DRM_FORMAT code"/>
+      <arg name="width" type="uint" summary="buffer width in pixels"/>
+      <arg name="height" type="uint" summary="buffer height in pixels"/>
+      <arg name="offset" type="uint" summary="buffer offset in bytes"/>
+      <arg name="stride" type="uint" summary="buffer stride in bytes"/>
+      <arg name="modifier_hi" type="uint" summary="high 32 bits of layout modifier"/>
+      <arg name="modifier_lo" type="uint" summary="low 32 bits of layout modifier"/>
+      <arg name="flags" type="uint" enum="flags" summary="buffer flags"/>
+    </event>
+
+    <event name="buffer_with_plane">
+      <description summary="additional plane information">
+        Provides fd, offset, and stride for planes after the first one.
+      </description>
+      <arg name="index" type="uint" summary="plane index"/>
+      <arg name="fd" type="fd" summary="buffer file descriptor"/>
+      <arg name="offset" type="uint" summary="buffer offset in bytes"/>
+      <arg name="stride" type="uint" summary="buffer stride in bytes"/>
+    </event>
+
+    <event name="buffer_done">
+      <description summary="all buffer parameters have been sent">
+        Sent after buffer and all buffer_with_plane events.
+      </description>
+    </event>
+  </interface>
+</protocol>

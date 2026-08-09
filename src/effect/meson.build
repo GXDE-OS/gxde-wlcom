@@ -7,6 +7,7 @@ wlcom_sources += files(
   'effect.c',
   'ext_image_copy_capture.c',
   'fade.c',
+  'gxde_screenshot.c',
   'locate_pointer.c',
   'magic_lamp.c',
   'mouse_click.c',

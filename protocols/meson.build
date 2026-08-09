@@ -27,6 +27,7 @@ protocols += {
   'kywc-toplevel-manager-v1': 'kywc-toplevel-v1.xml',
   'kywc-workspace-manager-v1': 'kywc-workspace-v1.xml',
   'gxde-identifier-v1': 'gxde-identifier-v1.xml',
+  'gxde-screenshot-manager-v1': 'gxde-screenshot-v1.xml',
 }
 
 if have_kde_output
