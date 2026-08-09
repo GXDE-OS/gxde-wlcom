@@ -31,4 +31,15 @@ fi
 
 # export GDK_BACKEND=wayland
 # export WLR_DRM_NO_ATOMIC=1
+
+# === kirin 9000c 芯片走 hisi 硬件桌面 ===
+# 检测到麒麟 9000c 内核且安装了 gxde-hisi-9000c-gpu-compat
+# （提供 /usr/bin/startgxde_wlcom_9000c，hisi Maleoon 910 硬件加速启动器）
+# 时，跳转到硬件加速启动；未安装则继续默认软件启动流程。
+if uname -r | grep -q 9000c && [ -x /usr/bin/startgxde_wlcom_9000c ]; then
+    # hisi 会话所需的最小环境（详细配置由 startgxde_wlcom_9000c 负责）
+    export WLR_BACKENDS=drm,libinput
+    exec /usr/bin/startgxde_wlcom_9000c "$@"
+fi
+
 exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"
