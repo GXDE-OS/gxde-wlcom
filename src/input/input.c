@@ -210,6 +210,12 @@ static void input_get_default_state(struct input *input, struct input_state *sta
     if (input->device) {
         libinput_get_default_state(input, state);
     }
+
+    /* enable tap-to-click by default on touchpads,
+     * so that a tap simulates a left click and a two-finger tap simulates a right click */
+    if (input->prop.tap_finger_count > 0) {
+        state->tap_to_click = true;
+    }
 }
 
 static void input_set_name(struct input *input, const char *name)
@@ -258,6 +264,11 @@ static struct input *input_create(const char *name, struct wlr_input_device *wlr
     input_get_state(input, &input->state);
 
     struct input_state state = input->state;
+    /* enable tap-to-click by default on touchpads unless explicitly configured,
+     * a tap simulates a left click and a two-finger tap simulates a right click */
+    if (input->prop.tap_finger_count > 0) {
+        state.tap_to_click = input->default_state.tap_to_click;
+    }
     bool found = input_read_config(input, &state);
     if (!found) {
         // keep default
