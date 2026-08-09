@@ -1,3 +1,10 @@
+gxde-wlcom (2.1.6-gxde4) lizhi; urgency=medium
+
+  * 控制中心可在 Wayland 下查看并修改快捷键
+  * 用户配置优先于系统默认快捷键，修改/删除系统快捷键后重启不还原
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 17:45:52 +0800
+
 gxde-wlcom (2.1.6-gxde3) lizhi; urgency=medium
 
   * 修复笔记本触摸板环境下轻点触摸板无法模拟鼠标左键单击、两指轻点无法模拟右键单击的问题
