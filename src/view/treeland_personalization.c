@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_xdg_shell.h>
 
 #include <kywc/log.h>
 
@@ -158,6 +159,7 @@ struct personalization_window_context {
 
     struct wl_listener surface_destroy;
     struct wl_listener surface_map;
+    struct wl_listener surface_commit;
     struct wl_listener view_destroy;
     struct wl_listener view_map;
 
@@ -275,6 +277,51 @@ static void window_context_attach_view(struct personalization_window_context *ct
     wl_signal_add(&view->base.events.map, &ctx->view_map);
 }
 
+static void window_context_apply_blur(struct personalization_window_context *ctx)
+{
+    if (!ctx->surface || !ctx->has_blend_mode) {
+        return;
+    }
+
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(ctx->surface);
+    if (!scene_buffer) {
+        return;
+    }
+
+    struct ky_scene_node *node = &scene_buffer->node;
+    if (ctx->blend_mode != TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_BLUR) {
+        ky_scene_node_set_blur_region(node, NULL);
+        return;
+    }
+
+    struct wlr_box geometry = {
+        .width = ctx->surface->current.width,
+        .height = ctx->surface->current.height,
+    };
+    struct wlr_xdg_surface *xdg_surface =
+        wlr_xdg_surface_try_from_wlr_surface(ctx->surface);
+    if (xdg_surface) {
+        /* The wl_surface includes transparent CSD padding. The xdg window
+         * geometry is the actual window boundary used by Treeland's wrapper. */
+        wlr_xdg_surface_get_geometry(xdg_surface, &geometry);
+    }
+
+    struct wlr_box surface_box = {
+        .width = ctx->surface->current.width,
+        .height = ctx->surface->current.height,
+    };
+    if (!wlr_box_intersection(&geometry, &geometry, &surface_box)) {
+        ky_scene_node_set_blur_region(node, NULL);
+        return;
+    }
+
+    pixman_region32_t region;
+    pixman_region32_init_rect(&region, geometry.x, geometry.y, geometry.width, geometry.height);
+    ky_scene_node_set_blur_region(node, &region);
+    ky_scene_node_set_blur_level(node, 3, 2.6f);
+    pixman_region32_fini(&region);
+}
+
 /**
  * @brief Apply the recorded personalization state to the window
  *
@@ -322,38 +369,7 @@ static void window_context_apply(struct personalization_window_context *ctx)
         ky_scene_node_set_radius(node, (int[4]){ r, r, r, r });
     }
 
-    if (ctx->has_blend_mode) {
-        switch (ctx->blend_mode) {
-        case TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_BLUR: {
-            /* Blur the whole window background, so the blur region is the
-             * entire surface */
-            pixman_region32_t region;
-            pixman_region32_init_rect(&region, 0, 0, ctx->surface->current.width,
-                                      ctx->surface->current.height);
-            ky_scene_node_set_blur_region(node, &region);
-            /* Same iteration count as the kde_blur default, so one rendering
-             * stack does not end up with two different looks */
-            ky_scene_node_set_blur_level(node, 3, 2.6f);
-            pixman_region32_fini(&region);
-            break;
-        }
-        case TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_TRANSPARENT:
-        case TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_WALLPAPER:
-        default: {
-            /**
-             * In Treeland the wallpaper mode composites the window over the
-             * wallpaper layer, which relies on its own QML wallpaper. GXDE has
-             * no equivalent, so this is treated like transparent and composited
-             * with plain alpha -- at least that does not render something wrong.
-             */
-            pixman_region32_t empty;
-            pixman_region32_init(&empty);
-            ky_scene_node_set_blur_region(node, &empty);
-            pixman_region32_fini(&empty);
-            break;
-        }
-        }
-    }
+    window_context_apply_blur(ctx);
 
     if (!view) {
         return;
@@ -393,6 +409,13 @@ static void window_handle_surface_map(struct wl_listener *listener, void *data)
     window_context_apply(ctx);
 }
 
+static void window_handle_surface_commit(struct wl_listener *listener, void *data)
+{
+    struct personalization_window_context *ctx =
+        wl_container_of(listener, ctx, surface_commit);
+    window_context_apply_blur(ctx);
+}
+
 static void window_handle_view_map(struct wl_listener *listener, void *data)
 {
     struct personalization_window_context *ctx =
@@ -417,6 +440,8 @@ static void window_handle_surface_destroy(struct wl_listener *listener, void *da
     wl_list_init(&ctx->surface_destroy.link);
     wl_list_remove(&ctx->surface_map.link);
     wl_list_init(&ctx->surface_map.link);
+    wl_list_remove(&ctx->surface_commit.link);
+    wl_list_init(&ctx->surface_commit.link);
     ctx->surface = NULL;
 }
 
@@ -515,6 +540,7 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
     window_context_detach_view(ctx);
     wl_list_remove(&ctx->surface_destroy.link);
     wl_list_remove(&ctx->surface_map.link);
+    wl_list_remove(&ctx->surface_commit.link);
     wl_list_remove(&ctx->link);
     free(ctx);
 }
@@ -1030,6 +1056,7 @@ static void manager_get_window_context(struct wl_client *client, struct wl_resou
 
     wl_list_init(&ctx->surface_destroy.link);
     wl_list_init(&ctx->surface_map.link);
+    wl_list_init(&ctx->surface_commit.link);
     wl_list_init(&ctx->view_destroy.link);
     wl_list_init(&ctx->view_map.link);
 
@@ -1037,6 +1064,8 @@ static void manager_get_window_context(struct wl_client *client, struct wl_resou
     wl_signal_add(&surface->events.destroy, &ctx->surface_destroy);
     ctx->surface_map.notify = window_handle_surface_map;
     wl_signal_add(&surface->events.map, &ctx->surface_map);
+    ctx->surface_commit.notify = window_handle_surface_commit;
+    wl_signal_add(&surface->events.commit, &ctx->surface_commit);
 
     wl_list_insert(&manager->window_contexts, &ctx->link);
 
