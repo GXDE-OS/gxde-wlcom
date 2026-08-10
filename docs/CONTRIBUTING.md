@@ -18,15 +18,15 @@ Please set the merge request destination to `gxde-testing`, and the administrato
 
 进入tty界面，确保原有的桌面环境管已经关闭。
 ```bash
-$ sudo systemctl stop lightdm
+$ sudo systemctl stop lightdm gxdm.service
 ```
 
 执行以下命令手动启动合成器
 ```bash
-$ gxde-wlcom -s ukui-session
+$ gxde-wlcom -s startgxde
 ```
 
-此时将启动ukui桌面。
+此时将启动GXDE桌面。
 
 ## 运程调试
 
@@ -35,7 +35,7 @@ $ gxde-wlcom -s ukui-session
 
 ## 嵌套运行
 
-在已有的图形服务器上，终端启动kylin-wlcom，
+在已有的图形服务器上，终端启动gxde-wlcom，
 此时为嵌入式运行状态，要在此合成器上运行客户端，需加上参数:
 
 ```
@@ -54,7 +54,7 @@ $ ninja -C build
 
 如果合成器多次崩溃且崩溃场景存在随机性，可使用valgrind工具进行测试
 ```bash
-$ valgrind /path/kylin-wlcom ...
+$ valgrind /path/gxde-wlcom ...
 ```
 
 ## Debug日志
@@ -66,26 +66,26 @@ WAYLAND_DEBUG=1
 
 服务端日志默认路径
 ```
-$HOME/.log/kylin-wlcom.log
+$HOME/.log/gxde-wlcom.log
 ```
 
 可通过入参`-Dlogtostdout`直接打印日志到stdout
 ```bash
-Usage: kylin-wlcom [options] [command]
+Usage: gxde-wlcom [options] [command]
   -d, --debug              Enables full logging, including debug information.\n
   -D, --debug <options>    noxwayland or logtostdout.\n
 ```
 
 设置debug信息输出到屏幕: 
 ```bash
-$ ./kylin-wlcom -d -Dlogtostdout
+$ ./gxde-wlcom -d -Dlogtostdout
 ```
 
 ## xwayland
 
 不开启xwayland: 
 ```bash
-$ ./kylin-wlcom -Dnoxwayland
+$ ./gxde-wlcom -Dnoxwayland
 ```
 
 ## ukui程序

@@ -331,7 +331,7 @@ $ ./build-deb -c
 
 ### 使用
 
-> **注意**: 默认情况下，日志打印到文件`$HOME/.log/kylin-wlcom.log`。
+> **注意**: 默认情况下，日志打印到文件`$HOME/.log/gxde-wlcom.log`。
 
 
 
