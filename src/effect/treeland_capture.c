@@ -17,9 +17,10 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include <drm_fourcc.h>
 #include <linux/input-event-codes.h>
@@ -103,6 +104,7 @@ struct tcap_selector {
 
     /* mask view whose input we temporarily bypass so we can hit windows below */
     struct view *mask_view;
+    struct wl_listener mask_view_destroy;
     bool mask_bypassed;
 
     /* region drag state */
@@ -168,7 +170,7 @@ struct tcap_session {
     bool awaiting_ack;
     int32_t crop_x, crop_y;
     struct {
-        uint32_t sec_hi, sec_lo, usec;
+        uint32_t sec_hi, sec_lo, nsec;
     } ready;
 };
 
@@ -176,14 +178,23 @@ struct tcap_session {
 /* helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-static void fill_time(uint32_t *sec_hi, uint32_t *sec_lo, uint32_t *usec)
+static void fill_time(uint32_t *sec_hi, uint32_t *sec_lo, uint32_t *nsec)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t sec = (uint64_t)tv.tv_sec;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t sec = (uint64_t)ts.tv_sec;
     *sec_hi = (uint32_t)(sec >> 32);
     *sec_lo = (uint32_t)(sec & 0xFFFFFFFF);
-    *usec = (uint32_t)tv.tv_usec;
+    *nsec = (uint32_t)ts.tv_nsec;
+}
+
+static void unlock_buffer(struct wlr_buffer **buffer)
+{
+    if (!*buffer) {
+        return;
+    }
+    wlr_buffer_unlock(*buffer);
+    *buffer = NULL;
 }
 
 static void context_mask_origin(struct tcap_context *context, int *ox, int *oy)
@@ -204,6 +215,51 @@ static void context_mask_origin(struct tcap_context *context, int *ox, int *oy)
 /* ------------------------------------------------------------------ */
 
 static void tcap_selector_destroy(struct tcap_selector *selector);
+static void selector_handle_mask_view_destroy(struct wl_listener *listener, void *data);
+
+static void selector_detach_mask_view(struct tcap_selector *selector, bool restore_input)
+{
+    if (!selector->mask_view) {
+        return;
+    }
+
+    wl_list_remove(&selector->mask_view_destroy.link);
+    wl_list_init(&selector->mask_view_destroy.link);
+
+    if (restore_input && selector->mask_bypassed) {
+        ky_scene_node_set_input_bypassed(&selector->mask_view->tree->node, false);
+    }
+    selector->mask_view = NULL;
+    selector->mask_bypassed = false;
+}
+
+static void selector_attach_mask_view(struct tcap_selector *selector, struct view *view)
+{
+    if (!view) {
+        return;
+    }
+    if (selector->mask_view == view) {
+        if (!selector->mask_bypassed) {
+            ky_scene_node_set_input_bypassed(&view->tree->node, true);
+            selector->mask_bypassed = true;
+        }
+        return;
+    }
+
+    selector_detach_mask_view(selector, true);
+
+    selector->mask_view = view;
+    selector->mask_bypassed = true;
+    ky_scene_node_set_input_bypassed(&view->tree->node, true);
+    selector->mask_view_destroy.notify = selector_handle_mask_view_destroy;
+    wl_signal_add(&view->base.events.destroy, &selector->mask_view_destroy);
+}
+
+static void selector_handle_mask_view_destroy(struct wl_listener *listener, void *data)
+{
+    struct tcap_selector *selector = wl_container_of(listener, selector, mask_view_destroy);
+    selector_detach_mask_view(selector, false);
+}
 
 /* is this view the client mask (deepin's fullscreen selection overlay)? */
 static bool view_is_mask(struct tcap_selector *selector, struct view *view,
@@ -255,9 +311,7 @@ static struct kywc_view *selector_view_at(struct tcap_selector *selector, double
                     kywc_log(KYWC_INFO, "(treeland-capture) mask hit during hover, "
                                         "bypassing it to reach windows behind");
                 }
-                ky_scene_node_set_input_bypassed(&mask->tree->node, true);
-                selector->mask_view = mask;
-                selector->mask_bypassed = true;
+                selector_attach_mask_view(selector, mask);
                 continue;
             }
             return NULL;
@@ -664,7 +718,7 @@ static enum tcap_sel_mode selector_mode_from_hint(uint32_t hint)
 static struct tcap_selector *tcap_selector_create(struct tcap_context *context)
 {
     struct seat *seat = input_manager_get_default_seat();
-    if (!seat || !seat->scene) {
+    if (!seat || !seat->scene || !seat->cursor) {
         return NULL;
     }
 
@@ -677,6 +731,7 @@ static struct tcap_selector *tcap_selector_create(struct tcap_context *context)
     selector->manager = context->manager;
     selector->seat = seat;
     selector->mode = selector_mode_from_hint(context->source_hint);
+    wl_list_init(&selector->mask_view_destroy.link);
 
     /* full multi-output layout bounds, used to size the dim surround */
     if (seat->layout) {
@@ -720,11 +775,8 @@ static struct tcap_selector *tcap_selector_create(struct tcap_context *context)
     }
 
     /* let hit-testing pass through the client mask to the windows below it */
-    selector->mask_view = context->mask ? view_try_from_wlr_surface(context->mask) : NULL;
-    if (selector->mask_view) {
-        ky_scene_node_set_input_bypassed(&selector->mask_view->tree->node, true);
-        selector->mask_bypassed = true;
-    }
+    selector_attach_mask_view(selector, context->mask ? view_try_from_wlr_surface(context->mask)
+                                                     : NULL);
 
     kywc_log(KYWC_INFO,
              "(treeland-capture) selector start: mode=%d hint=0x%x freeze=%d cursor=%.0f,%.0f "
@@ -763,16 +815,18 @@ static void tcap_selector_destroy(struct tcap_selector *selector)
     seat_end_pointer_grab(seat, &selector->pointer_grab);
     seat_end_keyboard_grab(seat, &selector->keyboard_grab);
 
-    if (selector->mask_bypassed && selector->mask_view) {
-        ky_scene_node_set_input_bypassed(&selector->mask_view->tree->node, false);
-    }
+    selector_detach_mask_view(selector, true);
 
     if (selector->tree) {
         ky_scene_node_destroy(&selector->tree->node);
     }
     /* drop our refs after the scene buffers (which locked them) are gone */
-    wlr_buffer_drop(selector->h_dash);
-    wlr_buffer_drop(selector->v_dash);
+    if (selector->h_dash) {
+        wlr_buffer_drop(selector->h_dash);
+    }
+    if (selector->v_dash) {
+        wlr_buffer_drop(selector->v_dash);
+    }
 
     if (context) {
         context->selector = NULL;
@@ -795,10 +849,7 @@ static void tcap_frame_teardown(struct tcap_frame *frame)
     wl_list_init(&frame->buffer_update.link);
     wl_list_init(&frame->buffer_destroy.link);
 
-    if (frame->buffer) {
-        wlr_buffer_unlock(frame->buffer);
-        frame->buffer = NULL;
-    }
+    unlock_buffer(&frame->buffer);
     if (frame->capture) {
         capture_destroy(frame->capture);
         frame->capture = NULL;
@@ -815,7 +866,7 @@ static void frame_send_buffer_from(struct tcap_frame *frame, struct wlr_buffer *
         return;
     }
 
-    wlr_buffer_unlock(frame->buffer);
+    unlock_buffer(&frame->buffer);
     frame->buffer = wlr_buffer_lock(buffer);
     frame->width = buffer->width;
     frame->height = buffer->height;
@@ -955,6 +1006,11 @@ static void context_handle_capture(struct wl_client *client, struct wl_resource 
         treeland_capture_frame_v1_send_failed(frame->resource);
         return;
     }
+    if (context->frame) {
+        frame->failed = true;
+        treeland_capture_frame_v1_send_failed(frame->resource);
+        return;
+    }
     frame->context = context;
     context->frame = frame;
 
@@ -1004,27 +1060,52 @@ static void tcap_session_teardown(struct tcap_session *session)
     wl_list_init(&session->buffer_update.link);
     wl_list_init(&session->buffer_destroy.link);
 
-    if (session->buffer) {
-        wlr_buffer_unlock(session->buffer);
-        session->buffer = NULL;
-    }
+    unlock_buffer(&session->buffer);
     if (session->capture) {
         capture_destroy(session->capture);
         session->capture = NULL;
     }
+    session->started = false;
+    session->awaiting_ack = false;
 }
 
 static void session_send_frame(struct tcap_session *session, struct wlr_buffer *buffer)
 {
     struct wlr_dmabuf_attributes dmabuf;
-    if (!wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
+    if (!buffer || !wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
         /* recording requires a dmabuf source */
         treeland_capture_session_v1_send_cancel(
             session->resource, TREELAND_CAPTURE_SESSION_V1_CANCEL_REASON_PERMANENT);
+        if (session->capture) {
+            capture_mark_wants_update(session->capture, false, false);
+        }
         return;
     }
+    if (dmabuf.n_planes == 0 || dmabuf.n_planes > WLR_DMABUF_MAX_PLANES) {
+        treeland_capture_session_v1_send_cancel(
+            session->resource, TREELAND_CAPTURE_SESSION_V1_CANCEL_REASON_PERMANENT);
+        if (session->capture) {
+            capture_mark_wants_update(session->capture, false, false);
+        }
+        return;
+    }
+    uint32_t n_planes = (uint32_t)dmabuf.n_planes;
 
-    wlr_buffer_unlock(session->buffer);
+    uint32_t plane_size[WLR_DMABUF_MAX_PLANES] = { 0 };
+    for (uint32_t i = 0; i < n_planes; i++) {
+        uint64_t size = (uint64_t)dmabuf.stride[i] * (uint64_t)buffer->height;
+        if (size > UINT32_MAX) {
+            treeland_capture_session_v1_send_cancel(
+                session->resource, TREELAND_CAPTURE_SESSION_V1_CANCEL_REASON_PERMANENT);
+            if (session->capture) {
+                capture_mark_wants_update(session->capture, false, false);
+            }
+            return;
+        }
+        plane_size[i] = (uint32_t)size;
+    }
+
+    unlock_buffer(&session->buffer);
     session->buffer = wlr_buffer_lock(buffer);
 
     union {
@@ -1037,17 +1118,17 @@ static void session_send_frame(struct tcap_session *session, struct wlr_buffer *
 
     treeland_capture_session_v1_send_frame(session->resource, session->crop_x, session->crop_y,
                                            buffer->width, buffer->height, 0, 0, dmabuf.format,
-                                           mod.hi, mod.lo, dmabuf.n_planes);
-    for (int i = 0; i < dmabuf.n_planes; i++) {
+                                           mod.hi, mod.lo, n_planes);
+    for (uint32_t i = 0; i < n_planes; i++) {
         treeland_capture_session_v1_send_object(session->resource, i, dmabuf.fd[i],
-                                                dmabuf.stride[i] * buffer->height, dmabuf.offset[i],
-                                                dmabuf.stride[i], i);
+                                                plane_size[i], dmabuf.offset[i], dmabuf.stride[i],
+                                                i);
     }
 
-    fill_time(&session->ready.sec_hi, &session->ready.sec_lo, &session->ready.usec);
+    fill_time(&session->ready.sec_hi, &session->ready.sec_lo, &session->ready.nsec);
     session->awaiting_ack = true;
     treeland_capture_session_v1_send_ready(session->resource, session->ready.sec_hi,
-                                           session->ready.sec_lo, session->ready.usec);
+                                           session->ready.sec_lo, session->ready.nsec);
 
     /* wait for the client's frame_done before producing the next frame */
     capture_mark_wants_update(session->capture, false, false);
@@ -1114,14 +1195,14 @@ static void session_handle_start(struct wl_client *client, struct wl_resource *r
 }
 
 static void session_handle_frame_done(struct wl_client *client, struct wl_resource *resource,
-                                      uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_usec)
+                                      uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec)
 {
     struct tcap_session *session = wl_resource_get_user_data(resource);
     if (!session) {
         return;
     }
     if (session->ready.sec_hi == tv_sec_hi && session->ready.sec_lo == tv_sec_lo &&
-        session->ready.usec == tv_usec) {
+        session->ready.nsec == tv_nsec) {
         session->awaiting_ack = false;
         if (session->capture) {
             /* request the next frame; force so a static screen still streams */
@@ -1181,6 +1262,12 @@ static void context_handle_create_session(struct wl_client *client, struct wl_re
     session->buffer_update.notify = session_handle_buffer_update;
     session->buffer_destroy.notify = session_handle_buffer_destroy;
 
+    if (context && context->session) {
+        treeland_capture_session_v1_send_cancel(
+            session->resource, TREELAND_CAPTURE_SESSION_V1_CANCEL_REASON_PERMANENT);
+        return;
+    }
+
     session->context = context;
     if (context) {
         context->session = session;
@@ -1223,6 +1310,9 @@ static void context_handle_output_destroy(struct wl_listener *listener, void *da
 static void context_handle_mask_destroy(struct wl_listener *listener, void *data)
 {
     struct tcap_context *context = wl_container_of(listener, context, mask_destroy);
+    if (context->selector) {
+        selector_detach_mask_view(context->selector, true);
+    }
     wl_list_remove(&context->mask_destroy.link);
     wl_list_init(&context->mask_destroy.link);
     context->mask = NULL;
