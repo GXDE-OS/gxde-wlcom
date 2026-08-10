@@ -153,10 +153,13 @@ static struct treeland_personalization_manager *manager = NULL;
 struct personalization_window_context {
     struct wl_resource *resource;
     struct wlr_surface *surface;
+    struct view *view;
     struct wl_list link;
 
     struct wl_listener surface_destroy;
     struct wl_listener surface_map;
+    struct wl_listener view_destroy;
+    struct wl_listener view_map;
 
     bool has_blend_mode;
     int32_t blend_mode;
@@ -231,6 +234,47 @@ static bool env_is_on(const char *name)
 
 /* Window context */
 
+static void window_handle_view_destroy(struct wl_listener *listener, void *data);
+static void window_handle_view_map(struct wl_listener *listener, void *data);
+
+static uint32_t interface_resource_version(struct wl_resource *resource,
+                                           const struct wl_interface *interface)
+{
+    uint32_t version = wl_resource_get_version(resource);
+    return version > (uint32_t)interface->version ? (uint32_t)interface->version : version;
+}
+
+static void window_context_detach_view(struct personalization_window_context *ctx)
+{
+    if (!ctx->view) {
+        return;
+    }
+
+    wl_list_remove(&ctx->view_destroy.link);
+    wl_list_init(&ctx->view_destroy.link);
+    wl_list_remove(&ctx->view_map.link);
+    wl_list_init(&ctx->view_map.link);
+    ctx->view = NULL;
+}
+
+static void window_context_attach_view(struct personalization_window_context *ctx)
+{
+    if (ctx->view || !ctx->surface) {
+        return;
+    }
+
+    struct view *view = view_try_from_wlr_surface(ctx->surface);
+    if (!view) {
+        return;
+    }
+
+    ctx->view = view;
+    ctx->view_destroy.notify = window_handle_view_destroy;
+    wl_signal_add(&view->base.events.destroy, &ctx->view_destroy);
+    ctx->view_map.notify = window_handle_view_map;
+    wl_signal_add(&view->base.events.map, &ctx->view_map);
+}
+
 /**
  * @brief Apply the recorded personalization state to the window
  *
@@ -241,6 +285,30 @@ static void window_context_apply(struct personalization_window_context *ctx)
 {
     if (!ctx->surface) {
         return;
+    }
+
+    window_context_attach_view(ctx);
+
+    struct view *view = ctx->view;
+    if (view) {
+        if (ctx->has_titlebar) {
+            enum kywc_ssd ssd = view->base.ssd;
+            if (ctx->titlebar_mode == TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_ENABLE_MODE_ENABLE) {
+                ssd |= KYWC_SSD_TITLE;
+            } else {
+                ssd &= ~KYWC_SSD_TITLE;
+            }
+            view_set_decoration(view, ssd);
+        }
+
+        if (ctx->has_shadow && ctx->shadow.radius > 0 && view->base.ssd == KYWC_SSD_NONE) {
+            view_set_decoration(view, KYWC_SSD_RESIZE);
+        }
+
+        if (ctx->has_border && ctx->border.width > 0 &&
+            !(view->base.ssd & KYWC_SSD_BORDER)) {
+            view_set_decoration(view, view->base.ssd | KYWC_SSD_BORDER | KYWC_SSD_RESIZE);
+        }
     }
 
     struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(ctx->surface);
@@ -287,19 +355,8 @@ static void window_context_apply(struct personalization_window_context *ctx)
         }
     }
 
-    struct view *view = view_try_from_wlr_surface(ctx->surface);
     if (!view) {
         return;
-    }
-
-    if (ctx->has_titlebar) {
-        enum kywc_ssd ssd = view->base.ssd;
-        if (ctx->titlebar_mode == TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_ENABLE_MODE_ENABLE) {
-            ssd |= KYWC_SSD_TITLE;
-        } else {
-            ssd &= ~KYWC_SSD_TITLE;
-        }
-        view_set_decoration(view, ssd);
     }
 
     /**
@@ -336,11 +393,26 @@ static void window_handle_surface_map(struct wl_listener *listener, void *data)
     window_context_apply(ctx);
 }
 
+static void window_handle_view_map(struct wl_listener *listener, void *data)
+{
+    struct personalization_window_context *ctx =
+        wl_container_of(listener, ctx, view_map);
+    window_context_apply(ctx);
+}
+
+static void window_handle_view_destroy(struct wl_listener *listener, void *data)
+{
+    struct personalization_window_context *ctx =
+        wl_container_of(listener, ctx, view_destroy);
+    window_context_detach_view(ctx);
+}
+
 static void window_handle_surface_destroy(struct wl_listener *listener, void *data)
 {
     struct personalization_window_context *ctx =
         wl_container_of(listener, ctx, surface_destroy);
 
+    window_context_detach_view(ctx);
     wl_list_remove(&ctx->surface_destroy.link);
     wl_list_init(&ctx->surface_destroy.link);
     wl_list_remove(&ctx->surface_map.link);
@@ -440,6 +512,7 @@ static void window_handle_resource_destroy(struct wl_resource *resource)
         return;
     }
 
+    window_context_detach_view(ctx);
     wl_list_remove(&ctx->surface_destroy.link);
     wl_list_remove(&ctx->surface_map.link);
     wl_list_remove(&ctx->link);
@@ -915,7 +988,7 @@ static struct personalization_context *context_create(struct wl_client *client,
     }
     ctx->wallpaper.fd = -1;
 
-    uint32_t version = wl_resource_get_version(manager_resource);
+    uint32_t version = interface_resource_version(manager_resource, interface);
     ctx->resource = wl_resource_create(client, interface, version, id);
     if (!ctx->resource) {
         free(ctx);
@@ -941,7 +1014,8 @@ static void manager_get_window_context(struct wl_client *client, struct wl_resou
         return;
     }
 
-    uint32_t version = wl_resource_get_version(resource);
+    uint32_t version =
+        interface_resource_version(resource, &treeland_personalization_window_context_v1_interface);
     ctx->resource = wl_resource_create(client, &treeland_personalization_window_context_v1_interface,
                                        version, id);
     if (!ctx->resource) {
@@ -954,12 +1028,21 @@ static void manager_get_window_context(struct wl_client *client, struct wl_resou
     wl_resource_set_implementation(ctx->resource, &window_impl, ctx,
                                    window_handle_resource_destroy);
 
+    wl_list_init(&ctx->surface_destroy.link);
+    wl_list_init(&ctx->surface_map.link);
+    wl_list_init(&ctx->view_destroy.link);
+    wl_list_init(&ctx->view_map.link);
+
     ctx->surface_destroy.notify = window_handle_surface_destroy;
     wl_signal_add(&surface->events.destroy, &ctx->surface_destroy);
     ctx->surface_map.notify = window_handle_surface_map;
     wl_signal_add(&surface->events.map, &ctx->surface_map);
 
     wl_list_insert(&manager->window_contexts, &ctx->link);
+
+    if (surface->mapped) {
+        window_context_apply(ctx);
+    }
 }
 
 static void manager_get_wallpaper_context(struct wl_client *client, struct wl_resource *resource,

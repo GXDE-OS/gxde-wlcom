@@ -105,7 +105,14 @@ static void blur_surface_handle_surface_map(struct wl_listener *listener, void *
     struct ukui_blur_surface *blur_surface = wl_container_of(listener, blur_surface, surface_map);
 
     blur_surface->scene_buffer = ky_scene_buffer_try_from_surface(blur_surface->wlr_surface);
+    if (!blur_surface->scene_buffer) {
+        return;
+    }
     wl_signal_add(&blur_surface->scene_buffer->node.events.destroy, &blur_surface->node_destroy);
+
+    if (blur_surface->pending_mask != UKUI_BLUR_STATE_NONE) {
+        blur_surface_apply_state(blur_surface);
+    }
 }
 
 static void blur_surface_handle_surface_destroy(struct wl_listener *listener, void *data)
@@ -305,5 +312,5 @@ bool ukui_blur_manager_create(struct server *server)
     manager->display_destroy.notify = handle_display_destroy;
     wl_display_add_destroy_listener(server->display, &manager->display_destroy);
 
-    return false;
+    return true;
 }

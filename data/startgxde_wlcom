@@ -3,10 +3,18 @@ export PATH=$PATH:/sbin
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=Deepin
 export DDE_CURRENT_COMPOSITOR=GXWM
-export GXWM_DONOT_BROADCAST_TLPM=ON
 export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置文件里的分辨率
 unset QT_QPA_PLATFORM
 unset DTK2_XWAYLAND
+
+# If all DTK5/6 applications keeps crashing, uncomment the line below this
+# comment block.
+# Note that DTK5/6 graphic effect (blur, border, shadows) will also be gone.
+# -----------------------------------------------------------------------------
+# 若所有DTK5/6程序不停崩溃，拒绝启动，取消本注释块下方代码的注释
+# 请注意，DTK5/6的图形特效（模糊、边框、阴影）也会随之消失。
+
+# export GXWM_DONOT_BROADCAST_TLPM=ON
 
 # The logic of libseat is that seatd is the 1st priority backend, and then
 # logind. We are currently using LightDM with logind (The current developing

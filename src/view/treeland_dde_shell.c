@@ -46,7 +46,7 @@
  * @c treeland_dde_shell_get_placement() 查询本模块缓存的位置
  */
 
-#define TREELAND_DDE_SHELL_MANAGER_VERSION 1
+#define TREELAND_DDE_SHELL_MANAGER_VERSION 2
 
 struct treeland_dde_shell_manager {
     struct wl_global *global;
@@ -73,6 +73,13 @@ struct treeland_dde_shell_surface_state {
 };
 
 static struct treeland_dde_shell_manager *manager = NULL;
+
+static uint32_t interface_resource_version(struct wl_resource *resource,
+                                           const struct wl_interface *interface)
+{
+    uint32_t version = wl_resource_get_version(resource);
+    return version > (uint32_t)interface->version ? (uint32_t)interface->version : version;
+}
 
 /**
  * @brief 按 @c wlr_surface 在 @c manager->surfaces 中查找定位状态
@@ -451,7 +458,8 @@ static void manager_get_shell_surface(struct wl_client *client,
         wl_list_insert(&manager->surfaces, &state->link);
     }
 
-    int version = wl_resource_get_version(manager_resource);
+    uint32_t version =
+        interface_resource_version(manager_resource, &treeland_dde_shell_surface_v1_interface);
     struct wl_resource *resource =
         wl_resource_create(client, &treeland_dde_shell_surface_v1_interface, version, id);
     if (!resource) {
