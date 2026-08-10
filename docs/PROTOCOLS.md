@@ -149,6 +149,12 @@ wayland协议支持情况
 | qt_surface_extension    |    no    | 1    |
 | gtk_shell1              |    no    | 5    |
 
+## gxwm
+| 协议名称 | 支持情况 | 说明 |
+| :------- | :------: | :--- |
+| gxde-identifier-v1 | 1 | |
+| gxde-screenshot-v1 | 1 | |
+
 ## ukui
 > https://gitee.com/openkylin/kylin-wayland-protocols
 
