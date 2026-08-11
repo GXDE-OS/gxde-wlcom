@@ -1,8 +1,23 @@
+gxde-wlcom (2.1.8-gxde1) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 音量按键支持触发对应弹窗
+  * 新增NumsLk、CapsLk按键支持
+
+  [ CharOfString ]
+  * 改进部分协议的代码安全性
+  * 修复了Treeland录屏协议崩溃问题
+  * 新增了DTK5/6模糊支持（需要开启Treeland Personalization Manager广播）
+  * 新增了DTK5/6窗体圆角支持（需要开启Treeland Personalization Manager广播）
+  * 修复了DTK5/6窗体双标题栏问题（需要开启Treeland Personalization Manager广播）
+
+ -- CharOfString <root@charofstring.cc>  Wed, 11 Aug 2026 15:22:01 +0800
+
 gxde-wlcom (2.1.7-gxde1) lizhi; urgency=medium
 
   * 新增GXDE录屏协议
 
- -- CharOfString <root@charofstring.cc>  Mon, 10 Aug 2026 07:24:02 +0800
+ -- CharOfString <root@charofstring.cc>  Tue, 10 Aug 2026 07:24:02 +0800
 
 gxde-wlcom (2.1.6-gxde5) lizhi; urgency=medium
 
