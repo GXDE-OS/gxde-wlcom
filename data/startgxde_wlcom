@@ -1,4 +1,39 @@
 #!/bin/bash
+
+# The display manager may leave LC_ALL/LC_* set to its own locale.  Those
+# variables take precedence over LANG, so load the locale selected by the user
+# before starting the compositor and DDE session.
+locale_config="${XDG_CONFIG_HOME:-$HOME/.config}/locale.conf"
+if [ -r "$locale_config" ]; then
+    unset LANG LANGUAGE LC_ALL LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE \
+        LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE \
+        LC_MEASUREMENT LC_IDENTIFICATION
+
+    set -a
+    # shellcheck source=/dev/null
+    . "$locale_config"
+    set +a
+
+    # D-Bus/systemd activated services do not necessarily inherit the
+    # compositor process environment.  Replace their stale locale as well.
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+        locale_updates=(
+            "LANG=${LANG:-C.UTF-8}"
+            "LANGUAGE=${LANGUAGE:-}"
+            "LC_ALL=${LC_ALL:-}"
+        )
+        for locale_category in CTYPE NUMERIC TIME COLLATE MONETARY MESSAGES \
+            PAPER NAME ADDRESS TELEPHONE MEASUREMENT IDENTIFICATION; do
+            locale_variable="LC_$locale_category"
+            locale_updates+=("$locale_variable=${!locale_variable:-${LANG:-C.UTF-8}}")
+        done
+        dbus-update-activation-environment --systemd "${locale_updates[@]}" \
+            >/dev/null 2>&1 || true
+        unset locale_updates locale_category locale_variable
+    fi
+fi
+unset locale_config
+
 export PATH=$PATH:/sbin
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=Deepin
