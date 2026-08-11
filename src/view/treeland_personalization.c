@@ -340,6 +340,30 @@ static bool client_has_window_context(struct wlr_surface *surface)
     return false;
 }
 
+static enum wl_iterator_result find_personalization_manager_resource(
+    struct wl_resource *resource, void *data)
+{
+    bool *found = data;
+    if (wl_resource_get_user_data(resource) == manager &&
+        strcmp(wl_resource_get_class(resource), "treeland_personalization_manager_v1") == 0) {
+        *found = true;
+        return WL_ITERATOR_STOP;
+    }
+    return WL_ITERATOR_CONTINUE;
+}
+
+static bool client_uses_personalization_manager(struct wlr_surface *surface)
+{
+    if (!manager || !surface || !surface->resource) {
+        return false;
+    }
+
+    bool found = false;
+    wl_client_for_each_resource(wl_resource_get_client(surface->resource),
+                                find_personalization_manager_resource, &found);
+    return found;
+}
+
 static void scene_buffer_set_blur_blending(struct ky_scene_buffer *scene_buffer,
                                            struct wlr_surface *surface, bool enabled)
 {
@@ -454,7 +478,19 @@ bool treeland_personalization_apply_popup_effects(struct wlr_xdg_popup *popup)
 
 bool treeland_personalization_apply_view_popup_effects(struct view *view)
 {
-    if (!view || !view->surface || !view->parent) {
+    if (!view || !view->surface) {
+        return false;
+    }
+
+    if (!view->parent) {
+        /* DTK can discover the personalization global before its extension is
+         * active, then miss creating a DMainWindow window context altogether.
+         * A bound manager still identifies the DTK/Treeland path. Give those
+         * ordinary toplevels a titleless SSD frame as a stable shadow owner. */
+        if (view->base.ssd == KYWC_SSD_NONE &&
+            client_uses_personalization_manager(view->surface)) {
+            view_set_decoration(view, KYWC_SSD_RESIZE);
+        }
         return false;
     }
 
