@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.8-gxde3) lizhi; urgency=medium
+
+  * 修复了Treeland Personalization Manager初始化数据
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 00:46:03 +0800
+
 gxde-wlcom (2.1.8-gxde2) lizhi; urgency=medium
 
   * 修复了DTK6窗口阴影丢失的问题
