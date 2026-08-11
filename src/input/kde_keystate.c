@@ -13,6 +13,7 @@
 #include "input_p.h"
 #include "kde-keystate-protocol.h"
 #include "server.h"
+#include "util/dbus.h"
 
 #define ORG_KDE_KWIN_KEYSTATE_VERSION 5
 
@@ -159,6 +160,19 @@ static void keyboard_lock_change(enum input_lock_key key)
     struct wl_resource *resource;
     wl_resource_for_each(resource, &keystate_manager->resources) {
         org_kde_kwin_keystate_send_stateChanged(resource, key, state);
+    }
+
+    /* show an on-screen indicator directly from wlcom, avoiding the slow
+     * /sys/leds polling done */
+    if (key == INPUT_KEY_CAPSLOCK || key == INPUT_KEY_NUMLOCK) {
+        const char *osd = NULL;
+        if (state == ORG_KDE_KWIN_KEYSTATE_STATE_LOCKED) {
+            osd = key == INPUT_KEY_CAPSLOCK ? "CapsLockOn" : "NumLockOn";
+        } else {
+            osd = key == INPUT_KEY_CAPSLOCK ? "CapsLockOff" : "NumLockOff";
+        }
+        dbus_call_method_str("com.deepin.dde.osd", "/", "com.deepin.dde.osd",
+                             "ShowOSD", osd);
     }
 }
 

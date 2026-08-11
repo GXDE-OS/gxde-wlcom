@@ -210,6 +210,37 @@ bool dbus_call_system_method(const char *service, const char *path, const char *
                                     callback, data, NULL) >= 0;
 }
 
+/* Fire-and-forget call of a method that takes a single string argument. */
+bool dbus_call_method_str(const char *service, const char *path, const char *interface,
+                          const char *method, const char *arg)
+{
+    if (!context || !context->user) {
+        return false;
+    }
+
+    sd_bus_message *m = NULL;
+    int r = sd_bus_message_new_method_call(context->user, &m, service, path, interface, method);
+    if (r < 0) {
+        kywc_log(KYWC_ERROR, "dbus: failed to create method call %s", method);
+        return false;
+    }
+
+    r = sd_bus_message_append(m, "s", arg);
+    if (r < 0) {
+        kywc_log(KYWC_ERROR, "dbus: failed to append argument for %s", method);
+        sd_bus_message_unref(m);
+        return false;
+    }
+
+    r = sd_bus_call_async(context->user, NULL, m, NULL, NULL, 0);
+    sd_bus_message_unref(m);
+    if (r < 0) {
+        kywc_log(KYWC_ERROR, "dbus: failed to call method %s", method);
+        return false;
+    }
+    return true;
+}
+
 bool dbus_update_activation_environment(const char *name, const char *value)
 {
     if (!context || !context->user || !name || !value) {
