@@ -531,6 +531,9 @@ static void window_context_apply(struct personalization_window_context *ctx)
                 ssd |= KYWC_SSD_TITLE;
             } else {
                 ssd &= ~KYWC_SSD_TITLE;
+                if (!popup && ssd == KYWC_SSD_NONE) {
+                    ssd = KYWC_SSD_RESIZE;
+                }
             }
             view_set_decoration(view, ssd);
         }
