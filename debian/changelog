@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.8-gxde4) lizhi; urgency=medium
+
+  * 修复了登录后语言仍然是英文的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 01:32:21 +0800
+
 gxde-wlcom (2.1.8-gxde3) lizhi; urgency=medium
 
   * 修复了Treeland Personalization Manager初始化数据
