@@ -42,6 +42,8 @@ struct ky_opengl_tex_ex_shader {
     GLint aspect;
     GLint anti_aliasing;
     GLint round_corner_radius;
+    GLint border_width;
+    GLint border_color;
 };
 
 struct ky_opengl_renderer {

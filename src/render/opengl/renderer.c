@@ -873,6 +873,8 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgba_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgba_ex.round_corner_radius =
         glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.tex_rgba_ex.border_width = glGetUniformLocation(prog, "borderWidth");
+    renderer->shaders.tex_rgba_ex.border_color = glGetUniformLocation(prog, "borderColor");
     renderer->shaders.tex_rgba_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     renderer->shaders.tex_rgbx_ex.program = prog =
@@ -889,6 +891,8 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
     renderer->shaders.tex_rgbx_ex.aspect = glGetUniformLocation(prog, "aspect");
     renderer->shaders.tex_rgbx_ex.round_corner_radius =
         glGetUniformLocation(prog, "roundCornerRadius");
+    renderer->shaders.tex_rgbx_ex.border_width = glGetUniformLocation(prog, "borderWidth");
+    renderer->shaders.tex_rgbx_ex.border_color = glGetUniformLocation(prog, "borderColor");
     renderer->shaders.tex_rgbx_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
 
     if (renderer->exts.OES_egl_image_external) {
@@ -906,6 +910,8 @@ static struct wlr_renderer *ky_opengl_renderer_create(struct ky_egl *egl)
         renderer->shaders.tex_ext_ex.aspect = glGetUniformLocation(prog, "aspect");
         renderer->shaders.tex_ext_ex.round_corner_radius =
             glGetUniformLocation(prog, "roundCornerRadius");
+        renderer->shaders.tex_ext_ex.border_width = glGetUniformLocation(prog, "borderWidth");
+        renderer->shaders.tex_ext_ex.border_color = glGetUniformLocation(prog, "borderColor");
         renderer->shaders.tex_ext_ex.uv_attrib = glGetAttribLocation(prog, "inUV");
     }
 

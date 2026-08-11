@@ -8,6 +8,7 @@
 #include "effect/fade.h"
 #include "input/event.h"
 #include "output.h"
+#include "scene/decoration.h"
 #include "scene/xdg_shell.h"
 #include "view_p.h"
 
@@ -15,6 +16,7 @@ struct xdg_popup {
     struct wlr_xdg_popup *wlr_xdg_popup;
 
     struct ky_scene_tree *popup_tree;
+    struct ky_scene_decoration *decoration;
     /* may a view/layer tree or popup tree */
     struct ky_scene_tree *parent_tree;
     /* shell tree xdg-shell or layer-shell */
@@ -32,6 +34,36 @@ struct xdg_popup {
     bool use_usable_area;
 };
 
+#define TREELAND_POPUP_RADIUS 8
+#define TREELAND_POPUP_SHADOW_WIDTH 10
+#define TREELAND_POPUP_SHADOW_OFFSET_Y 2
+
+static void popup_apply_effects(struct xdg_popup *popup)
+{
+    bool enabled = treeland_personalization_apply_popup_effects(popup->wlr_xdg_popup);
+    struct ky_scene_node *decoration_node = ky_scene_node_from_decoration(popup->decoration);
+    ky_scene_node_set_enabled(decoration_node, enabled && popup->wlr_xdg_popup->base->surface->mapped);
+    if (!enabled) {
+        return;
+    }
+
+    struct wlr_box geometry;
+    wlr_xdg_surface_get_geometry(popup->wlr_xdg_popup->base, &geometry);
+    ky_scene_node_set_position(decoration_node, popup->wlr_xdg_popup->current.geometry.x,
+                               popup->wlr_xdg_popup->current.geometry.y);
+    ky_scene_decoration_set_surface_size(popup->decoration, geometry.width, geometry.height);
+    ky_scene_decoration_set_round_corner_radius(
+        popup->decoration,
+        (int[4]){ TREELAND_POPUP_RADIUS, TREELAND_POPUP_RADIUS,
+                  TREELAND_POPUP_RADIUS, TREELAND_POPUP_RADIUS });
+    ky_scene_decoration_set_margin(popup->decoration, 0, 0, TREELAND_POPUP_SHADOW_WIDTH, 0,
+                                   TREELAND_POPUP_SHADOW_OFFSET_Y);
+    const float transparent[4] = { 0, 0, 0, 0 };
+    const float shadow[4] = { 0, 0, 0, 0.18f };
+    ky_scene_decoration_set_margin_color(popup->decoration, transparent, transparent, shadow);
+    ky_scene_decoration_set_shadow_mask(popup->decoration, SHADOW_MASK_ALL);
+}
+
 static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
 {
     struct xdg_popup *popup = wl_container_of(listener, popup, destroy);
@@ -42,6 +74,8 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&popup->reposition.link);
     wl_list_remove(&popup->map.link);
     wl_list_remove(&popup->unmap.link);
+
+    ky_scene_node_destroy(ky_scene_node_from_decoration(popup->decoration));
 
     /* only need to destroy the topmost popup parent tree,
      * popup tree will be destroyed by xdg_surface destroy in scene
@@ -94,6 +128,7 @@ static void handle_xdg_popup_commit(struct wl_listener *listener, void *data)
     if (popup->wlr_xdg_popup->base->initial_commit) {
         popup_unconstrain(popup);
     }
+    popup_apply_effects(popup);
 }
 
 static void handle_xdg_popup_reposition(struct wl_listener *listener, void *data)
@@ -116,6 +151,7 @@ static void handle_xdg_popup_map(struct wl_listener *listener, void *data)
 
     struct ky_scene_node *node = &popup->popup_tree->node;
     ky_scene_node_set_enabled(node, true);
+    popup_apply_effects(popup);
     popup_add_fade_effect(node, FADE_IN, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
 }
@@ -128,6 +164,7 @@ static void handle_xdg_popup_unmap(struct wl_listener *listener, void *data)
     popup_add_fade_effect(node, FADE_OUT, popup->topmost_popup, seat,
                           popup->wlr_xdg_popup->base->surface->current.scale);
     ky_scene_node_set_enabled(node, false);
+    ky_scene_node_set_enabled(ky_scene_node_from_decoration(popup->decoration), false);
 }
 
 static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
@@ -144,8 +181,21 @@ static struct xdg_popup *_xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup,
     popup->shell_tree = shell;
     popup->use_usable_area = use_usable_area;
 
+    /* Keep the shadow below the popup surface in the sibling render order. */
+    popup->decoration = ky_scene_decoration_create(parent);
+    if (!popup->decoration) {
+        free(popup);
+        return NULL;
+    }
+    ky_scene_node_set_enabled(ky_scene_node_from_decoration(popup->decoration), false);
+
     /* add popup surface to view tree, popup map and unmap is handled in scene */
     popup->popup_tree = ky_scene_xdg_surface_create(parent, wlr_xdg_popup->base);
+    if (!popup->popup_tree) {
+        ky_scene_node_destroy(ky_scene_node_from_decoration(popup->decoration));
+        free(popup);
+        return NULL;
+    }
     ky_scene_node_set_enabled(&popup->popup_tree->node, wlr_xdg_popup->base->surface->mapped);
 
     popup->destroy.notify = handle_xdg_popup_destroy;
@@ -212,6 +262,10 @@ void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree 
     ky_scene_node_set_position(&parent->node, lx, ly);
 
     struct xdg_popup *popup = _xdg_popup_create(wlr_xdg_popup, parent, shell, use_usable_area);
+    if (!popup) {
+        ky_scene_node_destroy(&parent->node);
+        return;
+    }
     popup->topmost_popup = true;
 
     input_event_node_create(&parent->node, &xdg_popup_event_node_impl, xdg_popup_get_root, NULL,

@@ -35,6 +35,7 @@
 
 #include "scene/scene.h"
 #include "scene/surface.h"
+#include "theme.h"
 #include "treeland-personalization-manager-v1-protocol.h"
 #include "view/view.h"
 #include "view_p.h"
@@ -54,9 +55,9 @@
  *    @c wallpaper_context -- global settings. Treeland writes these into
  *    DConfig and feeds them to its own QML shell; GXDE has no equivalent
  *    consumer, so this implementation keeps the state and broadcasts events to
- *    every bound context. That keeps the protocol semantics complete
- *    (set -> broadcast, get -> reply) without touching the existing
- *    @c theme_manager theme.
+ *    every bound context. The global corner radius is shared with
+ *    @c theme_manager because it also controls compositor-owned popup/CSD
+ *    decoration.
  *
  * Every interface here must keep the exact request/event layout of
  * treeland-personalization-manager-v1.xml as shipped in treeland-protocols,
@@ -77,6 +78,9 @@
 #define DEFAULT_FONT_SIZE 11
 #define DEFAULT_WINDOW_OPACITY 255
 #define DEFAULT_TITLEBAR_HEIGHT 40
+#define TREELAND_XDG_POPUP_RADIUS 8
+#define TREELAND_XDG_POPUP_SHADOW_RADIUS 10
+#define TREELAND_XDG_POPUP_SHADOW_OFFSET_Y 2
 
 /**
  * @brief Which wire layout of treeland_personalization_manager_v1 to serve
@@ -138,6 +142,8 @@ struct treeland_personalization_manager {
     uint32_t window_theme_type;
     uint32_t window_titlebar_height;
 
+    struct wl_listener theme_update;
+    struct wl_listener server_ready;
     struct wl_listener server_destroy;
     struct wl_listener display_destroy;
 };
@@ -162,7 +168,6 @@ struct personalization_window_context {
     struct wl_listener surface_commit;
     struct wl_listener view_destroy;
     struct wl_listener view_map;
-
     bool has_blend_mode;
     int32_t blend_mode;
 
@@ -238,6 +243,9 @@ static bool env_is_on(const char *name)
 
 static void window_handle_view_destroy(struct wl_listener *listener, void *data);
 static void window_handle_view_map(struct wl_listener *listener, void *data);
+static void personalization_broadcast_round_corner_radius(void);
+static void personalization_apply_theme(void);
+static void window_context_apply(struct personalization_window_context *ctx);
 
 static uint32_t interface_resource_version(struct wl_resource *resource,
                                            const struct wl_interface *interface)
@@ -277,6 +285,194 @@ static void window_context_attach_view(struct personalization_window_context *ct
     wl_signal_add(&view->base.events.map, &ctx->view_map);
 }
 
+static bool surface_get_geometry(struct wlr_surface *surface, struct wlr_box *geometry)
+{
+    if (!surface || surface->current.width <= 0 || surface->current.height <= 0) {
+        return false;
+    }
+
+    *geometry = (struct wlr_box){
+        .width = surface->current.width,
+        .height = surface->current.height,
+    };
+    struct wlr_xdg_surface *xdg_surface = wlr_xdg_surface_try_from_wlr_surface(surface);
+    if (xdg_surface) {
+        /* wl_surface can include transparent CSD margins. Treeland decorates
+         * the shell surface's windowGeometry instead of those margins. */
+        wlr_xdg_surface_get_geometry(xdg_surface, geometry);
+    }
+
+    struct wlr_box surface_box = {
+        .width = surface->current.width,
+        .height = surface->current.height,
+    };
+    return wlr_box_intersection(geometry, geometry, &surface_box);
+}
+
+static struct personalization_window_context *window_context_for_surface(struct wlr_surface *surface)
+{
+    if (!manager || !surface) {
+        return NULL;
+    }
+
+    struct personalization_window_context *ctx;
+    wl_list_for_each(ctx, &manager->window_contexts, link) {
+        if (ctx->surface == surface) {
+            return ctx;
+        }
+    }
+    return NULL;
+}
+
+static bool client_has_window_context(struct wlr_surface *surface)
+{
+    if (!manager || !surface || !surface->resource) {
+        return false;
+    }
+
+    struct wl_client *client = wl_resource_get_client(surface->resource);
+    struct personalization_window_context *ctx;
+    wl_list_for_each(ctx, &manager->window_contexts, link) {
+        if (ctx->resource && wl_resource_get_client(ctx->resource) == client) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void scene_buffer_set_blur_blending(struct ky_scene_buffer *scene_buffer,
+                                           struct wlr_surface *surface, bool enabled)
+{
+    if (enabled) {
+        /* DTK5/6 Wayland menus use an ARGB buffer, but also mark the whole
+         * surface opaque. Treeland still blends the buffer alpha; do the same
+         * here so the translucent menu background can reveal the blur without
+         * fading its opaque text and icons. */
+        pixman_region32_t empty;
+        pixman_region32_init(&empty);
+        ky_scene_buffer_set_opaque_region(scene_buffer, &empty);
+        pixman_region32_fini(&empty);
+    } else {
+        ky_scene_buffer_set_opaque_region(scene_buffer, &surface->opaque_region);
+    }
+}
+
+static bool window_context_requests_popup_effects(struct personalization_window_context *ctx)
+{
+    return ctx && ctx->has_blend_mode &&
+           ctx->blend_mode == TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_BLUR &&
+           ctx->has_titlebar &&
+           ctx->titlebar_mode == TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_ENABLE_MODE_DISABLE;
+}
+
+static bool view_looks_like_qt_menu(struct view *view)
+{
+    return view && view->parent && view->base.title && view->base.app_id &&
+           strcmp(view->base.title, view->base.app_id) == 0;
+}
+
+static bool view_provides_popup_effects(struct view *view)
+{
+    if (!view) {
+        return false;
+    }
+
+    if (window_context_requests_popup_effects(window_context_for_surface(view->surface))) {
+        return true;
+    }
+
+    return view_looks_like_qt_menu(view) && view_provides_popup_effects(view->parent);
+}
+
+static bool surface_apply_popup_effects(struct wlr_surface *surface)
+{
+    if (!surface) {
+        return false;
+    }
+
+    struct ky_scene_buffer *scene_buffer = ky_scene_buffer_try_from_surface(surface);
+    if (!scene_buffer) {
+        return false;
+    }
+
+    struct ky_scene_node *node = &scene_buffer->node;
+    ky_scene_node_set_radius(node,
+                             (int[4]){ TREELAND_XDG_POPUP_RADIUS,
+                                       TREELAND_XDG_POPUP_RADIUS,
+                                       TREELAND_XDG_POPUP_RADIUS,
+                                       TREELAND_XDG_POPUP_RADIUS });
+    ky_scene_buffer_set_opacity(scene_buffer, 1.0f);
+    scene_buffer_set_blur_blending(scene_buffer, surface, true);
+
+    const bool dark = theme_manager_get_theme()->type == THEME_TYPE_DARK;
+    const float border_color[4] = {
+        dark ? 1.0f : 0.0f,
+        dark ? 1.0f : 0.0f,
+        dark ? 1.0f : 0.0f,
+        dark ? 0.12f : 0.14f,
+    };
+    ky_scene_buffer_set_border(scene_buffer, 1.0f, border_color);
+
+    struct wlr_box geometry;
+    if (!surface_get_geometry(surface, &geometry)) {
+        return false;
+    }
+
+    pixman_region32_t region;
+    pixman_region32_init_rect(&region, geometry.x, geometry.y, geometry.width, geometry.height);
+    ky_scene_node_set_blur_region(node, &region);
+    /* Use the multi-pass fragment blur at a small offset. A single half-size
+     * pass looks coarse when the popup background is highly translucent. */
+    ky_scene_node_set_blur_level(node, 3, 0.60f);
+    pixman_region32_fini(&region);
+    return true;
+}
+
+static void view_apply_popup_decoration(struct view *view)
+{
+    if (!view) {
+        return;
+    }
+
+    /* The texture shader draws the one-pixel inner border. Keep a zero-width
+     * SSD frame only as the owner of the compositor-side shadow. */
+    view_set_decoration(view, KYWC_SSD_BORDER);
+    const float transparent[4] = { 0, 0, 0, 0 };
+    const float shadow[4] = { 0, 0, 0, 0.18f };
+    ssd_set_border_override(&view->base, true, 0, transparent);
+    ssd_set_shadow_override(&view->base, true, TREELAND_XDG_POPUP_SHADOW_RADIUS, 0,
+                            TREELAND_XDG_POPUP_SHADOW_OFFSET_Y, shadow);
+}
+
+bool treeland_personalization_apply_popup_effects(struct wlr_xdg_popup *popup)
+{
+    if (!popup || !popup->base || !client_has_window_context(popup->base->surface)) {
+        return false;
+    }
+    return surface_apply_popup_effects(popup->base->surface);
+}
+
+bool treeland_personalization_apply_view_popup_effects(struct view *view)
+{
+    if (!view || !view->surface || !view->parent) {
+        return false;
+    }
+
+    struct personalization_window_context *ctx = window_context_for_surface(view->surface);
+    if (window_context_requests_popup_effects(ctx)) {
+        window_context_apply(ctx);
+        return true;
+    }
+
+    if (!view_looks_like_qt_menu(view) || !view_provides_popup_effects(view->parent) ||
+        !surface_apply_popup_effects(view->surface)) {
+        return false;
+    }
+
+    view_apply_popup_decoration(view);
+    return true;
+}
+
 static void window_context_apply_blur(struct personalization_window_context *ctx)
 {
     if (!ctx->surface || !ctx->has_blend_mode) {
@@ -291,26 +487,14 @@ static void window_context_apply_blur(struct personalization_window_context *ctx
     struct ky_scene_node *node = &scene_buffer->node;
     if (ctx->blend_mode != TREELAND_PERSONALIZATION_WINDOW_CONTEXT_V1_BLEND_MODE_BLUR) {
         ky_scene_node_set_blur_region(node, NULL);
+        scene_buffer_set_blur_blending(scene_buffer, ctx->surface, false);
         return;
     }
 
-    struct wlr_box geometry = {
-        .width = ctx->surface->current.width,
-        .height = ctx->surface->current.height,
-    };
-    struct wlr_xdg_surface *xdg_surface =
-        wlr_xdg_surface_try_from_wlr_surface(ctx->surface);
-    if (xdg_surface) {
-        /* The wl_surface includes transparent CSD padding. The xdg window
-         * geometry is the actual window boundary used by Treeland's wrapper. */
-        wlr_xdg_surface_get_geometry(xdg_surface, &geometry);
-    }
+    scene_buffer_set_blur_blending(scene_buffer, ctx->surface, true);
 
-    struct wlr_box surface_box = {
-        .width = ctx->surface->current.width,
-        .height = ctx->surface->current.height,
-    };
-    if (!wlr_box_intersection(&geometry, &geometry, &surface_box)) {
+    struct wlr_box geometry;
+    if (!surface_get_geometry(ctx->surface, &geometry)) {
         ky_scene_node_set_blur_region(node, NULL);
         return;
     }
@@ -318,7 +502,9 @@ static void window_context_apply_blur(struct personalization_window_context *ctx
     pixman_region32_t region;
     pixman_region32_init_rect(&region, geometry.x, geometry.y, geometry.width, geometry.height);
     ky_scene_node_set_blur_region(node, &region);
-    ky_scene_node_set_blur_level(node, 3, 2.6f);
+    const bool popup = ctx->view && ctx->view->parent &&
+                       window_context_requests_popup_effects(ctx);
+    ky_scene_node_set_blur_level(node, 3, popup ? 0.60f : 2.6f);
     pixman_region32_fini(&region);
 }
 
@@ -337,6 +523,7 @@ static void window_context_apply(struct personalization_window_context *ctx)
     window_context_attach_view(ctx);
 
     struct view *view = ctx->view;
+    const bool popup = view && view->parent && window_context_requests_popup_effects(ctx);
     if (view) {
         if (ctx->has_titlebar) {
             enum kywc_ssd ssd = view->base.ssd;
@@ -364,8 +551,18 @@ static void window_context_apply(struct personalization_window_context *ctx)
     }
     struct ky_scene_node *node = &scene_buffer->node;
 
-    if (ctx->has_radius && ctx->radius >= 0) {
-        int r = ctx->radius;
+    if (popup) {
+        surface_apply_popup_effects(ctx->surface);
+        view_apply_popup_decoration(view);
+        return;
+    }
+
+    if (view || ctx->has_radius) {
+        int r = ctx->has_radius && ctx->radius > 0 ? ctx->radius
+                                                   : manager->round_corner_radius;
+        if (view && (view->base.maximized || view->base.fullscreen || view->base.tiled)) {
+            r = 0;
+        }
         ky_scene_node_set_radius(node, (int[4]){ r, r, r, r });
     }
 
@@ -413,7 +610,7 @@ static void window_handle_surface_commit(struct wl_listener *listener, void *dat
 {
     struct personalization_window_context *ctx =
         wl_container_of(listener, ctx, surface_commit);
-    window_context_apply_blur(ctx);
+    window_context_apply(ctx);
 }
 
 static void window_handle_view_map(struct wl_listener *listener, void *data)
@@ -828,12 +1025,15 @@ static void appearance_handle_set_round_corner_radius(struct wl_client *client,
             "invalid round corner radius %d", radius);
         return;
     }
-    manager->round_corner_radius = radius;
+    int32_t old_radius = manager->round_corner_radius;
+    theme_manager_set_corner_radius(radius);
 
-    struct personalization_context *ctx;
-    wl_list_for_each(ctx, &manager->appearance_contexts, link) {
-        treeland_personalization_appearance_context_v1_send_round_corner_radius(
-            ctx->resource, manager->round_corner_radius);
+    /* theme_manager emits synchronously when the value changes. If it was
+     * already set, the protocol still expects a reply to this setter. */
+    if (manager->round_corner_radius != theme_manager_get_theme()->corner_radius) {
+        personalization_apply_theme();
+    } else if (old_radius == radius) {
+        personalization_broadcast_round_corner_radius();
     }
 }
 
@@ -1383,6 +1583,47 @@ static void manager_finish(void)
     manager = NULL;
 }
 
+static void personalization_broadcast_round_corner_radius(void)
+{
+    struct personalization_context *ctx;
+    wl_list_for_each(ctx, &manager->appearance_contexts, link) {
+        treeland_personalization_appearance_context_v1_send_round_corner_radius(
+            ctx->resource, manager->round_corner_radius);
+    }
+}
+
+static void personalization_apply_theme(void)
+{
+    manager->round_corner_radius = theme_manager_get_theme()->corner_radius;
+    personalization_broadcast_round_corner_radius();
+
+    struct personalization_window_context *ctx;
+    wl_list_for_each(ctx, &manager->window_contexts, link) {
+        window_context_apply(ctx);
+    }
+}
+
+static void handle_theme_update(struct wl_listener *listener, void *data)
+{
+    struct theme_update_event *event = data;
+    if (!(event->update_mask & THEME_UPDATE_MASK_CORNER_RADIUS)) {
+        return;
+    }
+
+    manager->round_corner_radius = theme_manager_get_theme()->corner_radius;
+    personalization_broadcast_round_corner_radius();
+
+    struct personalization_window_context *ctx;
+    wl_list_for_each(ctx, &manager->window_contexts, link) {
+        window_context_apply(ctx);
+    }
+}
+
+static void handle_server_ready(struct wl_listener *listener, void *data)
+{
+    personalization_apply_theme();
+}
+
 static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&manager->display_destroy.link);
@@ -1392,6 +1633,8 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
+    wl_list_remove(&manager->theme_update.link);
+    wl_list_remove(&manager->server_ready.link);
     wl_list_remove(&manager->server_destroy.link);
     manager_finish();
 }
@@ -1474,6 +1717,12 @@ bool treeland_personalization_manager_create(struct server *server)
     manager->window_opacity = DEFAULT_WINDOW_OPACITY;
     manager->window_theme_type = TREELAND_PERSONALIZATION_APPEARANCE_CONTEXT_V1_THEME_TYPE_AUTO;
     manager->window_titlebar_height = DEFAULT_TITLEBAR_HEIGHT;
+
+    manager->round_corner_radius = theme_manager_get_theme()->corner_radius;
+    manager->theme_update.notify = handle_theme_update;
+    theme_manager_add_update_listener(&manager->theme_update);
+    manager->server_ready.notify = handle_server_ready;
+    wl_signal_add(&server->events.ready, &manager->server_ready);
 
     manager->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &manager->server_destroy);

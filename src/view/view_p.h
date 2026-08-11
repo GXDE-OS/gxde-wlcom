@@ -169,6 +169,8 @@ bool view_show_split_screen_switcher(struct view *view, struct seat *seat, bool 
 struct wlr_xdg_popup;
 void xdg_popup_create(struct wlr_xdg_popup *wlr_xdg_popup, struct ky_scene_tree *shell,
                       struct view_layer *layer, bool use_usable_area);
+bool treeland_personalization_apply_popup_effects(struct wlr_xdg_popup *popup);
+bool treeland_personalization_apply_view_popup_effects(struct view *view);
 
 bool ky_workspace_manager_create(struct server *server);
 

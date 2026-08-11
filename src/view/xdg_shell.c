@@ -223,6 +223,7 @@ static void xdg_view_handle_commit(struct wl_listener *listener, void *data)
     struct view *view = &xdg_view->view;
 
     xdg_view_update_geometry(xdg_view);
+    treeland_personalization_apply_view_popup_effects(view);
 
     enum view_action pending_action = view->pending.configure_action;
     uint32_t pending_serial = view->pending.configure_serial;
@@ -410,6 +411,7 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     struct wl_client *client = wl_resource_get_client(wlr_surface->resource);
     wl_client_get_credentials(client, &xdg_view->view.pid, NULL, NULL);
     view_map(&xdg_view->view);
+    treeland_personalization_apply_view_popup_effects(&xdg_view->view);
 }
 
 static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)

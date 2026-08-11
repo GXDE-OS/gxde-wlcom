@@ -251,6 +251,8 @@ struct ky_scene_buffer {
     bool repeated;
     float opacity;
     pixman_region32_t opaque_region;
+    float border_width;
+    float border_color[4];
 
     /**
      * The output that the largest area of this buffer is displayed on.
@@ -422,6 +424,9 @@ void ky_scene_buffer_set_opacity(struct ky_scene_buffer *scene_buffer, float opa
 
 void ky_scene_buffer_set_opaque_region(struct ky_scene_buffer *scene_buffer,
                                        const pixman_region32_t *region);
+
+void ky_scene_buffer_set_border(struct ky_scene_buffer *scene_buffer, float width,
+                                const float color[static 4]);
 
 void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer,
                                     const struct wlr_fbox *box);

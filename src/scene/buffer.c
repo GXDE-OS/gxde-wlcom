@@ -514,6 +514,15 @@ static void buffer_render(struct ky_scene_node *node, int lx, int ly,
                 ? (force_round_corner ? forced_radius : node->radius[3]) * target->scale
                 : 0,
         },
+        .border = {
+            .width = scene_buffer->border_width * target->scale,
+            .color = {
+                .r = scene_buffer->border_color[0],
+                .g = scene_buffer->border_color[1],
+                .b = scene_buffer->border_color[2],
+                .a = scene_buffer->border_color[3],
+            },
+        },
         .repeated = scene_buffer->repeated,
     };
 
@@ -726,6 +735,19 @@ void ky_scene_buffer_set_opaque_region(struct ky_scene_buffer *scene_buffer,
 
     pixman_region32_copy(&scene_buffer->opaque_region, region);
     ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMFUL, NULL);
+}
+
+void ky_scene_buffer_set_border(struct ky_scene_buffer *scene_buffer, float width,
+                                const float color[static 4])
+{
+    if (scene_buffer->border_width == width &&
+        memcmp(scene_buffer->border_color, color, sizeof(scene_buffer->border_color)) == 0) {
+        return;
+    }
+
+    scene_buffer->border_width = width;
+    memcpy(scene_buffer->border_color, color, sizeof(scene_buffer->border_color));
+    ky_scene_node_push_damage(&scene_buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
 }
 
 void ky_scene_buffer_set_source_box(struct ky_scene_buffer *scene_buffer,

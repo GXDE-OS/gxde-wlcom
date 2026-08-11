@@ -14,6 +14,8 @@ uniform int forceOpaque; // texture alpha force = 1
 uniform float antiAliasing;
 uniform float aspect; // width / height
 uniform vec4 roundCornerRadius;
+uniform float borderWidth;
+uniform vec4 borderColor;
 
 float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r)
 {
@@ -35,5 +37,9 @@ void main()
     if (forceOpaque != 0) {
         texColor.a = 1.0;
     }
-    gl_FragColor = mix(vec4(0.0), texColor, shape);
+    vec4 outColor = mix(vec4(0.0), texColor, shape);
+    float borderCoverage = shape * smoothstep(-borderWidth - antiAliasing,
+                                               -borderWidth + antiAliasing, dist);
+    vec4 border = vec4(borderColor.rgb * borderColor.a, borderColor.a) * borderCoverage;
+    gl_FragColor = border + outColor * (1.0 - border.a);
 }

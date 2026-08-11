@@ -11,9 +11,15 @@ struct ky_render_round_corner {
     float rb, rt, lb, lt;
 };
 
+struct ky_render_border {
+    float width;
+    struct wlr_render_color color;
+};
+
 struct ky_render_texture_options {
     struct wlr_render_texture_options base;
     struct ky_render_round_corner radius;
+    struct ky_render_border border;
     float rotation_angle;
     bool repeated;
 };

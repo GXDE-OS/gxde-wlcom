@@ -150,6 +150,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     struct ky_render_texture_options ky_options = {
         .base = *options,
         .radius = { 0 },
+        .border = { 0 },
         .repeated = false,
         .rotation_angle = 0,
     };
@@ -187,19 +188,23 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     struct ky_opengl_renderer *renderer = pass->buffer->renderer;
     struct wlr_buffer *target_buffer = pass->buffer->buffer;
     bool has_radius = ky_render_pass_options_has_radius(&options->radius);
+    bool has_border = options->border.width > 0.0f && options->border.color.a > 0.0f;
 
     struct ky_opengl_tex_ex_shader *shader = NULL;
     switch (texture->target) {
     case GL_TEXTURE_2D:
         if (texture->has_alpha) {
-            shader = has_radius ? &renderer->shaders.tex_rgba_ex : &renderer->shaders.tex_rgba;
+            shader = has_radius || has_border ? &renderer->shaders.tex_rgba_ex
+                                              : &renderer->shaders.tex_rgba;
         } else {
-            shader = has_radius ? &renderer->shaders.tex_rgbx_ex : &renderer->shaders.tex_rgbx;
+            shader = has_radius || has_border ? &renderer->shaders.tex_rgbx_ex
+                                              : &renderer->shaders.tex_rgbx;
         }
         break;
     case GL_TEXTURE_EXTERNAL_OES:
         assert(renderer->exts.OES_egl_image_external);
-        shader = has_radius ? &renderer->shaders.tex_ext_ex : &renderer->shaders.tex_ext;
+        shader = has_radius || has_border ? &renderer->shaders.tex_ext_ex
+                                          : &renderer->shaders.tex_ext;
         break;
     default:
         abort();
@@ -247,7 +252,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     ky_opengl_push_debug(renderer);
     KY_PROFILE_RENDER_ZONE(&renderer->wlr_renderer, gzone, __func__);
 
-    if (has_radius) {
+    if (has_radius || has_border) {
         // radius clip always need blend
         setup_blending(WLR_RENDER_BLEND_MODE_PREMULTIPLIED);
     } else if (getenv("KYWC_FORCE_OPAQUE")) {
@@ -300,7 +305,7 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
     glUniformMatrix3fv(shader->uv2ndc, 1, GL_FALSE, uv2ndc.matrix);
     glUniformMatrix3fv(shader->uv2tex, 1, GL_FALSE, uv2tex.matrix);
 
-    if (has_radius) {
+    if (has_radius || has_border) {
         // avoid texture alpha < 1
         bool force_opaque = (!texture->has_alpha && alpha == 1.0) ||
                             options->base.blend_mode == WLR_RENDER_BLEND_MODE_NONE;
@@ -313,6 +318,9 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
                     options->radius.rt * one_pixel_distance,
                     options->radius.lb * one_pixel_distance,
                     options->radius.lt * one_pixel_distance);
+        glUniform1f(shader->border_width, options->border.width * one_pixel_distance);
+        glUniform4f(shader->border_color, options->border.color.r, options->border.color.g,
+                    options->border.color.b, options->border.color.a);
     }
     render(&renderer->wlr_renderer, &dst_box, options->base.clip, shader->uv_attrib);
 
