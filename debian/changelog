@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.8-gxde2) lizhi; urgency=medium
+
+  * 修复了DTK6窗口阴影丢失的问题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 11 Aug 2026 16:06:22 +0800
+
 gxde-wlcom (2.1.8-gxde1) lizhi; urgency=medium
 
   [ gfdgd_xi ]
@@ -11,7 +17,7 @@ gxde-wlcom (2.1.8-gxde1) lizhi; urgency=medium
   * 新增了DTK5/6窗体圆角支持（需要开启Treeland Personalization Manager广播）
   * 修复了DTK5/6窗体双标题栏问题（需要开启Treeland Personalization Manager广播）
 
- -- CharOfString <root@charofstring.cc>  Wed, 11 Aug 2026 15:22:01 +0800
+ -- CharOfString <root@charofstring.cc>  Tue, 11 Aug 2026 15:22:01 +0800
 
 gxde-wlcom (2.1.7-gxde1) lizhi; urgency=medium
 
