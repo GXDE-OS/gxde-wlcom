@@ -82,19 +82,19 @@
             "XF86AudioRaiseVolume": {
                 "enable": true,
                 "actiontype": "command",
-                "command": "pactl set-sink-volume @DEFAULT_SINK@ +5%",
+                "command": "bash -c \"pactl set-sink-volume @DEFAULT_SINK@ +5% ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
                 "desc": "volume up"
             },
             "XF86AudioLowerVolume": {
                 "enable": true,
                 "actiontype": "command",
-                "command": "pactl set-sink-volume @DEFAULT_SINK@ -5%",
+                "command": "bash -c \"pactl set-sink-volume @DEFAULT_SINK@ -5% ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
                 "desc": "volume down"
             },
             "XF86AudioMute:no": {
                 "enable": true,
                 "actiontype": "command",
-                "command": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+                "command": "bash -c \"pactl set-sink-mute @DEFAULT_SINK@ toggle ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
                 "desc": "mute"
             },
             "XF86Search:no": {
