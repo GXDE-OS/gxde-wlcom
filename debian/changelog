@@ -1,4 +1,4 @@
-gxde-wlcom (2.1.9-gxde1) lizhi; urgency=medium
+gxde-wlcom (2.1.9-gxde2) lizhi; urgency=medium
 
   * 新增ext_session_lock_manager_v1支持
 
