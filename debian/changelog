@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.9-gxde1) lizhi; urgency=medium
+
+  * 新增ext_session_lock_manager_v1支持
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 17:05:03 +0800
+
 gxde-wlcom (2.1.8-gxde4) lizhi; urgency=medium
 
   * 修复了登录后语言仍然是英文的问题
