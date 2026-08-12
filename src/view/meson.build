@@ -8,6 +8,7 @@ wlcom_sources += files(
   'window_switcher.c',
   'modal.c',
   'positioner.c',
+  'session_lock.c',
   'split_screen_switcher.c',
   'ssd.c',
   'stack_mode.c',

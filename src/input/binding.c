@@ -16,6 +16,7 @@
 #include "input_p.h"
 #include "server.h"
 #include "util/string.h"
+#include "view/session_lock.h"
 
 struct key_binding {
     struct wl_list link;
@@ -289,7 +290,7 @@ static bool match_key_binding(struct keyboard_state *keyboard_state, struct key_
 
 bool bindings_handle_key_binding(struct keyboard_state *keyboard_state, bool *repeat)
 {
-    if (bindings->keysym_bindings_block) {
+    if (session_lock_is_active() || bindings->keysym_bindings_block) {
         return false;
     }
 
@@ -612,6 +613,10 @@ bool kywc_gesture_binding_register(struct gesture_binding *binding,
 
 bool bindings_handle_gesture_binding(struct gesture_state *gesture_state)
 {
+    if (session_lock_is_active()) {
+        return false;
+    }
+
     struct gesture_binding *binding;
     wl_list_for_each(binding, &bindings->gesture_bindings, link) {
         if (gesture_state->type != binding->type) {

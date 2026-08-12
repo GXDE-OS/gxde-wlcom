@@ -18,6 +18,7 @@
 #include "input_p.h"
 #include "server.h"
 #include "util/time.h"
+#include "view/session_lock.h"
 #include "xwayland.h"
 
 static void handle_server_start(struct wl_listener *listener, void *data)
@@ -331,6 +332,61 @@ void seat_reset_input_gesture(struct seat *seat)
     touch_reset_gesture(seat->manager);
 }
 
+void seat_cancel_grabs(struct seat *seat)
+{
+    while (seat->pointer_grab || seat->keyboard_grab || seat->touch_grab) {
+        if (seat->pointer_grab) {
+            struct seat_pointer_grab *grab = seat->pointer_grab;
+            if (grab->interface->cancel) {
+                grab->interface->cancel(grab);
+            }
+            if (seat->pointer_grab == grab) {
+                seat->pointer_grab = NULL;
+            }
+            continue;
+        }
+
+        if (seat->keyboard_grab) {
+            struct seat_keyboard_grab *grab = seat->keyboard_grab;
+            if (grab->interface->cancel) {
+                grab->interface->cancel(grab);
+            }
+            if (seat->keyboard_grab == grab) {
+                seat->keyboard_grab = NULL;
+            }
+            continue;
+        }
+
+        struct seat_touch_grab *grab = seat->touch_grab;
+        if (grab->interface->cancel) {
+            grab->interface->cancel(grab);
+        }
+        if (seat->touch_grab == grab) {
+            seat->touch_grab = NULL;
+        }
+    }
+
+    wlr_seat_pointer_end_grab(seat->wlr_seat);
+    wlr_seat_pointer_clear_focus(seat->wlr_seat);
+    wlr_seat_keyboard_end_grab(seat->wlr_seat);
+    wlr_seat_touch_end_grab(seat->wlr_seat);
+
+    seat->cursor->hold_mode = false;
+    seat->cursor->last_click_pressed = false;
+
+    while (!wl_list_empty(&seat->wlr_seat->touch_state.touch_points)) {
+        struct wlr_touch_point *point =
+            wl_container_of(seat->wlr_seat->touch_state.touch_points.next, point, link);
+        if (point->surface) {
+            wlr_seat_touch_notify_cancel(seat->wlr_seat, point->surface);
+        } else {
+            wlr_seat_touch_notify_up(seat->wlr_seat, current_time_msec(), point->touch_id);
+        }
+    }
+
+    seat_reset_input_gesture(seat);
+}
+
 void seat_notify_motion(struct seat *seat, struct wlr_surface *surface, uint32_t time, double sx,
                         double sy, bool first_enter)
 {
@@ -377,6 +433,10 @@ void seat_notify_leave(struct seat *seat, struct wlr_surface *surface)
 
 void seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
+    if (session_lock_is_active() && !session_lock_surface_is_allowed(surface)) {
+        surface = session_lock_get_focus_surface();
+    }
+
     struct wlr_seat *wlr_seat = seat->wlr_seat;
     struct wlr_surface *last_surface = wlr_seat->keyboard_state.focused_surface;
     if (last_surface != surface) {

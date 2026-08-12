@@ -36,7 +36,7 @@ wayland协议支持情况
 | wp_drm_lease_device_v1            |    no    | 1     |
 | ext_foreign_toplevel_list_v1      |    no    | 1     |
 | ext_idle_notifier_v1              |    1     |       |
-| ext_session_lock_manager_v1       |    no    | 1     |
+| ext_session_lock_manager_v1       |    1     |       |
 | ext_transient_seat_manager_v1     |    1     |       |
 | wp_fractional_scale_manager_v1    |    1     |       |
 | wp_security_context_manager_v1    |    no    | 1     |

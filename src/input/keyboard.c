@@ -18,6 +18,7 @@
 #include "input/seat.h"
 #include "input_p.h"
 #include "util/time.h"
+#include "view/session_lock.h"
 
 static struct modifier {
     char *name;
@@ -175,6 +176,10 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
         handle_keyboard_state(keyboard_state, modifiers, keysyms[i], pressed);
     }
 
+    if (session_lock_is_active()) {
+        return false;
+    }
+
     /* key grab for shortcut capture (e.g. control center shortcut editor) */
     for (size_t i = 0; i < len; ++i) {
         if (input_action_handle_key(pressed, modifiers, keysyms[i])) {
@@ -283,6 +288,15 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, uint32_t 
         return;
     }
 
+    if (session_lock_is_active()) {
+        bool repeat = false;
+        keyboard_handle_bindings(keyboard, key, pressed, modifiers, &repeat);
+        keyboard_repeat_stop(keyboard);
+        wlr_seat_set_keyboard(seat->wlr_seat, keyboard->wlr_keyboard);
+        wlr_seat_keyboard_notify_key(seat->wlr_seat, time, key, state);
+        return;
+    }
+
     struct seat_keyboard_key_event event = {
         .device = input_from_wlr_input(&keyboard->wlr_keyboard->base),
         .time_msec = time,
@@ -333,7 +347,7 @@ static void keyboard_feed_modifiers(struct keyboard *keyboard,
         modifiers_mask_debug(modifiers->group, "group");
     }
 
-    if (input_method_handle_modifiers(keyboard)) {
+    if (!session_lock_is_active() && input_method_handle_modifiers(keyboard)) {
         return;
     }
 

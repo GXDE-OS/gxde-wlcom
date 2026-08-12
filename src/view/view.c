@@ -20,6 +20,7 @@
 #include "scene/surface.h"
 #include "server.h"
 #include "theme.h"
+#include "view/session_lock.h"
 #include "view/workspace.h"
 #include "view_p.h"
 
@@ -2285,6 +2286,9 @@ struct view_manager *view_manager_create(struct server *server)
     xdg_shell_init(view_manager);
 
     wlr_layer_shell_manager_create(server);
+    if (!session_lock_manager_create(server)) {
+        kywc_log(KYWC_ERROR, "failed to create session lock manager");
+    }
     wlr_foreign_toplevel_manager_create(server);
     ky_toplevel_manager_create(server);
     kde_plasma_shell_create(server);

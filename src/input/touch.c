@@ -15,6 +15,7 @@
 #include "input_p.h"
 #include "scene/surface.h"
 #include "server.h"
+#include "view/session_lock.h"
 #include "view/view.h"
 #include "xwayland.h"
 
@@ -473,7 +474,7 @@ bool touch_handle_down(struct wlr_touch_down_event *event)
     struct seat *seat = touch->input->seat;
     cursor_move(seat->cursor, &event->touch->base, event->x, event->y, false, true);
 
-    if (seat->touch_grab && seat->touch_grab->interface->touch &&
+    if (!session_lock_is_active() && seat->touch_grab && seat->touch_grab->interface->touch &&
         seat->touch_grab->interface->touch(seat->touch_grab, event->time_msec, true)) {
         return true;
     }
@@ -632,7 +633,7 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     struct seat *seat = touch->input->seat;
     cursor_move(seat->cursor, &event->touch->base, event->x, event->y, false, true);
 
-    if (seat->touch_grab && seat->touch_grab->interface->motion &&
+    if (!session_lock_is_active() && seat->touch_grab && seat->touch_grab->interface->motion &&
         seat->touch_grab->interface->motion(seat->touch_grab, event->time_msec, seat->cursor->lx,
                                             seat->cursor->ly)) {
         return;
@@ -654,7 +655,7 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     /* calc point motion directions */
     point->directions = touch_point_calc_directions(point, dx, dy);
 
-    if (!touch->filter_enabled) {
+    if (!session_lock_is_active() && !touch->filter_enabled) {
         if (!touch->gestures.handled) {
             touch_gesture_detect(touch);
         }
@@ -674,6 +675,9 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
     }
 
     if (!handle || !point->surface) {
+        return;
+    }
+    if (session_lock_is_active() && !session_lock_surface_is_allowed(point->surface)) {
         return;
     }
 
@@ -699,7 +703,9 @@ void touch_handle_motion(struct wlr_touch_motion_event *event, bool handle)
         sy = xwayland_scale(sy);
     }
 
-    selection_handle_cursor_move(seat, seat->cursor->lx, seat->cursor->ly);
+    if (!session_lock_is_active()) {
+        selection_handle_cursor_move(seat, seat->cursor->lx, seat->cursor->ly);
+    }
     wlr_seat_touch_notify_motion(seat->wlr_seat, event->time_msec, event->touch_id, sx, sy);
 }
 
@@ -716,7 +722,7 @@ void touch_handle_up(struct wlr_touch_up_event *event, bool handle)
     }
 
     struct seat *seat = touch->input->seat;
-    if (seat->touch_grab && seat->touch_grab->interface->touch &&
+    if (!session_lock_is_active() && seat->touch_grab && seat->touch_grab->interface->touch &&
         seat->touch_grab->interface->touch(seat->touch_grab, event->time_msec, false)) {
         return;
     }
@@ -743,7 +749,7 @@ void touch_handle_cancel(struct wlr_touch_cancel_event *event, bool handle)
     }
 
     struct seat *seat = touch->input->seat;
-    if (seat->touch_grab && seat->touch_grab->interface->touch &&
+    if (!session_lock_is_active() && seat->touch_grab && seat->touch_grab->interface->touch &&
         seat->touch_grab->interface->touch(seat->touch_grab, event->time_msec, false)) {
         return;
     }

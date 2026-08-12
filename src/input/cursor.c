@@ -28,6 +28,7 @@
 #include "scene/surface.h"
 #include "server.h"
 #include "util/time.h"
+#include "view/session_lock.h"
 #include "xwayland.h"
 
 /* cursor images used in compositor */
@@ -87,8 +88,8 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
     bool left_button_pressed =
         LEFT_BUTTON_PRESSED(cursor->last_click_button, cursor->last_click_pressed);
     /* if hold press moving but not dragging */
-    if (left_button_pressed && cursor->focus.node && cursor->focus.node != cursor->hover.node &&
-        !selection_is_dragging(seat)) {
+    if (!session_lock_is_active() && left_button_pressed && cursor->focus.node &&
+        cursor->focus.node != cursor->hover.node && !selection_is_dragging(seat)) {
         struct input_event_node *inode = input_event_node_from_node(cursor->focus.node);
         if (inode && inode->impl->hover) {
             cursor->hold_mode = inode->impl->hover(seat, cursor->focus.node, cursor->lx, cursor->ly,
@@ -118,7 +119,9 @@ static void _cursor_feed_motion(struct cursor *cursor, uint32_t time)
                            inode->data);
     }
 
-    selection_handle_cursor_move(seat, cursor->lx, cursor->ly);
+    if (!session_lock_is_active()) {
+        selection_handle_cursor_move(seat, cursor->lx, cursor->ly);
+    }
 
     if (!cursor->hover.node) {
         /* once no node found under the cursor, restore cursor to default */
@@ -137,6 +140,12 @@ static bool cursor_apply_constraint(struct cursor *cursor, struct wlr_input_devi
 void cursor_feed_motion(struct cursor *cursor, uint32_t time, struct wlr_input_device *device,
                         double dx, double dy, double dx_unaccel, double dy_unaccel)
 {
+    if (session_lock_is_active()) {
+        cursor_move(cursor, device, dx, dy, true, false);
+        _cursor_feed_motion(cursor, time);
+        return;
+    }
+
     wlr_relative_pointer_manager_v1_send_relative_motion(
         cursor->seat->manager->relative_pointer, cursor->seat->wlr_seat, (uint64_t)time * 1000, dx,
         dy, dx_unaccel, dy_unaccel);
@@ -178,7 +187,8 @@ static void cursor_motion_absolute(struct cursor *cursor, uint32_t time,
 static void cursor_feed_fake_motion(struct cursor *cursor, bool need_frame)
 {
     /* skip motion when has grab */
-    if (cursor->seat->pointer_grab && cursor->seat->pointer_grab->interface->motion) {
+    if (!session_lock_is_active() && cursor->seat->pointer_grab &&
+        cursor->seat->pointer_grab->interface->motion) {
         return;
     }
 
@@ -192,7 +202,7 @@ void cursor_feed_button(struct cursor *cursor, uint32_t button, bool pressed, ui
                         uint32_t double_click_time)
 {
     struct seat *seat = cursor->seat;
-    if (seat->pointer_grab && seat->pointer_grab->interface->button &&
+    if (!session_lock_is_active() && seat->pointer_grab && seat->pointer_grab->interface->button &&
         seat->pointer_grab->interface->button(seat->pointer_grab, time, button, pressed)) {
         return;
     }
@@ -320,7 +330,7 @@ void cursor_feed_axis(struct cursor *cursor, uint32_t orientation, uint32_t sour
                       int32_t delta_discrete, uint32_t time)
 {
     struct seat *seat = cursor->seat;
-    if (seat->pointer_grab && seat->pointer_grab->interface->axis &&
+    if (!session_lock_is_active() && seat->pointer_grab && seat->pointer_grab->interface->axis &&
         seat->pointer_grab->interface->axis(seat->pointer_grab, time,
                                             orientation == WLR_AXIS_ORIENTATION_VERTICAL, delta)) {
         return;
@@ -353,7 +363,7 @@ static void cursor_handle_axis(struct wl_listener *listener, void *data)
 static void cursor_handle_frame(struct wl_listener *listener, void *data)
 {
     struct cursor *cursor = wl_container_of(listener, cursor, frame);
-    if (cursor->seat->pointer_grab) {
+    if (!session_lock_is_active() && cursor->seat->pointer_grab) {
         return;
     }
     /* Notify the client with pointer focus of the frame event. */
@@ -368,7 +378,7 @@ static void cursor_handle_tablet_tool_axis(struct wl_listener *listener, void *d
 
     cursor_set_hidden(cursor, false);
     /* force to pointer when move and resize */
-    if (cursor->seat->pointer_grab) {
+    if (!session_lock_is_active() && cursor->seat->pointer_grab) {
         cursor->tablet_tool_tip_simulation_pointer = true;
     }
 
@@ -736,7 +746,7 @@ static void cursor_handle_request_set_cursor(struct wl_listener *listener, void 
     if (cursor->image_locks > 0 || cursor->hidden) {
         return;
     }
-    if (grab || focused_client != event->seat_client) {
+    if ((!session_lock_is_active() && grab) || focused_client != event->seat_client) {
         return;
     }
 
