@@ -200,6 +200,22 @@ static char *read_icon_theme_name(void)
     return read_gsettings_string("org.gnome.desktop.interface", "icon-theme");
 }
 
+static char *read_gtk_im_module(void)
+{
+    const char *module = getenv("GTK_IM_MODULE");
+    if (module && *module) {
+        return g_strdup(module);
+    }
+
+    char *name = read_gsettings_string("com.deepin.wrap.gnome.desktop.interface",
+        "gtk-im-module");
+    if (name) {
+        return name;
+    }
+
+    return read_gsettings_string("org.gnome.desktop.interface", "gtk-im-module");
+}
+
 static const char *current_cursor_theme(struct seat *seat)
 {
     if (seat && seat->state.cursor_theme && *seat->state.cursor_theme) {
@@ -226,7 +242,8 @@ static char *current_font_name(void)
 
 static bool build_xsettings_data(struct xsettings_manager *manager, struct xsettings_buffer *buffer,
         const char *gtk_theme, const char *icon_theme,
-        const char *cursor_theme, int32_t cursor_size, const char *font_name)
+        const char *cursor_theme, int32_t cursor_size, const char *font_name,
+        const char *gtk_im_module)
 {
     float scale = manager->xwayland->scale > 0.0f ? manager->xwayland->scale : 1.0f;
     int32_t fixed_dpi = (int32_t)roundf(scale * XSETTINGS_FIXED_BASE_DPI);
@@ -236,7 +253,7 @@ static bool build_xsettings_data(struct xsettings_manager *manager, struct xsett
     }
 
     uint32_t serial = ++manager->serial;
-    const uint32_t settings_count = 14;
+    const uint32_t settings_count = gtk_im_module ? 15 : 14;
 
     return xsettings_append_header(buffer, serial, settings_count) &&
         xsettings_append_string(buffer, "Gtk/ThemeName", gtk_theme, serial) &&
@@ -252,6 +269,8 @@ static bool build_xsettings_data(struct xsettings_manager *manager, struct xsett
         xsettings_append_int(buffer, "Gdk/UnscaledDPI", fixed_dpi, serial) &&
         xsettings_append_int(buffer, "Gdk/WindowScalingFactor", window_scaling_factor, serial) &&
         xsettings_append_string(buffer, "Gtk/FontName", font_name, serial) &&
+        (!gtk_im_module ||
+         xsettings_append_string(buffer, "Gtk/IMModule", gtk_im_module, serial)) &&
         xsettings_append_int(buffer, "Gtk/EnableAnimations", 1, serial);
 }
 
@@ -391,10 +410,11 @@ void xwayland_xsettings_apply(struct xwayland_server *xwayland)
     int32_t cursor_size = current_cursor_size(xwayland, seat);
     g_autofree char *font_name_alloc = current_font_name();
     const char *font_name = font_name_alloc ? font_name_alloc : "Sans 10";
+    g_autofree char *gtk_im_module = read_gtk_im_module();
 
     struct xsettings_buffer buffer = { 0 };
     if (!build_xsettings_data(manager, &buffer, gtk_theme, icon_theme, cursor_theme, cursor_size,
-                              font_name)) {
+                              font_name, gtk_im_module)) {
         kywc_log(KYWC_ERROR, "xsettings failed to build settings data");
         free(buffer.data);
         return;
