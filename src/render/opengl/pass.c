@@ -202,12 +202,19 @@ void ky_opengl_render_pass_add_texture(struct wlr_render_pass *wlr_pass,
         }
         break;
     case GL_TEXTURE_EXTERNAL_OES:
-        assert(renderer->exts.OES_egl_image_external);
+        if (!renderer->exts.OES_egl_image_external) {
+            kywc_log(KYWC_ERROR,
+                     "Cannot render external texture: GL_OES_EGL_image_external is not "
+                     "supported");
+            return;
+        }
         shader = has_radius || has_border ? &renderer->shaders.tex_ext_ex
                                           : &renderer->shaders.tex_ext;
         break;
     default:
-        abort();
+        kywc_log(KYWC_ERROR, "Cannot render texture with unsupported target 0x%x",
+                 texture->target);
+        return;
     }
 
     struct wlr_box dst_box;

@@ -314,6 +314,16 @@ static const struct wlr_drm_format_set *
 gl_get_dmabuf_texture_formats(struct wlr_renderer *wlr_renderer)
 {
     struct ky_opengl_renderer *renderer = ky_opengl_renderer_from_wlr_renderer(wlr_renderer);
+
+    /*
+     * EGL may report DMA-BUF modifiers which can only be sampled through
+     * GL_TEXTURE_EXTERNAL_OES. Do not advertise these modifiers when the GL
+     * implementation cannot sample external textures. Otherwise clients can
+     * legitimately submit a buffer which the renderer is unable to draw.
+     */
+    if (!renderer->exts.OES_egl_image_external) {
+        return &renderer->egl->dmabuf_render_formats;
+    }
     return &renderer->egl->dmabuf_texture_formats;
 }
 

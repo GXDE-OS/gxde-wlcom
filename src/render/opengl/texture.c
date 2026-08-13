@@ -286,8 +286,21 @@ static struct wlr_texture *gl_texture_from_dmabuf(struct wlr_renderer *wlr_rende
         return NULL;
     }
 
-    texture->target = (external_only || getenv("KYWC_EGL_EXTERNAL")) ? GL_TEXTURE_EXTERNAL_OES
-                                                                      : GL_TEXTURE_2D;
+    bool use_external = external_only || getenv("KYWC_EGL_EXTERNAL");
+    if (use_external && !renderer->exts.OES_egl_image_external) {
+        kywc_log(KYWC_ERROR,
+                 "Cannot import DMA-BUF format 0x%08" PRIX32
+                 " with modifier 0x%016" PRIX64
+                 ": GL_OES_EGL_image_external is not supported",
+                 attribs->format, attribs->modifier);
+        ky_egl_destroy_image(renderer->egl, texture->image);
+        ky_egl_restore_context(&prev_ctx);
+        wl_list_remove(&texture->link);
+        free(texture);
+        return NULL;
+    }
+
+    texture->target = use_external ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
 
     ky_opengl_push_debug(renderer);
 
