@@ -1,3 +1,9 @@
+gxde-wlcom (2.1.9-gxde3) lizhi; urgency=medium
+
+  * 修复部分程序在使用text-input-v3时导致WM整体崩溃的问题
+
+ -- CharOfString <root@charofstring.cc>  Thu, 13 Aug 2026 14:08:12 +0800
+
 gxde-wlcom (2.1.9-gxde2) lizhi; urgency=medium
 
   * 新增ext_session_lock_manager_v1支持
