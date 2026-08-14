@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <drm_fourcc.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/util/box.h>
 
@@ -38,6 +39,7 @@
 #include "effect/capture.h"
 #include "effect_p.h"
 #include "output.h"
+#include "render/renderer.h"
 #include "scene/thumbnail.h"
 #include "view/view.h"
 
@@ -49,6 +51,7 @@ enum gxde_screenshot_source_type {
 };
 
 struct gxde_screenshot_manager {
+    struct server* server;
     struct wl_global* global;
     struct wl_list resources;
     struct wl_list frames;
@@ -70,6 +73,8 @@ struct gxde_screenshot_frame {
 
     enum gxde_screenshot_source_type source_type;
     struct wlr_buffer* buffer;
+    /* thumbnail 的 CPU 可读拷贝(shm)，客户端 mmap 即可读取，见 frame_readback_to_shm */
+    struct wlr_buffer* cpu_buffer;
     union {
         struct capture* capture;
         struct thumbnail* thumbnail;
@@ -105,6 +110,11 @@ static void gxde_screenshot_frame_destroy(struct gxde_screenshot_frame* frame) {
     if (frame->buffer) {
         wlr_buffer_unlock(frame->buffer);
         frame->buffer = NULL;
+    }
+
+    if (frame->cpu_buffer) {
+        wlr_buffer_drop(frame->cpu_buffer);
+        frame->cpu_buffer = NULL;
     }
 
     if (frame->source) {
@@ -270,6 +280,61 @@ static bool frame_buffer_get_params(struct wlr_buffer* buffer, uint32_t* format,
     return false;
 }
 
+static bool frame_handle_buffer_update_readback(struct gxde_screenshot_frame* frame,
+        struct wlr_buffer* src) {
+    /* 缩略图通常很小，把 GPU buffer(可能是 tiled dmabuf) 读回成 shm 缓冲。
+     * 这样没有 EGL 的普通客户端(如 dock)直接 mmap fd 就能拿到像素，
+     * 否则带 tiling 修饰符的 dmabuf 对客户端毫无用处。 */
+    const int width = src->width;
+    const int height = src->height;
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+
+    if (frame->cpu_buffer && (frame->cpu_buffer->width != width ||
+            frame->cpu_buffer->height != height)) {
+        wlr_buffer_drop(frame->cpu_buffer);
+        frame->cpu_buffer = NULL;
+    }
+
+    if (!frame->cpu_buffer) {
+        frame->cpu_buffer = shm_create_buffer(width, height, DRM_FORMAT_ARGB8888);
+    }
+    if (!frame->cpu_buffer) {
+        kywc_log(KYWC_WARN, "screenshot thumbnail: create shm buffer failed");
+        return false;
+    }
+
+    void* dst_data = NULL;
+    uint32_t dst_format = 0;
+    size_t dst_stride = 0;
+    if (!wlr_buffer_begin_data_ptr_access(frame->cpu_buffer,
+            WLR_BUFFER_DATA_PTR_ACCESS_WRITE, &dst_data, &dst_format, &dst_stride)) {
+        kywc_log(KYWC_WARN, "screenshot thumbnail: data ptr access failed");
+        return false;
+    }
+
+    bool ok = false;
+    if (wlr_renderer_begin_with_buffer(frame->manager->server->renderer, src)) {
+        ok = wlr_renderer_read_pixels(frame->manager->server->renderer, dst_format, dst_stride,
+                width, height, 0, 0, 0, 0, dst_data);
+        wlr_renderer_end(frame->manager->server->renderer);
+    } else {
+        kywc_log(KYWC_WARN, "screenshot thumbnail: begin_with_buffer failed");
+    }
+
+    wlr_buffer_end_data_ptr_access(frame->cpu_buffer);
+
+    if (!ok) {
+        kywc_log(KYWC_WARN, "screenshot thumbnail: read pixels failed");
+        wlr_buffer_drop(frame->cpu_buffer);
+        frame->cpu_buffer = NULL;
+        return false;
+    }
+
+    return true;
+}
+
 static void frame_handle_buffer_update(struct wl_listener* listener, void* data) {
     struct gxde_screenshot_frame* frame = wl_container_of(listener, frame, buffer_update);
     struct wlr_buffer* buffer = NULL;
@@ -285,12 +350,19 @@ static void frame_handle_buffer_update(struct wl_listener* listener, void* data)
         flags = event->buffer_changed ? 0 : GXDE_SCREENSHOT_FRAME_V1_FLAGS_REUSED;
     }
 
+    /* thumbnail: 优先发送 CPU 可读的 shm 拷贝 */
+    struct wlr_buffer* send_buffer = buffer;
+    if (frame->source_type == GXDE_SCREENSHOT_SOURCE_THUMBNAIL &&
+            frame_handle_buffer_update_readback(frame, buffer)) {
+        send_buffer = frame->cpu_buffer;
+    }
+
     uint32_t format = 0;
     uint32_t n_planes = 1;
     uint64_t modifier = 0;
     struct gxde_screenshot_buffer_plane planes[WLR_DMABUF_MAX_PLANES] = { 0 };
 
-    if (!frame_buffer_get_params(buffer, &format, &n_planes, &modifier, &flags, planes)) {
+    if (!frame_buffer_get_params(send_buffer, &format, &n_planes, &modifier, &flags, planes)) {
         gxde_screenshot_frame_v1_send_failed(frame->resource);
         return;
     }
@@ -298,12 +370,12 @@ static void frame_handle_buffer_update(struct wl_listener* listener, void* data)
     if (frame->buffer) {
         wlr_buffer_unlock(frame->buffer);
     }
-    frame->buffer = wlr_buffer_lock(buffer);
+    frame->buffer = wlr_buffer_lock(send_buffer);
 
     uint32_t modifier_hi = modifier >> 32;
     uint32_t modifier_lo = modifier & 0xFFFFFFFF;
-    gxde_screenshot_frame_v1_send_buffer(frame->resource, planes[0].fd, format, buffer->width,
-        buffer->height, planes[0].offset, planes[0].stride,
+    gxde_screenshot_frame_v1_send_buffer(frame->resource, planes[0].fd, format, send_buffer->width,
+        send_buffer->height, planes[0].offset, planes[0].stride,
         modifier_hi, modifier_lo, flags);
 
     for (uint32_t i = 1; i < n_planes; i++) {
@@ -626,6 +698,7 @@ bool gxde_screenshot_manager_create(struct server* server) {
         return false;
     }
 
+    manager->server = server;
     wl_list_init(&manager->resources);
     wl_list_init(&manager->frames);
     wl_list_init(&manager->server_destroy.link);
