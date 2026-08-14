@@ -237,18 +237,25 @@ static void init_dmabuf_formats(struct ky_egl *egl)
         // assume the implicit modifier supports rendering too.
         // workaround to fix linux_dmabuf_send_modifiers
         bool linear_only = modifiers_len == 1 && modifiers[0] == DRM_FORMAT_MOD_LINEAR;
+
+        if (modifiers_len == 0) {
+            // 麒麟 9000c (Maleoon 910) gbm 的坑：modifier 列表中
+            // DRM_FORMAT_MOD_INVALID 排在 DRM_FORMAT_MOD_LINEAR 之前时，
+            // gbm_bo_create_with_modifiers() 会"成功"返回一个损坏的双平面
+            // BO（modifier=INVALID、stride=0），随后 dmabuf 导出失败
+            // （驱动报 "Multiplane buffers not supported"）。
+            // LINEAR 排在最前则得到正常的单平面线性 BO。
+            // Assume the linear layout is supported if the driver doesn't
+            // explicitly say otherwise
+            wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_LINEAR);
+            wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_LINEAR);
+        }
+
         if (!linear_only) {
             wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_INVALID);
         }
         if (modifiers_len == 0 || !all_external_only) {
             wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_INVALID);
-        }
-
-        if (modifiers_len == 0) {
-            // Assume the linear layout is supported if the driver doesn't
-            // explicitly say otherwise
-            wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt, DRM_FORMAT_MOD_LINEAR);
-            wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt, DRM_FORMAT_MOD_LINEAR);
         }
 
         if (kywc_log_get_level() >= KYWC_DEBUG) {

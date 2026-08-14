@@ -1,3 +1,20 @@
+gxde-wlcom (2.2.0-gxde2) lizhi; urgency=medium
+
+  * 修复截图录屏点击后合成器崩溃：capture_buffer_get_or_create 在
+    capture_buffer_allocate 失败时直接 free(buffer)，导致仍挂在
+    capture_output->requests 上的 capture_request 悬空，下一次 output
+    commit 在 capture_buffer_need_update 中解引用已释放内存（UAF，SIGSEGV，
+    Kirin 9000c 兼容层会话点击截图必现）
+  * capture_output_handle_commit 增加 request->buffer 空指针防御并清理
+    残留请求
+  * ky_egl init_dmabuf_formats：driver 未上报 modifier 时先加
+    DRM_FORMAT_MOD_LINEAR 再加 DRM_FORMAT_MOD_INVALID，规避 Kirin 9000c
+    (Maleoon 910) gbm 在 {INVALID, LINEAR} 列表下返回损坏双平面 BO
+    （stride=0）导致捕获缓冲分配失败（"failed to create wlr buffer" /
+    "gbm_bo_get_fd_for_plane failed"）的问题
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 14 Aug 2026 22:55:00 +0800
+
 gxde-wlcom (2.2.0-gxde1) lizhi; urgency=medium
 
   * 优化GXDE截图协议表现

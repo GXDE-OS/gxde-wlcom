@@ -523,6 +523,12 @@ static void capture_output_handle_commit(struct wl_listener *listener, void *dat
     struct capture_request *request, *tmp;
     wl_list_for_each_safe(request, tmp, &capture_output->requests, output_link) {
         buffer = request->buffer;
+        if (!buffer) {
+            /* 防御：清理残留的悬空请求（如分配失败路径遗留），
+             * 避免解引用空指针导致崩溃 */
+            capture_request_destroy(request);
+            continue;
+        }
         capture_buffer_update_damage(request, has_damage, &event->state->damage);
         /* skip this request if all captures don't want update */
         if (!capture_buffer_need_update(buffer)) {
@@ -667,6 +673,15 @@ static struct capture_buffer *capture_buffer_get_or_create(enum capture_type typ
     }
 
     if (wl_list_empty(&buffer->requests) || !capture_buffer_allocate(buffer)) {
+        /* 分配失败时，之前创建的 capture_request 仍挂在
+         * capture_output->requests 上并指向本 buffer；直接 free(buffer)
+         * 会在下一次 output commit 时解引用悬空内存（UAF 崩溃）。
+         * 与 capture_buffer_destroy() 一致：先把请求摘除并销毁。 */
+        struct capture_request *request, *request_tmp;
+        wl_list_for_each_safe(request, request_tmp, &buffer->requests, link) {
+            request->buffer = NULL;
+            capture_request_destroy(request);
+        }
         free(buffer);
         return NULL;
     }
