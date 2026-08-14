@@ -1,3 +1,9 @@
+gxde-wlcom (2.2.0-gxde1) lizhi; urgency=medium
+
+  * 优化GXDE截图协议表现
+
+ -- CharOfString <root@charofstring.cc>  Fri, 14 Aug 2026 22:05:10 +0800
+
 gxde-wlcom (2.1.9-gxde4) lizhi; urgency=medium
 
   * XSettings现在同步输入法偏好
