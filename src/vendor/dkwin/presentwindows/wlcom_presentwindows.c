@@ -358,6 +358,15 @@ static void clear_pending(void)
  * This adapter lays out the windows of the current output only, like KWin
  * does for a single screen.
  */
+/* a view belongs to the effect when its geometry intersects the effect area;
+ * comparing view->output fails when outputs overlap (clone/mirror) */
+static bool view_intersects_area(const struct view *view, const struct kywc_box *area)
+{
+    const struct kywc_box *geo = &view->base.geometry;
+    return geo->x < area->x + area->width && geo->x + geo->width > area->x &&
+           geo->y < area->y + area->height && geo->y + geo->height > area->y;
+}
+
 static int collect_views(struct view_entry **entries_out, struct view *exclude)
 {
     uint32_t workspace_count = workspace_manager_get_count();
@@ -375,7 +384,8 @@ static int collect_views(struct view_entry **entries_out, struct view *exclude)
              * may still be mapped and linked, so it must not be re-collected */
             if (view == exclude || !view->base.mapped ||
                 view->base.role != KYWC_VIEW_ROLE_NORMAL || view->base.skip_switcher ||
-                !view_is_activatable(view) || view->output != &pv->output->base ||
+                !view_is_activatable(view) ||
+                !view_intersects_area(view, &pv->output->geometry) ||
                 is_pending(view) || !view_matches_filter(view, pv->filter)) {
                 continue;
             }

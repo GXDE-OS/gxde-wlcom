@@ -610,13 +610,23 @@ static void destroy_contents(void)
     }
 }
 
-static size_t count_views(struct workspace *workspace, struct kywc_output *output)
+/* a view belongs to the overview when its geometry intersects the overview
+ * area; comparing view->output fails when outputs overlap (clone/mirror) */
+static bool view_intersects_area(const struct view *view, const struct kywc_box *area)
+{
+    const struct kywc_box *geo = &view->base.geometry;
+    return geo->x < area->x + area->width && geo->x + geo->width > area->x &&
+           geo->y < area->y + area->height && geo->y + geo->height > area->y;
+}
+
+static size_t count_views(struct workspace *workspace, struct output *output)
 {
     size_t count = 0;
     struct view_proxy *proxy;
     wl_list_for_each(proxy, &workspace->view_proxies, workspace_link) {
         struct view *view = proxy->view;
-        if (view->base.mapped && !view->base.skip_switcher && view->output == output) {
+        if (view->base.mapped && !view->base.skip_switcher &&
+            view_intersects_area(view, &output->geometry)) {
             count++;
         }
     }
@@ -726,7 +736,7 @@ static int create_workspace_bar(const struct kywc_box *area)
 static bool create_window_items(const struct kywc_box *area, int workspace_bar_height)
 {
     struct workspace *workspace = workspace_manager_get_current();
-    overview->item_count = count_views(workspace, &overview->output->base);
+    overview->item_count = count_views(workspace, overview->output);
     if (!overview->item_count) {
         return true;
     }
@@ -744,7 +754,7 @@ static bool create_window_items(const struct kywc_box *area, int workspace_bar_h
     wl_list_for_each(proxy, &workspace->view_proxies, workspace_link) {
         struct view *view = proxy->view;
         if (!view->base.mapped || view->base.skip_switcher ||
-            view->output != &overview->output->base) {
+            !view_intersects_area(view, &overview->output->geometry)) {
             continue;
         }
         views[view_count++] = view;
