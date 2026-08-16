@@ -234,6 +234,29 @@ static struct wlr_buffer *load_wallpaper(void)
     return buffer;
 }
 
+static void update_wallpaper(void)
+{
+    if (!overview) {
+        return;
+    }
+
+    struct wlr_buffer *buffer = load_wallpaper();
+    if (!buffer) {
+        return;
+    }
+
+    if (!overview->desktop_wallpaper) {
+        overview->desktop_wallpaper = ky_scene_buffer_create(overview->tree, buffer);
+    } else {
+        ky_scene_buffer_set_buffer(overview->desktop_wallpaper, buffer);
+    }
+
+    if (overview->wallpaper_buffer) {
+        wlr_buffer_drop(overview->wallpaper_buffer);
+    }
+    overview->wallpaper_buffer = buffer;
+}
+
 static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
                                    struct wlr_buffer *buffer, int width, int height)
 {
@@ -842,6 +865,7 @@ static bool show_overview(void)
     if (!overview->output) {
         return false;
     }
+    update_wallpaper();
     const struct kywc_box *area = &overview->output->geometry;
     if (overview->desktop_wallpaper) {
         ky_scene_node_set_position(&overview->desktop_wallpaper->node, 0, 0);
@@ -1012,7 +1036,7 @@ static const struct seat_pointer_grab_interface pointer_impl = {
 static bool keyboard_key(struct seat_keyboard_grab *grab, struct keyboard *keyboard, uint32_t time,
                          uint32_t key, bool pressed, uint32_t modifiers)
 {
-    if (pressed && (key == KEY_ESC || key == KEY_S)) {
+    if (pressed && (key == KEY_ESC || key == KEY_S || key == KEY_TAB)) {
         multitask_view_set_enabled(false);
     }
     return true;
@@ -1154,12 +1178,23 @@ bool multitask_view_create(struct view_manager *view_manager)
     overview->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(view_manager->server, &overview->server_destroy);
 
-    struct key_binding *binding = kywc_key_binding_create("Win+s:no", "toggle multitasking view");
-    if (!binding || !kywc_key_binding_register(binding, KEY_BINDING_TYPE_TOGGLE_SHOW_WINDOWS,
-                                               shortcut_action, overview)) {
-        if (binding) {
+    const char *shortcuts[] = {
+        "Win+Tab:no",
+        "Win+s:no",
+    };
+    bool registered = false;
+    for (size_t i = 0; i < sizeof(shortcuts) / sizeof(shortcuts[0]); ++i) {
+        struct key_binding *binding =
+            kywc_key_binding_create(shortcuts[i], "toggle multitasking view");
+        if (binding &&
+            kywc_key_binding_register(binding, KEY_BINDING_TYPE_TOGGLE_SHOW_WINDOWS,
+                                      shortcut_action, overview)) {
+            registered = true;
+        } else if (binding) {
             kywc_key_binding_destroy(binding);
         }
+    }
+    if (!registered) {
         handle_server_destroy(&overview->server_destroy, NULL);
         return false;
     }
