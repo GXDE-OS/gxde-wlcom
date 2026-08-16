@@ -7,6 +7,8 @@
 #include <QRect>
 #include <QString>
 
+#include "switcher_model/switcher_model.h"
+
 class QSocketNotifier;
 
 typedef struct _kywc_context kywc_context;
@@ -15,8 +17,6 @@ typedef struct _kywc_toplevel kywc_toplevel;
 typedef struct _kywc_workspace kywc_workspace;
 
 namespace Occultation {
-
-class SwitcherModel;
 
 class Exoskeleton final : public QObject {
   Q_OBJECT

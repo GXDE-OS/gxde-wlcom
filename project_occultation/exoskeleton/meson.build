@@ -2,25 +2,25 @@ if not add_languages('cpp', native: false, required: false)
   subdir_done()
 endif
 
-qt5 = import('qt5')
+qt6 = import('qt6')
 occultation_qt = dependency(
-  'qt5',
+  'qt6',
   modules: ['Core', 'DBus', 'Gui', 'Quick', 'Qml'],
   private_headers: true,
   required: false,
 )
 
 if not occultation_qt.found()
-  warning('Qt 5 Quick was not found; occultation exoskeleton will not be built')
+  warning('Qt 6 Quick was not found; occultation exoskeleton will not be built')
   subdir_done()
 endif
 
-occultation_resources = qt5.preprocess(
+occultation_resources = qt6.preprocess(
   qresources: 'resources.qrc',
   dependencies: occultation_qt,
 )
 
-occultation_moc = qt5.preprocess(
+occultation_moc = qt6.preprocess(
   moc_headers: [
     'exoskeleton/exoskeleton.h',
     'icon_item/icon_item.h',
@@ -70,7 +70,7 @@ occultation_qml_smoke = executable(
   install: false,
 )
 
-occultation_preview_moc = qt5.preprocess(
+occultation_preview_moc = qt6.preprocess(
   moc_headers: [
     'preview_model/preview_model.h',
     'preview_switcher/preview_switcher.h',

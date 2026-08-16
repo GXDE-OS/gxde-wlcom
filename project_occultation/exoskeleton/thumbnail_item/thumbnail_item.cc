@@ -17,6 +17,7 @@
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
+#include <rhi/qrhi.h>
 
 #include "exoskeleton/exoskeleton.h"
 
@@ -182,9 +183,21 @@ QSGNode *ThumbnailItem::updatePaintNode(QSGNode *oldNode,
     const auto option = frame.format == DRM_FORMAT_ARGB8888
                             ? QQuickWindow::TextureHasAlphaChannel
                             : QQuickWindow::TextureIsOpaque;
-    texture = window()->createTextureFromNativeObject(
-        QQuickWindow::NativeObjectTexture, &nativeTexture, 0, frame.size,
-        option);
+    if (QRhi *rhi = window()->rhi()) {
+      QRhiTexture *rhiTexture =
+          rhi->newTexture(QRhiTexture::RGBA8, frame.size, 1,
+                          QRhiTexture::ExternalOES);
+      if (rhiTexture) {
+        QRhiTexture::NativeTexture native = {};
+        native.object = nativeTexture;
+        if (!rhiTexture->createFrom(native)) {
+          delete rhiTexture;
+          rhiTexture = nullptr;
+        } else {
+          texture = window()->createTextureFromRhiTexture(rhiTexture, option);
+        }
+      }
+    }
 
     if (!texture) {
       glDeleteTextures(1, &nativeTexture);

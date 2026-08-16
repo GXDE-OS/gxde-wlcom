@@ -48,6 +48,10 @@ Build-Depends:
  libgdm-dev,
  libsystemd-dev,
  glslang-tools,
+ qt6-base-dev,
+ qt6-base-private-dev,
+ qt6-declarative-dev,
+ qml6-module-qt5compat-graphicaleffects,
 Standards-Version: 4.6.2
 
 Package: gxde-wlcom

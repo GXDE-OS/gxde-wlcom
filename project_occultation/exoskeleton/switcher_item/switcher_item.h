@@ -3,10 +3,9 @@
 #ifndef OCCULTATION_EXOSKELETON_SWITCHER_ITEM_H_
 #define OCCULTATION_EXOSKELETON_SWITCHER_ITEM_H_
 
+#include <QAbstractItemModel>
 #include <QObject>
 #include <QRect>
-
-class QAbstractItemModel;
 
 namespace Occultation {
 
