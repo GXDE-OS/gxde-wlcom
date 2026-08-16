@@ -179,7 +179,53 @@ static struct wlr_buffer *load_png_icon(const char *name)
     return painter_draw_buffer(&info);
 }
 
-static char *get_wallpaper_path(void)
+static char *uri_to_existing_path(const char *uri)
+{
+    if (!uri || !*uri) {
+        return NULL;
+    }
+    char *path = g_str_has_prefix(uri, "file://") ? g_filename_from_uri(uri, NULL, NULL)
+                                                  : g_strdup(uri);
+    if (path && file_exists(path)) {
+        return path;
+    }
+    g_free(path);
+    return NULL;
+}
+
+/*
+ * The wallpaper lives in background-uris, and that is the only key dde-daemon
+ * updates when it changes. The legacy picture-uri key is left at whatever it
+ * held at install time, so reading it shows a stale wallpaper forever.
+ *
+ * background-uris is an array with one entry per workspace, but gxde-desktop-panel
+ * ignores the indexing and paints entry 0 on every workspace, so match that
+ * rather than previewing wallpapers that are never actually shown.
+ */
+static char *wallpaper_path_from_appearance(void)
+{
+    char *path = NULL;
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    GSettingsSchema *schema =
+        source ? g_settings_schema_source_lookup(source, "com.deepin.dde.appearance", true) : NULL;
+
+    if (schema && g_settings_schema_has_key(schema, "background-uris")) {
+        GSettings *settings = g_settings_new_full(schema, NULL, NULL);
+        char **uris = g_settings_get_strv(settings, "background-uris");
+        if (uris && uris[0]) {
+            path = uri_to_existing_path(uris[0]);
+        }
+        g_strfreev(uris);
+        g_object_unref(settings);
+    }
+
+    if (schema) {
+        g_settings_schema_unref(schema);
+    }
+    return path;
+}
+
+static char *wallpaper_path_from_gnome_wrap(void)
 {
     char *path = NULL;
     GSettingsSchemaSource *source = g_settings_schema_source_get_default();
@@ -191,11 +237,7 @@ static char *get_wallpaper_path(void)
     if (schema && g_settings_schema_has_key(schema, "picture-uri")) {
         GSettings *settings = g_settings_new_full(schema, NULL, NULL);
         char *uri = g_settings_get_string(settings, "picture-uri");
-        if (g_str_has_prefix(uri, "file://")) {
-            path = g_filename_from_uri(uri, NULL, NULL);
-        } else if (*uri) {
-            path = g_strdup(uri);
-        }
+        path = uri_to_existing_path(uri);
         g_free(uri);
         g_object_unref(settings);
     }
@@ -203,11 +245,20 @@ static char *get_wallpaper_path(void)
     if (schema) {
         g_settings_schema_unref(schema);
     }
+    return path;
+}
 
-    if (path && file_exists(path)) {
+static char *get_wallpaper_path(void)
+{
+    char *path = wallpaper_path_from_appearance();
+    if (path) {
         return path;
     }
-    g_free(path);
+
+    path = wallpaper_path_from_gnome_wrap();
+    if (path) {
+        return path;
+    }
 
     static const char *fallbacks[] = {
         "/usr/share/backgrounds/default_background.jpg",
@@ -222,39 +273,29 @@ static char *get_wallpaper_path(void)
     return NULL;
 }
 
-static struct wlr_buffer *load_wallpaper(void)
+/*
+ * Re-read the wallpaper and decode it once per show, so a wallpaper changed
+ * while the overview was hidden is picked up. The buffer stays owned by
+ * overview->wallpaper_buffer; callers must not drop it.
+ */
+static struct wlr_buffer *reload_wallpaper(void)
 {
+    if (overview->wallpaper_buffer) {
+        ky_scene_buffer_set_buffer(overview->desktop_wallpaper, NULL);
+        wlr_buffer_drop(overview->wallpaper_buffer);
+        overview->wallpaper_buffer = NULL;
+    }
+
     char *path = get_wallpaper_path();
     if (!path) {
         return NULL;
     }
     struct draw_info info = { .image = path, .scale = 1.0f };
-    struct wlr_buffer *buffer = painter_draw_buffer(&info);
+    overview->wallpaper_buffer = painter_draw_buffer(&info);
     g_free(path);
-    return buffer;
-}
 
-static void update_wallpaper(void)
-{
-    if (!overview) {
-        return;
-    }
-
-    struct wlr_buffer *buffer = load_wallpaper();
-    if (!buffer) {
-        return;
-    }
-
-    if (!overview->desktop_wallpaper) {
-        overview->desktop_wallpaper = ky_scene_buffer_create(overview->tree, buffer);
-    } else {
-        ky_scene_buffer_set_buffer(overview->desktop_wallpaper, buffer);
-    }
-
-    if (overview->wallpaper_buffer) {
-        wlr_buffer_drop(overview->wallpaper_buffer);
-    }
-    overview->wallpaper_buffer = buffer;
+    ky_scene_buffer_set_buffer(overview->desktop_wallpaper, overview->wallpaper_buffer);
+    return overview->wallpaper_buffer;
 }
 
 static void scene_buffer_set_cover(struct ky_scene_buffer *scene_buffer,
@@ -603,12 +644,13 @@ static int create_workspace_bar(const struct kywc_box *area)
         const bool active = item->workspace == workspace_manager_get_current();
         item->tree = ky_scene_tree_create(overview->tree);
         ky_scene_node_set_position(&item->tree->node, x, y);
+        struct wlr_buffer *wallpaper = overview->wallpaper_buffer;
         struct wlr_buffer *rounded_wallpaper =
-            create_rounded_copy(overview->wallpaper_buffer, item->thumbnail_width,
+            create_rounded_copy(wallpaper, item->thumbnail_width,
                 item->thumbnail_height,
                 WORKSPACE_CORNER_RADIUS - WORKSPACE_CONTENT_INSET, true);
         item->wallpaper = ky_scene_buffer_create(
-            item->tree, rounded_wallpaper ? rounded_wallpaper : overview->wallpaper_buffer);
+            item->tree, rounded_wallpaper ? rounded_wallpaper : wallpaper);
         if (rounded_wallpaper) {
             wlr_buffer_drop(rounded_wallpaper);
         }
@@ -626,7 +668,7 @@ static int create_workspace_bar(const struct kywc_box *area)
             ky_scene_buffer_set_dest_size(item->wallpaper, item->thumbnail_width,
                 item->thumbnail_height);
         } else {
-            scene_buffer_set_cover(item->wallpaper, overview->wallpaper_buffer,
+            scene_buffer_set_cover(item->wallpaper, wallpaper,
                 item->thumbnail_width, item->thumbnail_height);
         }
         item->buffer = ky_scene_buffer_create(item->tree, NULL);
@@ -865,11 +907,11 @@ static bool show_overview(void)
     if (!overview->output) {
         return false;
     }
-    update_wallpaper();
+    struct wlr_buffer *wallpaper = reload_wallpaper();
     const struct kywc_box *area = &overview->output->geometry;
-    if (overview->desktop_wallpaper) {
+    if (wallpaper) {
         ky_scene_node_set_position(&overview->desktop_wallpaper->node, 0, 0);
-        scene_buffer_set_cover(overview->desktop_wallpaper, overview->wallpaper_buffer,
+        scene_buffer_set_cover(overview->desktop_wallpaper, wallpaper,
             area->width, area->height);
     }
     ky_scene_rect_set_size(overview->backdrop, area->width, area->height);
@@ -1098,6 +1140,11 @@ static void multitask_view_set_enabled(bool enabled)
         cursor_rebase(seat->cursor);
         ky_scene_node_set_enabled(&overview->tree->node, false);
         destroy_contents();
+        ky_scene_buffer_set_buffer(overview->desktop_wallpaper, NULL);
+        if (overview->wallpaper_buffer) {
+            wlr_buffer_drop(overview->wallpaper_buffer);
+            overview->wallpaper_buffer = NULL;
+        }
         if (overview->output) {
             output_schedule_frame(overview->output->wlr_output);
         }
@@ -1148,11 +1195,8 @@ bool multitask_view_create(struct view_manager *view_manager)
     struct view_layer *layer = view_manager_get_layer(LAYER_ON_SCREEN_DISPLAY, false);
     overview->tree = ky_scene_tree_create(layer->tree);
     ky_scene_node_set_enabled(&overview->tree->node, false);
-    overview->wallpaper_buffer = load_wallpaper();
-    if (overview->wallpaper_buffer) {
-        overview->desktop_wallpaper =
-            ky_scene_buffer_create(overview->tree, overview->wallpaper_buffer);
-    }
+    /* created empty and filled on show, so a wallpaper change is picked up */
+    overview->desktop_wallpaper = ky_scene_buffer_create(overview->tree, NULL);
     overview->backdrop =
         ky_scene_rect_create(overview->tree, 0, 0,
                              (float[4]){ 0.0f, 0.0f, 0.0f, 1.0f - BRIGHTNESS });

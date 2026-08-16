@@ -27,23 +27,30 @@
 #define DEEPIN_WM_PATH "/com/deepin/wm"
 #define DEEPIN_WM_INTERFACE "com.deepin.wm"
 #define DEEPIN_WM_SHOW_WORKSPACE 1
+#define DEEPIN_WM_SHOW_ALL_WINDOWS 2
 
 static int perform_action(sd_bus_message* message, void* userdata,
         sd_bus_error* ret_error) {
     int32_t type;
     CK(sd_bus_message_read(message, "i", &type));
 
-    if (type != DEEPIN_WM_SHOW_WORKSPACE) {
+    switch (type) {
+    case DEEPIN_WM_SHOW_WORKSPACE:
+        if (!multitask_view_toggle()) {
+            return sd_bus_reply_method_errorf(message, SD_BUS_ERROR_FAILED,
+                "(Multitask) Init: The multitask view is not initialized");
+        }
+        return sd_bus_reply_method_return(message, NULL);
+    case DEEPIN_WM_SHOW_ALL_WINDOWS:
+        if (!present_windows_toggle()) {
+            return sd_bus_reply_method_errorf(message, SD_BUS_ERROR_FAILED,
+                "(PresentWindows) Init: The present windows view is not initialized");
+        }
+        return sd_bus_reply_method_return(message, NULL);
+    default:
         return sd_bus_reply_method_errorf(message, SD_BUS_ERROR_NOT_SUPPORTED,
             "(Multitask) Init: Action %d is not supported", type);
     }
-
-    if (!multitask_view_toggle()) {
-        return sd_bus_reply_method_errorf(message, SD_BUS_ERROR_FAILED,
-            "(Multitask) Init: The multitask view is not initialized");
-    }
-
-    return sd_bus_reply_method_return(message, NULL);
 }
 
 static int get_is_show_desktop(sd_bus_message* message, void* userdata,

@@ -147,6 +147,10 @@ bool multitask_view_create(struct view_manager *view_manager);
 
 bool multitask_view_toggle(void);
 
+bool present_windows_create(struct view_manager *view_manager);
+
+bool present_windows_toggle(void);
+
 bool multitask_launcher_interface_create(void);
 
 void modal_create(struct view *view);

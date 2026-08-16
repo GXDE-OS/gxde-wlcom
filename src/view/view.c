@@ -2040,6 +2040,7 @@ static void handle_server_ready(struct wl_listener *listener, void *data)
     window_switcher_create(view_manager);
     maximize_switcher_create(view_manager);
     multitask_view_create(view_manager);
+    present_windows_create(view_manager);
     multitask_launcher_interface_create();
     split_screen_switcher_manager_create(view_manager);
 
