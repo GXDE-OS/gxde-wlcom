@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+  <qresource prefix="/org/gxde/occultation/switcher">
+    <file alias="main.qml">../switcher/contents/ui/main.qml</file>
+  </qresource>
+</RCC>

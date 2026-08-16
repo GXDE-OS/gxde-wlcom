@@ -38,7 +38,7 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 ### 优点
 
-1. 依赖少，未引入Qt或者GTK等图形框架（内部的QML文件vendor自`deepin-kwin`，仅用作移植参考，实际构建`.deb`包时通过` -Dexamples=false`参数跳过）
+1. ~~依赖少，未引入Qt或者GTK等图形框架~~
 2. 按需设计应用与合成器之间的协议，目前协议支持情况请参阅「[PROTOCOLS](./docs/PROTOCOLS.md)」。
 3. 特效支持，支持常用的窗口动效。
 4. 完整的中文输入支持，支持`input-method v2`和`text-input v1/v2/v3`。

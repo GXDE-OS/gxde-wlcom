@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=GXDE Thumbnail Grid
+Comment=GXDE Alt+Tab switcher for the Occultation UI process
+
+Type=Service
+X-GXDE-ServiceTypes=Occultation/WindowSwitcher
+
+X-GXDE-MainScript=ui/main.qml
+
+Icon=preferences-system-windows-switcher-big-icons
+X-GXDE-PluginInfo-Author=Chris Holland;GXDE OS Team
+X-GXDE-PluginInfo-Name=thumbnail_grid
+X-GXDE-PluginInfo-Version=5
+X-GXDE-PluginInfo-Upstream=https://github.com/Zren/kwin-tabbox-thumbnail_grid
+X-GXDE-PluginInfo-Depends=libkywc

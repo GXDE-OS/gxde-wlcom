@@ -191,6 +191,7 @@ subdir('src')
 
 if have_libkywc
   subdir('libkywc')
+  subdir('project_occultation/exoskeleton')
 endif
 
 subdir('src/vendor/dkwin/multitask')
