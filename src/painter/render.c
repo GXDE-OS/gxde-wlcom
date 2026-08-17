@@ -44,7 +44,7 @@ void text_get_size(const char *font, int font_size, const char *text, int *width
 }
 
 static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info *info,
-                      struct kywc_fbox *box)
+                      struct kywc_fbox *box, const float *font_rgba)
 {
     if (!info->text || !*info->text) {
         return false;
@@ -56,8 +56,7 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
     ly = ly < 0 ? 0 : ly;
     double lx = info->auto_resize ? 0 : 4 * ly;
 
-    cairo_set_source_rgba(cairo, info->font_rgba[0], info->font_rgba[1], info->font_rgba[2],
-                          info->font_rgba[3]);
+    cairo_set_source_rgba(cairo, font_rgba[0], font_rgba[1], font_rgba[2], font_rgba[3]);
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 
     PangoFontDescription *desc = pango_font_description_new();
@@ -182,7 +181,8 @@ static void draw_color(cairo_surface_t *surface, cairo_t *cairo, struct draw_inf
     }
 
     if (hover) {
-        double offset = box->height * 0.1;
+        /* edge-to-edge highlight, GXDE KWin style */
+        double offset = 0;
         double x = box->x + offset;
         double y = box->y + offset;
         double w = box->width - 2 * offset;
@@ -377,10 +377,12 @@ bool render_buffer(struct painter_buffer *buffer, struct draw_info *info)
     /* text */
     if (info->text && *info->text) {
         if (info->hover_rgba) {
-            draw_text(surface, cairo, info, &upper);
-            draw_text(surface, cairo, info, &lower);
+            const float *hover_font_rgba = info->hover_font_rgba ? info->hover_font_rgba
+                : info->font_rgba;
+            draw_text(surface, cairo, info, &upper, info->font_rgba);
+            draw_text(surface, cairo, info, &lower, hover_font_rgba);
         } else {
-            draw_text(surface, cairo, info, &whole);
+            draw_text(surface, cairo, info, &whole, info->font_rgba);
         }
     }
 

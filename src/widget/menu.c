@@ -47,7 +47,9 @@ static void menu_draw_item(struct menu_item *item, bool force)
         widget_set_text(item->content, item->text,
                         theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
         widget_set_size(item->content, item->menu->width, item->menu->item_height);
-        widget_set_hovered_color(item->content, theme->accent_color, theme->normal_radius);
+        /* flat GXDE KWin style highlight: accent color with white text, no radius */
+        widget_set_hovered_color(item->content, theme->accent_color, 0);
+        widget_set_hovered_font_color(item->content, (float[4]){ 1, 1, 1, 1 });
     }
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
@@ -205,7 +207,7 @@ static void menu_render_items(struct menu *menu, bool force)
     }
 
     width = max_width + max_shortcut_width + max_height * 2.75;
-    height = max_height * 1.75;
+    height = max_height * 2.0;
 
     if (width != menu->width) {
         menu->width = width;

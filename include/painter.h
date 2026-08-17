@@ -57,6 +57,7 @@ struct draw_info {
 
     float *solid_rgba;
     float *hover_rgba;
+    float *hover_font_rgba;
 
     float *border_rgba;
     float border_width;

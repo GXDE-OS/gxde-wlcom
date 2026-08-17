@@ -112,3 +112,27 @@ msgstr "全屏(_F)"
 #: src/view/window_menu.c:378
 msgid "_Close"
 msgstr "关闭(_C)"
+
+#: src/view/window_menu.c
+msgid "Move"
+msgstr "移动"
+
+#: src/view/window_menu.c
+msgid "Resize"
+msgstr "更改大小"
+
+#: src/view/window_menu.c
+msgid "Always on Top"
+msgstr "总在最前"
+
+#: src/view/window_menu.c
+msgid "Always on Visible Workspace"
+msgstr "总在可见工作区"
+
+#: src/view/window_menu.c
+msgid "Move to Workspace Left"
+msgstr "移至左边的工作区"
+
+#: src/view/window_menu.c
+msgid "Move to Workspace Right"
+msgstr "移至右边的工作区"

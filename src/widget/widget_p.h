@@ -43,6 +43,8 @@ struct widget {
     float background_color[4];
     float front_color[4];
     float hovered_color[4];
+    float hovered_font_color[4];
+    bool hovered_font_color_valid;
 
     float border_color[4];
     uint32_t border_mask;

@@ -43,6 +43,8 @@ void widget_set_front_color(struct widget *widget, const float color[static 4]);
 
 void widget_set_hovered_color(struct widget *widget, const float color[static 4], float radius);
 
+void widget_set_hovered_font_color(struct widget *widget, const float color[static 4]);
+
 void widget_set_border(struct widget *widget, const float color[static 4], uint32_t mask,
                        float width);
 

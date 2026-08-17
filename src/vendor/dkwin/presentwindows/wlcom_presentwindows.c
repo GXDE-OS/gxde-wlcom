@@ -713,7 +713,11 @@ static void destroy_item(struct present_item *item)
         item->thumbnail = NULL;
     }
     ky_scene_node_destroy(&item->tree->node);
-    free(item);
+    /* NB: item is a slot in the contiguous pv->items array - the array
+     * itself is freed by destroy_contents(); freeing it here (a leftover
+     * from upstream KWin where items were individually allocated) would
+     * free the whole array, then destroy_contents() would free it again:
+     * double free, or a misaligned free for i > 0. */
 }
 
 static void add_restore_entry(struct view *view)
@@ -771,13 +775,13 @@ static bool create_item(struct present_item *item, struct view *view, struct wor
     item->dim = ky_scene_rect_create(item->tree, (int)lround(orig->w), (int)lround(orig->h),
                                      (float[4]){ 0.0f, 0.0f, 0.0f, 0.0f });
 
-    /* centered icon decal, 64 px like upstream's iconFrame */
+    /* centered icon decal, 64 px like upstream's iconFrame; the buffer is
+     * borrowed from the theme icon cache which owns the reference - dropping
+     * it here would leave the cache with a dangling pointer once the scene
+     * node releases its lock at teardown */
     float scale = pv->output->base.state.scale;
     struct wlr_buffer *icon_buffer = view_get_icon_buffer_by_size(view, ICON_SIZE, scale);
     item->icon = ky_scene_buffer_create(item->tree, icon_buffer);
-    if (icon_buffer) {
-        wlr_buffer_drop(icon_buffer);
-    }
     ky_scene_buffer_set_dest_size(item->icon, ICON_SIZE, ICON_SIZE);
 
     /* caption decal below the icon, white 12 pt, elided to the window width */
@@ -857,7 +861,8 @@ static bool create_item(struct present_item *item, struct view *view, struct wor
     if (!item->thumbnail) {
         wl_list_remove(&item->view_destroy.link);
         ky_scene_node_destroy(&item->tree->node);
-        free(item);
+        /* item is a slot in the contiguous pv->items array owned by
+         * destroy_contents() - never free it here */
         return false;
     }
     item->thumbnail_update.notify = handle_thumbnail_update;

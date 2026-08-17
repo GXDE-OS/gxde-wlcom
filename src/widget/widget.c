@@ -27,6 +27,8 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
 
         .solid_rgba = color_valid(widget->background_color) ? widget->background_color : NULL,
         .hover_rgba = color_valid(widget->hovered_color) ? widget->hovered_color : NULL,
+        .hover_font_rgba =
+            widget->hovered_font_color_valid ? widget->hovered_font_color : NULL,
 
         .border_rgba = color_valid(widget->border_color) ? widget->border_color : NULL,
         .border_mask = widget->border_mask,
@@ -314,6 +316,18 @@ void widget_set_hovered_color(struct widget *widget, const float color[static 4]
 
     memcpy(widget->hovered_color, color, sizeof(widget->hovered_color));
     widget->hoverable = color_valid(widget->hovered_color);
+    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+}
+
+void widget_set_hovered_font_color(struct widget *widget, const float color[static 4])
+{
+    if (widget->hovered_font_color_valid &&
+        memcmp(widget->hovered_font_color, color, sizeof(widget->hovered_font_color)) == 0) {
+        return;
+    }
+
+    memcpy(widget->hovered_font_color, color, sizeof(widget->hovered_font_color));
+    widget->hovered_font_color_valid = true;
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
