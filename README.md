@@ -28,6 +28,8 @@
 
 ## 关于本项目
 
+![screenshot](./docs/pictures/screenshot.png)
+
 GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Wayland 合成器，其原始代码派生自 `kylin-wayland-compositor`。（以下简称 `kywc`）
 
 本仓库由 GXDE OS 团队fork，并在原项目基础上针对 GXDE OS 进行适配与优化，当前作为 GXDE OS Wayland 会话的默认合成器进行开发与维护。
