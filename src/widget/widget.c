@@ -37,6 +37,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .corner_mask = widget->corner_mask,
         .corner_radius = widget->corner_radius,
         .hover_radius = widget->hover_radius,
+        .hover_inset = widget->hover_inset,
 
         .text = widget->text,
         .shortcut = widget->shortcut,
@@ -47,6 +48,7 @@ static struct wlr_buffer *widget_paint_buffer(struct widget *widget, float scale
         .auto_resize = widget->auto_resize,
         .text_attr = widget->text_attr,
         .layout_is_right_to_left = widget->layout_is_right_to_left,
+        .text_padding_left = widget->text_padding_left,
 
         .svg = widget->svg,
         .hover_svg = widget->hover_svg,
@@ -319,6 +321,16 @@ void widget_set_hovered_color(struct widget *widget, const float color[static 4]
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 
+void widget_set_hovered_inset(struct widget *widget, int inset)
+{
+    if (widget->hover_inset == inset) {
+        return;
+    }
+
+    widget->hover_inset = inset;
+    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+}
+
 void widget_set_hovered_font_color(struct widget *widget, const float color[static 4])
 {
     if (widget->hovered_font_color_valid &&
@@ -441,6 +453,15 @@ void widget_set_layout(struct widget *widget, bool right_to_left)
         return;
     }
     widget->layout_is_right_to_left = right_to_left;
+    widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
+}
+
+void widget_set_text_padding_left(struct widget *widget, int padding)
+{
+    if (widget->text_padding_left == padding) {
+        return;
+    }
+    widget->text_padding_left = padding;
     widget->pending_cause |= WIDGET_UPDATE_CAUSE_CONTENT;
 }
 

@@ -67,6 +67,8 @@ struct draw_info {
     uint32_t corner_mask;
     float corner_radius;
     float hover_radius;
+    /* horizontal inset of the hover highlight from the box edges */
+    int hover_inset;
 
     const char *text;
     const char *shortcut;
@@ -77,6 +79,8 @@ struct draw_info {
     enum auto_resize auto_resize;
     uint32_t text_attr;
     bool layout_is_right_to_left;
+    /* explicit left padding for the text, fallback to the auto one (4 * ly) if 0 */
+    int text_padding_left;
 
     /* svg data */
     const char *svg, *hover_svg;

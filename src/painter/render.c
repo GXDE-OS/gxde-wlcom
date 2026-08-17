@@ -43,6 +43,34 @@ void text_get_size(const char *font, int font_size, const char *text, int *width
     cairo_surface_destroy(surface);
 }
 
+/* the DTK check icon used by GXDE KWin for checked popup menu items
+   (themes/popupmenu/inActive.svg), 14x12 viewBox, filled with the text color */
+static void draw_check(cairo_t *cairo, double x, double y)
+{
+    cairo_save(cairo);
+    cairo_translate(cairo, x, y);
+    cairo_move_to(cairo, 11.9161746, 0.383335474);
+    cairo_curve_to(cairo, 12.2567731, -0.0514186317, 12.8853206, -0.127746861, 13.3200747,
+                   0.212851602);
+    cairo_curve_to(cairo, 13.7213861, 0.527250183, 13.8172933, 1.08700174, 13.5617837,
+                   1.5132029);
+    cairo_line_to(cairo, 13.4905585, 1.61675162);
+    cairo_line_to(cairo, 5.65628029, 11.6167516);
+    cairo_curve_to(cairo, 5.30422001, 12.0661361, 4.65596945, 12.124889, 4.22971115, 11.7691292);
+    cairo_line_to(cairo, 4.14195676, 11.6865417);
+    cairo_line_to(cairo, 0.272871003, 7.58844671);
+    cairo_curve_to(cairo, -0.106271436, 7.18686302, -0.0880792126, 6.55395945, 0.313504472,
+                   6.17481701);
+    cairo_curve_to(cairo, 0.684197104, 5.82483938, 1.25199071, 5.81341909, 1.63535592,
+                   6.12958944);
+    cairo_line_to(cairo, 1.72713417, 6.21545048);
+    cairo_line_to(cairo, 4.79800259, 9.46804354);
+    cairo_line_to(cairo, 11.9161746, 0.383335474);
+    cairo_close_path(cairo);
+    cairo_fill(cairo);
+    cairo_restore(cairo);
+}
+
 static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info *info,
                       struct kywc_fbox *box, const float *font_rgba)
 {
@@ -54,7 +82,14 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
     text_get_size(info->font, info->font_size, "fg", &width, &height);
     double ly = (box->height - height) / 2;
     ly = ly < 0 ? 0 : ly;
-    double lx = info->auto_resize ? 0 : 4 * ly;
+    double lx;
+    if (info->auto_resize) {
+        lx = 0;
+    } else if (info->text_padding_left) {
+        lx = info->text_padding_left;
+    } else {
+        lx = 4 * ly;
+    }
 
     cairo_set_source_rgba(cairo, font_rgba[0], font_rgba[1], font_rgba[2], font_rgba[3]);
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
@@ -74,7 +109,8 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
             cairo_move_to(cairo, box->x + 2 * ly, box->y + ly);
             pango_layout_set_text(layout, "<", -1);
         } else {
-            cairo_move_to(cairo, box->width - width * 2, box->y + ly);
+            /* submenu arrow right-aligned with the 22px item padding */
+            cairo_move_to(cairo, box->width - width - 22, box->y + ly);
             pango_layout_set_text(layout, ">", -1);
         }
         pango_layout_set_font_description(layout, desc);
@@ -84,15 +120,9 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
     }
 
     if (info->text_attr & TEXT_ATTR_CHECKED) {
-        int x = info->layout_is_right_to_left ? (box->width - lx + ly) : (box->x + 2 * ly);
-        cairo_move_to(cairo, x, box->y + ly);
-        PangoLayout *layout = pango_cairo_create_layout(cairo);
-        pango_layout_set_width(layout, -1);
-        pango_layout_set_text(layout, "✓", -1);
-        pango_layout_set_font_description(layout, desc);
-        pango_cairo_update_layout(cairo, layout);
-        pango_cairo_show_layout(cairo, layout);
-        g_object_unref(layout);
+        /* DTK check icon at the start of the left padding zone */
+        double x = info->layout_is_right_to_left ? (box->width - ly - 14) : (box->x + ly);
+        draw_check(cairo, x, box->y + ly);
     }
 
     int shortcut_width = 0;
@@ -103,7 +133,7 @@ static bool draw_text(cairo_surface_t *surface, cairo_t *cairo, struct draw_info
         pango_layout_set_font_description(layout, desc);
         pango_layout_get_pixel_size(layout, &shortcut_width, NULL);
         int x = info->layout_is_right_to_left ? (box->x + 2 * ly)
-                                              : (box->width - shortcut_width - width);
+                                              : (box->width - shortcut_width - 22);
         cairo_move_to(cairo, x, box->y + ly);
         pango_cairo_update_layout(cairo, layout);
         pango_cairo_show_layout(cairo, layout);
@@ -181,12 +211,14 @@ static void draw_color(cairo_surface_t *surface, cairo_t *cairo, struct draw_inf
     }
 
     if (hover) {
-        /* edge-to-edge highlight, GXDE KWin style */
-        double offset = 0;
-        double x = box->x + offset;
-        double y = box->y + offset;
-        double w = box->width - 2 * offset;
-        double h = box->height - 2 * offset;
+        /* DTK6 style: the highlight follows the menu content padding
+           horizontally and is inset 2px from the item edges vertically */
+        double offset_x = info->hover_inset;
+        double offset_y = 2;
+        double x = box->x + offset_x;
+        double y = box->y + offset_y;
+        double w = box->width - 2 * offset_x;
+        double h = box->height - 2 * offset_y;
         float radius = info->hover_radius;
         cairo_arc(cairo, x + radius, y + radius, radius, ANGLE(-180), ANGLE(-90));
         cairo_arc(cairo, x + w - radius, y + radius, radius, ANGLE(-90), ANGLE(0));

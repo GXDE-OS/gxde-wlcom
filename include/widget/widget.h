@@ -18,6 +18,9 @@ void widget_update(struct widget *widget, bool partial);
 
 void widget_set_layout(struct widget *widget, bool right_to_left);
 
+/* explicit left padding for the text, 0 means use the automatic one (4 * ly) */
+void widget_set_text_padding_left(struct widget *widget, int padding);
+
 void widget_set_text(struct widget *widget, const char *text, int align, uint32_t attr);
 
 void widget_set_shortcut(struct widget *widget, const char *text);
@@ -42,6 +45,8 @@ void widget_set_background_color(struct widget *widget, const float color[static
 void widget_set_front_color(struct widget *widget, const float color[static 4]);
 
 void widget_set_hovered_color(struct widget *widget, const float color[static 4], float radius);
+
+void widget_set_hovered_inset(struct widget *widget, int inset);
 
 void widget_set_hovered_font_color(struct widget *widget, const float color[static 4]);
 

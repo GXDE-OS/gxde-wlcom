@@ -38,6 +38,7 @@ struct widget {
     bool text_truncated;
     uint32_t text_attr;
     bool layout_is_right_to_left;
+    int text_padding_left;
 
     /* color in this widget */
     float background_color[4];
@@ -53,6 +54,7 @@ struct widget {
     uint32_t corner_mask;
     float corner_radius;
     float hover_radius;
+    int hover_inset;
 
     int width, height;
     int max_width, max_height;

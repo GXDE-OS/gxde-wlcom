@@ -22,10 +22,45 @@
 #define SUB_MENU_GAP (2)
 #define SUB_MENU_OVERLAP (4)
 #define MENU_FLIP_HEIGHT (12)
+/* menu content padding: uniform 12px on all four sides */
+#define MENU_CONTENT_MARGIN (12)
+/* menu horizontal padding (left/right): the hover highlight inset */
+#define MENU_CONTENT_MARGIN_H (8)
+/* item-internal left/right padding: text and shortcut inset */
+#define MENU_ITEM_PADDING (22)
 
 #define CLAMP(value, min, max) (((value) < (min)) ? (min) : ((value) > (max)) ? (max) : (value))
 
 static void menu_update_shown_item(struct menu *menu, int offset);
+
+/* DTK6 QMenu face: the compositor blur shows the wallpaper through, with a
+   semi-transparent mask stacked on top — white at 25% in light, black at 25%
+   in dark — so the face keeps a hint of its tone and the menu shape stays
+   visible even over a pure black or pure white background (the raw DTK6
+   itemBg veil alone would turn invisible there). The itemBg tint (#07000000
+   light / #0cffffff dark) is folded into the mask on top of it. Text is fully
+   opaque (DTK6 menu text color) — at 9pt the 70% alpha made the 1px strokes
+   wash out into the bright mask and read as blurry. Disabled text (TextTips)
+   at 60%. Values are premultiplied-alpha floats. */
+static void menu_popup_colors(struct theme *theme, float bg[static 4], float text[static 4],
+                              float text_disabled[static 4])
+{
+    if (theme->type == THEME_TYPE_DARK) {
+        /* black mask @25% + itemBg #0cffffff folded in */
+        bg[0] = bg[1] = bg[2] = 0x0c / 255.0 * 0.75;
+        bg[3] = 0.25 + 0x0c / 255.0 * 0.75;
+        text[0] = text[1] = text[2] = 1.0;
+    } else {
+        /* white mask @25% + itemBg #07000000 folded in */
+        bg[0] = bg[1] = bg[2] = 0.25;
+        bg[3] = 0.25 + 0x07 / 255.0 * 0.75;
+        text[0] = text[1] = text[2] = 0.0;
+    }
+    text[3] = 1.0;
+
+    memcpy(text_disabled, text, sizeof(float[4]));
+    text_disabled[3] = 0x99 / 255.0;
+}
 
 static void menu_draw_item(struct menu_item *item, bool force)
 {
@@ -43,22 +78,43 @@ static void menu_draw_item(struct menu_item *item, bool force)
     if (item->item_type == ITEM_TYPE_FLIP_UP || item->item_type == ITEM_TYPE_FLIP_DOWN) {
         widget_set_text(item->content, item->text, TEXT_ALIGN_CENTER, text_attr);
         widget_set_size(item->content, item->menu->width, MENU_FLIP_HEIGHT);
+        widget_set_text_padding_left(item->content, 0);
     } else {
         widget_set_text(item->content, item->text,
                         theme->text_is_right_align ? TEXT_ALIGN_RIGHT : TEXT_ALIGN_LEFT, text_attr);
         widget_set_size(item->content, item->menu->width, item->menu->item_height);
-        /* flat GXDE KWin style highlight: accent color with white text, no radius */
-        widget_set_hovered_color(item->content, theme->accent_color, 0);
-        widget_set_hovered_font_color(item->content, (float[4]){ 1, 1, 1, 1 });
+        /* item-internal left/right padding */
+        widget_set_text_padding_left(item->content, MENU_ITEM_PADDING);
+        /* DTK6 highlight: hardcoded accent color with white text, 4px radius */
+        widget_set_hovered_color(item->content,
+                                 theme->type == THEME_TYPE_DARK
+                                     ? (float[4]){ 0x02 / 255.0, 0x4c / 255.0, 0xca / 255.0, 1.0 }
+                                     : (float[4]){ 0x00 / 255.0, 0x81 / 255.0, 0xff / 255.0, 1.0 },
+                                 4);
+        /* the highlight is inset by the menu horizontal padding */
+        widget_set_hovered_inset(item->content, MENU_CONTENT_MARGIN_H);
+        widget_set_hovered_font_color(item->content,
+                                      theme->type == THEME_TYPE_DARK
+                                          ? (float[4]){ 0xf1 / 255.0, 0xf6 / 255.0,
+                                                        0xff / 255.0, 1.0 }
+                                          : (float[4]){ 1, 1, 1, 1 });
     }
     widget_set_shortcut(item->content, item->shortcut);
     widget_set_font(item->content, theme->font_name, theme->font_size);
     widget_set_layout(item->content, theme->layout_is_right_to_left);
 
-    float *front_color = item->activated ? theme->active_text_color : theme->inactive_text_color;
-    widget_set_front_color(item->content, front_color);
+    float bg[4], front_color[4], disabled_color[4];
+    menu_popup_colors(theme, bg, front_color, disabled_color);
+    widget_set_front_color(item->content, item->activated ? front_color : disabled_color);
+    /* DTK6 separator: 1px line, black at 10% in light, white at 12% in dark */
     uint32_t border_mask = item->separator ? BORDER_MASK_TOP : BORDER_MASK_NONE;
-    widget_set_border(item->content, theme->active_border_color, border_mask, theme->border_width);
+    float separator_color[4] = {
+        theme->type == THEME_TYPE_DARK ? 1.0 : 0.0,
+        theme->type == THEME_TYPE_DARK ? 1.0 : 0.0,
+        theme->type == THEME_TYPE_DARK ? 1.0 : 0.0,
+        theme->type == THEME_TYPE_DARK ? 0.12 : 0.10,
+    };
+    widget_set_border(item->content, separator_color, border_mask, 1);
 
     widget_update(item->content, true);
 }
@@ -206,8 +262,10 @@ static void menu_render_items(struct menu *menu, bool force)
         last_item->last = true;
     }
 
-    width = max_width + max_shortcut_width + max_height * 2.75;
-    height = max_height * 2.0;
+    /* DTK6 DStyle QMenu::item geometry: font height + 8px per item, with the
+       item-internal left/right padding on both sides */
+    width = max_width + max_shortcut_width + 2 * MENU_ITEM_PADDING;
+    height = max_height + 8;
 
     if (width != menu->width) {
         menu->width = width;
@@ -218,7 +276,7 @@ static void menu_render_items(struct menu *menu, bool force)
         force = true;
     }
 
-    menu->height = menu->item_height * item_count;
+    menu->height = menu->item_height * item_count + 2 * MENU_CONTENT_MARGIN;
     menu->item_count = item_count;
 
     /* update all enable item */
@@ -277,7 +335,10 @@ static void menu_set_enabled(struct menu *menu, bool enabled)
 
         item->shown = index >= menu->shown_start && index < menu->shown_start + menu->shown_item;
         if (item->shown) {
-            ky_scene_node_set_position(&item->tree->node, 0, index * menu->item_height);
+            /* leave the top/bottom margins free, the flip arrows take that
+               space when the menu exceeds the output */
+            int margin = menu->exceed_output ? 0 : MENU_CONTENT_MARGIN;
+            ky_scene_node_set_position(&item->tree->node, 0, margin + index * menu->item_height);
         }
         ky_scene_node_set_enabled(&item->tree->node, item->shown);
 
@@ -980,31 +1041,50 @@ static void menu_handle_output_disable(struct wl_listener *listener, void *data)
 static void menu_update_decoration(struct menu *menu)
 {
     struct theme *theme = theme_manager_get_theme();
-    int r = theme->corner_radius, shadow = theme->shadow_border, border = theme->border_width;
 
-    ky_scene_decoration_set_margin(menu->deco, 0, border, shadow, 0, 0);
-    ky_scene_decoration_set_round_corner_radius(menu->deco, (int[4]){ r, r, r, r });
+    /* DTK6 DStyle QMenu chrome: TREELAND_XDG_POPUP_RADIUS (8px) outer corner
+       radius like the xdg_popups in the Treeland personalization compat,
+       1px border at black 14% in light and white 12% in dark, the blurred
+       face with its semi-transparent white/black readability mask, and the
+       10px/2px-down/18% black shadow xdg_popups get from the same compat
+       (src/view/treeland_personalization.c). The face is blurred the same way
+       the compat blurs DTK popups: the decoration blur pass with a multi-pass
+       fragment blur at a small offset. */
+    int border = 1;
+    ky_scene_decoration_set_margin(menu->deco, 0, border, 10, 0, 2);
+    ky_scene_decoration_set_round_corner_radius(menu->deco, (int[4]){ 8, 8, 8, 8 });
     ky_scene_node_set_position(ky_scene_node_from_decoration(menu->deco), -border, -border);
-    ky_scene_decoration_set_surface_blurred(menu->deco, theme->opacity != 100);
 
-    float *c = theme->active_border_color, a = c[3];
-    float border_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
-    c = theme->active_shadow_color, a = c[3];
-    float shadow_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
-    c = theme->active_bg_color, a = theme->opacity / 100.0;
-    float bg_color[4] = { c[0] * a, c[1] * a, c[2] * a, a };
-    ky_scene_decoration_set_surface_color(menu->deco, bg_color);
-    ky_scene_decoration_set_margin_color(menu->deco, bg_color, border_color, shadow_color);
+    bool dark = theme->type == THEME_TYPE_DARK;
+    /* premultiplied: black at 14% in light, white at 12% in dark */
+    float border_color[4] = {
+        dark ? 0.12 : 0.0,
+        dark ? 0.12 : 0.0,
+        dark ? 0.12 : 0.0,
+        dark ? 0.12 : 0.14,
+    };
+    float shadow_color[4] = { 0, 0, 0, 0.18 };
+
+    float bg[4], text[4], text_disabled[4];
+    menu_popup_colors(theme, bg, text, text_disabled);
+    ky_scene_decoration_set_surface_color(menu->deco, bg);
+    ky_scene_decoration_set_margin_color(menu->deco, bg, border_color, shadow_color);
+
+    ky_scene_decoration_set_surface_blurred(menu->deco, true);
+    /* Same multi-pass fragment blur at a small offset as the DTK popup path in
+       treeland_personalization.c — a single half-size pass looks coarse when
+       the popup background is highly translucent. */
+    ky_scene_node_set_blur_level(ky_scene_node_from_decoration(menu->deco), 3, 0.60f);
 }
 
 static void menu_handle_theme_update(struct wl_listener *listener, void *data)
 {
     struct menu *menu = wl_container_of(listener, menu, theme_update);
     struct theme_update_event *update_event = data;
-    uint32_t allowed_mask = THEME_UPDATE_MASK_FONT | THEME_UPDATE_MASK_BACKGROUND_COLOR |
-                            THEME_UPDATE_MASK_ACCENT_COLOR | THEME_UPDATE_MASK_CORNER_RADIUS |
-                            THEME_UPDATE_MASK_OPACITY | THEME_UPDATE_MASK_BORDER_COLOR |
-                            THEME_UPDATE_MASK_SHADOW_COLOR;
+    uint32_t allowed_mask = THEME_UPDATE_MASK_TYPE | THEME_UPDATE_MASK_FONT |
+                            THEME_UPDATE_MASK_BACKGROUND_COLOR | THEME_UPDATE_MASK_ACCENT_COLOR |
+                            THEME_UPDATE_MASK_CORNER_RADIUS | THEME_UPDATE_MASK_OPACITY |
+                            THEME_UPDATE_MASK_BORDER_COLOR | THEME_UPDATE_MASK_SHADOW_COLOR;
     if (update_event->update_mask & allowed_mask) {
         /* force update all items */
         menu_render_items(menu, true);

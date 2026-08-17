@@ -223,8 +223,9 @@ enum theme_type theme_manager_read_config(struct theme_manager *manager)
     if (json_object_object_get_ex(manager->config->json, "font_size", &data)) {
         manager->global.font_size = json_object_get_int(data);
     } else {
-        /* Patch: 标题栏字号对齐Deepin */
-        manager->global.font_size = 14;
+        /* Patch: 标题栏字号对齐gxde-kwin（qGuiApp->font() = Sans Serif 9pt，
+         * 与 com.deepin.dde.appearance font-size 9.0 一致；pango 按点数渲染） */
+        manager->global.font_size = 9;
     }
 
     if (json_object_object_get_ex(manager->config->json, "accent_color", &data)) {
@@ -329,8 +330,8 @@ void theme_manager_write_config(struct theme_manager *manager, enum theme_type t
         json_object_object_del(manager->config->json, "font_name");
     }
 
-    /* Patch: 主题字号默认大小对齐Deepin */
-    if (manager->global.font_size != 14) {
+    /* Patch: 主题字号默认大小对齐gxde-kwin */
+    if (manager->global.font_size != 9) {
         json_object_object_add(manager->config->json, "font_size",
                                json_object_new_int(manager->global.font_size));
     } else {
