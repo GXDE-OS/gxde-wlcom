@@ -1,3 +1,9 @@
+gxde-wlcom (2.2.1-gxde3) lizhi; urgency=medium
+
+  * 修复了hetao CI失败的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 17 Aug 2026 22:35:11 +0800
+
 gxde-wlcom (2.2.1-gxde2) lizhi; urgency=medium
 
   * 修复了Alt+Tab界面没有Blur的问题
