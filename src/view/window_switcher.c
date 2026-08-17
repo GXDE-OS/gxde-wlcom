@@ -56,14 +56,15 @@ struct window_switcher_colors {
 };
 
 static const struct window_switcher_colors light_colors = {
-    .background = { 1.0f, 1.0f, 1.0f, 0.30f },
+    .background = { 0.30f, 0.30f, 0.30f, 0.30f },
     .border = { 0.0f, 0.0f, 0.0f, 0.10f },
     .highlight = { 1.0f / 255.0f, 189.0f / 255.0f, 1.0f, 1.0f },
 };
 
 static const struct window_switcher_colors dark_colors = {
-    .background = { 24.0f / 255.0f, 24.0f / 255.0f, 24.0f / 255.0f, 0.72f },
-    .border = { 1.0f, 1.0f, 1.0f, 0.16f },
+    .background = { 24.0f / 255.0f * 0.72f, 24.0f / 255.0f * 0.72f, 24.0f / 255.0f * 0.72f,
+                    0.72f },
+    .border = { 0.16f, 0.16f, 0.16f, 0.16f },
     .highlight = { 1.0f / 255.0f, 189.0f / 255.0f, 1.0f, 1.0f },
 };
 
