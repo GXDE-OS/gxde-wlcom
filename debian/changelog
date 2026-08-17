@@ -1,3 +1,12 @@
+gxde-wlcom (2.2.1-gxde1) lizhi; urgency=medium
+
+  * 新增Super + A窗口切换器
+  * 修复多任务窗口问题
+  * 增强标题栏右键菜单字体样式
+  * 修复标题栏/标题栏菜单中字体过大的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 17 Aug 2026 19:31:24 +0800
+
 gxde-wlcom (2.2.0-gxde2) lizhi; urgency=medium
 
   * 修复截图录屏点击后合成器崩溃：capture_buffer_get_or_create 在
