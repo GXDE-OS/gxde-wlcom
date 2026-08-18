@@ -1,3 +1,9 @@
+gxde-wlcom (2.2.1-gxde4) lizhi; urgency=medium
+
+  * 修复了一些IME相关的问题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 18 Aug 2026 16:44:02 +0800
+
 gxde-wlcom (2.2.1-gxde3) lizhi; urgency=medium
 
   * 修复了hetao CI失败的问题
