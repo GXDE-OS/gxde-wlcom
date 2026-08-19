@@ -48,6 +48,9 @@ static struct kde_blur_manager *manager = NULL;
 
 static void kde_blur_apply_state(struct kde_blur *blur)
 {
+    if (!blur->scene_buffer) {
+        return;
+    }
     if (blur->pending_mask & KDE_BLUR_STATE_REGION) {
         ky_scene_node_set_blur_region(&blur->scene_buffer->node, &blur->region);
     }
@@ -176,7 +179,9 @@ static void blur_handle_surface_map(struct wl_listener *listener, void *data)
     wl_list_init(&blur->surface_map.link);
 
     blur->scene_buffer = ky_scene_buffer_try_from_surface(blur->wlr_surface);
-    wl_signal_add(&blur->scene_buffer->node.events.destroy, &blur->node_destroy);
+    if (blur->scene_buffer) {
+        wl_signal_add(&blur->scene_buffer->node.events.destroy, &blur->node_destroy);
+    }
 
     kde_blur_apply_state(blur);
 }

@@ -403,8 +403,6 @@ static void xdg_view_handle_map(struct wl_listener *listener, void *data)
     xdg_view->set_app_id.notify = xdg_view_handle_set_app_id;
     wl_signal_add(&toplevel->events.set_app_id, &xdg_view->set_app_id);
 
-    xdg_view->new_popup.notify = xdg_view_handle_new_popup;
-    wl_signal_add(&wlr_xdg_surface->events.new_popup, &xdg_view->new_popup);
     xdg_view->commit.notify = xdg_view_handle_commit;
     wl_signal_add(&wlr_surface->events.commit, &xdg_view->commit);
 
@@ -419,7 +417,6 @@ static void xdg_view_handle_unmap(struct wl_listener *listener, void *data)
     struct xdg_view *xdg_view = wl_container_of(listener, xdg_view, unmap);
 
     wl_list_remove(&xdg_view->commit.link);
-    wl_list_remove(&xdg_view->new_popup.link);
     wl_list_remove(&xdg_view->request_move.link);
     wl_list_remove(&xdg_view->request_minimize.link);
     wl_list_remove(&xdg_view->request_maximize.link);
@@ -440,6 +437,7 @@ static void xdg_view_handle_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&xdg_view->destroy.link);
     wl_list_remove(&xdg_view->map.link);
     wl_list_remove(&xdg_view->unmap.link);
+    wl_list_remove(&xdg_view->new_popup.link);
 
     xdg_view->wlr_xdg_surface->surface->data = NULL;
     /* scene tree destroy will be called before by scene */
@@ -478,6 +476,12 @@ static void handle_new_xdg_surface(struct wl_listener *listener, void *data)
     /* event node will be destroyed when xdg_surface destroy */
     input_event_node_create(&xdg_view->view.surface_tree->node, &xdg_view_event_node_impl,
                             xdg_view_get_root, xdg_view_get_toplevel, xdg_view);
+
+    /* popup may be created before the toplevel maps (e.g. a D-Bus service
+     * showing a popup on a hidden anchor), so register new_popup here instead
+     * of at map time, otherwise the popup scene buffer is never created. */
+    xdg_view->new_popup.notify = xdg_view_handle_new_popup;
+    wl_signal_add(&wlr_xdg_surface->events.new_popup, &xdg_view->new_popup);
 
     /* others will add in map and remove in unmap */
     xdg_view->map.notify = xdg_view_handle_map;
