@@ -1,3 +1,9 @@
+gxde-wlcom (2.2.2-gxde1) lizhi; urgency=medium
+
+  * 修复了Blur代码安全性
+
+ -- CharOfString <root@charofstring.cc>  Thu, 20 Aug 2026 16:10:11 +0800
+
 gxde-wlcom (2.2.1-gxde4) lizhi; urgency=medium
 
   * 修复了一些IME相关的问题

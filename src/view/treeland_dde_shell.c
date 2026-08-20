@@ -66,6 +66,7 @@ struct treeland_dde_shell_surface_state {
     struct wl_listener surface_map;
 
     bool auto_place;      /**< true即「按全局光标定位」 */
+    int32_t x_offset;     /**< auto_place时光标x方向的附加偏移 */
     int32_t y_offset;     /**< auto_place时光标y方向的附加偏移 */
     bool has_pos;         /**< true即pos_x/pos_y为有效的固定全局坐标 */
     int32_t pos_x, pos_y; /**< 已解析的全局落点 (锚定左上角) */
@@ -103,14 +104,15 @@ static struct treeland_dde_shell_surface_state *state_from_wlr_surface(struct wl
  *
  * @param[in]  surface    (wlr_surface*) 目标surface
  * @param[out] auto_place (bool*)        true时要求按全局光标定位
+ * @param[out] x_offset   (int*)         @c auto_place 时光标x的附加偏移
  * @param[out] y_offset   (int*)         @c auto_place 时光标y的附加偏移
  * @param[out] has_pos    (bool*)        true时为「 @c pos 为有效的固定全局坐标」
  * @param[out] px         (int*)         固定全局坐标x
  * @param[out] py         (int*)         固定全局坐标y
  * @return (bool) surface已注册则返回true，否则false
  */
-bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_place, int *y_offset,
-                                      bool *has_pos, int *px, int *py)
+bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_place, int *x_offset,
+                                      int *y_offset, bool *has_pos, int *px, int *py)
 {
     if (!manager || !surface) {
         return false;
@@ -122,6 +124,7 @@ bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_pl
     }
 
     *auto_place = state->auto_place;
+    *x_offset = state->x_offset;
     *y_offset = state->y_offset;
     *has_pos = state->has_pos;
     *px = state->pos_x;
@@ -351,12 +354,17 @@ static void surface_set_role(struct wl_client *client, struct wl_resource *resou
 /**
  * @brief 按全局光标定位，适用于右键上下文菜单等
  *
+ * 客户端传的 (x_offset, y_offset) 是 surface 原点相对光标的偏移。DTK 的
+ * DMenuEffect 会给菜单加 18px 阴影边距，使可见面板比 surface 原点偏右/偏下 18px，
+ * 客户端传 -18 即可让合成器把可见面板(而非 surface 原点)精确摆到光标处。
+ *
  * @param client   (wl_client*)   目标客户端
  * @param resource (wl_resource*) 目标资源
- * @param y_offset (uint32_t)     相对光标的y轴偏移
+ * @param x_offset (int32_t)     相对光标的x轴偏移
+ * @param y_offset (int32_t)     相对光标的y轴偏移
  */
 static void surface_set_auto_placement(struct wl_client *client, struct wl_resource *resource,
-                                       uint32_t y_offset)
+                                       int32_t x_offset, int32_t y_offset)
 {
     struct treeland_dde_shell_surface_state *state = wl_resource_get_user_data(resource);
     if (!state) {
@@ -365,14 +373,23 @@ static void surface_set_auto_placement(struct wl_client *client, struct wl_resou
 
     struct seat *seat = input_manager_get_default_seat();
     if (seat && seat->cursor) {
-        state->pos_x = (int)seat->cursor->lx;
-        state->pos_y = (int)seat->cursor->ly + (int32_t)y_offset;
+        state->pos_x = (int)seat->cursor->lx + x_offset;
+        state->pos_y = (int)seat->cursor->ly + y_offset;
         state->has_pos = true;
         state->auto_place = false;
+
+        kywc_log(KYWC_WARN,
+                 "(Treeland Shim) AutoPlace: cursor=(%d,%d) offset=(%d,%d) "
+                 "surf_origin=(%d,%d)",
+                 (int)seat->cursor->lx, (int)seat->cursor->ly,
+                 x_offset, y_offset,
+                 (int)seat->cursor->lx + x_offset,
+                 (int)seat->cursor->ly + y_offset);
     } else {
         // 拿不到光标时
         state->auto_place = true;
-        state->y_offset = (int32_t)y_offset;
+        state->x_offset = x_offset;
+        state->y_offset = y_offset;
         state->has_pos = false;
     }
 }

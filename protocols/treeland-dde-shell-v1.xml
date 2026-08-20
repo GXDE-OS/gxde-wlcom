@@ -199,8 +199,10 @@
         </request>
 
         <request name="set_auto_placement">
-            <description summary="Place the surface at the bottom of the cursor area">
-                Set the vertical alignment of the surface within the cursor width.
+            <description summary="Place the surface at the cursor with an offset">
+                Place the surface so that its origin is offset by (x_offset, y_offset)
+                from the cursor. The client passes a negative offset equal to its shadow
+                margin so the visible panel lands exactly on the cursor.
 
                 Do not use it together with set_surface_position to avoid exceptions.
 
@@ -208,7 +210,8 @@
                 request, including preventing it from being displayed beyond the edge of
                 the output.
             </description>
-            <arg name="y_offset" type="uint" summary="y position is relative to the cursor bottom"/>
+            <arg name="x_offset" type="int" summary="x offset from the cursor (negative = left)"/>
+            <arg name="y_offset" type="int" summary="y offset from the cursor (negative = up)"/>
         </request>
 
         <request name="set_skip_switcher">
