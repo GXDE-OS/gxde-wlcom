@@ -64,21 +64,26 @@ $ valgrind /path/gxde-wlcom ...
 WAYLAND_DEBUG=1
 ```
 
-服务端日志默认路径
+服务端日志默认输出到 stdout，不再写入 `$HOME/.log`；如需落盘调试，可通过入参`-Dlogtofile`写入
 ```
 $HOME/.log/gxde-wlcom.log
 ```
 
-可通过入参`-Dlogtostdout`直接打印日志到stdout
+`-Dlogtostdout` 保留兼容（显式指定 stdout，与默认行为一致）
 ```bash
 Usage: gxde-wlcom [options] [command]
   -d, --debug              Enables full logging, including debug information.\n
-  -D, --debug <options>    noxwayland or logtostdout.\n
+  -D, --debug <options>    noxwayland, logtostdout, logtofile or loginmtime.\n
 ```
 
-设置debug信息输出到屏幕: 
+设置debug信息输出到屏幕（默认行为）:
 ```bash
-$ ./gxde-wlcom -d -Dlogtostdout
+$ ./gxde-wlcom -d
+```
+
+如需写入日志文件:
+```bash
+$ ./gxde-wlcom -d -Dlogtofile
 ```
 
 ## xwayland

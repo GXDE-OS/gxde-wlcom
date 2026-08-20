@@ -164,6 +164,7 @@ export GXDE_WLCOM_PERSONALIZATION=058   # 或 059；亦接受 0.5.8 / 0.5.9
 确认当前选了哪个（该行是`INFO`级，默认`WARN`不显示，需`-V`或`KYWC_LOG_LEVEL=INFO`）：
 
 ```bash
+# 日志默认在 stdout；如需落盘，给 wlcom 传 -Dlogtofile 后再 grep：
 grep Personalization ~/.log/gxde-wlcom.log | tail -1
 # (Treeland Shim) Personalization: probed 4 DTK libraries, wallpaper context referenced -> using the 0.5.8 layout
 # (Treeland Shim) Personalization: layout forced to 0.5.9 by GXDE_WLCOM_PERSONALIZATION
@@ -185,6 +186,7 @@ export GXWM_DONOT_BROADCAST_TLPM=TRUE   # 亦接受 ON / YES / 1，大小写不�
 
 该开关的日志是`WARN`级（默认可见，无需`-V`）
 ```bash
+# 日志默认在 stdout；如需落盘，给 wlcom 传 -Dlogtofile 后再 grep：
 grep Personalization ~/.log/gxde-wlcom.log | tail -1
 # [WARN]: (Treeland Shim) Personalization: global not advertised, disabled by GXWM_DONOT_BROADCAST_TLPM
 ```
@@ -333,7 +335,7 @@ $ ./build-deb -c
 
 ### 使用
 
-> **注意**: 默认情况下，日志打印到文件`$HOME/.log/gxde-wlcom.log`。
+> **注意**: 默认情况下，日志直接输出到 stdout，不再生成 `$HOME/.log/gxde-wlcom.log` 文件；如需落盘调试，可传 `-Dlogtofile`（写入 `$HOME/.log/gxde-wlcom.log`）。
 
 
 
@@ -345,7 +347,7 @@ $ ./build-deb -c
 Usage: kylin-wlcom [options] [command]
   -h, --help               Show help message and quit.\n
   -d, --debug              Enables full logging, including debug information.\n
-  -D, --debug <options>    noxwayland or logtostdout.\n
+  -D, --debug <options>    noxwayland, logtostdout, logtofile or loginmtime.\n
   -s, --session <process>  Run session on startup\n
   -v, --version            Show the version number and quit.\n
   -V, --verbose            Enables more verbose logging.\n
@@ -357,7 +359,8 @@ Usage: kylin-wlcom [options] [command]
 
 ```bash
 -Dnoxwayland    关闭xwayland支持
--Dlogtostdout   将日志打印到stdout
+-Dlogtostdout   将日志打印到stdout（默认行为，保留兼容）
+-Dlogtofile     将日志写入$HOME/.log/gxde-wlcom.log
 -Dloginmtime    使用monotonic time输出日志
 ```
 

@@ -20,7 +20,7 @@
 static struct server server = {
     .options = {
         .enable_xwayland = true,
-        .log_to_file = true,
+        .log_to_file = false,
         .log_in_realtime = true,
         .binding_session = true,
     },
@@ -39,6 +39,7 @@ static const char usage[] =
     "\n"
     "  -h, --help               Show help message and quit.\n"
     "  -d, --debug              Enables full logging, including debug information.\n"
+    "  -D, --debug <options>    noxwayland, logtostdout, logtofile or loginmtime.\n"
     "  -s, --session <process>  Run session on startup.\n"
     "  -v, --version            Show the version number and quit.\n"
     "  -V, --verbose            Enables more verbose logging.\n"
@@ -64,6 +65,8 @@ static void enable_debug_flag(struct server *server, const char *flag)
         server->options.enable_xwayland = false;
     } else if (strcmp(flag, "logtostdout") == 0) {
         server->options.log_to_file = false;
+    } else if (strcmp(flag, "logtofile") == 0) {
+        server->options.log_to_file = true;
     } else if (strcmp(flag, "loginmtime") == 0) {
         server->options.log_in_realtime = false;
     } else if (strcmp(flag, "nosessionbinding") == 0) {
