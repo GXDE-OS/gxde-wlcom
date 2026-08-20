@@ -1,3 +1,10 @@
+gxde-wlcom (2.2.2-gxde2) lizhi; urgency=medium
+
+  * 默认不再将日志写入 $HOME/.log/gxde-wlcom.log，改为输出到 stdout
+  * 新增 -Dlogtofile 调试参数，需要落盘排查时可恢复文件日志
+
+ -- shenmo <shenmo@spark-app.store>  Thu, 20 Aug 2026 19:47:57 +0800
+
 gxde-wlcom (2.2.2-gxde1) lizhi; urgency=medium
 
   * 修复了Blur代码安全性
