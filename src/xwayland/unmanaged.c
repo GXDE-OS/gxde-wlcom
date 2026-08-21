@@ -276,31 +276,6 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data)
     }
 }
 
-static void xwayland_unmanaged_restore_focus(struct xwayland_unmanaged *unmanaged)
-{
-    struct wlr_xwayland_surface *xsurface = unmanaged->wlr_xwayland_surface;
-    struct wlr_seat *wlr_seat = unmanaged->xwayland->wlr_xwayland->seat;
-    if (!wlr_seat) {
-        return;
-    }
-
-    struct wlr_surface *wlr_surface = wlr_seat->keyboard_state.focused_surface;
-    if (!wlr_surface) {
-        return;
-    }
-
-    /* the unmanaged surface itself holds the Wayland keyboard focus */
-    if (wlr_surface == xsurface->surface) {
-        view_activate_topmost();
-        return;
-    }
-
-    struct wlr_xwayland_surface *focused = wlr_xwayland_surface_try_from_wlr_surface(wlr_surface);
-    if (focused && focused != xsurface && !focused->override_redirect) {
-        wlr_xwayland_surface_activate(focused, true);
-    }
-}
-
 static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, unmap);
@@ -315,7 +290,11 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data)
         ky_scene_node_set_enabled(unmanaged->surface_node, false);
     }
 
-    xwayland_unmanaged_restore_focus(unmanaged);
+    struct wlr_surface *wlr_surface = unmanaged->wlr_xwayland_surface->surface;
+    wlr_seat = unmanaged->xwayland->wlr_xwayland->seat;
+    if (wlr_seat && wlr_seat->keyboard_state.focused_surface == wlr_surface) {
+        view_activate_topmost();
+    }
 }
 
 static void unmanaged_handle_node_destroy(struct wl_listener *listener, void *data)
@@ -395,9 +374,6 @@ static void unmanaged_handle_dissociate(struct wl_listener *listener, void *data
 static void unmanaged_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct xwayland_unmanaged *unmanaged = wl_container_of(listener, unmanaged, destroy);
-
-    /* runs before xwm clears the X focus in xwayland_surface_destroy */
-    xwayland_unmanaged_restore_focus(unmanaged);
 
     wl_list_remove(&unmanaged->link);
     wl_list_remove(&unmanaged->request_configure.link);
