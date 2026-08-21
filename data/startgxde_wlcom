@@ -40,6 +40,14 @@ export XDG_SESSION_DESKTOP=Deepin
 export DDE_CURRENT_COMPOSITOR=GXWM
 export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置文件里的分辨率
 
+# Okay, so the Wayland fcitx5 frontend shall be working fine, and
+# they recommended us to unset this variable. Feel free to comment it out
+# if anything is wrong.
+# -----------------------------------------------------------------------------
+# Wayland输入法前端应该是可用状态，Fcitx5让我们unset掉这个变量
+# 如果有任何问题，请随意注释掉这行。
+unset GTK_IM_MODULE
+
 unset QT_QPA_PLATFORM
 export QT_QPA_PLATFORM=wayland
 
@@ -86,6 +94,12 @@ if uname -r | grep -q 9000c && [ -x /usr/bin/startgxde_wlcom_9000c ]; then
     # hisi 会话所需的最小环境（详细配置由 startgxde_wlcom_9000c 负责）
     export WLR_BACKENDS=drm,libinput
     exec /usr/bin/startgxde_wlcom_9000c "$@"
+fi
+
+# Force reset gxde-launcher
+if pgrep -x "gxde-launcher" > /dev/null; then
+    pkill -x "gxde-launcher"
+    sleep 1
 fi
 
 exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"
