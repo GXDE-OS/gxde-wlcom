@@ -78,6 +78,8 @@ void input_notify_destroy(struct input *input);
 
 void input_notify_create(struct input *input);
 
+void input_notify_keymap_group(struct input *input, uint32_t group);
+
 struct seat *seat_by_name(const char *seat_name);
 
 void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size,

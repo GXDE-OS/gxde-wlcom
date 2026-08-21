@@ -5,6 +5,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include <kywc/log.h>
 #include <kywc/output.h>
+#include <wlr/interfaces/wlr_keyboard.h>
+#include <wlr/types/wlr_keyboard.h>
 
 #include "config.h"
 #include "input_p.h"
@@ -699,6 +701,47 @@ static int get_keymap(sd_bus_message *m, void *userdata, sd_bus_error *ret_error
         empty_if_null(rules->xkb_options));
 }
 
+static int get_keymap_group(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input || input->prop.type != WLR_INPUT_DEVICE_KEYBOARD) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid keyboard input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input->wlr_input);
+    return sd_bus_reply_method_return(m, "u", keyboard->modifiers.group);
+}
+
+static int set_keymap_group(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    uint32_t group = 0;
+    CK(sd_bus_message_read(m, "su", &input_name, &group));
+
+    struct input *input = input_by_name(input_name);
+    if (!input || input->prop.type != WLR_INPUT_DEVICE_KEYBOARD) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid keyboard input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input->wlr_input);
+    if (!keyboard->keymap || group >= xkb_keymap_num_layouts(keyboard->keymap)) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid keymap group.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    wlr_keyboard_notify_modifiers(keyboard, keyboard->modifiers.depressed,
+                                  keyboard->modifiers.latched, keyboard->modifiers.locked, group);
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static void set_config_string(json_object *config, const char *name, const char *value)
 {
     if (value && value[0]) {
@@ -805,10 +848,13 @@ static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
     SD_BUS_METHOD("GetKeymap", "s", "sssss", get_keymap, 0),
     SD_BUS_METHOD("SetKeymap", "ssssss", "", set_keymap, 0),
+    SD_BUS_METHOD("GetKeymapGroup", "s", "u", get_keymap_group, 0),
+    SD_BUS_METHOD("SetKeymapGroup", "su", "", set_keymap_group, 0),
     SD_BUS_METHOD("GetScrollFactor", "s", "dd", get_scroll_factor, 0),
     SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
     SD_BUS_METHOD("GetDoubleClickTime", "s", "uu", get_double_click_time, 0),
     SD_BUS_METHOD("SetDoubleClickTime", "su", "", set_double_click_time, 0),
+    SD_BUS_SIGNAL("KeymapGroupChanged", "su", 0),
     SD_BUS_VTABLE_END,
 };
 
@@ -900,6 +946,15 @@ void input_notify_create(struct input *input)
 
     dbus_emit_signal(service_input_path, service_input_interface, "input_create", "su", input->name,
                      input->prop.prop);
+}
+
+void input_notify_keymap_group(struct input *input, uint32_t group)
+{
+    if (!input || input->prop.type != WLR_INPUT_DEVICE_KEYBOARD)
+        return;
+
+    dbus_emit_signal(service_input_path, service_input_interface, "KeymapGroupChanged", "su",
+                     input->name, group);
 }
 
 bool input_manager_config_init(struct input_manager *input_manager)

@@ -15,6 +15,7 @@
 
 #include "input/keyboard.h"
 #include "input/keyboard_group.h"
+#include "input_p.h"
 
 struct keyboard_group_device {
     struct wlr_keyboard *keyboard;
@@ -139,6 +140,12 @@ static void handle_keyboard_modifiers(struct wl_listener *listener, void *data)
     struct keyboard_group_device *group_device = wl_container_of(listener, group_device, modifiers);
     struct keyboard_group *group = (struct keyboard_group *)group_device->keyboard->group;
     struct wlr_keyboard_modifiers mods = group_device->keyboard->modifiers;
+    uint32_t previous_group = group->keyboard.modifiers.group;
+
+    if (mods.group != previous_group) {
+        struct input *input = input_from_wlr_input(&group_device->keyboard->base);
+        input_notify_keymap_group(input, mods.group);
+    }
 
     struct keyboard_group_device *device;
     wl_list_for_each(device, &group->devices, link) {
