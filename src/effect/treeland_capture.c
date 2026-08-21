@@ -17,6 +17,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1020,13 +1021,17 @@ static void context_handle_capture(struct wl_client *client, struct wl_resource 
         return;
     }
 
-    uint32_t options = context->with_cursor ? CAPTURE_NEED_CURSOR : CAPTURE_NEED_NONE;
+    uint32_t options = CAPTURE_NEED_UNSCALED;
+    if (context->with_cursor)
+        options |= CAPTURE_NEED_CURSOR;
 
     if (context->source_type == TCAP_SOURCE_WINDOW && context->view) {
         struct view *view = view_from_kywc_view(context->view);
         if (view) {
-            frame->thumbnail =
-                thumbnail_create_from_view(view, THUMBNAIL_DISABLE_SHADOW, 1.0);
+            const float scale = view->output ? view->output->state.scale
+                                             : output_manager_get_scale();
+            frame->thumbnail = thumbnail_create_from_view(
+                view, THUMBNAIL_DISABLE_SHADOW, scale);
         }
         if (!frame->thumbnail) {
             frame->failed = true;
@@ -1038,6 +1043,16 @@ static void context_handle_capture(struct wl_client *client, struct wl_resource 
     } else {
         struct wlr_box area = { context->region.x, context->region.y, context->region.width,
                                 context->region.height };
+        if (options & CAPTURE_NEED_UNSCALED) {
+            const float scale = output_manager_get_scale();
+            area.x = lroundf(area.x * scale);
+            area.y = lroundf(area.y * scale);
+            area.width = lroundf(area.width * scale);
+            area.height = lroundf(area.height * scale);
+            kywc_log(KYWC_DEBUG,
+                     "(treeland-capture) physical area=%d,%d %dx%d scale=%.3f",
+                     area.x, area.y, area.width, area.height, scale);
+        }
         frame->capture = capture_create_from_area(&area, options);
         if (!frame->capture) {
             frame->failed = true;
