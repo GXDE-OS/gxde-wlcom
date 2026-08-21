@@ -266,8 +266,8 @@ static __attribute__((unused)) inline bool kde_blur_manager_create(struct server
 
 struct wlr_surface;
 bool treeland_dde_shell_manager_create(struct server *server);
-bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_place, int *x_offset,
-                                      int *y_offset, bool *has_pos, int *px, int *py);
+bool treeland_dde_shell_get_placement(struct wlr_surface *surface, bool *auto_place, int *y_offset,
+                                      bool *has_pos, int *px, int *py);
 void treeland_dde_shell_set_resolved_position(struct wlr_surface *surface, int x, int y);
 
 bool treeland_personalization_manager_create(struct server *server);

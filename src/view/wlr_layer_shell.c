@@ -228,13 +228,13 @@ static void layer_shell_configure_surface(struct layer_shell *layer_shell,
 
     // 解决Wayland下应用无法获知自身全局坐标、传给com.deepin.menu的坐标错位的问题
     bool dde_auto = false, dde_has_pos = false;
-    int dde_x_offset = 0, dde_y_offset = 0, dde_px = 0, dde_py = 0;
-    if (treeland_dde_shell_get_placement(layer_surface->surface, &dde_auto, &dde_x_offset,
-                                         &dde_y_offset, &dde_has_pos, &dde_px, &dde_py)) {
+    int dde_y_offset = 0, dde_px = 0, dde_py = 0;
+    if (treeland_dde_shell_get_placement(layer_surface->surface, &dde_auto, &dde_y_offset,
+                                         &dde_has_pos, &dde_px, &dde_py)) {
         if (dde_auto) {
             struct seat *seat = input_manager_get_default_seat();
             if (seat && seat->cursor) {
-                box.x = (int)seat->cursor->lx + dde_x_offset;
+                box.x = (int)seat->cursor->lx;
                 box.y = (int)seat->cursor->ly + dde_y_offset;
             }
         } else if (dde_has_pos) {
