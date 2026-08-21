@@ -1,3 +1,9 @@
+gxde-wlcom (2.2.3-gxde2) lizhi; urgency=medium
+
+  * 修复了一些输入法问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 21 Aug 2026 21:41:12 +0800
+
 gxde-wlcom (2.2.3-gxde1) lizhi; urgency=medium
 
   * 支持通过XKB控制与查询键盘布局
