@@ -669,6 +669,20 @@ void kywc_key_binding_for_each(binding_iterator_func_t iterator)
     }
 }
 
+void kywc_key_binding_for_each_typed(binding_typed_iterator_func_t iterator, void *data)
+{
+    for (size_t i = 0; i < KEY_BINDING_TYPE_NUM; ++i) {
+        struct key_binding *binding;
+        struct keysyms_binding *keysyms_binding = &bindings->keysyms_binding[i];
+        wl_list_for_each(binding, &keysyms_binding->bindings, link) {
+            if (iterator(binding, (enum key_binding_type)i, binding->keybind, binding->desc,
+                         binding->modifiers, binding->keysym, data)) {
+                return;
+            }
+        }
+    }
+}
+
 void kywc_key_binding_block_all(bool block)
 {
     if (block) {

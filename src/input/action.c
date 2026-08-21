@@ -105,6 +105,8 @@ static struct input_action_manager {
     struct wl_list actions;
 } *manager = NULL;
 
+static const char *key_binding_type_name(enum key_binding_type type);
+
 static struct keycode_map {
     const char *key;
     uint32_t code;
@@ -378,15 +380,76 @@ static int list_input_actions(sd_bus_message *m, void *userdata, sd_bus_error *r
         const char *section = action->type == INPUT_TYPE_KEYBOARD ? "keyboard" : "gesture";
         json_object *itype_obj = json_object_object_get(manager->config->json, section);
         json_object *config = json_object_object_get(itype_obj, action->bindings);
+        bool user_config = config != NULL;
         /* actions loaded from the system default config are not present in
          * the user config, fall back to the system config for them */
         if (!config && manager->config->sys_json) {
             json_object *sys_itype_obj = json_object_object_get(manager->config->sys_json, section);
             config = json_object_object_get(sys_itype_obj, action->bindings);
         }
+
+        /* Older releases did not serialize WLCOM_CUSTOM_DEF because its enum
+         * value is zero.  A user-only keyboard action without a type is an
+         * old custom shortcut; annotate it for clients without changing
+         * overrides of system defaults. */
+        json_object *type_obj = NULL;
+        if (action->type == INPUT_TYPE_KEYBOARD && user_config && config &&
+            !json_object_object_get_ex(config, "type", &type_obj)) {
+            json_object *system_config = NULL;
+            if (manager->config->sys_json) {
+                json_object *sys_keyboard =
+                    json_object_object_get(manager->config->sys_json, "keyboard");
+                if (sys_keyboard) {
+                    system_config = json_object_object_get(sys_keyboard, action->bindings);
+                }
+            }
+            if (!system_config) {
+                json_object_object_add(config, "type",
+                                       json_object_new_string("WLCOM_CUSTOM_DEF"));
+            }
+        }
         const char *cfg = json_object_to_json_string(config);
         sd_bus_message_append(reply, "(ss)", action->bindings, cfg);
     }
+    CK(sd_bus_message_close_container(reply));
+    CK(sd_bus_send(NULL, reply, NULL));
+    sd_bus_message_unref(reply);
+    return 1;
+}
+
+struct list_key_bindings_context {
+    sd_bus_message *reply;
+    int error;
+};
+
+static bool append_key_binding(struct key_binding *binding, enum key_binding_type type,
+                               char *keybind, char *desc, int32_t modifiers, int32_t key,
+                               void *data)
+{
+    struct list_key_bindings_context *context = data;
+    const char *type_name = key_binding_type_name(type);
+    if (!keybind || !type_name) {
+        return false;
+    }
+
+    context->error =
+        sd_bus_message_append(context->reply, "(sss)", keybind, desc ? desc : "", type_name);
+    return context->error < 0;
+}
+
+static int list_key_bindings(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    sd_bus_message *reply = NULL;
+    CK(sd_bus_message_new_method_return(m, &reply));
+    CK(sd_bus_message_open_container(reply, 'a', "(sss)"));
+
+    struct list_key_bindings_context context = { .reply = reply, .error = 0 };
+    kywc_key_binding_for_each_typed(append_key_binding, &context);
+    if (context.error < 0) {
+        sd_bus_message_unref(reply);
+        return context.error;
+    }
+
     CK(sd_bus_message_close_container(reply));
     CK(sd_bus_send(NULL, reply, NULL));
     sd_bus_message_unref(reply);
@@ -600,8 +663,6 @@ static bool input_action_manager_delete_config(struct input_action_manager *mana
 /* defined below */
 static bool input_action_user_override(struct input_action_manager *manager,
                                        enum input_type type, const char *bindings);
-static const char *key_binding_type_name(enum key_binding_type type);
-
 static bool input_action_manager_write_config(struct input_action_manager *manager,
                                               struct input_action *input_action)
 {
@@ -625,7 +686,7 @@ static bool input_action_manager_write_config(struct input_action_manager *manag
     struct action_data *action_data = input_action->action;
     json_object_object_add(action_config, "enable", json_object_new_boolean(action_data->enable));
 
-    if (action_data->binding_type) {
+    if (input_action->type == INPUT_TYPE_KEYBOARD) {
         const char *type_str = key_binding_type_name(action_data->binding_type);
         if (type_str) {
             json_object_object_add(action_config, "type", json_object_new_string(type_str));
@@ -853,6 +914,7 @@ static int add_input_action(sd_bus_message *m, void *userdata, sd_bus_error *ret
     input_action_manager_write_config(manager, input_action);
 
     wl_list_insert(&manager->actions, &input_action->link);
+    config_manager_sync();
 
     return sd_bus_reply_method_return(m, NULL);
 }
@@ -963,12 +1025,14 @@ static int control_input_action(sd_bus_message *m, void *userdata, sd_bus_error 
         break;
     }
 
+    config_manager_sync();
     return sd_bus_reply_method_return(m, NULL);
 }
 
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllActions", "", "a(ss)", list_input_actions, 0),
+    SD_BUS_METHOD("ListKeyBindings", "", "a(sss)", list_key_bindings, 0),
     SD_BUS_METHOD("AddAction", "sssss", "", add_input_action, 0),
     SD_BUS_METHOD("ControlAction", "ss", "", control_input_action, 0),
     SD_BUS_METHOD("GrabNextKey", "", "", grab_next_key_handler, 0),

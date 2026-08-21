@@ -128,6 +128,13 @@ typedef bool (*binding_iterator_func_t)(struct key_binding *binding, char *keybi
 
 void kywc_key_binding_for_each(binding_iterator_func_t iterator);
 
+typedef bool (*binding_typed_iterator_func_t)(struct key_binding *binding,
+                                              enum key_binding_type type, char *keybind,
+                                              char *desc, int32_t modifiers, int32_t key,
+                                              void *data);
+
+void kywc_key_binding_for_each_typed(binding_typed_iterator_func_t iterator, void *data);
+
 void kywc_key_binding_block_all(bool block);
 
 void kywc_key_binding_block_type(enum key_binding_type type, bool block);
