@@ -1,3 +1,11 @@
+gxde-wlcom (2.2.3-gxde1) lizhi; urgency=medium
+
+  * 支持通过XKB控制与查询键盘布局
+  * 支持查询WM自带快捷键绑定信息
+  * GXDE会话自行设置QT_QPA_PATFORM为Wayland
+
+ -- CharOfString <root@charofstring.cc>  Fri, 21 Aug 2026 19:33:01 +0800
+
 gxde-wlcom (2.2.2-gxde2) lizhi; urgency=medium
 
   * 默认不再将日志写入 $HOME/.log/gxde-wlcom.log，改为输出到 stdout

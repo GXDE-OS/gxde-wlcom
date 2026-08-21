@@ -39,7 +39,10 @@ export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_DESKTOP=Deepin
 export DDE_CURRENT_COMPOSITOR=GXWM
 export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置文件里的分辨率
+
+unset QT_QPA_PLATFORM
 export QT_QPA_PLATFORM=wayland
+
 unset DTK2_XWAYLAND
 
 # If all DTK5/6 applications keeps crashing, uncomment the line below this
