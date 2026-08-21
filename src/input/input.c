@@ -36,6 +36,15 @@ void input_rebase_all_cursor(void)
     }
 }
 
+static void keymap_rules_finish(struct keymap_rules *rules)
+{
+    free((void *)rules->xkb_rules);
+    free((void *)rules->xkb_model);
+    free((void *)rules->xkb_layout);
+    free((void *)rules->xkb_variant);
+    free((void *)rules->xkb_options);
+}
+
 void input_set_all_cursor(const char *cursor_theme, uint32_t cursor_size)
 {
     struct seat *seat;
@@ -62,6 +71,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_for_each_safe(keymap, keymap_tmp, &input_manager->keymaps, link) {
         wl_list_remove(&keymap->link);
         xkb_keymap_unref(keymap->keymap);
+        keymap_rules_finish(&keymap->rules);
         free(keymap);
     }
     queue_fence_finish(&input_manager->fence);
@@ -427,13 +437,19 @@ static struct xkb_keymap *get_or_create_keymap(struct keymap_rules *rules)
     if (!keymap) {
         return NULL;
     }
-    keymap->keymap = keyboard_compile_keymap(&keymap->rules);
+    keymap->keymap = keyboard_compile_keymap(rules);
     if (!keymap->keymap) {
         free(keymap);
         return NULL;
     }
 
-    keymap->rules = *rules;
+    keymap->rules = (struct keymap_rules){
+        .xkb_rules = rules->xkb_rules ? strdup(rules->xkb_rules) : NULL,
+        .xkb_model = rules->xkb_model ? strdup(rules->xkb_model) : NULL,
+        .xkb_layout = rules->xkb_layout ? strdup(rules->xkb_layout) : NULL,
+        .xkb_variant = rules->xkb_variant ? strdup(rules->xkb_variant) : NULL,
+        .xkb_options = rules->xkb_options ? strdup(rules->xkb_options) : NULL,
+    };
     wl_list_insert(&input_manager->keymaps, &keymap->link);
 
     return keymap->keymap;
@@ -584,6 +600,10 @@ static bool _input_set_state(struct input *input, struct input_state *state)
             mapped_output ? output_from_kywc_output(mapped_output)->wlr_output : NULL;
         wlr_cursor_map_input_to_output(wlr_cursor, wlr_input, wlr_output);
         input->mapped_output = mapped_output;
+    }
+
+    if (input->prop.type == WLR_INPUT_DEVICE_KEYBOARD) {
+        input->state.rules = state->rules;
     }
 
     if (input->device) {

@@ -670,6 +670,114 @@ static int set_double_click_time(sd_bus_message *m, void *userdata, sd_bus_error
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static const char *empty_if_null(const char *value)
+{
+    return value ? value : "";
+}
+
+static const char *null_if_empty(const char *value)
+{
+    return value && value[0] ? value : NULL;
+}
+
+static int get_keymap(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    CK(sd_bus_message_read(m, "s", &input_name));
+
+    struct input *input = input_by_name(input_name);
+    if (!input || input->prop.type != WLR_INPUT_DEVICE_KEYBOARD) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid keyboard input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    const struct keymap_rules *rules = &input->state.rules;
+    return sd_bus_reply_method_return(
+        m, "sssss", empty_if_null(rules->xkb_rules), empty_if_null(rules->xkb_model),
+        empty_if_null(rules->xkb_layout), empty_if_null(rules->xkb_variant),
+        empty_if_null(rules->xkb_options));
+}
+
+static void set_config_string(json_object *config, const char *name, const char *value)
+{
+    if (value && value[0]) {
+        json_object_object_add(config, name, json_object_new_string(value));
+    } else {
+        json_object_object_del(config, name);
+    }
+}
+
+static const char *get_config_string(json_object *config, const char *name)
+{
+    json_object *value = NULL;
+    return json_object_object_get_ex(config, name, &value) ? json_object_get_string(value) : NULL;
+}
+
+static int set_keymap(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    const char *input_name = NULL;
+    const char *rules_name = NULL;
+    const char *model = NULL;
+    const char *layout = NULL;
+    const char *variant = NULL;
+    const char *options = NULL;
+    CK(sd_bus_message_read(m, "ssssss", &input_name, &rules_name, &model, &layout, &variant,
+                           &options));
+
+    struct input *input = input_by_name(input_name);
+    if (!input || input->prop.type != WLR_INPUT_DEVICE_KEYBOARD) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid keyboard input.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    struct keymap_rules keymap_rules = {
+        .xkb_rules = null_if_empty(rules_name),
+        .xkb_model = null_if_empty(model),
+        .xkb_layout = null_if_empty(layout),
+        .xkb_variant = null_if_empty(variant),
+        .xkb_options = null_if_empty(options),
+    };
+    struct xkb_keymap *keymap = keyboard_compile_keymap(&keymap_rules);
+    if (!keymap) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid XKB keymap.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+    xkb_keymap_unref(keymap);
+
+    struct input_state state = input->state;
+    state.rules = keymap_rules;
+    if (!input_set_state(input, &state)) {
+        return sd_bus_reply_method_errorf(m, SD_BUS_ERROR_FAILED,
+                                          "Failed to apply XKB keymap.");
+    }
+
+    struct input_manager *manager = input->manager;
+    json_object *config = json_object_object_get(manager->config->json, input->name);
+    if (!config) {
+        config = json_object_new_object();
+        json_object_object_add(manager->config->json, input->name, config);
+    }
+    set_config_string(config, "xkb_rules", rules_name);
+    set_config_string(config, "xkb_model", model);
+    set_config_string(config, "xkb_layout", layout);
+    set_config_string(config, "xkb_variant", variant);
+    set_config_string(config, "xkb_options", options);
+
+    input->state.rules = (struct keymap_rules){
+        .xkb_rules = get_config_string(config, "xkb_rules"),
+        .xkb_model = get_config_string(config, "xkb_model"),
+        .xkb_layout = get_config_string(config, "xkb_layout"),
+        .xkb_variant = get_config_string(config, "xkb_variant"),
+        .xkb_options = get_config_string(config, "xkb_options"),
+    };
+    config_manager_sync();
+
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("ListAllInputs", "", "a(su)", list_inputs, 0),
@@ -695,6 +803,8 @@ static const sd_bus_vtable service_input_vtable[] = {
     SD_BUS_METHOD("EnableLeftHand", "sb", "", enable_left_handed, 0),
     SD_BUS_METHOD("GetRepeatInfo", "s", "iiii", get_repeat_info, 0),
     SD_BUS_METHOD("SetRepeatInfo", "sii", "", set_repeat_info, 0),
+    SD_BUS_METHOD("GetKeymap", "s", "sssss", get_keymap, 0),
+    SD_BUS_METHOD("SetKeymap", "ssssss", "", set_keymap, 0),
     SD_BUS_METHOD("GetScrollFactor", "s", "dd", get_scroll_factor, 0),
     SD_BUS_METHOD("SetScrollFactor", "sd", "", set_scroll_factor, 0),
     SD_BUS_METHOD("GetDoubleClickTime", "s", "uu", get_double_click_time, 0),
@@ -933,6 +1043,21 @@ bool input_read_config(struct input *input, struct input_state *state)
         }
         if (json_object_object_get_ex(config, "repeat_rate", &data)) {
             state->repeat_rate = json_object_get_int(data);
+        }
+        if (json_object_object_get_ex(config, "xkb_rules", &data)) {
+            state->rules.xkb_rules = json_object_get_string(data);
+        }
+        if (json_object_object_get_ex(config, "xkb_model", &data)) {
+            state->rules.xkb_model = json_object_get_string(data);
+        }
+        if (json_object_object_get_ex(config, "xkb_layout", &data)) {
+            state->rules.xkb_layout = json_object_get_string(data);
+        }
+        if (json_object_object_get_ex(config, "xkb_variant", &data)) {
+            state->rules.xkb_variant = json_object_get_string(data);
+        }
+        if (json_object_object_get_ex(config, "xkb_options", &data)) {
+            state->rules.xkb_options = json_object_get_string(data);
         }
     }
 
