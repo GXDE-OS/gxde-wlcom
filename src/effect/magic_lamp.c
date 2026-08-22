@@ -556,7 +556,7 @@ static bool node_render(struct effect_entity *entity, int lx, int ly,
         return true;
     }
 
-    if (!entry->thumbnail_texture && !wlr_texture_is_opengl(entry->thumbnail_texture)) {
+    if (!entry->thumbnail_texture || !wlr_texture_is_opengl(entry->thumbnail_texture)) {
         return true;
     }
 
@@ -670,6 +670,34 @@ static void subdivide_window_quad(struct magic_lamp_entry *entry)
     }
 }
 
+static void set_fallback_spout_geometry(struct magic_lamp_entry *entry,
+                                        const struct output *output)
+{
+    const float size = 48.f;
+
+    entry->spout_width = size;
+    entry->spout_height = size;
+
+    switch (entry->spout_location) {
+    case SPOUT_LOCATION_TOP:
+        entry->spout_x = output->geometry.x + (output->geometry.width - size) / 2.f;
+        entry->spout_y = output->usable_area.y - size;
+        break;
+    case SPOUT_LOCATION_LEFT:
+        entry->spout_x = output->usable_area.x - size;
+        entry->spout_y = output->geometry.y + (output->geometry.height - size) / 2.f;
+        break;
+    case SPOUT_LOCATION_RIGHT:
+        entry->spout_x = output->usable_area.x + output->usable_area.width;
+        entry->spout_y = output->geometry.y + (output->geometry.height - size) / 2.f;
+        break;
+    case SPOUT_LOCATION_BOTTOM:
+        entry->spout_x = output->geometry.x + (output->geometry.width - size) / 2.f;
+        entry->spout_y = output->usable_area.y + output->usable_area.height;
+        break;
+    }
+}
+
 bool view_add_magic_lamp_effect(struct view *view)
 {
     if (!magic_lamp_effect || !magic_lamp_effect->effect->enabled) {
@@ -682,10 +710,6 @@ bool view_add_magic_lamp_effect(struct view *view)
         if (gl_shader.program <= 0) {
             return false;
         }
-    }
-
-    if (!view->minimized_geometry.panel_surface) {
-        return false;
     }
 
     if (view->minimized_when_show_desktop) {
@@ -718,6 +742,7 @@ bool view_add_magic_lamp_effect(struct view *view)
 
     entity = ky_scene_node_add_effect(&view->tree->node, magic_lamp_effect->effect);
     if (!entity) {
+        thumbnail_destroy(thumbnail);
         return false;
     }
 
@@ -771,14 +796,20 @@ bool view_add_magic_lamp_effect(struct view *view)
     }
 
     // spout quad
-    int lx, ly;
-    struct ky_scene_buffer *buffer =
-        ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
-    ky_scene_node_coords(&buffer->node, &lx, &ly);
-    entry->spout_x = view->minimized_geometry.x + lx;
-    entry->spout_y = view->minimized_geometry.y + ly;
-    entry->spout_width = view->minimized_geometry.width;
-    entry->spout_height = view->minimized_geometry.height;
+    struct ky_scene_buffer *buffer = NULL;
+    if (view->minimized_geometry.panel_surface) {
+        buffer = ky_scene_buffer_try_from_surface(view->minimized_geometry.panel_surface);
+    }
+    if (buffer && view->minimized_geometry.width > 0 && view->minimized_geometry.height > 0) {
+        int lx, ly;
+        ky_scene_node_coords(&buffer->node, &lx, &ly);
+        entry->spout_x = view->minimized_geometry.x + lx;
+        entry->spout_y = view->minimized_geometry.y + ly;
+        entry->spout_width = view->minimized_geometry.width;
+        entry->spout_height = view->minimized_geometry.height;
+    } else {
+        set_fallback_spout_geometry(entry, output);
+    }
 
     // window quad
     entry->window_x = view->base.geometry.x - view->base.margin.off_x;
