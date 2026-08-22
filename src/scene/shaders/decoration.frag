@@ -7,7 +7,10 @@ precision mediump float;
 #endif
 
 uniform vec4 shadowRect; // pixel. left-top right-bottom
-uniform float shadowSigma;
+uniform float shadowSize;
+uniform float shadowCornerRadius;
+uniform float shadowOverlap;
+uniform vec2 shadowOffset;
 uniform vec4 shadowColor;
 
 uniform float borderAA; // out border anti-aliasing
@@ -24,22 +27,6 @@ uniform vec4 titleColor;
 varying vec2 uv; // 0~1
 varying vec2 pos; // pixel
 
-// This approximates the error function, needed for the gaussian integral
-vec4 erf(vec4 x) {
-    vec4 s = sign(x), a = abs(x);
-    x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
-    x *= x;
-    return s - s / (x * x);
-}
-
-// https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
-// Return the mask for the shadow of a box from lower to upper
-float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
-    vec4 query = vec4(point - lower, point - upper);
-    vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
-    return (integral.z - integral.x) * (integral.w - integral.y);
-}
-
 float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r) {
     r.xy = (p.x > 0.0) ? r.xy : r.zw;
     r.x  = (p.y > 0.0) ? r.x  : r.y;
@@ -47,8 +34,39 @@ float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
 }
 
+float chameleonShadow(vec2 point) {
+    if (shadowSize <= 0.1) {
+        return 0.0;
+    }
+
+    vec2 center = (shadowRect.xy + shadowRect.zw) * 0.5;
+    vec2 halfSize = (shadowRect.zw - shadowRect.xy) * 0.5;
+    vec2 local = point - center;
+    vec2 q = abs(local) - halfSize + shadowCornerRadius;
+    vec2 outward = max(q, 0.0);
+    float outwardLength = length(outward);
+    float distance = min(max(q.x, q.y), 0.0) + outwardLength - shadowCornerRadius;
+
+    // deepin-chameleon uses a ten-stop radial gradient whose alpha is
+    // 0.6 * exp(-x^2 / 0.15).  Account for the part of that gradient which
+    // overlaps the rounded window before evaluating the visible falloff.  Its
+    // offset trims the negative sides; it does not move the shadow rectangle.
+    // Start farther into the radial curve than the window radius alone.  If
+    // the curve starts at the 8 px corner radius, its near-constant high-alpha
+    // section becomes a solid horizontal bar below a wide window.
+    float overlap = max(shadowOverlap, 3.0) + shadowSize * 0.15;
+    vec2 direction = outwardLength > 0.001 ? outward / outwardLength : vec2(0.0);
+    vec2 directionalOffset = vec2(local.x < 0.0 ? shadowOffset.x : 0.0,
+                                  local.y < 0.0 ? shadowOffset.y : 0.0);
+    // Offset changes the directional weight, but must not translate the dense
+    // part of the shadow outside the window as a solid strip.
+    float offset = dot(direction, directionalOffset) * 0.5;
+    float x = (max(distance, 0.0) + overlap + offset) / shadowSize;
+    return 0.6 * exp(-(x * x) / 0.15);
+}
+
 void main() {
-    float shadow = boxShadow(shadowRect.xy, shadowRect.zw, pos, shadowSigma);
+    float shadow = chameleonShadow(pos);
 
     vec2 st = uv * 2.0;
     st.x *= aspect;

@@ -761,10 +761,16 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
     struct ky_scene_decoration *frame =
         ky_scene_decoration_from_node(ssd->parts[SSD_FRAME_RECT].node);
 
-    if (cause & SSD_UPDATE_CAUSE_ACTIVATE) {
-        float *c = view->activated ? theme->active_border_color : theme->inactive_border_color;
+    if (cause & (SSD_UPDATE_CAUSE_ACTIVATE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
+        const float *c =
+            view->activated ? theme->active_border_color : theme->inactive_border_color;
         if (ssd->border_override && ssd->border_width != -1) {
             c = ssd->border_color;
+        }
+
+        const float transparent[4] = { 0 };
+        if (view->maximized) {
+            c = transparent;
         }
         float border_color[4] = { c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3] };
         c = view->activated ? theme->active_shadow_color : theme->inactive_shadow_color;
@@ -806,6 +812,14 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         ky_scene_decoration_set_surface_size(frame, view->geometry.width, view->geometry.height);
     }
 
+    if (cause & (SSD_UPDATE_CAUSE_CREATE | SSD_UPDATE_CAUSE_TILE | SSD_UPDATE_CAUSE_MAXIMIZE)) {
+        bool rounded = !view->maximized && !view->tiled;
+        int bottom = rounded && view->has_round_corner ? theme->corner_radius : 0;
+        int top = rounded && (view->ssd & KYWC_SSD_TITLE || view->has_round_corner)
+            ? theme->corner_radius : 0;
+        ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
+    }
+
     if (cause & SSD_UPDATE_CAUSE_CREATE) {
         struct view *tmp = view_from_kywc_view(view);
         int border = view->ssd & KYWC_SSD_BORDER ? theme->border_width : 0;
@@ -813,8 +827,6 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
                         ? tmp->parent ? theme->subtitle_height : theme->title_height
                         : 0;
         int resize = view->ssd & KYWC_SSD_RESIZE ? RESIZE_BORDER : 0;
-        int bottom = view->has_round_corner ? theme->corner_radius : 0;
-        int top = (view->ssd & KYWC_SSD_TITLE || view->has_round_corner) ? theme->corner_radius : 0;
 
         int shadow_width = theme->shadow_border;
         int shadow_off_x = theme->shadow_offset_x;
@@ -833,7 +845,6 @@ static void ssd_update_frame(struct ssd *ssd, uint32_t cause)
         ky_scene_decoration_set_resize_width(frame, resize);
         ky_scene_decoration_set_margin(frame, title, border, shadow_width, shadow_off_x,
                                        shadow_off_y);
-        ky_scene_decoration_set_round_corner_radius(frame, (int[4]){ bottom, top, bottom, top });
 
         ky_scene_node_set_position(ssd->parts[SSD_FRAME_RECT].node, -border, -border - title);
     }

@@ -28,6 +28,43 @@
 static struct theme_manager *manager = NULL;
 static const char *fallback_icon_name = "fallback";
 
+static const float chameleon_light_border_color[4] = { 0.0, 0.0, 0.0, 0.20 };
+static const float chameleon_dark_border_color[4] = { 1.0, 1.0, 1.0, 0.20 };
+static const float chameleon_light_active_shadow_color[4] = { 0.0, 0.0, 0.0, 0.50 };
+static const float chameleon_dark_active_shadow_color[4] = { 0.0, 0.0, 0.0, 0.60 };
+static const float chameleon_inactive_shadow_color[4] = { 0.0, 0.0, 0.0, 0.25 };
+
+static bool set_frame_color(float dst[static 4], const float src[static 4]) {
+    if (!memcmp(dst, src, sizeof(float[4]))) {
+        return false;
+    }
+
+    memcpy(dst, src, sizeof(float[4]));
+    return true;
+}
+
+static uint32_t apply_chameleon_frame_colors(struct theme *theme, enum theme_type type) {
+    const float *border =
+        type == THEME_TYPE_DARK ? chameleon_dark_border_color : chameleon_light_border_color;
+    const float *active_shadow = type == THEME_TYPE_DARK ? chameleon_dark_active_shadow_color
+        : chameleon_light_active_shadow_color;
+    uint32_t mask = THEME_UPDATE_MASK_NONE;
+
+    bool border_changed = set_frame_color(theme->active_border_color, border);
+    border_changed |= set_frame_color(theme->inactive_border_color, border);
+    if (border_changed) {
+        mask |= THEME_UPDATE_MASK_BORDER_COLOR;
+    }
+    bool shadow_changed = set_frame_color(theme->active_shadow_color, active_shadow);
+    shadow_changed |=
+        set_frame_color(theme->inactive_shadow_color, chameleon_inactive_shadow_color);
+    if (shadow_changed) {
+        mask |= THEME_UPDATE_MASK_SHADOW_COLOR;
+    }
+
+    return mask;
+}
+
 /* fallback light widget theme from DDE 15 theme */
 static struct widget_theme widget_light = {
     .name = FALLBACK_THEME_NAME,
@@ -116,15 +153,7 @@ static uint32_t theme_init(struct widget_theme *widget)
         mask |= THEME_UPDATE_MASK_TYPE;
     }
 
-    /* copy color from widget */
-    if (memcmp(theme->active_border_color, widget->active_border_color, sizeof(float[4]))) {
-        memcpy(theme->active_border_color, widget->active_border_color, sizeof(float[4]));
-        mask |= THEME_UPDATE_MASK_BORDER_COLOR;
-    }
-    if (memcmp(theme->inactive_border_color, widget->inactive_border_color, sizeof(float[4]))) {
-        memcpy(theme->inactive_border_color, widget->inactive_border_color, sizeof(float[4]));
-        mask |= THEME_UPDATE_MASK_BORDER_COLOR;
-    }
+    mask |= apply_chameleon_frame_colors(theme, widget->type);
 
     if (memcmp(theme->active_bg_color, widget->active_bg_color, sizeof(float[4]))) {
         memcpy(theme->active_bg_color, widget->active_bg_color, sizeof(float[4]));
@@ -142,15 +171,6 @@ static uint32_t theme_init(struct widget_theme *widget)
     if (memcmp(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]))) {
         memcpy(theme->inactive_text_color, widget->inactive_text_color, sizeof(float[4]));
         mask |= THEME_UPDATE_MASK_FONT;
-    }
-
-    if (memcmp(theme->active_shadow_color, widget->active_shadow_color, sizeof(float[4]))) {
-        memcpy(theme->active_shadow_color, widget->active_shadow_color, sizeof(float[4]));
-        mask |= THEME_UPDATE_MASK_SHADOW_COLOR;
-    }
-    if (memcmp(theme->inactive_shadow_color, widget->inactive_shadow_color, sizeof(float[4]))) {
-        memcpy(theme->inactive_shadow_color, widget->inactive_shadow_color, sizeof(float[4]));
-        mask |= THEME_UPDATE_MASK_SHADOW_COLOR;
     }
 
     if (memcmp(theme->modal_mask_color, widget->modal_mask_color, sizeof(float[4]))) {
@@ -195,7 +215,7 @@ static uint32_t theme_init(struct widget_theme *widget)
     /* Patch: 对齐chameleon「云璃」的外观 - 深色窗体使用更大的窗体阴影 */
     theme->shadow_border = theme->type == THEME_TYPE_DARK ? 80 : 40;
     theme->shadow_offset_x = 0;
-    theme->shadow_offset_y = 30;
+    theme->shadow_offset_y = 20;
     theme->normal_radius = 8;
 
     struct theme_buffer *buffer, *tmp;

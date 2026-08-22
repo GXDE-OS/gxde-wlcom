@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
-#include <float.h>
 #include <stdlib.h>
 
 #include "decoration_frag.h"
@@ -88,7 +87,10 @@ struct gl_shader_location {
     GLint inverse_transform;
     // fs
     GLint shadow_rect;
-    GLint shadow_sigma;
+    GLint shadow_size;
+    GLint shadow_corner_radius;
+    GLint shadow_overlap;
+    GLint shadow_offset;
     GLint shadow_color;
     GLint border_aa;
     GLint aspect;
@@ -112,7 +114,10 @@ static int scene_decoration_create_opengl_shader(struct ky_opengl_renderer *rend
     gl_locations.uv2ndc = glGetUniformLocation(prog, "uv2ndc");
     gl_locations.inverse_transform = glGetUniformLocation(prog, "inverseTransform");
     gl_locations.size = glGetUniformLocation(prog, "size");
-    gl_locations.shadow_sigma = glGetUniformLocation(prog, "shadowSigma");
+    gl_locations.shadow_size = glGetUniformLocation(prog, "shadowSize");
+    gl_locations.shadow_corner_radius = glGetUniformLocation(prog, "shadowCornerRadius");
+    gl_locations.shadow_overlap = glGetUniformLocation(prog, "shadowOverlap");
+    gl_locations.shadow_offset = glGetUniformLocation(prog, "shadowOffset");
     gl_locations.shadow_rect = glGetUniformLocation(prog, "shadowRect");
     gl_locations.shadow_color = glGetUniformLocation(prog, "shadowColor");
     gl_locations.border_aa = glGetUniformLocation(prog, "borderAA");
@@ -138,8 +143,10 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         .height = deco->render_box.height,
     };
 
-    int offset_x = deco->shadow_width - deco->shadow_offset_x;
-    int offset_y = deco->shadow_width - deco->shadow_offset_y;
+    int left = -deco->shadow_box.x;
+    int top = -deco->shadow_box.y;
+    int right = deco->shadow_box.x + deco->shadow_box.width - deco->rect.width;
+    int bottom = deco->shadow_box.y + deco->shadow_box.height - deco->rect.height;
 
     bool left_shadow_mask = deco->shadow_mask & SHADOW_MASK_LEFT;
     bool right_shadow_mask = deco->shadow_mask & SHADOW_MASK_RIGHT;
@@ -147,13 +154,13 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->x = box.x;
         region->width = box.width;
     } else if (!left_shadow_mask && right_shadow_mask) {
-        region->x = box.x + offset_x;
-        region->width = box.width - offset_x;
+        region->x = box.x + left;
+        region->width = deco->rect.width + right;
     } else if (left_shadow_mask && !right_shadow_mask) {
         region->x = box.x;
-        region->width = deco->rect.width + offset_x;
+        region->width = left + deco->rect.width;
     } else {
-        region->x = box.x + offset_x;
+        region->x = box.x + left;
         region->width = deco->rect.width;
     }
     bool top_shadow_mask = deco->shadow_mask & SHADOW_MASK_TOP;
@@ -162,13 +169,13 @@ static void get_render_region_with_shadow_mask(struct ky_scene_decoration *deco,
         region->y = box.y;
         region->height = box.height;
     } else if (!top_shadow_mask && bottom_shadow_mask) {
-        region->y = box.y + offset_y;
-        region->height = box.height - offset_y;
+        region->y = box.y + top;
+        region->height = deco->rect.height + bottom;
     } else if (top_shadow_mask && !bottom_shadow_mask) {
         region->y = box.y;
-        region->height = deco->rect.height + offset_y;
+        region->height = top + deco->rect.height;
     } else {
-        region->y = box.y + offset_y;
+        region->y = box.y + top;
         region->height = deco->rect.height;
     }
 
@@ -322,13 +329,6 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     struct wlr_box window_box = { 0 };
     get_window_box_from_surface_box(deco, target, border_thickness, title_height, box, &surface_box,
                                     &window_box);
-    struct wlr_box shadow_window_box = {
-        .x = window_box.x + shadow_offset_x,
-        .y = window_box.y + shadow_offset_y,
-        .width = window_box.width,
-        .height = window_box.height,
-    };
-
     struct kywc_box dst_box = {
         .x = box->x,
         .y = box->y,
@@ -353,12 +353,24 @@ static void scene_decoration_opengl_render(struct ky_scene_decoration *deco, int
     glUniformMatrix3fv(gl_locations.inverse_transform, 1, GL_FALSE, inverseTransform.matrix);
     glUniform2f(gl_locations.size, width, height);
     // frag shader param
-    // blur with to gaussian sigma. scale = 1.0 / (2.0 * sqrt(2.0 * log(2.0))) = 0.424660891
-    glUniform1f(gl_locations.shadow_sigma,
-                shadow_width > 0.1f ? shadow_width * 0.424660891f : FLT_MAX);
-    glUniform4f(gl_locations.shadow_rect, shadow_window_box.x, shadow_window_box.y,
-                shadow_window_box.x + shadow_window_box.width,
-                shadow_window_box.y + shadow_window_box.height);
+    float shadow_corner_radius = 0.0f;
+    for (size_t i = 0; i < 4; i++) {
+        if (round_corner_radius[i] > shadow_corner_radius) {
+            shadow_corner_radius = round_corner_radius[i];
+        }
+    }
+    shadow_corner_radius -= border_thickness;
+    if (shadow_corner_radius < 0.0f) {
+        shadow_corner_radius = 0.0f;
+    }
+    /* Chameleon adds both window radii to its radial-gradient image. */
+    float shadow_size = shadow_width > 0.1f ? shadow_width + 2.0f * shadow_corner_radius : 0.0f;
+    glUniform1f(gl_locations.shadow_size, shadow_size);
+    glUniform1f(gl_locations.shadow_corner_radius, shadow_corner_radius + 4.0f * scale);
+    glUniform1f(gl_locations.shadow_overlap, shadow_corner_radius);
+    glUniform2f(gl_locations.shadow_offset, shadow_offset_x, shadow_offset_y);
+    glUniform4f(gl_locations.shadow_rect, window_box.x, window_box.y,
+                window_box.x + window_box.width, window_box.y + window_box.height);
     glUniform4fv(gl_locations.shadow_color, 1, deco->shadow_color);
     // 1 pixel border thickness keep 1 pixel less soft aa
     float one_pixel_distance = 1.0 / half_height;
@@ -489,9 +501,12 @@ static void scene_decoration_update(struct ky_scene_decoration *deco, uint32_t c
     if (pending_cause & (DECO_UPDATE_CAUSE_SURFACE_SIZE | DECO_UPDATE_CAUSE_MARGIN)) {
         int border2 = 2 * border;
         struct kywc_box window = { 0, 0, width + border2, title + height + border2 };
-        int shadow2 = 2 * shadow;
-        deco->shadow_box = kywc_box_adjusted(&window, -shadow + deco->shadow_offset_x,
-                                             -shadow + deco->shadow_offset_y, shadow2, shadow2);
+        int left = shadow > 0 ? MAX(0, shadow - deco->shadow_offset_x) : 0;
+        int top = shadow > 0 ? MAX(0, shadow - deco->shadow_offset_y) : 0;
+        int right = shadow;
+        int bottom = shadow;
+        deco->shadow_box = (struct kywc_box){ -left, -top, window.width + left + right,
+                                              window.height + top + bottom };
         // render box = window box + shadow box
         int x_min = MIN(window.x, deco->shadow_box.x);
         int y_min = MIN(window.y, deco->shadow_box.y);
