@@ -1,3 +1,10 @@
+gxde-wlcom (2.2.5-gxde1) lizhi; urgency=high
+
+  * 新增Magic Lamp最小化效果
+  * 通过D-Bus暴露目前顶层非LayerShell表面窗口
+
+ -- CharOfString <root@charofstring.cc>  Sat, 22 Aug 2026 23:30:11 +0800
+
 gxde-wlcom (2.2.4-gxde1) lizhi; urgency=high
 
   * 尝试修复Wayland前端输入法警告的问题
