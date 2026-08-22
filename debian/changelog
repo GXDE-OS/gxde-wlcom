@@ -1,3 +1,10 @@
+gxde-wlcom (2.2.4-gxde1) lizhi; urgency=high
+
+  * 尝试修复Wayland前端输入法警告的问题
+  * 修复了Treeland截图协议实现截图劣质的问题
+
+ -- CharOfString <root@charofstring.cc>  Sat, 22 Aug 2026 16:15:02 +0800
+
 gxde-wlcom (2.2.3-gxde2) lizhi; urgency=medium
 
   * 修复了一些输入法问题
