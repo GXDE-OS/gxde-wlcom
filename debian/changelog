@@ -1,3 +1,9 @@
+gxde-wlcom (2.3.0-gxde1) lizhi; urgency=high
+
+  * 使多任务的外观更贴近原版GXDE KWin
+
+ -- CharOfString <root@charofstring.cc>  Sun, 23 Aug 2026 02:42:11 +0800
+
 gxde-wlcom (2.2.6-gxde1) lizhi; urgency=high
 
   * 使窗口阴影与边框的外观更贴近原版GXDE KWin
