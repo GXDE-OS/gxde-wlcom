@@ -31,6 +31,11 @@ bool dbus_call_system_method(const char *service, const char *path, const char *
 bool dbus_call_method_str(const char *service, const char *path, const char *interface,
                           const char *method, const char *arg);
 
+/* Fire-and-forget call of a method that takes three string arguments. */
+bool dbus_call_method_str3(const char *service, const char *path, const char *interface,
+                           const char *method, const char *arg1, const char *arg2,
+                           const char *arg3);
+
 bool dbus_update_activation_environment(const char *name, const char *value);
 
 void dbus_notify(const char *name, const char *summary, const char *body, const char *icon);

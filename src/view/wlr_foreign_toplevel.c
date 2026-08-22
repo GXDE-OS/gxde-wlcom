@@ -92,7 +92,7 @@ static void handle_request_close(struct wl_listener *listener, void *data)
 
 static void handle_set_rectangle(struct wl_listener *listener, void *data)
 {
-    struct wlr_foreign *foreign = wl_container_of(listener, foreign, request_close);
+    struct wlr_foreign *foreign = wl_container_of(listener, foreign, set_rectangle);
     struct wlr_foreign_toplevel_handle_v1_set_rectangle_event *event = data;
 
     kywc_log(KYWC_DEBUG, "set surface %p rectangle (%d, %d), %d x %d", event->surface, event->x,
@@ -246,6 +246,8 @@ static void handle_new_mapped_view(struct wl_listener *listener, void *data)
     wl_signal_add(&view->events.unmap, &foreign->view_unmap);
 
     if (!foreign_toplevel_create(foreign)) {
+        wl_list_remove(&foreign->view_unmap.link);
+        free(foreign);
         return;
     }
 

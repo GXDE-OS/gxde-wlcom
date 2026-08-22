@@ -24,6 +24,7 @@ wlcom_sources += files(
 
 wlcom_sources += files(
   'ky_toplevel.c',
+  'dbus_toplevel.c',
   'ky_workspace.c',
 )
 

@@ -180,6 +180,8 @@ bool ky_workspace_manager_create(struct server *server);
 
 bool ky_toplevel_manager_create(struct server *server);
 
+bool dbus_toplevel_manager_create(struct server *server);
+
 bool xdg_dialog_create(struct server *server);
 
 bool xdg_activation_create(struct server *server);

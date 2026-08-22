@@ -2293,6 +2293,7 @@ struct view_manager *view_manager_create(struct server *server)
     }
     wlr_foreign_toplevel_manager_create(server);
     ky_toplevel_manager_create(server);
+    dbus_toplevel_manager_create(server);
     kde_plasma_shell_create(server);
     kde_plasma_window_management_create(server);
     kde_appmenu_manager_create(server);
