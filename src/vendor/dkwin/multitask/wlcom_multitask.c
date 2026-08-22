@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <cairo.h>
 #include <drm_fourcc.h>
@@ -56,6 +57,12 @@
 #define WORKSPACE_CONTENT_INSET 1
 #define WORKSPACE_FRAME_WIDTH 1.0f
 #define WORKSPACE_HIGHLIGHT_WIDTH 3.0f
+#define ANIMATION_DURATION 300
+#define ANIMATION_TICK_MS 10
+
+struct animated_box {
+    double x, y, width, height;
+};
 
 enum hover_control {
     CONTROL_NONE,
@@ -77,6 +84,11 @@ struct multitask_item {
     struct ky_scene_buffer *close_button;
     struct ky_scene_buffer *top_button;
     struct kywc_box geometry;
+    struct animated_box original;
+    struct animated_box target;
+    struct animated_box from;
+    struct animated_box to;
+    struct animated_box current;
     struct kywc_box close_geometry;
     struct kywc_box top_geometry;
     struct wl_listener thumbnail_update;
@@ -119,6 +131,17 @@ struct multitask_view {
     double press_x, press_y;
     bool dragging;
     bool enabled;
+    bool closing;
+    bool animating;
+    bool dropping;
+
+    struct view *pending_drop_view;
+    struct workspace *pending_drop_workspace;
+
+    struct wl_event_source *animation_timer;
+    uint64_t animation_started_at;
+    double workspace_opacity;
+    double workspace_opacity_from;
 
     struct ky_scene_buffer *add_button;
     struct kywc_box add_geometry;
@@ -138,6 +161,38 @@ struct multitask_view {
 static struct multitask_view *overview;
 
 static void multitask_view_set_enabled(bool enabled);
+static void teardown_overview(void);
+static void finish_drop_animation(void);
+
+static double clamp01(double value)
+{
+    return value < 0.0 ? 0.0 : (value > 1.0 ? 1.0 : value);
+}
+
+/* QEasingCurve::OutQuint, as used by gxde-kwin's multitask timelines. */
+static double out_quint(double progress)
+{
+    double remaining = 1.0 - clamp01(progress);
+    return 1.0 - remaining * remaining * remaining * remaining * remaining;
+}
+
+static uint64_t monotonic_msec(void)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (uint64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
+static struct animated_box lerp_box(const struct animated_box *from,
+                                    const struct animated_box *to, double progress)
+{
+    return (struct animated_box){
+        .x = from->x + (to->x - from->x) * progress,
+        .y = from->y + (to->y - from->y) * progress,
+        .width = from->width + (to->width - from->width) * progress,
+        .height = from->height + (to->height - from->height) * progress,
+    };
+}
 
 static void asset_path(char *path, size_t size, const char *name)
 {
@@ -441,6 +496,41 @@ static bool point_in_box(double x, double y, const struct kywc_box *box)
     return x >= box->x && y >= box->y && x < box->x + box->width && y < box->y + box->height;
 }
 
+static void apply_window_animation(struct multitask_item *item)
+{
+    int x = lround(item->current.x);
+    int y = lround(item->current.y);
+    int width = fmax(WINDOW_BORDER_WIDTH * 2 + 1, lround(item->current.width));
+    int height = fmax(WINDOW_BORDER_WIDTH * 2 + 1, lround(item->current.height));
+    int content_width = width - WINDOW_BORDER_WIDTH * 2;
+    int content_height = height - WINDOW_BORDER_WIDTH * 2;
+
+    ky_scene_node_set_position(&item->tree->node, x, y);
+    ky_scene_rect_set_size(item->highlight, width, height);
+    ky_scene_buffer_set_dest_size(item->buffer, content_width, content_height);
+    ky_scene_node_set_position(&item->close_button->node,
+                               content_width - 25 + WINDOW_BORDER_WIDTH,
+                               -17 + WINDOW_BORDER_WIDTH);
+    ky_scene_node_set_position(&item->top_button->node,
+                               -22 + WINDOW_BORDER_WIDTH,
+                               -17 + WINDOW_BORDER_WIDTH);
+}
+
+static void set_workspace_opacity(double opacity)
+{
+    float value = (float)clamp01(opacity);
+    overview->workspace_opacity = value;
+    for (size_t i = 0; i < overview->workspace_count; i++) {
+        struct workspace_item *item = &overview->workspaces[i];
+        ky_scene_buffer_set_opacity(item->wallpaper, value);
+        ky_scene_buffer_set_opacity(item->buffer, value);
+        ky_scene_buffer_set_opacity(item->frame, value);
+    }
+    if (overview->add_button) {
+        ky_scene_buffer_set_opacity(overview->add_button, value);
+    }
+}
+
 static void set_item_hover(int index)
 {
     if (overview->hovered_item == index) {
@@ -531,8 +621,8 @@ static void handle_thumbnail_update(struct wl_listener *listener, void *data)
         ky_scene_node_push_damage(&item->buffer->node, KY_SCENE_DAMAGE_HARMLESS, NULL);
     }
     ky_scene_buffer_set_dest_size(item->buffer,
-        item->geometry.width - WINDOW_BORDER_WIDTH * 2,
-        item->geometry.height - WINDOW_BORDER_WIDTH * 2);
+        lround(item->current.width) - WINDOW_BORDER_WIDTH * 2,
+        lround(item->current.height) - WINDOW_BORDER_WIDTH * 2);
     if (item->view->tree->node.enabled) {
         ky_scene_node_set_enabled(&item->view->tree->node, false);
     }
@@ -548,7 +638,9 @@ static void handle_thumbnail_destroy(struct wl_listener *listener, void *data)
 
 static void handle_item_view_destroy(struct wl_listener *listener, void *data)
 {
-    multitask_view_set_enabled(false);
+    /* The animation keeps view pointers until it completes. A destroyed view
+     * cannot participate in a flying-back animation, so tear down at once. */
+    teardown_overview();
 }
 
 static void handle_workspace_thumbnail_update(struct wl_listener *listener, void *data)
@@ -608,6 +700,144 @@ static void destroy_contents(void)
         ky_scene_node_destroy(&overview->add_button->node);
         overview->add_button = NULL;
     }
+}
+
+static void teardown_overview(void)
+{
+    if (!overview) {
+        return;
+    }
+    if (overview->animation_timer) {
+        wl_event_source_timer_update(overview->animation_timer, 0);
+    }
+    struct seat *seat = input_manager_get_default_seat();
+    seat_end_pointer_grab(seat, &overview->pointer_grab);
+    seat_end_keyboard_grab(seat, &overview->keyboard_grab);
+    seat_end_touch_grab(seat, &overview->touch_grab);
+    cursor_lock_image(seat->cursor, false);
+    cursor_rebase(seat->cursor);
+
+    ky_scene_node_set_enabled(&overview->tree->node, false);
+    destroy_contents();
+    ky_scene_buffer_set_buffer(overview->desktop_wallpaper, NULL);
+    if (overview->wallpaper_buffer) {
+        wlr_buffer_drop(overview->wallpaper_buffer);
+        overview->wallpaper_buffer = NULL;
+    }
+    if (overview->output) {
+        output_schedule_frame(overview->output->wlr_output);
+    }
+    overview->output = NULL;
+    overview->enabled = false;
+    overview->closing = false;
+    overview->animating = false;
+    overview->dropping = false;
+    overview->pending_drop_view = NULL;
+    overview->pending_drop_workspace = NULL;
+}
+
+static void start_overview_animation(bool closing)
+{
+    overview->closing = closing;
+    overview->dropping = false;
+    overview->animating = true;
+    overview->animation_started_at = monotonic_msec();
+    overview->workspace_opacity_from = overview->workspace_opacity;
+
+    set_item_hover(-1);
+    for (size_t i = 0; i < overview->item_count; i++) {
+        struct multitask_item *item = overview->items[i];
+        item->from = item->current;
+        item->to = closing ? item->original : item->target;
+    }
+    wl_event_source_timer_update(overview->animation_timer, ANIMATION_TICK_MS);
+    if (overview->output) {
+        output_schedule_frame(overview->output->wlr_output);
+    }
+}
+
+static void start_drop_animation(struct multitask_item *dropped,
+                                 struct workspace_item *destination)
+{
+    overview->closing = false;
+    overview->dropping = true;
+    overview->animating = true;
+    overview->animation_started_at = monotonic_msec();
+    overview->workspace_opacity_from = overview->workspace_opacity;
+    overview->pending_drop_view = dropped->view;
+    overview->pending_drop_workspace = destination->workspace;
+
+    set_item_hover(-1);
+    if (overview->hovered_workspace >= 0) {
+        ky_scene_node_set_enabled(
+            &overview->workspaces[overview->hovered_workspace].close_button->node, false);
+    }
+    for (size_t i = 0; i < overview->item_count; i++) {
+        struct multitask_item *item = overview->items[i];
+        item->from = item->to = item->current;
+    }
+
+    const struct kywc_box *output = &overview->output->geometry;
+    const struct kywc_box *geometry = &dropped->view->base.geometry;
+    double scale_x = (double)destination->thumbnail_width / output->width;
+    double scale_y = (double)destination->thumbnail_height / output->height;
+    dropped->to = (struct animated_box){
+        .x = destination->geometry.x + WORKSPACE_CONTENT_INSET +
+             (geometry->x - output->x) * scale_x - WINDOW_BORDER_WIDTH,
+        .y = destination->geometry.y + WORKSPACE_CONTENT_INSET +
+             (geometry->y - output->y) * scale_y - WINDOW_BORDER_WIDTH,
+        .width = geometry->width * scale_x + WINDOW_BORDER_WIDTH * 2,
+        .height = geometry->height * scale_y + WINDOW_BORDER_WIDTH * 2,
+    };
+    ky_scene_node_raise_to_top(&dropped->tree->node);
+    wl_event_source_timer_update(overview->animation_timer, ANIMATION_TICK_MS);
+    output_schedule_frame(overview->output->wlr_output);
+}
+
+static int animation_tick(void *data)
+{
+    struct multitask_view *view = data;
+    if (!view->animating || !view->output) {
+        return 0;
+    }
+
+    double progress = (double)(monotonic_msec() - view->animation_started_at) /
+                      ANIMATION_DURATION;
+    double eased = out_quint(progress);
+    for (size_t i = 0; i < view->item_count; i++) {
+        struct multitask_item *item = view->items[i];
+        item->current = lerp_box(&item->from, &item->to, eased);
+        apply_window_animation(item);
+    }
+
+    if (!view->closing) {
+        double opacity = view->workspace_opacity_from +
+                         (1.0 - view->workspace_opacity_from) * eased;
+        set_workspace_opacity(opacity);
+        ky_scene_rect_set_color(view->backdrop,
+                                (float[4]){ 0.0f, 0.0f, 0.0f,
+                                            (float)((1.0f - BRIGHTNESS) * opacity) });
+    }
+
+    if (progress >= 1.0) {
+        view->animating = false;
+        if (view->closing) {
+            teardown_overview();
+            return 0;
+        }
+        if (view->dropping) {
+            finish_drop_animation();
+            return 0;
+        }
+        set_workspace_opacity(1.0);
+        ky_scene_rect_set_color(view->backdrop,
+                                (float[4]){ 0.0f, 0.0f, 0.0f, 1.0f - BRIGHTNESS });
+        wl_event_source_timer_update(view->animation_timer, 0);
+    } else {
+        wl_event_source_timer_update(view->animation_timer, ANIMATION_TICK_MS);
+    }
+    output_schedule_frame(view->output->wlr_output);
+    return 0;
 }
 
 /* a view belongs to the overview when its geometry intersects the overview
@@ -857,6 +1087,16 @@ static bool create_window_items(const struct kywc_box *area, int workspace_bar_h
                 target_width + WINDOW_BORDER_WIDTH * 2,
                 target_height + WINDOW_BORDER_WIDTH * 2
             };
+        item->target = (struct animated_box){
+            item->geometry.x, item->geometry.y, item->geometry.width, item->geometry.height
+        };
+        item->original = (struct animated_box){
+            view->base.geometry.x - overview->output->geometry.x - WINDOW_BORDER_WIDTH,
+            view->base.geometry.y - overview->output->geometry.y - WINDOW_BORDER_WIDTH,
+            view->base.geometry.width + WINDOW_BORDER_WIDTH * 2,
+            view->base.geometry.height + WINDOW_BORDER_WIDTH * 2,
+        };
+        item->from = item->to = item->current = item->original;
         item->tree = ky_scene_tree_create(overview->tree);
         ky_scene_node_set_position(&item->tree->node, target_x - WINDOW_BORDER_WIDTH,
             target_y - WINDOW_BORDER_WIDTH);
@@ -886,6 +1126,7 @@ static bool create_window_items(const struct kywc_box *area, int workspace_bar_h
             -17 + WINDOW_BORDER_WIDTH);
         ky_scene_buffer_set_dest_size(item->top_button, 48, 48);
         ky_scene_node_set_enabled(&item->top_button->node, false);
+        apply_window_animation(item);
 
         item->thumbnail = thumbnail_create_from_view(view, THUMBNAIL_DISABLE_SHADOW, 1.0f);
         if (!item->thumbnail) {
@@ -943,13 +1184,72 @@ static bool show_overview(void)
     overview->pressed_item = -1;
     overview->pressed_workspace = -1;
     overview->hovered_control = overview->pressed_control = CONTROL_NONE;
+    set_workspace_opacity(0.0);
+    ky_scene_rect_set_color(overview->backdrop,
+                            (float[4]){ 0.0f, 0.0f, 0.0f, 0.0f });
     ky_scene_node_set_enabled(&overview->tree->node, true);
     output_schedule_frame(overview->output->wlr_output);
     return true;
 }
 
+static void finish_drop_animation(void)
+{
+    struct view *dropped = overview->pending_drop_view;
+    struct workspace *destination = overview->pending_drop_workspace;
+    size_t old_count = overview->item_count;
+    struct view **views = calloc(old_count, sizeof(*views));
+    struct animated_box *positions = calloc(old_count, sizeof(*positions));
+    size_t saved = 0;
+
+    if (views && positions) {
+        for (size_t i = 0; i < old_count; i++) {
+            struct multitask_item *item = overview->items[i];
+            if (item->view == dropped) {
+                continue;
+            }
+            views[saved] = item->view;
+            positions[saved++] = item->current;
+        }
+    }
+
+    overview->dropping = false;
+    overview->pending_drop_view = NULL;
+    overview->pending_drop_workspace = NULL;
+    destroy_contents();
+    view_set_workspace(dropped, destination);
+    if (!show_overview()) {
+        free(views);
+        free(positions);
+        teardown_overview();
+        return;
+    }
+
+    if (views && positions) {
+        for (size_t i = 0; i < overview->item_count; i++) {
+            struct multitask_item *item = overview->items[i];
+            for (size_t j = 0; j < saved; j++) {
+                if (item->view == views[j]) {
+                    item->current = positions[j];
+                    apply_window_animation(item);
+                    break;
+                }
+            }
+        }
+    }
+    free(views);
+    free(positions);
+
+    set_workspace_opacity(1.0);
+    ky_scene_rect_set_color(overview->backdrop,
+                            (float[4]){ 0.0f, 0.0f, 0.0f, 1.0f - BRIGHTNESS });
+    start_overview_animation(false);
+}
+
 static bool pointer_motion(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly)
 {
+    if (overview->animating) {
+        return true;
+    }
     double local_x = lx - overview->output->geometry.x;
     double local_y = ly - overview->output->geometry.y;
     update_hover(local_x, local_y);
@@ -961,8 +1261,9 @@ static bool pointer_motion(struct seat_pointer_grab *grab, uint32_t time, double
         }
         if (overview->dragging) {
             struct multitask_item *item = overview->items[overview->pressed_item];
-            ky_scene_node_set_position(&item->tree->node, local_x - item->geometry.width / 2,
-                                       local_y - item->geometry.height / 2);
+            item->current.x = local_x - item->current.width / 2.0;
+            item->current.y = local_y - item->current.height / 2.0;
+            apply_window_animation(item);
             ky_scene_node_raise_to_top(&item->tree->node);
             output_schedule_frame(overview->output->wlr_output);
         }
@@ -990,7 +1291,7 @@ static bool pointer_motion(struct seat_pointer_grab *grab, uint32_t time, double
 static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32_t button,
                            bool pressed)
 {
-    if (button != BTN_LEFT) {
+    if (button != BTN_LEFT || overview->animating) {
         return true;
     }
     if (pressed) {
@@ -1009,7 +1310,7 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
     if (overview->pressed_control == CONTROL_WINDOW_CLOSE && overview->pressed_item >= 0 &&
         overview->hovered_control == CONTROL_WINDOW_CLOSE) {
         struct view *view = overview->items[overview->pressed_item]->view;
-        multitask_view_set_enabled(false);
+        teardown_overview();
         kywc_view_close(&view->base);
     } else if (overview->pressed_control == CONTROL_WINDOW_TOP && overview->pressed_item >= 0 &&
                overview->hovered_control == CONTROL_WINDOW_TOP) {
@@ -1022,14 +1323,14 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
     } else if (overview->pressed_control == CONTROL_ADD_WORKSPACE &&
                overview->hovered_control == CONTROL_ADD_WORKSPACE &&
                workspace_manager_get_count() < MAX_DESKTOP_COUNT) {
-        multitask_view_set_enabled(false);
+        teardown_overview();
         workspace_create(NULL, workspace_manager_get_count());
         multitask_view_set_enabled(true);
     } else if (overview->pressed_control == CONTROL_WORKSPACE_CLOSE &&
                overview->hovered_control == CONTROL_WORKSPACE_CLOSE &&
                overview->hovered_workspace >= 0 && workspace_manager_get_count() > 1) {
         struct workspace *workspace = overview->workspaces[overview->hovered_workspace].workspace;
-        multitask_view_set_enabled(false);
+        teardown_overview();
         workspace_destroy(workspace);
         multitask_view_set_enabled(true);
     } else if (overview->dragging && overview->pressed_workspace >= 0 &&
@@ -1041,14 +1342,18 @@ static bool pointer_button(struct seat_pointer_grab *grab, uint32_t time, uint32
         if (destination >= 0) {
             workspace_set_position(workspace, destination);
         }
-        show_overview();
+        if (show_overview()) {
+            start_overview_animation(false);
+        }
     } else if (overview->dragging && overview->pressed_item >= 0 &&
                overview->hovered_workspace >= 0) {
-        struct view *view = overview->items[overview->pressed_item]->view;
-        struct workspace *workspace = overview->workspaces[overview->hovered_workspace].workspace;
-        destroy_contents();
-        view_set_workspace(view, workspace);
-        show_overview();
+        struct multitask_item *item = overview->items[overview->pressed_item];
+        struct workspace_item *workspace = &overview->workspaces[overview->hovered_workspace];
+        if (workspace->workspace == workspace_manager_get_current()) {
+            start_overview_animation(false);
+        } else {
+            start_drop_animation(item, workspace);
+        }
     } else if (!overview->dragging && overview->pressed_item >= 0) {
         struct view *view = overview->items[overview->pressed_item]->view;
         kywc_view_activate(&view->base);
@@ -1088,6 +1393,9 @@ static const struct seat_pointer_grab_interface pointer_impl = {
 static bool keyboard_key(struct seat_keyboard_grab *grab, struct keyboard *keyboard, uint32_t time,
                          uint32_t key, bool pressed, uint32_t modifiers)
 {
+    if (overview->closing) {
+        return true;
+    }
     if (pressed && (key == KEY_ESC || key == KEY_S || key == KEY_TAB)) {
         multitask_view_set_enabled(false);
     }
@@ -1127,38 +1435,36 @@ static const struct seat_touch_grab_interface touch_impl = {
 
 static void multitask_view_set_enabled(bool enabled)
 {
-    if (!overview || overview->enabled == enabled) {
+    if (!overview) {
         return;
     }
     struct seat *seat = input_manager_get_default_seat();
-    overview->enabled = enabled;
     if (enabled) {
-        if (!show_overview()) {
-            overview->enabled = false;
+        if (overview->enabled && !overview->closing) {
             return;
         }
+        if (overview->closing) {
+            overview->enabled = true;
+            start_overview_animation(false);
+            return;
+        }
+        if (!show_overview()) {
+            teardown_overview();
+            return;
+        }
+        overview->enabled = true;
         cursor_set_image(seat->cursor, CURSOR_DEFAULT);
         cursor_lock_image(seat->cursor, true);
         seat_start_pointer_grab(seat, &overview->pointer_grab);
         seat_start_keyboard_grab(seat, &overview->keyboard_grab);
         seat_start_touch_grab(seat, &overview->touch_grab);
+        start_overview_animation(false);
     } else {
-        seat_end_pointer_grab(seat, &overview->pointer_grab);
-        seat_end_keyboard_grab(seat, &overview->keyboard_grab);
-        seat_end_touch_grab(seat, &overview->touch_grab);
-        cursor_lock_image(seat->cursor, false);
-        cursor_rebase(seat->cursor);
-        ky_scene_node_set_enabled(&overview->tree->node, false);
-        destroy_contents();
-        ky_scene_buffer_set_buffer(overview->desktop_wallpaper, NULL);
-        if (overview->wallpaper_buffer) {
-            wlr_buffer_drop(overview->wallpaper_buffer);
-            overview->wallpaper_buffer = NULL;
+        if (!overview->enabled || overview->closing) {
+            return;
         }
-        if (overview->output) {
-            output_schedule_frame(overview->output->wlr_output);
-        }
-        overview->output = NULL;
+        overview->enabled = false;
+        start_overview_animation(true);
     }
 }
 
@@ -1179,10 +1485,11 @@ bool multitask_view_toggle(void)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
-    if (overview->enabled) {
-        multitask_view_set_enabled(false);
+    if (overview->enabled || overview->closing || overview->output) {
+        teardown_overview();
     }
     wl_list_remove(&overview->server_destroy.link);
+    wl_event_source_remove(overview->animation_timer);
     ky_scene_node_destroy(&overview->tree->node);
     if (overview->close_icon) wlr_buffer_drop(overview->close_icon);
     if (overview->top_icon) wlr_buffer_drop(overview->top_icon);
@@ -1209,7 +1516,7 @@ bool multitask_view_create(struct view_manager *view_manager)
     overview->desktop_wallpaper = ky_scene_buffer_create(overview->tree, NULL);
     overview->backdrop =
         ky_scene_rect_create(overview->tree, 0, 0,
-                             (float[4]){ 0.0f, 0.0f, 0.0f, 1.0f - BRIGHTNESS });
+                             (float[4]){ 0.0f, 0.0f, 0.0f, 0.0f });
     overview->workspace_bar =
         ky_scene_rect_create(overview->tree, 0, 0, (float[4]){ 0.0f, 0.0f, 0.0f, 0.0f });
     if (!load_original_assets()) {
@@ -1219,6 +1526,19 @@ bool multitask_view_create(struct view_manager *view_manager)
         if (overview->top_active_icon) wlr_buffer_drop(overview->top_active_icon);
         if (overview->add_icon) wlr_buffer_drop(overview->add_icon);
         if (overview->wallpaper_buffer) wlr_buffer_drop(overview->wallpaper_buffer);
+        free(overview);
+        overview = NULL;
+        return false;
+    }
+
+    overview->animation_timer =
+        wl_event_loop_add_timer(view_manager->server->event_loop, animation_tick, overview);
+    if (!overview->animation_timer) {
+        ky_scene_node_destroy(&overview->tree->node);
+        if (overview->close_icon) wlr_buffer_drop(overview->close_icon);
+        if (overview->top_icon) wlr_buffer_drop(overview->top_icon);
+        if (overview->top_active_icon) wlr_buffer_drop(overview->top_active_icon);
+        if (overview->add_icon) wlr_buffer_drop(overview->add_icon);
         free(overview);
         overview = NULL;
         return false;
