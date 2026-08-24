@@ -2275,7 +2275,7 @@ struct view_manager *view_manager_create(struct server *server)
 
     view_manager->state.num_workspaces = 4;
     view_manager->state.view_adsorption = VIEW_ADSORPTION_ALL;
-    view_manager->state.minimize_effect_type = MINIMIZE_EFFECT_TYPE_MAGIC_LAMP;
+    view_manager->state.minimize_effect_type = MINIMIZE_EFFECT_TYPE_SCALE;
     view_read_config(view_manager);
 
     workspace_manager_create(view_manager);

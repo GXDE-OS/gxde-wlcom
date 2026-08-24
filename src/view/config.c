@@ -53,14 +53,28 @@ static int set_csd_round_corner(sd_bus_message *m, void *userdata, sd_bus_error 
     return sd_bus_reply_method_return(m, NULL);
 }
 
+static int get_minimize_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct view_manager *manager = userdata;
+    return sd_bus_reply_method_return(m, "u", manager->state.minimize_effect_type);
+}
+
 static int set_minimize_effect(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
     struct view_manager *manager = userdata;
     uint32_t minimize_effect;
     CK(sd_bus_message_read(m, "u", &minimize_effect));
 
-    if (minimize_effect < MINIMIZE_EFFECT_TYPE_NUM) {
+    if (minimize_effect >= MINIMIZE_EFFECT_TYPE_NUM) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Invalid minimize effect.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    if (manager->state.minimize_effect_type != minimize_effect) {
         manager->state.minimize_effect_type = minimize_effect;
+        view_write_config(manager);
+        config_manager_sync();
     }
 
     return sd_bus_reply_method_return(m, NULL);
@@ -196,6 +210,7 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("GetViewAdsorption", "", "u", get_view_adsorption, 0),
     SD_BUS_METHOD("SetViewAdsorption", "u", "", set_view_adsorption, 0),
     SD_BUS_METHOD("SetCSDRoundCorner", "b", "", set_csd_round_corner, 0),
+    SD_BUS_METHOD("GetMinimizeEffect", "", "u", get_minimize_effect, 0),
     SD_BUS_METHOD("SetMinimizeEffect", "u", "", set_minimize_effect, 0),
     SD_BUS_METHOD("GetIsShowDesktop", "", "b", get_is_show_desktop, 0),
     SD_BUS_METHOD("SetShowDesktop", "b", "", set_show_desktop, 0),

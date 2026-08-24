@@ -1,3 +1,11 @@
+gxde-wlcom (2.3.1-gxde1) lizhi; urgency=medium
+
+  * 默认使用缩放作为窗口最小化动画，魔灯保留为可选项
+  * 新增 GetMinimizeEffect D-Bus 接口，供控制中心读取当前动画
+  * SetMinimizeEffect 校验参数并立即写回用户配置
+
+ -- shenmo <shenmo@spark-app.store>  Tue, 25 Aug 2026 01:55:00 +0800
+
 gxde-wlcom (2.3.0-gxde1) lizhi; urgency=high
 
   * 使多任务的外观更贴近原版GXDE KWin
