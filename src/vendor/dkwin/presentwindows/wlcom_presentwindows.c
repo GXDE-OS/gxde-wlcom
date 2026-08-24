@@ -1276,7 +1276,12 @@ static void apply_item_visuals(struct present_item *item)
     /* the close button follows the highlighted window's zoomed rect, shown
      * only when the cursor is inside its (unzoomed) target geometry and the
      * window is big enough, like upstream's updateCloseWindow */
-    item->close_box = (struct pv_box){ tx, ty, zoomed_w, zoomed_h };
+    item->close_box = (struct pv_box){
+        .x = tx + zoomed_w - CLOSE_BUTTON_SIZE - CLOSE_BUTTON_INSET,
+        .y = ty + CLOSE_BUTTON_INSET,
+        .w = CLOSE_BUTTON_SIZE,
+        .h = CLOSE_BUTTON_SIZE,
+    };
     bool show_close = false;
     if (!pv->closing && pv->highlighted >= 0 && item == &pv->items[pv->highlighted]) {
         double lx, ly;
