@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "config.h"
+#include "input/input.h"
 #include "output_p.h"
 #include "util/dbus.h"
 
@@ -154,6 +155,13 @@ static int apply_output_configuration(sd_bus_message *m)
 
     config_manager_sync();
     return sd_bus_reply_method_return(m, NULL);
+}
+
+static int get_cursor_output(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    struct seat *seat = input_manager_get_default_seat();
+    struct output *output = seat ? input_current_output(seat) : NULL;
+    return sd_bus_reply_method_return(m, "s", output ? output->base.name : "");
 }
 
 static int apply_output_state(sd_bus_message *m, struct kywc_output *output,
@@ -676,6 +684,8 @@ static const sd_bus_vtable service_vtable[] = {
 
 static const sd_bus_vtable gxde_screen_vtable[] = {
     SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("GetCursorOutput", "", "s", get_cursor_output,
+                  SD_BUS_VTABLE_UNPRIVILEGED),
     SD_BUS_METHOD("SetScaleRatio", "d", "", set_scale_ratio, 0),
     SD_BUS_METHOD("SetResolutionWRefreshRate", "iii", "", set_resolution_with_refresh_rate, 0),
     SD_BUS_METHOD("SetScreenBrightness", "si", "", set_screen_brightness, 0),
