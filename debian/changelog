@@ -1,3 +1,9 @@
+gxde-wlcom (2.3.1-gxde2) lizhi; urgency=high
+
+  * 通过D-Bus暴露鼠标在（哪一块）屏幕上的位置
+
+ -- CharOfString <root@charofstring.cc>  Tue, 25 Aug 2026 21:19:11 +0800
+
 gxde-wlcom (2.3.1-gxde1) lizhi; urgency=medium
 
   * 默认使用缩放作为窗口最小化动画，魔灯保留为可选项
