@@ -52,6 +52,7 @@ struct output {
     struct wl_listener present;
     struct wl_listener frame;
     struct wl_listener precommit;
+    struct wl_listener commit;
     struct wl_listener destroy;
 
     /* output damage in layout coord */
@@ -69,6 +70,7 @@ struct output {
     bool scene_commit, has_pending;
     struct kywc_output_state pending_state;
 
+    bool setting_state;
     uint32_t quirks;
 };
 

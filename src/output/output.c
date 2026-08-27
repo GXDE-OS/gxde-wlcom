@@ -28,6 +28,8 @@
 static struct output_manager *output_manager = NULL;
 static char *unknown = " ";
 
+static bool output_sync_committed_state(struct output *output, bool enabled);
+
 struct output *output_from_kywc_output(struct kywc_output *kywc_output)
 {
     struct output *output = wl_container_of(kywc_output, output, base);
@@ -479,6 +481,24 @@ static void handle_output_present(struct wl_listener *listener, void *data)
     KY_PROFILE_ZONE_END(zone);
 }
 
+static void handle_output_commit(struct wl_listener *listener, void *data)
+{
+    struct output *output = wl_container_of(listener, output, commit);
+    const struct wlr_output_event_commit *event = data;
+    const uint32_t geometry_state = WLR_OUTPUT_STATE_MODE | WLR_OUTPUT_STATE_SCALE |
+        WLR_OUTPUT_STATE_TRANSFORM;
+
+    if (output->setting_state || !(event->state->committed & geometry_state)) {
+        return;
+    }
+
+    kywc_log(KYWC_INFO, "output %s mode changed by backend to %d x %d @ %d",
+             output->base.name, output->wlr_output->width, output->wlr_output->height,
+             output->wlr_output->refresh);
+    output_sync_committed_state(output, output->wlr_output->enabled);
+    output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+}
+
 static void handle_output_frame(struct wl_listener *listener, void *data)
 {
     if (!output_manager->server->active) {
@@ -650,6 +670,7 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output->destroy.link);
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->present.link);
+    wl_list_remove(&output->commit.link);
 
     /* output may be disabled before */
     if (output->scene_output) {
@@ -680,9 +701,11 @@ static void handle_new_output(struct wl_listener *listener, void *data)
     output->present.notify = handle_output_present;
     output->frame.notify = handle_output_frame;
     output->destroy.notify = handle_output_destroy;
+    output->commit.notify = handle_output_commit;
     wl_signal_add(&wlr_output->events.present, &output->present);
     wl_signal_add(&wlr_output->events.frame, &output->frame);
     wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+    wl_signal_add(&wlr_output->events.commit, &output->commit);
 
     pixman_region32_init_rect(&output->damage_region, output->geometry.x, output->geometry.y,
                               output->geometry.width, output->geometry.height);
@@ -1291,7 +1314,10 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
             wlr_output_state_set_scale(&wlr_state, state->scale);
         }
 
-        if (!wlr_output_commit_state(wlr_output, &wlr_state)) {
+        output->setting_state = true;
+        bool committed = wlr_output_commit_state(wlr_output, &wlr_state);
+        output->setting_state = false;
+        if (!committed) {
             kywc_log(KYWC_ERROR, "Failed to commit output: %s", wlr_output->name);
             wlr_output_state_finish(&wlr_state);
             return false;
@@ -1448,19 +1474,15 @@ static void output_manager_sort_outputs(void)
     }
 }
 
-bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
+static bool output_sync_committed_state(struct output *output, bool enabled)
 {
-    struct output *output = output_from_kywc_output(kywc_output);
-    if (!output_set_state(output, state)) {
-        return false;
-    }
-
+    struct kywc_output *kywc_output = &output->base;
     struct kywc_output_state *current = &kywc_output->state;
     struct kywc_output_state old = kywc_output->state;
     output_get_state(output, current);
 
     // fix current.enabled for dpms power
-    current->enabled = state->enabled;
+    current->enabled = enabled;
 
     /* update geometry and usable area before all signals */
     bool geometry_changed = false;
@@ -1551,6 +1573,16 @@ bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_s
     }
 
     return true;
+}
+
+bool kywc_output_set_state(struct kywc_output *kywc_output, struct kywc_output_state *state)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    if (!output_set_state(output, state)) {
+        return false;
+    }
+
+    return output_sync_committed_state(output, state->enabled);
 }
 
 struct kywc_output *kywc_output_by_name(const char *name)
