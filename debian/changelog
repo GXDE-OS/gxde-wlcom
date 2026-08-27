@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.1-gxde3) lizhi; urgency=high
+
+  * 尝试为VBox带来更好的输出管理
+  * 修复在Qt上打不出中文的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 01:34:02 +0800
+
 gxde-wlcom (2.3.1-gxde2) lizhi; urgency=high
 
   * 通过D-Bus暴露鼠标在（哪一块）屏幕上的位置
