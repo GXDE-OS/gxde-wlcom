@@ -47,7 +47,7 @@ export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置�
 # Wayland 输入法前端负责原生 GTK 和 Qt 应用。Fcitx5 建议在这种情况下
 # 同时取消两个工具包的输入法模块变量；XMODIFIERS 则保留给使用 XIM 的
 # XWayland 应用。
-unset GTK_IM_MODULE QT_IM_MODULE
+unset GTK_IM_MODULE
 
 unset QT_QPA_PLATFORM
 export QT_QPA_PLATFORM=wayland
