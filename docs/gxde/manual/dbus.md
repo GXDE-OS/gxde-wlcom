@@ -203,8 +203,9 @@ KDE Blur 的全局强度通过 Effect 接口调整，修改后立即生效并写
 `blur_strength` 的范围为 `1` 至 `15`，默认值为 `4`；
 `noise_strength` 的范围为`0` 至 `14`，默认值为 `0`。数值越大效果越强。
 
-单个 surface 显式设置的 blur strength 优先于全局 `blur_strength`；noise strength
-始终是全局设置。
+通过 D-Bus 修改 `blur_strength` 时，现有 blur region 会立即采用新的全局强度。
+客户端之后再次为单个 surface 显式设置 blur strength 时，该设置优先于全局值；
+noise strength 始终是全局设置。
 
 ```bash
 # 查询当前配置

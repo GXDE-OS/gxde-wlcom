@@ -1148,6 +1148,22 @@ static void handle_effect_disable(struct wl_listener *listener, void *data)
     ky_scene_damage_whole(effect->scene);
 }
 
+static void reset_existing_blur_levels(struct ky_scene_node *node)
+{
+    if (node->type == KY_SCENE_NODE_TREE) {
+        struct ky_scene_tree *tree = ky_scene_tree_from_node(node);
+        struct ky_scene_node *child;
+        wl_list_for_each(child, &tree->children, link) {
+            reset_existing_blur_levels(child);
+        }
+        return;
+    }
+
+    if (node->has_blur) {
+        ky_scene_node_reset_blur_level(node);
+    }
+}
+
 static bool handle_blur_effect_configure(struct effect *effect, const struct effect_option *option)
 {
     if (effect_option_is_enabled_option(option)) {
@@ -1160,6 +1176,7 @@ static bool handle_blur_effect_configure(struct effect *effect, const struct eff
             return false;
         }
         blur->blur_strength = option->value.num;
+        reset_existing_blur_levels(&blur->scene->tree.node);
         ky_scene_damage_whole(blur->scene);
         return true;
     }
