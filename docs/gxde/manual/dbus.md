@@ -200,7 +200,7 @@ KDE Blur 的全局强度通过 Effect 接口调整，修改后立即生效并写
 | 对象路径 | `/top/gxde/Wlcom/Effect` |
 | 接口名 | `top.gxde.Wlcom.Effect` |
 
-`blur_strength` 的范围为 `1` 至 `15`，默认值为 `3`；
+`blur_strength` 的范围为 `1` 至 `15`，默认值为 `4`；
 `noise_strength` 的范围为`0` 至 `14`，默认值为 `0`。数值越大效果越强。
 
 单个 surface 显式设置的 blur strength 优先于全局 `blur_strength`；noise strength

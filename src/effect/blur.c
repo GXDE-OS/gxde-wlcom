@@ -30,7 +30,7 @@
 
 #define BLUR_STRENGTH_KEY "blur_strength"
 #define NOISE_STRENGTH_KEY "noise_strength"
-#define DEFAULT_BLUR_STRENGTH 3
+#define DEFAULT_BLUR_STRENGTH 4
 #define MIN_BLUR_STRENGTH 1
 #define MAX_BLUR_STRENGTH 15
 #define DEFAULT_NOISE_STRENGTH 0
