@@ -40,13 +40,155 @@ export XDG_SESSION_DESKTOP=Deepin
 export DDE_CURRENT_COMPOSITOR=GXWM
 export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置文件里的分辨率
 
-# The Wayland input method frontend handles native GTK and Qt applications.
-# Fcitx5 recommends leaving both toolkit overrides unset in this case.
-# Keep XMODIFIERS unchanged for XWayland applications using XIM.
+is_fcitx5_selected() {
+    local im_config_modes=()
+    local selected_mode default_mode
+
+    if command -v im-config > /dev/null 2>&1; then
+        mapfile -t im_config_modes < <(im-config -m 2> /dev/null)
+        selected_mode="${im_config_modes[1]:-missing}"
+        if [ "$selected_mode" = missing ]; then
+            selected_mode="${im_config_modes[0]:-missing}"
+        fi
+
+        if [ "$selected_mode" = default ]; then
+            default_mode=$(
+                if [ -r /etc/default/im-config ]; then
+                    unset IM_CONFIG_DEFAULT_MODE
+                    # shellcheck source=/dev/null
+                    . /etc/default/im-config
+                fi
+                printf '%s' "${IM_CONFIG_DEFAULT_MODE:-auto}"
+            )
+            selected_mode="$default_mode"
+        fi
+
+        case "$selected_mode" in
+        auto)
+            selected_mode="${im_config_modes[2]:-missing}"
+            ;;
+        cjkv)
+            if [ "${QT_IM_MODULE:-}" = fcitx ] || [ "${XMODIFIERS:-}" = @im=fcitx ]; then
+                selected_mode="${im_config_modes[2]:-missing}"
+            else
+                selected_mode=none
+            fi
+            ;;
+        esac
+
+        case "$selected_mode" in
+        fcitx5)
+            return 0
+            ;;
+        missing | custom)
+            ;;
+        *)
+            return 1
+            ;;
+        esac
+    fi
+
+    if pgrep -x fcitx5 > /dev/null; then
+        return 0
+    elif pgrep -x fcitx > /dev/null; then
+        return 1
+    fi
+
+    # GTK/Qt use the same module name for Fcitx 4 and 5. Only fall back to
+    # the environment when Fcitx 5 is the sole installed Fcitx version.
+    if [ "${QT_IM_MODULE:-}" != fcitx ] && [ "${XMODIFIERS:-}" != @im=fcitx ]; then
+        return 1
+    fi
+    command -v fcitx5 > /dev/null 2>&1 && ! command -v fcitx > /dev/null 2>&1
+}
+
+enable_fcitx5_shared_input_state() (
+    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fcitx5"
+    local config_file="$config_dir/config"
+    local temporary_file
+
+    umask 077
+    mkdir -p "$config_dir" || return 1
+    if [ -L "$config_file" ]; then
+        config_file=$(readlink -f "$config_file") || return 1
+        config_dir=${config_file%/*}
+    fi
+    if [ -e "$config_file" ] && [ ! -r "$config_file" ]; then
+        return 1
+    fi
+
+    temporary_file=$(mktemp "$config_dir/.config.gxde.XXXXXX") || return 1
+    if [ -r "$config_file" ]; then
+        if ! awk '
+            BEGIN {
+                in_behavior = 0
+                found_behavior = 0
+                wrote_share_state = 0
+            }
+            $0 == "[Behavior]" {
+                in_behavior = 1
+                found_behavior = 1
+                print
+                next
+            }
+            in_behavior && /^\[[^]]+\]$/ {
+                if (!wrote_share_state) {
+                    print "ShareInputState=All"
+                    wrote_share_state = 1
+                }
+                in_behavior = 0
+            }
+            in_behavior && /^[[:space:]]*ShareInputState[[:space:]]*=/ {
+                if (!wrote_share_state) {
+                    print "ShareInputState=All"
+                    wrote_share_state = 1
+                }
+                next
+            }
+            { print }
+            END {
+                if (in_behavior && !wrote_share_state) {
+                    print "ShareInputState=All"
+                } else if (!found_behavior) {
+                    if (NR > 0) {
+                        print ""
+                    }
+                    print "[Behavior]"
+                    print "ShareInputState=All"
+                }
+            }
+        ' "$config_file" > "$temporary_file"; then
+            rm -f "$temporary_file"
+            return 1
+        fi
+        chmod --reference="$config_file" "$temporary_file" 2> /dev/null || true
+    else
+        printf '[Behavior]\nShareInputState=All\n' > "$temporary_file"
+    fi
+
+    if [ -e "$config_file" ] && cmp -s "$config_file" "$temporary_file"; then
+        rm -f "$temporary_file"
+        return 0
+    fi
+    mv -f "$temporary_file" "$config_file" || return 1
+
+    if pgrep -x fcitx5 > /dev/null && command -v fcitx5-remote > /dev/null 2>&1; then
+        fcitx5-remote -r > /dev/null 2>&1 || true
+    fi
+)
+
+if is_fcitx5_selected; then
+    enable_fcitx5_shared_input_state || true
+fi
+unset -f is_fcitx5_selected enable_fcitx5_shared_input_state
+
+# Native GTK applications use the Wayland input method frontend. Keep the Qt
+# override for XWayland-only Qt applications such as WPS, and keep XMODIFIERS
+# for XWayland applications using XIM.
 # -----------------------------------------------------------------------------
-# Wayland 输入法前端负责原生 GTK 和 Qt 应用。Fcitx5 建议在这种情况下
-# 同时取消两个工具包的输入法模块变量；XMODIFIERS 则保留给使用 XIM 的
-# XWayland 应用。
+# 原生 GTK 应用使用 Wayland 输入法前端。为 WPS 等仅支持 XWayland 的 Qt
+# 应用保留 Qt 输入法模块变量，同时为使用 XIM 的 XWayland 应用保留
+# XMODIFIERS。
 unset GTK_IM_MODULE
 
 unset QT_QPA_PLATFORM
