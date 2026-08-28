@@ -1,3 +1,11 @@
+gxde-wlcom (2.3.3-gxde1) lizhi; urgency=high
+
+  * 允许即时调整KDE Blur强度
+  * 将默认KDE Blur强度修改为4
+  * 修复某些Qt程序输入不了中文的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
+
 gxde-wlcom (2.3.2-gxde1) lizhi; urgency=high
 
   * 允许通过D-Bus配置KDE Blur的强度与噪声
