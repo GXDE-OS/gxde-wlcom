@@ -1,3 +1,9 @@
+gxde-wlcom (2.3.2-gxde1) lizhi; urgency=high
+
+  * 允许通过D-Bus配置KDE Blur的强度与噪声
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
+
 gxde-wlcom (2.3.1-gxde3) lizhi; urgency=high
 
   * 尝试为VBox带来更好的输出管理
