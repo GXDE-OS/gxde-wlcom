@@ -10,6 +10,7 @@ varying vec2 v_uv;
 varying vec2 v_texcoord;
 uniform sampler2D tex;
 uniform float alpha;
+uniform float noiseStrength;
 
 uniform float antiAliasing;
 uniform float aspect; // width / height
@@ -40,6 +41,10 @@ float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r)
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
 }
 
+float randomNoise(vec2 position) {
+    return fract(sin(dot(floor(position), vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main()
 {
     vec2 st = v_uv * 2.0 - 1.0;
@@ -49,5 +54,8 @@ void main()
     float dist = sdRoundedBox(st, fullSize, roundedCornerRadius);
     float shape = 1.0 - smoothstep(0.0, antiAliasing, dist);
     vec4 texColor = get_pixel(v_texcoord) * alpha;
+    if (noiseStrength > 0.0) {
+        texColor.rgb += vec3(randomNoise(gl_FragCoord.xy) * noiseStrength * alpha);
+    }
     gl_FragColor = mix(vec4(0.0), texColor, shape);
 }

@@ -10,6 +10,9 @@
 
 static const char *service_path = "/com/kylin/Wlcom/Effect";
 static const char *service_interface = "com.kylin.Wlcom.Effect";
+static const char *gxde_effect_service = "top.gxde.Wlcom";
+static const char *gxde_effect_path = "/top/gxde/Wlcom/Effect";
+static const char *gxde_effect_interface = "top.gxde.Wlcom.Effect";
 
 static int list_effects(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
@@ -118,24 +121,29 @@ static int set_effect_option(sd_bus_message *m, void *userdata, sd_bus_error *re
         return sd_bus_reply_method_error(m, &error);
     }
 
-    if (effect->impl->configure(effect, &opt)) {
-        switch (opt_type) {
-        case json_type_boolean:
-            json_object_set_boolean(data, opt.value.boolean);
-            break;
-        case json_type_double:
-            json_object_set_double(data, opt.value.realnum);
-            break;
-        case json_type_int:
-            json_object_set_int(data, opt.value.num);
-            break;
-        case json_type_string:
-            json_object_set_string(data, opt.value.str);
-            break;
-        default:
-            break;
-        }
+    if (!effect->impl->configure(effect, &opt)) {
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Effect rejected option value.");
+        return sd_bus_reply_method_error(m, &error);
     }
+
+    switch (opt_type) {
+    case json_type_boolean:
+        json_object_set_boolean(data, opt.value.boolean);
+        break;
+    case json_type_double:
+        json_object_set_double(data, opt.value.realnum);
+        break;
+    case json_type_int:
+        json_object_set_int(data, opt.value.num);
+        break;
+    case json_type_string:
+        json_object_set_string(data, opt.value.str);
+        break;
+    default:
+        break;
+    }
+    config_manager_sync();
 
     return sd_bus_reply_method_return(m, NULL);
 }
@@ -158,8 +166,13 @@ bool effect_manager_config_init(struct effect_manager *effect_manager)
         return false;
     }
 
-    return dbus_register_object(NULL, service_path, service_interface, service_vtable,
-                                effect_manager);
+    if (!dbus_register_object(NULL, service_path, service_interface, service_vtable,
+            effect_manager)) {
+        return false;
+    }
+
+    return dbus_register_object(gxde_effect_service, gxde_effect_path, gxde_effect_interface,
+        service_vtable, effect_manager);
 }
 
 bool effect_init_config(struct effect *effect)

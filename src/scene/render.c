@@ -186,6 +186,7 @@ void ky_scene_render_target_add_texture(struct ky_scene_render_target *target,
         struct blur_info blur = {
             .iterations = info->iterations,
             .offset = info->offset,
+            .custom_level = info->custom_level,
         };
         pixman_region32_init(&blur.region);
 

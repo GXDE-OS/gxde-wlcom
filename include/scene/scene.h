@@ -135,6 +135,7 @@ enum ky_scene_round_corner {
 struct blur_info {
     float offset;
     uint32_t iterations;
+    bool custom_level;
     /* region that mark as blur area */
     pixman_region32_t region;
 };
@@ -373,6 +374,8 @@ void ky_scene_node_set_clip_region(struct ky_scene_node *node, const pixman_regi
 void ky_scene_node_set_blur_region(struct ky_scene_node *node, const pixman_region32_t *region);
 
 void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iterations, float offset);
+
+void ky_scene_node_reset_blur_level(struct ky_scene_node *node);
 
 /* if node hasn't blur, bur region is empty. */
 void ky_scene_node_get_blur_info(struct ky_scene_node *node, struct blur_info *info);

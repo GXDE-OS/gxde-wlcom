@@ -28,6 +28,15 @@
 #include "scene/scene.h"
 #include "util/time.h"
 
+#define BLUR_STRENGTH_KEY "blur_strength"
+#define NOISE_STRENGTH_KEY "noise_strength"
+#define DEFAULT_BLUR_STRENGTH 3
+#define MIN_BLUR_STRENGTH 1
+#define MAX_BLUR_STRENGTH 15
+#define DEFAULT_NOISE_STRENGTH 0
+#define MIN_NOISE_STRENGTH 0
+#define MAX_NOISE_STRENGTH 14
+
 // rtt = render to texture = fbo + texture
 struct glrtt_pool_texture {
     struct wl_list link;
@@ -155,6 +164,7 @@ struct blur_tex_program {
         GLint shape_proj;
         GLint tex;
         GLint alpha;
+        GLint noise_strength;
         GLint anti_aliasing;
         GLint aspect;
         GLint rounded_corner_radius;
@@ -229,9 +239,23 @@ struct blur_effect {
     struct ky_scene *scene;
     struct glrtt_pool *glrtt_pool;
 
+    int blur_strength;
+    int noise_strength;
+
     struct wl_listener enable;
     struct wl_listener disable;
     struct wl_listener destroy;
+};
+
+struct blur_level {
+    uint32_t iterations;
+    float offset;
+};
+
+static const struct blur_level blur_levels[] = {
+    { 1, 1.5f },     { 1, 2.0f }, { 2, 2.5f },     { 2, 3.0f },     { 3, 2.6f },
+    { 3, 3.2f },     { 3, 3.8f }, { 3, 4.4f },     { 3, 5.0f },     { 4, 3.83333f },
+    { 4, 4.66667f }, { 4, 5.5f }, { 4, 6.33333f }, { 4, 7.16667f }, { 4, 8.0f },
 };
 
 #define MAX_QUADS 86 // 4kb
@@ -241,6 +265,20 @@ struct blur_effect {
 #endif
 
 static void blur_output_data_destroy(struct blur_output_data *data);
+
+static void get_blur_level(const struct blur_info *info, uint32_t *iterations, float *offset)
+{
+    if (info->custom_level || !effect_blur_data.effect) {
+        *iterations = info->iterations;
+        *offset = info->offset;
+        return;
+    }
+
+    const struct blur_level *level =
+        &blur_levels[effect_blur_data.effect->blur_strength - MIN_BLUR_STRENGTH];
+    *iterations = level->iterations;
+    *offset = level->offset;
+}
 
 static int calculate_blur_radius(int iterations, float offset)
 {
@@ -372,6 +410,7 @@ static struct blur_tex_program *get_or_generate_blur_text_program(void)
         blur_tex_prog->shaders.shape_proj = glGetUniformLocation(prog, "shape_proj");
         blur_tex_prog->shaders.tex = glGetUniformLocation(prog, "tex");
         blur_tex_prog->shaders.alpha = glGetUniformLocation(prog, "alpha");
+        blur_tex_prog->shaders.noise_strength = glGetUniformLocation(prog, "noiseStrength");
         blur_tex_prog->shaders.anti_aliasing = glGetUniformLocation(prog, "antiAliasing");
         blur_tex_prog->shaders.aspect = glGetUniformLocation(prog, "aspect");
         blur_tex_prog->shaders.rounded_corner_radius =
@@ -705,8 +744,7 @@ static void blur_render(struct ky_scene_render_target *target,
 
     struct blur_data *data = &effect_blur_data;
     struct glrtt_pool *glrtt_pool = data->effect->glrtt_pool;
-    data->iterations = options->blur->iterations;
-    data->offset = options->blur->offset;
+    get_blur_level(options->blur, &data->iterations, &data->offset);
 
     struct glrtt_pool_texture *src_tex = blur_first_down(data, gl_pass->buffer, buffer_cpy_box);
     if (!src_tex) {
@@ -735,6 +773,7 @@ static void blur_render(struct ky_scene_render_target *target,
 
     float alpha = options->alpha ? *options->alpha : 1.0f;
     glUniform1f(prog->shaders.alpha, alpha);
+    glUniform1f(prog->shaders.noise_strength, data->effect->noise_strength / 255.0f);
 
     struct kywc_fbox tex_src_fbox = { .x = 0, .y = 0, .width = 1.0f, .height = 1.0f };
     set_proj_matrix(prog->shaders.proj, gl_pass->projection_matrix, buffer_cpy_box);
@@ -786,7 +825,10 @@ static void get_copy_box(const pixman_region32_t *blur_region, const struct blur
      * the copy area may be larger than the damage area, but it has no effect.
      * because it is outside the radius of blur.
      */
-    int align_num = calculate_blur_radius(blur_info->iterations, blur_info->offset);
+    uint32_t iterations;
+    float offset;
+    get_blur_level(blur_info, &iterations, &offset);
+    int align_num = calculate_blur_radius(iterations, offset);
 
      /**
       * Frame copy box around whole blur region, not per-frame-change.
@@ -914,7 +956,10 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
         return;
     }
 
-    int distance = calculate_blur_radius(node->blur.iterations, node->blur.offset);
+    uint32_t iterations;
+    float offset;
+    get_blur_level(&node->blur, &iterations, &offset);
+    int distance = calculate_blur_radius(iterations, offset);
     distance = ceil(distance / target->scale);
 
     /* blur expand region, region for blur */
@@ -1109,6 +1154,25 @@ static bool handle_blur_effect_configure(struct effect *effect, const struct eff
         return true;
     }
 
+    struct blur_effect *blur = effect->user_data;
+    if (strcmp(option->key, BLUR_STRENGTH_KEY) == 0) {
+        if (option->value.num < MIN_BLUR_STRENGTH || option->value.num > MAX_BLUR_STRENGTH) {
+            return false;
+        }
+        blur->blur_strength = option->value.num;
+        ky_scene_damage_whole(blur->scene);
+        return true;
+    }
+
+    if (strcmp(option->key, NOISE_STRENGTH_KEY) == 0) {
+        if (option->value.num < MIN_NOISE_STRENGTH || option->value.num > MAX_NOISE_STRENGTH) {
+            return false;
+        }
+        blur->noise_strength = option->value.num;
+        ky_scene_damage_whole(blur->scene);
+        return true;
+    }
+
     return false;
 }
 
@@ -1145,7 +1209,7 @@ bool blur_effect_create(struct effect_manager *effect_manager)
         return false;
     }
     /* the priority very high, ensure correct display before other effect paint. */
-    effect->effect = effect_create("blur", 0, true, &blur_impl, NULL);
+    effect->effect = effect_create("blur", 0, true, &blur_impl, effect);
     if (!effect->effect) {
         free(effect);
         return false;
@@ -1153,11 +1217,25 @@ bool blur_effect_create(struct effect_manager *effect_manager)
 
     effect->glrtt_pool = glrtt_pool_create(GL_RGBA, GL_LINEAR, 3000);
     if (!effect->glrtt_pool) {
+        effect_destroy(effect->effect);
         free(effect);
         return false;
     }
 
     effect->scene = effect_manager->server->scene;
+    effect->blur_strength =
+        effect_get_option_int(effect->effect, BLUR_STRENGTH_KEY, DEFAULT_BLUR_STRENGTH);
+    if (effect->blur_strength < MIN_BLUR_STRENGTH || effect->blur_strength > MAX_BLUR_STRENGTH) {
+        effect->blur_strength = DEFAULT_BLUR_STRENGTH;
+        effect_set_option_int(effect->effect, BLUR_STRENGTH_KEY, effect->blur_strength);
+    }
+    effect->noise_strength =
+        effect_get_option_int(effect->effect, NOISE_STRENGTH_KEY, DEFAULT_NOISE_STRENGTH);
+    if (effect->noise_strength < MIN_NOISE_STRENGTH ||
+        effect->noise_strength > MAX_NOISE_STRENGTH) {
+        effect->noise_strength = DEFAULT_NOISE_STRENGTH;
+        effect_set_option_int(effect->effect, NOISE_STRENGTH_KEY, effect->noise_strength);
+    }
 
     effect->enable.notify = handle_effect_enable;
     wl_signal_add(&effect->effect->events.enable, &effect->enable);

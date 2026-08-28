@@ -55,8 +55,11 @@ static void kde_blur_apply_state(struct kde_blur *blur)
         ky_scene_node_set_blur_region(&blur->scene_buffer->node, &blur->region);
     }
     if (blur->pending_mask & KDE_BLUR_STATE_STRENGTH) {
-        float offset = (int)blur->strength == -1 ? 2.6f : blur->strength / 1000.f;
-        ky_scene_node_set_blur_level(&blur->scene_buffer->node, 3, offset);
+        if (blur->strength == UINT32_MAX) {
+            ky_scene_node_reset_blur_level(&blur->scene_buffer->node);
+        } else {
+            ky_scene_node_set_blur_level(&blur->scene_buffer->node, 3, blur->strength / 1000.f);
+        }
     }
 
     blur->pending_mask = KDE_BLUR_STATE_NONE;

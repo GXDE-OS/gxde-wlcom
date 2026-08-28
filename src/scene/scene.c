@@ -771,12 +771,30 @@ void ky_scene_node_set_blur_level(struct ky_scene_node *node, uint32_t iteration
 {
     /* tree is not support currently */
     assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
-    if (node->blur.iterations == iterations && node->blur.offset == offset) {
+    if (node->blur.iterations == iterations && node->blur.offset == offset &&
+        node->blur.custom_level) {
         return;
     }
 
     node->blur.iterations = iterations;
     node->blur.offset = offset;
+    node->blur.custom_level = true;
+    if (node->has_blur) {
+        ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, &node->blur.region);
+    }
+}
+
+void ky_scene_node_reset_blur_level(struct ky_scene_node *node)
+{
+    /* tree is not support currently */
+    assert(node->type == KY_SCENE_NODE_RECT || node->type == KY_SCENE_NODE_BUFFER);
+    if (!node->blur.custom_level) {
+        return;
+    }
+
+    node->blur.iterations = 3;
+    node->blur.offset = 2.6f;
+    node->blur.custom_level = false;
     if (node->has_blur) {
         ky_scene_node_push_damage(node, KY_SCENE_DAMAGE_HARMFUL, &node->blur.region);
     }
@@ -845,12 +863,14 @@ static void get_node_blur_info(struct ky_scene_node *node, int x, int y, void *d
     info->iterations =
         info->iterations < node->blur.iterations ? node->blur.iterations : info->iterations;
     info->offset = info->offset < node->blur.offset ? node->blur.offset : info->offset;
+    info->custom_level = info->custom_level || node->blur.custom_level;
 }
 
 void ky_scene_node_get_blur_info(struct ky_scene_node *node, struct blur_info *info)
 {
     info->offset = 0;
     info->iterations = 0;
+    info->custom_level = false;
     pixman_region32_clear(&info->region);
     node_for_each_enabled(node, -node->x, -node->y, get_node_blur_info, info);
 }

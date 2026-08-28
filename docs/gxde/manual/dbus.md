@@ -189,6 +189,34 @@ busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.S
 缩放、分辨率、旋转、显示模式和屏幕布局设置保存在当前用户的
 `~/.config/gxde-wlcom/config.json` 中。
 
+## KDE Blur
+
+KDE Blur 的全局强度通过 Effect 接口调整，修改后立即生效并写入当前用户配置。
+
+| 项目 | 值 |
+| --- | --- |
+| 总线 | Session Bus |
+| 服务名 | `top.gxde.Wlcom` |
+| 对象路径 | `/top/gxde/Wlcom/Effect` |
+| 接口名 | `top.gxde.Wlcom.Effect` |
+
+`blur_strength` 的范围为 `1` 至 `15`，默认值为 `3`；
+`noise_strength` 的范围为`0` 至 `14`，默认值为 `0`。数值越大效果越强。
+
+单个 surface 显式设置的 blur strength 优先于全局 `blur_strength`；noise strength
+始终是全局设置。
+
+```bash
+# 查询当前配置
+busctl --user call top.gxde.Wlcom /top/gxde/Wlcom/Effect top.gxde.Wlcom.Effect PrintEffectOptions s blur
+
+# 调整模糊强度
+busctl --user call top.gxde.Wlcom /top/gxde/Wlcom/Effect top.gxde.Wlcom.Effect SetEffectOption ssv blur blur_strength i 10
+
+# 调整噪声强度
+busctl --user call top.gxde.Wlcom /top/gxde/Wlcom/Effect top.gxde.Wlcom.Effect SetEffectOption ssv blur noise_strength i 4
+```
+
 ## 截图
 
 | 项目 | 值 |
