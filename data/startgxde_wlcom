@@ -245,4 +245,11 @@ if pgrep -x "gxde-launcher" > /dev/null; then
     sleep 1
 fi
 
+# VBoxClient-all normally relies on desktop autostart.  Start the system-side
+# VMSVGA bridge explicitly; the compositor starts its Wayland assistant after
+# WAYLAND_DISPLAY is ready.
+if [ -c /dev/vboxguest ] && [ -x /usr/bin/VBoxClient ]; then
+    /usr/bin/VBoxClient --vmsvga >/dev/null 2>&1 || true
+fi
+
 exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"

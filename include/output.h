@@ -55,6 +55,11 @@ struct output {
     struct wl_listener commit;
     struct wl_listener destroy;
 
+    /* Follow host-provided preferred modes on virtual DRM connectors. */
+    int drm_fd;
+    uint32_t drm_connector_id;
+    struct wl_event_source *hotplug_mode_update_timer;
+
     /* output damage in layout coord */
     pixman_region32_t damage_region;
 

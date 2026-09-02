@@ -173,6 +173,17 @@ static void start_session(void *data)
     }
 }
 
+static void start_virtualbox_wayland_helper(void)
+{
+    if (access("/dev/vboxguest", F_OK) < 0 || access("/usr/bin/VBoxClient", X_OK) < 0) {
+        return;
+    }
+
+    if (!spawn_invoke("/usr/bin/VBoxClient --vmsvga-session")) {
+        kywc_log(KYWC_ERROR, "failed to start VirtualBox Wayland display assistant");
+    }
+}
+
 int main(int argc, char *argv[])
 {
 #if HAVE_NLS
@@ -254,6 +265,9 @@ int main(int argc, char *argv[])
         terminate(EXIT_FAILURE);
         goto shutdown;
     }
+
+    /* WAYLAND_DISPLAY is set by server_start(). */
+    start_virtualbox_wayland_helper();
 
     /* child terminated or stopped */
     set_signal(SIGCHLD, child_handler);

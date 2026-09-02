@@ -28,6 +28,8 @@
 static struct output_manager *output_manager = NULL;
 static char *unknown = " ";
 
+#define HOTPLUG_MODE_UPDATE_INTERVAL_MS 250
+
 static bool output_sync_committed_state(struct output *output, bool enabled);
 
 struct output *output_from_kywc_output(struct kywc_output *kywc_output)
@@ -318,6 +320,135 @@ static void output_uuid_generate(struct kywc_output *kywc_output)
     kywc_output->uuid = kywc_identifier_md5_generate_uuid((void *)description, strlen(description));
 }
 
+static int handle_hotplug_mode_update(void *data)
+{
+    struct output *output = data;
+    drmModeConnector *connector =
+        drmModeGetConnector(output->drm_fd, output->drm_connector_id);
+    if (!connector) {
+        goto out;
+    }
+
+    const drmModeModeInfo *preferred = NULL;
+    for (int i = 0; i < connector->count_modes; ++i) {
+        if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
+            preferred = &connector->modes[i];
+            break;
+        }
+    }
+
+    if (!preferred || !output->base.state.enabled ||
+        (output->base.state.width == preferred->hdisplay &&
+         output->base.state.height == preferred->vdisplay)) {
+        drmModeFreeConnector(connector);
+        goto out;
+    }
+
+    /*
+     * VM drivers replace the preferred connector mode without unplugging the
+     * output.  wlroots 0.17 deliberately leaves driver-specific hotplug policy
+     * to compositors, so import that preferred mode as a user mode and commit
+     * it through the normal output state path.
+     */
+    drmModeModeInfo mode_info = *preferred;
+    mode_info.type = DRM_MODE_TYPE_USERDEF;
+    struct wlr_output_mode *mode =
+        wlr_drm_connector_add_mode(output->wlr_output, &mode_info);
+    drmModeFreeConnector(connector);
+    if (!mode) {
+        kywc_log(KYWC_ERROR, "failed to import host preferred mode for output %s",
+                 output->base.name);
+        goto out;
+    }
+
+    struct wlr_output_mode *wlr_mode;
+    wl_list_for_each(wlr_mode, &output->wlr_output->modes, link) {
+        wlr_mode->preferred = wlr_mode == mode;
+    }
+
+    bool mode_listed = false;
+    struct kywc_output_mode *kywc_mode;
+    wl_list_for_each(kywc_mode, &output->base.prop.modes, link) {
+        kywc_mode->preferred = kywc_mode->width == mode->width &&
+            kywc_mode->height == mode->height && kywc_mode->refresh == mode->refresh;
+        mode_listed |= kywc_mode->preferred;
+    }
+    if (!mode_listed) {
+        output_add_mode(&output->base.prop, mode);
+    }
+
+    struct kywc_output_state state = output->base.state;
+    state.width = mode->width;
+    state.height = mode->height;
+    state.refresh = mode->refresh;
+
+    kywc_log(KYWC_INFO, "following host preferred mode on output %s: %d x %d @ %d",
+             output->base.name, state.width, state.height, state.refresh);
+    if (kywc_output_set_state(&output->base, &state)) {
+        output_manager_emit_configured(CONFIGURE_TYPE_UPDATE);
+    }
+
+out:
+    wl_event_source_timer_update(output->hotplug_mode_update_timer,
+                                 HOTPLUG_MODE_UPDATE_INTERVAL_MS);
+    return 0;
+}
+
+static void output_init_hotplug_mode_update(struct output *output)
+{
+    if (!wlr_output_is_drm(output->wlr_output)) {
+        return;
+    }
+
+    int drm_fd = wlr_drm_backend_get_non_master_fd(output->wlr_output->backend);
+    if (drm_fd < 0) {
+        return;
+    }
+
+    uint32_t connector_id = wlr_drm_connector_get_id(output->wlr_output);
+    drmModeObjectProperties *props =
+        drmModeObjectGetProperties(drm_fd, connector_id, DRM_MODE_OBJECT_CONNECTOR);
+    if (!props) {
+        close(drm_fd);
+        return;
+    }
+
+    bool follows_host_mode = false;
+    for (uint32_t i = 0; i < props->count_props; ++i) {
+        drmModePropertyRes *prop = drmModeGetProperty(drm_fd, props->props[i]);
+        if (!prop) {
+            continue;
+        }
+
+        if (strcmp(prop->name, "hotplug_mode_update") == 0) {
+            follows_host_mode = props->prop_values[i] != 0;
+            drmModeFreeProperty(prop);
+            break;
+        }
+        drmModeFreeProperty(prop);
+    }
+    drmModeFreeObjectProperties(props);
+
+    if (!follows_host_mode) {
+        close(drm_fd);
+        return;
+    }
+
+    output->drm_fd = drm_fd;
+    output->drm_connector_id = connector_id;
+    output->hotplug_mode_update_timer = wl_event_loop_add_timer(
+        output_manager->server->event_loop, handle_hotplug_mode_update, output);
+    if (!output->hotplug_mode_update_timer) {
+        close(drm_fd);
+        output->drm_fd = -1;
+        return;
+    }
+
+    kywc_log(KYWC_INFO, "output %s follows host-provided preferred modes", output->base.name);
+    wl_event_source_timer_update(output->hotplug_mode_update_timer,
+                                 HOTPLUG_MODE_UPDATE_INTERVAL_MS);
+}
+
 /* the actual enabled output except for fallback */
 static bool output_manager_has_enabled_outputs(void)
 {
@@ -351,6 +482,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
         return NULL;
     }
 
+    output->drm_fd = -1;
     output->wlr_output = wlr_output;
     wlr_output->data = output;
 
@@ -447,6 +579,7 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     output->initialized = true;
 
     output_init_quirks(output);
+    output_init_hotplug_mode_update(output);
 
     wl_signal_emit_mutable(&output_manager->events.new_output, kywc_output);
 
@@ -671,6 +804,13 @@ static void handle_output_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->present.link);
     wl_list_remove(&output->commit.link);
+
+    if (output->hotplug_mode_update_timer) {
+        wl_event_source_remove(output->hotplug_mode_update_timer);
+    }
+    if (output->drm_fd >= 0) {
+        close(output->drm_fd);
+    }
 
     /* output may be disabled before */
     if (output->scene_output) {
