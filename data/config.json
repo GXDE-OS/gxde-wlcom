@@ -51,6 +51,12 @@
                 "command": "/usr/lib/deepin-daemon/default-file-manager",
                 "desc": "open file manager"
             },
+            "Win+p:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'SwitchMonitors'",
+                "desc": "switch display mode"
+            },
             "Alt+F2:no": {
                 "enable": true,
                 "actiontype": "command",
