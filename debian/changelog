@@ -3,6 +3,7 @@ gxde-wlcom (2.3.3-gxde1) lizhi; urgency=high
   * 允许即时调整KDE Blur强度
   * 将默认KDE Blur强度修改为4
   * 修复某些Qt程序输入不了中文的问题
+  * 修复Blur首帧及悬停动画中的黑线闪烁
 
  -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
 

@@ -204,7 +204,6 @@ struct blur_output_data {
     struct wl_listener output_destroy;
 
     struct wlr_buffer *output_buffer;
-    struct wl_listener buffer_destroy;
 };
 
 enum blur_program_type {
@@ -265,6 +264,7 @@ static const struct blur_level blur_levels[] = {
 #endif
 
 static void blur_output_data_destroy(struct blur_output_data *data);
+static void handle_output_destroy(struct wl_listener *listener, void *data);
 
 static void get_blur_level(const struct blur_info *info, uint32_t *iterations, float *offset)
 {
@@ -282,7 +282,11 @@ static void get_blur_level(const struct blur_info *info, uint32_t *iterations, f
 
 static int calculate_blur_radius(int iterations, float offset)
 {
-    return pow(2, iterations + 1) * offset;
+    if (offset <= 0.0f) {
+        return 0;
+    }
+
+    return ceilf(ldexpf(offset, iterations + 1));
 }
 
 #if 0
@@ -821,41 +825,19 @@ final:
 static void get_copy_box(const pixman_region32_t *blur_region, const struct blur_info *blur_info,
                          const pixman_region32_t *damaged_blur_region, struct kywc_box *copy_box)
 {
-    /**
-     * the copy area may be larger than the damage area, but it has no effect.
-     * because it is outside the radius of blur.
-     */
-    uint32_t iterations;
-    float offset;
-    get_blur_level(blur_info, &iterations, &offset);
-    int align_num = calculate_blur_radius(iterations, offset);
-
-     /**
-      * Frame copy box around whole blur region, not per-frame-change.
-      * This ensure the blur is stable and NOT tearing when mouse is moving.
-      */
-    pixman_box32_t* damage_bbox = pixman_region32_extents(blur_region);
+    (void)blur_info;
     (void)damaged_blur_region;
 
-    /* pos in frame_buffer */
-    struct kywc_box buffer_cpy_box = {
-        .x = align_num * (int)(damage_bbox->x1 / align_num),
-        .y = align_num * (int)(damage_bbox->y1 / align_num),
+    /* Keep the temporary texture origin and dimensions fixed for the whole
+     * blur surface.  A damage-sized texture changes the downsample phase on
+     * every dock animation frame and produces the moving vertical seams. */
+    const pixman_box32_t *blur_box = pixman_region32_extents(blur_region);
+    *copy_box = (struct kywc_box){
+        .x = blur_box->x1,
+        .y = blur_box->y1,
+        .width = blur_box->x2 - blur_box->x1,
+        .height = blur_box->y2 - blur_box->y1,
     };
-    /* copybox larger than damage blur bounding box */
-    buffer_cpy_box.width = align_num * ((damage_bbox->x2 - buffer_cpy_box.x) / align_num + 1);
-    buffer_cpy_box.height = align_num * ((damage_bbox->y2 - buffer_cpy_box.y) / align_num + 1);
-
-    /* copybox smaller than blur box */
-    pixman_box32_t *blur_box = pixman_region32_extents(blur_region);
-    copy_box->x = buffer_cpy_box.x > blur_box->x1 ? buffer_cpy_box.x : blur_box->x1;
-    copy_box->y = buffer_cpy_box.y > blur_box->y1 ? buffer_cpy_box.y : blur_box->y1;
-    copy_box->width = buffer_cpy_box.x + buffer_cpy_box.width < blur_box->x2
-                          ? buffer_cpy_box.width
-                          : blur_box->x2 - copy_box->x;
-    copy_box->height = buffer_cpy_box.y + buffer_cpy_box.height < blur_box->y2
-                           ? buffer_cpy_box.height
-                           : blur_box->y2 - copy_box->y;
 }
 
 void blur_render_with_target(struct ky_scene_render_target *target,
@@ -882,7 +864,7 @@ void blur_render_with_target(struct ky_scene_render_target *target,
     pixman_region32_t damaged_blur_region;
     pixman_region32_init(&damaged_blur_region);
     pixman_region32_intersect(&damaged_blur_region, &blur_region, options->clip);
-    if (pixman_region32_not_empty(&blur_region)) {
+    if (pixman_region32_not_empty(&damaged_blur_region)) {
         struct kywc_box buffer_cpy_box;
         get_copy_box(&blur_region, options->blur, &damaged_blur_region, &buffer_cpy_box);
         blur_render(target, options, &damaged_blur_region, &buffer_cpy_box);
@@ -941,11 +923,6 @@ static void node_for_each_blur_region(struct ky_scene_node *node,
         pixman_region32_copy(&blur_region, &node->visible_region);
     }
 
-    /*
-     * If any part of the blur region is damaged this frame, re-blur the WHOLE
-     * region.
-     * Avoiding blur tearing.
-     */
     pixman_region32_t damaged;
     pixman_region32_init(&damaged);
     pixman_region32_intersect(&damaged, &blur_region, &target->damage);
@@ -992,11 +969,21 @@ static bool blur_frame_render_begin(struct effect_entity *entity,
             break;
         }
     }
-    data->current_output_data = output_data;
-
     if (!output_data) {
-        return true;
+        output_data = calloc(1, sizeof(*output_data));
+        if (!output_data) {
+            data->current_output_data = NULL;
+            return true;
+        }
+
+        wl_list_insert(&data->output_data, &output_data->link);
+        pixman_region32_init(&output_data->unaffected_region);
+        pixman_region32_init(&output_data->damage_blur_region);
+        output_data->output = target->output;
+        output_data->output_destroy.notify = handle_output_destroy;
+        wl_signal_add(&target->output->events.destroy, &output_data->output_destroy);
     }
+    data->current_output_data = output_data;
 
     pixman_region32_clear(&output_data->unaffected_region);
     pixman_region32_clear(&output_data->damage_blur_region);
@@ -1062,32 +1049,26 @@ static bool blur_frame_render_end(struct effect_entity *entity,
     return true;
 }
 
-static void blur_output_data_buffer_destroy(struct blur_output_data *data)
+static void blur_output_data_buffer_release(struct blur_output_data *data)
 {
     if (!data->output_buffer) {
         return;
     }
-    wl_list_remove(&data->buffer_destroy.link);
-    wl_list_init(&data->buffer_destroy.link);
+    struct wlr_buffer *buffer = data->output_buffer;
     data->output_buffer = NULL;
+    wlr_buffer_unlock(buffer);
 }
 
 static void blur_output_data_destroy(struct blur_output_data *data)
 {
     wl_list_remove(&data->output_destroy.link);
 
-    blur_output_data_buffer_destroy(data);
+    blur_output_data_buffer_release(data);
 
     pixman_region32_fini(&data->unaffected_region);
     pixman_region32_fini(&data->damage_blur_region);
     wl_list_remove(&data->link);
     free(data);
-}
-
-static void handle_output_buffer_destroy(struct wl_listener *listener, void *data)
-{
-    struct blur_output_data *_data = wl_container_of(listener, _data, buffer_destroy);
-    blur_output_data_buffer_destroy(_data);
 }
 
 static void handle_output_destroy(struct wl_listener *listener, void *data)
@@ -1112,27 +1093,13 @@ static bool blur_frame_render_post(struct effect_entity *entity,
         if (output_data->output_buffer == buffer) {
             return true;
         }
-        wl_list_remove(&output_data->buffer_destroy.link);
-        output_data->output_buffer = buffer;
-        wl_signal_add(&buffer->events.destroy, &output_data->buffer_destroy);
+        blur_output_data_buffer_release(output_data);
+        output_data->output_buffer = wlr_buffer_lock(buffer);
         return true;
     }
 
-    output_data = calloc(1, sizeof(*output_data));
-    if (!output_data) {
-        return true;
-    }
-    wl_list_insert(&data->output_data, &output_data->link);
-
-    pixman_region32_init(&output_data->unaffected_region);
-    pixman_region32_init(&output_data->damage_blur_region);
-    output_data->output = target->output;
-    output_data->output_destroy.notify = handle_output_destroy;
-    wl_signal_add(&target->output->events.destroy, &output_data->output_destroy);
-
-    output_data->output_buffer = buffer;
-    output_data->buffer_destroy.notify = handle_output_buffer_destroy;
-    wl_signal_add(&buffer->events.destroy, &output_data->buffer_destroy);
+    /* frame_render_begin creates the per-output state before the first scene
+     * render so blur damage propagation is valid during login too. */
     return true;
 }
 
