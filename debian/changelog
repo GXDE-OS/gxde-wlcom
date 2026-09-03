@@ -1,9 +1,16 @@
+gxde-wlcom (2.3.4-gxde1) lizhi; urgency=high
+
+  * 修复VBox下自动跟随窗体分辨率缩放失效的问题
+  * 修复Blur区域重叠的问题
+  * 现在支持通过Super + P切换显示器输出模式
+
+ -- CharOfString <root@charofstring.cc>  Thu, 03 Sep 2026 15:08:02 +0800
+
 gxde-wlcom (2.3.3-gxde1) lizhi; urgency=high
 
   * 允许即时调整KDE Blur强度
   * 将默认KDE Blur强度修改为4
   * 修复某些Qt程序输入不了中文的问题
-  * 修复Blur首帧及悬停动画中的黑线闪烁
 
  -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
 
