@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.4-gxde2) lizhi; urgency=high
+
+  * Update the bundled wlroots revision for current libinput switch
+    kinds.
+
+ -- CharOfString <root@charofstring.cc>  Sun, 06 Sep 2026 17:50:57 -0500
+
 gxde-wlcom (2.3.4-gxde1) lizhi; urgency=high
 
   * 修复VBox下自动跟随窗体分辨率缩放失效的问题
