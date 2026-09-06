@@ -10,7 +10,7 @@
 # 只取分支头
 
 [wrap-git]
-url = https://gitee.com/GXDE-OS/open-kylin-wlroots.git
+url = https://github.com/GXDE-OS/open-kylin-wlroots.git
 revision = 950dbeb6cc3701832b3623fdd4bc51c9a9a37f6e
 
 [provide]
