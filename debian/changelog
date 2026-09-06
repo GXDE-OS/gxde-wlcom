@@ -1,7 +1,12 @@
+gxde-wlcom (2.3.4-gxde3) lizhi; urgency=high
+
+  * 将Wlroots仓库指向GitHub，避免CI Clone失败
+
+ -- CharOfString <root@charofstring.cc>  Sun, 06 Sep 2026 18:55:12 -0500
+
 gxde-wlcom (2.3.4-gxde2) lizhi; urgency=high
 
-  * Update the bundled wlroots revision for current libinput switch
-    kinds.
+  * 更新Wlroots版本
 
  -- CharOfString <root@charofstring.cc>  Sun, 06 Sep 2026 17:50:57 -0500
 
