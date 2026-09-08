@@ -15,8 +15,12 @@
 #include "output.h"
 #include "scene/surface.h"
 #include "server.h"
+#include "util/dbus.h"
 #include "view/session_lock.h"
 #include "view/view.h"
+
+#define LOCK_RECOVERY_INTERVAL_MS 1000
+#define LOCK_RECOVERY_MAX_ATTEMPTS 10
 
 struct session_lock;
 
@@ -55,6 +59,8 @@ struct session_lock {
 struct session_lock_manager {
     struct wlr_session_lock_manager_v1 *protocol_manager;
     struct session_lock *lock;
+    struct wl_event_source *recovery_timer;
+    unsigned recovery_attempts;
 
     struct wl_listener new_lock;
     struct wl_listener new_output;
@@ -65,6 +71,41 @@ struct session_lock_manager {
 static struct session_lock_manager *manager = NULL;
 
 static void session_lock_try_send_locked(struct session_lock *lock);
+
+static void stop_lock_recovery(void)
+{
+    if (!manager || !manager->recovery_timer) {
+        return;
+    }
+
+    wl_event_source_timer_update(manager->recovery_timer, 0);
+    manager->recovery_attempts = 0;
+}
+
+static int handle_lock_recovery_timer(void *data)
+{
+    struct session_lock_manager *lock_manager = data;
+    if (!lock_manager->lock || !lock_manager->lock->abandoned) {
+        lock_manager->recovery_attempts = 0;
+        return 0;
+    }
+
+    ++lock_manager->recovery_attempts;
+    kywc_log(KYWC_WARN, "requesting a replacement session locker (attempt %u/%u)",
+             lock_manager->recovery_attempts, LOCK_RECOVERY_MAX_ATTEMPTS);
+    if (!dbus_call_method("top.gxde.DisplayManager", "/top/gxde/DisplayManager",
+                          "top.gxde.DisplayManager", "Show", NULL, NULL)) {
+        kywc_log(KYWC_ERROR, "failed to request a replacement session locker over D-Bus");
+    }
+
+    if (lock_manager->recovery_attempts < LOCK_RECOVERY_MAX_ATTEMPTS) {
+        wl_event_source_timer_update(lock_manager->recovery_timer, LOCK_RECOVERY_INTERVAL_MS);
+    } else {
+        kywc_log(KYWC_ERROR,
+                 "replacement session locker did not connect; keeping the session securely locked");
+    }
+    return 0;
+}
 
 static void listener_remove(struct wl_listener *listener)
 {
@@ -465,6 +506,9 @@ static void handle_lock_abandoned(struct wl_listener *listener, void *data)
     lock->protocol_lock = NULL;
     lock->abandoned = true;
     focus_surface(lock, NULL);
+
+    manager->recovery_attempts = 0;
+    wl_event_source_timer_update(manager->recovery_timer, LOCK_RECOVERY_INTERVAL_MS);
 }
 
 struct add_outputs_context {
@@ -486,6 +530,7 @@ static bool add_lock_output(struct kywc_output *kywc_output, int index, void *da
 static void handle_new_lock(struct wl_listener *listener, void *data)
 {
     struct wlr_session_lock_v1 *protocol_lock = data;
+    struct session_lock *abandoned_lock = NULL;
 
     if (manager->lock) {
         if (!manager->lock->abandoned) {
@@ -493,7 +538,7 @@ static void handle_new_lock(struct wl_listener *listener, void *data)
             wlr_session_lock_v1_destroy(protocol_lock);
             return;
         }
-        session_lock_destroy(manager->lock, false);
+        abandoned_lock = manager->lock;
     }
 
     struct session_lock *lock = calloc(1, sizeof(*lock));
@@ -515,8 +560,6 @@ static void handle_new_lock(struct wl_listener *listener, void *data)
     lock->destroy.notify = handle_lock_abandoned;
     wl_signal_add(&protocol_lock->events.destroy, &lock->destroy);
 
-    manager->lock = lock;
-
     struct add_outputs_context context = { .lock = lock };
     output_manager_for_each_output(add_lock_output, true, &context);
     if (context.failed) {
@@ -524,6 +567,14 @@ static void handle_new_lock(struct wl_listener *listener, void *data)
         wlr_session_lock_v1_destroy(protocol_lock);
         return;
     }
+
+    /* Keep the abandoned lock's black trees in place until its replacement is
+     * fully allocated. This avoids exposing the session if allocation fails. */
+    if (abandoned_lock) {
+        session_lock_destroy(abandoned_lock, false);
+    }
+    manager->lock = lock;
+    stop_lock_recovery();
 
     input_manager_for_each_seat(cancel_seat_grabs, NULL);
     focus_surface(lock, NULL);
@@ -568,6 +619,9 @@ static void session_lock_manager_destroy(void)
     listener_remove(&manager->new_output);
     listener_remove(&manager->protocol_destroy);
     listener_remove(&manager->server_destroy);
+    if (manager->recovery_timer) {
+        wl_event_source_remove(manager->recovery_timer);
+    }
     free(manager);
     manager = NULL;
 }
@@ -594,8 +648,17 @@ bool session_lock_manager_create(struct server *server)
     listener_init(&manager->protocol_destroy);
     listener_init(&manager->server_destroy);
 
+    manager->recovery_timer =
+        wl_event_loop_add_timer(server->event_loop, handle_lock_recovery_timer, manager);
+    if (!manager->recovery_timer) {
+        free(manager);
+        manager = NULL;
+        return false;
+    }
+
     manager->protocol_manager = wlr_session_lock_manager_v1_create(server->display);
     if (!manager->protocol_manager) {
+        wl_event_source_remove(manager->recovery_timer);
         free(manager);
         manager = NULL;
         return false;

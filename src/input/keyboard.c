@@ -176,6 +176,16 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
         handle_keyboard_state(keyboard_state, modifiers, keysyms[i], pressed);
     }
 
+    /* VT switching must remain available while the session is locked. It is a
+     * compositor escape path, not a client shortcut. */
+    for (size_t i = 0; i < len; ++i) {
+        xkb_keysym_t keysym = keysyms[i];
+        if (keysym >= XKB_KEY_XF86Switch_VT_1 && keysym <= XKB_KEY_XF86Switch_VT_12) {
+            input_manager_switch_vt(keysym - XKB_KEY_XF86Switch_VT_1 + 1);
+            return true;
+        }
+    }
+
     if (session_lock_is_active()) {
         return false;
     }
@@ -183,14 +193,6 @@ static bool keyboard_handle_bindings(struct keyboard *keyboard, uint32_t key, bo
     /* key grab for shortcut capture (e.g. control center shortcut editor) */
     for (size_t i = 0; i < len; ++i) {
         if (input_action_handle_key(pressed, modifiers, keysyms[i])) {
-            return true;
-        }
-    }
-
-    for (size_t i = 0; i < len; ++i) {
-        xkb_keysym_t keysym = keysyms[i];
-        if (keysym >= XKB_KEY_XF86Switch_VT_1 && keysym <= XKB_KEY_XF86Switch_VT_12) {
-            input_manager_switch_vt(keysym - XKB_KEY_XF86Switch_VT_1 + 1);
             return true;
         }
     }
@@ -290,8 +292,11 @@ static void keyboard_feed_key(struct keyboard *keyboard, uint32_t key, uint32_t 
 
     if (session_lock_is_active()) {
         bool repeat = false;
-        keyboard_handle_bindings(keyboard, key, pressed, modifiers, &repeat);
+        bool handled = keyboard_handle_bindings(keyboard, key, pressed, modifiers, &repeat);
         keyboard_repeat_stop(keyboard);
+        if (handled) {
+            return;
+        }
         wlr_seat_set_keyboard(seat->wlr_seat, keyboard->wlr_keyboard);
         wlr_seat_keyboard_notify_key(seat->wlr_seat, time, key, state);
         return;
