@@ -235,6 +235,11 @@ static void start_virtualbox_wayland_helper(void)
         return;
     }
 
+    // For VirtualBox, force ensure VBoxClient is running so screen resizing shall be okay.
+    if (!spawn_invoke("/usr/bin/VBoxClient --vmsvga")) {
+        kywc_log(KYWC_ERROR, "failed to start VirtualBox display resize daemon");
+    }
+
     if (!spawn_invoke("/usr/bin/VBoxClient --vmsvga-session")) {
         kywc_log(KYWC_ERROR, "failed to start VirtualBox Wayland display assistant");
     }
