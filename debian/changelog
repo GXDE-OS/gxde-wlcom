@@ -1,3 +1,12 @@
+gxde-wlcom (2.3.5-gxde1) lizhi; urgency=high
+
+  * 尝试修复笔记本待机后在唤醒前就插入外接屏幕导致VT卡死的问题
+  * 尝试修复XWayland下输入法在XIM与实际输入法之间反复横跳的问题
+  * 尝试修复VirtualBox下屏幕分辨率不跟随VM窗体大小的问题
+  * 强制VirtualBox虚拟机使用软件伽马、关掉直通扫描
+
+ -- CharOfString <root@charofstring.cc>  Thu, 10 Sep 2026 02:53:24 -0500
+
 gxde-wlcom (2.3.4-gxde3) lizhi; urgency=high
 
   * 将Wlroots仓库指向GitHub，避免CI Clone失败
