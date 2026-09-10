@@ -1367,6 +1367,12 @@ static bool output_compare_state(struct output *output, const struct kywc_output
 
 bool output_use_hardware_gamma(struct output *output)
 {
+    // Got some issues for GAMMA controls under VBox, disabling it for VBox.
+    // It makes GXWM too bright or too dark (that one couldn't read what's on screen)
+    if (output_is_virtualbox(output->wlr_output)) {
+        return false;
+    }
+
     return output->base.prop.gamma_size > 0 && !output_manager->force_software_gamma;
 }
 
