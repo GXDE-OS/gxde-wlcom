@@ -1369,6 +1369,7 @@ bool output_use_hardware_gamma(struct output *output)
 {
     // Got some issues for GAMMA controls under VBox, disabling it for VBox.
     // It makes GXWM too bright or too dark (that one couldn't read what's on screen)
+    // -- Actually not fully diabling it but we have a so called software gamma.
     if (output_is_virtualbox(output->wlr_output)) {
         return false;
     }
