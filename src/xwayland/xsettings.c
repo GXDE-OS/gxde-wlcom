@@ -274,6 +274,31 @@ static bool build_xsettings_data(struct xsettings_manager *manager, struct xsett
         xsettings_append_int(buffer, "Gtk/EnableAnimations", 1, serial);
 }
 
+static bool build_current_xsettings_data(struct xsettings_manager *manager,
+                                         struct xsettings_buffer *buffer)
+{
+    struct xwayland_server *xwayland = manager->xwayland;
+    struct seat *seat = xwayland->wlr_xwayland && xwayland->wlr_xwayland->seat
+        ? seat_from_wlr_seat(xwayland->wlr_xwayland->seat)
+        : input_manager_get_default_seat();
+
+    g_autofree char *gtk_theme_setting = read_gtk_theme_name();
+    g_autofree char *icon_theme_setting = read_icon_theme_name();
+    const char *gtk_theme = gtk_theme_setting ? gtk_theme_setting : "Adwaita";
+    const char *icon_theme = theme_manager_get_icon_theme();
+    if (!icon_theme || !*icon_theme) {
+        icon_theme = icon_theme_setting ? icon_theme_setting : "hicolor";
+    }
+
+    const char *cursor_theme = current_cursor_theme(seat);
+    int32_t cursor_size = current_cursor_size(xwayland, seat);
+    g_autofree char *font_name = current_font_name();
+    g_autofree char *gtk_im_module = read_gtk_im_module();
+
+    return build_xsettings_data(manager, buffer, gtk_theme, icon_theme, cursor_theme, cursor_size,
+                                font_name ? font_name : "Sans 10", gtk_im_module);
+}
+
 static void update_xresources(struct xsettings_manager *manager, const char *gtk_theme,
         const char *icon_theme, const char *cursor_theme, int32_t cursor_size)
 {
@@ -329,7 +354,8 @@ static bool announce_manager(struct xsettings_manager *manager, xcb_screen_t *sc
     return true;
 }
 
-static bool manage_screen(struct xsettings_manager *manager, int screen_index, xcb_screen_t *screen)
+static bool manage_screen(struct xsettings_manager *manager, int screen_index, xcb_screen_t *screen,
+                          const struct xsettings_buffer *initial_settings)
 {
     xcb_connection_t *connection = manager->xwayland->xcb_conn;
     char selection_name[64];
@@ -348,6 +374,21 @@ static bool manage_screen(struct xsettings_manager *manager, int screen_index, x
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME,
         XCB_ATOM_STRING, 8, strlen(XSETTINGS_MANAGER_NAME),
         XSETTINGS_MANAGER_NAME);
+
+    /* XSettings clients read this property as soon as the selection owner is
+     * announced. Populate it first so early XWayland clients (notably
+     * Chromium/Electron) cannot observe an empty manager and permanently
+     * select the locale fallback (XIM) instead of the configured GTK input
+     * module. XCB preserves request ordering on this connection. */
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, manager->settings_atom,
+                        manager->settings_atom, 8, initial_settings->len,
+                        initial_settings->data);
+
+    struct xsettings_window *xwin = calloc(1, sizeof(*xwin));
+    if (!xwin) {
+        xcb_destroy_window(connection, window);
+        return false;
+    }
 
     xcb_grab_server(connection);
     xcb_get_selection_owner_reply_t *owner_reply =
@@ -369,12 +410,7 @@ static bool manage_screen(struct xsettings_manager *manager, int screen_index, x
     if (!ok) {
         kywc_log(KYWC_ERROR, "xsettings failed to acquire %s", selection_name);
         xcb_destroy_window(connection, window);
-        return false;
-    }
-
-    struct xsettings_window *xwin = calloc(1, sizeof(*xwin));
-    if (!xwin) {
-        xcb_destroy_window(connection, window);
+        free(xwin);
         return false;
     }
 
@@ -408,13 +444,8 @@ void xwayland_xsettings_apply(struct xwayland_server *xwayland)
 
     const char *cursor_theme = current_cursor_theme(seat);
     int32_t cursor_size = current_cursor_size(xwayland, seat);
-    g_autofree char *font_name_alloc = current_font_name();
-    const char *font_name = font_name_alloc ? font_name_alloc : "Sans 10";
-    g_autofree char *gtk_im_module = read_gtk_im_module();
-
     struct xsettings_buffer buffer = { 0 };
-    if (!build_xsettings_data(manager, &buffer, gtk_theme, icon_theme, cursor_theme, cursor_size,
-                              font_name, gtk_im_module)) {
+    if (!build_current_xsettings_data(manager, &buffer)) {
         kywc_log(KYWC_ERROR, "xsettings failed to build settings data");
         free(buffer.data);
         return;
@@ -452,14 +483,22 @@ bool xwayland_xsettings_create(struct xwayland_server *xwayland)
 
     xwayland->xsettings = manager;
 
+    struct xsettings_buffer initial_settings = { 0 };
+    if (!build_current_xsettings_data(manager, &initial_settings)) {
+        kywc_log(KYWC_ERROR, "xsettings failed to build initial settings data");
+        xwayland_xsettings_destroy(xwayland);
+        return false;
+    }
+
     const xcb_setup_t *setup = xcb_get_setup(xwayland->xcb_conn);
     xcb_screen_iterator_t iterator = xcb_setup_roots_iterator(setup);
     int screen_count = xcb_setup_roots_length(setup);
     bool ok = false;
     for (int i = 0; i < screen_count && iterator.rem; i++) {
-        ok = manage_screen(manager, i, iterator.data) || ok;
+        ok = manage_screen(manager, i, iterator.data, &initial_settings) || ok;
         xcb_screen_next(&iterator);
     }
+    free(initial_settings.data);
 
     if (!ok) {
         xwayland_xsettings_destroy(xwayland);

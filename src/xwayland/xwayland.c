@@ -426,6 +426,11 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
         kywc_log(KYWC_WARN,
             "(XWayland) Init: Failed to run Xwayland session hooks");
     }
+
+    if (!xwayland->ready) {
+        xwayland->ready = true;
+        wl_signal_emit_mutable(&xwayland->ready_event, NULL);
+    }
 }
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
@@ -686,6 +691,7 @@ bool xwayland_server_create(struct server *server)
 
     xwayland->scale = 1.0;
     xwayland->server = server;
+    wl_signal_init(&xwayland->ready_event);
     wl_list_init(&xwayland->surfaces);
     wl_list_init(&xwayland->unmanaged_surfaces);
     xwayland->wlr_xwayland->user_event_handler = xwayland_handle_event;
@@ -716,6 +722,16 @@ bool xwayland_server_create(struct server *server)
     setenv("DISPLAY", xwayland->wlr_xwayland->display_name, true);
     kywc_log(KYWC_INFO, "xwayland is running on display %s", xwayland->wlr_xwayland->display_name);
 
+    return true;
+}
+
+bool xwayland_server_wait_ready(struct wl_listener *listener)
+{
+    if (!xwayland || xwayland->ready) {
+        return false;
+    }
+
+    wl_signal_add(&xwayland->ready_event, listener);
     return true;
 }
 

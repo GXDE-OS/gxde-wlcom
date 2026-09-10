@@ -16,6 +16,9 @@
 #include "util/limit.h"
 #include "util/logger.h"
 #include "util/spawn.h"
+#include "xwayland.h"
+
+#define SESSION_XWAYLAND_READY_TIMEOUT_MS 5000
 
 static struct server server = {
     .options = {
@@ -27,6 +30,9 @@ static struct server server = {
     .session_pid = -1,
 };
 static int exit_value = 0;
+static bool session_start_scheduled = false;
+static struct wl_listener session_xwayland_ready;
+static struct wl_event_source *session_xwayland_timeout = NULL;
 
 static const struct option long_options[] = {
     { "help", no_argument, NULL, 'h' },    { "debug", no_argument, NULL, 'd' },
@@ -173,6 +179,56 @@ static void start_session(void *data)
     }
 }
 
+static void schedule_session_start(void)
+{
+    if (session_start_scheduled) {
+        return;
+    }
+    session_start_scheduled = true;
+
+    if (!wl_list_empty(&session_xwayland_ready.link)) {
+        wl_list_remove(&session_xwayland_ready.link);
+        wl_list_init(&session_xwayland_ready.link);
+    }
+    if (session_xwayland_timeout) {
+        wl_event_source_remove(session_xwayland_timeout);
+        session_xwayland_timeout = NULL;
+    }
+
+    wl_event_loop_add_idle(server.event_loop, start_session, NULL);
+}
+
+static void handle_xwayland_ready_for_session(struct wl_listener *listener, void *data)
+{
+    schedule_session_start();
+}
+
+static int handle_xwayland_ready_timeout(void *data)
+{
+    kywc_log(KYWC_WARN, "XWayland did not become ready in time; starting the session anyway");
+    schedule_session_start();
+    return 0;
+}
+
+static void schedule_session_after_xwayland(void)
+{
+    session_xwayland_ready.notify = handle_xwayland_ready_for_session;
+    wl_list_init(&session_xwayland_ready.link);
+    if (!xwayland_server_wait_ready(&session_xwayland_ready)) {
+        schedule_session_start();
+        return;
+    }
+
+    session_xwayland_timeout =
+        wl_event_loop_add_timer(server.event_loop, handle_xwayland_ready_timeout, NULL);
+    if (!session_xwayland_timeout ||
+        wl_event_source_timer_update(session_xwayland_timeout, SESSION_XWAYLAND_READY_TIMEOUT_MS) <
+            0) {
+        kywc_log(KYWC_WARN, "failed to arm XWayland startup timeout");
+        schedule_session_start();
+    }
+}
+
 static void start_virtualbox_wayland_helper(void)
 {
     if (access("/dev/vboxguest", F_OK) < 0 || access("/usr/bin/VBoxClient", X_OK) < 0) {
@@ -273,7 +329,7 @@ int main(int argc, char *argv[])
     set_signal(SIGCHLD, child_handler);
 
     if (server.session_process) {
-        wl_event_loop_add_idle(server.event_loop, start_session, NULL);
+        schedule_session_after_xwayland();
     }
 
     server_run(&server);

@@ -394,6 +394,23 @@ out:
     return 0;
 }
 
+static bool output_is_virtualbox(struct wlr_output *wlr_output)
+{
+    // VirtualBox's VMSVGA connector exposes an EDID with manufacturer "VBX"
+    // and monitor name "VBOX monitor". Unlike virtio-gpu/vmwgfx it has no
+    // "hotplug_mode_update" connector property; host resizes are signalled
+    // only by a preferred-mode change (HGSMI mode hints) that wlroots 0.17
+    // does not re-apply for an already-connected output. Detect it from the
+    // EDID-derived strings so the mode-update poll below is enabled.
+    const char *make = wlr_output->make;
+    const char *model = wlr_output->model;
+    if (make && (strstr(make, "VBX") != NULL || strstr(make, "VirtualBox") != NULL))
+        return true;
+    if (model && strstr(model, "VBOX") != NULL)
+        return true;
+    return false;
+}
+
 static void output_init_hotplug_mode_update(struct output *output)
 {
     if (!wlr_output_is_drm(output->wlr_output)) {
@@ -413,7 +430,7 @@ static void output_init_hotplug_mode_update(struct output *output)
         return;
     }
 
-    bool follows_host_mode = false;
+    bool follows_host_mode = output_is_virtualbox(output->wlr_output);
     for (uint32_t i = 0; i < props->count_props; ++i) {
         drmModePropertyRes *prop = drmModeGetProperty(drm_fd, props->props[i]);
         if (!prop) {
@@ -421,7 +438,9 @@ static void output_init_hotplug_mode_update(struct output *output)
         }
 
         if (strcmp(prop->name, "hotplug_mode_update") == 0) {
-            follows_host_mode = props->prop_values[i] != 0;
+            // virtio-gpu/vmwgfx expose this trigger property; enable the poll
+            // when present, regardless of its current (write-trigger) value.
+            follows_host_mode = true;
             drmModeFreeProperty(prop);
             break;
         }

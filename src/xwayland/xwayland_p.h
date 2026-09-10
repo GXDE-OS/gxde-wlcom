@@ -151,6 +151,9 @@ struct xwayland_server {
     struct wl_listener theme_update;
     struct wl_listener icon_update;
 
+    bool ready;
+    struct wl_signal ready_event;
+
     float scale;
 };
 

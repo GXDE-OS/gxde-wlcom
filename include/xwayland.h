@@ -11,6 +11,7 @@ struct seat;
 struct server;
 struct wl_client;
 struct wl_global;
+struct wl_listener;
 struct view;
 
 #if HAVE_XWAYLAND
@@ -18,6 +19,12 @@ struct view;
 bool xwayland_server_create(struct server *server);
 
 void xwayland_server_destroy(void);
+
+/**
+ * Add a one-shot caller-owned listener for initial XWayland setup completion.
+ * Returns false when XWayland is disabled, unavailable, or already ready.
+ */
+bool xwayland_server_wait_ready(struct wl_listener *listener);
 
 bool xwayland_check_client(const struct wl_client *client);
 
@@ -44,6 +51,8 @@ void xwayland_update_workarea(void);
 INLINE bool xwayland_server_create(struct server *server) { return false; }
 
 INLINE void xwayland_server_destroy(void) {}
+
+INLINE bool xwayland_server_wait_ready(struct wl_listener *listener) { return false; }
 
 INLINE bool xwayland_check_client(const struct wl_client *client) { return false; }
 
