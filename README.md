@@ -26,6 +26,8 @@
 
 </div>
 
+> **NOTE**: The development stage of GXWM is over. Now GXWM is in maintenance stage. Currently issues & feature requests WILL BE STILL PROCESSED (but it might be slow). After [FlakeWM](https://gitee.com/flake-wm/flake-wm) replaced GXWM as default wayland compositor for GXDE OS, GXWM will be archived and its support will be ended eventually.
+
 ## About the Project
 
 ![screenshot](./docs/pictures/screenshot.png)

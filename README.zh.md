@@ -26,6 +26,8 @@
 
 </div>
 
+> **注意**: 当前GXWM主要开发工作已经结束，现在GXWM处于长期维护阶段，我们仍然接受Issue和新的功能请求，但处理速度可能会较慢。在[FlakeWM](https://gitee.com/flake-wm/flake-wm)在GXDE OS上取代GXWM作为默认的合成器以后，GXWM将归档并停止支持。
+
 ## 关于本项目
 
 ![screenshot](./docs/pictures/screenshot.png)
