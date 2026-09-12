@@ -213,7 +213,18 @@ static char *read_gtk_im_module(void)
         return name;
     }
 
-    return read_gsettings_string("org.gnome.desktop.interface", "gtk-im-module");
+    name = read_gsettings_string("org.gnome.desktop.interface", "gtk-im-module");
+    if (name) {
+        return name;
+    }
+
+    /* Fallback XSettings IME to fcitx if XMODIFIERS is set to fcitx */
+    const char *xmodifiers = getenv("XMODIFIERS");
+    if (xmodifiers && strstr(xmodifiers, "fcitx")) {
+        return g_strdup("fcitx");
+    }
+
+    return NULL;
 }
 
 static const char *current_cursor_theme(struct seat *seat)
