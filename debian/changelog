@@ -1,3 +1,9 @@
+gxde-wlcom (2.3.5-gxde2) lizhi; urgency=high
+
+  * XWayland现在在XMODIFIERS设置为fcitx的情况下会默认广播XSettings IME为fcitx
+
+ -- CharOfString <root@charofstring.cc>  Fri, 11 Sep 2026 19:50:02 -0500
+
 gxde-wlcom (2.3.5-gxde1) lizhi; urgency=high
 
   * 尝试修复笔记本待机后在唤醒前就插入外接屏幕导致VT卡死的问题
