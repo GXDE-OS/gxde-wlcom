@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.6-gxde1) lizhi; urgency=high
+
+  * XWayland现在不在XSettings广播输入法偏好
+  * 修复Layer Shell实现中的信号与时序问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 18 Sep 2026 18:22:07 -0500
+
 gxde-wlcom (2.3.5-gxde2) lizhi; urgency=high
 
   * XWayland现在在XMODIFIERS设置为fcitx的情况下会默认广播XSettings IME为fcitx
