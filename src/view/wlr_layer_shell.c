@@ -268,6 +268,9 @@ static void layer_shell_configure_surface(struct layer_shell *layer_shell,
     ky_scene_node_set_position(&layer_shell->tree->node, box.x, box.y);
     wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
+    // 注意: 这里会原地修改 usable_area(把它当作累加器减去本 surface 的保留区)。
+    // 调用方如果传的是 output->usable_area, 必须先拷一份, 否则会把已保存的工作区
+    // 提前改掉, 使 output_update_usable_area() 认为工作区没变化而不再发信号。
     if (layer_surface->surface->mapped && state->exclusive_zone > 0) {
         layer_surface_exclusive_zone(state, usable_area);
     }
@@ -304,7 +307,15 @@ static void layer_shell_handle_commit(struct wl_listener *listener, void *data)
     }
 
     if (committed) {
-        layer_shell_configure_surface(layer_shell, &output->geometry, &output->usable_area);
+        // 不能把 output->usable_area 直接当累加器传进去: 对 exclusive_zone > 0 的
+        // surface, configure_surface 会原地把它减去自己的保留高度。这样紧随其后的
+        // output_update_usable_area() 重算出的值与刚被写入的值相同, 于是在
+        // "盒子没变" 的判断处提前返回, usable_area 信号不会发出 —— 表现为 dock 的
+        // exclusive zone 变化(启动后延迟设置、切换隐藏模式、改尺寸)之后, 桌面图标层
+        // (exclusive_zone == 0) 不会跟随刷新, 图标仍然画到 dock 区域上。
+        // 用一个局部副本做累加, 让保存的值始终是 "未减去任何保留区" 的真实工作区。
+        struct kywc_box usable_area = output->usable_area;
+        layer_shell_configure_surface(layer_shell, &output->geometry, &usable_area);
         output_update_usable_area(&output->base);
     }
 }
@@ -586,8 +597,10 @@ void wlr_layer_shell_reconfigure_surface(struct wlr_surface *surface)
                 if (!layer_shell->layer_surface->surface->mapped) {
                     return;
                 }
+                // 同 layer_shell_handle_commit: 用副本累加, 避免污染保存的工作区
+                struct kywc_box usable_area = layer_output->output->usable_area;
                 layer_shell_configure_surface(layer_shell, &layer_output->output->geometry,
-                                              &layer_output->output->usable_area);
+                                              &usable_area);
                 return;
             }
         }
