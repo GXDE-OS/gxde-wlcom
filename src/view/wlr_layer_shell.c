@@ -347,6 +347,17 @@ static void layer_shell_handle_unmap(struct wl_listener *listener, void *data)
 static void layer_shell_handle_destroy(struct wl_listener *listener, void *data)
 {
     struct layer_shell *layer_shell = wl_container_of(listener, layer_shell, destroy);
+    struct wlr_layer_surface_v1 *layer_surface = layer_shell->layer_surface;
+
+    // dock/顶栏这类 positive exclusive zone 的 layer surface 可能在其 wl_surface
+    // 尚未 unmap 之前就被直接销毁(例如进程被杀时 layer_surface resource 先于
+    // wl_surface 释放)。此时 unmap 事件不会再派发到这里, 必须手动刷新 usable
+    // area, 否则桌面图标层(exclusive zone == 0)不会重新铺满释放出来的区域。
+    struct output *output = NULL;
+    if (layer_surface->output && layer_surface->current.exclusive_zone > 0
+            && layer_surface->surface->mapped) {
+        output = output_from_wlr_output(layer_surface->output);
+    }
 
     wl_list_remove(&layer_shell->destroy.link);
     wl_list_remove(&layer_shell->commit.link);
@@ -358,6 +369,10 @@ static void layer_shell_handle_destroy(struct wl_listener *listener, void *data)
     ky_scene_node_destroy(&layer_shell->tree->node);
 
     free(layer_shell);
+
+    if (output) {
+        output_update_usable_area(&output->base);
+    }
 }
 
 static void layer_shell_handle_new_popup(struct wl_listener *listener, void *data)
