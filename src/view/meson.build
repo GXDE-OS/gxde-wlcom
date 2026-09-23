@@ -99,4 +99,5 @@ wlcom_sources += files(
   'dde_shell.c',
   'treeland_dde_shell.c',
   'treeland_personalization.c',
+  'treeland_color_scheme.c',
 )

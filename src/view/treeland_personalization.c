@@ -1157,6 +1157,21 @@ static void appearance_handle_get_window_opacity(struct wl_client *client,
                                                                        manager->window_opacity);
 }
 
+void treeland_personalization_set_window_theme_type(uint32_t type)
+{
+    if (!manager || manager->window_theme_type == type) {
+        return;
+    }
+
+    manager->window_theme_type = type;
+
+    struct personalization_context *ctx;
+    wl_list_for_each(ctx, &manager->appearance_contexts, link) {
+        treeland_personalization_appearance_context_v1_send_window_theme_type(
+            ctx->resource, manager->window_theme_type);
+    }
+}
+
 static void appearance_handle_set_window_theme_type(struct wl_client *client,
                                                     struct wl_resource *resource, uint32_t type)
 {
@@ -1171,13 +1186,8 @@ static void appearance_handle_set_window_theme_type(struct wl_client *client,
             "invalid window theme type %u", type);
         return;
     }
-    manager->window_theme_type = type;
 
-    struct personalization_context *ctx;
-    wl_list_for_each(ctx, &manager->appearance_contexts, link) {
-        treeland_personalization_appearance_context_v1_send_window_theme_type(
-            ctx->resource, manager->window_theme_type);
-    }
+    treeland_personalization_set_window_theme_type(type);
 }
 
 static void appearance_handle_get_window_theme_type(struct wl_client *client,
@@ -1661,6 +1671,7 @@ static void handle_theme_update(struct wl_listener *listener, void *data)
 static void handle_server_ready(struct wl_listener *listener, void *data)
 {
     personalization_apply_theme();
+    treeland_color_scheme_create();
 }
 
 static void handle_display_destroy(struct wl_listener *listener, void *data)

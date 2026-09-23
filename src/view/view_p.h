@@ -274,6 +274,13 @@ void treeland_dde_shell_set_resolved_position(struct wlr_surface *surface, int x
 
 bool treeland_personalization_manager_create(struct server *server);
 
+/* Broadcast a treeland_personalization_appearance_context_v1 theme_type
+ * (auto/light/dark) to every appearance context. */
+void treeland_personalization_set_window_theme_type(uint32_t type);
+
+/* Follow the system dark/light preference and drive the window theme type */
+bool treeland_color_scheme_create(void);
+
 /* Per-window shadow/border overrides, driven by
  * treeland_personalization_window_context_v1 */
 void ssd_set_shadow_override(struct kywc_view *kywc_view, bool enabled, int radius, int offset_x,
