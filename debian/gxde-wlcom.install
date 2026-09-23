@@ -5,4 +5,5 @@ usr/share/gxde-wlcom/multitask/
 usr/lib/udev/rules.d/
 usr/share/wayland-sessions/
 etc/gxde-wlcom/
+usr/share/glib-2.0/schemas/
 data/configs/OMG.conf etc/GXWM/

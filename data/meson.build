@@ -13,3 +13,14 @@ default_config = files('config.json')
 install_data(default_config, install_dir:'/etc/gxde-wlcom/')
 
 embed = find_program('./embed.sh', native: true)
+
+# 安装 UKUI 鼠标 gsettings schema(定位指针 / 晃动光标开关)
+# 供 src/config/ukui_gsettings.c 读取 locate-pointer、shake-cursor 等键
+gschema_conf = configuration_data()
+gschema_conf.set('GETTEXT_PACKAGE', 'gxde-wlcom')
+configure_file(
+  input: 'org.ukui.peripherals-mouse.gschema.xml',
+  output: 'org.ukui.peripherals-mouse.gschema.xml',
+  configuration: gschema_conf,
+  install_dir: get_option('datadir') / 'glib-2.0/schemas',
+)
