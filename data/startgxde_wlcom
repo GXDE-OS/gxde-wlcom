@@ -191,6 +191,16 @@ unset -f is_fcitx5_selected enable_fcitx5_shared_input_state
 # XMODIFIERS。
 unset GTK_IM_MODULE
 
+# Applications launched by systemd --user do not inherit this environment.
+# The compositor exports the input method variables; drop a stale
+# GTK_IM_MODULE so native GTK applications keep using Wayland input method.
+# -----------------------------------------------------------------------------
+# 由 systemd --user 拉起的应用不会继承本脚本的环境变量。输入法变量由合成器
+# 负责导出；此处清除残留的 GTK_IM_MODULE，使原生 GTK 应用继续使用 Wayland 输入法。
+if command -v systemctl > /dev/null 2>&1; then
+    systemctl --user unset-environment GTK_IM_MODULE > /dev/null 2>&1 || true
+fi
+
 unset QT_QPA_PLATFORM
 export QT_QPA_PLATFORM=wayland
 

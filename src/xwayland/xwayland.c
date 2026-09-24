@@ -422,6 +422,20 @@ static void handle_xwayland_ready(struct wl_listener *listener, void *data)
             "(XWayland) Init: Failed to export WAYLAND_DISPLAY to the activation environment");
     }
 
+    /* Applications launched by systemd --user do not inherit our environment,
+     * so XWayland-only applications like WPS would lose the input method. */
+    static const char *const im_variables[] = {
+        "XMODIFIERS", "QT_IM_MODULE", "SDL_IM_MODULE", "CLUTTER_IM_MODULE",
+    };
+    for (size_t i = 0; i < sizeof(im_variables) / sizeof(im_variables[0]); i++) {
+        const char *value = getenv(im_variables[i]);
+        if (value && *value && !dbus_update_activation_environment(im_variables[i], value)) {
+            kywc_log(KYWC_WARN,
+                "(XWayland) Init: Failed to export %s to the activation environment",
+                im_variables[i]);
+        }
+    }
+
     if (!spawn_invoke("/usr/bin/run-parts /etc/xdg/Xwayland-session.d")) {
         kywc_log(KYWC_WARN,
             "(XWayland) Init: Failed to run Xwayland session hooks");
@@ -596,6 +610,10 @@ int xwayland_read_application_menu(xcb_window_t window_id) {
 static int xwayland_handle_event(struct wlr_xwm *xwm, xcb_generic_event_t *event)
 {
     const uint8_t response_type = event->response_type & 0x7f;
+
+    if (xwayland_xsettings_handle_event(xwayland, event)) {
+        return 1;
+    }
 
     if (response_type == XCB_PROPERTY_NOTIFY) {
         xcb_property_notify_event_t *ev = (xcb_property_notify_event_t *)event;

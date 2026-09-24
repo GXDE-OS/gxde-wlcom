@@ -260,6 +260,8 @@ void xwayland_xsettings_apply(struct xwayland_server *xwayland);
 
 void xwayland_xsettings_destroy(struct xwayland_server *xwayland);
 
+int xwayland_xsettings_handle_event(struct xwayland_server *xwayland, xcb_generic_event_t *event);
+
 // dnd protocol
 int xwayland_handle_dnd_message(struct xwayland_server *xwayland,
                                 xcb_client_message_event_t *client_message);
