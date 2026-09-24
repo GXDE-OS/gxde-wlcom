@@ -32,4 +32,13 @@ bool config_set_gtk_theme(const char *name);
 bool config_set_icon_theme(const char *name);
 bool config_set_gtk_decoration_layout(bool minimize, bool maximize, bool close);
 
+#if HAVE_UKUI_GSETTINGS
+bool config_set_shake_cursor(bool enabled);
+#else
+static __attribute__((unused)) inline bool config_set_shake_cursor(bool enabled)
+{
+    return false;
+}
+#endif
+
 #endif /* _CONFIG_H_ */

@@ -468,6 +468,8 @@ static int set_enabled(sd_bus_message *msg, void *userdata, sd_bus_error *ret_er
     effect_set_enabled(effect->effect, enabled);
     effect_write_enabled_option(effect->effect, enabled);
     config_manager_sync();
+    /* mirror to org.ukui.peripherals-mouse shake-cursor */
+    config_set_shake_cursor(enabled);
     return sd_bus_reply_method_return(msg, "b", true);
 }
 

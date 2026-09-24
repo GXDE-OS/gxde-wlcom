@@ -42,6 +42,7 @@ static const char *cursor_schema = "org.ukui.peripherals-mouse";
 static const char *cursor_theme_key = "cursor-theme";
 static const char *cursor_size_key = "cursor-size";
 static const char *locate_pointer_key = "locate-pointer";
+static const char *shake_cursor_key = "shake-cursor";
 
 static const char *style_schema = "org.ukui.style";
 static const char *style_name_key = "style-name";
@@ -77,6 +78,16 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
         struct effect *effect = effect_by_name("locate_pointer");
         if (effect) {
             effect_set_enabled(effect, enabled);
+        }
+        return;
+    } else if (strcmp(key, shake_cursor_key) == 0) {
+        bool enabled = g_settings_get_boolean(mouse, key);
+        struct effect *effect = effect_by_name("shake_cursor");
+        if (effect && effect->enabled != enabled) {
+            effect_set_enabled(effect, enabled);
+            /* keep the MouseFinder D-Bus state in config.json in sync */
+            effect_write_enabled_option(effect, enabled);
+            config_manager_sync();
         }
         return;
     }
@@ -248,6 +259,20 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
     free(settings->style.widget_theme);
 
     free(settings);
+}
+
+bool config_set_shake_cursor(bool enabled)
+{
+    if (!settings || !settings->cursor.settings ||
+        !g_settings_is_writable(settings->cursor.settings, shake_cursor_key)) {
+        return false;
+    }
+
+    if (!g_settings_set_boolean(settings->cursor.settings, shake_cursor_key, enabled)) {
+        return false;
+    }
+    g_settings_sync();
+    return true;
 }
 
 bool ukui_gsettings_create(struct config_manager *config_manager)

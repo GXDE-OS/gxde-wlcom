@@ -47,9 +47,9 @@
       <description>Highlights the current location of the pointer when the Control key is pressed and released.</description>
     </key>
     <key type="b" name="shake-cursor">
-      <default>false</default>
-      <summary>shaking to find cursor.</summary>
-      <description>Highlights the current location of the pointer when the Control key is pressed and released.</description>
+      <default>true</default>
+      <summary>Shake to find cursor</summary>
+      <description>Temporarily enlarges the pointer when the mouse is shaken quickly.</description>
     </key>
     <key type="s" name="cursor-theme">
       <default>'dark-sense'</default>

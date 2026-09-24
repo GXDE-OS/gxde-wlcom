@@ -305,6 +305,3 @@ GetEnabled() -> bool
 ```bash
 busctl --user call top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder GetEnabled
 ```
-
-该设置保存在 `~/.config/gxde-wlcom/config.json` 的 `Effects.shake_cursor.enabled` 中。
-该功能不再受 gsettings 键 `org.ukui.peripherals-mouse shake-cursor` 控制。
