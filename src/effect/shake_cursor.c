@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
+#include "config.h"
 #include "effect/animator.h"
 #include "effect_p.h"
 #include "input/cursor.h"
@@ -16,11 +17,16 @@
 #include "painter.h"
 #include "render/pass.h"
 #include "theme.h"
+#include "util/dbus.h"
 #include "util/time.h"
 
 #define INTERVAL (500)
 #define DURATION (150)
 #define POINTS_SIZE (64)
+
+static const char *mouse_finder_service = "top.gxde.Wlcom.MouseFinder";
+static const char *mouse_finder_path = "/top/gxde/Wlcom/MouseFinder";
+static const char *mouse_finder_interface = "top.gxde.Wlcom.MouseFinder";
 
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -179,7 +185,16 @@ static bool cursor_get_or_create_buffer(struct seat_cursor *cursor)
 
     struct wlr_xcursor_manager *manager = cursor->seat->cursor->xcursor_manager;
     wlr_xcursor_manager_load(manager, 4.0);
-    struct wlr_xcursor *xcursor = wlr_xcursor_manager_get_xcursor(manager, "default", 4.0);
+    /* some themes (e.g. DMZ) only ship the legacy left_ptr name */
+    const char *name = "default";
+    struct wlr_xcursor *xcursor = wlr_xcursor_manager_get_xcursor(manager, name, 4.0);
+    if (!xcursor) {
+        name = "left_ptr";
+        xcursor = wlr_xcursor_manager_get_xcursor(manager, name, 4.0);
+    }
+    if (!xcursor) {
+        return false;
+    }
     struct wlr_xcursor_image *image = xcursor->images[0];
 
     struct draw_info info = {
@@ -195,9 +210,9 @@ static bool cursor_get_or_create_buffer(struct seat_cursor *cursor)
     cursor->off_x = image->hotspot_x;
     cursor->off_y = image->hotspot_y;
 
-    xcursor = wlr_xcursor_manager_get_xcursor(manager, "default", 1.0);
-    cursor->orig_off_x = xcursor->images[0]->hotspot_x;
-    cursor->orig_off_y = xcursor->images[0]->hotspot_y;
+    xcursor = wlr_xcursor_manager_get_xcursor(manager, name, 1.0);
+    cursor->orig_off_x = xcursor ? xcursor->images[0]->hotspot_x : cursor->off_x / 4;
+    cursor->orig_off_y = xcursor ? xcursor->images[0]->hotspot_y : cursor->off_y / 4;
 
     struct server *server = cursor->effect->server;
     cursor->texture = wlr_texture_from_buffer(server->renderer, cursor->buffer);
@@ -438,6 +453,31 @@ static bool handle_effect_configure(struct effect *effect, const struct effect_o
     return false;
 }
 
+static int get_enabled(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct shake_cursor_effect *effect = userdata;
+    return sd_bus_reply_method_return(msg, "b", effect->effect->enabled);
+}
+
+static int set_enabled(sd_bus_message *msg, void *userdata, sd_bus_error *ret_error)
+{
+    struct shake_cursor_effect *effect = userdata;
+    int enabled;
+    CK(sd_bus_message_read(msg, "b", &enabled));
+
+    effect_set_enabled(effect->effect, enabled);
+    effect_write_enabled_option(effect->effect, enabled);
+    config_manager_sync();
+    return sd_bus_reply_method_return(msg, "b", true);
+}
+
+static const sd_bus_vtable mouse_finder_vtable[] = {
+    SD_BUS_VTABLE_START(0),
+    SD_BUS_METHOD("GetEnabled", "", "b", get_enabled, 0),
+    SD_BUS_METHOD("SetEnabled", "b", "b", set_enabled, 0),
+    SD_BUS_VTABLE_END,
+};
+
 static const struct effect_interface shake_cursor_effect_impl = {
     .frame_render_pre = handle_frame_render_pre,
     .frame_render_end = handle_frame_render_end,
@@ -452,7 +492,7 @@ bool shake_cursor_effect_create(struct effect_manager *manager)
         return false;
     }
 
-    effect->effect = effect_create("shake_cursor", 110, false, &shake_cursor_effect_impl, effect);
+    effect->effect = effect_create("shake_cursor", 110, true, &shake_cursor_effect_impl, effect);
     if (!effect->effect) {
         free(effect);
         return false;
@@ -481,6 +521,9 @@ bool shake_cursor_effect_create(struct effect_manager *manager)
     if (effect->effect->enabled) {
         handle_effect_enable(&effect->enable, NULL);
     }
+
+    dbus_register_object(mouse_finder_service, mouse_finder_path, mouse_finder_interface,
+                         mouse_finder_vtable, effect);
 
     return true;
 }
