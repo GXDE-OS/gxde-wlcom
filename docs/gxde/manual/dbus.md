@@ -253,3 +253,58 @@ busctl --user call top.gxde.Wlcom.Screenshot /top/gxde/Wlcom/Screenshot top.gxde
 默认配置把该方法绑定到了 `PrintScreen` 键（见 `/etc/gxde-wlcom/config.json` 中
 `InputAction.keyboard` 的 `Print:no`），按下即把全屏复制到剪贴板。若要改键或禁用，
 按照该文件里其他快捷键的写法修改用户配置 `~/.config/gxde-wlcom/config.json` 即可。
+
+## 摇晃鼠标放大指针
+
+快速来回摇晃鼠标时，指针会临时放大到 4 倍，便于找到指针位置；停止移动后自动恢复。
+该功能默认启用。
+
+| 项目 | 值 |
+| --- | --- |
+| 总线 | Session Bus |
+| 服务名 | `top.gxde.Wlcom.MouseFinder` |
+| 对象路径 | `/top/gxde/Wlcom/MouseFinder` |
+| 接口名 | `top.gxde.Wlcom.MouseFinder` |
+
+可以通过以下命令查看接口：
+
+```bash
+busctl --user introspect top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder
+```
+
+### SetEnabled
+
+启用或关闭摇晃鼠标放大指针，调用成功后立即生效并写入当前用户配置。
+
+```text
+SetEnabled(bool enabled) -> bool
+```
+
+- `enabled`：`true` 启用，`false` 关闭。
+- 返回值：设置成功时返回 `true`。
+
+```bash
+# 关闭
+busctl --user call top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder SetEnabled b false
+
+# 启用
+busctl --user call top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder SetEnabled b true
+```
+
+### GetEnabled
+
+查询摇晃鼠标放大指针当前是否启用。
+
+```text
+GetEnabled() -> bool
+```
+
+- 无参数。
+- 返回值：已启用时返回 `true`，否则返回 `false`。
+
+```bash
+busctl --user call top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder GetEnabled
+```
+
+该设置保存在 `~/.config/gxde-wlcom/config.json` 的 `Effects.shake_cursor.enabled` 中。
+该功能不再受 gsettings 键 `org.ukui.peripherals-mouse shake-cursor` 控制。
