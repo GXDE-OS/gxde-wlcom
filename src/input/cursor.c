@@ -786,6 +786,17 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     /* apply the new configuration */
     cursor_rebase(cursor);
 
+    /* keep XCURSOR_THEME / XCURSOR_SIZE in sync with the active cursor theme so
+     * that ordinary Wayland / X clients spawned by the compositor (or anything
+     * inheriting its environment via execvp) get the correct cursor theme */
+    if (cursor->xcursor_manager && cursor->xcursor_manager->name) {
+        setenv("XCURSOR_THEME", cursor->xcursor_manager->name, 1);
+    }
+    char cursor_size_str[16];
+    snprintf(cursor_size_str, sizeof(cursor_size_str), "%u",
+             cursor->xcursor_manager ? cursor->xcursor_manager->size : size);
+    setenv("XCURSOR_SIZE", cursor_size_str, 1);
+
     if (!saved) {
         return;
     }

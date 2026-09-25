@@ -1,8 +1,9 @@
-gxde-wlcom (2.3.7-gxde1) lizhi; urgency=high
+gxde-wlcom (2.3.7-gxde2) lizhi; urgency=high
 
   * 现在可以摇晃鼠标以临时放大鼠标大小
   * 修复拖动blur区域后后方文字闪烁的问题
   * 彻底修复XWayland IME问题
+  * 修复 Qt 应用鼠标样式异常的问题
 
  -- CharOfString <root@charofstring.cc>  Wed, 23 Sep 2026 22:49:10 -0500
 
