@@ -1,0 +1,17 @@
+# Patched by CharOfString
+# =============================================================================
+# 锁openKylin的wlroots 0.17.4-ok分支, 这分支有wlcom的XWayland要的NET_WM_STATE扩展
+# 包括但不限于sticky, skip_taskbar, skip_pager, demands_attention,
+# wlr_xwayland_get_xwm_connection, etc, 满足版本要求<0.18的要求
+# 另: OK18把precommit给drop了，正好wlcom还要这玩意
+
+# 当前锁定的revision是0.17.5-gxde1，基于ok17并backport了主线wlroots V0.20+的部分
+# 功能，考虑到后期随着我们测试迁移较新的Wlroots版本，不能用depth=1，因为浅克隆
+# 只取分支头
+
+[wrap-git]
+url = https://github.com/GXDE-OS/open-kylin-wlroots.git
+revision = 950dbeb6cc3701832b3623fdd4bc51c9a9a37f6e
+
+[provide]
+wlroots = wlroots

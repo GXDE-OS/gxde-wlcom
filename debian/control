@@ -3,6 +3,8 @@
 # Wlroots不用GXDE自带的Wlroots，而用麒麟打了补丁的libwlroots-dev:openKylin 0.17.4-ok分支
 # 这个devel包装到系统会和原版Wlroots的devel包冲突
 # (二进制叫libwlroots-0.17.so，要不是GXDE仓库里的原版Wlroots比我们要的麒麟版的新就也冲突了 纯属侥幸)
+# 出于稳定性顾虑将OpenKylin的Wlroots以meson子项目(subprojects/wlroots)静态编入本程序
+# 所以这里有Wlroots的自身构建依赖
 
 Source: gxde-wlcom
 Section: x11
@@ -10,7 +12,6 @@ Priority: optional
 Maintainer: Morose <chenlinxiang@kylinos.cn>
 Build-Depends:
  debhelper-compat (= 13),
- cmake (>= 3.21),
  meson (>= 0.59.0),
  ninja-build,
  pkg-config,

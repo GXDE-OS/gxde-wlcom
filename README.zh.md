@@ -65,7 +65,7 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 10. 为原来Wlcom的一些功能做了一些alias, 供GXDE控制中心使用（详见[这里](./docs/gxde/manual/dbus.md)）。
 11. 参考`deepin-kwin`移植了Deepin风格的多任务视图。
 12. 修正了`wl_seat`晚于剪贴板相关全局对象广播的问题。`dde-clipboard-daemon`一类基于KWayland的客户端会在`data-control`管理器一被广播就拿`seat`创建data device，此前会因此启动即崩溃。
-13. 新增剪贴板持久化：源程序退出后，合成器会接管其剪贴板内容，使截图工具一类「复制完就退出」的程序仍能被正常粘贴（构建参数`-DWLCOM_CLIPBOARD_PERSIST=OFF`可关闭）。
+13. 新增剪贴板持久化：源程序退出后，合成器会接管其剪贴板内容，使截图工具一类「复制完就退出」的程序仍能被正常粘贴（构建参数`-Dclipboard_persist=false`可关闭）。
 14. 新增全屏截图到剪贴板：按下`PrintScreen`截取全屏；也可通过`top.gxde.Wlcom.Screenshot`接口调用（详见[这里](./docs/gxde/manual/dbus.md)）。
 
 
@@ -84,17 +84,17 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 编译时需要的库或程序：
 
-- cmake (>= 3.21), meson (用于构建集成的Wlroots), ninja-build, libdrm-dev, libxkbcommon-dev, libpixman-1-dev, libgbm-dev, libudev-dev, libseat-dev, libinput-dev, libdisplay-info-dev, hwdata, libegl-dev, libgles2-mesa-dev, libxcb1-dev, libxcb-composite0-dev, libxcb-icccm4-dev, libxcb-render0-dev, libxcb-res0-dev, libxcb-ewmh-dev, libxcb-errors-dev, xwayland
+- ninja-build, libdrm-dev, libxkbcommon-dev, libpixman-1-dev, libgbm-dev, libudev-dev, libseat-dev, libinput-dev, libdisplay-info-dev, hwdata, libegl-dev, libgles2-mesa-dev, libxcb1-dev, libxcb-composite0-dev, libxcb-icccm4-dev, libxcb-render0-dev, libxcb-res0-dev, libxcb-ewmh-dev, libxcb-errors-dev, xwayland
 
 
 
 ### Wlroots问题
 
-无须担心Wlroots，Open Kylin打过自己补丁的Wlroots (取自https://github.com/GXDE-OS/open-kylin-wlroots.git ，我们对Open Kylin版Wlroots的fork) 已锁定在合适的版本并集成在[libs/wlroots](./libs/wlroots) (详见[libs/README.zh.md](./libs/README.zh.md))。[cmake/wlroots.cmake](./cmake/wlroots.cmake)会调用meson把它构建到构建目录里并静态链接，不会安装到系统中。
+无须担心Wlroots，`meson`会自动从https://github.com/GXDE-OS/open-kylin-wlroots.git (我们对Open Kylin版Wlroots的fork) 拉取Open Kylin打过自己补丁的Wlroots，锁定合适的版本并作为子项目构建并静态链接。
 
 
 
-为何集成源码并静态链接？Open Kylin对Wlroots做了大量扩展与修改，并且二进制/devel包名仍然是`wlroots`: 
+为何作为子项目编译？Open Kylin对Wlroots做了大量扩展与修改，并且二进制/devel包名仍然是`wlroots`: 
 
 | 项目        | GXDE自带的Wlroots (25.4) | Open Kylin版本 (0.7.14-ok17) | 是否冲突                                       |
 | ----------- | ------------------------ | ---------------------------- | ---------------------------------------------- |
@@ -204,7 +204,7 @@ grep Personalization ~/.log/gxde-wlcom.log | tail -1
 ```bash
 git revert 773f0364   # feat: Treeland personal manager version autoswitch
 git revert 17585154   # fix: DTK program crashes due to lacking wallpaper support ...
-cmake --build build
+ninja -C build
 ```
 
 **顺序不能反。** `773f0364`的运行时开关引用了`get_wallpaper_context`/`manager_get_wallpaper_context`等符号，先撤`17585154`会留下一堆悬空引用。
@@ -219,7 +219,7 @@ cmake --build build
    ```
 2. 删除`src/view/treeland_personalization.c`中的运行时开关：`enum personalization_layout`、manager里的`layout`/`interface_059`/`requests_059`、`manager_implementation_059`与`manager_impl_059`、`layout_derive_059`、`file_contains`、`dtk_lib_patterns`、`layout_from_env`、`layout_detect`、`layout_is_059`，以及`treeland_personalization_manager_create`里的探测段落；`personalization_manager_bind`与`wl_global_create`改回直接使用生成的`treeland_personalization_manager_v1_interface`和`manager_impl`。
 3. 删除同一文件中的wallpaper context实现：`wallpaper_*`系列函数、`wallpaper_impl`、`manager_get_wallpaper_context`、`manager_impl`中的`.get_wallpaper_context`、`personalization_context`里的`wallpaper`子结构、manager里的`wallpaper_contexts`与`wallpaper_metadata`及其初始化/释放。文件里另有`BLEND_MODE_WALLPAPER`相关的两处，属于window context的blend mode，与本节无关，**不要删**。
-4. `cmake --build build`，编译期若有遗漏会直接报错。
+4. `ninja -C build`，编译期若有遗漏会直接报错。
 
 **不要`git revert b9dafa79`。** 那个提交引入的是*整套*personalization支持（window/cursor/font/appearance四类context），撤销它会连窗口圆角、模糊、标题栏控制一起丢掉。撤销后合成器不再广播该global，客户端会自行回退、不会崩溃，但功能全部消失，属于因噎废食。
 
@@ -265,7 +265,7 @@ WAYLAND_DISPLAY=wayland-1 gxde-terminal        # 任一DTK程序，能起来即�
 #### (EMACS Flymake/clang用户请看) 初始化Flymake/clang
 
 ```bash
-$ cmake -S . -B build -G Ninja
+$ meson setup build
 $ ln -sf build/compile_commands.json compile_commands.json
 ```
 
@@ -273,15 +273,13 @@ $ ln -sf build/compile_commands.json compile_commands.json
 
 #### 手动编译 (命令行)
 
-编译选项见[CMakeLists.txt](./CMakeLists.txt)开头的`WLCOM_*`缓存变量 (Wlroots相关的见[cmake/wlroots.cmake](./cmake/wlroots.cmake))，简单的编译指令如下:
+编译选项见`meson_options.txt`，简单的编译指令如下:
 
 ```bash
-$ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-$ cmake --build build
-$ sudo cmake --install build
+$ meson setup build -Dbuildtype=debugoptimized
+$ ninja -C build
+$ meson install -C build --skip-subprojects
 ```
-
-选项以`-D<选项>=<值>`传入，如`-DWLCOM_EXAMPLES=OFF -DWLCOM_UKUI_THEME=ON`；`cmake -LH build`可列出全部选项。
 
 
 
@@ -509,7 +507,7 @@ busctl --user call \
 然后运行以下命令，更新`pot`文件:
 
 ```bash
-$ cmake --build build --target gxde-wlcom-pot
+$ meson compile gxde-wlcom-pot
 ```
 
 

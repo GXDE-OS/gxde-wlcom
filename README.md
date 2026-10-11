@@ -65,7 +65,7 @@ The project is released under the open-source license **GPL-3.0-or-later**. File
 10. Added some aliases for existing Wlcom features for use by the GXDE Control Center (see [here](./docs/gxde/manual/dbus.md) for details).
 11. Ported the Deepin-style multitasking view, referencing `deepin-kwin`.
 12. Fixed the issue where `wl_seat` was broadcast later than clipboard-related global objects. KWayland-based clients such as `dde-clipboard-daemon` fetch the `seat` to create a data device as soon as the `data-control` manager is broadcast, which previously caused them to crash on startup.
-13. Added clipboard persistence: after the source program exits, the compositor takes over its clipboard content so that programs such as screenshot tools that "copy and exit" can still be pasted normally (can be disabled with the build option `-DWLCOM_CLIPBOARD_PERSIST=OFF`).
+13. Added clipboard persistence: after the source program exits, the compositor takes over its clipboard content so that programs such as screenshot tools that "copy and exit" can still be pasted normally (can be disabled with the build option `-Dclipboard_persist=false`).
 14. Added full-screen screenshot to clipboard: press `PrintScreen` to capture the full screen; it can also be invoked through the `top.gxde.Wlcom.Screenshot` interface (see [here](./docs/gxde/manual/dbus.md) for details).
 
 
@@ -84,17 +84,17 @@ Libraries or programs required at runtime:
 
 Libraries or programs required at build time:
 
-- cmake (>= 3.21), meson (for the vendored Wlroots), ninja-build, libdrm-dev, libxkbcommon-dev, libpixman-1-dev, libgbm-dev, libudev-dev, libseat-dev, libinput-dev, libdisplay-info-dev, hwdata, libegl-dev, libgles2-mesa-dev, libxcb1-dev, libxcb-composite0-dev, libxcb-icccm4-dev, libxcb-render0-dev, libxcb-res0-dev, libxcb-ewmh-dev, libxcb-errors-dev, xwayland
+- ninja-build, libdrm-dev, libxkbcommon-dev, libpixman-1-dev, libgbm-dev, libudev-dev, libseat-dev, libinput-dev, libdisplay-info-dev, hwdata, libegl-dev, libgles2-mesa-dev, libxcb1-dev, libxcb-composite0-dev, libxcb-icccm4-dev, libxcb-render0-dev, libxcb-res0-dev, libxcb-ewmh-dev, libxcb-errors-dev, xwayland
 
 
 
 ### The Wlroots Issue
 
-There is no need to worry about Wlroots: Open Kylin's patched Wlroots from https://github.com/GXDE-OS/open-kylin-wlroots.git (our fork of the Open Kylin version of Wlroots) is vendored at a pinned revision in [libs/wlroots](./libs/wlroots) (see [libs/README.md](./libs/README.md)). [cmake/wlroots.cmake](./cmake/wlroots.cmake) builds it with Meson into the build directory and links it statically; it is never installed.
+There is no need to worry about Wlroots: `meson` will automatically fetch Open Kylin's patched Wlroots from https://github.com/GXDE-OS/open-kylin-wlroots.git (our fork of the Open Kylin version of Wlroots), pin a suitable version, build it as a subproject, and link it statically.
 
 
 
-Why vendor and link it statically? Open Kylin has made extensive extensions and modifications to Wlroots, and the binary/dev package name is still `wlroots`:
+Why build it as a subproject? Open Kylin has made extensive extensions and modifications to Wlroots, and the binary/dev package name is still `wlroots`:
 
 | Item            | GXDE's bundled Wlroots (25.4) | Open Kylin version (0.7.14-ok17) | Conflict?                                             |
 | --------------- | ----------------------------- | -------------------------------- | ----------------------------------------------------- |
@@ -204,7 +204,7 @@ Revert these two commits in order; no other changes are needed:
 ```bash
 git revert 773f0364   # feat: Treeland personal manager version autoswitch
 git revert 17585154   # fix: DTK program crashes due to lacking wallpaper support ...
-cmake --build build
+ninja -C build
 ```
 
 **The order must not be reversed.** The runtime switch in `773f0364` references symbols such as `get_wallpaper_context`/`manager_get_wallpaper_context`; reverting `17585154` first would leave a pile of dangling references.
@@ -219,7 +219,7 @@ If a future rebase/squash invalidates the hashes, the equivalent manual steps ar
    ```
 2. Delete the runtime switch in `src/view/treeland_personalization.c`: `enum personalization_layout`, the manager's `layout`/`interface_059`/`requests_059`, `manager_implementation_059` and `manager_impl_059`, `layout_derive_059`, `file_contains`, `dtk_lib_patterns`, `layout_from_env`, `layout_detect`, `layout_is_059`, and the detection section in `treeland_personalization_manager_create`; change `personalization_manager_bind` and `wl_global_create` back to directly using the generated `treeland_personalization_manager_v1_interface` and `manager_impl`.
 3. Delete the wallpaper context implementation in the same file: the `wallpaper_*` function family, `wallpaper_impl`, `manager_get_wallpaper_context`, the `.get_wallpaper_context` in `manager_impl`, the `wallpaper` sub-structure in `personalization_context`, and the `wallpaper_contexts` and `wallpaper_metadata` in the manager along with their initialization/release. There are also two places related to `BLEND_MODE_WALLPAPER` in the file; they belong to the window context's blend mode and are unrelated to this section — **do not delete them**.
-4. `cmake --build build`; if anything is missed, the compilation will report an error directly.
+4. `ninja -C build`; if anything is missed, the compilation will report an error directly.
 
 **Do not `git revert b9dafa79`.** That commit introduced the *entire* personalization support (the four context categories: window/cursor/font/appearance); reverting it would also discard window rounded corners, blur, and title bar control. After reverting, the compositor no longer broadcasts that global, and clients fall back on their own without crashing, but all features disappear — throwing the baby out with the bathwater.
 
@@ -265,7 +265,7 @@ The same comparison is recommended for the remaining treeland protocols under `p
 #### (For EMACS Flymake/clang users) Initialize Flymake/clang
 
 ```bash
-$ cmake -S . -B build -G Ninja
+$ meson setup build
 $ ln -sf build/compile_commands.json compile_commands.json
 ```
 
@@ -273,15 +273,13 @@ Then reopen `emacs`.
 
 #### Manual build (command line)
 
-Build options are the `WLCOM_*` cache variables at the top of [CMakeLists.txt](./CMakeLists.txt) (Wlroots-related ones in [cmake/wlroots.cmake](./cmake/wlroots.cmake)); the simple build commands are as follows:
+Build options are in `meson_options.txt`; the simple build commands are as follows:
 
 ```bash
-$ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-$ cmake --build build
-$ sudo cmake --install build
+$ meson setup build -Dbuildtype=debugoptimized
+$ ninja -C build
+$ meson install -C build --skip-subprojects
 ```
-
-Options are passed as `-D<option>=<value>`, e.g. `-DWLCOM_EXAMPLES=OFF -DWLCOM_UKUI_THEME=ON`; `cmake -LH build` lists them all.
 
 
 
@@ -510,7 +508,7 @@ In the `po` directory, add the supported language to the `LINGUAS` file, and add
 Then run the following command to update the `pot` file:
 
 ```bash
-$ cmake --build build --target gxde-wlcom-pot
+$ meson compile gxde-wlcom-pot
 ```
 
 

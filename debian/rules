@@ -5,19 +5,19 @@ include /usr/share/dpkg/pkg-info.mk
 SUPPORT = https://www.debian.org/support
 
 %:
-	dh $@ --buildsystem=cmake+ninja
+	dh $@ --buildsystem=meson
 
 override_dh_auto_configure:
-	dh_auto_configure -- \
-		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DWLCOM_EXAMPLES=OFF \
-		-DWLCOM_UKUI_THEME=ON \
-		-DWLCOM_WLROOTS_RENDERERS=gles2,vulkan
+	test -d subprojects/wlroots || meson subprojects download
+	dh_auto_configure -- -Dexamples=false -Dukui_theme=true -Dwlroots:renderers=gles2,vulkan --buildtype=debugoptimized
 
 override_dh_strip:
 
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/tmp
+	rm -rf debian/tmp/usr/include/wlr
+	rm -f debian/tmp/usr/lib/*/pkgconfig/wlroots*.pc
+	rm -f debian/tmp/usr/lib/*/libwlroots*
 
 override_dh_clean:
 	dh_clean

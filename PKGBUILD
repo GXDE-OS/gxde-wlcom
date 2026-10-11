@@ -39,7 +39,6 @@ depends=(
 makedepends=(
   'gettext'
   'git'
-  'cmake'
   'glslang'
   'hwdata'
   'meson'
@@ -56,19 +55,40 @@ provides=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 conflicts=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 replaces=('kylin-wayland-compositor' 'kylin-wayland-compositor-client')
 
-source=("$pkgname::git+$url.git")
-sha256sums=('SKIP')
+_wlroots_commit='d315e23d3e444c0504ae3b230155180938e3ece0'
+source=(
+  "$pkgname::git+$url.git"
+  "wlroots::git+https://github.com/GXDE-OS/open-kylin-wlroots.git#commit=$_wlroots_commit"
+)
+sha256sums=('SKIP' 'SKIP')
+
+prepare() {
+  rm -rf "$pkgname/subprojects/wlroots"
+  ln -s "$srcdir/wlroots" "$pkgname/subprojects/wlroots"
+  sed -i '/const struct wlr_fbox \*box = &options->src_box;/d' \
+    "$srcdir/wlroots/render/pass.c"
+  sed -i "s/'werror=true'/'werror=false'/" \
+    "$srcdir/wlroots/meson.build"
+  sed -i "s/'-Werror',/'-Wno-error',/" \
+    "$srcdir/wlroots/meson.build"
+  sed -i '/struct server \*server = userdata;/d' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/struct view_manager \*vm = server->view_manager;/struct view_manager *vm = userdata;/' \
+    "$srcdir/$pkgname/src/view/config.c"
+  sed -i 's/^\([[:space:]]*\)server)) {/\1view_manager)) {/' \
+    "$srcdir/$pkgname/src/view/config.c"
+}
 
 build() {
-  cmake -S "$pkgname" -B build -G Ninja \
-    -DCMAKE_BUILD_TYPE=None \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DWLCOM_EXAMPLES=OFF \
-    -DWLCOM_UKUI_THEME=ON \
-    -DWLCOM_WLROOTS_RENDERERS=gles2,vulkan
-  cmake --build build
+  meson setup build "$pkgname" \
+    --prefix=/usr \
+    --buildtype=plain \
+    -Dexamples=false \
+    -Dukui_theme=true \
+    -Dwlroots:renderers=gles2,vulkan
+  meson compile -C build
 }
 
 package() {
-  DESTDIR="$pkgdir" cmake --install build
+  meson install -C build --destdir "$pkgdir" --skip-subprojects
 }
