@@ -52,7 +52,7 @@
       <description>Temporarily enlarges the pointer when the mouse is shaken quickly.</description>
     </key>
     <key type="s" name="cursor-theme">
-      <default>'dark-sense'</default>
+      <default>'deepin'</default>
       <summary>Cursor theme</summary>
       <description>Cursor theme name.</description>
     </key>

@@ -4,7 +4,10 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #include <linux/input-event-codes.h>
 
@@ -27,6 +30,7 @@
 #include "input_p.h"
 #include "scene/surface.h"
 #include "server.h"
+#include "util/string.h"
 #include "util/time.h"
 #include "view/session_lock.h"
 #include "xwayland.h"
@@ -765,8 +769,142 @@ static void cursor_node_handle_destroy(struct wl_listener *listener, void *data)
     cursor->signal.notify = cursor_handle_##signal;                                                \
     wl_signal_add(&wlr_cursor->events.signal, &cursor->signal);
 
+#define CURSOR_THEME_INHERITS_MAX 8
+
+static const char *const cursor_fallback_themes[] = { "deepin", "gxde", "Adwaita" };
+
+static char *cursor_theme_search_path(void)
+{
+    const char *path = getenv("XCURSOR_PATH");
+    if (path) {
+        return strdup(path);
+    }
+
+    const char *data_home = getenv("XDG_DATA_HOME");
+    if (!data_home || data_home[0] != '/') {
+        data_home = "~/.local/share";
+    }
+    return string_create("%s/icons:~/.icons:/usr/share/icons:/usr/share/pixmaps:"
+                         "~/.cursors:/usr/share/cursors/xorg-x11",
+                         data_home);
+}
+
+static char *cursor_theme_file(const char *dir, int len, const char *theme, const char *file)
+{
+    const char *home = "";
+    if (len > 0 && dir[0] == '~') {
+        home = getenv("HOME");
+        if (!home) {
+            return NULL;
+        }
+        dir++;
+        len--;
+    }
+    return string_create("%s%.*s/%s/%s", home, len, dir, theme, file);
+}
+
+static char *cursor_theme_inherits(const char *index)
+{
+    FILE *f = fopen(index, "r");
+    if (!f) {
+        return NULL;
+    }
+
+    char *line = NULL, *result = NULL;
+    size_t line_size = 0;
+    while (getline(&line, &line_size, f) >= 0) {
+        if (strncmp(line, "Inherits", 8)) {
+            continue;
+        }
+        char *value = strchr(line + 8, '=');
+        if (value) {
+            result = strdup(value + 1);
+            break;
+        }
+    }
+
+    fclose(f);
+    free(line);
+    return result;
+}
+
+/* a theme is usable if it, or a theme it inherits, has a cursors/ dir */
+static bool cursor_theme_is_usable(const char *search_path, const char *theme, int depth)
+{
+    if (!theme || !*theme || strchr(theme, '/') || depth > CURSOR_THEME_INHERITS_MAX) {
+        return false;
+    }
+
+    char *inherits = NULL;
+    for (const char *dir = search_path, *colon; dir; dir = colon ? colon + 1 : NULL) {
+        colon = strchr(dir, ':');
+        int len = colon ? colon - dir : (int)strlen(dir);
+        if (len == 0) {
+            continue;
+        }
+
+        char *cursors = cursor_theme_file(dir, len, theme, "cursors");
+        struct stat st;
+        bool found = cursors && stat(cursors, &st) == 0 && S_ISDIR(st.st_mode);
+        free(cursors);
+        if (found) {
+            free(inherits);
+            return true;
+        }
+
+        /* like libXcursor, only the first index.theme found is used */
+        if (!inherits) {
+            char *index = cursor_theme_file(dir, len, theme, "index.theme");
+            inherits = index ? cursor_theme_inherits(index) : NULL;
+            free(index);
+        }
+    }
+
+    bool usable = false;
+    char *saveptr = NULL;
+    for (char *name = inherits ? strtok_r(inherits, ";, \t\r\n", &saveptr) : NULL; name;
+         name = strtok_r(NULL, ";, \t\r\n", &saveptr)) {
+        if (strcmp(name, theme) && cursor_theme_is_usable(search_path, name, depth + 1)) {
+            usable = true;
+            break;
+        }
+    }
+
+    free(inherits);
+    return usable;
+}
+
+/* returns the theme itself if usable, otherwise a usable fallback or NULL */
+static const char *cursor_theme_resolve(const char *theme)
+{
+    char *search_path = cursor_theme_search_path();
+    if (!search_path) {
+        return theme;
+    }
+
+    const char *resolved = NULL;
+    if (cursor_theme_is_usable(search_path, theme, 0)) {
+        resolved = theme;
+    } else {
+        for (size_t i = 0; i < sizeof(cursor_fallback_themes) / sizeof(cursor_fallback_themes[0]);
+             i++) {
+            if (cursor_theme_is_usable(search_path, cursor_fallback_themes[i], 0)) {
+                resolved = cursor_fallback_themes[i];
+                break;
+            }
+        }
+        kywc_log(KYWC_WARN, "cursor theme '%s' not found, fall back to '%s'",
+                 theme ? theme : "(null)", resolved ? resolved : "(builtin)");
+    }
+
+    free(search_path);
+    return resolved;
+}
+
 void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32_t size, bool saved)
 {
+    theme = cursor_theme_resolve(theme);
+
     bool need_set = !cursor->xcursor_manager;
     if (!need_set) {
         bool same_theme = (!cursor->xcursor_manager->name && !theme) ||
@@ -789,8 +927,11 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     /* keep XCURSOR_THEME / XCURSOR_SIZE in sync with the active cursor theme so
      * that ordinary Wayland / X clients spawned by the compositor (or anything
      * inheriting its environment via execvp) get the correct cursor theme */
-    if (cursor->xcursor_manager && cursor->xcursor_manager->name) {
-        setenv("XCURSOR_THEME", cursor->xcursor_manager->name, 1);
+    if (theme) {
+        setenv("XCURSOR_THEME", theme, 1);
+    } else {
+        /* never export a theme that does not exist, let clients use their own default */
+        unsetenv("XCURSOR_THEME");
     }
     char cursor_size_str[16];
     snprintf(cursor_size_str, sizeof(cursor_size_str), "%u",
@@ -802,7 +943,8 @@ void cursor_set_xcursor_manager(struct cursor *cursor, const char *theme, uint32
     }
 
     free((void *)cursor->seat->state.cursor_theme);
-    cursor->seat->state.cursor_theme = strdup(cursor->xcursor_manager->name);
+    cursor->seat->state.cursor_theme =
+        cursor->xcursor_manager->name ? strdup(cursor->xcursor_manager->name) : NULL;
     cursor->seat->state.cursor_size = cursor->xcursor_manager->size;
 
     wl_signal_emit_mutable(&cursor->seat->events.cursor_configure, NULL);
