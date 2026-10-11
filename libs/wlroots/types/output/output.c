@@ -512,8 +512,8 @@ void wlr_output_transformed_resolution(struct wlr_output *output,
 void wlr_output_effective_resolution(struct wlr_output *output,
 		int *width, int *height) {
 	wlr_output_transformed_resolution(output, width, height);
-	*width /= output->scale;
-	*height /= output->scale;
+	*width = ceil(*width / output->scale);
+	*height = ceil(*height / output->scale);
 }
 
 struct wlr_output_mode *wlr_output_preferred_mode(struct wlr_output *output) {

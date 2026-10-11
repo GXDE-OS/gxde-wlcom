@@ -195,8 +195,8 @@ void handle_pointer_swipe_update(struct libinput_event *event,
 		.time_msec =
 			usec_to_msec(libinput_event_gesture_get_time_usec(gevent)),
 		.fingers = libinput_event_gesture_get_finger_count(gevent),
-		.dx = libinput_event_gesture_get_dx(gevent),
-		.dy = libinput_event_gesture_get_dy(gevent),
+		.dx = libinput_event_gesture_get_dx_unaccelerated(gevent),
+		.dy = libinput_event_gesture_get_dy_unaccelerated(gevent),
 	};
 	wl_signal_emit_mutable(&pointer->events.swipe_update, &wlr_event);
 }
@@ -236,8 +236,8 @@ void handle_pointer_pinch_update(struct libinput_event *event,
 		.time_msec =
 			usec_to_msec(libinput_event_gesture_get_time_usec(gevent)),
 		.fingers = libinput_event_gesture_get_finger_count(gevent),
-		.dx = libinput_event_gesture_get_dx(gevent),
-		.dy = libinput_event_gesture_get_dy(gevent),
+		.dx = libinput_event_gesture_get_dx_unaccelerated(gevent),
+		.dy = libinput_event_gesture_get_dy_unaccelerated(gevent),
 		.scale = libinput_event_gesture_get_scale(gevent),
 		.rotation = libinput_event_gesture_get_angle_delta(gevent),
 	};

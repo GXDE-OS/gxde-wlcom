@@ -90,22 +90,18 @@ Libraries or programs required at build time:
 
 ### The Wlroots Issue
 
-The source in [libs/wlroots](./libs/wlroots) is a pristine copy of the official
-wlroots `0.17.4` tag. The compatibility changes inherited from openKylin/GXDE
-are owned by this compositor in [src/patches/wlroots/0.17](./src/patches/wlroots/0.17)
-and tracked in [WLR_UPGRADE.md](./WLR_UPGRADE.md).
+There is no need to worry about Wlroots: Open Kylin's patched Wlroots from https://github.com/GXDE-OS/open-kylin-wlroots.git (our fork of the Open Kylin version of Wlroots) is vendored at a pinned revision in [libs/wlroots](./libs/wlroots) (see [libs/README.md](./libs/README.md)). [cmake/wlroots.cmake](./cmake/wlroots.cmake) builds it with Meson into the build directory and links it statically; it is never installed.
 
-[cmake/wlroots.cmake](./cmake/wlroots.cmake) copies the official source into the
-build directory, overlays the compositor-owned compatibility sources, builds it
-with Meson and links it statically. Neither the generated source tree nor
-wlroots itself is installed
-system-wide.
 
-The temporary static build preserves the established hardware and XWayland
-behaviour without installing a forked `wlroots` development package that would
-overwrite `/usr/include/wlr`. Keeping the Vendor tree clean and every backport
-accounted for makes the compatibility overlay removable file by file when
-moving to a newer official library.
+
+Why vendor and link it statically? Open Kylin has made extensive extensions and modifications to Wlroots, and the binary/dev package name is still `wlroots`:
+
+| Item            | GXDE's bundled Wlroots (25.4) | Open Kylin version (0.7.14-ok17) | Conflict?                                             |
+| --------------- | ----------------------------- | -------------------------------- | ----------------------------------------------------- |
+| `.so` binary    | `libwlroots-0.19.so`          | `libwlroots-0.17.so`             | Fortunately no conflict, but it will conflict the day these two versions catch up to each other |
+| Header files    | `/usr/include/wlr`            | `/usr/include/wlr`               | Yes, installing the `dev` package will overwrite them |
+
+We did this to avoid conflicts with existing packages on the system.
 
 
 

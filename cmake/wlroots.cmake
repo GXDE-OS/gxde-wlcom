@@ -146,35 +146,11 @@ set(WLROOTS_VERSION_MAJOR 0)
 set(WLROOTS_VERSION_MINOR 17)
 set(WLROOTS_VERSION_PATCH 4)
 
-set(WLROOTS_VENDOR_SOURCE_DIR "${WLCOM_ROOT_DIR}/libs/wlroots")
-set(WLROOTS_OVERLAY_DIR "${WLCOM_ROOT_DIR}/src/patches/wlroots/0.17")
-set(WLROOTS_SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/wlroots-src")
+set(WLROOTS_SOURCE_DIR "${WLCOM_ROOT_DIR}/libs/wlroots")
 set(WLROOTS_BUILD_DIR "${CMAKE_BINARY_DIR}/_deps/wlroots-build")
 set(WLROOTS_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/wlroots-install")
 set(WLROOTS_LIBRARY "${WLROOTS_INSTALL_DIR}/lib/libwlroots.a")
 set(WLROOTS_PKGCONFIG_DIR "${CMAKE_BINARY_DIR}/_deps/wlroots-pkgconfig")
-
-file(GLOB_RECURSE _wlroots_overlay_inputs CONFIGURE_DEPENDS
-  "${WLROOTS_OVERLAY_DIR}/*"
-)
-
-execute_process(
-  COMMAND "${CMAKE_COMMAND}"
-    "-DWLCOM_WLROOTS_VENDOR_SOURCE_DIR=${WLROOTS_VENDOR_SOURCE_DIR}"
-    "-DWLCOM_WLROOTS_SOURCE_DIR=${WLROOTS_SOURCE_DIR}"
-    "-DWLCOM_WLROOTS_OVERLAY_DIR=${WLROOTS_OVERLAY_DIR}"
-    -P "${WLCOM_ROOT_DIR}/cmake/PrepareWlroots.cmake"
-  RESULT_VARIABLE _wlroots_prepare_result
-  OUTPUT_VARIABLE _wlroots_prepare_output
-  ERROR_VARIABLE _wlroots_prepare_error
-)
-
-if(NOT _wlroots_prepare_result EQUAL 0)
-  message(FATAL_ERROR
-    "Failed to prepare the wlroots source tree:\n"
-    "${_wlroots_prepare_output}${_wlroots_prepare_error}"
-  )
-endif()
 
 ExternalProject_Add(wlroots_external
   SOURCE_DIR "${WLROOTS_SOURCE_DIR}"

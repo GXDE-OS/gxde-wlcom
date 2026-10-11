@@ -98,6 +98,7 @@ static void pointer_constraint_set_cursor_position_hint(struct wl_client *client
 		return;
 	}
 
+	constraint->pending.cursor_hint.enabled = true;
 	constraint->pending.cursor_hint.x = wl_fixed_to_double(x);
 	constraint->pending.cursor_hint.y = wl_fixed_to_double(y);
 	constraint->pending.committed |= WLR_POINTER_CONSTRAINT_V1_STATE_CURSOR_HINT;
@@ -114,7 +115,7 @@ static void pointer_constraint_commit(
 			WLR_POINTER_CONSTRAINT_V1_STATE_CURSOR_HINT) {
 		constraint->current.cursor_hint = constraint->pending.cursor_hint;
 	}
-	constraint->current.committed |= constraint->pending.committed;
+	constraint->current.committed = constraint->pending.committed;
 
 	bool updated_region = !!constraint->pending.committed;
 	constraint->pending.committed = 0;

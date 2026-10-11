@@ -75,6 +75,8 @@ struct wlr_data_source {
 	uint32_t compositor_action;
 
 	struct {
+		struct wl_signal accepted;
+		struct wl_signal dnd_action;
 		struct wl_signal destroy;
 	} events;
 };
@@ -117,6 +119,12 @@ struct wlr_drag {
 	bool started, dropped, cancelling;
 	int32_t grab_touch_id, touch_id; // if WLR_DRAG_GRAB_TOUCH
 
+	// when sending to x11
+	struct {
+		int16_t cache_x, cache_y;
+		bool waiting, cached;
+	} pos;
+
 	struct {
 		struct wl_signal focus;
 		struct wl_signal motion; // struct wlr_drag_motion_event
@@ -126,6 +134,7 @@ struct wlr_drag {
 
 	struct wl_listener source_destroy;
 	struct wl_listener seat_client_destroy;
+	struct wl_listener focus_destroy;
 	struct wl_listener icon_destroy;
 
 	void *data;

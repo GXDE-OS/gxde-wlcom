@@ -92,6 +92,7 @@ void wlr_xwayland_destroy(struct wlr_xwayland *xwayland) {
 	}
 	xwayland->server = NULL;
 	wlr_xwayland_shell_v1_destroy(xwayland->shell_v1);
+	xwm_destroy(xwayland->xwm);
 	free(xwayland);
 }
 

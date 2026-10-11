@@ -338,7 +338,7 @@ static void surface_state_move(struct wlr_surface_state *state,
 		wl_list_init(&next->frame_callback_list);
 	}
 
-	state->committed |= next->committed;
+	state->committed = next->committed;
 	next->committed = 0;
 
 	state->seq = next->seq;
@@ -362,7 +362,15 @@ static void surface_apply_damage(struct wlr_surface *surface) {
 
 	surface->opaque = buffer_is_opaque(surface->current.buffer);
 
+	struct wlr_shm_attributes attribs;
+	bool not_shm_buffer = !wlr_buffer_get_shm(surface->current.buffer, &attribs);
+
 	if (surface->buffer != NULL) {
+		if (not_shm_buffer) {
+			wlr_buffer_unlock(&surface->buffer->base);
+			surface->buffer = NULL;
+			return;
+		}
 		if (wlr_client_buffer_apply_damage(surface->buffer,
 				surface->current.buffer, &surface->buffer_damage)) {
 			wlr_buffer_unlock(surface->current.buffer);
@@ -371,7 +379,8 @@ static void surface_apply_damage(struct wlr_surface *surface) {
 		}
 	}
 
-	if (surface->renderer == NULL) {
+	// only use client buffer for shm buffer
+	if (not_shm_buffer || surface->renderer == NULL) {
 		return;
 	}
 
@@ -504,8 +513,10 @@ static void surface_commit_state(struct wlr_surface *surface,
 	// Release the buffer after emitting the commit event, so that listeners can
 	// access it. Don't leave the buffer locked so that wl_shm buffers can be
 	// released immediately on commit when they are uploaded to the GPU.
-	wlr_buffer_unlock(surface->current.buffer);
-	surface->current.buffer = NULL;
+	if (surface->buffer != NULL) {
+		wlr_buffer_unlock(surface->current.buffer);
+		surface->current.buffer = NULL;
+	}
 }
 
 static void surface_handle_commit(struct wl_client *client,

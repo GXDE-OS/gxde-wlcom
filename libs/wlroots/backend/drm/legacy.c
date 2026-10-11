@@ -92,9 +92,8 @@ static bool legacy_crtc_commit(struct wlr_drm_connector *conn,
 			mode = (drmModeModeInfo *)&state->mode;
 		}
 
-		uint32_t dpms = state->active ? DRM_MODE_DPMS_ON : DRM_MODE_DPMS_OFF;
 		if (drmModeConnectorSetProperty(drm->fd, conn->id, conn->props.dpms,
-				dpms) != 0) {
+				DRM_MODE_DPMS_OFF) != 0) {
 			wlr_drm_conn_log_errno(conn, WLR_ERROR,
 				"Failed to set DPMS property");
 			return false;
@@ -103,6 +102,13 @@ static bool legacy_crtc_commit(struct wlr_drm_connector *conn,
 		if (drmModeSetCrtc(drm->fd, crtc->id, fb_id, 0, 0,
 				conns, conns_len, mode)) {
 			wlr_drm_conn_log_errno(conn, WLR_ERROR, "Failed to set CRTC");
+			return false;
+		}
+
+		if (state->active && drmModeConnectorSetProperty(drm->fd, conn->id, conn->props.dpms,
+				DRM_MODE_DPMS_ON) != 0) {
+			wlr_drm_conn_log_errno(conn, WLR_ERROR,
+				"Failed to set DPMS property");
 			return false;
 		}
 	}

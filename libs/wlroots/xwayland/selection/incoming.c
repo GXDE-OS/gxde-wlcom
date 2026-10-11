@@ -363,7 +363,7 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 			}
 			size_t len = xcb_get_atom_name_name_length(name_reply);
 			char *name = xcb_get_atom_name_name(name_reply); // not a C string
-			if (memchr(name, '/', len) != NULL) {
+			if (1 || memchr(name, '/', len) != NULL) {
 				mime_type = malloc((len + 1) * sizeof(char));
 				if (mime_type == NULL) {
 					free(name_reply);

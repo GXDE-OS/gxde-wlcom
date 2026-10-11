@@ -1,3 +1,9 @@
+# Patched by CharOfString
+# =============================================================================
+# Wlroots不用GXDE自带的Wlroots，而用麒麟打了补丁的libwlroots-dev:openKylin 0.17.4-ok分支
+# 这个devel包装到系统会和原版Wlroots的devel包冲突
+# (二进制叫libwlroots-0.17.so，要不是GXDE仓库里的原版Wlroots比我们要的麒麟版的新就也冲突了 纯属侥幸)
+
 Source: gxde-wlcom
 Section: x11
 Priority: optional

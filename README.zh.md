@@ -90,18 +90,18 @@ GXDE Wayland 合成器（亦称 `gxde-wlcom`）是基于 `wlroots` 开发的 Way
 
 ### Wlroots问题
 
-[libs/wlroots](./libs/wlroots)现在是官方wlroots `0.17.4`标签的纯净副本。
-从openKylin/GXDE继承的兼容改动由合成器自身维护在
-[src/patches/wlroots/0.17](./src/patches/wlroots/0.17)，并全部登记于
-[WLR_UPGRADE.md](./WLR_UPGRADE.md)。
+无须担心Wlroots，Open Kylin打过自己补丁的Wlroots (取自https://github.com/GXDE-OS/open-kylin-wlroots.git ，我们对Open Kylin版Wlroots的fork) 已锁定在合适的版本并集成在[libs/wlroots](./libs/wlroots) (详见[libs/README.zh.md](./libs/README.zh.md))。[cmake/wlroots.cmake](./cmake/wlroots.cmake)会调用meson把它构建到构建目录里并静态链接，不会安装到系统中。
 
-[cmake/wlroots.cmake](./cmake/wlroots.cmake)会把官方源码复制到构建目录，
-再用合成器内的兼容源码覆盖对应文件，然后调用Meson构建并静态链接。生成的源码树和wlroots本身都不会
-安装到系统中。
 
-目前继续静态构建，是为了保留既有硬件和XWayland行为，同时避免安装会覆盖
-`/usr/include/wlr`的派生开发包。Vendor保持纯净、每项回填都有账本后，迁移到新版
-官方库时就可以逐文件缩减兼容层。
+
+为何集成源码并静态链接？Open Kylin对Wlroots做了大量扩展与修改，并且二进制/devel包名仍然是`wlroots`: 
+
+| 项目        | GXDE自带的Wlroots (25.4) | Open Kylin版本 (0.7.14-ok17) | 是否冲突                                       |
+| ----------- | ------------------------ | ---------------------------- | ---------------------------------------------- |
+| `.so`二进制 | `libwlroots-0.19.so`     | `libwlroots-0.17.so`         | 侥幸不冲突，但凡有一天这俩版本一旦跟上就会冲突 |
+| 头文件      | `/usr/include/wlr`       | `/usr/include/wlr`           | 是，若安装`dev`包将会覆盖                      |
+
+
 
 为避免与系统上现有包冲突起见，我们这么做了。
 

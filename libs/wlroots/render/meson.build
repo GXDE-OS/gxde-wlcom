@@ -8,6 +8,8 @@ endif
 wlr_files += files(
 	'dmabuf.c',
 	'drm_format_set.c',
+	'drm_syncobj.c',
+	'drm_syncobj_merger.c',
 	'pass.c',
 	'pixel_format.c',
 	'swapchain.c',

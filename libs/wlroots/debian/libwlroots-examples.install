@@ -1,0 +1,11 @@
+*/examples/simple /usr/lib/wlroots/
+*/examples/pointer /usr/lib/wlroots/
+*/examples/touch /usr/lib/wlroots/
+*/examples/tablet /usr/lib/wlroots/
+*/examples/rotation /usr/lib/wlroots/
+*/examples/output-layout /usr/lib/wlroots/
+*/examples/fullscreen-shell /usr/lib/wlroots/
+*/examples/scene-graph /usr/lib/wlroots/
+*/examples/output-layers /usr/lib/wlroots/
+*/examples/cairo-buffer /usr/lib/wlroots/
+*/examples/embedded /usr/lib/wlroots/

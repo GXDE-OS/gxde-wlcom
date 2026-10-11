@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+set -u
+set -x
+
+CFLAGS=$(pkg-config --cflags wlroots)
+LIBS=$(pkg-config --libs wlroots && pkg-config --libs wayland-server)
+gcc ${CFLAGS} debian/tests/test.c ${LIBS}
+echo "Build test of $< succeeded"
+WLR_BACKENDS=headless ./a.out
+rm -f a.out

@@ -113,6 +113,8 @@ bool check_drm_features(struct wlr_drm_backend *drm) {
 
 	if (drm->iface == &legacy_iface) {
 		drm->supports_tearing_page_flips = drmGetCap(drm->fd, DRM_CAP_ASYNC_PAGE_FLIP, &cap) == 0 && cap == 1;
+	} else {
+		drm->supports_tearing_page_flips = drmGetCap(drm->fd, DRM_CAP_ATOMIC_ASYNC_PAGE_FLIP, &cap) == 0 && cap == 1;
 	}
 
 	if (env_parse_bool("WLR_DRM_NO_MODIFIERS")) {
@@ -203,6 +205,40 @@ error:
 	return false;
 }
 
+static void add_cursor_plane(struct wlr_drm_backend *drm, drmModePlaneRes *plane_res, uint32_t *crtcs) {
+	if (drm->iface != &legacy_iface) {
+		return;
+	}
+
+	for (uint32_t i = 0; i < drm->num_planes; ++i) {
+		uint32_t id = plane_res->planes[i];
+
+		union wlr_drm_plane_props props = {0};
+		if (!get_drm_plane_props(drm->fd, id, &props)) {
+			return;
+		}
+
+		uint64_t type;
+		if (!get_drm_prop(drm->fd, id, props.type, &type)) {
+			return;
+		}
+
+		if (type == DRM_PLANE_TYPE_CURSOR) {
+			// if cursor plane exits, do not add any
+			return;
+		}
+	}
+
+	// check each crtc whether hardware cursor is supported
+	for (size_t i = 0; i < drm->num_crtcs; ++i) {
+		if (!drmModeSetCursor(drm->fd, drm->crtcs[i].id, 0, 0, 0)) {
+			wlr_log(WLR_DEBUG, "Going to add cursor plane for crtc %d", drm->crtcs[i].id);
+			++drm->num_planes;
+			*crtcs |= 1 << i;
+		}
+	}
+}
+
 static bool init_planes(struct wlr_drm_backend *drm) {
 	drmModePlaneRes *plane_res = drmModeGetPlaneResources(drm->fd);
 	if (!plane_res) {
@@ -213,6 +249,17 @@ static bool init_planes(struct wlr_drm_backend *drm) {
 	wlr_log(WLR_INFO, "Found %"PRIu32" DRM planes", plane_res->count_planes);
 
 	drm->num_planes = plane_res->count_planes;
+
+	 /**
+	  * when drm works on legacy instead of atomic,
+	  * hardware cursor do not work without cursor plane,
+	  * add cursor plane for crtcs support hardware cursor.
+	  *
+	  * drm->num_planes may increase here.
+	  */
+	uint32_t crtcs = 0;
+	add_cursor_plane(drm, plane_res, &crtcs);
+
 	drm->planes = calloc(drm->num_planes, sizeof(*drm->planes));
 	if (drm->planes == NULL) {
 		wlr_log_errno(WLR_ERROR, "Allocation failed");
@@ -234,6 +281,19 @@ static bool init_planes(struct wlr_drm_backend *drm) {
 		}
 
 		drmModeFreePlane(drm_plane);
+	}
+
+	for (uint32_t i = 0, j = plane_res->count_planes; i < drm->num_crtcs; ++i) {
+		if (~crtcs & 1 << i) {
+			continue;
+		}
+
+		struct wlr_drm_plane *cursor_plane = &drm->planes[j++];
+		// add format ARGB8888 for cursor plane
+		wlr_drm_format_set_add(&cursor_plane->formats, DRM_FORMAT_ARGB8888, DRM_FORMAT_MOD_LINEAR);
+		cursor_plane->type = DRM_PLANE_TYPE_CURSOR;
+
+		drm->crtcs[i].cursor = cursor_plane;
 	}
 
 	drmModeFreePlaneResources(plane_res);
@@ -679,6 +739,22 @@ static bool drm_connector_test(struct wlr_output *output,
 			state->adaptive_sync_enabled &&
 			!drm_connector_supports_vrr(conn)) {
 		goto out;
+	}
+
+	if (state->committed & WLR_OUTPUT_STATE_BUFFER && conn->backend->parent) {
+		struct wlr_dmabuf_attributes dmabuf;
+		if (!wlr_buffer_get_dmabuf(state->buffer, &dmabuf)) {
+			wlr_drm_conn_log(conn, WLR_DEBUG, "Buffer is not a DMA-BUF");
+			goto out;
+		}
+
+		if (!wlr_drm_format_set_has(&conn->backend->mgpu_formats, dmabuf.format, dmabuf.modifier)) {
+			wlr_drm_conn_log(conn, WLR_DEBUG,
+				"Buffer format 0x%"PRIX32" with modifier 0x%"PRIX64" cannot be "
+				"imported into multi-GPU renderer",
+				dmabuf.format, dmabuf.modifier);
+			goto out;
+		}
 	}
 
 	if (conn->backend->parent) {
@@ -1543,6 +1619,92 @@ static bool connect_drm_connector(struct wlr_drm_connector *wlr_conn,
 
 static void disconnect_drm_connector(struct wlr_drm_connector *conn);
 
+void update_drm_connector(struct wlr_drm_backend *drm, struct wlr_device_hotplug_event *event)
+{
+	if (event == NULL || event->connector_id ==0) {
+		return;
+	}
+
+	struct wlr_drm_connector *conn;
+	wl_list_for_each(conn, &drm->connectors, link) {
+		if ( event->connector_id != conn->id) {
+			continue;
+		}
+
+		drmModeConnector *drm_conn = drmModeGetConnector(drm->fd, conn->id);
+		if (!drm_conn) {
+			wlr_log_errno(WLR_ERROR, "Failed to get DRM connector");
+			continue;
+		}
+
+		if (conn->status == DRM_MODE_CONNECTED && drm_conn->connection == DRM_MODE_DISCONNECTED) {
+			wlr_log(WLR_INFO, "Monitor DRM connector %"PRIu32" on %s Changed",
+				event->connector_id, drm->name);
+			// disconnect it so that the client will modeset and rerender when the session is activated again.
+			wlr_output_destroy(&conn->output);
+			if (!conn->crtc) {
+				continue;
+			}
+			// After changing the session, the CRTC ID might have changed, which caused the destroy output commit to fail.
+			drm_plane_finish_surface(conn->crtc->primary);
+			drm_plane_finish_surface(conn->crtc->cursor);
+			drm_fb_clear(&conn->cursor_pending_fb);
+
+			conn->crtc = NULL;
+			conn->cursor_enabled = false;
+		}
+
+		drmModeFreeConnector(drm_conn);
+	}
+}
+
+void restore_drm_connectors_crtc(struct wlr_drm_backend *drm)
+{
+	drmModeRes *res = drmModeGetResources(drm->fd);
+	if (!res) {
+		wlr_log_errno(WLR_ERROR, "Failed to get DRM resources");
+		return;
+	}
+
+	struct wlr_drm_connector *conn;
+	wl_list_for_each(conn, &drm->connectors, link) {
+		drmModeConnector *drm_conn = drmModeGetConnector(drm->fd, conn->id);
+		if (!drm_conn) {
+			wlr_log_errno(WLR_ERROR, "Failed to get DRM connector");
+			continue;
+		}
+		if (conn->status == DRM_MODE_DISCONNECTED && drm_conn->connection == DRM_MODE_CONNECTED) {
+			// To avoid invalid configurations caused by the previous DRM master leaving KMS in an undefined state,
+			// we need to restore our own state carefully. Since the connector/CRTC mapping might have changed,
+			// we should first disable all CRTCs and then re-enable the ones we were using before the VT switch
+			wlr_log(WLR_INFO, "Need disable all crtc!");
+			for (size_t i = 0; i < drm->num_crtcs; i++) {
+				struct wlr_drm_crtc *crtc = &drm->crtcs[i];
+				if (drmModeSetCrtc(drm->fd, crtc->id, 0, 0, 0, NULL, 0, NULL) != 0) {
+					wlr_log_errno(WLR_ERROR, "Failed to disable CRTC %"PRIu32" after VT switch",crtc->id);
+				}
+			}
+			drmModeFreeConnector(drm_conn);
+			drmModeFreeResources(res);
+			return;
+		}
+
+		if (conn->status == DRM_MODE_CONNECTED && drm_conn->connection == DRM_MODE_CONNECTED) {
+			struct wlr_drm_crtc *current_crtc = connector_get_current_crtc(conn, drm_conn);
+			if (conn->crtc != current_crtc) {
+				wlr_log(WLR_INFO, "The %s's CRTC changed when session active!",conn->name);
+				if (current_crtc && drmModeSetCrtc(drm->fd, current_crtc->id,0, 0, 0, NULL, 0, NULL) != 0) {
+					wlr_log(WLR_ERROR, "Failed to close Current Crtc!");
+				}
+			}
+
+		drmModeFreeConnector(drm_conn);
+		}
+	}
+
+	drmModeFreeResources(res);
+}
+
 void scan_drm_connectors(struct wlr_drm_backend *drm,
 		struct wlr_device_hotplug_event *event) {
 	if (event != NULL && event->connector_id != 0) {
@@ -1655,8 +1817,6 @@ void scan_drm_connectors(struct wlr_drm_backend *drm,
 		wlr_log(WLR_INFO, "'%s' disappeared", conn->name);
 		destroy_drm_connector(conn);
 	}
-
-	realloc_crtcs(drm, NULL);
 
 	for (size_t i = 0; i < new_outputs_len; ++i) {
 		struct wlr_drm_connector *conn = new_outputs[i];

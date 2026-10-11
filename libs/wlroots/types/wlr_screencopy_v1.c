@@ -145,7 +145,6 @@ static void frame_destroy(struct wlr_screencopy_frame_v1 *frame) {
 	wl_list_remove(&frame->link);
 	wl_list_remove(&frame->output_commit.link);
 	wl_list_remove(&frame->output_destroy.link);
-	wl_list_remove(&frame->output_enable.link);
 	// Make the frame resource inert
 	wl_resource_set_user_data(frame->resource, NULL);
 	wlr_buffer_unlock(frame->buffer);
@@ -273,6 +272,10 @@ static void frame_handle_output_commit(struct wl_listener *listener,
 	struct wlr_renderer *renderer = output->renderer;
 	assert(renderer);
 
+	if (event->state->committed & WLR_OUTPUT_STATE_ENABLED && !output->enabled) {
+		goto err;
+	}
+
 	if (!(event->state->committed & WLR_OUTPUT_STATE_BUFFER)) {
 		return;
 	}
@@ -323,16 +326,6 @@ static void frame_handle_output_commit(struct wl_listener *listener,
 err:
 	zwlr_screencopy_frame_v1_send_failed(frame->resource);
 	frame_destroy(frame);
-}
-
-static void frame_handle_output_enable(struct wl_listener *listener,
-		void *data) {
-	struct wlr_screencopy_frame_v1 *frame =
-		wl_container_of(listener, frame, output_enable);
-	if (!frame->output->enabled) {
-		zwlr_screencopy_frame_v1_send_failed(frame->resource);
-		frame_destroy(frame);
-	}
 }
 
 static void frame_handle_output_destroy(struct wl_listener *listener,
@@ -426,9 +419,6 @@ static void frame_handle_copy(struct wl_client *wl_client,
 	wl_signal_add(&output->events.commit, &frame->output_commit);
 	frame->output_commit.notify = frame_handle_output_commit;
 
-	wl_signal_add(&output->events.destroy, &frame->output_enable);
-	frame->output_enable.notify = frame_handle_output_enable;
-
 	// Request a frame because we can't assume that the current front buffer is still usable. It may
 	// have been released already, and we shouldn't lock it here because compositors want to render
 	// into the least damaged buffer.
@@ -513,7 +503,6 @@ static void capture_output(struct wl_client *wl_client,
 	wl_list_insert(&client->manager->frames, &frame->link);
 
 	wl_list_init(&frame->output_commit.link);
-	wl_list_init(&frame->output_enable.link);
 
 	wl_signal_add(&output->events.destroy, &frame->output_destroy);
 	frame->output_destroy.notify = frame_handle_output_destroy;

@@ -55,6 +55,7 @@ wlr_files += files(
 	'wlr_keyboard_shortcuts_inhibit_v1.c',
 	'wlr_layer_shell_v1.c',
 	'wlr_linux_dmabuf_v1.c',
+	'wlr_linux_drm_syncobj_v1.c',
 	'wlr_matrix.c',
 	'wlr_output_layer.c',
 	'wlr_output_layout.c',

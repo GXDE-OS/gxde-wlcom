@@ -19,7 +19,4 @@ if gbm.found()
 	wlr_files += files('gbm.c')
 	wlr_deps += gbm
 	features += { 'gbm-allocator': true }
-
-	has = cc.has_function('gbm_bo_get_fd_for_plane', dependencies: [gbm])
-	internal_config.set10('HAVE_GBM_BO_GET_FD_FOR_PLANE', has)
 endif

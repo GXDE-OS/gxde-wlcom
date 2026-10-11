@@ -1,10 +1,10 @@
 # 集成的第三方库信息
 ## Wlroots
-* **上游**: https://gitlab.freedesktop.org/wlroots/wlroots
-* **标签**: `0.17.4`
-* **版本**: `0.17.4`
-* **提交ID**: `a2d2c38a3127745629293066beeed0a649dff8de`
-* **提交日期**: Thu Jun 27 20:25:08 2024 +0200
-* **导入日期**: 2026-10-03
+* **上游**: https://github.com/GXDE-OS/open-kylin-wlroots （GXDE对openKylin的wlroots `0.17.4-ok`分支的fork）
+* **分支**: `gxde/testing`
+* **版本**: `0.17.5-gxde2`
+* **提交ID**: `950dbeb6cc3701832b3623fdd4bc51c9a9a37f6e`
+* **提交日期**: Sun Sep 6 17:46:58 2026 -0500
+* **拉取日期**: Sat Oct 3 2026 +0800
 * **许可证**: [MIT License](./wlroots/LICENSE)
-* **备注**: 本目录严格保持官方标签的原始内容。GXDE/openKylin兼容源码统一存放在[`src/patches/wlroots/0.17`](../src/patches/wlroots/0.17)，并登记于[`WLR_UPGRADE.md`](../WLR_UPGRADE.md)。CMake会把官方源码复制到构建目录，再用合成器自有源码覆盖对应文件，然后静态链接，不会安装到系统中。
+* **备注**: 此前以meson子项目`subprojects/wlroots.wrap`锁定在同一revision引入。它带有wlcom的XWayland要的`_NET_WM_STATE`扩展（sticky、skip_taskbar、skip_pager、demands_attention、`wlr_xwayland_get_xwm_connection`等），保留了`precommit`，并backport了主线wlroots 0.20+的部分功能。它的包名仍然是`wlroots`，所以由[cmake/wlroots.cmake](../cmake/wlroots.cmake)构建到构建目录里并静态链接，不会安装到系统中。

@@ -37,6 +37,15 @@ static void handle_disable_seat(struct libseat *seat, void *data) {
 
 static int libseat_event(int fd, uint32_t mask, void *data) {
 	struct wlr_session *session = data;
+	if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
+		if (mask & WL_EVENT_ERROR) {
+			wlr_log(WLR_ERROR, "Failed to wait for libseat event");
+		} else {
+			wlr_log(WLR_INFO, "Failed to wait for libseat event");
+		}
+		wlr_session_destroy(session);
+		return 0;
+	}
 	if (libseat_dispatch(session->seat_handle, 0) == -1) {
 		wlr_log_errno(WLR_ERROR, "Failed to dispatch libseat");
 		wl_display_terminate(session->display);
@@ -192,14 +201,22 @@ static int handle_udev_event(int fd, uint32_t mask, void *data) {
 		goto out;
 	}
 
+	dev_t devnum = udev_device_get_devnum(udev_dev);
 	if (strcmp(action, "add") == 0) {
+		struct wlr_device *dev;
+		wl_list_for_each(dev, &session->devices, link) {
+			if (dev->dev == devnum) {
+				wlr_log(WLR_DEBUG, "Skipping duplicate device %s", sysname);
+				goto out;
+			}
+		}
+
 		wlr_log(WLR_DEBUG, "DRM device %s added", sysname);
 		struct wlr_session_add_event event = {
 			.path = devnode,
 		};
 		wl_signal_emit_mutable(&session->events.add_drm_card, &event);
 	} else if (strcmp(action, "change") == 0 || strcmp(action, "remove") == 0) {
-		dev_t devnum = udev_device_get_devnum(udev_dev);
 		struct wlr_device *dev;
 		wl_list_for_each(dev, &session->devices, link) {
 			if (dev->dev != devnum) {
@@ -500,6 +517,7 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 
 	struct udev_list_entry *entry;
 	size_t i = 0;
+	bool first_is_usb = false;
 
 	udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(en)) {
 		if (i == ret_len) {
@@ -507,6 +525,7 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 		}
 
 		bool is_boot_vga = false;
+		bool is_usb = false;
 
 		const char *path = udev_list_entry_get_name(entry);
 		struct udev_device *dev = udev_device_new_from_syspath(session->udev, path);
@@ -532,22 +551,33 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 			if (id && strcmp(id, "1") == 0) {
 				is_boot_vga = true;
 			}
+		} else {
+			// Detect USB DRM card
+			struct udev_device *usb_dev =
+				udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL);
+			is_usb = usb_dev != NULL;
 		}
 
 		struct wlr_device *wlr_dev =
 			session_open_if_kms(session, udev_device_get_devnode(dev));
+		udev_device_unref(dev);
 		if (!wlr_dev) {
-			udev_device_unref(dev);
 			continue;
 		}
 
-		udev_device_unref(dev);
+		// Track whether the first GPU is USB
+		if (i == 0) {
+			first_is_usb = is_usb;
+		}
 
 		ret[i] = wlr_dev;
-		if (is_boot_vga) {
+
+		if (is_boot_vga || (first_is_usb && !is_usb)) {
 			struct wlr_device *tmp = ret[0];
 			ret[0] = ret[i];
 			ret[i] = tmp;
+
+			first_is_usb = false;
 		}
 
 		++i;

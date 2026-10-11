@@ -52,7 +52,6 @@ struct wlr_screencopy_frame_v1 {
 	struct wlr_output *output;
 	struct wl_listener output_commit;
 	struct wl_listener output_destroy;
-	struct wl_listener output_enable;
 
 	void *data;
 };

@@ -520,16 +520,10 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 			},
 		};
 		VkClearRect clear_rect = {
-			.rect = {
-				.offset = { box.x, box.y },
-				.extent = { box.width, box.height },
-			},
 			.layerCount = 1,
 		};
 		for (int i = 0; i < clip_rects_len; i++) {
-			VkRect2D rect;
-			convert_pixman_box_to_vk_rect(&clip_rects[i], &rect);
-			vkCmdSetScissor(cb, 0, 1, &rect);
+			convert_pixman_box_to_vk_rect(&clip_rects[i], &clear_rect.rect);
 			vkCmdClearAttachments(cb, 1, &clear_att, 1, &clear_rect);
 		}
 		break;

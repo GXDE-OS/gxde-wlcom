@@ -1,0 +1,462 @@
+/**
+ * Backported from upstream wlroots mainline for GXDE's forked version of
+ * Open Kylin wlroots 0.17.4-ok*.
+ * 
+ * Things adapted is that 0.17 has NO wlr_surface_synced framework so the
+ * pending -> current state is now moved MANUALLY in a surface 「commit」
+ * listener. Wait-before-signal blocking (lock_surface_commit) is dropped here.
+ * 
+ * The acquire fence is waited on at sample time by the compositor instead.
+ * 
+ * wlr_surface_reject_pending -> post_error.
+ * ----------------------------------------------------------------------------
+ * 从上游wlroots主线的回填，用于GXDE版本的Open Kylin wlroots 0.17.4-ok*分支。
+ * 
+ * 适配内容：0.17中*没有* wlr_surface_synced框架，因此pending -> current的状态迁移
+ * 现在改为在surface的commit listener中手动完成。
+ * 
+ * 此处移除了wait-before-signal的阻塞逻辑 (lock_surface_commit).
+ * 
+ * acquire fence改为由合成器在采样时等待。
+ * 
+ * wlr_surface_reject_pending改为post_error。
+ */
+
+#define _POSIX_C_SOURCE 200809L
+
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <wayland-server-core.h>
+#include <wlr/render/drm_syncobj.h>
+#include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_linux_drm_syncobj_v1.h>
+#include <wlr/util/log.h>
+#include <xf86drm.h>
+#include "config.h"
+#include "linux-drm-syncobj-v1-protocol.h"
+#include "render/dmabuf.h"
+#include "render/drm_syncobj_merger.h"
+
+#define LINUX_DRM_SYNCOBJ_V1_VERSION 1
+
+struct wlr_linux_drm_syncobj_surface_v1 {
+	struct wl_resource *resource;
+	struct wlr_surface *surface;
+	struct wlr_linux_drm_syncobj_surface_v1_state pending, current;
+
+	struct wlr_addon addon;
+
+	struct wl_listener surface_commit;
+	struct wl_listener surface_destroy;
+};
+
+static const struct wp_linux_drm_syncobj_manager_v1_interface manager_impl;
+static const struct wp_linux_drm_syncobj_timeline_v1_interface timeline_impl;
+static const struct wp_linux_drm_syncobj_surface_v1_interface surface_impl;
+
+static struct wlr_linux_drm_syncobj_manager_v1 *manager_from_resource(
+		struct wl_resource *resource) {
+	assert(wl_resource_instance_of(resource,
+		&wp_linux_drm_syncobj_manager_v1_interface, &manager_impl));
+	return wl_resource_get_user_data(resource);
+}
+
+static struct wlr_drm_syncobj_timeline *timeline_from_resource(
+		struct wl_resource *resource) {
+	assert(wl_resource_instance_of(resource,
+		&wp_linux_drm_syncobj_timeline_v1_interface, &timeline_impl));
+	return wl_resource_get_user_data(resource);
+}
+
+// Returns NULL if the syncobj surface is inert
+static struct wlr_linux_drm_syncobj_surface_v1 *surface_from_resource(
+		struct wl_resource *resource) {
+	assert(wl_resource_instance_of(resource,
+		&wp_linux_drm_syncobj_surface_v1_interface, &surface_impl));
+	return wl_resource_get_user_data(resource);
+}
+
+static void timeline_handle_resource_destroy(struct wl_resource *resource) {
+	struct wlr_drm_syncobj_timeline *timeline = timeline_from_resource(resource);
+	wlr_drm_syncobj_timeline_unref(timeline);
+}
+
+static void timeline_handle_destroy(struct wl_client *client,
+		struct wl_resource *resource) {
+	wl_resource_destroy(resource);
+}
+
+static const struct wp_linux_drm_syncobj_timeline_v1_interface timeline_impl = {
+	.destroy = timeline_handle_destroy,
+};
+
+static void state_finish(struct wlr_linux_drm_syncobj_surface_v1_state *state) {
+	wlr_drm_syncobj_timeline_unref(state->acquire_timeline);
+	wlr_drm_syncobj_timeline_unref(state->release_timeline);
+	wlr_drm_syncobj_merger_unref(state->release_merger);
+	*state = (struct wlr_linux_drm_syncobj_surface_v1_state){0};
+}
+
+static void surface_destroy(struct wlr_linux_drm_syncobj_surface_v1 *surface) {
+	if (surface == NULL) {
+		return;
+	}
+	wl_list_remove(&surface->surface_commit.link);
+	wl_list_remove(&surface->surface_destroy.link);
+	wlr_addon_finish(&surface->addon);
+	state_finish(&surface->pending);
+	state_finish(&surface->current);
+	wl_resource_set_user_data(surface->resource, NULL);
+	free(surface);
+}
+
+static void surface_handle_destroy(struct wl_client *client,
+		struct wl_resource *resource) {
+	wl_resource_destroy(resource);
+}
+
+static void surface_handle_set_acquire_point(struct wl_client *client,
+		struct wl_resource *resource, struct wl_resource *timeline_resource,
+		uint32_t point_hi, uint32_t point_lo) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		surface_from_resource(resource);
+	if (surface == NULL) {
+		wl_resource_post_error(resource,
+			WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_SURFACE,
+			"The surface has been destroyed");
+		return;
+	}
+
+	struct wlr_drm_syncobj_timeline *timeline =
+		timeline_from_resource(timeline_resource);
+	uint64_t point = (uint64_t)point_hi << 32 | point_lo;
+
+	wlr_drm_syncobj_timeline_unref(surface->pending.acquire_timeline);
+	surface->pending.acquire_timeline = wlr_drm_syncobj_timeline_ref(timeline);
+	surface->pending.acquire_point = point;
+}
+
+static void surface_handle_set_release_point(struct wl_client *client,
+		struct wl_resource *resource, struct wl_resource *timeline_resource,
+		uint32_t point_hi, uint32_t point_lo) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		surface_from_resource(resource);
+	if (surface == NULL) {
+		wl_resource_post_error(resource,
+			WP_LINUX_DRM_SYNCOBJ_SURFACE_V1_ERROR_NO_SURFACE,
+			"The surface has been destroyed");
+		return;
+	}
+
+	struct wlr_drm_syncobj_timeline *timeline =
+		timeline_from_resource(timeline_resource);
+	uint64_t point = (uint64_t)point_hi << 32 | point_lo;
+
+	wlr_drm_syncobj_timeline_unref(surface->pending.release_timeline);
+	surface->pending.release_timeline = wlr_drm_syncobj_timeline_ref(timeline);
+	surface->pending.release_point = point;
+}
+
+static const struct wp_linux_drm_syncobj_surface_v1_interface surface_impl = {
+	.destroy = surface_handle_destroy,
+	.set_acquire_point = surface_handle_set_acquire_point,
+	.set_release_point = surface_handle_set_release_point,
+};
+
+static void surface_handle_resource_destroy(struct wl_resource *resource) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		surface_from_resource(resource);
+	surface_destroy(surface);
+}
+
+static void surface_addon_handle_surface_destroy(struct wlr_addon *addon) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		wl_container_of(addon, surface, addon);
+	surface_destroy(surface);
+}
+
+static const struct wlr_addon_interface surface_addon_impl = {
+	.name = "wp_linux_drm_syncobj_surface_v1",
+	.destroy = surface_addon_handle_surface_destroy,
+};
+
+static struct wlr_linux_drm_syncobj_surface_v1 *surface_from_wlr_surface(
+		struct wlr_surface *wlr_surface) {
+	struct wlr_addon *addon =
+		wlr_addon_find(&wlr_surface->addons, NULL, &surface_addon_impl);
+	if (addon == NULL) {
+		return NULL;
+	}
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		wl_container_of(addon, surface, addon);
+	return surface;
+}
+
+// 0.17 has no wlr_surface_synced; move pending->current manually on commit.
+static void surface_handle_commit(struct wl_listener *listener, void *data) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		wl_container_of(listener, surface, surface_commit);
+
+	// Ignore commits that did not set an acquire point (i.e. did not attach a
+	// buffer through explicit sync this commit).
+	if (surface->pending.acquire_timeline == NULL) {
+		state_finish(&surface->pending);
+		return;
+	}
+
+	state_finish(&surface->current);
+	surface->current = surface->pending;
+	surface->pending = (struct wlr_linux_drm_syncobj_surface_v1_state){0};
+
+	if (surface->current.release_timeline != NULL) {
+		surface->current.release_merger = wlr_drm_syncobj_merger_create(
+			surface->current.release_timeline, surface->current.release_point);
+	}
+
+	// The acquire fence is waited on GPU-side by the renderer right before it
+	// samples this surface's buffer (see ky_scene get_texture path), not here.
+	// Release-point signalling is handled after the compositor's GPU read.
+}
+
+static void surface_handle_surface_destroy(struct wl_listener *listener, void *data) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		wl_container_of(listener, surface, surface_destroy);
+	surface_destroy(surface);
+}
+
+static void manager_handle_destroy(struct wl_client *client,
+		struct wl_resource *resource) {
+	wl_resource_destroy(resource);
+}
+
+static void manager_handle_get_surface(struct wl_client *client,
+		struct wl_resource *resource, uint32_t id,
+		struct wl_resource *surface_resource) {
+	struct wlr_surface *wlr_surface = wlr_surface_from_resource(surface_resource);
+
+	if (surface_from_wlr_surface(wlr_surface) != NULL) {
+		wl_resource_post_error(resource,
+			WP_LINUX_DRM_SYNCOBJ_MANAGER_V1_ERROR_SURFACE_EXISTS,
+			"wp_linux_drm_syncobj_surface_v1 already created for this surface");
+		return;
+	}
+
+	struct wlr_linux_drm_syncobj_surface_v1 *surface = calloc(1, sizeof(*surface));
+	if (surface == NULL) {
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+
+	uint32_t version = wl_resource_get_version(resource);
+	surface->resource = wl_resource_create(client,
+		&wp_linux_drm_syncobj_surface_v1_interface, version, id);
+	if (surface->resource == NULL) {
+		free(surface);
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+	wl_resource_set_implementation(surface->resource,
+		&surface_impl, surface, surface_handle_resource_destroy);
+
+	surface->surface = wlr_surface;
+
+	wlr_log(WLR_INFO, "KYDBG syncobj: client created syncobj surface for %p",
+		(void *)wlr_surface);
+
+	surface->surface_commit.notify = surface_handle_commit;
+	wl_signal_add(&wlr_surface->events.precommit, &surface->surface_commit);
+
+	surface->surface_destroy.notify = surface_handle_surface_destroy;
+	wl_signal_add(&wlr_surface->events.destroy, &surface->surface_destroy);
+
+	wlr_addon_init(&surface->addon, &wlr_surface->addons, NULL, &surface_addon_impl);
+}
+
+static void manager_handle_import_timeline(struct wl_client *client,
+		struct wl_resource *resource, uint32_t id, int drm_syncobj_fd) {
+	struct wlr_linux_drm_syncobj_manager_v1 *manager =
+		manager_from_resource(resource);
+
+	struct wlr_drm_syncobj_timeline *timeline =
+		wlr_drm_syncobj_timeline_import(manager->drm_fd, drm_syncobj_fd);
+	close(drm_syncobj_fd);
+	if (timeline == NULL) {
+		wl_resource_post_error(resource,
+			WP_LINUX_DRM_SYNCOBJ_MANAGER_V1_ERROR_INVALID_TIMELINE,
+			"Failed to import drm_syncobj timeline");
+		return;
+	}
+
+	uint32_t version = wl_resource_get_version(resource);
+	struct wl_resource *timeline_resource = wl_resource_create(client,
+		&wp_linux_drm_syncobj_timeline_v1_interface, version, id);
+	if (timeline_resource == NULL) {
+		wlr_drm_syncobj_timeline_unref(timeline);
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+	wl_resource_set_implementation(timeline_resource,
+		&timeline_impl, timeline, timeline_handle_resource_destroy);
+}
+
+static const struct wp_linux_drm_syncobj_manager_v1_interface manager_impl = {
+	.destroy = manager_handle_destroy,
+	.get_surface = manager_handle_get_surface,
+	.import_timeline = manager_handle_import_timeline,
+};
+
+static void manager_bind(struct wl_client *client, void *data,
+		uint32_t version, uint32_t id) {
+	struct wlr_linux_drm_syncobj_manager_v1 *manager = data;
+
+	struct wl_resource *resource = wl_resource_create(client,
+		&wp_linux_drm_syncobj_manager_v1_interface, version, id);
+	if (resource == NULL) {
+		wl_client_post_no_memory(client);
+		return;
+	}
+	wl_resource_set_implementation(resource, &manager_impl, manager, NULL);
+}
+
+static void handle_display_destroy(struct wl_listener *listener, void *data) {
+	struct wlr_linux_drm_syncobj_manager_v1 *manager =
+		wl_container_of(listener, manager, display_destroy);
+	wl_list_remove(&manager->display_destroy.link);
+	wl_global_destroy(manager->global);
+	close(manager->drm_fd);
+	free(manager);
+}
+
+static bool check_syncobj_eventfd(int drm_fd) {
+	if (!HAVE_EVENTFD) {
+		return false;
+	}
+
+	uint64_t value = 0;
+	if (drmGetCap(drm_fd, DRM_CAP_SYNCOBJ_TIMELINE, &value) != 0 || value == 0) {
+		return false;
+	}
+
+	// Try waiting with invalid syncobj should fail with ENOENT
+	struct drm_syncobj_eventfd syncobj_eventfd = {
+		.handle = 0,
+		.fd = -1,
+	};
+	return drmIoctl(drm_fd, DRM_IOCTL_SYNCOBJ_EVENTFD, &syncobj_eventfd) != 0 && errno == ENOENT;
+}
+
+struct wlr_linux_drm_syncobj_manager_v1 *wlr_linux_drm_syncobj_manager_v1_create(
+		struct wl_display *display, uint32_t version, int drm_fd) {
+	assert(version <= LINUX_DRM_SYNCOBJ_V1_VERSION);
+
+	if (!HAVE_LINUX_SYNC_FILE) {
+		wlr_log(WLR_INFO, "Linux sync_file unavailable, disabling linux-drm-syncobj-v1");
+		return NULL;
+	}
+
+	if (!check_syncobj_eventfd(drm_fd)) {
+		wlr_log(WLR_INFO, "DRM syncobj eventfd unavailable, disabling linux-drm-syncobj-v1");
+		return NULL;
+	}
+
+	struct wlr_linux_drm_syncobj_manager_v1 *manager = calloc(1, sizeof(*manager));
+	if (manager == NULL) {
+		return NULL;
+	}
+
+	manager->drm_fd = fcntl(drm_fd, F_DUPFD_CLOEXEC, 0);
+	if (manager->drm_fd < 0) {
+		goto error_manager;
+	}
+
+	manager->global = wl_global_create(display,
+		&wp_linux_drm_syncobj_manager_v1_interface,
+		version, manager, manager_bind);
+	if (manager->global == NULL) {
+		goto error_drm_fd;
+	}
+
+	manager->display_destroy.notify = handle_display_destroy;
+	wl_display_add_destroy_listener(display, &manager->display_destroy);
+
+	return manager;
+
+error_drm_fd:
+	close(manager->drm_fd);
+error_manager:
+	free(manager);
+	return NULL;
+}
+
+struct wlr_linux_drm_syncobj_surface_v1_state *
+wlr_linux_drm_syncobj_v1_get_surface_state(struct wlr_surface *wlr_surface) {
+	struct wlr_linux_drm_syncobj_surface_v1 *surface =
+		surface_from_wlr_surface(wlr_surface);
+	static int nq = 0;
+	if (nq++ < 60)
+		wlr_log(WLR_INFO, "KYDBG get_surface_state surf=%p found=%p",
+			(void*)wlr_surface, (void*)surface);
+	if (surface == NULL) {
+		return NULL;
+	}
+	return &surface->current;
+}
+
+struct release_signaller {
+	struct wlr_drm_syncobj_merger *merger;
+	struct wl_listener buffer_release;
+};
+
+static void release_signaller_handle_buffer_release(struct wl_listener *listener, void *data) {
+	struct release_signaller *signaller = wl_container_of(listener, signaller, buffer_release);
+
+	wlr_drm_syncobj_merger_unref(signaller->merger);
+	wl_list_remove(&signaller->buffer_release.link);
+	free(signaller);
+}
+
+bool wlr_linux_drm_syncobj_v1_state_signal_release_with_buffer(
+		struct wlr_linux_drm_syncobj_surface_v1_state *state, struct wlr_buffer *buffer) {
+	assert(buffer->n_locks > 0);
+	if (state->release_merger == NULL) {
+		return true;
+	}
+
+	struct release_signaller *signaller = calloc(1, sizeof(*signaller));
+	if (signaller == NULL) {
+		return false;
+	}
+
+	signaller->merger = wlr_drm_syncobj_merger_ref(state->release_merger);
+	signaller->buffer_release.notify = release_signaller_handle_buffer_release;
+	wl_signal_add(&buffer->events.release, &signaller->buffer_release);
+
+	return true;
+}
+
+bool wlr_linux_drm_syncobj_v1_state_add_release_point(
+		struct wlr_linux_drm_syncobj_surface_v1_state *state,
+		struct wlr_drm_syncobj_timeline *release_timeline, uint64_t release_point,
+		struct wl_event_loop *event_loop) {
+	if (state->release_merger == NULL) {
+		return true;
+	}
+	return wlr_drm_syncobj_merger_add(state->release_merger,
+		release_timeline, release_point, event_loop);
+}
+
+bool wlr_linux_drm_syncobj_v1_state_add_release_from_implicit_sync(
+		struct wlr_linux_drm_syncobj_surface_v1_state *state,
+		struct wlr_buffer *buffer, struct wl_event_loop *event_loop) {
+	if (state->release_merger == NULL) {
+		return true;
+	}
+	return wlr_drm_syncobj_merger_add_dmabuf(state->release_merger, buffer, event_loop);
+}

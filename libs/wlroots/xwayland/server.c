@@ -258,6 +258,17 @@ static int xserver_handle_ready(int fd, uint32_t mask, void *data) {
 		if (errno == EINTR) {
 			continue;
 		}
+
+		/* If some application has installed a SIGCHLD handler, they
+		 * may race and waitpid() on our child, which will cause this
+		 * waitpid() to fail. We have a signal from the
+		 * notify pipe that things are ready, so this waitpid() is only
+		 * to prevent zombies, which will have already been reaped by
+		 * the application's SIGCHLD handler.
+		 */
+		if (errno == ECHILD) {
+			break;
+		}
 		wlr_log_errno(WLR_ERROR, "waitpid for Xwayland fork failed");
 		goto error;
 	}

@@ -476,11 +476,13 @@ static bool pixman_read_pixels(struct wlr_renderer *wlr_renderer,
 		drm_get_pixel_format_info(drm_format);
 	assert(drm_fmt);
 
+	void *p = (char*)data + pixel_format_info_min_stride(drm_fmt, dst_x) + dst_y *stride;
+
 	pixman_image_t *dst = pixman_image_create_bits_no_clear(fmt, width, height,
-			data, stride);
+			p, stride);
 
 	pixman_image_composite32(PIXMAN_OP_SRC, buffer->image, NULL, dst,
-			src_x, src_y, 0, 0, dst_x, dst_y, width, height);
+			src_x, src_y, 0, 0, 0, 0, width, height);
 
 	pixman_image_unref(dst);
 

@@ -108,9 +108,8 @@ static bool backend_start(struct wlr_backend *wlr_backend) {
 
 	handle_libinput_readable(libinput_fd, WL_EVENT_READABLE, backend);
 	if (!env_parse_bool("WLR_LIBINPUT_NO_DEVICES") && wl_list_empty(&backend->devices)) {
-		wlr_log(WLR_ERROR, "libinput initialization failed, no input devices");
-		wlr_log(WLR_ERROR, "Set WLR_LIBINPUT_NO_DEVICES=1 to suppress this check");
-		return false;
+		// set WLR_LIBINPUT_NO_DEVICES=1 to suppress this check
+		wlr_log(WLR_ERROR, "No input devices during libinput backend initialization");
 	}
 
 	struct wl_event_loop *event_loop =
@@ -176,6 +175,9 @@ static void session_signal(struct wl_listener *listener, void *data) {
 	} else {
 		libinput_suspend(backend->libinput_context);
 	}
+
+	int libinput_fd = libinput_get_fd(backend->libinput_context);
+	handle_libinput_readable(libinput_fd, WL_EVENT_READABLE, backend);
 }
 
 static void handle_session_destroy(struct wl_listener *listener, void *data) {

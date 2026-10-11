@@ -215,7 +215,6 @@ static bool check_import_dmabuf(struct wlr_linux_dmabuf_v1 *linux_dmabuf,
 		}
 		if (drmCloseBufferHandle(linux_dmabuf->main_device_fd, handle) != 0) {
 			wlr_log_errno(WLR_ERROR, "Failed to close buffer handle");
-			return false;
 		}
 	}
 	return true;

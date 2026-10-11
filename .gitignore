@@ -84,7 +84,6 @@ Thumbs.db
 .codex/*
 .gemini/*
 .qwen/*
-.agents/*
 
 # ---> CMake build tree
 build/*
