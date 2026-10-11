@@ -1,3 +1,11 @@
+gxde-wlcom (2.3.7-gxde5) lizhi; urgency=high
+
+  * 修复光标主题不存在时仍导出 XCURSOR_THEME，导致原生 Wayland 下 Chromium/Electron 光标异常的问题
+  * 光标主题默认值由 dark-sense 改为 deepin
+  * 切换至上游原版 wlroots 0.17.4
+
+ -- CharOfString <root@charofstring.cc>  Sun, 11 Oct 2026 00:11:40 -0500
+
 gxde-wlcom (2.3.7-gxde4) lizhi; urgency=high
 
   * 迁移至CMake构建系统
