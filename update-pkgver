@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# Copyright (C) 2026 CharOfString <root@charofstring.cc>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program. If not, see <https://www.gnu.org/licenses/>.
+# -----------------------------------------------------------------------------
+# 本脚本从debian/changelog中读取版本并且更新PKGBUILD的版本
+# This script reads version from debian/changelog and update the version of
+# PKGBUILD.
+
+set -euo pipefail
+cd arch
+
+# 引用/Works Cited: https://patorjk.com/software/taag/#p=display&f=Linguaholic+Shadow+3D
+echo '  ██████╗██╗     ██╗██████╗  ████████╗           ████╗                     '
+echo '██╔═════╝╚═██╗ ██╔═╝██╔═══██╗██╔═════╝         ██╔═══╝  ████╗  ██╗ ████╗   '
+echo '██║ ████╗  ╚═██╔═╝  ██║   ██║██████╗         ██████╗  ██╔═══██╗████╔═══╝   '
+echo '██║ ╚═██║  ██╔═██╗  ██║   ██║██╔═══╝         ╚═██╔═╝  ██║   ██║██╔═╝       '
+echo '╚═██████║██╔═╝ ╚═██╗██████╔═╝████████╗         ██║    ╚═████╔═╝██║         '
+echo '  ╚═════╝╚═╝     ╚═╝╚═════╝  ╚═══════╝         ╚═╝      ╚═══╝  ╚═╝         '
+echo '                                                                           '
+echo '                                                                           '
+echo '  ████╗                    ██╗      ██╗      ██╗                           '
+echo '██╔═══██╗██╗ ████╗  ██████╗██████╗  ██║      ╚═╝██████╗  ██╗   ██╗██╗   ██╗'
+echo '████████║████╔═══╝██╔═════╝██╔═══██╗██║      ██╗██╔═══██╗██║   ██║╚═████╔═╝'
+echo '██╔═══██║██╔═╝    ██║      ██║   ██║██║      ██║██║   ██║██║   ██║  ████║  '
+echo '██║   ██║██║      ╚═██████╗██║   ██║████████╗██║██║   ██║╚═██████║██╔═══██╗'
+echo '╚═╝   ╚═╝╚═╝        ╚═════╝╚═╝   ╚═╝╚═══════╝╚═╝╚═╝   ╚═╝  ╚═════╝╚═╝   ╚═╝'
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repo_dir=$(dirname "$script_dir")
+pkgbuild="$script_dir/PKGBUILD"
+changelog="$repo_dir/debian/changelog"
+
+usage() {
+    sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    exit "${1:-0}"
+}
+
+pkgrel=
+version=
+while (($#)); do
+    case "$1" in
+        -r|--pkgrel) pkgrel=${2:?missing value for $1}; shift 2 ;;
+        -h|--help) usage ;;
+        -*) echo "unknown option: $1" >&2; usage 1 ;;
+        *) version=$1; shift ;;
+    esac
+done
+
+if [[ -z $version ]]; then
+    # First line of debian/changelog: "dtkcommon (5.7.16-2) unstable; urgency=medium"
+    version=$(sed -nE '1s/^[^ ]+ \(([^)]+)\).*/\1/p' "$changelog")
+    [[ -n $version ]] || { echo "cannot parse version from $changelog" >&2; exit 1; }
+    echo "version from debian/changelog: $version"
+fi
+
+# Debian "epoch:upstream-revision" -> Arch pkgver/pkgrel
+version=${version#*:}
+if [[ $version == *-* ]]; then
+    upstream=${version%-*}
+    revision=${version##*-}
+else
+    upstream=$version
+    revision=
+fi
+
+# pkgver must not contain ':', '/', '-' or whitespace
+pkgver=$(tr '~+:/ -' '......' <<<"$upstream")
+
+if [[ -z $pkgrel ]]; then
+    # Debian revisions like "2deepin1" -> keep the leading number only
+    pkgrel=$(grep -oE '^[0-9]+' <<<"$revision" || true)
+    pkgrel=${pkgrel:-1}
+fi
+
+[[ $pkgver =~ ^[0-9][0-9A-Za-z._]*$ ]] || { echo "invalid pkgver: $pkgver" >&2; exit 1; }
+[[ $pkgrel =~ ^[1-9][0-9]*(\.[1-9][0-9]*)?$ ]] || { echo "invalid pkgrel: $pkgrel" >&2; exit 1; }
+
+old=$(grep -E '^pkg(ver|rel)=' "$pkgbuild" | paste -sd' ')
+sed -i -E "s/^pkgver=.*/pkgver=$pkgver/; s/^pkgrel=.*/pkgrel=$pkgrel/" "$pkgbuild"
+echo "$old -> pkgver=$pkgver pkgrel=$pkgrel"
+
+bash -n "$pkgbuild"
+if command -v makepkg >/dev/null; then
+    (cd "$script_dir" && makepkg --printsrcinfo >/dev/null)
+    echo "PKGBUILD OK"
+fi

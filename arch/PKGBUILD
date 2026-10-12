@@ -1,0 +1,93 @@
+# Maintainer: CharOfString <root@charofstring.cc>
+pkgbase=gxde-wlcom-git
+pkgname=('gxde-wlcom-git' 'gxde-wlcom-client-git')
+pkgver=2.3.7
+pkgrel=1
+pkgdesc='GXDE Wayland compositor'
+arch=('x86_64' 'aarch64')
+url="https://github.com/GXDE-OS/gxde-wlcom"
+license=('GPL-3.0-or-later' 'GPL-1.0-or-later' 'LGPL-2.1-or-later' 'MIT-CMU' 'MulanPSL-2.0')
+makedepends=('git' 'meson' 'ninja' 'pkgconf' 'gettext' 'glslang' 'hwdata' 'vulkan-headers'
+             'wayland-protocols' 'systemd' 'libliftoff' 'libdisplay-info' 'seatd' 'vulkan-icd-loader'
+             'cairo' 'pango' 'librsvg' 'json-c' 'libinput' 'libxkbcommon' 'pixman' 'libdrm' 'mesa'
+             'libglvnd' 'libjpeg-turbo' 'libpng' 'libunwind' 'libxcb' 'xcb-util-errors'
+             'xcb-util-renderutil' 'xcb-util-wm' 'xorg-xwayland' 'wayland' 'glib2' 'openssl'
+             'libepoxy')
+source=()
+sha512sums=()
+
+# 直接使用 PKGBUILD 所在的 git 仓库作为源码 ・ Build from the git checkout this PKGBUILD lives in.
+_srcroot() {
+  git -C "$startdir" rev-parse --show-toplevel
+}
+
+build() {
+  # 与 debian/rules 相同：wlroots 作为 meson 子项目按 subprojects/wlroots.wrap 下载并静态链接；
+  # 不用 arch-meson，它会禁止下载 wrap
+  # Same as debian/rules: wlroots is downloaded as a meson subproject from
+  # subprojects/wlroots.wrap and linked statically.  arch-meson is not used
+  # because it forbids wrap downloads.
+  # 与 Debian 的 debugoptimized 一样保留断言：wlroots 以 -Werror 构建，
+  # 定义 NDEBUG 后只在 assert 中使用的变量会触发 unused-variable 错误
+  # Keep assertions like Debian's debugoptimized build: wlroots builds with
+  # -Werror, and with NDEBUG variables only used in assert() trip
+  # unused-variable.
+  meson setup build "$(_srcroot)" \
+    --prefix=/usr \
+    --libexecdir=lib \
+    --buildtype=plain \
+    -Db_ndebug=false \
+    -Dexamples=false \
+    -Dukui_theme=true \
+    -Dwlroots:renderers=gles2,vulkan
+  meson compile -C build
+}
+
+package_gxde-wlcom-git() {
+  depends=('cairo' 'glib2' 'json-c' 'libdisplay-info' 'libdrm' 'libepoxy' 'libglvnd' 'libinput'
+           'libjpeg-turbo' 'libliftoff' 'libpng' 'librsvg' 'libunwind' 'libxcb' 'libxkbcommon'
+           'mesa' 'openssl' 'pango' 'pixman' 'seatd' 'systemd-libs' 'vulkan-icd-loader' 'wayland'
+           'xcb-util-errors' 'xcb-util-renderutil' 'xcb-util-wm' 'xorg-xwayland' 'dconf')
+  # 旧的 gxde-wlcom（非 -git）包由此升级过来 ・ Upgrades the older non -git gxde-wlcom package.
+  provides=("gxde-wlcom=$pkgver" 'kylin-wayland-compositor')
+  conflicts=('gxde-wlcom' 'kylin-wayland-compositor')
+  replaces=('gxde-wlcom')
+
+  # 静态链接的 wlroots 不随包安装（debian/rules 同样删掉了它的头文件和库）
+  # The statically linked wlroots is not installed (debian/rules removes its
+  # headers and libraries too).
+  meson install -C build --destdir "$srcdir/root" --skip-subprojects
+
+  # 按 debian/gxde-wlcom.install 拆分 ・ Split as in debian/gxde-wlcom.install.
+  cd "$srcdir/root"
+  local _f
+  for _f in usr/bin/gxde-wlcom usr/bin/startgxde_wlcom usr/share/locale usr/share/gxde-wlcom/multitask \
+            usr/lib/udev/rules.d usr/share/wayland-sessions etc/gxde-wlcom usr/share/glib-2.0/schemas; do
+    [[ -e $_f ]] || continue
+    install -d "$pkgdir/$(dirname "$_f")"
+    mv "$_f" "$pkgdir/$_f"
+  done
+  install -Dm644 "$(_srcroot)/data/configs/OMG.conf" "$pkgdir/etc/GXWM/OMG.conf"
+  _licenses
+}
+
+# MIT-CMU 与 MulanPSL-2.0 不是通用许可证，需随包附带 ・ MIT-CMU and MulanPSL-2.0 are not common licenses, ship their texts.
+_licenses() {
+  install -Dm644 -t "$pkgdir/usr/share/licenses/$pkgname" \
+    "$(_srcroot)/LICENSES/MIT-CMU.txt" "$(_srcroot)/LICENSES/MulanPSL-2.0.txt"
+}
+
+package_gxde-wlcom-client-git() {
+  pkgdesc='Client library for the GXDE Wayland compositor (libkywc)'
+  depends=('gxde-wlcom-git' 'wayland' 'glibc')
+  provides=('gxde-wlcom-client' 'kylin-wayland-compositor-client')
+  conflicts=('gxde-wlcom-client' 'kylin-wayland-compositor-client')
+
+  # 按 debian/gxde-wlcom-client.install 拆分 ・ Split as in debian/gxde-wlcom-client.install.
+  cd "$srcdir/root"
+  install -d "$pkgdir/usr/lib"
+  mv usr/lib/lib*.so* "$pkgdir/usr/lib/"
+  mv usr/include "$pkgdir/usr/"
+  mv usr/lib/pkgconfig "$pkgdir/usr/lib/"
+  _licenses
+}
