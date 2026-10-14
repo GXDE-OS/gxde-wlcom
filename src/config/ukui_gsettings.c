@@ -15,6 +15,8 @@
 struct ukui_settings {
     struct {
         GSettings *settings;
+        /* com.deepin.xsettings, takes over theme and size from settings when installed */
+        GSettings *deepin;
         char *theme;
         int size;
     } cursor;
@@ -35,6 +37,9 @@ struct ukui_settings {
 
 static const char *cursor_path = "/org/ukui/desktop/peripherals/mouse/";
 #define CURSOR_PATH_LEN (36)
+/* GXCC sets the cursor theme through dde appearance -> cursor-helper, which writes here */
+static const char *deepin_cursor_path = "/com/deepin/xsettings/";
+#define DEEPIN_CURSOR_PATH_LEN (22)
 static const char *style_path = "/org/ukui/style/";
 #define STYLE_PATH_LEN (16)
 
@@ -43,6 +48,10 @@ static const char *cursor_theme_key = "cursor-theme";
 static const char *cursor_size_key = "cursor-size";
 static const char *locate_pointer_key = "locate-pointer";
 static const char *shake_cursor_key = "shake-cursor";
+
+static const char *deepin_cursor_schema = "com.deepin.xsettings";
+static const char *deepin_cursor_theme_key = "gtk-cursor-theme-name";
+static const char *deepin_cursor_size_key = "gtk-cursor-theme-size";
 
 static const char *style_schema = "org.ukui.style";
 static const char *style_name_key = "style-name";
@@ -71,6 +80,28 @@ static GSettingsSchema *is_schema_installed(const char *schema_id)
     return g_settings_schema_source_lookup(source, schema_id, TRUE);
 }
 
+static void apply_cursor_settings(void)
+{
+    if (settings->cursor.theme && settings->cursor.size > 0) {
+        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
+        xwayland_refresh_xsettings();
+    }
+}
+
+static void handle_deepin_cursor_settings_changed(GSettings *xsettings, const char *key)
+{
+    if (strcmp(key, deepin_cursor_theme_key) == 0) {
+        free(settings->cursor.theme);
+        settings->cursor.theme = g_settings_get_string(xsettings, key);
+    } else if (strcmp(key, deepin_cursor_size_key) == 0) {
+        settings->cursor.size = g_settings_get_int(xsettings, key);
+    } else {
+        return;
+    }
+
+    apply_cursor_settings();
+}
+
 static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
 {
     if (strcmp(key, locate_pointer_key) == 0) {
@@ -92,6 +123,11 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
         return;
     }
 
+    /* follow GXCC instead of the ukui keys when com.deepin.xsettings is available */
+    if (settings->cursor.deepin) {
+        return;
+    }
+
     if (strcmp(key, cursor_theme_key) == 0) {
         free(settings->cursor.theme);
         settings->cursor.theme = g_settings_get_string(mouse, key);
@@ -101,10 +137,7 @@ static void handle_cursor_settings_changed(GSettings *mouse, const char *key)
         return;
     }
 
-    if (settings->cursor.theme && settings->cursor.size > 0) {
-        input_set_all_cursor(settings->cursor.theme, settings->cursor.size);
-        xwayland_refresh_xsettings();
-    }
+    apply_cursor_settings();
 }
 
 static void style_name_changed(GSettings *style, const char *key)
@@ -215,6 +248,10 @@ static int dconf_notify(sd_bus_message *msg, void *userdata, sd_bus_error *ret_e
             handle_style_settings_changed(settings->style.settings, key + STYLE_PATH_LEN);
         } else if (strncmp(key, cursor_path, CURSOR_PATH_LEN) == 0) {
             handle_cursor_settings_changed(settings->cursor.settings, key + CURSOR_PATH_LEN);
+        } else if (settings->cursor.deepin &&
+                   strncmp(key, deepin_cursor_path, DEEPIN_CURSOR_PATH_LEN) == 0) {
+            handle_deepin_cursor_settings_changed(settings->cursor.deepin,
+                                                  key + DEEPIN_CURSOR_PATH_LEN);
         }
     }
 
@@ -250,8 +287,9 @@ static void handle_display_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&settings->destroy.link);
 
-    g_object_unref(settings->cursor.settings);
-    g_object_unref(settings->style.settings);
+    g_clear_object(&settings->cursor.settings);
+    g_clear_object(&settings->cursor.deepin);
+    g_clear_object(&settings->style.settings);
 
     free(settings->cursor.theme);
     free(settings->style.font_name);
@@ -283,10 +321,13 @@ bool ukui_gsettings_create(struct config_manager *config_manager)
     }
 
     settings->style.type = THEME_TYPE_UNDEFINED;
+    /* before the ukui mouse schema, so its cursor keys are skipped when this one exists */
+    settings->cursor.deepin =
+        init_schema_settings(deepin_cursor_schema, handle_deepin_cursor_settings_changed);
     settings->cursor.settings = init_schema_settings(cursor_schema, handle_cursor_settings_changed);
     settings->style.settings = init_schema_settings(style_schema, handle_style_settings_changed);
 
-    if (!settings->cursor.settings && !settings->style.settings) {
+    if (!settings->cursor.settings && !settings->cursor.deepin && !settings->style.settings) {
         free(settings);
         settings = NULL;
         return false;
