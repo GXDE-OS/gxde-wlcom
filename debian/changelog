@@ -1,3 +1,9 @@
+gxde-wlcom (2.3.7-gxde6) lizhi; urgency=high
+
+  * 修复XCursor下会使用不存在光标图形的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 14 Oct 2026 01:25:03 -0500
+
 gxde-wlcom (2.3.7-gxde5) lizhi; urgency=high
 
   * 修复光标主题不存在时仍导出 XCURSOR_THEME，导致原生 Wayland 下 Chromium/Electron 光标异常的问题
