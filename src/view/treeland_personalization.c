@@ -20,13 +20,12 @@
  * places; those changes are tailored to GXDE's Wayland needs.
  */
 
-#define _XOPEN_SOURCE 700
+#define _POSIX_C_SOURCE 200809L
 #include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <wlr/types/wlr_compositor.h>
@@ -90,10 +89,9 @@
  * @c treeland_personalization_wallpaper_context_v1 interface *without* bumping
  * the interface version, so the two releases share a name and a version but not
  * a request table. Wayland opcodes are positional, which makes the layouts
- * mutually exclusive and indistinguishable on the wire, and serving the wrong
- * one kills the DTK client at startup. The client's address space is what tells
- * them apart: @c layout_for_client() looks at which DTK it has mapped, so a
- * system with DTK5 and DTK6 built against different XMLs still works.
+ * mutually exclusive and indistinguishable at bind time: the compositor has to
+ * commit to whichever one its clients were built against, and getting it wrong
+ * kills every DTK client at startup.
  *
  * Both layouts are served from the same vendored XML -- see
  * @c layout_derive_059() -- so switching is a matter of configuration rather
@@ -109,16 +107,11 @@ enum personalization_layout {
 struct treeland_personalization_manager {
     struct wl_global *global;
 
-    /* Default layout, for clients without DTK mapped, plus the derived 0.5.9
-     * request table. The 0.5.8 one is the scanner-generated table and needs
-     * nothing here. A forced layout skips the per-client lookup. */
+    /* Layout served to clients, plus the derived 0.5.9 request table. The
+     * 0.5.8 one is the scanner-generated table and needs nothing here. */
     enum personalization_layout layout;
-    bool layout_forced;
     struct wl_interface interface_059;
     struct wl_message *requests_059;
-
-    /* DTK libraries already scanned, see dtk_probe_lookup() */
-    struct wl_list dtk_probes;
 
     /* Per-window contexts */
     struct wl_list window_contexts;
@@ -1497,57 +1490,6 @@ static bool file_contains(const char *path, const char *needle)
 
 #define WALLPAPER_INTERFACE_SYMBOL "treeland_personalization_wallpaper_context_v1"
 
-struct dtk_probe {
-    struct wl_list link;
-    char *path;
-    ino_t inode;
-    bool has_wallpaper;
-};
-
-static int dtk_probe_lookup(const char *path, ino_t inode)
-{
-    struct dtk_probe *probe;
-    wl_list_for_each(probe, &manager->dtk_probes, link) {
-        if (probe->inode == inode && strcmp(probe->path, path) == 0) {
-            return probe->has_wallpaper;
-        }
-    }
-
-    struct stat st;
-    if (stat(path, &st) != 0 || st.st_ino != inode) {
-        return -1;
-    }
-
-    probe = calloc(1, sizeof(*probe));
-    if (!probe) {
-        return -1;
-    }
-
-    probe->path = strdup(path);
-    if (!probe->path) {
-        free(probe);
-        return -1;
-    }
-
-    probe->inode = inode;
-    probe->has_wallpaper = file_contains(path, WALLPAPER_INTERFACE_SYMBOL);
-    wl_list_insert(&manager->dtk_probes, &probe->link);
-
-    kywc_log(KYWC_DEBUG, "(Treeland Shim) Personalization: probing %s (inode %lu) -> %s", path,
-             (unsigned long)inode, probe->has_wallpaper ? "0.5.8" : "0.5.9");
-    return probe->has_wallpaper;
-}
-
-static void dtk_probes_finish(void)
-{
-    struct dtk_probe *probe, *tmp;
-    wl_list_for_each_safe(probe, tmp, &manager->dtk_probes, link) {
-        wl_list_remove(&probe->link);
-        free(probe->path);
-        free(probe);
-    }
-}
-
 /* DTK drives this protocol on GXDE, so its build is the one to match. Its
  * generated code carries the interface name of every request it can issue,
  * which makes the string a reliable stand-in for "which XML was this built
@@ -1581,10 +1523,7 @@ static bool layout_from_env(enum personalization_layout *layout)
 }
 
 /**
- * @brief Work out the default layout, for clients that have no DTK mapped
- *
- * Also warms the probe cache with the system DTK, so binding clients rarely
- * have to scan anything.
+ * @brief Work out which layout this system's clients expect
  *
  * Note that the installed treeland-protocols version is only a fallback hint:
  * the XML is a build-time input, so what matters is when DTK was last compiled,
@@ -1598,32 +1537,23 @@ static enum personalization_layout layout_detect(void)
                  "(Treeland Shim) Personalization: layout forced to %s by "
                  "GXDE_WLCOM_PERSONALIZATION",
                  layout == PERSONALIZATION_LAYOUT_058 ? "0.5.8" : "0.5.9");
-        manager->layout_forced = true;
         return layout;
     }
 
+    int probed = 0, with_wallpaper = 0;
     for (size_t i = 0; i < sizeof(dtk_lib_patterns) / sizeof(dtk_lib_patterns[0]); i++) {
         glob_t found;
         if (glob(dtk_lib_patterns[i], 0, NULL, &found) != 0) {
             continue;
         }
-        /* The soname symlinks resolve to the same file, the cache folds them */
         for (size_t j = 0; j < found.gl_pathc; j++) {
-            char *real = realpath(found.gl_pathv[j], NULL);
-            struct stat st;
-            if (real && stat(real, &st) == 0) {
-                dtk_probe_lookup(real, st.st_ino);
-            }
-            free(real);
+            bool has = file_contains(found.gl_pathv[j], WALLPAPER_INTERFACE_SYMBOL);
+            kywc_log(KYWC_DEBUG, "(Treeland Shim) Personalization: probing %s -> %s",
+                     found.gl_pathv[j], has ? "0.5.8" : "0.5.9");
+            probed++;
+            with_wallpaper += has;
         }
         globfree(&found);
-    }
-
-    int probed = 0, with_wallpaper = 0;
-    struct dtk_probe *probe;
-    wl_list_for_each(probe, &manager->dtk_probes, link) {
-        probed++;
-        with_wallpaper += probe->has_wallpaper;
     }
 
     if (probed == 0) {
@@ -1645,11 +1575,11 @@ static enum personalization_layout layout_detect(void)
     }
 
     if (with_wallpaper > 0 && with_wallpaper < probed) {
-        kywc_log(KYWC_WARN,
+        kywc_log(KYWC_ERROR,
                  "(Treeland Shim) Personalization: DTK libraries disagree, %d of %d still reference "
-                 "the wallpaper context. Each client is served the layout of the DTK it loaded, "
-                 "clients without DTK get 0.5.8 -- the DTK packages still want rebuilding against "
-                 "a single treeland-protocols",
+                 "the wallpaper context. Serving 0.5.8, so the ones already rebuilt against 0.5.9 "
+                 "will fail to start -- finish the rebuild, or force the other layout with "
+                 "GXDE_WLCOM_PERSONALIZATION=059",
                  with_wallpaper, probed);
     } else {
         kywc_log(KYWC_INFO,
@@ -1662,73 +1592,6 @@ static enum personalization_layout layout_detect(void)
     return with_wallpaper > 0 ? PERSONALIZATION_LAYOUT_058 : PERSONALIZATION_LAYOUT_059;
 }
 
-static enum personalization_layout layout_for_client(struct wl_client *client)
-{
-    if (manager->layout_forced || !manager->requests_059) {
-        return manager->layout;
-    }
-
-    pid_t pid;
-    wl_client_get_credentials(client, &pid, NULL, NULL);
-
-    char maps_path[32];
-    snprintf(maps_path, sizeof(maps_path), "/proc/%d/maps", (int)pid);
-    FILE *maps = fopen(maps_path, "r");
-    if (!maps) {
-        kywc_log(KYWC_DEBUG, "(Treeland Shim) Personalization: cannot read %s, client gets the "
-                             "default layout",
-                 maps_path);
-        return manager->layout;
-    }
-
-    bool wants_058 = false, wants_059 = false;
-    char *line = NULL;
-    size_t cap = 0;
-    while (getline(&line, &cap, maps) > 0) {
-        /* address perms offset dev inode path */
-        unsigned long inode;
-        int path_at = 0;
-        if (sscanf(line, "%*s %*s %*s %*s %lu %n", &inode, &path_at) != 1 ||
-            line[path_at] != '/') {
-            continue;
-        }
-
-        char *path = line + path_at;
-        path[strcspn(path, "\n")] = '\0';
-        const char *name = strrchr(path, '/') + 1;
-        if (strncmp(name, "libdtk6gui.so", strlen("libdtk6gui.so")) != 0 &&
-            strncmp(name, "libdtkgui.so", strlen("libdtkgui.so")) != 0) {
-            continue;
-        }
-
-        int has_wallpaper = dtk_probe_lookup(path, (ino_t)inode);
-        if (has_wallpaper > 0) {
-            wants_058 = true;
-        } else if (has_wallpaper == 0) {
-            wants_059 = true;
-        }
-    }
-    free(line);
-    fclose(maps);
-
-    if (wants_058 == wants_059) {
-        if (wants_058) {
-            kywc_log(KYWC_WARN,
-                     "(Treeland Shim) Personalization: client %d maps DTK built against both "
-                     "layouts, serving the default",
-                     (int)pid);
-        }
-        return manager->layout;
-    }
-
-    enum personalization_layout layout =
-        wants_058 ? PERSONALIZATION_LAYOUT_058 : PERSONALIZATION_LAYOUT_059;
-    kywc_log(layout == manager->layout ? KYWC_DEBUG : KYWC_INFO,
-             "(Treeland Shim) Personalization: client %d gets the %s layout", (int)pid,
-             layout == PERSONALIZATION_LAYOUT_058 ? "0.5.8" : "0.5.9");
-    return layout;
-}
-
 /* Manager global */
 
 static bool layout_is_059(void)
@@ -1736,25 +1599,21 @@ static bool layout_is_059(void)
     return manager->layout == PERSONALIZATION_LAYOUT_059 && manager->requests_059;
 }
 
-/* The global only carries the interface name, which both layouts share; the
- * request table that matters is the one the resource is created with. */
 static void personalization_manager_bind(struct wl_client *client, void *data, uint32_t version,
                                          uint32_t id)
 {
-    bool use_059 =
-        layout_for_client(client) == PERSONALIZATION_LAYOUT_059 && manager->requests_059;
     struct wl_resource *resource =
         wl_resource_create(client,
-                           use_059 ? &manager->interface_059
-                                   : &treeland_personalization_manager_v1_interface,
+                           layout_is_059() ? &manager->interface_059
+                                           : &treeland_personalization_manager_v1_interface,
                            version, id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;
     }
     wl_resource_set_implementation(
-        resource, use_059 ? (const void *)&manager_impl_059 : (const void *)&manager_impl, manager,
-        NULL);
+        resource, layout_is_059() ? (const void *)&manager_impl_059 : (const void *)&manager_impl,
+        manager, NULL);
 }
 
 static void manager_finish(void)
@@ -1762,7 +1621,6 @@ static void manager_finish(void)
     if (!manager) {
         return;
     }
-    dtk_probes_finish();
     free(manager->requests_059);
     free(manager->wallpaper_metadata);
     free(manager->cursor_theme);
@@ -1859,7 +1717,6 @@ bool treeland_personalization_manager_create(struct server *server)
     if (!manager) {
         return false;
     }
-    wl_list_init(&manager->dtk_probes);
 
     /* Decide the wire layout before advertising anything: the global carries
      * the request table, so it has to be the right one from the start. */
@@ -1878,8 +1735,7 @@ bool treeland_personalization_manager_create(struct server *server)
                      ? treeland_personalization_manager_v1_interface.methods[1].name
                      : "(none)");
         manager->layout = PERSONALIZATION_LAYOUT_058;
-    } else if (!layout_derive_059()) {
-        /* Needed even when the default is 0.5.8: any single client may want it */
+    } else if (manager->layout == PERSONALIZATION_LAYOUT_059 && !layout_derive_059()) {
         kywc_log(KYWC_ERROR, "(Treeland Shim) Personalization: falling back to the 0.5.8 layout, "
                              "clients built against 0.5.9 will not start");
         manager->layout = PERSONALIZATION_LAYOUT_058;
@@ -1894,7 +1750,9 @@ bool treeland_personalization_manager_create(struct server *server)
     if (!manager->global) {
         kywc_log(KYWC_ERROR, "(Treeland Shim) Init: Failed to create treeland personalization "
                              "manager!!");
-        manager_finish();
+        free(manager->requests_059);
+        free(manager);
+        manager = NULL;
         return false;
     }
 
