@@ -14,6 +14,15 @@
 
 #define KDE_KWIN_BLUR_MANAGER_VERSION 1
 
+/*
+ * strength / 1000 is the dual kawase offset at a fixed 3 iterations (1/8 downsample).
+ * Offsets below 2.0 show the downsample as blocks and above 5.0 leave diagonal lines,
+ * so fall back to the global blur level below the range and clamp above it.
+ */
+#define KDE_BLUR_ITERATIONS 3
+#define KDE_BLUR_MIN_STRENGTH 2000
+#define KDE_BLUR_MAX_STRENGTH 5000
+
 enum KDE_BLUR_STATE_MASK {
     KDE_BLUR_STATE_NONE = 0,
     KDE_BLUR_STATE_REGION = 1 << 0,
@@ -55,10 +64,13 @@ static void kde_blur_apply_state(struct kde_blur *blur)
         ky_scene_node_set_blur_region(&blur->scene_buffer->node, &blur->region);
     }
     if (blur->pending_mask & KDE_BLUR_STATE_STRENGTH) {
-        if (blur->strength == UINT32_MAX) {
+        if (blur->strength == UINT32_MAX || blur->strength < KDE_BLUR_MIN_STRENGTH) {
             ky_scene_node_reset_blur_level(&blur->scene_buffer->node);
         } else {
-            ky_scene_node_set_blur_level(&blur->scene_buffer->node, 3, blur->strength / 1000.f);
+            uint32_t strength = blur->strength > KDE_BLUR_MAX_STRENGTH ? KDE_BLUR_MAX_STRENGTH
+                                                                       : blur->strength;
+            ky_scene_node_set_blur_level(&blur->scene_buffer->node, KDE_BLUR_ITERATIONS,
+                                         strength / 1000.f);
         }
     }
 
