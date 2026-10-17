@@ -1,3 +1,8 @@
+gxde-wlcom (2.3.8-gxde1) lizhi; urgency=high
+
+  * 修复KDE Blur质量劣质的问题
+ -- CharOfString <root@charofstring.cc>  Sat, 17 Oct 2026 01:04:12 -0500
+
 gxde-wlcom (2.3.7-gxde6) lizhi; urgency=high
 
   * 修复XCursor下会使用不存在光标图形的问题

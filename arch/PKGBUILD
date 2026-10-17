@@ -1,7 +1,7 @@
 # Maintainer: CharOfString <root@charofstring.cc>
 pkgbase=gxde-wlcom-git
 pkgname=('gxde-wlcom-git' 'gxde-wlcom-client-git')
-pkgver=2.3.7
+pkgver=2.3.8
 pkgrel=1
 pkgdesc='GXDE Wayland compositor'
 arch=('x86_64' 'aarch64')
