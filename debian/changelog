@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.8-gxde2) lizhi; urgency=high
+
+  * 新增 PresentWindows(as) D-Bus 接口，支持按窗口 UUID 展示指定窗口
+  * Dock 在 Wayland 下滚动图标可展开当前应用的全部窗口
+
+ -- shenmo <jifengshenmo@outlook.com>  Mon, 26 Oct 2026 15:05:00 +0800
+
 gxde-wlcom (2.3.8-gxde1) lizhi; urgency=high
 
   * 修复KDE Blur质量劣质的问题

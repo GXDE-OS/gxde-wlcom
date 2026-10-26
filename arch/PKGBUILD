@@ -2,7 +2,7 @@
 pkgbase=gxde-wlcom-git
 pkgname=('gxde-wlcom-git' 'gxde-wlcom-client-git')
 pkgver=2.3.8
-pkgrel=1
+pkgrel=2
 pkgdesc='GXDE Wayland compositor'
 arch=('x86_64' 'aarch64')
 url="https://github.com/GXDE-OS/gxde-wlcom"
