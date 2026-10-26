@@ -145,6 +145,7 @@ struct present_view {
     double backdrop_alpha;
     double panel_alpha;
     char *filter;
+    char **view_uuids;
     uint32_t last_key;
     bool key_released;
     bool enabled;
@@ -188,6 +189,17 @@ static uint64_t now_ms(void)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static void free_strv(char **strv)
+{
+    if (!strv) {
+        return;
+    }
+    for (char **it = strv; *it; ++it) {
+        free(*it);
+    }
+    free(strv);
 }
 
 static bool box_overlap(const struct pv_box *a, const struct pv_box *b, double pad)
@@ -309,6 +321,19 @@ static bool view_matches_filter(struct view *view, const char *filter)
     return match;
 }
 
+static bool view_matches_uuid_filter(struct view *view)
+{
+    if (!pv->view_uuids) {
+        return true;
+    }
+    for (char **it = pv->view_uuids; *it; ++it) {
+        if (g_strcmp0(view->base.uuid, *it) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool is_pending(struct view *view)
 {
     struct pending_entry *entry;
@@ -386,7 +411,8 @@ static int collect_views(struct view_entry **entries_out, struct view *exclude)
                 view->base.role != KYWC_VIEW_ROLE_NORMAL || view->base.skip_switcher ||
                 !view_is_activatable(view) ||
                 !view_intersects_area(view, &pv->output->geometry) ||
-                is_pending(view) || !view_matches_filter(view, pv->filter)) {
+                is_pending(view) || !view_matches_filter(view, pv->filter) ||
+                !view_matches_uuid_filter(view)) {
                 continue;
             }
             bool seen = false;
@@ -1160,6 +1186,8 @@ static void teardown(void)
     /* like upstream: the filter does not survive deactivation */
     free(pv->filter);
     pv->filter = NULL;
+    free_strv(pv->view_uuids);
+    pv->view_uuids = NULL;
     if (pv->output_listening) {
         wl_list_remove(&pv->output_destroy.link);
         pv->output_listening = false;
@@ -1218,6 +1246,35 @@ bool present_windows_toggle(void)
         return false;
     }
     present_set_enabled(!pv->enabled);
+    return true;
+}
+
+bool present_windows_show_for_uuids(char **uuids)
+{
+    if (!pv || !uuids || !*uuids) {
+        free_strv(uuids);
+        return false;
+    }
+
+    if (pv->closing) {
+        teardown();
+    }
+
+    if (pv->enabled) {
+        free_strv(pv->view_uuids);
+        pv->view_uuids = uuids;
+        rebuild(NULL);
+        return pv->item_count > 0;
+    }
+
+    free_strv(pv->view_uuids);
+    pv->view_uuids = uuids;
+    present_set_enabled(true);
+    if (!pv->enabled) {
+        free_strv(pv->view_uuids);
+        pv->view_uuids = NULL;
+        return false;
+    }
     return true;
 }
 
@@ -1702,6 +1759,7 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_event_source_remove(pv->timer);
     ky_scene_node_destroy(&pv->tree->node);
     free(pv->filter);
+    free_strv(pv->view_uuids);
     free(pv);
     pv = NULL;
 }
