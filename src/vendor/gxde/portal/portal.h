@@ -11,7 +11,7 @@ struct view_manager;
 void portal_create(struct view_manager *view_manager);
 
 /* Called from the D-Bus layer. */
-bool portal_begin(void);
+bool portal_begin(int x, int y, int w, int h);
 void portal_cancel(void);
 
 /* D-Bus plumbing, implemented in portal_dbus.c. */

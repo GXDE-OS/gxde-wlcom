@@ -19,7 +19,12 @@ static struct dbus_object *portal_object = NULL;
 
 static int method_begin(sd_bus_message *message, void *data, sd_bus_error *error)
 {
-    return sd_bus_reply_method_return(message, "b", portal_begin());
+    int x = 0, y = 0, w = 0, h = 0;
+    int r = sd_bus_message_read(message, "iiii", &x, &y, &w, &h);
+    if (r < 0) {
+        return r;
+    }
+    return sd_bus_reply_method_return(message, "b", portal_begin(x, y, w, h));
 }
 
 static int method_cancel(sd_bus_message *message, void *data, sd_bus_error *error)
@@ -112,7 +117,7 @@ static int method_list_windows(sd_bus_message *message, void *data, sd_bus_error
 
 static const sd_bus_vtable portal_vtable[] = {
     SD_BUS_VTABLE_START(0),
-    SD_BUS_METHOD("BeginPortal", "", "b", method_begin, 0),
+    SD_BUS_METHOD("BeginPortal", "iiii", "b", method_begin, 0),
     SD_BUS_METHOD("CancelPortal", "", "", method_cancel, 0),
     SD_BUS_METHOD("ListWindows", "", "a(sssiiii)", method_list_windows, 0),
     SD_BUS_METHOD("GetLayout", "", "a(sssiiii)", method_get_layout, 0),

@@ -191,12 +191,13 @@ static const struct seat_pointer_grab_interface portal_grab_impl = {
     .cancel = portal_grab_cancel,
 };
 
-bool portal_begin(void)
+bool portal_begin(int x, int y, int w, int h)
 {
     if (!portal || !portal->drag || portal->active) {
         return portal && portal->active;
     }
 
+    present_windows_portal_set_reserved(x, y, w, h);
     if (!present_windows_portal_begin()) {
         kywc_log(KYWC_DEBUG, "(Portal) no window to present");
         return false;
@@ -257,7 +258,9 @@ static void finish_portal_drop(void *data)
             if (kywc_view->minimized) {
                 kywc_view_set_minimized(kywc_view, false);
             }
-            view_do_activate(view);
+            /* go through the view manager so the window is raised and focused,
+             * not just flagged as activated */
+            kywc_view_activate(kywc_view);
         }
     }
 

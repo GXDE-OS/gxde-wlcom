@@ -164,6 +164,7 @@ struct present_view {
 };
 
 static struct present_view *pv;
+static struct kywc_box portal_reserved;
 
 static void destroy_contents(bool restore);
 static void rebuild(struct view *exclude);
@@ -1007,7 +1008,25 @@ static bool create_items(struct view *exclude)
         targets[i] = orig[i];
         add_restore_entry(entries[i].view);
     }
-    present_layout(targets, n, &pv->area, &pv->full);
+    struct kywc_box area = pv->area;
+    if (pv->portal && portal_reserved.width > 0) {
+        /* keep the portal panel column free so its thumbnails stay usable */
+        const struct kywc_box *g = &pv->output->geometry;
+        int px = portal_reserved.x - g->x;
+        int py = portal_reserved.y - g->y;
+        if (px > area.x + area.width / 2) {
+            int width = px - area.x - 24;
+            if (width > area.width / 2) {
+                area.width = width;
+            }
+        } else if (py > area.y + area.height / 2 && portal_reserved.height > 0) {
+            int height = py - area.y - 24;
+            if (height > area.height / 2) {
+                area.height = height;
+            }
+        }
+    }
+    present_layout(targets, n, &area, &pv->full);
 
     size_t created = 0;
     for (int i = 0; i < n; i++) {
@@ -1366,12 +1385,24 @@ void present_windows_portal_end(void)
     present_set_enabled(false);
 }
 
+void present_windows_portal_set_reserved(int x, int y, int w, int h)
+{
+    portal_reserved = (struct kywc_box){ x, y, w, h };
+}
+
 bool present_windows_portal_in_area(int x, int y)
 {
-    if (!pv || !pv->enabled || !pv->portal) {
+    if (!pv || !pv->enabled || !pv->portal || pv->item_count == 0) {
         return false;
     }
-    return kywc_box_contains_point(&pv->area, x, y);
+
+    struct pv_box bounds = pv->items[0].current;
+    for (size_t i = 1; i < pv->item_count; i++) {
+        bounds = box_union(bounds, pv->items[i].current);
+    }
+    /* keep a margin so moving between thumbnails is not "leaving" */
+    struct kywc_box area = { bounds.x - 40, bounds.y - 40, bounds.w + 80, bounds.h + 80 };
+    return kywc_box_contains_point(&area, x, y);
 }
 
 bool present_windows_portal_active(void)
