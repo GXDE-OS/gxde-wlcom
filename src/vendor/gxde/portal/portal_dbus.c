@@ -155,6 +155,11 @@ void portal_emit_portal_closed(void)
     dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "PortalClosed", "");
 }
 
+void portal_emit_fullscreen_changed(bool fullscreen)
+{
+    dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "FullscreenChanged", "b", fullscreen);
+}
+
 void portal_emit_dropped(const char *uuid, bool accepted)
 {
     dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "PortalDropped", "sb",

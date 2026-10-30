@@ -42,6 +42,10 @@ struct portal {
     bool active;
     bool dropped;
     struct wl_event_source *finish_idle;
+    struct wl_listener activate_view;
+    struct wl_listener active_fullscreen;
+    bool fullscreen_listening;
+    bool last_fullscreen;
     char pending_uuid[128];
     bool pending_dropped;
 
@@ -329,6 +333,10 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         wl_event_source_remove(p->finish_idle);
         p->finish_idle = NULL;
     }
+    wl_list_remove(&p->activate_view.link);
+    if (p->fullscreen_listening) {
+        wl_list_remove(&p->active_fullscreen.link);
+    }
     if (p->seat) {
         wl_list_remove(&p->start_drag.link);
         wl_list_remove(&p->seat_destroy.link);
@@ -337,6 +345,38 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     wl_list_remove(&p->server_destroy.link);
     free(p);
     portal = NULL;
+}
+
+static void notify_fullscreen(struct portal *p)
+{
+    struct view *view = p->view_manager->activated.view;
+    const bool fullscreen = view && view->base.fullscreen;
+    if (fullscreen != p->last_fullscreen) {
+        p->last_fullscreen = fullscreen;
+        portal_emit_fullscreen_changed(fullscreen);
+    }
+}
+
+static void handle_active_fullscreen(struct wl_listener *listener, void *data)
+{
+    struct portal *p = wl_container_of(listener, p, active_fullscreen);
+    notify_fullscreen(p);
+}
+
+static void handle_activate_view(struct wl_listener *listener, void *data)
+{
+    struct portal *p = wl_container_of(listener, p, activate_view);
+    struct view *view = data;
+
+    if (p->fullscreen_listening) {
+        wl_list_remove(&p->active_fullscreen.link);
+        p->fullscreen_listening = false;
+    }
+    if (view) {
+        wl_signal_add(&view->base.events.fullscreen, &p->active_fullscreen);
+        p->fullscreen_listening = true;
+    }
+    notify_fullscreen(p);
 }
 
 void portal_create(struct view_manager *view_manager)
@@ -366,6 +406,11 @@ void portal_create(struct view_manager *view_manager)
 
     p->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(p->server, &p->server_destroy);
+
+    p->activate_view.notify = handle_activate_view;
+    wl_signal_add(&view_manager->events.activate_view, &p->activate_view);
+    p->active_fullscreen.notify = handle_active_fullscreen;
+    p->fullscreen_listening = false;
 
     portal = p;
 

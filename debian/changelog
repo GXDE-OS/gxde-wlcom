@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.8-gxde5) lizhi; urgency=medium
+
+  * 传送门新增 FullscreenChanged 信号，供面板实现全屏时隐藏
+  * 移除离开概览判定，松手关闭大爆炸
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 30 Oct 2026 23:30:00 +0800
+
 gxde-wlcom (2.3.8-gxde4) lizhi; urgency=medium
 
   * 新增 org.gxde.Portal D-Bus 传送门：拖拽内容原生 drop 到任意窗口
