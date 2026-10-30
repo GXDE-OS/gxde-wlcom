@@ -13,42 +13,29 @@
 
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
+#include <ucontext.h>
 
-void debug_backtrace(void)
+static void walk_cursor(unw_cursor_t *cursor)
 {
-    unw_context_t context;
-    int ret = unw_getcontext(&context);
-    if (ret) {
-        kywc_log(KYWC_ERROR, "unw_getcontext failed: %s [%d]", unw_strerror(ret), ret);
-        return;
-    }
-
-    unw_cursor_t cursor;
-    ret = unw_init_local(&cursor, &context);
-    if (ret) {
-        kywc_log(KYWC_ERROR, "unw_init_local failed: %s [%d]", unw_strerror(ret), ret);
-        return;
-    }
-
-    kywc_log(KYWC_SILENT, "Backtrace:");
-
     unw_proc_info_t pip = { .unwind_info = NULL };
     unw_word_t off, ip;
     Dl_info dlinfo;
     char procname[256];
     const char *filename;
 
+    kywc_log(KYWC_SILENT, "Backtrace:");
+
     int i = 0;
-    ret = unw_step(&cursor);
+    int ret = unw_step(cursor);
     while (ret > 0) {
-        ret = unw_get_proc_info(&cursor, &pip);
+        ret = unw_get_proc_info(cursor, &pip);
         if (ret) {
             kywc_log(KYWC_ERROR, "unw_get_proc_info failed: %s [%d]", unw_strerror(ret), ret);
             break;
         }
 
         off = 0;
-        ret = unw_get_proc_name(&cursor, procname, 256, &off);
+        ret = unw_get_proc_name(cursor, procname, 256, &off);
         if (ret && ret != -UNW_ENOMEM) {
             if (ret != -UNW_EUNSPEC) {
                 kywc_log(KYWC_ERROR, "unw_get_proc_name failed: %s [%d]", unw_strerror(ret), ret);
@@ -57,7 +44,7 @@ void debug_backtrace(void)
             procname[1] = 0;
         }
 
-        if (unw_get_reg(&cursor, UNW_REG_IP, &ip) < 0) {
+        if (unw_get_reg(cursor, UNW_REG_IP, &ip) < 0) {
             ip = pip.start_ip + off;
         }
         if (dladdr((void *)(uintptr_t)(ip), &dlinfo) && dlinfo.dli_fname && *dlinfo.dli_fname) {
@@ -66,18 +53,49 @@ void debug_backtrace(void)
             filename = "?";
         }
 
-        if (unw_is_signal_frame(&cursor)) {
+        if (unw_is_signal_frame(cursor)) {
             kywc_log(KYWC_SILENT, "  %u: <signal handler called>", i++);
         } else {
             kywc_log(KYWC_SILENT, "  %u: %s (%s%s+0x%x) [%p]", i++, filename, procname,
                      ret == -UNW_ENOMEM ? "..." : "", (int)off, (void *)(uintptr_t)(ip));
         }
 
-        ret = unw_step(&cursor);
+        ret = unw_step(cursor);
         if (ret < 0) {
             kywc_log(KYWC_ERROR, "unw_step failed: %s [%d]", unw_strerror(ret), ret);
         }
     }
+}
+
+void debug_backtrace(void)
+{
+    unw_context_t context;
+    if (unw_getcontext(&context)) {
+        kywc_log(KYWC_ERROR, "unw_getcontext failed");
+        return;
+    }
+    unw_cursor_t cursor;
+    if (unw_init_local(&cursor, &context)) {
+        kywc_log(KYWC_ERROR, "unw_init_local failed");
+        return;
+    }
+    walk_cursor(&cursor);
+}
+
+void debug_backtrace_from(void *ucontext)
+{
+    if (!ucontext) {
+        debug_backtrace();
+        return;
+    }
+    unw_cursor_t cursor;
+    int ret = unw_init_local2(&cursor, (unw_context_t *)ucontext, UNW_INIT_SIGNAL_FRAME);
+    if (ret) {
+        kywc_log(KYWC_ERROR, "unw_init_local2 failed: %s [%d]", unw_strerror(ret), ret);
+        debug_backtrace();
+        return;
+    }
+    walk_cursor(&cursor);
 }
 
 #else /* HAVE_LIBUNWIND */
@@ -85,6 +103,12 @@ void debug_backtrace(void)
 #include <execinfo.h>
 
 #define BACKTRACE_SIZE (256)
+
+void debug_backtrace_from(void *ucontext)
+{
+    (void)ucontext;
+    debug_backtrace();
+}
 
 void debug_backtrace(void)
 {

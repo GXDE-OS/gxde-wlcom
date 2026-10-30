@@ -7,6 +7,9 @@
 
 void debug_backtrace(void);
 
+/* Unwind the faulting stack from a signal handler ucontext_t. */
+void debug_backtrace_from(void *ucontext);
+
 #ifdef TRACY_ENABLE
 #include <tracy/TracyC.h>
 

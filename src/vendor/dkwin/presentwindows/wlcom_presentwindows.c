@@ -154,6 +154,7 @@ struct present_view {
     bool enabled;
     bool closing;
     bool portal;
+    bool cursor_locked;
     bool output_listening;
     struct seat_pointer_grab pointer_grab;
     struct seat_keyboard_grab keyboard_grab;
@@ -1245,7 +1246,10 @@ static void teardown(void)
     seat_end_pointer_grab(seat, &pv->pointer_grab);
     seat_end_keyboard_grab(seat, &pv->keyboard_grab);
     seat_end_touch_grab(seat, &pv->touch_grab);
-    cursor_lock_image(seat->cursor, false);
+    if (pv->cursor_locked) {
+        cursor_lock_image(seat->cursor, false);
+        pv->cursor_locked = false;
+    }
     cursor_rebase(seat->cursor);
     ky_scene_node_set_enabled(&pv->tree->node, false);
     destroy_contents(true);
@@ -1292,6 +1296,7 @@ static void present_set_enabled(bool enabled)
         if (!pv->portal) {
             cursor_set_image(seat->cursor, CURSOR_DEFAULT);
             cursor_lock_image(seat->cursor, true);
+            pv->cursor_locked = true;
             seat_start_pointer_grab(seat, &pv->pointer_grab);
             seat_start_keyboard_grab(seat, &pv->keyboard_grab);
             seat_start_touch_grab(seat, &pv->touch_grab);
