@@ -1,0 +1,815 @@
+gxde-wlcom (2.3.8-gxde3) lizhi; urgency=medium
+
+  * PresentWindows 按窗口 UUID 展示时，同一组窗口的重复请求不再重播动画
+  * 窗口组在概览关闭时清理，Win+A 与 PerformAction(2) 仍然展开全部窗口
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 30 Oct 2026 18:12:00 +0800
+
+gxde-wlcom (2.3.8-gxde2) lizhi; urgency=high
+
+  * 新增 PresentWindows(as) D-Bus 接口，支持按窗口 UUID 展示指定窗口
+  * Dock 在 Wayland 下滚动图标可展开当前应用的全部窗口
+
+ -- shenmo <jifengshenmo@outlook.com>  Mon, 26 Oct 2026 15:05:00 +0800
+
+gxde-wlcom (2.3.8-gxde1) lizhi; urgency=high
+
+  * 修复KDE Blur质量劣质的问题
+ -- CharOfString <root@charofstring.cc>  Sat, 17 Oct 2026 01:04:12 -0500
+
+gxde-wlcom (2.3.7-gxde6) lizhi; urgency=high
+
+  * 修复XCursor下会使用不存在光标图形的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 14 Oct 2026 01:25:03 -0500
+
+gxde-wlcom (2.3.7-gxde5) lizhi; urgency=high
+
+  * 修复光标主题不存在时仍导出 XCURSOR_THEME，导致原生 Wayland 下 Chromium/Electron 光标异常的问题
+  * 光标主题默认值由 dark-sense 改为 deepin
+  * 切换至上游原版 wlroots 0.17.4
+
+ -- CharOfString <root@charofstring.cc>  Sun, 11 Oct 2026 00:11:40 -0500
+
+gxde-wlcom (2.3.7-gxde4) lizhi; urgency=high
+
+  * 迁移至CMake构建系统
+
+ -- CharOfString <root@charofstring.cc>  Sat, 03 Oct 2026 06:09:11 -0500
+
+gxde-wlcom (2.3.7-gxde3) lizhi; urgency=high
+
+  * 修复通知气泡抢占焦点导致XWayland程序候选窗消失、按键丢失的问题
+  * 减少输入法虚拟键盘与物理键盘切换时向XWayland重复发送键盘布局
+
+ -- CharOfString <root@charofstring.cc>  Fri, 02 Oct 2026 21:32:45 -0500
+
+gxde-wlcom (2.3.7-gxde2) lizhi; urgency=high
+
+  * 现在可以摇晃鼠标以临时放大鼠标大小
+  * 修复拖动blur区域后后方文字闪烁的问题
+  * 彻底修复XWayland IME问题
+  * 修复 Qt 应用鼠标样式异常的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 23 Sep 2026 22:49:10 -0500
+
+gxde-wlcom (2.3.6-gxde1) lizhi; urgency=high
+
+  * XWayland现在不在XSettings广播输入法偏好
+  * 修复Layer Shell实现中的信号与时序问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 18 Sep 2026 18:22:07 -0500
+
+gxde-wlcom (2.3.5-gxde2) lizhi; urgency=high
+
+  * XWayland现在在XMODIFIERS设置为fcitx的情况下会默认广播XSettings IME为fcitx
+
+ -- CharOfString <root@charofstring.cc>  Fri, 11 Sep 2026 19:50:02 -0500
+
+gxde-wlcom (2.3.5-gxde1) lizhi; urgency=high
+
+  * 尝试修复笔记本待机后在唤醒前就插入外接屏幕导致VT卡死的问题
+  * 尝试修复XWayland下输入法在XIM与实际输入法之间反复横跳的问题
+  * 尝试修复VirtualBox下屏幕分辨率不跟随VM窗体大小的问题
+  * 强制VirtualBox虚拟机使用软件伽马、关掉直通扫描
+
+ -- CharOfString <root@charofstring.cc>  Thu, 10 Sep 2026 02:53:24 -0500
+
+gxde-wlcom (2.3.4-gxde3) lizhi; urgency=high
+
+  * 将Wlroots仓库指向GitHub，避免CI Clone失败
+
+ -- CharOfString <root@charofstring.cc>  Sun, 06 Sep 2026 18:55:12 -0500
+
+gxde-wlcom (2.3.4-gxde2) lizhi; urgency=high
+
+  * 更新Wlroots版本
+
+ -- CharOfString <root@charofstring.cc>  Sun, 06 Sep 2026 17:50:57 -0500
+
+gxde-wlcom (2.3.4-gxde1) lizhi; urgency=high
+
+  * 修复VBox下自动跟随窗体分辨率缩放失效的问题
+  * 修复Blur区域重叠的问题
+  * 现在支持通过Super + P切换显示器输出模式
+
+ -- CharOfString <root@charofstring.cc>  Thu, 03 Sep 2026 15:08:02 +0800
+
+gxde-wlcom (2.3.3-gxde1) lizhi; urgency=high
+
+  * 允许即时调整KDE Blur强度
+  * 将默认KDE Blur强度修改为4
+  * 修复某些Qt程序输入不了中文的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
+
+gxde-wlcom (2.3.2-gxde1) lizhi; urgency=high
+
+  * 允许通过D-Bus配置KDE Blur的强度与噪声
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 16:37:10 +0800
+
+gxde-wlcom (2.3.1-gxde3) lizhi; urgency=high
+
+  * 尝试为VBox带来更好的输出管理
+  * 修复在Qt上打不出中文的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 28 Aug 2026 01:34:02 +0800
+
+gxde-wlcom (2.3.1-gxde2) lizhi; urgency=high
+
+  * 通过D-Bus暴露鼠标在（哪一块）屏幕上的位置
+
+ -- CharOfString <root@charofstring.cc>  Tue, 25 Aug 2026 21:19:11 +0800
+
+gxde-wlcom (2.3.1-gxde1) lizhi; urgency=medium
+
+  * 默认使用缩放作为窗口最小化动画，魔灯保留为可选项
+  * 新增 GetMinimizeEffect D-Bus 接口，供控制中心读取当前动画
+  * SetMinimizeEffect 校验参数并立即写回用户配置
+
+ -- shenmo <shenmo@spark-app.store>  Tue, 25 Aug 2026 01:55:00 +0800
+
+gxde-wlcom (2.3.0-gxde1) lizhi; urgency=high
+
+  * 使多任务的外观更贴近原版GXDE KWin
+
+ -- CharOfString <root@charofstring.cc>  Sun, 23 Aug 2026 02:42:11 +0800
+
+gxde-wlcom (2.2.6-gxde1) lizhi; urgency=high
+
+  * 使窗口阴影与边框的外观更贴近原版GXDE KWin
+
+ -- CharOfString <root@charofstring.cc>  Sun, 23 Aug 2026 02:28:00 +0800
+
+gxde-wlcom (2.2.5-gxde1) lizhi; urgency=high
+
+  * 新增Magic Lamp最小化效果
+  * 通过D-Bus暴露目前顶层非LayerShell表面窗口
+
+ -- CharOfString <root@charofstring.cc>  Sat, 22 Aug 2026 23:30:11 +0800
+
+gxde-wlcom (2.2.4-gxde1) lizhi; urgency=high
+
+  * 尝试修复Wayland前端输入法警告的问题
+  * 修复了Treeland截图协议实现截图劣质的问题
+
+ -- CharOfString <root@charofstring.cc>  Sat, 22 Aug 2026 16:15:02 +0800
+
+gxde-wlcom (2.2.3-gxde2) lizhi; urgency=medium
+
+  * 修复了一些输入法问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 21 Aug 2026 21:41:12 +0800
+
+gxde-wlcom (2.2.3-gxde1) lizhi; urgency=medium
+
+  * 支持通过XKB控制与查询键盘布局
+  * 支持查询WM自带快捷键绑定信息
+  * GXDE会话自行设置QT_QPA_PATFORM为Wayland
+
+ -- CharOfString <root@charofstring.cc>  Fri, 21 Aug 2026 19:33:01 +0800
+
+gxde-wlcom (2.2.2-gxde2) lizhi; urgency=medium
+
+  * 默认不再将日志写入 $HOME/.log/gxde-wlcom.log，改为输出到 stdout
+  * 新增 -Dlogtofile 调试参数，需要落盘排查时可恢复文件日志
+
+ -- shenmo <shenmo@spark-app.store>  Thu, 20 Aug 2026 19:47:57 +0800
+
+gxde-wlcom (2.2.2-gxde1) lizhi; urgency=medium
+
+  * 修复了Blur代码安全性
+
+ -- CharOfString <root@charofstring.cc>  Thu, 20 Aug 2026 16:10:11 +0800
+
+gxde-wlcom (2.2.1-gxde4) lizhi; urgency=medium
+
+  * 修复了一些IME相关的问题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 18 Aug 2026 16:44:02 +0800
+
+gxde-wlcom (2.2.1-gxde3) lizhi; urgency=medium
+
+  * 修复了hetao CI失败的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 17 Aug 2026 22:35:11 +0800
+
+gxde-wlcom (2.2.1-gxde2) lizhi; urgency=medium
+
+  * 修复了Alt+Tab界面没有Blur的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 17 Aug 2026 21:07:59 +0800
+
+gxde-wlcom (2.2.1-gxde1) lizhi; urgency=medium
+
+  * 新增Super + A窗口切换器
+  * 修复多任务窗口问题
+  * 增强标题栏右键菜单字体样式
+  * 修复标题栏/标题栏菜单中字体过大的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 17 Aug 2026 19:31:24 +0800
+
+gxde-wlcom (2.2.0-gxde2) lizhi; urgency=medium
+
+  * 修复截图录屏点击后合成器崩溃：capture_buffer_get_or_create 在
+    capture_buffer_allocate 失败时直接 free(buffer)，导致仍挂在
+    capture_output->requests 上的 capture_request 悬空，下一次 output
+    commit 在 capture_buffer_need_update 中解引用已释放内存（UAF，SIGSEGV，
+    Kirin 9000c 兼容层会话点击截图必现）
+  * capture_output_handle_commit 增加 request->buffer 空指针防御并清理
+    残留请求
+  * ky_egl init_dmabuf_formats：driver 未上报 modifier 时先加
+    DRM_FORMAT_MOD_LINEAR 再加 DRM_FORMAT_MOD_INVALID，规避 Kirin 9000c
+    (Maleoon 910) gbm 在 {INVALID, LINEAR} 列表下返回损坏双平面 BO
+    （stride=0）导致捕获缓冲分配失败（"failed to create wlr buffer" /
+    "gbm_bo_get_fd_for_plane failed"）的问题
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 14 Aug 2026 22:55:00 +0800
+
+gxde-wlcom (2.2.0-gxde1) lizhi; urgency=medium
+
+  * 优化GXDE截图协议表现
+
+ -- CharOfString <root@charofstring.cc>  Fri, 14 Aug 2026 22:05:10 +0800
+
+gxde-wlcom (2.1.9-gxde4) lizhi; urgency=medium
+
+  * XSettings现在同步输入法偏好
+
+ -- CharOfString <root@charofstring.cc>  Thu, 13 Aug 2026 16:15:04 +0800
+
+gxde-wlcom (2.1.9-gxde3) lizhi; urgency=medium
+
+  * 修复部分程序在使用text-input-v3时导致WM整体崩溃的问题
+
+ -- CharOfString <root@charofstring.cc>  Thu, 13 Aug 2026 14:08:12 +0800
+
+gxde-wlcom (2.1.9-gxde2) lizhi; urgency=medium
+
+  * 新增ext_session_lock_manager_v1支持
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 17:05:03 +0800
+
+gxde-wlcom (2.1.8-gxde4) lizhi; urgency=medium
+
+  * 修复了登录后语言仍然是英文的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 01:32:21 +0800
+
+gxde-wlcom (2.1.8-gxde3) lizhi; urgency=medium
+
+  * 修复了Treeland Personalization Manager初始化数据
+
+ -- CharOfString <root@charofstring.cc>  Wed, 12 Aug 2026 00:46:03 +0800
+
+gxde-wlcom (2.1.8-gxde2) lizhi; urgency=medium
+
+  * 修复了DTK6窗口阴影丢失的问题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 11 Aug 2026 16:06:22 +0800
+
+gxde-wlcom (2.1.8-gxde1) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 音量按键支持触发对应弹窗
+  * 新增NumsLk、CapsLk按键支持
+
+  [ CharOfString ]
+  * 改进部分协议的代码安全性
+  * 修复了Treeland录屏协议崩溃问题
+  * 新增了DTK5/6模糊支持（需要开启Treeland Personalization Manager广播）
+  * 新增了DTK5/6窗体圆角支持（需要开启Treeland Personalization Manager广播）
+  * 修复了DTK5/6窗体双标题栏问题（需要开启Treeland Personalization Manager广播）
+
+ -- CharOfString <root@charofstring.cc>  Tue, 11 Aug 2026 15:22:01 +0800
+
+gxde-wlcom (2.1.7-gxde1) lizhi; urgency=medium
+
+  * 新增GXDE录屏协议
+
+ -- CharOfString <root@charofstring.cc>  Tue, 10 Aug 2026 07:24:02 +0800
+
+gxde-wlcom (2.1.6-gxde5) lizhi; urgency=medium
+
+  * startgxde_wlcom: 检测到麒麟 9000c 内核且安装了
+    gxde-hisi-9000c-gpu-compat（提供 /usr/bin/startgxde_wlcom_9000c，
+    hisi Maleoon 910 硬件加速会话启动器）时跳转到硬件加速启动，
+    否则回退默认软件启动流程
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 18:45:00 +0800
+
+gxde-wlcom (2.1.6-gxde4) lizhi; urgency=medium
+
+  * 控制中心可在 Wayland 下查看并修改快捷键
+  * 用户配置优先于系统默认快捷键，修改/删除系统快捷键后重启不还原
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 17:45:52 +0800
+
+gxde-wlcom (2.1.6-gxde3) lizhi; urgency=medium
+
+  * 修复笔记本触摸板环境下轻点触摸板无法模拟鼠标左键单击、两指轻点无法模拟右键单击的问题
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 9 Aug 2026 16:54:33 +0800
+
+gxde-wlcom (2.1.6-gxde2) lizhi; urgency=medium
+
+  * 新增Qt图标主题同步机制
+
+ -- CharOfString <root@charofstring.cc>  Thu, 7 Aug 2026 23:57:32 +0800
+
+gxde-wlcom (2.1.6-gxde1) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 添加截图快捷键若干
+
+  [ CharOfstring ]
+  * 现在合成器持有XSettings了
+
+ -- CharOfString <root@charofstring.cc>  Thu, 7 Aug 2026 22:06:12 +0800
+
+gxde-wlcom (2.1.5-gxde3) lizhi; urgency=medium
+
+  * 新增PrintScreen全屏截图到剪贴板
+  * 新增截图快捷键若干
+
+ -- CharOfString <root@charofstring.cc>  Thu, 6 Aug 2026 01:03:00 +0800
+
+gxde-wlcom (2.1.5-gxde1) lizhi; urgency=medium
+
+  * 尝试修复Electron程序在Wlcom下IME错位的问题
+  * 补充了treeland_dde_shell兼容层中部分缺失的实现
+
+ -- CharOfString <root@charofstring.cc>  Wed, 5 Aug 2026 19:04:07 +0800
+
+gxde-wlcom (2.1.4-gxde3) lizhi; urgency=medium
+
+  [ gfdgd_xi ]
+  * 修复注销重进后无法应用之前分辨率配置的问题
+
+  [ CharOfString ]
+  * 修正了wl_seat晚于剪贴板相关全局对象广播的问题
+  * 新增了剪切板持久化支持
+
+ -- CharOfString <root@charofstring.cc>  Tue, 4 Aug 2026 15:44:22 +0800
+
+gxde-wlcom (2.1.4-gxde2) lizhi; urgency=medium
+
+  * 修复了NVIDIA独显直连下的窗口闪烁问题
+  * 新增了对treeland-personalization-manager-v1的支持（请先参阅README，GXDE Wlcom会话默认不广播此协议）
+  * 修复注销重进后无法应用之前分辨率配置的问题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 4 Aug 2026 02:07:11 +0800
+
+gxde-wlcom (2.1.3-gxde1) lizhi; urgency=medium
+
+  * 新增对treeland-capture-unstable-v1的支持
+
+ -- CharOfString <root@charofstring.cc>  Mon, 3 Aug 2026 22:30:23 +0800
+
+gxde-wlcom (2.1.2-gxde2) lizhi; urgency=medium
+
+  * 修复默认使用seatd导致在LightDM下无法启动的问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 3 Aug 2026 19:11:02 +0800
+
+gxde-wlcom (2.1.2-gxde1) lizhi; urgency=medium
+
+  * 新增协议支持ext-foreign-toplevel-list-v1
+  * 新增协议支持ext-image-capture-source-v1
+  * 新增协议支持ext-image-copy-capture-v1
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 15:41:44 +0800
+
+gxde-wlcom (2.1.1-gxde11) lizhi; urgency=medium
+
+  * 修复Archlinux上的CI问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 15:41:44 +0800
+
+gxde-wlcom (2.1.1-gxde10) lizhi; urgency=medium
+
+  * 新增Archlinux支持
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 15:18:29 +0800
+
+gxde-wlcom (2.1.1-gxde9) lizhi; urgency=medium
+
+  * 回退: 新增对循环激活同一程序的窗口的DBus支持
+  * 新增XWayland全局菜单导出支持
+
+ -- CharOfString <root@charofstring.cc>  Mon, 27 Jul 2026 14:09:44 +0800
+
+gxde-wlcom (2.1.1-gxde8) lizhi; urgency=medium
+
+  * 新增对循环激活同一程序的窗口的DBus支持
+
+ -- Zeqi <a202128502@163.com>  Fri, 24 Jul 2026 17:37:20 +0800
+
+gxde-wlcom (2.1.1-gxde7) lizhi; urgency=medium
+
+  * 新增对XWayland程序菜单导出的支持
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 16:26:55 +0800
+
+gxde-wlcom (2.1.1-gxde6) lizhi; urgency=medium
+
+  * 新增对KDE AppMenu协议的兼容
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 15:30:03 +0800
+
+gxde-wlcom (2.1.1-gxde5) lizhi; urgency=medium
+
+  * 为GXDE控制中心暴露更多D-Bus接口
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 13:52:02 +0800
+
+gxde-wlcom (2.1.1-gxde4) lizhi; urgency=medium
+
+  * 修复了微信上使用小企鹅输入法候选框无法显示的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 02:02:32 +0800
+
+gxde-wlcom (2.1.1-gxde3) lizhi; urgency=medium
+
+  * 新增了多屏幕显示配置的GXDE DBus
+  * 修复了微信上使用小企鹅输入法候选框无法显示的问题
+
+ -- CharOfString <root@charofstring.cc>  Fri, 24 Jul 2026 01:46:58 +0800
+
+gxde-wlcom (2.1.1-gxde2) lizhi; urgency=medium
+
+  * 新增了Deepin风格的多任务视图与窗口切换器
+  * 允许通过原Deepin WM的D-Bus接口唤起多任务视图与切换桌面
+  * 新增启动器、媒体控制等在内多个快捷键
+
+ -- CharOfString <root@charofstring.cc>  Thu, 23 Jul 2026 19:15:34 +0800
+
+gxde-wlcom (2.1.0-gxde1) lizhi; urgency=medium
+
+  * 提供了新接口允许控制GTK标题栏上最小化/最大化/关闭按钮的可见性 (默认为全部可见)
+  * 提供了一个接口，允许用户强制裁剪所有CSD (客户端自行装饰的) 窗口，使其拥有圆角
+  * 允许用户可允许合成器在启用强制裁剪时跳过对layer-shell表面的裁剪 (实验性)
+  * 不再在启动脚本中强制GDK后端，使得像EMACS这样的程序可用
+
+ -- CharOfString <root@charofstring.cc>  Tue, 21 Jul 2026 02:50:13 +0800
+
+gxde-wlcom (2.0.2-gxde1) lizhi; urgency=medium
+
+  * 现在允许通过D-Bus接口设置GTK主题
+
+ -- CharOfString <root@charofstring.cc>  Tue, 21 Jul 2026 00:43:10 +0800
+
+gxde-wlcom (2.0.1-gxde2) lizhi; urgency=medium
+
+  [shenmo]
+  * 修改 exec 以与其他 gxde 启动 session 一致
+
+  [CharOfString]
+  * 禁用WLR_DRM_NO_ATOMIC，提升性能
+  * 修复构建报错
+
+ -- CharOfString <root@charofstring.cc>  Mon, 20 Jul 2026 16:25:51 +0800
+
+gxde-wlcom (2.0.1-gxde1) lizhi; urgency=medium
+
+  * 修复Wayland下layer-shell错位问题
+
+ -- CharOfString <root@charofstring.cc>  Mon, 20 Jul 2026 16:16:26 +0800
+
+gxde-wlcom (2.0.0-gxde1) lizhi; urgency=medium
+
+  * 将二进制名称改为gxde-wlcom
+  * 新增协议gxde-identifier-v1，供程序确认WM类型
+
+ -- CharOfString <root@charofstring.cc>  Sat, 18 Jul 2026 01:23:53 +0800
+
+gxde-wlcom (1.4.1-gxde1) lizhi; urgency=medium
+
+  * 移植缺失的dde-shell协议接口实现
+  * 补齐了移植协议的缺失部分 (目前主要目的是保证合成器不崩溃)
+
+ -- CharOfString <root@charofstring.cc>  Wed, 8 Jul 2026 22:38:14 +0800
+
+gxde-wlcom (1.4.0-gxde3) lizhi; urgency=medium
+
+  * 修复模糊区域随鼠标移动撕裂的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 8 Jul 2026 14:23:23 +0800
+
+gxde-wlcom (1.4.0-gxde2) lizhi; urgency=medium
+
+  * 修复移植的dde-shell协议实现窗口圆角接口对layer-shell窗口不起作用的问题
+  * 现在安装时会跳过安装kylin-wlcom.desktop会话
+
+ -- CharOfString <root@charofstring.cc>  Wed, 1 Jul 2026 15:52:22 +0800
+
+gxde-wlcom (1.4.0-gxde1) lizhi; urgency=medium
+
+  * 尝试修复实体机上的DMA-BUF渲染问题
+  * 更新Wlroots的依赖版本
+  * 更新启动脚本
+  * 包名变更为gxde-wlcom
+  * 声明代替kylin-wayland-compositor, 且可以代替满足kylin-wayland-compositor
+
+ -- CharOfString <root@charofstring.cc>  Wed, 17 Jun 2026 00:05:14 +0800
+
+kylin-wayland-compositor (1.3.2-gxde2) lizhi; urgency=medium
+
+  * 扩展wlr-layer-shell排布逻辑，为deepin-menu等沿用X11思路的菜单守护进程在Wayland下提供菜单定位支持
+
+ -- CharOfString <root@charofstring.cc>  Sat, 13 Jun 2026 23:32:24 +0800
+
+kylin-wayland-compositor (1.3.2-gxde1) lizhi; urgency=medium
+
+  * 移植DDE Shell/deepin-chameleon主题「云璃」的默认窗体外观
+  * 移植dde-shell协议 (部分)
+  * 新增Session文件安装
+
+ -- CharOfString <root@charofstring.cc>  Thu, 11 Jun 2026 14:43:11 +0800
+
+kylin-wayland-compositor (1.3.1-gxde1) lizhi; urgency=medium
+
+  * Fixed dependency issue
+
+ -- CharOfString <root@charofstring.cc>  Mon, 8 Jun 2026 17:15:02 +0800
+
+kylin-wayland-compositor (1.3.1-ok7) huanghe; urgency=medium
+
+  * Add ukui_theme build options
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 14 Apr 2025 20:16:20 +0800
+
+kylin-wayland-compositor (1.3.1-ok6) huanghe; urgency=medium
+
+  * Commit: 869ec8cb
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 14 Apr 2025 19:13:18 +0800
+
+kylin-wayland-compositor (1.3.1-ok5) huanghe; urgency=medium
+
+  * Commit: 06b6d08
+
+ -- Morose <chenlinxiang@kylinos.cn>  Tue, 04 Mar 2025 09:02:12 +0800
+
+kylin-wayland-compositor (1.3.1-ok4) huanghe; urgency=medium
+
+  * Commit: aca15ad
+
+ -- Morose <chenlinxiang@kylinos.cn>  Tue, 14 Jan 2025 10:26:53 +0800
+
+kylin-wayland-compositor (1.3.1-ok3) huanghe; urgency=medium
+
+  * Commit: a394f1b
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 06 Jan 2025 17:49:45 +0800
+
+kylin-wayland-compositor (1.3.1-ok2) huanghe; urgency=medium
+
+  * Commit: 3bb929e
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 13 Dec 2024 14:31:01 +0800
+
+kylin-wayland-compositor (1.3.1-ok1) huanghe; urgency=medium
+
+  * Commit: ca539b3
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 04 Dec 2024 14:20:39 +0800
+
+kylin-wayland-compositor (1.3.0-ok44) nile; urgency=medium
+
+  * Commit: fb6bcff
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 27 Nov 2024 15:23:17 +0800
+
+kylin-wayland-compositor (1.3.0-ok43) nile; urgency=medium
+
+  * Commit: e2aa5a7
+
+ -- zhoulei <zhoulei@kylinos.cn>  Fri, 22 Nov 2024 15:50:22 +0800
+
+kylin-wayland-compositor (1.3.0-ok42) nile; urgency=medium
+
+  * Commit: 32629b7
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 20 Nov 2024 16:56:52 +0800
+
+kylin-wayland-compositor (1.3.0-ok41) nile; urgency=medium
+
+  * Commit: 5fe425d
+  * Fixes: #IB3BT2
+
+ -- zhoulei <zhoulei@kylinos.cn>  Wed, 13 Nov 2024 09:46:31 +0800
+
+kylin-wayland-compositor (1.3.0-ok40) nile; urgency=medium
+
+  * Commit: b7a3d91
+
+ -- zhoulei <zhoulei@kylinos.cn>  Fri, 08 Nov 2024 16:41:49 +0800
+
+kylin-wayland-compositor (1.3.0-ok39) nile; urgency=medium
+
+  * Commit: 5bb5fde
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 25 Oct 2024 17:12:49 +0800
+
+kylin-wayland-compositor (1.3.0-ok38) nile; urgency=medium
+
+  * Commit: 53e654c
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 17:22:18 +0800
+
+kylin-wayland-compositor (1.3.0-ok37) nile; urgency=medium
+
+  * Commit: b136f91
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 16:09:56 +0800
+
+kylin-wayland-compositor (1.3.0-ok36) nile; urgency=medium
+
+  * Commit: b136f91
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 12 Oct 2024 16:04:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok35) nile; urgency=medium
+
+  * Commit: dc75b64
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 30 Sep 2024 15:15:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok34) nile; urgency=medium
+
+  * change build arch
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 21 Sep 2024 19:08:24 +0800
+
+kylin-wayland-compositor (1.3.0-ok33) nile; urgency=medium
+
+  * Commit: 50a13fb
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 21 Sep 2024 16:56:03 +0800
+
+kylin-wayland-compositor (1.3.0-ok32) nile; urgency=medium
+
+  * Commit: 04c8540
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 06 Sep 2024 16:35:45 +0800
+
+kylin-wayland-compositor (1.3.0-ok31) nile; urgency=medium
+
+  * Commit: e7044b2
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 30 Aug 2024 14:49:27 +0800
+
+kylin-wayland-compositor (1.3.0-ok30) nile; urgency=medium
+
+  * Commit: 75fa2d6
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 23 Aug 2024 15:36:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok29) nile; urgency=medium
+
+  * Commit: 97d6c93
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 16 Aug 2024 15:14:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok28) nile; urgency=medium
+
+  * Commit: 259fc78
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 09 Aug 2024 14:45:15 +0800
+
+kylin-wayland-compositor (1.3.0-ok27) nile; urgency=medium
+
+  * Commit: b395736
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 02 Aug 2024 14:07:02 +0800
+
+kylin-wayland-compositor (1.3.0-ok26) nile; urgency=medium
+
+  * Commit: f222d29
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 26 Jul 2024 16:20:17 +0800
+
+kylin-wayland-compositor (1.3.0-ok25) nile; urgency=medium
+
+  * Commit: a2effa8
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 24 Jul 2024 08:51:59 +0800
+
+kylin-wayland-compositor (1.3.0-ok24) nile; urgency=medium
+
+  * Commit: 18aae8d
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 22 Jul 2024 17:31:30 +0800
+
+kylin-wayland-compositor (1.3.0-ok23) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 11 Jul 2024 10:40:08 +0800
+
+kylin-wayland-compositor (1.3.0-ok22) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 28 Jun 2024 15:10:24 +0800
+
+kylin-wayland-compositor (1.3.0-ok21) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 20 Jun 2024 16:28:47 +0800
+
+kylin-wayland-compositor (1.3.0-ok20) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 19 Jun 2024 18:03:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok19) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 19 Jun 2024 15:35:27 +0800
+
+kylin-wayland-compositor (1.3.0-ok18) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 15 Jun 2024 16:11:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok17) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 05 Jun 2024 17:28:22 +0800
+
+kylin-wayland-compositor (1.3.0-ok16) nile; urgency=medium
+
+  * Update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 01 Jun 2024 17:43:08 +0800
+
+kylin-wayland-compositor (1.3.0-ok15) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 31 May 2024 17:12:50 +0800
+
+kylin-wayland-compositor (1.3.0-ok14) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Tue, 28 May 2024 21:01:12 +0800
+
+kylin-wayland-compositor (1.3.0-ok13) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Sat, 11 May 2024 16:40:42 +0800
+
+kylin-wayland-compositor (1.3.0-ok12) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Wed, 24 Apr 2024 14:46:10 +0800
+
+kylin-wayland-compositor (1.3.0-ok11) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 11 Mar 2024 9:03:25 +0800
+
+kylin-wayland-compositor (1.3.0-ok10) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 26 Jan 2024 14:03:25 +0800
+
+kylin-wayland-compositor (1.3.0-ok9) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 19 Jan 2024 14:45:00 +0800
+
+kylin-wayland-compositor (1.3.0-ok8) nile; urgency=medium
+
+  * Fix round corner error
+  * Do nor remove ssd for ukui apps
+
+ -- Morose <chenlinxiang@kylinos.cn>  Mon, 08 Jan 2024 12:31:13 +0800
+
+kylin-wayland-compositor (1.3.0-ok7) nile; urgency=medium
+
+  * Weekly update
+
+ -- Morose <chenlinxiang@kylinos.cn>  Fri, 05 Jan 2024 16:23:38 +0800
+
+kylin-wayland-compositor (1.3.0-ok6) nile; urgency=medium
+
+  * Import v1.3.0
+
+ -- Morose <chenlinxiang@kylinos.cn>  Thu, 14 Dec 2023 10:50:42 +0800

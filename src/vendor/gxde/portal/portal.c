@@ -41,6 +41,9 @@ struct portal {
     char target_uuid[128];
     bool active;
     bool dropped;
+    struct wl_event_source *finish_idle;
+    char pending_uuid[128];
+    bool pending_dropped;
 
     struct wl_listener start_drag;
     struct wl_listener seat_destroy;
@@ -172,6 +175,29 @@ void portal_cancel(void)
     kywc_log(KYWC_DEBUG, "(Portal) cancelled");
 }
 
+static void finish_portal_drop(void *data)
+{
+    struct portal *p = data;
+    p->finish_idle = NULL;
+    if (portal != p) {
+        return;
+    }
+
+    char uuid[sizeof(p->pending_uuid)];
+    snprintf(uuid, sizeof(uuid), "%s", p->pending_uuid);
+    const bool dropped = p->pending_dropped;
+    p->pending_uuid[0] = '\0';
+    p->pending_dropped = false;
+
+    /* Closing the overview and emitting D-Bus signals from inside the drag
+     * destroy signal re-enters wlroots while it is tearing the drag down.
+     * Do it from an idle callback instead. */
+    portal_end_overview();
+    portal_emit_dropped(uuid, dropped);
+    portal_emit_drag_ended();
+    kywc_log(KYWC_DEBUG, "(Portal) drop finished uuid=%s accepted=%d", uuid, dropped);
+}
+
 static void handle_drag_destroy(struct wl_listener *listener, void *data)
 {
     struct portal *p = wl_container_of(listener, p, drag_destroy);
@@ -191,18 +217,17 @@ static void handle_drag_destroy(struct wl_listener *listener, void *data)
 
     if (was_active) {
         seat_end_pointer_grab(p->seat, &p->grab);
-        portal_end_overview();
-
-        if (dropped && uuid[0]) {
-            struct kywc_view *kywc_view = kywc_view_by_uuid(uuid);
-            if (kywc_view) {
-                view_do_activate(view_from_kywc_view(kywc_view));
-            }
+        snprintf(p->pending_uuid, sizeof(p->pending_uuid), "%s", uuid);
+        p->pending_dropped = dropped;
+        if (p->finish_idle) {
+            wl_event_source_remove(p->finish_idle);
+            p->finish_idle = NULL;
         }
-        portal_emit_dropped(uuid, dropped);
+        p->finish_idle = wl_event_loop_add_idle(
+            wl_display_get_event_loop(p->server->display), finish_portal_drop, p);
+    } else {
+        portal_emit_drag_ended();
     }
-
-    portal_emit_drag_ended();
 }
 
 static void handle_drag_drop(struct wl_listener *listener, void *data)
@@ -283,6 +308,10 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
         wl_list_remove(&p->drag_destroy.link);
         wl_list_remove(&p->drag_drop.link);
         p->drag = NULL;
+    }
+    if (p->finish_idle) {
+        wl_event_source_remove(p->finish_idle);
+        p->finish_idle = NULL;
     }
     if (p->seat) {
         wl_list_remove(&p->start_drag.link);

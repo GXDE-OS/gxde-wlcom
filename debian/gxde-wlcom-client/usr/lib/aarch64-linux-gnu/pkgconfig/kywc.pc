@@ -1,0 +1,10 @@
+prefix=/usr
+includedir=${prefix}/include
+libdir=${prefix}/lib/aarch64-linux-gnu
+
+Name: kywc
+Description: GXDE wayland compositor client library
+URL: https://gitee.com/openkylin/kylin-wayland-compositor
+Version: 1.3.0
+Libs: -L${libdir} -lkywc
+Cflags: -I${includedir}

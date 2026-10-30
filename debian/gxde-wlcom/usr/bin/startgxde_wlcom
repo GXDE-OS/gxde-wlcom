@@ -1,0 +1,265 @@
+#!/bin/bash
+
+# The display manager may leave LC_ALL/LC_* set to its own locale.  Those
+# variables take precedence over LANG, so load the locale selected by the user
+# before starting the compositor and DDE session.
+locale_config="${XDG_CONFIG_HOME:-$HOME/.config}/locale.conf"
+if [ -r "$locale_config" ]; then
+    unset LANG LANGUAGE LC_ALL LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE \
+        LC_MONETARY LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE \
+        LC_MEASUREMENT LC_IDENTIFICATION
+
+    set -a
+    # shellcheck source=/dev/null
+    . "$locale_config"
+    set +a
+
+    # D-Bus/systemd activated services do not necessarily inherit the
+    # compositor process environment.  Replace their stale locale as well.
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+        locale_updates=(
+            "LANG=${LANG:-C.UTF-8}"
+            "LANGUAGE=${LANGUAGE:-}"
+            "LC_ALL=${LC_ALL:-}"
+        )
+        for locale_category in CTYPE NUMERIC TIME COLLATE MONETARY MESSAGES \
+            PAPER NAME ADDRESS TELEPHONE MEASUREMENT IDENTIFICATION; do
+            locale_variable="LC_$locale_category"
+            locale_updates+=("$locale_variable=${!locale_variable:-${LANG:-C.UTF-8}}")
+        done
+        dbus-update-activation-environment --systemd "${locale_updates[@]}" \
+            >/dev/null 2>&1 || true
+        unset locale_updates locale_category locale_variable
+    fi
+fi
+unset locale_config
+
+export PATH=$PATH:/sbin
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=Deepin
+export DDE_CURRENT_COMPOSITOR=GXWM
+export KYWC_USE_LAYOUT_MANAGER=1  # 设置环境变量这个才会使用配置文件里的分辨率
+
+is_fcitx5_selected() {
+    local im_config_modes=()
+    local selected_mode default_mode
+
+    if command -v im-config > /dev/null 2>&1; then
+        mapfile -t im_config_modes < <(im-config -m 2> /dev/null)
+        selected_mode="${im_config_modes[1]:-missing}"
+        if [ "$selected_mode" = missing ]; then
+            selected_mode="${im_config_modes[0]:-missing}"
+        fi
+
+        if [ "$selected_mode" = default ]; then
+            default_mode=$(
+                if [ -r /etc/default/im-config ]; then
+                    unset IM_CONFIG_DEFAULT_MODE
+                    # shellcheck source=/dev/null
+                    . /etc/default/im-config
+                fi
+                printf '%s' "${IM_CONFIG_DEFAULT_MODE:-auto}"
+            )
+            selected_mode="$default_mode"
+        fi
+
+        case "$selected_mode" in
+        auto)
+            selected_mode="${im_config_modes[2]:-missing}"
+            ;;
+        cjkv)
+            if [ "${QT_IM_MODULE:-}" = fcitx ] || [ "${XMODIFIERS:-}" = @im=fcitx ]; then
+                selected_mode="${im_config_modes[2]:-missing}"
+            else
+                selected_mode=none
+            fi
+            ;;
+        esac
+
+        case "$selected_mode" in
+        fcitx5)
+            return 0
+            ;;
+        missing | custom)
+            ;;
+        *)
+            return 1
+            ;;
+        esac
+    fi
+
+    if pgrep -x fcitx5 > /dev/null; then
+        return 0
+    elif pgrep -x fcitx > /dev/null; then
+        return 1
+    fi
+
+    # GTK/Qt use the same module name for Fcitx 4 and 5. Only fall back to
+    # the environment when Fcitx 5 is the sole installed Fcitx version.
+    if [ "${QT_IM_MODULE:-}" != fcitx ] && [ "${XMODIFIERS:-}" != @im=fcitx ]; then
+        return 1
+    fi
+    command -v fcitx5 > /dev/null 2>&1 && ! command -v fcitx > /dev/null 2>&1
+}
+
+enable_fcitx5_shared_input_state() (
+    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fcitx5"
+    local config_file="$config_dir/config"
+    local temporary_file
+
+    umask 077
+    mkdir -p "$config_dir" || return 1
+    if [ -L "$config_file" ]; then
+        config_file=$(readlink -f "$config_file") || return 1
+        config_dir=${config_file%/*}
+    fi
+    if [ -e "$config_file" ] && [ ! -r "$config_file" ]; then
+        return 1
+    fi
+
+    temporary_file=$(mktemp "$config_dir/.config.gxde.XXXXXX") || return 1
+    if [ -r "$config_file" ]; then
+        if ! awk '
+            BEGIN {
+                in_behavior = 0
+                found_behavior = 0
+                wrote_share_state = 0
+            }
+            $0 == "[Behavior]" {
+                in_behavior = 1
+                found_behavior = 1
+                print
+                next
+            }
+            in_behavior && /^\[[^]]+\]$/ {
+                if (!wrote_share_state) {
+                    print "ShareInputState=All"
+                    wrote_share_state = 1
+                }
+                in_behavior = 0
+            }
+            in_behavior && /^[[:space:]]*ShareInputState[[:space:]]*=/ {
+                if (!wrote_share_state) {
+                    print "ShareInputState=All"
+                    wrote_share_state = 1
+                }
+                next
+            }
+            { print }
+            END {
+                if (in_behavior && !wrote_share_state) {
+                    print "ShareInputState=All"
+                } else if (!found_behavior) {
+                    if (NR > 0) {
+                        print ""
+                    }
+                    print "[Behavior]"
+                    print "ShareInputState=All"
+                }
+            }
+        ' "$config_file" > "$temporary_file"; then
+            rm -f "$temporary_file"
+            return 1
+        fi
+        chmod --reference="$config_file" "$temporary_file" 2> /dev/null || true
+    else
+        printf '[Behavior]\nShareInputState=All\n' > "$temporary_file"
+    fi
+
+    if [ -e "$config_file" ] && cmp -s "$config_file" "$temporary_file"; then
+        rm -f "$temporary_file"
+        return 0
+    fi
+    mv -f "$temporary_file" "$config_file" || return 1
+
+    if pgrep -x fcitx5 > /dev/null && command -v fcitx5-remote > /dev/null 2>&1; then
+        fcitx5-remote -r > /dev/null 2>&1 || true
+    fi
+)
+
+if is_fcitx5_selected; then
+    enable_fcitx5_shared_input_state || true
+fi
+unset -f is_fcitx5_selected enable_fcitx5_shared_input_state
+
+# Native GTK applications use the Wayland input method frontend. Keep the Qt
+# override for XWayland-only Qt applications such as WPS, and keep XMODIFIERS
+# for XWayland applications using XIM.
+# -----------------------------------------------------------------------------
+# 原生 GTK 应用使用 Wayland 输入法前端。为 WPS 等仅支持 XWayland 的 Qt
+# 应用保留 Qt 输入法模块变量，同时为使用 XIM 的 XWayland 应用保留
+# XMODIFIERS。
+unset GTK_IM_MODULE
+
+# Applications launched by systemd --user do not inherit this environment.
+# The compositor exports the input method variables; drop a stale
+# GTK_IM_MODULE so native GTK applications keep using Wayland input method.
+# -----------------------------------------------------------------------------
+# 由 systemd --user 拉起的应用不会继承本脚本的环境变量。输入法变量由合成器
+# 负责导出；此处清除残留的 GTK_IM_MODULE，使原生 GTK 应用继续使用 Wayland 输入法。
+if command -v systemctl > /dev/null 2>&1; then
+    systemctl --user unset-environment GTK_IM_MODULE > /dev/null 2>&1 || true
+fi
+
+unset QT_QPA_PLATFORM
+export QT_QPA_PLATFORM=wayland
+
+unset DTK2_XWAYLAND
+
+# If all DTK5/6 applications keeps crashing, uncomment the line below this
+# comment block.
+# Note that DTK5/6 graphic effect (blur, border, shadows) will also be gone.
+# -----------------------------------------------------------------------------
+# 若所有DTK5/6程序不停崩溃，拒绝启动，取消本注释块下方代码的注释
+# 请注意，DTK5/6的图形特效（模糊、边框、阴影）也会随之消失。
+
+# export GXWM_DONOT_BROADCAST_TLPM=ON
+
+# The logic of libseat is that seatd is the 1st priority backend, and then
+# logind. We are currently using LightDM with logind (The current developing
+# GXDE Display manager is based on SDDM, which is also using logind), and hence
+# we are forcing the backend to logind.
+#
+# Unfortunately, we're unable to auto detect which one to use automatically.
+#
+# Don't be overwhelmed if you are a seatd user. If you are really using seatd,
+# You may simply comment out the following if block.
+# -----------------------------------------------------------------------------
+# libseat的逻辑如下：在有Seatd的情况下优先使用seatd，而GXDE（无论是当前GXDE正在使用的
+# LightDM还是正在开发的基于SDDM的GXDE Display Manager）都使用logind。故而我们强制使用
+# logind作为后端。
+#
+# 不幸的是，我们无法自动检测应该使用哪个后端。
+#
+# 如果您是seatd用户，您也无须担心，只需要注释掉下方这个if块即可。
+if [ -z "$LIBSEAT_BACKEND" ] && [ -n "$XDG_SESSION_ID" ] && [ -d /run/systemd/seats ]; then
+    export LIBSEAT_BACKEND=logind
+fi
+
+# export GDK_BACKEND=wayland
+# export WLR_DRM_NO_ATOMIC=1
+
+# === kirin 9000c 芯片走 hisi 硬件桌面 ===
+# 检测到麒麟 9000c 内核且安装了 gxde-hisi-9000c-gpu-compat
+# （提供 /usr/bin/startgxde_wlcom_9000c，hisi Maleoon 910 硬件加速启动器）
+# 时，跳转到硬件加速启动；未安装则继续默认软件启动流程。
+if uname -r | grep -q 9000c && [ -x /usr/bin/startgxde_wlcom_9000c ]; then
+    # hisi 会话所需的最小环境（详细配置由 startgxde_wlcom_9000c 负责）
+    export WLR_BACKENDS=drm,libinput
+    exec /usr/bin/startgxde_wlcom_9000c "$@"
+fi
+
+# Force reset gxde-launcher
+if pgrep -x "gxde-launcher" > /dev/null; then
+    pkill -x "gxde-launcher"
+    sleep 1
+fi
+
+# VBoxClient-all normally relies on desktop autostart.  Start the system-side
+# VMSVGA bridge explicitly; the compositor starts its Wayland assistant after
+# WAYLAND_DISPLAY is ready.
+if [ -c /dev/vboxguest ] && [ -x /usr/bin/VBoxClient ]; then
+    /usr/bin/VBoxClient --vmsvga >/dev/null 2>&1 || true
+fi
+
+exec /usr/bin/gxde-wlcom -s /usr/bin/startdde "$@"
