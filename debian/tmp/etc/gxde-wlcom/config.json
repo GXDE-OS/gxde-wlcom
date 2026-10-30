@@ -1,0 +1,301 @@
+{
+    "theme": {
+        "type": 0,
+        "icon_theme_name": "hicolor"
+    },
+    "outputs": {},
+    "layouts": {},
+    "Inputs": {},
+    "Seats": {},
+    "InputAction": {
+        "keyboard": {
+            "Win:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.dde.Launcher /com/deepin/dde/Launcher com.deepin.dde.Launcher.Toggle",
+                "desc": "open launcher"
+            },
+            "Ctrl+Alt+a:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.StartScreenshot",
+                "desc": "Take a screenshot"
+            },
+            "Ctrl+Alt+c:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.OcrScreenshot",
+                "desc": "Take a screenshot for ocr"
+            },
+            "Ctrl+Alt+r:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.ScreenRecorder /com/deepin/ScreenRecorder com.deepin.ScreenRecorder.stopRecord",
+                "desc": "Launch screen recorder"
+            },
+            "Alt+Print:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.TopWindowScreenshot",
+                "desc": "Take a screenshot of the most top window"
+            },
+            "Ctrl+Print:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.Screenshot /com/deepin/Screenshot com.deepin.Screenshot.DelayScreenshot int64:5",
+                "desc": "Take a screenshot after a few seconds"
+            },
+            "Win+e:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/lib/deepin-daemon/default-file-manager",
+                "desc": "open file manager"
+            },
+            "Win+p:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'SwitchMonitors'",
+                "desc": "switch display mode"
+            },
+            "Alt+F2:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "gxde-terminal --quake-mode",
+                "desc": "quake terminal"
+            },
+            "Win+v:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-clipboard.sh",
+                "desc": "clipboard"
+            },
+            "Print:no": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "top.gxde.Wlcom.Screenshot",
+                "path": "\/top\/gxde\/Wlcom\/Screenshot",
+                "interface": "top.gxde.Wlcom.Screenshot",
+                "method": "CopyFullscreenToClipboard",
+                "desc": "copy fullscreen to clipboard"
+            },
+            "Shift+space:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-dde-grand-search.sh",
+                "desc": "grand search"
+            },
+            "XF86AudioRaiseVolume": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "bash -c \"pactl set-sink-volume @DEFAULT_SINK@ +5% ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
+                "desc": "volume up"
+            },
+            "XF86AudioLowerVolume": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "bash -c \"pactl set-sink-volume @DEFAULT_SINK@ -5% ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
+                "desc": "volume down"
+            },
+            "XF86AudioMute:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "bash -c \"pactl set-sink-mute @DEFAULT_SINK@ toggle ; dbus-send --session --dest=com.deepin.dde.osd --type=method_call / com.deepin.dde.osd.ShowOSD string:'AudioUp'\"",
+                "desc": "mute"
+            },
+            "XF86Search:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/libexec/dde-daemon/keybinding/shortcut-dde-grand-search.sh",
+                "desc": "grand search"
+            },
+            "Ctrl+Alt+Delete:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --print-reply --dest=com.deepin.dde.shutdownFront /com/deepin/dde/shutdownFront com.deepin.dde.shutdownFront.Show",
+                "desc": "shutdown dialog"
+            },
+            "XF86Sleep:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "dbus-send --session --dest=com.deepin.SessionManager --type=method_call --print-reply /com/deepin/SessionManager com.deepin.SessionManager.RequestSuspend",
+                "desc": "suspend"
+            },
+            "XF86AudioPlay:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl play",
+                "desc": "play"
+            },
+            "XF86AudioStop:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl pause",
+                "desc": "pause"
+            },
+            "XF86AudioPrev:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl previous",
+                "desc": "previous"
+            },
+            "XF86AudioNext:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "playerctl next",
+                "desc": "next"
+            },
+            "XF86MonBrightnessUp": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "brightnessctl set +5%",
+                "desc": "brightness up"
+            },
+            "XF86MonBrightnessDown": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "brightnessctl set 5%-",
+                "desc": "brightness down"
+            },
+            "Ctrl+Alt+t:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/lib/deepin-daemon/default-terminal",
+                "desc": "open terminal"
+            },
+            "Ctrl+Alt+Escape:no": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "/usr/bin/deepin-system-monitor",
+                "desc": "open system monitor"
+            },
+            "win:no": {
+                "enable": true,
+                "type": "WLCOM_WIN_MENU",
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "org.ukui.menu",
+                "path": "\/org\/ukui\/menu",
+                "interface": "org.ukui.menu",
+                "method": "WinKeyResponse",
+                "desc": "show ukui menu"
+            }
+        },
+        "gesture": {
+            "hold:touch:1:none": {
+                "enable": true,
+                "actiontype": "button",
+                "button": "right",
+                "desc": "simulate right key"
+            },
+            "swipe:touch:1:up:bottom": {
+                "enable": true,
+                "actiontype": "command",
+                "command": "ukui-window-switch --show-workspace",
+                "desc": "show multitaskView"
+            },
+            "hold:touchpad:3:none": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "com.ukui.search.service",
+                "path": "\/",
+                "interface": "org.ukui.search.service",
+                "method": "mainWindowSwitch",
+                "desc": "global search"
+            },
+            "swipe:touchpad:3:left+right:none:trigger": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Alt_L:press",
+                "keys": "Tab",
+                "desc": "trigger switch windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:500:up": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Up",
+                "desc": "switch up windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:50:down": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Down",
+                "desc": "switch down windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:50:left": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Left",
+                "desc": "switch left windows"
+            },
+            "swipe:touchpad:3:left+right:none:after:50:right": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Right",
+                "desc": "switch right windows"
+            },
+            "swipe:touchpad:3:left+right:none:stop": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Alt_L:release",
+                "desc": "stop switch windows"
+            },
+            "hold:touchpad:4:none": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Super_L",
+                "keys": "a",
+                "desc": "show Siderbar"
+            },
+            "swipe:touch:4:down": {
+                "enable": true,
+                "actiontype": "dbus",
+                "bustype": "session",
+                "service": "com.ukui.search.service",
+                "path": "\/",
+                "interface": "org.ukui.search.service",
+                "method": "showWindow",
+                "desc": "global search"
+            },
+            "swipe:touch:4:left+right:none:trigger": {
+                "enable": true,
+                "actiontype": "key",
+                "modifiers": "Alt_L:press",
+                "keys": "Tab",
+                "desc": "trigger switch windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:up": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Up",
+                "desc": "switch up windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:down": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Down",
+                "desc": "switch down windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:left": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Left",
+                "desc": "switch left windows"
+            },
+            "swipe:touch:4:left+right:none:after:0.15:right": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Right",
+                "desc": "switch right windows"
+            },
+            "swipe:touch:4:left+right:none:stop": {
+                "enable": true,
+                "actiontype": "key",
+                "keys": "Alt_L:release",
+                "desc": "stop switch windows"
+            }
+        }
+    },
+    "plugins": {}
+}

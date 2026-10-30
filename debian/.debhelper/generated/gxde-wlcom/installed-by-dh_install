@@ -1,0 +1,9 @@
+debian/tmp/usr/bin/gxde-wlcom
+debian/tmp/usr/bin/startgxde_wlcom
+debian/tmp/usr/share/locale/
+debian/tmp/usr/share/gxde-wlcom/multitask/
+debian/tmp/usr/lib/udev/rules.d/
+debian/tmp/usr/share/wayland-sessions/
+debian/tmp/etc/gxde-wlcom/
+debian/tmp/usr/share/glib-2.0/schemas/
+./data/configs/OMG.conf

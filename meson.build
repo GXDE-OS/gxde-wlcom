@@ -196,6 +196,7 @@ endif
 
 subdir('src/vendor/dkwin/multitask')
 subdir('src/vendor/dkwin/presentwindows')
+subdir('src/vendor/gxde/portal')
 
 if have_examples
   subdir('examples')

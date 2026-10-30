@@ -104,7 +104,7 @@ static void set_signal(int sig, void *handler)
     sigaction(sig, &act, NULL);
 }
 
-static void sig_handler(int signo, siginfo_t *sip, void *unused)
+static void sig_handler(int signo, siginfo_t *sip, void *ucontext)
 {
     if (signo == SIGINT && server.terminate) {
         return;
@@ -125,10 +125,12 @@ static void sig_handler(int signo, siginfo_t *sip, void *unused)
         case SIGABRT:
             kywc_log(KYWC_SILENT, "Caught %s(%u) at address %p", strsignal(signo), signo,
                      sip->si_addr);
-            debug_backtrace();
-            /* abort() raises SIGABRT */
-            set_signal(SIGABRT, SIG_DFL);
-            abort();
+            debug_backtrace_from(ucontext);
+            /* re-raise the original signal so the core dump keeps the
+             * faulting stack instead of the handler's abort() stack */
+            set_signal(signo, SIG_DFL);
+            raise(signo);
+            return;
         }
     }
 
