@@ -157,6 +157,16 @@ bool present_windows_toggle(void);
  * present_windows_toggle() for the every-window overview. */
 bool present_windows_show_uuids(const char *const *uuids, size_t count);
 
+/* Portal (drag & drop) mode: the overview stays a pure visual layer, the
+ * wlr drag keeps the pointer and the caller drives the drag focus. */
+bool present_windows_portal_begin(void);
+void present_windows_portal_end(void);
+bool present_windows_portal_active(void);
+struct view *present_windows_portal_view_at(double lx, double ly, double *sx, double *sy);
+
+/* gxde portal module: D-Bus interface, drag tracking and native drop. */
+void portal_create(struct view_manager *view_manager);
+
 bool multitask_launcher_interface_create(void);
 
 void modal_create(struct view *view);

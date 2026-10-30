@@ -153,6 +153,7 @@ struct present_view {
     bool key_released;
     bool enabled;
     bool closing;
+    bool portal;
     bool output_listening;
     struct seat_pointer_grab pointer_grab;
     struct seat_keyboard_grab keyboard_grab;
@@ -1260,6 +1261,7 @@ static void teardown(void)
     pv->output = NULL;
     pv->enabled = false;
     pv->closing = false;
+    pv->portal = false;
 }
 
 static void present_set_enabled(bool enabled)
@@ -1285,11 +1287,15 @@ static void present_set_enabled(bool enabled)
         }
         pv->enabled = true;
         pv->closing = false;
-        cursor_set_image(seat->cursor, CURSOR_DEFAULT);
-        cursor_lock_image(seat->cursor, true);
-        seat_start_pointer_grab(seat, &pv->pointer_grab);
-        seat_start_keyboard_grab(seat, &pv->keyboard_grab);
-        seat_start_touch_grab(seat, &pv->touch_grab);
+        /* portal mode keeps the ongoing drag grabs alive: no grabs, no cursor
+         * lock, the drag itself owns the pointer and keyboard. */
+        if (!pv->portal) {
+            cursor_set_image(seat->cursor, CURSOR_DEFAULT);
+            cursor_lock_image(seat->cursor, true);
+            seat_start_pointer_grab(seat, &pv->pointer_grab);
+            seat_start_keyboard_grab(seat, &pv->keyboard_grab);
+            seat_start_touch_grab(seat, &pv->touch_grab);
+        }
         pv->last_ms = 0;
         wl_event_source_timer_update(pv->timer, TICK_MS);
     } else {
@@ -1319,6 +1325,78 @@ bool present_windows_toggle(void)
     }
     present_set_enabled(!pv->enabled);
     return true;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Portal mode                                                               */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Open the overview for a drag-and-drop "portal".  The overview visuals are
+ * unchanged, but no grabs are installed so the active drag keeps the pointer.
+ * The caller (gxde portal module) drives the wlr drag focus itself.
+ */
+bool present_windows_portal_begin(void)
+{
+    if (!pv || pv->enabled || pv->closing) {
+        return false;
+    }
+
+    clear_group();
+    pv->portal = true;
+    present_set_enabled(true);
+    if (!pv->enabled) {
+        pv->portal = false;
+        return false;
+    }
+
+    return true;
+}
+
+void present_windows_portal_end(void)
+{
+    if (!pv || !pv->portal) {
+        return;
+    }
+    present_set_enabled(false);
+}
+
+bool present_windows_portal_active(void)
+{
+    return pv && pv->portal && pv->enabled;
+}
+
+/*
+ * Map an output-local cursor position to the window under it and to the
+ * window-local coordinates.  Coordinates are global layout coordinates.
+ */
+struct view *present_windows_portal_view_at(double lx, double ly, double *sx, double *sy)
+{
+    if (!pv || !pv->enabled || pv->closing || !pv->output) {
+        return NULL;
+    }
+
+    const double x = lx - pv->output->geometry.x;
+    const double y = ly - pv->output->geometry.y;
+
+    for (size_t i = 0; i < pv->item_count; i++) {
+        struct present_item *item = &pv->items[i];
+        if (!item->view_alive || item->current.w <= 0 || item->current.h <= 0) {
+            continue;
+        }
+        if (!point_in_box(x, y, &item->current)) {
+            continue;
+        }
+        if (sx) {
+            *sx = (x - item->current.x) / item->current.w * item->orig.w;
+        }
+        if (sy) {
+            *sy = (y - item->current.y) / item->current.h * item->orig.h;
+        }
+        return item->view;
+    }
+
+    return NULL;
 }
 
 /*
@@ -1419,7 +1497,8 @@ static void apply_item_visuals(struct present_item *item)
         .h = CLOSE_BUTTON_SIZE,
     };
     bool show_close = false;
-    if (!pv->closing && pv->highlighted >= 0 && item == &pv->items[pv->highlighted]) {
+    if (!pv->closing && !pv->portal && pv->highlighted >= 0 &&
+        item == &pv->items[pv->highlighted]) {
         double lx, ly;
         cursor_local(&lx, &ly);
         bool tiny = 2 * CLOSE_BUTTON_SIZE > item->target.w &&
@@ -1434,11 +1513,17 @@ static void apply_item_visuals(struct present_item *item)
                                offset_y + CLOSE_BUTTON_INSET);
 }
 
+static void update_hover(void);
+
 static int tick(void *data)
 {
     struct present_view *p = data;
     if (!p->enabled && !p->closing) {
         return 0;
+    }
+    /* no pointer grab in portal mode: track the hovered window ourselves */
+    if (p->portal && !p->closing) {
+        update_hover();
     }
     uint64_t now = now_ms();
     double dt = p->last_ms ? (double)(now - p->last_ms) : TICK_MS;
@@ -1929,7 +2014,8 @@ bool present_windows_create(struct view_manager *view_manager)
     pv->keyboard_grab = (struct seat_keyboard_grab){ .interface = &keyboard_impl, .data = pv };
     pv->touch_grab = (struct seat_touch_grab){ .interface = &touch_impl, .data = pv };
     pv->server_destroy.notify = handle_server_destroy;
-    server_add_destroy_listener(view_manager->server, &pv->server_destroy);
+    /* Timers and grabs must be released before display/event-loop teardown. */
+    wl_signal_add(&view_manager->server->events.terminate, &pv->server_destroy);
 
     struct key_binding *binding =
         kywc_key_binding_create("Win+a:no", "toggle present windows (all desktops)");
