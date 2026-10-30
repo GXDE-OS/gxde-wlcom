@@ -1,3 +1,13 @@
+gxde-wlcom (2.3.8-gxde4) lizhi; urgency=medium
+
+  * 新增 org.gxde.Portal D-Bus 传送门：拖拽内容原生 drop 到任意窗口
+  * PresentWindows 传送门模式：不抢 grab、缩略图布局避开传送门面板
+  * drop 完成后恢复并聚焦目标窗口
+  * 修复传送门 drop 收尾时 cursor 断言导致的合成器崩溃
+  * 崩溃处理：用 ucontext 展开真实故障栈并保留原始 core
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 30 Oct 2026 22:30:00 +0800
+
 gxde-wlcom (2.3.8-gxde3) lizhi; urgency=medium
 
   * PresentWindows 按窗口 UUID 展示时，同一组窗口的重复请求不再重播动画
