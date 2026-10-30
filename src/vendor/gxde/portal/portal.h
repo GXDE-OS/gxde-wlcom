@@ -19,6 +19,7 @@ bool portal_dbus_create(void);
 void portal_dbus_destroy(void);
 void portal_emit_drag_started(const char *mime_types);
 void portal_emit_drag_ended(void);
+void portal_emit_portal_closed(void);
 void portal_emit_dropped(const char *uuid, bool accepted);
 
 /* Accessed by the D-Bus introspect/list implementation. */

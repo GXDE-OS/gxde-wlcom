@@ -150,6 +150,11 @@ void portal_emit_drag_ended(void)
     dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "DragEnded", "");
 }
 
+void portal_emit_portal_closed(void)
+{
+    dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "PortalClosed", "");
+}
+
 void portal_emit_dropped(const char *uuid, bool accepted)
 {
     dbus_emit_signal(PORTAL_PATH, PORTAL_INTERFACE, "PortalDropped", "sb",

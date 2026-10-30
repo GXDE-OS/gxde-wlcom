@@ -88,7 +88,9 @@ static void portal_close_overview(struct portal *p)
     p->target = NULL;
     p->target_uuid[0] = '\0';
     p->dropped = false;
-    portal_emit_drag_ended();
+    /* only the overview went away, the drag is still running: do not let the
+     * app tear down its panel */
+    portal_emit_portal_closed();
     kywc_log(KYWC_DEBUG, "(Portal) drag left the overview, closing");
 }
 
@@ -126,7 +128,7 @@ static bool portal_grab_motion(struct seat_pointer_grab *grab, uint32_t time, do
     } else if (p->was_in_area && !p->leave_timer) {
         p->leave_timer = wl_event_loop_add_timer(
             wl_display_get_event_loop(p->server->display), leave_timeout, p);
-        wl_event_source_timer_update(p->leave_timer, 250);
+        wl_event_source_timer_update(p->leave_timer, 125);
     }
 
     double sx = 0.0;

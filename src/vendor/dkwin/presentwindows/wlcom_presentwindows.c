@@ -1026,6 +1026,8 @@ static bool create_items(struct view *exclude)
             }
         }
     }
+    kywc_log(KYWC_DEBUG, "(Portal) layout area %d,%d %dx%d full %dx%d", area.x, area.y,
+             area.width, area.height, pv->full.width, pv->full.height);
     present_layout(targets, n, &area, &pv->full);
 
     size_t created = 0;
@@ -1388,6 +1390,7 @@ void present_windows_portal_end(void)
 void present_windows_portal_set_reserved(int x, int y, int w, int h)
 {
     portal_reserved = (struct kywc_box){ x, y, w, h };
+    kywc_log(KYWC_INFO, "(Portal) reserved panel %d,%d %dx%d", x, y, w, h);
 }
 
 bool present_windows_portal_in_area(int x, int y)
