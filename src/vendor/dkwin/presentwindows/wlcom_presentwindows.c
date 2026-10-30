@@ -1370,6 +1370,26 @@ bool present_windows_portal_active(void)
  * Map an output-local cursor position to the window under it and to the
  * window-local coordinates.  Coordinates are global layout coordinates.
  */
+size_t present_windows_portal_item_count(void)
+{
+    return (pv && pv->enabled) ? pv->item_count : 0;
+}
+
+struct view *present_windows_portal_item(size_t index, struct kywc_box *box)
+{
+    if (!pv || !pv->enabled || index >= pv->item_count || !pv->output) {
+        return NULL;
+    }
+    struct present_item *item = &pv->items[index];
+    if (box) {
+        box->x = pv->output->geometry.x + (int)item->current.x;
+        box->y = pv->output->geometry.y + (int)item->current.y;
+        box->width = (int)item->current.w;
+        box->height = (int)item->current.h;
+    }
+    return item->view_alive ? item->view : NULL;
+}
+
 struct view *present_windows_portal_view_at(double lx, double ly, double *sx, double *sy)
 {
     if (!pv || !pv->enabled || pv->closing || !pv->output) {

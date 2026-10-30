@@ -163,6 +163,8 @@ bool present_windows_portal_begin(void);
 void present_windows_portal_end(void);
 bool present_windows_portal_active(void);
 struct view *present_windows_portal_view_at(double lx, double ly, double *sx, double *sy);
+size_t present_windows_portal_item_count(void);
+struct view *present_windows_portal_item(size_t index, struct kywc_box *box);
 
 /* gxde portal module: D-Bus interface, drag tracking and native drop. */
 void portal_create(struct view_manager *view_manager);
