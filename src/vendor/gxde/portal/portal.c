@@ -42,6 +42,8 @@ struct portal {
     bool active;
     bool dropped;
     struct wl_event_source *finish_idle;
+    struct wl_event_source *leave_timer;
+    bool was_in_area;
     char pending_uuid[128];
     bool pending_dropped;
 
@@ -66,6 +68,44 @@ static void portal_end_overview(void)
     present_windows_portal_end();
 }
 
+static void portal_close_overview(struct portal *p)
+{
+    if (p->leave_timer) {
+        wl_event_source_remove(p->leave_timer);
+        p->leave_timer = NULL;
+    }
+    if (!p->active) {
+        return;
+    }
+    seat_end_pointer_grab(p->seat, &p->grab);
+    if (p->drag) {
+        /* let the ordinary drag grab pick the surface under the cursor */
+        wlr_seat_pointer_notify_clear_focus(p->seat->wlr_seat);
+    }
+    present_windows_portal_end();
+    p->active = false;
+    p->was_in_area = false;
+    p->target = NULL;
+    p->target_uuid[0] = '\0';
+    p->dropped = false;
+    portal_emit_drag_ended();
+    kywc_log(KYWC_DEBUG, "(Portal) drag left the overview, closing");
+}
+
+static int leave_timeout(void *data)
+{
+    struct portal *p = data;
+    p->leave_timer = NULL;
+    if (!p->active || !p->seat) {
+        return 0;
+    }
+    if (present_windows_portal_in_area((int)p->seat->cursor->lx, (int)p->seat->cursor->ly)) {
+        return 0;
+    }
+    portal_close_overview(p);
+    return 0;
+}
+
 static bool portal_grab_motion(struct seat_pointer_grab *grab, uint32_t time, double lx, double ly)
 {
     struct portal *p = grab->data;
@@ -76,6 +116,18 @@ static bool portal_grab_motion(struct seat_pointer_grab *grab, uint32_t time, do
     /* cursor_feed_motion() returns early for grabbed motion, keep the drag
      * icon following the cursor ourselves. */
     selection_handle_cursor_move(p->seat, (int)lx, (int)ly);
+
+    if (present_windows_portal_in_area((int)lx, (int)ly)) {
+        p->was_in_area = true;
+        if (p->leave_timer) {
+            wl_event_source_remove(p->leave_timer);
+            p->leave_timer = NULL;
+        }
+    } else if (p->was_in_area && !p->leave_timer) {
+        p->leave_timer = wl_event_loop_add_timer(
+            wl_display_get_event_loop(p->server->display), leave_timeout, p);
+        wl_event_source_timer_update(p->leave_timer, 250);
+    }
 
     double sx = 0.0;
     double sy = 0.0;
@@ -105,6 +157,10 @@ static bool portal_grab_motion(struct seat_pointer_grab *grab, uint32_t time, do
 static void portal_grab_cancel(struct seat_pointer_grab *grab)
 {
     struct portal *p = grab->data;
+    if (p->leave_timer) {
+        wl_event_source_remove(p->leave_timer);
+        p->leave_timer = NULL;
+    }
     p->active = false;
     p->target = NULL;
     p->target_uuid[0] = '\0';
@@ -193,6 +249,18 @@ static void finish_portal_drop(void *data)
      * destroy signal re-enters wlroots while it is tearing the drag down.
      * Do it from an idle callback instead. */
     portal_end_overview();
+
+    if (dropped && uuid[0]) {
+        struct kywc_view *kywc_view = kywc_view_by_uuid(uuid);
+        if (kywc_view) {
+            struct view *view = view_from_kywc_view(kywc_view);
+            if (kywc_view->minimized) {
+                kywc_view_set_minimized(kywc_view, false);
+            }
+            view_do_activate(view);
+        }
+    }
+
     portal_emit_dropped(uuid, dropped);
     portal_emit_drag_ended();
     kywc_log(KYWC_DEBUG, "(Portal) drop finished uuid=%s accepted=%d", uuid, dropped);
@@ -214,6 +282,12 @@ static void handle_drag_destroy(struct wl_listener *listener, void *data)
     p->dropped = false;
     p->target = NULL;
     p->target_uuid[0] = '\0';
+
+    if (p->leave_timer) {
+        wl_event_source_remove(p->leave_timer);
+        p->leave_timer = NULL;
+    }
+    p->was_in_area = false;
 
     if (was_active) {
         seat_end_pointer_grab(p->seat, &p->grab);
@@ -312,6 +386,10 @@ static void handle_server_destroy(struct wl_listener *listener, void *data)
     if (p->finish_idle) {
         wl_event_source_remove(p->finish_idle);
         p->finish_idle = NULL;
+    }
+    if (p->leave_timer) {
+        wl_event_source_remove(p->leave_timer);
+        p->leave_timer = NULL;
     }
     if (p->seat) {
         wl_list_remove(&p->start_drag.link);

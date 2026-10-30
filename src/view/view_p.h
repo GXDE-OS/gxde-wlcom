@@ -162,6 +162,7 @@ bool present_windows_show_uuids(const char *const *uuids, size_t count);
 bool present_windows_portal_begin(void);
 void present_windows_portal_end(void);
 bool present_windows_portal_active(void);
+bool present_windows_portal_in_area(int x, int y);
 struct view *present_windows_portal_view_at(double lx, double ly, double *sx, double *sy);
 size_t present_windows_portal_item_count(void);
 struct view *present_windows_portal_item(size_t index, struct kywc_box *box);

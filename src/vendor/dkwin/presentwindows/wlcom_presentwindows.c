@@ -1366,6 +1366,14 @@ void present_windows_portal_end(void)
     present_set_enabled(false);
 }
 
+bool present_windows_portal_in_area(int x, int y)
+{
+    if (!pv || !pv->enabled || !pv->portal) {
+        return false;
+    }
+    return kywc_box_contains_point(&pv->area, x, y);
+}
+
 bool present_windows_portal_active(void)
 {
     return pv && pv->portal && pv->enabled;
