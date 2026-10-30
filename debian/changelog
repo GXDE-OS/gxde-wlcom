@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.8-gxde3) lizhi; urgency=medium
+
+  * PresentWindows 按窗口 UUID 展示时，同一组窗口的重复请求不再重播动画
+  * 窗口组在概览关闭时清理，Win+A 与 PerformAction(2) 仍然展开全部窗口
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 30 Oct 2026 18:12:00 +0800
+
 gxde-wlcom (2.3.8-gxde2) lizhi; urgency=high
 
   * 新增 PresentWindows(as) D-Bus 接口，支持按窗口 UUID 展示指定窗口

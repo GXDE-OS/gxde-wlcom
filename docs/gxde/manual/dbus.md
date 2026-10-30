@@ -305,3 +305,32 @@ GetEnabled() -> bool
 ```bash
 busctl --user call top.gxde.Wlcom.MouseFinder /top/gxde/Wlcom/MouseFinder top.gxde.Wlcom.MouseFinder GetEnabled
 ```
+
+## 窗口概览
+
+Dock 在应用图标上滚动滚轮时，需要让合成器展开该应用的全部窗口。Wayland
+会话下由 `com.kylin.Wlcom.View` 接口提供该能力。
+
+| 项目 | 值 |
+| --- | --- |
+| 总线 | Session Bus |
+| 服务名 | `com.kylin.Wlcom` |
+| 对象路径 | `/com/kylin/Wlcom/View` |
+| 接口名 | `com.kylin.Wlcom.View` |
+
+### PresentWindows
+
+```text
+PresentWindows(array<string> uuids)
+```
+
+- `uuids`：要展开的窗口 uuid 列表，可通过同一接口的 `ListAllViews` 获取；不能为空。
+- 无返回值；失败时返回 `org.freedesktop.DBus.Error.Failed`。
+- 重复请求同一组窗口不会重新播放入场动画；请求另一组窗口会就地切换。
+- 全局快捷键 `Win+A` 仍然展开所有窗口，不受该接口影响。
+
+```bash
+busctl --user call com.kylin.Wlcom /com/kylin/Wlcom/View com.kylin.Wlcom.View \
+  PresentWindows as 1 <uuid>
+```
+

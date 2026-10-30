@@ -7,6 +7,9 @@
 #include "view/workspace.h"
 #include "view_p.h"
 
+#include <stdbool.h>
+#include <stdlib.h>
+
 static const char *service_path = "/com/kylin/Wlcom/View";
 static const char *service_interface = "com.kylin.Wlcom.View";
 
@@ -189,6 +192,46 @@ static int list_all_modes(sd_bus_message *m, void *userdata, sd_bus_error *ret_e
     return 1;
 }
 
+static void free_strv(char **strv)
+{
+    if (!strv) {
+        return;
+    }
+    for (char **item = strv; *item; item++) {
+        free(*item);
+    }
+    free(strv);
+}
+
+/* Present the given views (by uuid) in the present-windows overview.  The
+ * dock uses this when the user scrolls on an application icon. */
+static int present_windows(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+    char **uuids = NULL;
+    CK(sd_bus_message_read_strv(m, &uuids));
+
+    size_t count = 0;
+    while (uuids && uuids[count]) {
+        count++;
+    }
+    if (count == 0) {
+        free_strv(uuids);
+        const sd_bus_error error =
+            SD_BUS_ERROR_MAKE_CONST(SD_BUS_ERROR_INVALID_ARGS, "Empty window list.");
+        return sd_bus_reply_method_error(m, &error);
+    }
+
+    bool ok = present_windows_show_uuids((const char *const *)uuids, count);
+    free_strv(uuids);
+
+    if (!ok) {
+        const sd_bus_error error = SD_BUS_ERROR_MAKE_CONST(
+            SD_BUS_ERROR_FAILED, "(PresentWindows) Failed to present the given views");
+        return sd_bus_reply_method_error(m, &error);
+    }
+    return sd_bus_reply_method_return(m, NULL);
+}
+
 #if 0
 static int set_view_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
 {
@@ -205,21 +248,6 @@ static int set_view_mode(sd_bus_message *m, void *userdata, sd_bus_error *ret_er
 }
 #endif
 
-static int present_windows(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
-{
-    char **uuids = NULL;
-    int ret = sd_bus_message_read_strv(m, &uuids);
-    if (ret < 0) {
-        return ret;
-    }
-
-    if (!present_windows_show_for_uuids(uuids)) {
-        return sd_bus_reply_method_errorf(m, SD_BUS_ERROR_FAILED,
-                                          "No windows matched the requested identifiers");
-    }
-    return sd_bus_reply_method_return(m, NULL);
-}
-
 static const sd_bus_vtable service_vtable[] = {
     SD_BUS_VTABLE_START(0),
     SD_BUS_METHOD("GetViewAdsorption", "", "u", get_view_adsorption, 0),
@@ -230,9 +258,9 @@ static const sd_bus_vtable service_vtable[] = {
     SD_BUS_METHOD("GetIsShowDesktop", "", "b", get_is_show_desktop, 0),
     SD_BUS_METHOD("SetShowDesktop", "b", "", set_show_desktop, 0),
     SD_BUS_METHOD("ToggleShowDesktop", "", "", toggle_show_desktop, 0),
-    SD_BUS_METHOD("PresentWindows", "as", "", present_windows, 0),
     SD_BUS_METHOD("ListAllViews", "", "a(ssi)", list_all_views, 0),
     SD_BUS_METHOD("ListViewStates", "s", "a(sai)", list_view_states, 0),
+    SD_BUS_METHOD("PresentWindows", "as", "", present_windows, 0),
 
     SD_BUS_METHOD("ListAllModes", "", "a(sb)", list_all_modes, 0),
     // SD_BUS_METHOD("SetViewMode", "s", "", set_view_mode, 0),
