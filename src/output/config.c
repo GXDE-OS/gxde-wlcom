@@ -773,6 +773,22 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
     if (json_object_object_get_ex(config, "primary", &data)) {
         state->primary = json_object_get_boolean(data);
     }
+    if (json_object_object_get_ex(config, "gamma", &data) &&
+        json_object_is_type(data, json_type_array) && json_object_array_length(data) == 3) {
+        float gamma[3];
+        bool valid = true;
+        for (size_t i = 0; i < 3; i++) {
+            json_object *item = json_object_array_get_idx(data, i);
+            double value = item ? json_object_get_double(item) : 0;
+            valid &= output_gamma_is_valid(value);
+            gamma[i] = value;
+        }
+        if (valid) {
+            output->gamma[0] = gamma[0];
+            output->gamma[1] = gamma[1];
+            output->gamma[2] = gamma[2];
+        }
+    }
 
     return true;
 }
@@ -805,4 +821,10 @@ void output_write_config(struct output *output)
     json_object_object_add(config, "brightness", json_object_new_int(state->brightness));
     json_object_object_add(config, "color_temp", json_object_new_int(state->color_temp));
     json_object_object_add(config, "primary", json_object_new_boolean(state->primary));
+
+    json_object *gamma = json_object_new_array();
+    for (size_t i = 0; i < 3; i++) {
+        json_object_array_add(gamma, json_object_new_double(output->gamma[i]));
+    }
+    json_object_object_add(config, "gamma", gamma);
 }

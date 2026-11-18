@@ -51,9 +51,26 @@ bool output_read_config(struct output *output, struct kywc_output_state *state);
 void output_write_config(struct output *output);
 
 struct wlr_output_state;
-void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
-                          struct wlr_output_state *wlr_state, uint32_t color_temp,
-                          uint32_t brightness);
+bool output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
+                          struct wlr_output_state *wlr_state, const float *gamma,
+                          uint32_t color_temp, uint32_t brightness);
+
+#define OUTPUT_GAMMA_MIN 0.1
+#define OUTPUT_GAMMA_MAX 10.0
+
+bool output_gamma_is_valid(double value);
+
+bool output_set_gamma(struct output *output, const float gamma[3]);
+
+bool output_gamma_dbus_init(struct output_manager *output_manager);
+
+bool output_night_mode_create(struct server *server);
+
+struct output *output_find_by_wlr_output(struct wlr_output *wlr_output);
+
+struct wlr_gamma_control_v1 *output_get_gamma_control(struct wlr_output *wlr_output);
+
+bool output_gamma_control_create(struct server *server);
 
 void output_set_pending_primary(struct output *output);
 

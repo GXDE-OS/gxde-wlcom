@@ -66,6 +66,8 @@ struct output {
     /* software rendering and gamma settings for color-temp and brightness */
     uint32_t color_temp;
     uint32_t brightness;
+    /* per-channel gamma like xrandr --gamma, 1.0 is identity, hardware gamma only */
+    float gamma[3];
     enum kywc_output_vrr_policy vrr_policy;
     bool gamma_changed;
 
@@ -147,6 +149,12 @@ bool output_state_attempt_tearing(struct output *output, struct wlr_output_state
                                   bool is_tearing);
 
 bool output_use_hardware_gamma(struct output *output);
+
+/* mark gamma dirty and redraw: hardware LUT on next frame, or software damage */
+void output_update_gamma(struct output *output);
+
+/* the color temperature to render with, night mode overrides the output's own */
+uint32_t output_effective_color_temp(struct output *output);
 
 void output_layout_get_workarea(struct wlr_box *box);
 
