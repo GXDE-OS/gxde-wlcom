@@ -189,6 +189,120 @@ busctl --user call top.gxde.Wlcom.Screen /top/gxde/Wlcom/Screen top.gxde.Wlcom.S
 缩放、分辨率、旋转、显示模式和屏幕布局设置保存在当前用户的
 `~/.config/gxde-wlcom/config.json` 中。
 
+## Gamma
+
+| 项目 | 值 |
+| --- | --- |
+| 服务名 | `top.gxde.Wlcom.Gamma` |
+| 对象路径 | `/top/gxde/Wlcom/Gamma` |
+| 接口名 | `top.gxde.Wlcom.Gamma` |
+
+调整后立即生效并持久化，仅当硬件支持gamma时才会有效，虚拟机或`KYWC_SOFTWARE_GAMMA=1`时使用软件gamma，调用会被drop，返回`top.gxde.Wlcom.Gamma.Error.NotSupported`。
+
+### ListOutputs
+```text
+ListOutputs() -> array(string screen, bool supported, bool client_active, double red, double green, double blue)
+```
+
+- `supported`：该屏幕是否支持设置 gamma。
+- `client_active`：是否有 wlr-gamma-control 客户端（如 gammastep）正在控制该屏幕。
+
+```bash
+busctl --user call top.gxde.Wlcom.Gamma /top/gxde/Wlcom/Gamma top.gxde.Wlcom.Gamma ListOutputs
+```
+
+### GetGamma
+```text
+GetGamma(string screen) -> (double red, double green, double blue)
+```
+
+### SetGamma
+```text
+SetGamma(string screen, double red, double green, double blue)
+```
+
+- `screen`：屏幕输出名称；传空字符串表示所有支持 gamma 的屏幕。
+- `red`、`green`、`blue`：取值范围为 `0.1` 至 `10.0`。
+
+```bash
+# 示例：将eDP-1的gamma设置为1.0:0.9:0.8
+busctl --user call top.gxde.Wlcom.Gamma /top/gxde/Wlcom/Gamma top.gxde.Wlcom.Gamma SetGamma sddd eDP-1 1.0 0.9 0.8
+
+# 所有屏幕统一设为1.2
+busctl --user call top.gxde.Wlcom.Gamma /top/gxde/Wlcom/Gamma top.gxde.Wlcom.Gamma SetGamma sddd "" 1.2 1.2 1.2
+```
+
+### ResetGamma
+
+```text
+ResetGamma(string screen)
+```
+
+将指定屏幕（空字符串表示所有屏幕）恢复为 `1.0:1.0:1.0`。
+
+### GammaChanged 信号
+
+```text
+GammaChanged(string screen, double red, double green, double blue)
+```
+
+通过本接口修改 gamma 后发出。
+
+### 错误
+
+- `org.freedesktop.DBus.Error.InvalidArgs`：数值超出范围或不是有限数；
+- `top.gxde.Wlcom.Gamma.Error.NotFound`：找不到指定屏幕；
+- `top.gxde.Wlcom.Gamma.Error.NotSupported`：屏幕不支持硬件 gamma。
+
+## 夜间模式
+
+| 项目 | 值 |
+| --- | --- |
+| 服务名 | `top.gxde.Wlcom.NightMode` |
+| 对象路径 | `/top/gxde/Wlcom/NightMode` |
+| 接口名 | `top.gxde.Wlcom.NightMode` |
+
+开启夜间模式，gamma设置会被叠加。
+
+修改后立即生效，并保存到当前用户 `~/.config/gxde-wlcom/config.json` 的 `NightMode` 中。
+
+### SetEnabled / GetEnabled
+
+```text
+SetEnabled(bool enabled) -> bool
+GetEnabled() -> bool
+```
+
+```bash
+# 开启夜间模式
+busctl --user call top.gxde.Wlcom.NightMode /top/gxde/Wlcom/NightMode top.gxde.Wlcom.NightMode SetEnabled b true
+# 关闭
+busctl --user call top.gxde.Wlcom.NightMode /top/gxde/Wlcom/NightMode top.gxde.Wlcom.NightMode SetEnabled b false
+```
+
+### SetTemperature / GetTemperature
+
+```text
+SetTemperature(uint32 kelvin)
+GetTemperature() -> uint32
+```
+
+- `kelvin`：夜间色温，取值范围为 `1000` 至 `6500`，数值越低越暖；默认 `4500`。超出范围返回 `org.freedesktop.DBus.Error.InvalidArgs`。
+- 夜间模式关闭时也可以设置，下次开启时使用。
+
+```bash
+# 示例：将夜间色温设置为3400K
+busctl --user call top.gxde.Wlcom.NightMode /top/gxde/Wlcom/NightMode top.gxde.Wlcom.NightMode SetTemperature u 3400
+```
+
+### Changed 信号
+
+```text
+Changed(bool enabled, uint32 temperature)
+```
+
+开关或色温变化时发出。
+
 ## KDE Blur
 
 KDE Blur 的全局强度通过 Effect 接口调整，修改后立即生效并写入当前用户配置。
