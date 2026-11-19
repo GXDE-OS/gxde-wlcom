@@ -4,11 +4,13 @@
 
 /* Originally implemented in FlakeWM, ported here. */
 
+#include <math.h>
 #include <stdlib.h>
 
 #include "config.h"
 #include "output_p.h"
 #include "util/dbus.h"
+#include "util/time.h"
 
 #define NIGHT_MODE_TEMP_MIN 1000
 #define NIGHT_MODE_TEMP_MAX 6500
@@ -25,6 +27,16 @@ struct night_mode {
 
     bool enabled;
     uint32_t temperature;
+
+    /**
+     * What is on screen: the night temperature `temp_current` is blended over
+     * each output's own color temperature by `blend` (0 off, 1 fully on), and
+     * both ease towards enabled/temperature.
+     */
+    struct wl_event_source *timer;
+    float blend, blend_from;
+    float temp_current, temp_from;
+    uint32_t anim_start;
 };
 
 static struct night_mode *night_mode = NULL;
@@ -36,10 +48,12 @@ static bool temperature_is_valid(int64_t temperature)
 
 uint32_t output_effective_color_temp(struct output *output)
 {
-    if (night_mode && night_mode->enabled) {
-        return night_mode->temperature;
+    uint32_t own = output->base.state.color_temp;
+    if (!night_mode || night_mode->blend <= 0.0f) {
+        return own;
     }
-    return output->base.state.color_temp;
+    float temp = own + (night_mode->temp_current - (float)own) * night_mode->blend;
+    return (uint32_t)lroundf(temp);
 }
 
 static bool update_output(struct kywc_output *kywc_output, int index, void *data)
@@ -48,9 +62,60 @@ static bool update_output(struct kywc_output *kywc_output, int index, void *data
     return false;
 }
 
+static float target_blend(void)
+{
+    return night_mode->enabled ? 1.0f : 0.0f;
+}
+
+static void snap_to_target(void)
+{
+    night_mode->blend = target_blend();
+    night_mode->temp_current = night_mode->temperature;
+}
+
+static int handle_transition(void *data)
+{
+    float t = output_gamma_transition_progress(night_mode->anim_start);
+    if (t >= 1.0f) {
+        snap_to_target();
+    } else {
+        night_mode->blend =
+            night_mode->blend_from + (target_blend() - night_mode->blend_from) * t;
+        night_mode->temp_current =
+            night_mode->temp_from + ((float)night_mode->temperature - night_mode->temp_from) * t;
+        wl_event_source_timer_update(night_mode->timer, OUTPUT_GAMMA_TRANSITION_TICK_MS);
+    }
+    output_manager_for_each_output(update_output, true, NULL);
+    return 0;
+}
+
+static void start_transition(void)
+{
+    if (night_mode->blend <= 0.0f) {
+        /* fading in from off: start at the new temperature, only blend in */
+        night_mode->temp_current = night_mode->temperature;
+        if (!night_mode->enabled) {
+            /* off and staying off, nothing changes on screen */
+            return;
+        }
+    }
+
+    if (!night_mode->timer) {
+        snap_to_target();
+        output_manager_for_each_output(update_output, true, NULL);
+        return;
+    }
+
+    /* restart from wherever a running transition currently is */
+    night_mode->blend_from = night_mode->blend;
+    night_mode->temp_from = night_mode->temp_current;
+    night_mode->anim_start = current_time_msec();
+    wl_event_source_timer_update(night_mode->timer, 1);
+}
+
 static void night_mode_changed(void)
 {
-    output_manager_for_each_output(update_output, true, NULL);
+    start_transition();
 
     if (night_mode->config && night_mode->config->json) {
         json_object *json = night_mode->config->json;
@@ -162,6 +227,9 @@ static void handle_config_destroy(struct wl_listener *listener, void *data)
 
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
+    if (night_mode->timer) {
+        wl_event_source_remove(night_mode->timer);
+    }
     wl_list_remove(&night_mode->config_destroy.link);
     wl_list_remove(&night_mode->server_destroy.link);
     free(night_mode);
@@ -184,6 +252,9 @@ bool output_night_mode_create(struct server *server)
         wl_signal_add(&night_mode->config->events.destroy, &night_mode->config_destroy);
         read_config();
     }
+    /* the saved state shows up at startup without a transition */
+    snap_to_target();
+    night_mode->timer = wl_event_loop_add_timer(server->event_loop, handle_transition, NULL);
 
     night_mode->server_destroy.notify = handle_server_destroy;
     server_add_destroy_listener(server, &night_mode->server_destroy);

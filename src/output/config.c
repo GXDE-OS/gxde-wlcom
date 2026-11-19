@@ -784,9 +784,11 @@ bool output_read_config(struct output *output, struct kywc_output_state *state)
             gamma[i] = value;
         }
         if (valid) {
-            output->gamma[0] = gamma[0];
-            output->gamma[1] = gamma[1];
-            output->gamma[2] = gamma[2];
+            /* Transition anim & set */
+            for (int i = 0; i < 3; i++) {
+                output->gamma[i] = output->gamma_current[i] = gamma[i];
+            }
+            output->gamma_animating = false;
         }
     }
 

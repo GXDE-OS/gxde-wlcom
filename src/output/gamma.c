@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_output.h>
 
 #include "output_p.h"
+#include "util/time.h"
 
 #define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25000 ? 25000 : (val)))
 #define BRIGHTNESS_CLAMP(val) ((val) > 100 ? 100 : (val))
@@ -354,6 +355,85 @@ bool output_gamma_is_valid(double value)
     return isfinite(value) && value >= OUTPUT_GAMMA_MIN && value <= OUTPUT_GAMMA_MAX;
 }
 
+float output_gamma_transition_progress(uint32_t start_ms)
+{
+    float t = (float)(uint32_t)(current_time_msec() - start_ms) / OUTPUT_GAMMA_TRANSITION_MS;
+    if (t >= 1.0f) {
+        return 1.0f;
+    }
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static struct wl_event_source *gamma_transition_timer = NULL;
+
+static void output_gamma_finish_transition(struct output *output)
+{
+    for (int i = 0; i < 3; i++) {
+        output->gamma_current[i] = output->gamma[i];
+    }
+    output->gamma_animating = false;
+}
+
+static bool gamma_transition_step(struct kywc_output *kywc_output, int index, void *data)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    if (!output->gamma_animating) {
+        return false;
+    }
+
+    if (!kywc_output->state.enabled) {
+        /* applied when the output is enabled again */
+        output_gamma_finish_transition(output);
+        output->gamma_changed = true;
+        return false;
+    }
+
+    float t = output_gamma_transition_progress(output->gamma_anim_start);
+    if (t >= 1.0f) {
+        output_gamma_finish_transition(output);
+    } else {
+        for (int i = 0; i < 3; i++) {
+            output->gamma_current[i] =
+                output->gamma_from[i] + (output->gamma[i] - output->gamma_from[i]) * t;
+        }
+        *(bool *)data = true;
+    }
+    output_update_gamma(output);
+    return false;
+}
+
+static int handle_gamma_transition(void *data)
+{
+    bool running = false;
+    output_manager_for_each_output(gamma_transition_step, true, &running);
+    output_manager_for_each_output(gamma_transition_step, false, &running);
+    if (running) {
+        wl_event_source_timer_update(gamma_transition_timer, OUTPUT_GAMMA_TRANSITION_TICK_MS);
+    }
+    return 0;
+}
+
+static void output_gamma_start_transition(struct output *output)
+{
+    /* nothing to animate on screen: jump to the target */
+    if (!gamma_transition_timer || !output->base.state.enabled) {
+        output_gamma_finish_transition(output);
+        output->gamma_changed = true;
+        if (output->base.state.enabled) {
+            output_update_gamma(output);
+        }
+        return;
+    }
+
+    /* restart from wherever a running transition currently is */
+    for (int i = 0; i < 3; i++) {
+        output->gamma_from[i] = output->gamma_current[i];
+    }
+    output->gamma_anim_start = current_time_msec();
+    output->gamma_animating = true;
+    wl_event_source_timer_update(gamma_transition_timer, 1);
+}
+
 bool output_set_gamma(struct output *output, const float gamma[3])
 {
     for (int i = 0; i < 3; i++) {
@@ -375,12 +455,7 @@ bool output_set_gamma(struct output *output, const float gamma[3])
     kywc_log(KYWC_INFO, "output:%s set gamma %.3f:%.3f:%.3f", output->base.name, gamma[0],
              gamma[1], gamma[2]);
 
-    /* if the output is off, it is applied when the output is enabled again */
-    if (output->base.state.enabled) {
-        output_update_gamma(output);
-    } else {
-        output->gamma_changed = true;
-    }
+    output_gamma_start_transition(output);
     return true;
 }
 
@@ -435,6 +510,10 @@ static void handle_set_gamma(struct wl_listener *listener, void *data)
 
 static void handle_gamma_manager_destroy(struct wl_listener *listener, void *data)
 {
+    if (gamma_transition_timer) {
+        wl_event_source_remove(gamma_transition_timer);
+        gamma_transition_timer = NULL;
+    }
     wl_list_remove(&gamma_manager->set_gamma.link);
     wl_list_remove(&gamma_manager->destroy.link);
     free(gamma_manager);
@@ -460,6 +539,9 @@ bool output_gamma_control_create(struct server *server)
     wl_signal_add(&gamma_manager->manager->events.set_gamma, &gamma_manager->set_gamma);
     gamma_manager->destroy.notify = handle_gamma_manager_destroy;
     wl_signal_add(&gamma_manager->manager->events.destroy, &gamma_manager->destroy);
+
+    gamma_transition_timer =
+        wl_event_loop_add_timer(server->event_loop, handle_gamma_transition, NULL);
     return true;
 }
 

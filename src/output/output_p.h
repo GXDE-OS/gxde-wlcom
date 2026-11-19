@@ -60,6 +60,13 @@ bool output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
 
 bool output_gamma_is_valid(double value);
 
+/* gamma and night mode changes fade in over this duration */
+#define OUTPUT_GAMMA_TRANSITION_MS 500
+#define OUTPUT_GAMMA_TRANSITION_TICK_MS 16
+
+/* eased (smoothstep) progress 0..1 of a transition started at start_ms */
+float output_gamma_transition_progress(uint32_t start_ms);
+
 bool output_set_gamma(struct output *output, const float gamma[3]);
 
 bool output_gamma_dbus_init(struct output_manager *output_manager);

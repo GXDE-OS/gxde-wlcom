@@ -517,7 +517,9 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
 
     output->drm_fd = -1;
-    output->gamma[0] = output->gamma[1] = output->gamma[2] = 1.0f;
+    for (int i = 0; i < 3; i++) {
+        output->gamma[i] = output->gamma_current[i] = 1.0f;
+    }
     output->wlr_output = wlr_output;
     wlr_output->data = output;
 
@@ -1421,7 +1423,7 @@ bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *
     uint32_t color_temp = output_effective_color_temp(output);
 
     if (!output_set_gamma_lut(output->wlr_output, output->base.prop.gamma_size, state,
-                              output->gamma, color_temp, brightness)) {
+                              output->gamma_current, color_temp, brightness)) {
         return false;
     }
     output->gamma_changed = false;

@@ -68,6 +68,12 @@ struct output {
     uint32_t brightness;
     /* per-channel gamma like xrandr --gamma, 1.0 is identity, hardware gamma only */
     float gamma[3];
+
+    /* do a ease out/in while changing gamma for a transition effect. */
+    float gamma_current[3];
+    float gamma_from[3];
+    uint32_t gamma_anim_start;
+    bool gamma_animating;
     enum kywc_output_vrr_policy vrr_policy;
     bool gamma_changed;
 
