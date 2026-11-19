@@ -43,7 +43,7 @@ static bool frame_render_post(struct effect_entity *entity, struct ky_scene_rend
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 
     uint32_t brightness = output->base.state.brightness;
-    uint32_t color_temp = output->base.state.color_temp;
+    uint32_t color_temp = output_effective_color_temp(output);
     float color_rgb[3];
     colortemp_get_rgb(color_rgb, color_temp);
     color_rgb[0] *= brightness * 0.01f;
@@ -103,7 +103,7 @@ static void redraw_hardware_cursor(struct output_cursor_buffer *cursor_buffer)
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 
     uint32_t brightness = cursor_buffer->output->base.state.brightness;
-    uint32_t color_temp = cursor_buffer->output->base.state.color_temp;
+    uint32_t color_temp = output_effective_color_temp(cursor_buffer->output);
     float color_rgb[3];
     colortemp_get_rgb(color_rgb, color_temp);
     color_rgb[0] *= brightness * 0.01f;

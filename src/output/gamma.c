@@ -4,10 +4,13 @@
 //
 // SPDX-License-Identifier: GPL-1.0-or-later
 
+#include <math.h>
 #include <stdlib.h>
+#include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_output.h>
 
 #include "output_p.h"
+#include "util/time.h"
 
 #define COLORTEMP_CLAMP(val) ((val) < 1000 ? 1000 : ((val) > 25000 ? 25000 : (val)))
 #define BRIGHTNESS_CLAMP(val) ((val) > 100 ? 100 : (val))
@@ -267,9 +270,6 @@ static const float blackbody_color[] = {
 };
 // clang-format on
 
-/* Helper macro used in the fill functions */
-#define F(Y, C) pow((Y) * _brightness * whitepoint[C], 1.0)
-
 static void interpolate_clolor(float a, const float *c1, const float *c2, float *c)
 {
     c[0] = (1.0 - a) * c1[0] + a * c2[0];
@@ -277,20 +277,15 @@ static void interpolate_clolor(float a, const float *c1, const float *c2, float 
     c[2] = (1.0 - a) * c1[2] + a * c2[2];
 }
 
+/**
+ * Fill the ramp on top of base_ramp (the table of a wlr-gamma-control client,
+ * or linear), then apply the per-channel gamma (xrandr convention, > 1.0 is
+ * brighter), and finally the built-in color temperature and brightness.
+ */
 static void fill_gamma_ramp_with_colortemp(uint16_t *gamma_ramp, uint32_t ramp_size,
+                                           const uint16_t *base_ramp, const float *gamma,
                                            uint32_t color_temp, uint32_t brightness)
 {
-    uint16_t *red = &gamma_ramp[0 * ramp_size];
-    uint16_t *green = &gamma_ramp[1 * ramp_size];
-    uint16_t *blue = &gamma_ramp[2 * ramp_size];
-
-    /* linear default state */
-    for (uint32_t i = 0; i < ramp_size; i++) {
-        uint16_t value = (double)i / ramp_size * (UINT16_MAX + 1);
-        red[i] = value;
-        green[i] = value;
-        blue[i] = value;
-    }
     /* approximate white point */
     float whitepoint[3];
     color_temp = COLORTEMP_CLAMP(color_temp);
@@ -299,22 +294,48 @@ static void fill_gamma_ramp_with_colortemp(uint16_t *gamma_ramp, uint32_t ramp_s
     interpolate_clolor(alpha, &blackbody_color[bbc_index], &blackbody_color[bbc_index + 3],
                        whitepoint);
 
-    float _brightness = (float)brightness / 100;
+    double _brightness = (double)BRIGHTNESS_CLAMP(brightness) / 100;
 
-    /* Helper macro used in the fill functions */
-    for (uint32_t i = 0; i < ramp_size; i++) {
-        red[i] = F((double)red[i] / (UINT16_MAX + 1), 0) * (UINT16_MAX + 1);
-        green[i] = F((double)green[i] / (UINT16_MAX + 1), 1) * (UINT16_MAX + 1);
-        blue[i] = F((double)blue[i] / (UINT16_MAX + 1), 2) * (UINT16_MAX + 1);
+    for (uint32_t c = 0; c < 3; c++) {
+        uint16_t *ramp = &gamma_ramp[c * ramp_size];
+        double factor = whitepoint[c] * _brightness;
+        double exponent = 1.0;
+        if (gamma && output_gamma_is_valid(gamma[c])) {
+            exponent = 1.0 / gamma[c];
+        }
+        for (uint32_t i = 0; i < ramp_size; i++) {
+            double value = base_ramp ? (double)base_ramp[c * ramp_size + i] / UINT16_MAX
+                                     : (double)i / ramp_size;
+            if (exponent != 1.0) {
+                value = pow(value, exponent);
+            }
+            value *= factor;
+            ramp[i] = value >= 1.0 ? UINT16_MAX : value * (UINT16_MAX + 1);
+        }
     }
 }
 
-void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
-                          struct wlr_output_state *wlr_state, uint32_t color_temp,
-                          uint32_t brightness)
+bool output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
+                          struct wlr_output_state *wlr_state, const float *gamma,
+                          uint32_t color_temp, uint32_t brightness)
 {
+    /* A client may change the gamma base ramp, so keep night mode over it. */
+    struct wlr_gamma_control_v1 *control = output_get_gamma_control(wlr_output);
+    if (control && control->table && control->ramp_size != gamma_size) {
+        /* Ramp size shall be fixed. If it changed drop it!! */
+        kywc_log(KYWC_WARN, "output:%s gamma size changed %zu -> %zu, reject gamma control!!",
+                 wlr_output->name, control->ramp_size, gamma_size);
+        wlr_gamma_control_v1_send_failed_and_destroy(control);
+        control = NULL;
+    }
+    const uint16_t *base_ramp = control ? control->table : NULL;
+
     uint16_t *gamma_ramp = malloc(gamma_size * sizeof(uint16_t) * 3);
-    fill_gamma_ramp_with_colortemp(gamma_ramp, gamma_size, color_temp, brightness);
+    if (!gamma_ramp) {
+        return false;
+    }
+    fill_gamma_ramp_with_colortemp(gamma_ramp, gamma_size, base_ramp, gamma, color_temp,
+                                   brightness);
     if (wlr_state) {
         wlr_output_state_set_gamma_lut(wlr_state, gamma_size, &gamma_ramp[0],
                                        &gamma_ramp[1 * gamma_size], &gamma_ramp[2 * gamma_size]);
@@ -324,7 +345,204 @@ void output_set_gamma_lut(struct wlr_output *wlr_output, size_t gamma_size,
     }
     free(gamma_ramp);
 
-    kywc_log(KYWC_DEBUG, "output:%s set gamma lut colr_tempe: %d", wlr_output->name, color_temp);
+    kywc_log(KYWC_DEBUG, "output:%s set gamma lut colr_tempe: %d%s", wlr_output->name, color_temp,
+             base_ramp ? " with client gamma" : "");
+    return true;
+}
+
+bool output_gamma_is_valid(double value)
+{
+    return isfinite(value) && value >= OUTPUT_GAMMA_MIN && value <= OUTPUT_GAMMA_MAX;
+}
+
+float output_gamma_transition_progress(uint32_t start_ms)
+{
+    float t = (float)(uint32_t)(current_time_msec() - start_ms) / OUTPUT_GAMMA_TRANSITION_MS;
+    if (t >= 1.0f) {
+        return 1.0f;
+    }
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static struct wl_event_source *gamma_transition_timer = NULL;
+
+static void output_gamma_finish_transition(struct output *output)
+{
+    for (int i = 0; i < 3; i++) {
+        output->gamma_current[i] = output->gamma[i];
+    }
+    output->gamma_animating = false;
+}
+
+static bool gamma_transition_step(struct kywc_output *kywc_output, int index, void *data)
+{
+    struct output *output = output_from_kywc_output(kywc_output);
+    if (!output->gamma_animating) {
+        return false;
+    }
+
+    if (!kywc_output->state.enabled) {
+        /* applied when the output is enabled again */
+        output_gamma_finish_transition(output);
+        output->gamma_changed = true;
+        return false;
+    }
+
+    float t = output_gamma_transition_progress(output->gamma_anim_start);
+    if (t >= 1.0f) {
+        output_gamma_finish_transition(output);
+    } else {
+        for (int i = 0; i < 3; i++) {
+            output->gamma_current[i] =
+                output->gamma_from[i] + (output->gamma[i] - output->gamma_from[i]) * t;
+        }
+        *(bool *)data = true;
+    }
+    output_update_gamma(output);
+    return false;
+}
+
+static int handle_gamma_transition(void *data)
+{
+    bool running = false;
+    output_manager_for_each_output(gamma_transition_step, true, &running);
+    output_manager_for_each_output(gamma_transition_step, false, &running);
+    if (running) {
+        wl_event_source_timer_update(gamma_transition_timer, OUTPUT_GAMMA_TRANSITION_TICK_MS);
+    }
+    return 0;
+}
+
+static void output_gamma_start_transition(struct output *output)
+{
+    /* nothing to animate on screen: jump to the target */
+    if (!gamma_transition_timer || !output->base.state.enabled) {
+        output_gamma_finish_transition(output);
+        output->gamma_changed = true;
+        if (output->base.state.enabled) {
+            output_update_gamma(output);
+        }
+        return;
+    }
+
+    /* restart from wherever a running transition currently is */
+    for (int i = 0; i < 3; i++) {
+        output->gamma_from[i] = output->gamma_current[i];
+    }
+    output->gamma_anim_start = current_time_msec();
+    output->gamma_animating = true;
+    wl_event_source_timer_update(gamma_transition_timer, 1);
+}
+
+bool output_set_gamma(struct output *output, const float gamma[3])
+{
+    for (int i = 0; i < 3; i++) {
+        if (!output_gamma_is_valid(gamma[i])) {
+            return false;
+        }
+    }
+
+    if (output->gamma[0] == gamma[0] && output->gamma[1] == gamma[1] &&
+        output->gamma[2] == gamma[2]) {
+        return true;
+    }
+
+    output->gamma[0] = gamma[0];
+    output->gamma[1] = gamma[1];
+    output->gamma[2] = gamma[2];
+    output_write_config(output);
+
+    kywc_log(KYWC_INFO, "output:%s set gamma %.3f:%.3f:%.3f", output->base.name, gamma[0],
+             gamma[1], gamma[2]);
+
+    output_gamma_start_transition(output);
+    return true;
+}
+
+/* wlr-gamma-control-unstable-v1, used by gammastep, wlsunset, etc. */
+struct gamma_control_manager {
+    struct wlr_gamma_control_manager_v1 *manager;
+    struct wl_listener set_gamma;
+    struct wl_listener destroy;
+};
+
+static struct gamma_control_manager *gamma_manager = NULL;
+
+struct wlr_gamma_control_v1 *output_get_gamma_control(struct wlr_output *wlr_output)
+{
+    if (!gamma_manager) {
+        return NULL;
+    }
+    return wlr_gamma_control_manager_v1_get_control(gamma_manager->manager, wlr_output);
+}
+
+static void handle_set_gamma(struct wl_listener *listener, void *data)
+{
+    struct wlr_gamma_control_manager_v1_set_gamma_event *event = data;
+    /**
+     * Don't use output_from_wlr_output: when a wlr_output is destroyed, its
+     * struct output is freed before the gamma control's destroy listener
+     * emits this event, and wlr_output->data still points at it.
+     */
+    struct output *output = output_find_by_wlr_output(event->output);
+    if (!output || output->base.destroying) {
+        if (event->control) {
+            wlr_gamma_control_v1_send_failed_and_destroy(event->control);
+        }
+        return;
+    }
+
+    /* the software gamma path only ctrls color temperature and brightness */
+    if (!output_use_hardware_gamma(output)) {
+        if (event->control) {
+            kywc_log(KYWC_INFO, "output:%s has no hardware gamma, request DROPPED!!",
+                     event->output->name);
+            wlr_gamma_control_v1_send_failed_and_destroy(event->control);
+        }
+        return;
+    }
+
+    kywc_log(KYWC_DEBUG, "output:%s gamma control %s", event->output->name,
+             event->control ? "set" : "reset");
+    output->gamma_changed = true;
+    output_schedule_frame(event->output);
+}
+
+static void handle_gamma_manager_destroy(struct wl_listener *listener, void *data)
+{
+    if (gamma_transition_timer) {
+        wl_event_source_remove(gamma_transition_timer);
+        gamma_transition_timer = NULL;
+    }
+    wl_list_remove(&gamma_manager->set_gamma.link);
+    wl_list_remove(&gamma_manager->destroy.link);
+    free(gamma_manager);
+    gamma_manager = NULL;
+}
+
+bool output_gamma_control_create(struct server *server)
+{
+    gamma_manager = calloc(1, sizeof(*gamma_manager));
+    if (!gamma_manager) {
+        return false;
+    }
+
+    gamma_manager->manager = wlr_gamma_control_manager_v1_create(server->display);
+    if (!gamma_manager->manager) {
+        kywc_log(KYWC_WARN, "failed to create wlr gamma control manager");
+        free(gamma_manager);
+        gamma_manager = NULL;
+        return false;
+    }
+
+    gamma_manager->set_gamma.notify = handle_set_gamma;
+    wl_signal_add(&gamma_manager->manager->events.set_gamma, &gamma_manager->set_gamma);
+    gamma_manager->destroy.notify = handle_gamma_manager_destroy;
+    wl_signal_add(&gamma_manager->manager->events.destroy, &gamma_manager->destroy);
+
+    gamma_transition_timer =
+        wl_event_loop_add_timer(server->event_loop, handle_gamma_transition, NULL);
+    return true;
 }
 
 bool output_set_colortemp(struct kywc_output *kywc_output, uint32_t color_temp)

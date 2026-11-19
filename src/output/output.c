@@ -43,6 +43,21 @@ struct output *output_from_wlr_output(struct wlr_output *wlr_output)
     return wlr_output->data;
 }
 
+struct output *output_find_by_wlr_output(struct wlr_output *wlr_output)
+{
+    if (!output_manager) {
+        return NULL;
+    }
+
+    struct output *output;
+    wl_list_for_each(output, &output_manager->outputs, link) {
+        if (output->wlr_output == wlr_output) {
+            return output;
+        }
+    }
+    return NULL;
+}
+
 static void handle_server_destroy(struct wl_listener *listener, void *data)
 {
     wl_list_remove(&output_manager->server_destroy.link);
@@ -502,6 +517,9 @@ static struct output *output_create(const char *name, struct wlr_output *wlr_out
     }
 
     output->drm_fd = -1;
+    for (int i = 0; i < 3; i++) {
+        output->gamma[i] = output->gamma_current[i] = 1.0f;
+    }
     output->wlr_output = wlr_output;
     wlr_output->data = output;
 
@@ -1167,6 +1185,9 @@ struct output_manager *output_manager_create(struct server *server)
     kde_output_management_create(server);
     wlr_output_management_create(server);
     ukui_output_management_create(server);
+    output_gamma_control_create(server);
+    output_gamma_dbus_init(output_manager);
+    output_night_mode_create(server);
 
     char *env = getenv("KYWC_SOFTWARE_GAMMA");
     output_manager->force_software_gamma = (env && strcmp(env, "1") == 0);
@@ -1377,6 +1398,17 @@ bool output_use_hardware_gamma(struct output *output)
     return output->base.prop.gamma_size > 0 && !output_manager->force_software_gamma;
 }
 
+void output_update_gamma(struct output *output)
+{
+    output->gamma_changed = true;
+    if (output_use_hardware_gamma(output)) {
+        output_schedule_frame(output->wlr_output);
+    } else if (output->scene_output) {
+        /* software gamma need update render damage and cursor buffer */
+        ky_scene_output_damage_whole(output->scene_output);
+    }
+}
+
 bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *state)
 {
     if (!output->gamma_changed) {
@@ -1388,10 +1420,12 @@ bool output_state_attempt_gamma(struct output *output, struct wlr_output_state *
     }
 
     uint32_t brightness = output->base.state.brightness;
-    uint32_t color_temp = output->base.state.color_temp;
+    uint32_t color_temp = output_effective_color_temp(output);
 
-    output_set_gamma_lut(output->wlr_output, output->base.prop.gamma_size, state, color_temp,
-                         brightness);
+    if (!output_set_gamma_lut(output->wlr_output, output->base.prop.gamma_size, state,
+                              output->gamma_current, color_temp, brightness)) {
+        return false;
+    }
     output->gamma_changed = false;
 
     return true;
@@ -1500,15 +1534,7 @@ static bool output_set_state(struct output *output, struct kywc_output_state *st
     output->vrr_policy = state->vrr_policy;
 
     if (enabled && output_gamma_changed(output, state)) {
-        output->gamma_changed = true;
-        if (output_use_hardware_gamma(output)) {
-            output_schedule_frame(output->wlr_output);
-        } else {
-            // software gamma need update render damage and cursor buffer
-            if (output->scene_output) {
-                ky_scene_output_damage_whole(output->scene_output);
-            }
-        }
+        output_update_gamma(output);
     }
 
     /* if output disabled, skip output_layout_add */
