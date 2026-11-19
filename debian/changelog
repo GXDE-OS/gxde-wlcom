@@ -1,3 +1,10 @@
+gxde-wlcom (2.3.9-gxde1) lizhi; urgency=medium
+
+  * 新增Gamma控制支持
+  * 新增夜间护眼模式
+
+ -- CharOfString <root@charofstring.cc>  Wed, 18 Nov 2026 18:30:11 -0600
+
 gxde-wlcom (2.3.8-gxde4) lizhi; urgency=medium
 
   * 新增 org.gxde.Portal D-Bus 传送门：拖拽内容原生 drop 到任意窗口
