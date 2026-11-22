@@ -349,7 +349,9 @@ struct ky_scene_surface *ky_scene_surface_create(struct ky_scene_tree *parent,
 
 struct wlr_surface *wlr_surface_try_from_node(struct ky_scene_node *node)
 {
-    if (node->type != KY_SCENE_NODE_BUFFER) {
+    /* "try" 系列对无效节点应当返回 NULL，而不是解引用：调用方经常把
+     * cursor->hover.node 直接传进来，它在光标还没进入 surface 时就是 NULL。 */
+    if (!node || node->type != KY_SCENE_NODE_BUFFER) {
         return NULL;
     }
 

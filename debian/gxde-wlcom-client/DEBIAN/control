@@ -1,9 +1,9 @@
 Package: gxde-wlcom-client
 Source: gxde-wlcom
-Version: 2.3.8-gxde3
+Version: 2.3.9-gxde2
 Architecture: arm64
 Maintainer: Morose <chenlinxiang@kylinos.cn>
-Installed-Size: 219
+Installed-Size: 220
 Depends: gxde-wlcom, libc6 (>= 2.17), libwayland-client0 (>= 1.20.0)
 Conflicts: kylin-wayland-compositor-client
 Replaces: kylin-wayland-compositor-client

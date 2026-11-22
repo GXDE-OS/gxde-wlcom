@@ -1,3 +1,13 @@
+gxde-wlcom (2.3.9-gxde2) lizhi; urgency=medium
+
+  * 修复首次开机后第一次拖拽崩溃：光标还没进入任何 surface 时
+    cursor->hover.node 为 NULL，xwayland_start_drag_x11() 直接调用
+    wlr_surface_try_from_node() 导致合成器 SIGSEGV；现在先判空，并回退到
+    拖拽源窗口自己的 surface
+  * wlr_surface_try_from_node() 对 NULL 节点返回 NULL，作为兜底
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 22 Nov 2026 08:20:00 +0800
+
 gxde-wlcom (2.3.9-gxde1) lizhi; urgency=medium
 
   * 新增Gamma控制支持

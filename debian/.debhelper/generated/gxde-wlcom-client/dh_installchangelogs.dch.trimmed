@@ -1,3 +1,30 @@
+gxde-wlcom (2.3.9-gxde2) lizhi; urgency=medium
+
+  * 修复首次开机后第一次拖拽崩溃：光标还没进入任何 surface 时
+    cursor->hover.node 为 NULL，xwayland_start_drag_x11() 直接调用
+    wlr_surface_try_from_node() 导致合成器 SIGSEGV；现在先判空，并回退到
+    拖拽源窗口自己的 surface
+  * wlr_surface_try_from_node() 对 NULL 节点返回 NULL，作为兜底
+
+ -- shenmo <shenmo@spark-app.store>  Sun, 22 Nov 2026 08:20:00 +0800
+
+gxde-wlcom (2.3.9-gxde1) lizhi; urgency=medium
+
+  * 新增Gamma控制支持
+  * 新增夜间护眼模式
+
+ -- CharOfString <root@charofstring.cc>  Wed, 18 Nov 2026 18:30:11 -0600
+
+gxde-wlcom (2.3.8-gxde4) lizhi; urgency=medium
+
+  * 新增 org.gxde.Portal D-Bus 传送门：拖拽内容原生 drop 到任意窗口
+  * PresentWindows 传送门模式：不抢 grab、缩略图布局避开传送门面板
+  * drop 完成后恢复并聚焦目标窗口
+  * 修复传送门 drop 收尾时 cursor 断言导致的合成器崩溃
+  * 崩溃处理：用 ucontext 展开真实故障栈并保留原始 core
+
+ -- shenmo <shenmo@spark-app.store>  Fri, 30 Oct 2026 22:30:00 +0800
+
 gxde-wlcom (2.3.8-gxde3) lizhi; urgency=medium
 
   * PresentWindows 按窗口 UUID 展示时，同一组窗口的重复请求不再重播动画

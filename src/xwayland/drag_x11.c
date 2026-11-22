@@ -19,6 +19,14 @@
 #include "view/view.h"
 #include "xwayland_p.h"
 
+static struct wlr_surface *cursor_hover_surface(struct seat *seat)
+{
+    if (!seat || !seat->cursor || !seat->cursor->hover.node) {
+        return NULL;
+    }
+    return wlr_surface_try_from_node(seat->cursor->hover.node);
+}
+
 static void handle_cursor_motion(struct wl_listener *listener, void *data)
 {
     struct xwayland_drag_x11 *drag_x11 = wl_container_of(listener, drag_x11, cursor_motion);
@@ -39,8 +47,7 @@ static void handle_cursor_motion(struct wl_listener *listener, void *data)
     }
 
     struct wlr_surface *old_surface = drag_x11->hovered_surface;
-    struct wlr_surface *new_surface =
-        seat->cursor->hover.node ? wlr_surface_try_from_node(seat->cursor->hover.node) : NULL;
+    struct wlr_surface *new_surface = cursor_hover_surface(seat);
     struct view *old_view = old_surface ? view_try_from_wlr_surface(old_surface) : NULL;
     struct view *new_view = new_surface ? view_try_from_wlr_surface(new_surface) : NULL;
     if (old_surface == new_surface) {
@@ -505,8 +512,24 @@ bool xwayland_start_drag_x11(struct xwayland_server *xwayland, xcb_window_t sour
     }
 
     struct seat *seat = seat_from_wlr_seat(xwayland->wlr_xwayland->seat);
-    struct wlr_surface *current_surface = wlr_surface_try_from_node(seat->cursor->hover.node);
-    struct view *current_view = current_surface ? view_try_from_wlr_surface(current_surface) : NULL;
+    /* 第一次开机后第一个拖拽可能发生在光标还没进入任何 surface 的时候：
+     * hover.node 是 NULL，wlr_surface_try_from_node() 会直接解引用崩溃。
+     * 没有 hover 的 surface 就没法把拖拽映射回 X11 目标，安全地忽略即可。 */
+    struct wlr_surface *current_surface = cursor_hover_surface(seat);
+    if (!current_surface) {
+        /* 第一次登录时光标可能还没产生过 motion，hover.node 是空的。
+         * 退回拖拽源窗口自己的 surface，别把这次拖拽直接丢掉。 */
+        struct wlr_xwayland_surface *source =
+            xwayland_view_look_surface(xwayland, source_window);
+        if (source && source->surface) {
+            current_surface = source->surface;
+        }
+    }
+    if (!current_surface) {
+        kywc_log(KYWC_DEBUG, "start drag X11: no hovered surface, ignore");
+        return false;
+    }
+    struct view *current_view = view_try_from_wlr_surface(current_surface);
     if (!current_view) {
         return false;
     }
